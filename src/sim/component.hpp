@@ -39,17 +39,19 @@ public:
     inline bool rose(PinIndex pin) const;              // Net went 0 → 1 at this timestamp
     bool readBit(PinIndex pin);                        // X → seeded random bit (MOS inputs, S4)
     inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
-    void wakeAfter(Time delay);  // evaluate this Component again at now + delay
+    void wakeAfter(Time delay);                      // evaluate this Component again at now + delay
+    PackedInputs inputs() const { return inputs_; }  // Input Pins only; other bits 0
 
 private:
     friend class Simulator;
-    EvalContext(Simulator& sim, PinId firstPin, ComponentId component)
-        : sim_(sim), firstPin_(firstPin), component_(component) {}
+    EvalContext(Simulator& sim, PinId firstPin, ComponentId component, const PackedInputs& inputs)
+        : sim_(sim), firstPin_(firstPin), component_(component), inputs_(inputs) {}
     PinId pinId(PinIndex pin) const { return PinId{ToIndex(firstPin_) + pin}; }
     void driveChanged(PinId id, LogicValue value, Time delay);
     Simulator& sim_;
     PinId firstPin_;
     ComponentId component_;
+    const PackedInputs& inputs_;
 };
 
 // Passed to Component::powerOn(); members defined in simulator.cpp.

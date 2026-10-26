@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <vector>
 
@@ -56,11 +57,13 @@ private:
     void markComponentDirty(ComponentId component);
     Resolution resolveNet(NetId net) const;
     void scheduleWake(ComponentId component, Time delay);
+    void updateInputs(NetId net, LogicValue value);  // no wake
     const NetState& netOfPin(PinId pin) const { return nets_[ToIndex(circuit_.netOf(pin))]; }
 
     Circuit& circuit_;
     std::vector<NetState> nets_;
     std::vector<OutputState> outputs_;
+    std::vector<PackedInputs> inputs_;  // index = ComponentId
     std::vector<std::uint8_t> componentDirty_;
     std::vector<NetId> dirtyNets_;
     std::vector<ComponentId> dirtyComponents_;
@@ -73,7 +76,14 @@ private:
 
 // --- EvalContext hot path ---
 
-inline LogicValue EvalContext::read(PinIndex pin) const { return sim_.netOfPin(pinId(pin)).value; }
+inline LogicValue EvalContext::read(PinIndex pin) const {
+    assert(sim_.circuit_.pinInfo(pinId(pin)).kind == PinKind::Input);
+    const std::uint64_t bit = std::uint64_t{1} << pin;
+    if ((inputs_.known & bit) == 0) {
+        return LogicValue::X;
+    }
+    return (inputs_.value & bit) != 0 ? LogicValue::One : LogicValue::Zero;
+}
 
 inline LogicValue EvalContext::readBefore(PinIndex pin) const {
     const auto& s = sim_.netOfPin(pinId(pin));

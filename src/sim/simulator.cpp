@@ -60,6 +60,7 @@ Simulator::Simulator(Circuit& circuit) : circuit_(circuit) {
     nets_.resize(circuit.netCount(),
                  NetState{-1, LogicValue::Zero, LogicValue::Zero, LogicValue::Zero, false, false});
     outputs_.resize(circuit.pinCount(), OutputState{0, LogicValue::Zero, LogicValue::Zero, false});
+    inputs_.resize(circuit.components().size(), PackedInputs{0, 0});
     componentDirty_.resize(circuit.components().size(), 0);
 }
 
@@ -94,6 +95,16 @@ void Simulator::scheduleWake(ComponentId component, Time delay) {
     queue_.push({now_ + delay, ToIndex(component), MakeStamp(0, true, LogicValue::Zero)});
 }
 
+void Simulator::updateInputs(NetId net, LogicValue value) {
+    const std::uint64_t setValue = value == LogicValue::One ? ~std::uint64_t{0} : 0;
+    const std::uint64_t setKnown = value != LogicValue::X ? ~std::uint64_t{0} : 0;
+    for (const FanOut& f : circuit_.fanOut(net)) {
+        PackedInputs& in = inputs_[ToIndex(f.component)];
+        in.value = (in.value & ~f.mask) | (setValue & f.mask);
+        in.known = (in.known & ~f.mask) | (setKnown & f.mask);
+    }
+}
+
 void Simulator::record(NetId net) {
     Check(ToIndex(net) < nets_.size(), "simulator: unknown net");
     recorder_.start(net, now_, value(net));
@@ -108,6 +119,7 @@ void Simulator::powerOn(std::uint64_t seed) {
     dirtyNets_.clear();
     dirtyComponents_.clear();
     std::fill(componentDirty_.begin(), componentDirty_.end(), 0);
+    std::fill(inputs_.begin(), inputs_.end(), PackedInputs{0, 0});
 
     for (std::uint32_t p = 0; p < outputs_.size(); ++p) {
         OutputState& o = outputs_[p];
@@ -128,6 +140,7 @@ void Simulator::powerOn(std::uint64_t seed) {
         s.lastDriven = rng_.nextBit() ? LogicValue::One : LogicValue::Zero;
         const Resolution r = resolveNet(NetId{n});
         s.value = r.value;
+        updateInputs(NetId{n}, r.value);
         s.previous = r.value;
         s.changedAt = -1;  // nothing "rose" at time 0
         s.floating = r.floating;
@@ -138,7 +151,8 @@ void Simulator::powerOn(std::uint64_t seed) {
     }
 
     for (const auto& component : components) {
-        EvalContext ctx(*this, component->firstPin(), component->id());
+        EvalContext ctx(*this, component->firstPin(), component->id(),
+                        inputs_[ToIndex(component->id())]);
         component->evaluate(ctx);
         ++stats_.evaluations;
     }
@@ -186,7 +200,12 @@ void Simulator::runUntil(Time end) {
                     recorder_.add(net, now_, r.value);
                 }
                 const bool rose = s.previous == LogicValue::Zero && s.value == LogicValue::One;
+                const std::uint64_t setValue = r.value == LogicValue::One ? ~std::uint64_t{0} : 0;
+                const std::uint64_t setKnown = r.value != LogicValue::X ? ~std::uint64_t{0} : 0;
                 for (const FanOut& f : circuit_.fanOut(net)) {
+                    PackedInputs& in = inputs_[ToIndex(f.component)];
+                    in.value = (in.value & ~f.mask) | (setValue & f.mask);
+                    in.known = (in.known & ~f.mask) | (setKnown & f.mask);
                     if (rose || !f.risingEdgeOnly) {
                         markComponentDirty(f.component);
                     }
@@ -199,7 +218,7 @@ void Simulator::runUntil(Time end) {
         for (const ComponentId id : dirtyComponents_) {
             componentDirty_[ToIndex(id)] = 0;
             Component& component = *components[ToIndex(id)];
-            EvalContext ctx(*this, component.firstPin(), id);
+            EvalContext ctx(*this, component.firstPin(), id, inputs_[ToIndex(id)]);
             component.evaluate(ctx);
             ++stats_.evaluations;
         }
