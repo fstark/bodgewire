@@ -89,39 +89,6 @@ std::vector<PinSpec> PackagePins(const GatePackageSpec& spec) {
     return pins;
 }
 
-template <GateKind Kind>
-LogicValue Apply(std::span<const LogicValue> inputs) {
-    if constexpr (Kind == GateKind::And) {
-        return detail::AndOf(inputs);
-    } else if constexpr (Kind == GateKind::Or) {
-        return detail::OrOf(inputs);
-    } else if constexpr (Kind == GateKind::Nand) {
-        return Not(detail::AndOf(inputs));
-    } else if constexpr (Kind == GateKind::Nor) {
-        return Not(detail::OrOf(inputs));
-    } else if constexpr (Kind == GateKind::Xor) {
-        return detail::XorOf(inputs);
-    } else if constexpr (Kind == GateKind::Xnor) {
-        return Not(detail::XorOf(inputs));
-    } else if constexpr (Kind == GateKind::Not) {
-        return Not(inputs[0]);
-    } else {
-        return inputs[0];
-    }
-}
-
-template <GateKind Kind>
-void EvaluateUnits(EvalContext& ctx, const GatePackageSpec& spec) {
-    std::array<LogicValue, 8> inputs;
-    for (const GateUnit& unit : spec.units) {
-        for (std::uint8_t i = 0; i < unit.inputCount; ++i) {
-            inputs[i] = ctx.read(unit.inputs[i] - 1u);
-        }
-        const LogicValue value = Apply<Kind>(std::span(inputs.data(), unit.inputCount));
-        ctx.drive(unit.output - 1u, value, DelayFor(spec.delays, value));
-    }
-}
-
 }  // namespace
 
 const GatePackageSpec& GatePackageSpecOf(std::string_view part) {
@@ -137,29 +104,16 @@ const GatePackageSpec& GatePackageSpecOf(std::string_view part) {
 GatePackage::GatePackage(std::string reference, const GatePackageSpec& spec)
     : Component(std::move(reference), PackagePins(spec)), spec_(spec) {
     Check(spec.names.size() == spec.pinCount, "gate package: pin names do not match pin count");
-    for (const GateUnit& unit : spec.units) {
-        Check(unit.kind == spec.units[0].kind, "gate package: units must share one gate kind");
-    }
 }
 
 void GatePackage::evaluate(EvalContext& ctx) {
-    switch (spec_.units[0].kind) {
-    case GateKind::And:
-        return EvaluateUnits<GateKind::And>(ctx, spec_);
-    case GateKind::Or:
-        return EvaluateUnits<GateKind::Or>(ctx, spec_);
-    case GateKind::Nand:
-        return EvaluateUnits<GateKind::Nand>(ctx, spec_);
-    case GateKind::Nor:
-        return EvaluateUnits<GateKind::Nor>(ctx, spec_);
-    case GateKind::Xor:
-        return EvaluateUnits<GateKind::Xor>(ctx, spec_);
-    case GateKind::Xnor:
-        return EvaluateUnits<GateKind::Xnor>(ctx, spec_);
-    case GateKind::Not:
-        return EvaluateUnits<GateKind::Not>(ctx, spec_);
-    case GateKind::Buffer:
-        return EvaluateUnits<GateKind::Buffer>(ctx, spec_);
+    std::array<LogicValue, 8> inputs;
+    for (const GateUnit& unit : spec_.units) {
+        for (std::uint8_t i = 0; i < unit.inputCount; ++i) {
+            inputs[i] = ctx.read(unit.inputs[i] - 1u);
+        }
+        const LogicValue value = GateFunction(unit.kind, std::span(inputs.data(), unit.inputCount));
+        ctx.drive(unit.output - 1u, value, DelayFor(spec_.delays, value));
     }
 }
 
