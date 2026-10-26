@@ -47,6 +47,16 @@ public:
     void evaluate(EvalContext& /*ctx*/) override {}
 };
 
+class EdgePins : public Component {
+public:
+    explicit EdgePins(std::string name)
+        : Component(std::move(name), {{"CLK1", PinKind::Input, Family::Ttl, true},
+                                      {"D", PinKind::Input, Family::Ttl},
+                                      {"CLK2", PinKind::Input, Family::Ttl, true},
+                                      {"CLK3", PinKind::Input, Family::Ttl, true}}) {}
+    void evaluate(EvalContext& /*ctx*/) override {}
+};
+
 }  // namespace
 
 TEST_CASE("circuit: power and no-connect pins are neither drivers nor readers", "[sim]") {
@@ -61,9 +71,10 @@ TEST_CASE("circuit: power and no-connect pins are neither drivers nor readers", 
 
     CHECK(circuit.drivers(n).empty());
     CHECK(circuit.hasTtlInput(n));
-    const auto readers = circuit.readers(n);
-    REQUIRE(readers.size() == 1);
-    CHECK(readers[0] == u2.id());
+    const auto fanOut = circuit.fanOut(n);
+    REQUIRE(fanOut.size() == 1);
+    CHECK(fanOut[0].component == u2.id());
+    CHECK(fanOut[0].mask == 0b1);
 }
 
 TEST_CASE("circuit: pin ids are contiguous per component", "[sim]") {
@@ -141,9 +152,32 @@ TEST_CASE("circuit: drivers and readers", "[sim]") {
     REQUIRE(drivers.size() == 1);
     CHECK(drivers[0] == Pin(u1, 2));
 
-    const auto readers = circuit.readers(n);
-    REQUIRE(readers.size() == 1);
-    CHECK(readers[0] == u2.id());
+    const auto fanOut = circuit.fanOut(n);
+    REQUIRE(fanOut.size() == 1);
+    CHECK(fanOut[0].component == u2.id());
+    CHECK(fanOut[0].mask == 0b11);
+}
+
+TEST_CASE("circuit: fan-out merges pins of one component", "[sim]") {
+    Circuit circuit;
+    EdgePins& u1 = circuit.add<EdgePins>("U1");
+    const NetId mixed = circuit.addNet("mixed");
+    const NetId edges = circuit.addNet("edges");
+    circuit.connect(u1, "CLK1", mixed);
+    circuit.connect(u1, "D", mixed);
+    circuit.connect(u1, "CLK2", edges);
+    circuit.connect(u1, "CLK3", edges);
+    circuit.finalize();
+
+    const auto mixedFanOut = circuit.fanOut(mixed);
+    REQUIRE(mixedFanOut.size() == 1);
+    CHECK(mixedFanOut[0].mask == 0b0011);
+    CHECK_FALSE(mixedFanOut[0].risingEdgeOnly);
+
+    const auto edgesFanOut = circuit.fanOut(edges);
+    REQUIRE(edgesFanOut.size() == 1);
+    CHECK(edgesFanOut[0].mask == 0b1100);
+    CHECK(edgesFanOut[0].risingEdgeOnly);
 }
 
 TEST_CASE("circuit: TTL input flag", "[sim]") {

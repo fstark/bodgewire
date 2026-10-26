@@ -24,6 +24,14 @@ struct PinInfo {
     bool risingEdgeOnly;
 };
 
+// One per (Net, reading Component): all Input Pins of that Component on that Net.
+struct FanOut {
+    ComponentId component;
+    bool risingEdgeOnly;  // all those Pins are rising-edge-only
+    std::uint64_t mask;   // bit = PinIndex
+};
+static_assert(sizeof(FanOut) == 16);
+
 // Fixed topology: built, then finalized; flat arrays indexed by ToIndex(id).
 class Circuit {
 public:
@@ -61,15 +69,9 @@ public:
         const std::uint32_t i = ToIndex(net);
         return std::span(drivers_).subspan(driverStart_[i], driverStart_[i + 1] - driverStart_[i]);
     }
-    std::span<const ComponentId> readers(NetId net) const {
+    std::span<const FanOut> fanOut(NetId net) const {
         const std::uint32_t i = ToIndex(net);
-        return std::span(readers_).subspan(readerStart_[i], readerStart_[i + 1] - readerStart_[i]);
-    }
-    // Parallel to readers(): 1 if the reader only cares about 0 → 1 changes of this Net.
-    std::span<const std::uint8_t> readerRisingEdgeOnly(NetId net) const {
-        const std::uint32_t i = ToIndex(net);
-        return std::span(readerRisingEdgeOnly_)
-            .subspan(readerStart_[i], readerStart_[i + 1] - readerStart_[i]);
+        return std::span(fanOut_).subspan(fanOutStart_[i], fanOutStart_[i + 1] - fanOutStart_[i]);
     }
     Drive tieOf(NetId net) const { return netTie_[ToIndex(net)]; }
     bool hasTtlInput(NetId net) const { return netHasTtlInput_[ToIndex(net)] != 0; }
@@ -78,6 +80,7 @@ private:
     static constexpr NetId kUnconnected{UINT32_MAX};
 
     void checkNet(NetId net) const;
+    void buildTables();  // drivers_, fanOut_, netHasTtlInput_ from pins_
 
     bool finalized_ = false;
     std::vector<std::unique_ptr<Component>> components_;
@@ -85,11 +88,10 @@ private:
     std::vector<std::string> netNames_;
     std::vector<Drive> netTie_;  // strongest tie per Net, None if untied
     std::vector<std::uint8_t> netHasTtlInput_;
-    // CSR: drivers (output PinIds) and readers (unique ComponentIds with an input on the Net)
-    std::vector<std::uint32_t> driverStart_, readerStart_;  // size netCount + 1
+    // CSR: drivers (output PinIds) and fan-out (one entry per Component with an input on the Net)
+    std::vector<std::uint32_t> driverStart_, fanOutStart_;  // size netCount + 1
     std::vector<PinId> drivers_;
-    std::vector<ComponentId> readers_;
-    std::vector<std::uint8_t> readerRisingEdgeOnly_;
+    std::vector<FanOut> fanOut_;
 };
 
 }  // namespace bw

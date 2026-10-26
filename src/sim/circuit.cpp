@@ -54,11 +54,14 @@ void Circuit::finalize() {
             info.net = addNet(std::string(owner.name()) + "." + owner.pins()[local].name);
         }
     }
+    buildTables();
+    finalized_ = true;
+}
 
+void Circuit::buildTables() {
     const std::size_t netCount = netNames_.size();
     std::vector<std::vector<PinId>> drivers(netCount);
-    std::vector<std::vector<ComponentId>> readers(netCount);
-    std::vector<std::vector<std::uint8_t>> risingEdgeOnly(netCount);
+    std::vector<std::vector<FanOut>> fanOut(netCount);
     netHasTtlInput_.assign(netCount, 0);
     for (std::uint32_t p = 0; p < pins_.size(); ++p) {
         const PinInfo& info = pins_[p];
@@ -73,29 +76,27 @@ void Circuit::finalize() {
         if (info.family == Family::Ttl) {
             netHasTtlInput_[n] = 1;
         }
-        // Pins of one Component are contiguous, so checking the last reader deduplicates.
-        if (readers[n].empty() || readers[n].back() != info.owner) {
-            readers[n].push_back(info.owner);
-            risingEdgeOnly[n].push_back(info.risingEdgeOnly ? 1 : 0);
-        } else if (!info.risingEdgeOnly) {
-            risingEdgeOnly[n].back() = 0;
+        const std::uint32_t local = p - ToIndex(components_[ToIndex(info.owner)]->firstPin());
+        const std::uint64_t bit = std::uint64_t{1} << local;
+        // Pins of one Component are contiguous, so checking the last entry merges them.
+        if (fanOut[n].empty() || fanOut[n].back().component != info.owner) {
+            fanOut[n].push_back({info.owner, info.risingEdgeOnly, bit});
+        } else {
+            fanOut[n].back().mask |= bit;
+            fanOut[n].back().risingEdgeOnly &= info.risingEdgeOnly;
         }
     }
 
     driverStart_.assign(netCount + 1, 0);
-    readerStart_.assign(netCount + 1, 0);
+    fanOutStart_.assign(netCount + 1, 0);
     drivers_.clear();
-    readers_.clear();
-    readerRisingEdgeOnly_.clear();
+    fanOut_.clear();
     for (std::size_t n = 0; n < netCount; ++n) {
         drivers_.insert(drivers_.end(), drivers[n].begin(), drivers[n].end());
-        readers_.insert(readers_.end(), readers[n].begin(), readers[n].end());
-        readerRisingEdgeOnly_.insert(readerRisingEdgeOnly_.end(), risingEdgeOnly[n].begin(),
-                                     risingEdgeOnly[n].end());
+        fanOut_.insert(fanOut_.end(), fanOut[n].begin(), fanOut[n].end());
         driverStart_[n + 1] = static_cast<std::uint32_t>(drivers_.size());
-        readerStart_[n + 1] = static_cast<std::uint32_t>(readers_.size());
+        fanOutStart_[n + 1] = static_cast<std::uint32_t>(fanOut_.size());
     }
-    finalized_ = true;
 }
 
 }  // namespace bw

@@ -186,11 +186,9 @@ void Simulator::runUntil(Time end) {
                     recorder_.add(net, now_, r.value);
                 }
                 const bool rose = s.previous == LogicValue::Zero && s.value == LogicValue::One;
-                const auto readers = circuit_.readers(net);
-                const auto risingEdgeOnly = circuit_.readerRisingEdgeOnly(net);
-                for (std::size_t i = 0; i < readers.size(); ++i) {
-                    if (rose || risingEdgeOnly[i] == 0) {
-                        markComponentDirty(readers[i]);
+                for (const FanOut& f : circuit_.fanOut(net)) {
+                    if (rose || !f.risingEdgeOnly) {
+                        markComponentDirty(f.component);
                     }
                 }
             }
