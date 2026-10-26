@@ -173,3 +173,26 @@ TEST_CASE("gate package: 74LS20 delays", "[parts]") { CheckDelays(kLs20); }
 TEST_CASE("gate package: 74LS30 delays", "[parts]") { CheckDelays(kLs30); }
 TEST_CASE("gate package: 74LS32 delays", "[parts]") { CheckDelays(kLs32); }
 TEST_CASE("gate package: 74LS86 delays", "[parts]") { CheckDelays(kLs86); }
+
+TEST_CASE("gate package: X input propagates", "[parts]") {
+    Circuit circuit;
+    Component& chip = *FindPart("74LS00")->create(circuit, "U1", {}).value();
+    const NetId a = circuit.addNet("1A");
+    const NetId b = circuit.addNet("1B");
+    const NetId y = circuit.addNet("1Y");
+    auto& sourceA = circuit.add<Stimulus>("SA", X, std::vector<Stimulus::Step>{});
+    auto& sourceB = circuit.add<Stimulus>("SB", One, std::vector<Stimulus::Step>{{100_ns, Zero}});
+    circuit.connect(sourceA, Stimulus::kOut, a);
+    circuit.connect(sourceB, Stimulus::kOut, b);
+    circuit.connect(chip, "1A", a);
+    circuit.connect(chip, "1B", b);
+    circuit.connect(chip, "1Y", y);
+    circuit.finalize();
+
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runUntil(50_ns);
+    CHECK(sim.value(y) == X);
+    sim.runUntil(150_ns);
+    CHECK(sim.value(y) == One);
+}

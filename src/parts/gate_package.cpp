@@ -104,15 +104,20 @@ const GatePackageSpec& GatePackageSpecOf(std::string_view part) {
 GatePackage::GatePackage(std::string reference, const GatePackageSpec& spec)
     : Component(std::move(reference), PackagePins(spec)), spec_(spec) {
     Check(spec.names.size() == spec.pinCount, "gate package: pin names do not match pin count");
+    Check(spec.units.size() <= kMaxUnits, "gate package: more than 6 units");
+    for (std::size_t u = 0; u < spec.units.size(); ++u) {
+        const GateUnit& unit = spec.units[u];
+        for (std::uint8_t i = 0; i < unit.inputCount; ++i) {
+            inputMasks_[u] |= std::uint64_t{1} << (unit.inputs[i] - 1u);
+        }
+    }
 }
 
 void GatePackage::evaluate(EvalContext& ctx) {
-    std::array<LogicValue, 8> inputs;
-    for (const GateUnit& unit : spec_.units) {
-        for (std::uint8_t i = 0; i < unit.inputCount; ++i) {
-            inputs[i] = ctx.read(unit.inputs[i] - 1u);
-        }
-        const LogicValue value = GateFunction(unit.kind, std::span(inputs.data(), unit.inputCount));
+    const PackedInputs in = ctx.inputs();
+    for (std::size_t u = 0; u < spec_.units.size(); ++u) {
+        const GateUnit& unit = spec_.units[u];
+        const LogicValue value = PackedGateFunction(unit.kind, in, inputMasks_[u]);
         ctx.drive(unit.output - 1u, value, DelayFor(spec_.delays, value));
     }
 }

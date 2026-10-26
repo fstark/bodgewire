@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -28,6 +29,8 @@ struct GatePackageSpec {
 
 const GatePackageSpec& GatePackageSpecOf(std::string_view part);  // Check()s
 
+inline constexpr std::size_t kMaxUnits = 6;  // 74LS04
+
 // One chip of independent gates (74LS00, 02, 04, 08, 20, 30, 32, 86).
 class GatePackage final : public Component {
 public:
@@ -36,6 +39,7 @@ public:
 
 private:
     const GatePackageSpec& spec_;
+    std::array<std::uint64_t, kMaxUnits> inputMasks_{};  // per unit; bit = package pin - 1
 };
 
 }  // namespace bw
