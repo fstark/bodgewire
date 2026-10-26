@@ -148,3 +148,67 @@ TEST_CASE("builder: simulates", "[netlist]") {
     sim.runUntil(100_ns);
     CHECK(sim.value(loaded.nets.at("OUT")) == One);
 }
+
+TEST_CASE("builder: pull-up", "[netlist]") {
+    // P: pull-up and an input only. Y: pull-up overridden by an output driving 0.
+    const auto result = LoadNetlist("part R1 R value=4k7\n"
+                                    "part R2 R\n"
+                                    "part U1 74LS04\n"
+                                    "net VCC R1.1 R2.2 U1.1A\n"
+                                    "net P R1.2 U1.3A\n"
+                                    "net Y R2.1 U1.1Y\n",
+                                    "t.bwn");
+    REQUIRE(result.has_value());
+    LoadedCircuit& loaded = **result;
+    CHECK(loaded.circuit.tieOf(loaded.nets.at("P")).strength == DriveStrength::Weak);
+    Simulator sim(loaded.circuit);
+    sim.powerOn(1);
+    sim.runUntil(100_ns);
+    CHECK(sim.value(loaded.nets.at("P")) == One);
+    CHECK_FALSE(sim.isFloating(loaded.nets.at("P")));
+    CHECK(sim.value(loaded.nets.at("Y")) == Zero);
+}
+
+TEST_CASE("builder: pull-down", "[netlist]") {
+    const auto result = LoadNetlist("part R1 R\n"
+                                    "part R2 R\n"
+                                    "part U1 74LS04\n"
+                                    "net GND R1.1 R2.2 U1.1A\n"
+                                    "net P R1.2 U1.3A\n"
+                                    "net Y R2.1 U1.1Y\n",
+                                    "t.bwn");
+    REQUIRE(result.has_value());
+    LoadedCircuit& loaded = **result;
+    Simulator sim(loaded.circuit);
+    sim.powerOn(1);
+    sim.runUntil(100_ns);
+    CHECK(sim.value(loaded.nets.at("P")) == Zero);
+    CHECK(sim.value(loaded.nets.at("Y")) == One);
+}
+
+TEST_CASE("builder: resistor errors", "[netlist]") {
+    const std::string unsupported = "R1: only pull-up/pull-down resistors are supported (one pin "
+                                    "on GND or VCC, the other on a signal net)";
+    CHECK(Errors("part R1 R\nnet VCC R1.1\nnet GND R1.2\n") == Lines{"1: " + unsupported});
+    CHECK(Errors("part R1 R\npart U1 74LS04\nnet A R1.1 U1.1A\nnet B R1.2 U1.3A\n") ==
+          Lines{"1: " + unsupported});
+    CHECK(Errors("part R1 R\nnet VCC R1.1\n") == Lines{"1: " + unsupported});
+    CHECK(Errors("part R1 R\nnet VCC R1.1\nnet A R1.2 R1.3\n") == Lines{"3: R1 (R) has no pin 3"});
+    CHECK(Errors("part R1 R ohms=10\nnet VCC R1.1\n") == Lines{"1: R1: unknown parameter 'ohms'"});
+}
+
+TEST_CASE("builder: unconnected input warning", "[netlist]") {
+    const auto result = LoadNetlist("\npart U2 74LS04\nnet A U2.1 U2.3 U2.5 U2.9 U2.11\n", "t.bwn");
+    REQUIRE(result.has_value());
+    const auto& warnings = (*result)->warnings;
+    REQUIRE(warnings.size() == 1);
+    CHECK(Format(warnings[0]) == "t.bwn:2: warning: U2.13 (6A) is unconnected: floats high");
+    CHECK((*result)->circuit.isFinalized());
+}
+
+TEST_CASE("builder: LoadNetlistFile missing file", "[netlist]") {
+    const auto result = LoadNetlistFile("/nonexistent/dir/missing.bwn");
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error().size() == 1);
+    CHECK(Format(result.error()[0]) == "missing.bwn: error: cannot read file");
+}

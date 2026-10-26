@@ -1,6 +1,7 @@
 #pragma once
 
 #include <expected>
+#include <filesystem>
 #include <functional>
 #include <map>
 #include <memory>
@@ -26,5 +27,6 @@ using LoadResult = std::expected<std::unique_ptr<LoadedCircuit>, std::vector<Dia
 
 LoadResult BuildCircuit(const Netlist& netlist);  // all errors, sorted by line
 LoadResult LoadNetlist(std::string_view text, std::string file);
+LoadResult LoadNetlistFile(const std::filesystem::path& path);  // diagnostics name the file only
 
 }  // namespace bw

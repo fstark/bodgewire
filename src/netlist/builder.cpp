@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <fstream>
+#include <iterator>
 #include <optional>
 #include <utility>
 
@@ -27,6 +29,17 @@ bool AllDigits(std::string_view text) {
            std::all_of(text.begin(), text.end(), [](char c) { return c >= '0' && c <= '9'; });
 }
 
+bool IsRail(std::string_view net) { return net == "GND" || net == "VCC"; }
+
+bool IsResistor(const PlacedPart& part) {
+    return part.info != nullptr && part.info->kind == PartKind::Resistor;
+}
+
+void SortByLine(std::vector<Diagnostic>& diagnostics) {
+    std::stable_sort(diagnostics.begin(), diagnostics.end(),
+                     [](const Diagnostic& a, const Diagnostic& b) { return a.line < b.line; });
+}
+
 class Builder {
 public:
     explicit Builder(const Netlist& netlist)
@@ -39,10 +52,9 @@ public:
         placeParts();
         connectNets();
         addImplicitPower();
+        tieResistors();
         if (!errors_.empty()) {
-            std::stable_sort(
-                errors_.begin(), errors_.end(),
-                [](const Diagnostic& a, const Diagnostic& b) { return a.line < b.line; });
+            SortByLine(errors_);
             return std::unexpected(std::move(errors_));
         }
         for (const auto& [pin, net] : pinNet_) {
@@ -51,6 +63,7 @@ public:
                 circuit.connect(*part.component, pin.second, net.net);
             }
         }
+        warnUnconnectedInputs();
         circuit.finalize();
         return std::move(loaded_);
     }
@@ -83,7 +96,14 @@ private:
                 continue;
             }
             if (part.info->kind == PartKind::Resistor) {
-                error(decl.line, "R: resistors not supported yet");
+                for (const PartParam& param : decl.params) {
+                    if (param.name != "value") {
+                        error(decl.line,
+                              decl.reference + ": unknown parameter '" + param.name + "'");
+                        part.info = nullptr;
+                        break;
+                    }
+                }
                 continue;
             }
             auto created = part.info->create(loaded_->circuit, decl.reference, decl.params);
@@ -98,6 +118,13 @@ private:
 
     std::optional<PinIndex> resolvePin(const PlacedPart& part, const PinRef& ref,
                                        std::uint32_t line) {
+        if (IsResistor(part)) {
+            if (ref.pin == "1" || ref.pin == "2") {
+                return static_cast<PinIndex>(ref.pin[0] - '1');
+            }
+            error(line, ref.reference + " (" + part.decl->part + ") has no pin " + ref.pin);
+            return std::nullopt;
+        }
         const auto pins = part.component->pins();
         if (AllDigits(ref.pin)) {
             if (ref.pin.size() <= 3) {
@@ -127,22 +154,26 @@ private:
                     continue;
                 }
                 const PlacedPart& part = it->second;
-                if (part.component == nullptr) {
+                const bool resistor = IsResistor(part);
+                if (!resistor && part.component == nullptr) {
                     continue;  // already reported at its part line
                 }
                 const auto index = resolvePin(part, ref, decl.line);
                 if (!index) {
                     continue;
                 }
-                const PinSpec& spec = part.component->pins()[*index];
-                const std::string where = ref.reference + "." + ref.pin + " (" + spec.name + ")";
-                if (spec.kind == PinKind::NoConnect) {
-                    error(decl.line, where + " is not connected inside " + part.decl->part);
-                    continue;
-                }
-                if (spec.kind == PinKind::Power && decl.name != spec.name) {
-                    error(decl.line, where + " can only be on net " + spec.name);
-                    continue;
+                std::string where = ref.reference + "." + ref.pin;
+                if (!resistor) {
+                    const PinSpec& spec = part.component->pins()[*index];
+                    where += " (" + spec.name + ")";
+                    if (spec.kind == PinKind::NoConnect) {
+                        error(decl.line, where + " is not connected inside " + part.decl->part);
+                        continue;
+                    }
+                    if (spec.kind == PinKind::Power && decl.name != spec.name) {
+                        error(decl.line, where + " can only be on net " + spec.name);
+                        continue;
+                    }
                 }
                 const auto [existing, inserted] =
                     pinNet_.try_emplace({ref.reference, *index}, PinNet{net, decl.name});
@@ -169,6 +200,47 @@ private:
         }
     }
 
+    // Pull-up / pull-down only: one pin on a rail, the other on a signal Net.
+    void tieResistors() {
+        for (const auto& [reference, part] : placed_) {
+            if (!IsResistor(part)) {
+                continue;
+            }
+            const auto a = pinNet_.find({reference, 0});
+            const auto b = pinNet_.find({reference, 1});
+            if (a == pinNet_.end() || b == pinNet_.end() ||
+                IsRail(a->second.name) == IsRail(b->second.name)) {
+                error(part.decl->line, reference +
+                                           ": only pull-up/pull-down resistors are supported (one "
+                                           "pin on GND or VCC, the other on a signal net)");
+                continue;
+            }
+            const PinNet& rail = IsRail(a->second.name) ? a->second : b->second;
+            const PinNet& signal = IsRail(a->second.name) ? b->second : a->second;
+            loaded_->circuit.tie(signal.net,
+                                 rail.name == "VCC" ? LogicValue::One : LogicValue::Zero,
+                                 DriveStrength::Weak);
+        }
+    }
+
+    void warnUnconnectedInputs() {
+        for (const auto& [reference, part] : placed_) {
+            if (part.component == nullptr) {
+                continue;
+            }
+            const auto pins = part.component->pins();
+            for (PinIndex i = 0; i < pins.size(); ++i) {
+                if (pins[i].kind == PinKind::Input && !pinNet_.contains({reference, i})) {
+                    loaded_->warnings.push_back({netlist_.file, part.decl->line, Severity::Warning,
+                                                 reference + "." + std::to_string(i + 1) + " (" +
+                                                     pins[i].name +
+                                                     ") is unconnected: floats high"});
+                }
+            }
+        }
+        SortByLine(loaded_->warnings);
+    }
+
     const Netlist& netlist_;
     std::unique_ptr<LoadedCircuit> loaded_;
     std::map<std::string, PlacedPart, std::less<>> placed_;  // by reference
@@ -186,6 +258,17 @@ LoadResult LoadNetlist(std::string_view text, std::string file) {
         return std::unexpected(netlist.error());
     }
     return BuildCircuit(*netlist);
+}
+
+LoadResult LoadNetlistFile(const std::filesystem::path& path) {
+    std::string file = path.filename().string();
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        return std::unexpected(
+            std::vector<Diagnostic>{{std::move(file), 0, Severity::Error, "cannot read file"}});
+    }
+    const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+    return LoadNetlist(text, std::move(file));
 }
 
 }  // namespace bw
