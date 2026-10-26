@@ -62,8 +62,8 @@ public:
 
     std::string_view name() const { return name_; }
     std::span<const PinSpec> pins() const { return pins_; }
-    ComponentId id() const { return id_; }  // valid once added to a Circuit
-    PinId firstPin() const { return firstPin_; }  // global PinId of local Pin 0
+    ComponentId id() const { return id_; }              // valid once added to a Circuit
+    PinId firstPin() const { return firstPin_; }        // global PinId of local Pin 0
     PinIndex pinIndex(std::string_view pinName) const;  // Check()s the name
 
     // Outputs already hold random 0/1; override to seed state / make outputs consistent.

@@ -109,8 +109,8 @@ TEST_CASE("circuit: drivers and readers", "[sim]") {
     Dummy& u1 = circuit.add<Dummy>("U1");
     Dummy& u2 = circuit.add<Dummy>("U2");
     const NetId n = circuit.addNet("n");
-    circuit.connect(u1, "Y", n);   // output only: not a reader
-    circuit.connect(u2, "A", n);   // two inputs of one component
+    circuit.connect(u1, "Y", n);  // output only: not a reader
+    circuit.connect(u2, "A", n);  // two inputs of one component
     circuit.connect(u2, "B", n);
     circuit.finalize();
 

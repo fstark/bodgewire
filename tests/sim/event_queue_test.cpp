@@ -72,8 +72,8 @@ TEST_CASE("event queue: clear empties", "[sim]") {
 TEST_CASE("event queue: stamp round-trips", "[sim]") {
     for (std::uint32_t generation : {0u, 1u, 12345u, kGenerationMask}) {
         for (bool isWake : {false, true}) {
-            for (LogicValue value : {LogicValue::Zero, LogicValue::One, LogicValue::Z,
-                                     LogicValue::X}) {
+            for (LogicValue value :
+                 {LogicValue::Zero, LogicValue::One, LogicValue::Z, LogicValue::X}) {
                 const std::uint32_t stamp = MakeStamp(generation, isWake, value);
                 CHECK(StampGeneration(stamp) == generation);
                 CHECK(StampIsWake(stamp) == isWake);

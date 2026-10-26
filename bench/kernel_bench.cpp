@@ -40,7 +40,8 @@ int main(int argc, char** argv) {
             return Usage();
         }
         const std::string_view value = argv[++i];
-        const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), seconds);
+        const auto [end, error] =
+            std::from_chars(value.data(), value.data() + value.size(), seconds);
         if (error != std::errc{} || end != value.data() + value.size() || seconds <= 0) {
             return Usage();
         }

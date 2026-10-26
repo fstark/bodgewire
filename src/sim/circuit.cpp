@@ -49,8 +49,8 @@ void Circuit::finalize() {
     for (PinInfo& info : pins_) {
         if (info.net == kUnconnected) {
             const Component& owner = *components_[ToIndex(info.owner)];
-            const std::size_t local = static_cast<std::size_t>(&info - pins_.data()) -
-                                      ToIndex(owner.firstPin());
+            const std::size_t local =
+                static_cast<std::size_t>(&info - pins_.data()) - ToIndex(owner.firstPin());
             info.net = addNet(std::string(owner.name()) + "." + owner.pins()[local].name);
         }
     }

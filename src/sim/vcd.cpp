@@ -22,8 +22,8 @@ std::string VcdId(std::size_t index) {
 std::string SanitizeName(std::string_view name) {
     std::string result(name);
     for (char& c : result) {
-        const bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-                        c == '_' || c == '.';
+        const bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+                        (c >= '0' && c <= '9') || c == '_' || c == '.';
         if (!ok) {
             c = '_';
         }

@@ -92,8 +92,7 @@ LogicValue GateFunction(GateKind kind, std::span<const LogicValue> inputs) {
     return X;
 }
 
-Gate::Gate(std::string name, GateKind kind, std::uint32_t inputCount, Delays delays,
-           Family family)
+Gate::Gate(std::string name, GateKind kind, std::uint32_t inputCount, Delays delays, Family family)
     : Component(std::move(name), GatePins(inputCount, family)), kind_(kind),
       inputCount_(inputCount), delays_(delays) {
     const bool single = kind == GateKind::Not || kind == GateKind::Buffer;

@@ -119,8 +119,7 @@ struct DffRun {
 }  // namespace
 
 TEST_CASE("dff: captures D on rising edge only", "[sim]") {
-    DffRun r({{50_ns, One}, {120_ns, Zero}},
-             {{100_ns, One}, {150_ns, Zero}, {200_ns, One}});
+    DffRun r({{50_ns, One}, {120_ns, Zero}}, {{100_ns, One}, {150_ns, Zero}, {200_ns, One}});
     Simulator sim(r.circuit);
     sim.powerOn(1);
     sim.runUntil(110_ns);

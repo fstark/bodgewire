@@ -17,9 +17,7 @@ constexpr std::uint32_t MakeStamp(std::uint32_t generation, bool isWake, LogicVa
 }
 constexpr std::uint32_t StampGeneration(std::uint32_t stamp) { return stamp >> 3; }
 constexpr bool StampIsWake(std::uint32_t stamp) { return (stamp & 4u) != 0; }
-constexpr LogicValue StampValue(std::uint32_t stamp) {
-    return static_cast<LogicValue>(stamp & 3u);
-}
+constexpr LogicValue StampValue(std::uint32_t stamp) { return static_cast<LogicValue>(stamp & 3u); }
 
 // Ordered by (time, target, stamp): same-time pop order is identical on every platform (S4).
 struct Event {

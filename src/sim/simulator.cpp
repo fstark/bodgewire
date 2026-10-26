@@ -29,8 +29,7 @@ LogicValue EvalContext::readBefore(PinIndex pin) const {
 
 bool EvalContext::rose(PinIndex pin) const {
     const auto& s = sim_.netOfPin(Offset(firstPin_, pin));
-    return s.changedAt == sim_.now_ && s.previous == LogicValue::Zero &&
-           s.value == LogicValue::One;
+    return s.changedAt == sim_.now_ && s.previous == LogicValue::Zero && s.value == LogicValue::One;
 }
 
 bool EvalContext::readBit(PinIndex pin) {
@@ -77,8 +76,8 @@ void PowerOnContext::setOutput(PinIndex pin, LogicValue value) {
 
 Simulator::Simulator(Circuit& circuit) : circuit_(circuit) {
     Check(circuit.isFinalized(), "simulator: circuit not finalized");
-    nets_.resize(circuit.netCount(), NetState{-1, LogicValue::Zero, LogicValue::Zero,
-                                              LogicValue::Zero, false, false});
+    nets_.resize(circuit.netCount(),
+                 NetState{-1, LogicValue::Zero, LogicValue::Zero, LogicValue::Zero, false, false});
     outputs_.resize(circuit.pinCount(), OutputState{0, LogicValue::Zero, LogicValue::Zero, false});
     componentDirty_.resize(circuit.components().size(), 0);
 }

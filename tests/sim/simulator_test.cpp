@@ -29,9 +29,9 @@ struct Drv {
 void AddDrivers(Circuit& circuit, NetId net, std::initializer_list<Drv> drivers) {
     int i = 0;
     for (const Drv& d : drivers) {
-        auto& s = circuit.add<Stimulus>(std::string(circuit.netName(net)) + "_drv" +
-                                            std::to_string(i++),
-                                        d.initial, d.steps, d.family);
+        auto& s =
+            circuit.add<Stimulus>(std::string(circuit.netName(net)) + "_drv" + std::to_string(i++),
+                                  d.initial, d.steps, d.family);
         circuit.connect(s, Stimulus::kOut, net);
     }
 }
@@ -40,8 +40,8 @@ void AddDrivers(Circuit& circuit, NetId net, std::initializer_list<Drv> drivers)
 class BitReader final : public Component {
 public:
     explicit BitReader(std::string name)
-        : Component(std::move(name), {{"IN", PinKind::Input, Family::Mos},
-                                      {"OUT", PinKind::Output, Family::Mos}}) {}
+        : Component(std::move(name),
+                    {{"IN", PinKind::Input, Family::Mos}, {"OUT", PinKind::Output, Family::Mos}}) {}
     void evaluate(EvalContext& ctx) override { ctx.drive(1, ctx.readBit(0) ? One : Zero, 1); }
 };
 
@@ -179,8 +179,7 @@ struct RandomCircuit {
     }
 };
 
-std::vector<std::vector<Sample>> Run(Simulator& sim, const RandomCircuit& rc,
-                                     std::uint64_t seed) {
+std::vector<std::vector<Sample>> Run(Simulator& sim, const RandomCircuit& rc, std::uint64_t seed) {
     sim.powerOn(seed);
     for (const NetId net : rc.outs) {
         sim.record(net);
