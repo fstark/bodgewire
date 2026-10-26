@@ -4,6 +4,7 @@ add_library(bw_sim STATIC
   component.cpp
   event_queue.cpp
   logic.cpp
+  recorder.cpp
 )
 target_include_directories(bw_sim PUBLIC ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(bw_sim PRIVATE bw_warnings)
