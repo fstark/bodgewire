@@ -92,7 +92,7 @@ Per design §2 and §7. In this phase `s_parts` holds the 8 gate Parts only (lat
 ### 2.5 — Tests
 
 - `tests/parts/catalogue_test.cpp`: `"catalogue: FindPart known and unknown"`; `"catalogue: chip pinouts are consistent"` — for every `AllParts()` chip, create it in a fresh `Circuit` with no params: pin count = 14 for `DIP-14`, 16 for `DIP-16`; names unique; `GND`/`VCC` are `Power` at 7/14 (DIP-14) or 8/16 (DIP-16); every non-power pin TTL. `"catalogue: parameters rejected"` for a gate Part.
-- `tests/parts/gate_package_test.cpp`: `"gate package: <part> truth table"` for each of the 8 parts — every unit, every input combination (74LS20: 16, 74LS30: all-ones and each single zero), driven by `Stimulus` steps 100 ns apart, outputs read after each settle; `"gate package: 74LS00 delays"` — measured rise and fall on unit 1 equal `kLs00`.
+- `tests/parts/gate_package_test.cpp`: `"gate package: <part> truth table"` for each of the 8 parts — every unit, every input combination (74LS20: 16, 74LS30: all-ones and each single zero), driven by `Stimulus` steps 100 ns apart, outputs read after each settle; `"gate package: <part> delays"` for each of the 8 parts — measured rise and fall on unit 1 equal the part's `delays::` constant.
 
 ### Fence
 
@@ -274,6 +274,7 @@ Parsing: number = digits with optional `.` and digits; unit one of `Hz`, `kHz`, 
 ### 8.2 — Tests: `tests/netlist/builder_test.cpp`
 
 - `"builder: <case>"` for each error row (exact message and line).
+- `"builder: parameter errors"` — `OSC` without `freq`, with `foo=1`, with `freq=10GHz` → the factory texts prefixed by `X1: ` (spec S3: missing, unknown, bad value).
 - `"builder: reports all errors"`.
 - `"builder: pin by number and by name are the same pin"` (`U1.3` then `U1.1Y` on another net → two-nets error).
 - `"builder: net spans several lines"`.
@@ -325,10 +326,10 @@ Per design §10. Net names `CLK`, `RESET_N`, `C0`…`C7`, `CARRY`, `DIV`, `DIV_N
 `tests/CMakeLists.txt`: `target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR}/netlists")`.
 
 - `"sample: counter.bwn loads without warnings"`.
-- `"sample: counter counts"` — power on, settle 2 µs, read `C0..C7` as `n0`; run 100 µs (100 cycles); value = `(n0 + 100) mod 256`.
+- `"sample: counter counts"` — power on, settle to 2.25 µs (between clock edges, which fall on multiples of 500 ns), read `C0..C7` as `n0`; run 100 µs (100 cycles); value = `(n0 + 100) mod 256`.
 - `"sample: DIV toggles on each rising C7"` — record `C7` and `DIV`; every `DIV` change is 13 or 25 ns after a `C7` rise.
 - `"sample: TOP_N"` — low exactly when `C6` and `C7` are high (checked at sample times between edges).
-- `"sample: same as API-built circuit"` — build the same circuit with `FindPart(...)->create` and `Circuit::connect`/`tie`, same seed, record all nets by name; both recordings identical. Component creation order must match the netlist's `part` order (same RNG draws).
+- `"sample: same as API-built circuit"` — build the same circuit with `FindPart(...)->create` and `Circuit::connect`/`tie`, same seed, record all nets by name; both recordings identical. Component creation order must match the netlist's `part` order, and Net creation order must match too (`GND`, `VCC`, then each net in order of first appearance): power-on draws random bits per output Pin and per Net in id order.
 
 ### Fence
 

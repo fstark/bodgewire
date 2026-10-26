@@ -38,7 +38,7 @@ Out (later):
 | 74LS74 | dual D flip-flop, preset and clear | DIP-14 |
 | 74LS161 | synchronous 4-bit binary counter, asynchronous clear | DIP-16 |
 | OSC | crystal oscillator can, parameter `freq` | DIP-14 footprint, 4 pins |
-| R | resistor, parameter `value` (informational) | axial |
+| R | resistor, parameter `value` (optional, informational) | axial |
 
 - Pins are numbered as in the datasheet (package pin 1 = Component pin 1) and named as in the datasheet (`1A`, `1Y`, `CLR_N`, `QA`, `RCO`). GND and VCC pins are power pins; unused positions are no-connect.
 - All chip pins are TTL family. Outputs are totem-pole.
@@ -62,7 +62,7 @@ net CLR_N U1.1 R1.1
 net VCC   R1.2 U1.ENP U1.ENT U1.LOAD_N
 ```
 
-- `part <ref> <part> [<key>=<value> …]`: places a Component. `ref` is letters then digits (`U12`, `X1`, `R3`), unique.
+- `part <ref> <part> [<key>=<value> …]`: places a Component. `ref` is uppercase letters then digits (`U12`, `X1`, `R3`), unique.
 - `net <name> <ref>.<pin> …`: puts pins on a Net. `pin` is a package pin number or a datasheet pin name. A Net may span several `net` lines with the same name.
 - `GND` and `VCC` are the power rails (supply 0 / supply 1). Power pins connect to them implicitly; listing a power pin on its own rail is allowed, on any other Net is an error.
 - A resistor with one pin on a rail is a pull-up / pull-down (weak drive) on the Net at its other pin. Any other resistor wiring is an error for now.

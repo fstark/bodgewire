@@ -50,7 +50,7 @@ struct PartInfo {
     std::string_view description;  // "synchronous 4-bit binary counter"
     std::string_view package;      // "DIP-16"
     PartKind kind;
-    PartFactory create;            // nullptr for resistors (no Component, §8.4)
+    PartFactory create;            // nullptr for resistors (no Component, §8.3 step 5)
 };
 
 const PartInfo* FindPart(std::string_view name);  // nullptr if unknown
@@ -375,12 +375,12 @@ bw_sim  ←  bw_parts  ←  bw_netlist  ←  bw (CLI)
 |---|---|
 | `tests/sim/circuit_test.cpp` (add) | Power / NoConnect pins are neither drivers nor readers |
 | `tests/parts/catalogue_test.cpp` | `FindPart` known / unknown; every chip Part: pin count matches package, pin names unique, GND/VCC at datasheet positions, all non-power pins TTL |
-| `tests/parts/gate_package_test.cpp` | per gate Part: every unit's truth table through the simulator, rise/fall delay measured on one unit |
+| `tests/parts/gate_package_test.cpp` | per gate Part: every unit's truth table through the simulator; rise/fall delay measured on one unit of every gate Part |
 | `tests/parts/ls74_test.cpp` | clock edge; preset; clear; both low → both high; same-timestamp D; delays |
 | `tests/parts/ls161_test.cpp` | count 0→15→0; RCO at 15 only with ENT; load; async clear mid-cycle; ENP low holds; X on LOAD_N → X outputs until clear; cascade of two; delays |
-| `tests/parts/oscillator_test.cpp` | period from frequency; odd period duty |
-| `tests/netlist/units_test.cpp` | `1MHz` → 1'000'000 ps; `14.31818MHz` → 69'841 ps; `10ms`; bad unit; missing number |
+| `tests/parts/oscillator_test.cpp` | `PeriodFromFrequency`: `1MHz` → 1'000'000 ps, `14.31818MHz` → 69'841 ps, errors; period and duty; odd period duty |
+| `tests/netlist/units_test.cpp` | `ParseDuration`: `10ms`, `250ns`; bad unit; missing number; frequency delegates to `PeriodFromFrequency` |
 | `tests/netlist/parser_test.cpp` | comments, blank lines, each syntax error with its line |
-| `tests/netlist/builder_test.cpp` | one test per S3 error and warning (exact message); multi-line nets; pins by number and by name are the same pin; implicit power; pull-up / pull-down |
-| `tests/netlist/sample_test.cpp` | `counter.bwn` loads with no warnings, counts (C0..C7 after N cycles), `DIV` toggles on each rising `C7`; identical recording to the same circuit built through the C++ API |
+| `tests/netlist/builder_test.cpp` | one test per S3 error and warning (exact message), including missing / unknown / bad parameter via `OSC`; multi-line nets; pins by number and by name are the same pin; implicit power; pull-up / pull-down |
+| `tests/netlist/sample_test.cpp` | `counter.bwn` loads with no warnings, counts (C0..C7 after N cycles), `DIV` toggles on each rising `C7`; identical recording to the same circuit built through the C++ API (same Component and Net creation order) |
 | CLI | manual: `./build/debug/src/cli/bw run netlists/counter.bwn --time 1ms --record-all --vcd counter.vcd` |
