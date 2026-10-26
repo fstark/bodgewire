@@ -44,6 +44,7 @@ bool EvalContext::readBit(PinIndex pin) {
 void EvalContext::drive(PinIndex pin, LogicValue value, Time delay) {
     assert(delay >= 1);
     const PinId id = Offset(firstPin_, pin);
+    assert(IsDriver(sim_.circuit_.pinInfo(id).kind));
     auto& o = sim_.outputs_[ToIndex(id)];
     const LogicValue target = o.hasPending ? o.pending : o.current;
     if (value == target) {
@@ -68,7 +69,7 @@ bool PowerOnContext::randomBit() { return sim_.rng_.nextBit(); }
 
 void PowerOnContext::setOutput(PinIndex pin, LogicValue value) {
     const PinId id = Offset(firstPin_, pin);
-    assert(sim_.circuit_.pinInfo(id).kind != PinKind::Input);
+    assert(IsDriver(sim_.circuit_.pinInfo(id).kind));
     sim_.outputs_[ToIndex(id)].current = value;
 }
 
@@ -131,7 +132,7 @@ void Simulator::powerOn(std::uint64_t seed) {
     for (std::uint32_t p = 0; p < outputs_.size(); ++p) {
         OutputState& o = outputs_[p];
         o = {0, LogicValue::Zero, LogicValue::Zero, false};
-        if (circuit_.pinInfo(PinId{p}).kind != PinKind::Input) {
+        if (IsDriver(circuit_.pinInfo(PinId{p}).kind)) {
             o.current = rng_.nextBit() ? LogicValue::One : LogicValue::Zero;
         }
     }

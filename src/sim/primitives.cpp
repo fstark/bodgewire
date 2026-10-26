@@ -14,16 +14,6 @@ using enum LogicValue;
 
 constexpr std::uint32_t kMaxGateInputs = 16;
 
-Time DelayFor(Delays delays, LogicValue value) {
-    if (value == One) {
-        return delays.rise;
-    }
-    if (value == Zero) {
-        return delays.fall;
-    }
-    return std::max(delays.rise, delays.fall);
-}
-
 LogicValue AndOf(std::span<const LogicValue> inputs) {
     bool sawX = false;
     for (const LogicValue v : inputs) {
@@ -67,6 +57,16 @@ std::vector<PinSpec> GatePins(std::uint32_t inputCount, Family family) {
 }
 
 }  // namespace
+
+Time DelayFor(Delays delays, LogicValue value) {
+    if (value == One) {
+        return delays.rise;
+    }
+    if (value == Zero) {
+        return delays.fall;
+    }
+    return std::max(delays.rise, delays.fall);
+}
 
 // --- Gates ---
 

@@ -22,7 +22,32 @@ PinId Pin(const Component& component, PinIndex index) {
     return PinId{ToIndex(component.firstPin()) + index};
 }
 
+class PoweredPart : public Component {
+public:
+    explicit PoweredPart(std::string name)
+        : Component(std::move(name), {{"VCC", PinKind::Power, Family::Ttl},
+                                      {"NC2", PinKind::NoConnect, Family::Ttl}}) {}
+    void evaluate(EvalContext& /*ctx*/) override {}
+};
+
 }  // namespace
+
+TEST_CASE("circuit: power and no-connect pins are neither drivers nor readers", "[sim]") {
+    Circuit circuit;
+    PoweredPart& u1 = circuit.add<PoweredPart>("U1");
+    Dummy& u2 = circuit.add<Dummy>("U2");
+    const NetId n = circuit.addNet("n");
+    circuit.connect(u1, "VCC", n);
+    circuit.connect(u1, "NC2", n);
+    circuit.connect(u2, "A", n);
+    circuit.finalize();
+
+    CHECK(circuit.drivers(n).empty());
+    CHECK(circuit.hasTtlInput(n));
+    const auto readers = circuit.readers(n);
+    REQUIRE(readers.size() == 1);
+    CHECK(readers[0] == u2.id());
+}
 
 TEST_CASE("circuit: pin ids are contiguous per component", "[sim]") {
     Circuit circuit;

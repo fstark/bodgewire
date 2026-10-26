@@ -62,8 +62,11 @@ void Circuit::finalize() {
     for (std::uint32_t p = 0; p < pins_.size(); ++p) {
         const PinInfo& info = pins_[p];
         const std::uint32_t n = ToIndex(info.net);
-        if (info.kind != PinKind::Input) {
+        if (IsDriver(info.kind)) {
             drivers[n].push_back(PinId{p});
+            continue;
+        }
+        if (info.kind != PinKind::Input) {
             continue;
         }
         if (info.family == Family::Ttl) {

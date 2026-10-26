@@ -17,6 +17,9 @@ struct Delays {
     Time fall;  // tPHL
 };
 
+// 1 → rise, 0 → fall, X/Z → the slower of the two.
+Time DelayFor(Delays delays, LogicValue value);
+
 enum class GateKind : std::uint8_t { And, Or, Nand, Nor, Xor, Xnor, Not, Buffer };
 
 // Pure three-valued gate function; inputs are 0/1/X.

@@ -51,6 +51,21 @@ TEST_CASE("logic: DriveOf", "[sim]") {
     }
 }
 
+TEST_CASE("logic: IsDriver", "[sim]") {
+    CHECK_FALSE(IsDriver(PinKind::Input));
+    CHECK(IsDriver(PinKind::Output));
+    CHECK(IsDriver(PinKind::OpenCollector));
+    CHECK_FALSE(IsDriver(PinKind::Power));
+    CHECK_FALSE(IsDriver(PinKind::NoConnect));
+}
+
+TEST_CASE("logic: DriveOf power and no-connect is None", "[sim]") {
+    for (LogicValue value : {Zero, One, Z, X}) {
+        CHECK(Same(DriveOf(PinKind::Power, Family::Ttl, value), Ttl(Z, None)));
+        CHECK(Same(DriveOf(PinKind::NoConnect, Family::Ttl, value), Ttl(Z, None)));
+    }
+}
+
 TEST_CASE("resolve: single strong driver", "[sim]") {
     const Resolution r = Resolve({Ttl(One)});
     CHECK(r.value == One);

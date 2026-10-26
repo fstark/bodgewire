@@ -7,7 +7,11 @@ namespace bw {
 enum class LogicValue : std::uint8_t { Zero, One, Z, X };  // Z only as a drive (S1)
 enum class DriveStrength : std::uint8_t { None, Weak, Strong, Supply };
 enum class Family : std::uint8_t { Ttl, Mos };
-enum class PinKind : std::uint8_t { Input, Output, OpenCollector };
+enum class PinKind : std::uint8_t { Input, Output, OpenCollector, Power, NoConnect };
+
+constexpr bool IsDriver(PinKind kind) {
+    return kind == PinKind::Output || kind == PinKind::OpenCollector;
+}
 
 struct Drive {
     LogicValue value;
