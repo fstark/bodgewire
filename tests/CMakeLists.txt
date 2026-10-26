@@ -7,6 +7,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(bw_tests
   netlist/diagnostic_test.cpp
+  netlist/parser_test.cpp
   netlist/units_test.cpp
   parts/catalogue_test.cpp
   parts/gate_package_test.cpp
