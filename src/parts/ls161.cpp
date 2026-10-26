@@ -6,6 +6,7 @@
 
 #include "parts/delays.hpp"
 #include "sim/primitives.hpp"
+#include "sim/simulator.hpp"
 
 namespace bw {
 

@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "sim/check.hpp"
+#include "sim/simulator.hpp"
 
 namespace bw {
 
@@ -13,39 +14,6 @@ namespace {
 using enum LogicValue;
 
 constexpr std::uint32_t kMaxGateInputs = 16;
-
-LogicValue AndOf(std::span<const LogicValue> inputs) {
-    bool sawX = false;
-    for (const LogicValue v : inputs) {
-        if (v == Zero) {
-            return Zero;
-        }
-        sawX |= v != One;
-    }
-    return sawX ? X : One;
-}
-
-LogicValue OrOf(std::span<const LogicValue> inputs) {
-    bool sawX = false;
-    for (const LogicValue v : inputs) {
-        if (v == One) {
-            return One;
-        }
-        sawX |= v != Zero;
-    }
-    return sawX ? X : Zero;
-}
-
-LogicValue XorOf(std::span<const LogicValue> inputs) {
-    bool parity = false;
-    for (const LogicValue v : inputs) {
-        if (v != Zero && v != One) {
-            return X;
-        }
-        parity ^= v == One;
-    }
-    return parity ? One : Zero;
-}
 
 std::vector<PinSpec> GatePins(std::uint32_t inputCount, Family family) {
     std::vector<PinSpec> pins;
@@ -58,39 +26,7 @@ std::vector<PinSpec> GatePins(std::uint32_t inputCount, Family family) {
 
 }  // namespace
 
-Time DelayFor(Delays delays, LogicValue value) {
-    if (value == One) {
-        return delays.rise;
-    }
-    if (value == Zero) {
-        return delays.fall;
-    }
-    return std::max(delays.rise, delays.fall);
-}
-
 // --- Gates ---
-
-LogicValue GateFunction(GateKind kind, std::span<const LogicValue> inputs) {
-    switch (kind) {
-    case GateKind::And:
-        return AndOf(inputs);
-    case GateKind::Or:
-        return OrOf(inputs);
-    case GateKind::Nand:
-        return Not(AndOf(inputs));
-    case GateKind::Nor:
-        return Not(OrOf(inputs));
-    case GateKind::Xor:
-        return XorOf(inputs);
-    case GateKind::Xnor:
-        return Not(XorOf(inputs));
-    case GateKind::Not:
-        return Not(inputs[0]);
-    case GateKind::Buffer:
-        return inputs[0];
-    }
-    return X;
-}
 
 Gate::Gate(std::string name, GateKind kind, std::uint32_t inputCount, Delays delays, Family family)
     : Component(std::move(name), GatePins(inputCount, family)), kind_(kind),

@@ -19,21 +19,23 @@ struct PinSpec {
     Family family;
 };
 
-// Passed to Component::evaluate(); members defined in simulator.cpp.
+// Passed to Component::evaluate(); hot members are inline in simulator.hpp, include it to use them.
 class EvalContext {
 public:
     Time now() const;
-    LogicValue read(PinIndex pin) const;        // Net value now
-    LogicValue readBefore(PinIndex pin) const;  // Net value before this timestamp (S3)
-    bool rose(PinIndex pin) const;              // Net went 0 → 1 at this timestamp
-    bool readBit(PinIndex pin);                 // X → seeded random bit (MOS inputs, S4)
-    void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
+    inline LogicValue read(PinIndex pin) const;        // Net value now
+    inline LogicValue readBefore(PinIndex pin) const;  // Net value before this timestamp (S3)
+    inline bool rose(PinIndex pin) const;              // Net went 0 → 1 at this timestamp
+    bool readBit(PinIndex pin);                        // X → seeded random bit (MOS inputs, S4)
+    inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
     void wakeAfter(Time delay);  // evaluate this Component again at now + delay
 
 private:
     friend class Simulator;
     EvalContext(Simulator& sim, PinId firstPin, ComponentId component)
         : sim_(sim), firstPin_(firstPin), component_(component) {}
+    PinId pinId(PinIndex pin) const { return PinId{ToIndex(firstPin_) + pin}; }
+    void driveChanged(PinId id, LogicValue value, Time delay);
     Simulator& sim_;
     PinId firstPin_;
     ComponentId component_;

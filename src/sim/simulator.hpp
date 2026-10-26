@@ -71,4 +71,26 @@ private:
     Time now_ = 0;
 };
 
+// --- EvalContext hot path ---
+
+inline LogicValue EvalContext::read(PinIndex pin) const { return sim_.netOfPin(pinId(pin)).value; }
+
+inline LogicValue EvalContext::readBefore(PinIndex pin) const {
+    const auto& s = sim_.netOfPin(pinId(pin));
+    return s.changedAt == sim_.now_ ? s.previous : s.value;
+}
+
+inline bool EvalContext::rose(PinIndex pin) const {
+    const auto& s = sim_.netOfPin(pinId(pin));
+    return s.changedAt == sim_.now_ && s.previous == LogicValue::Zero && s.value == LogicValue::One;
+}
+
+inline void EvalContext::drive(PinIndex pin, LogicValue value, Time delay) {
+    const PinId id = pinId(pin);
+    const auto& o = sim_.outputs_[ToIndex(id)];
+    if (value != (o.hasPending ? o.pending : o.current)) {
+        driveChanged(id, value, delay);
+    }
+}
+
 }  // namespace bw

@@ -5,6 +5,7 @@
 
 #include "parts/delays.hpp"
 #include "sim/check.hpp"
+#include "sim/simulator.hpp"
 
 namespace bw {
 

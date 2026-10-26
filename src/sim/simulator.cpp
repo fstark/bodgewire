@@ -18,20 +18,6 @@ PinId Offset(PinId first, PinIndex pin) { return PinId{ToIndex(first) + pin}; }
 
 Time EvalContext::now() const { return sim_.now_; }
 
-LogicValue EvalContext::read(PinIndex pin) const {
-    return sim_.netOfPin(Offset(firstPin_, pin)).value;
-}
-
-LogicValue EvalContext::readBefore(PinIndex pin) const {
-    const auto& s = sim_.netOfPin(Offset(firstPin_, pin));
-    return s.changedAt == sim_.now_ ? s.previous : s.value;
-}
-
-bool EvalContext::rose(PinIndex pin) const {
-    const auto& s = sim_.netOfPin(Offset(firstPin_, pin));
-    return s.changedAt == sim_.now_ && s.previous == LogicValue::Zero && s.value == LogicValue::One;
-}
-
 bool EvalContext::readBit(PinIndex pin) {
     const LogicValue value = read(pin);
     if (value == LogicValue::X) {
@@ -40,15 +26,10 @@ bool EvalContext::readBit(PinIndex pin) {
     return value == LogicValue::One;
 }
 
-void EvalContext::drive(PinIndex pin, LogicValue value, Time delay) {
+void EvalContext::driveChanged(PinId id, LogicValue value, Time delay) {
     assert(delay >= 1);
-    const PinId id = Offset(firstPin_, pin);
     assert(IsDriver(sim_.circuit_.pinInfo(id).kind));
     auto& o = sim_.outputs_[ToIndex(id)];
-    const LogicValue target = o.hasPending ? o.pending : o.current;
-    if (value == target) {
-        return;
-    }
     if (o.hasPending) {
         o.generation = (o.generation + 1) & kGenerationMask;
         o.hasPending = false;
