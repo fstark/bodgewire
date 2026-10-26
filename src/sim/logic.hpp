@@ -1,0 +1,95 @@
+#pragma once
+
+#include <cstdint>
+
+namespace bw {
+
+enum class LogicValue : std::uint8_t { Zero, One, Z, X };  // Z only as a drive (S1)
+enum class DriveStrength : std::uint8_t { None, Weak, Strong, Supply };
+enum class Family : std::uint8_t { Ttl, Mos };
+enum class PinKind : std::uint8_t { Input, Output, OpenCollector };
+
+struct Drive {
+    LogicValue value;
+    DriveStrength strength;
+    Family family;
+};
+
+constexpr LogicValue Not(LogicValue value) {
+    switch (value) {
+    case LogicValue::Zero:
+        return LogicValue::One;
+    case LogicValue::One:
+        return LogicValue::Zero;
+    default:
+        return LogicValue::X;
+    }
+}
+
+constexpr char ToChar(LogicValue value) {
+    switch (value) {
+    case LogicValue::Zero:
+        return '0';
+    case LogicValue::One:
+        return '1';
+    case LogicValue::Z:
+        return 'z';
+    default:
+        return 'x';
+    }
+}
+
+// Output Pin value → its Drive: totem-pole Z → None; open collector 1/Z → None.
+constexpr Drive DriveOf(PinKind kind, Family family, LogicValue value) {
+    switch (kind) {
+    case PinKind::Output:
+        return {value, value == LogicValue::Z ? DriveStrength::None : DriveStrength::Strong,
+                family};
+    case PinKind::OpenCollector:
+        if (value == LogicValue::Zero || value == LogicValue::X) {
+            return {value, DriveStrength::Strong, family};
+        }
+        return {LogicValue::Z, DriveStrength::None, family};
+    default:
+        return {LogicValue::Z, DriveStrength::None, family};
+    }
+}
+
+struct Resolution {
+    LogicValue value;  // never Z
+    bool floating;
+};
+
+// Accumulates the Drives of one Net, then applies the S2 table.
+class Resolver {
+public:
+    void add(Drive drive) {
+        if (drive.strength == DriveStrength::None) {
+            return;
+        }
+        if (drive.strength > max_) {
+            max_ = drive.strength;
+            value_ = drive.value;
+            conflict_ = false;
+            sawX_ = drive.value == LogicValue::X;
+            allTtl_ = drive.family == Family::Ttl;
+            return;
+        }
+        if (drive.strength == max_) {
+            conflict_ |= drive.value != value_;
+            sawX_ |= drive.value == LogicValue::X;
+            allTtl_ &= drive.family == Family::Ttl;
+        }
+    }
+
+    Resolution finish(bool hasTtlInput, LogicValue lastDriven) const;
+
+private:
+    DriveStrength max_ = DriveStrength::None;
+    LogicValue value_ = LogicValue::Z;
+    bool conflict_ = false;
+    bool sawX_ = false;
+    bool allTtl_ = true;
+};
+
+}  // namespace bw

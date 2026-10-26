@@ -7,6 +7,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(bw_tests
   sim/check_test.cpp
+  sim/logic_test.cpp
   sim/rng_test.cpp
   sim/time_test.cpp
 )

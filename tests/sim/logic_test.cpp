@@ -1,0 +1,118 @@
+#include "sim/logic.hpp"
+
+#include <initializer_list>
+
+#include <catch2/catch_test_macros.hpp>
+
+using namespace bw;
+
+namespace {
+
+using enum LogicValue;
+using enum DriveStrength;
+
+Resolution Resolve(std::initializer_list<Drive> drives, bool hasTtlInput = false,
+                   LogicValue lastDriven = Zero) {
+    Resolver resolver;
+    for (const Drive& drive : drives) {
+        resolver.add(drive);
+    }
+    return resolver.finish(hasTtlInput, lastDriven);
+}
+
+constexpr Drive Ttl(LogicValue value, DriveStrength strength = Strong) {
+    return {value, strength, Family::Ttl};
+}
+
+constexpr Drive Mos(LogicValue value, DriveStrength strength = Strong) {
+    return {value, strength, Family::Mos};
+}
+
+bool Same(Drive a, Drive b) {
+    return a.value == b.value && a.strength == b.strength && a.family == b.family;
+}
+
+}  // namespace
+
+TEST_CASE("logic: DriveOf", "[sim]") {
+    const Family f = Family::Mos;
+    CHECK(Same(DriveOf(PinKind::Output, f, Zero), Mos(Zero)));
+    CHECK(Same(DriveOf(PinKind::Output, f, One), Mos(One)));
+    CHECK(Same(DriveOf(PinKind::Output, f, X), Mos(X)));
+    CHECK(Same(DriveOf(PinKind::Output, f, Z), Mos(Z, None)));
+
+    CHECK(Same(DriveOf(PinKind::OpenCollector, f, Zero), Mos(Zero)));
+    CHECK(Same(DriveOf(PinKind::OpenCollector, f, One), Mos(Z, None)));
+    CHECK(Same(DriveOf(PinKind::OpenCollector, f, X), Mos(X)));
+    CHECK(Same(DriveOf(PinKind::OpenCollector, f, Z), Mos(Z, None)));
+
+    for (LogicValue value : {Zero, One, Z, X}) {
+        CHECK(Same(DriveOf(PinKind::Input, f, value), Mos(Z, None)));
+    }
+}
+
+TEST_CASE("resolve: single strong driver", "[sim]") {
+    const Resolution r = Resolve({Ttl(One)});
+    CHECK(r.value == One);
+    CHECK_FALSE(r.floating);
+}
+
+TEST_CASE("resolve: strong beats weak", "[sim]") {
+    CHECK(Resolve({Ttl(One, Weak), Ttl(Zero)}).value == Zero);
+    CHECK(Resolve({Ttl(Zero), Ttl(One, Weak)}).value == Zero);
+}
+
+TEST_CASE("resolve: supply beats strong", "[sim]") {
+    CHECK(Resolve({Ttl(Zero), Ttl(One, Supply)}).value == One);
+}
+
+TEST_CASE("resolve: weak alone", "[sim]") {
+    const Resolution r = Resolve({Ttl(One, Weak)}, true);
+    CHECK(r.value == One);
+    CHECK_FALSE(r.floating);
+}
+
+TEST_CASE("resolve: no driver with TTL input reads 1, floating", "[sim]") {
+    const Resolution r = Resolve({Ttl(Z, None)}, true, Zero);
+    CHECK(r.value == One);
+    CHECK(r.floating);
+}
+
+TEST_CASE("resolve: no driver MOS-only keeps last driven, floating", "[sim]") {
+    const Resolution r = Resolve({Mos(Z, None)}, false, Zero);
+    CHECK(r.value == Zero);
+    CHECK(r.floating);
+}
+
+TEST_CASE("resolve: TTL contention reads 0", "[sim]") {
+    const Resolution r = Resolve({Ttl(One), Ttl(Zero)});
+    CHECK(r.value == Zero);
+    CHECK_FALSE(r.floating);
+}
+
+TEST_CASE("resolve: mixed-family contention reads X", "[sim]") {
+    CHECK(Resolve({Ttl(One), Mos(Zero)}).value == X);
+}
+
+TEST_CASE("resolve: supply contention reads X", "[sim]") {
+    CHECK(Resolve({Ttl(One, Supply), Ttl(Zero, Supply)}).value == X);
+}
+
+TEST_CASE("resolve: X driver gives X", "[sim]") {
+    CHECK(Resolve({Ttl(One), Ttl(X)}).value == X);
+    CHECK(Resolve({Ttl(X)}).value == X);
+}
+
+TEST_CASE("resolve: weaker X is ignored", "[sim]") {
+    CHECK(Resolve({Ttl(X, Weak), Ttl(One)}).value == One);
+    CHECK(Resolve({Ttl(One), Ttl(X, Weak)}).value == One);
+}
+
+TEST_CASE("resolve: open-collector wired-AND with weak pull-up", "[sim]") {
+    const Drive pullUp = Ttl(One, Weak);
+    const auto oc = [](LogicValue value) {
+        return DriveOf(PinKind::OpenCollector, Family::Ttl, value);
+    };
+    CHECK(Resolve({pullUp, oc(One), oc(One), oc(One)}, true).value == One);
+    CHECK(Resolve({pullUp, oc(One), oc(Zero), oc(One)}, true).value == Zero);
+}
