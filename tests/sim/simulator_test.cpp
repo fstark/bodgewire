@@ -268,3 +268,113 @@ TEST_CASE("simulator: stats count applied events and wakes", "[sim]") {
     CHECK(sim.stats().appliedEvents == 2);  // the 30 ns step changes nothing
     CHECK(sim.stats().staleEvents == 0);
 }
+
+namespace {
+
+// Stimulus → Buffer → out. Settles for 50 ns, then records `out`.
+struct BufferRun {
+    Circuit circuit;
+    NetId in{};
+    NetId out{};
+
+    BufferRun(Delays delays, std::vector<Stimulus::Step> steps) {
+        in = circuit.addNet("in");
+        out = circuit.addNet("out");
+        auto& stimulus = circuit.add<Stimulus>("S", Zero, std::move(steps));
+        auto& gate = circuit.add<Gate>("U1", GateKind::Buffer, 1, delays);
+        circuit.connect(stimulus, Stimulus::kOut, in);
+        circuit.connect(gate, "I0", in);
+        circuit.connect(gate, gate.output(), out);
+        circuit.finalize();
+    }
+
+    std::vector<Sample> run(Simulator& sim) {
+        sim.powerOn(1);
+        sim.runUntil(50_ns);
+        sim.record(out);
+        sim.runUntil(500_ns);
+        return Samples(sim, out);
+    }
+};
+
+}  // namespace
+
+TEST_CASE("inertial: pulse shorter than delay is swallowed", "[sim]") {
+    BufferRun br({10_ns, 10_ns}, {{100_ns, One}, {105_ns, Zero}});
+    Simulator sim(br.circuit);
+    const auto samples = br.run(sim);
+    REQUIRE(samples.size() == 1);
+    CHECK(samples[0].value == Zero);
+    CHECK(sim.stats().staleEvents == 1);
+}
+
+TEST_CASE("inertial: pulse longer than delay passes", "[sim]") {
+    BufferRun br({10_ns, 10_ns}, {{100_ns, One}, {120_ns, Zero}});
+    Simulator sim(br.circuit);
+    const auto samples = br.run(sim);
+    REQUIRE(samples.size() == 3);
+    CHECK((samples[1] == Sample{110_ns, One}));
+    CHECK((samples[2] == Sample{130_ns, Zero}));
+}
+
+TEST_CASE("inertial: pending change cancelled when input returns", "[sim]") {
+    // Output 0, change to 1 pending, input back to 0: nothing new scheduled, one stale event.
+    BufferRun br({10_ns, 10_ns}, {{100_ns, One}, {101_ns, Zero}});
+    Simulator sim(br.circuit);
+    sim.powerOn(1);
+    sim.runUntil(50_ns);
+    const SimStats before = sim.stats();
+    sim.runUntil(500_ns);
+    CHECK(sim.value(br.out) == Zero);
+    CHECK(sim.stats().staleEvents - before.staleEvents == 1);
+    CHECK(sim.stats().appliedEvents - before.appliedEvents == 2);  // the two Stimulus steps
+}
+
+TEST_CASE("inertial: rise and fall delays differ", "[sim]") {
+    BufferRun br({3_ns, 7_ns}, {{100_ns, One}, {200_ns, Zero}});
+    Simulator sim(br.circuit);
+    const auto samples = br.run(sim);
+    REQUIRE(samples.size() == 3);
+    CHECK((samples[1] == Sample{103_ns, One}));
+    CHECK((samples[2] == Sample{207_ns, Zero}));
+}
+
+TEST_CASE("simulator: simultaneous changes give no glitch", "[sim]") {
+    Circuit circuit;
+    const NetId a = circuit.addNet("a");
+    const NetId b = circuit.addNet("b");
+    const NetId y = circuit.addNet("y");
+    AddDrivers(circuit, a, {{Zero, {{100_ns, One}, {200_ns, Zero}}}});
+    AddDrivers(circuit, b, {{One, {{100_ns, Zero}, {200_ns, One}}}});
+    auto& gate = circuit.add<Gate>("U1", GateKind::And, 2, Delays{1_ns, 1_ns});
+    circuit.connect(gate, "I0", a);
+    circuit.connect(gate, "I1", b);
+    circuit.connect(gate, gate.output(), y);
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runUntil(50_ns);
+    sim.record(y);
+    sim.runUntil(300_ns);
+    const auto samples = Samples(sim, y);
+    REQUIRE(samples.size() == 1);
+    CHECK(samples[0].value == Zero);
+}
+
+TEST_CASE("simulator: floating TTL input reads 1", "[sim]") {
+    Circuit circuit;
+    const NetId in = circuit.addNet("in");
+    const NetId out = circuit.addNet("out");
+    AddDrivers(circuit, in, {{Z}});
+    auto& gate = circuit.add<Gate>("U1", GateKind::Buffer, 1, Delays{1_ns, 1_ns});
+    circuit.connect(gate, "I0", in);
+    circuit.connect(gate, gate.output(), out);
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runFor(10_ns);
+    CHECK(sim.value(in) == One);
+    CHECK(sim.isFloating(in));
+    CHECK(sim.value(out) == One);
+    CHECK_FALSE(sim.isFloating(out));
+}

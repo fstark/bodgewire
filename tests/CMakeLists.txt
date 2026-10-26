@@ -10,6 +10,7 @@ add_executable(bw_tests
   sim/circuit_test.cpp
   sim/event_queue_test.cpp
   sim/logic_test.cpp
+  sim/primitives_test.cpp
   sim/recorder_test.cpp
   sim/rng_test.cpp
   sim/simulator_test.cpp
