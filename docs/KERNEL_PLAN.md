@@ -30,7 +30,7 @@ Creates the CMake project, presets, Catch2 wiring and the dependency-free types 
 ### 1.1 — Repository files
 
 - `CMakeLists.txt`: exactly as design §10, but `add_subdirectory(bench)` is added in phase 10.
-- `CMakePresets.json` (version 6): configure presets `debug` and `release` (generator Ninja, `binaryDir` `${sourceDir}/build/${presetName}`), `debug` sets `CMAKE_CXX_FLAGS` to `-fsanitize=address,undefined -fno-omit-frame-pointer`; matching build presets; test preset `debug` with `output.outputOnFailure: true`.
+- `CMakePresets.json` (version 6): configure presets `debug` and `release` (generator Ninja, `binaryDir` `${sourceDir}/build/${presetName}`), `debug` sets `CMAKE_CXX_FLAGS` to `-fsanitize=address,undefined -fno-omit-frame-pointer`; matching build presets; test presets `debug` and `release` with `output.outputOnFailure: true`.
 - `.clang-format`: `BasedOnStyle: LLVM`, `IndentWidth: 4`, `ColumnLimit: 100`, `PointerAlignment: Left`, `AccessModifierOffset: -4`.
 - `.gitignore` already exists (`venv/`, `build/`).
 
@@ -94,7 +94,7 @@ constexpr char ToChar(LogicValue value);     // '0', '1', 'z', 'x'
 
 ### 3.1 — `src/sim/event_queue.hpp/.cpp`
 
-`Event`, `EventQueue` per design §7 (`std::vector<Event>` with `std::push_heap` / `std::pop_heap`, comparator: greater `time`). Stamp helpers in the same header:
+`Event`, `EventQueue` per design §7 (`std::vector<Event>` with `std::push_heap` / `std::pop_heap`, min-heap on `(time, target, stamp)` so equal-time pop order is platform-independent). `kGenerationMask = (1u << 29) - 1`. Stamp helpers in the same header:
 
 ```cpp
 constexpr std::uint32_t MakeStamp(std::uint32_t generation, bool isWake, LogicValue value);
@@ -109,6 +109,7 @@ constexpr LogicValue StampValue(std::uint32_t stamp);          // bits 0–1
 
 - `"event queue: pops in time order"` (pushed out of order).
 - `"event queue: equal times all before later"`.
+- `"event queue: equal times pop in (target, stamp) order"`.
 - `"event queue: clear empties"`.
 - `"event queue: stamp round-trips"` — generation up to `2^29 - 1`, wake flag, each value.
 
@@ -133,7 +134,7 @@ API per design §5, state per design §7. Behaviour:
 
 - `add<T>()`: `std::make_unique<T>`, sets `id_`, `firstPin_ = pins_.size()`, appends one `PinInfo` per `PinSpec` with `net` = sentinel `NetId{UINT32_MAX}`.
 - `connect()`: `Check` not finalized, pin in range, pin not yet connected.
-- `tie()`: combines with an existing tie per design §7 note.
+- `tie()`: Drive family TTL; combines with an existing tie per design §7 note.
 - `finalize()`: `Check` not already finalized; give each unconnected pin a private net named `"<component>.<pin>"`; build `driverStart_/drivers_` (pins with kind ≠ `Input`), `readerStart_/readers_` (owners of `Input` pins, deduplicated per net, in id order), `netHasTtlInput_`.
 - Accessors used by `Simulator` (public, read-only): `components()`, `pinInfo(PinId)`, `drivers(NetId)` / `readers(NetId)` returning `std::span`, `tieOf(NetId)`, `hasTtlInput(NetId)`, `isFinalized()`.
 
@@ -188,7 +189,7 @@ Resolution resolveNet(NetId net) const;
 void scheduleWake(ComponentId component, Time delay);
 ```
 
-`runFor(d)` = `runUntil(now_ + d)`. `record(net)` = `recorder_.start(net, now_, value(net))`. `readBit()`: `X` → `rng_.nextBit()`.
+`runFor(d)` = `runUntil(now_ + d)`. `record(net)` = `recorder_.start(net, now_, value(net))`. `readBit()`: `X` → `rng_.nextBit()`. `EvalContext::drive` wraps `generation` with `kGenerationMask` (design §8.2).
 
 ### 6.2 — `src/sim/primitives.hpp/.cpp` — `Stimulus` only
 
@@ -204,7 +205,8 @@ Helpers in the test file: a function building a circuit with Stimuli on named ne
 - `"simulator: mixed-family contention reads X"`.
 - `"simulator: released MOS bus keeps last driven value, floating"` — MOS Stimulus `One` then `Z`; value `One`, `isFloating()`.
 - `"simulator: weak pull-up wins over Z"` — `tie(net, One, Weak)`, Stimulus `Z` → `One`, not floating.
-- `"simulator: same seed same recording"`, `"simulator: power-on has no X"` (no contention circuit), `"simulator: powerOn resets time, queue and recordings"`.
+- `"simulator: readBit turns X into seeded random bits"` — file-local Component with a MOS input copying `readBit()` to its output; X Stimulus; same seed → same bits, both values seen over several seeds.
+- `"simulator: same seed same recording"`, `"simulator: different seed different initial state"`, `"simulator: power-on has no X"` (no contention circuit), `"simulator: powerOn resets time, queue and recordings"`.
 - `"simulator: stats count applied events and wakes"`.
 
 ### Fence
@@ -246,7 +248,7 @@ simulator_test:
 
 ### 8.1 — `DFlipFlop`, `ClockSource` in `primitives.hpp/.cpp`
 
-Per design §6 and §8.6. `ClockSource`: `highTime_ = period / 2`, `lowTime_ = period - highTime_`; `Check(period >= 2)`.
+Per design §6 and §8.6. `ClockSource`: pin `OUT` (`Output`, given family); `highTime_ = period / 2`, `lowTime_ = period - highTime_`; `Check(period >= 2)`.
 
 ### 8.2 — Tests: additions to `primitives_test.cpp`
 
@@ -254,7 +256,7 @@ Per design §6 and §8.6. `ClockSource`: `highTime_ = period / 2`, `lowTime_ = p
 - `"dff: samples D as before a same-timestamp clock edge"` — D and CLK Stimuli step at the same time.
 - `"dff: power-on Q and Q_N complementary"` over several seeds.
 - `"clock: period and duty"` — 1001 ps period: high 500, low 501.
-- `"ring oscillator: period is 2 x 3 x delay"` — three `Not` gates, 5 ns each, measured after 1 µs.
+- `"ring oscillator: period is 2 x 3 x delay"` — 2-input `Nand` (enable from a Stimulus, `0` then `1` at 100 ns) plus two `Not` gates, 5 ns each, measured after 1 µs. The enable forces a known start: a plain 3-inverter ring with all outputs equal at power-on would oscillate at 2 × delay forever.
 - `"ripple counter: counts"` — 4 DFFs, `Q_N → D`, each stage's `Q_N` clocks the next (so `Q` counts up); after N clock cycles plus settling time, the `Q` bits advanced by N mod 16 from their value after the first settle.
 
 ### Fence
@@ -317,5 +319,6 @@ counter 0x3a1f
 ### Fence
 
 - [ ] Build gate and test gate pass
-- [ ] `cmake --preset release && cmake --build --preset release && ./build/release/bench/bw_kernel_bench` exits 0 (≥ 20 M applied events/s). If it fails: mark the phase **Skipped: below target**, record the numbers here; optimisation becomes its own plan
+- [ ] `cmake --preset release && cmake --build --preset release && ctest --preset release` passes (spec "Done when": tests pass in release too)
+- [ ] `./build/release/bench/bw_kernel_bench` exits 0 (≥ 20 M applied events/s). If it fails: mark the phase **Skipped: below target**, record the numbers here; optimisation becomes its own plan
 - [ ] Commit: `"kernel: phase 10 — benchmark"`

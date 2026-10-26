@@ -9,7 +9,7 @@ Terminology: [GLOSSARY.md](GLOSSARY.md).
 In:
 
 - Logic Values, Drive Strengths, pin families (TTL, MOS) and Net resolution, including the Floating flag.
-- Constant Drivers on a Net: supply (GND/VCC) and weak (pull-up / pull-down resistor to a rail).
+- Ties on a Net: supply (GND/VCC) and weak (pull-up / pull-down resistor to a rail).
 - Discrete-event kernel: picosecond time, inertial delays, update/evaluate phases.
 - Circuit building in C++: Nets, Components, Pin connections.
 - Primitive Components: logic gates, tri-state buffer, D flip-flop, clock source.
@@ -72,7 +72,7 @@ Applied whenever a Driver of the Net changes:
 
 ### S6 Recording and VCD
 
-- Any Net can be recorded from power-on: every value change with its timestamp.
+- Any Net can be recorded, starting right after power-on or later: its value at that moment, then every value change with its timestamp.
 - Recordings export to a VCD file (timescale 1 ps) viewable in GTKWave or Surfer.
 
 ### S7 Benchmark

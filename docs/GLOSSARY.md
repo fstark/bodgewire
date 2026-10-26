@@ -71,6 +71,10 @@ A Pin's contribution to the value of its Net: what it drives and how strongly.
 **Drive Strength**:
 How hard a Driver forces its Net, so stronger Drivers win over weaker ones (e.g. an output beats a pull-up).
 
+**Tie**:
+A constant Driver attached to a Net rather than a Pin: a supply rail (GND/VCC) or a pull-up / pull-down resistor.
+_Avoid_: Constant Driver
+
 **Floating**:
 The state of a Net with no Driver.
 _Avoid_: Open, undriven

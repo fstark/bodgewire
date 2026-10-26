@@ -248,7 +248,7 @@ public:
 // Pin OUT. Square wave; high for period / 2, low for the remainder.
 class ClockSource final : public Component {
 public:
-    ClockSource(std::string name, Time period);
+    ClockSource(std::string name, Time period, Family family = Family::Ttl);
     static constexpr PinIndex kOut = 0;
 };
 
@@ -285,7 +285,7 @@ struct NetState {            // 16 bytes
     bool floating, dirty;
 };
 struct OutputState {         // 8 bytes, one per Pin (inputs unused)
-    std::uint32_t generation;  // bumped on cancellation; stale events carry an old one
+    std::uint32_t generation;  // 29 bits, wraps; bumped on cancellation; stale events carry an old one
     LogicValue current, pending;
     bool hasPending;
 };
@@ -301,6 +301,7 @@ SimStats stats_;
 Time now_ = 0;
 
 // event_queue.hpp — 16 bytes, no allocation per event (vector-backed binary heap)
+// Ordered by (time, target, stamp): same-time pop order is identical on every platform (S4).
 struct Event {
     Time time;
     std::uint32_t target;  // PinId, or ComponentId for a wake
@@ -316,7 +317,7 @@ public:
 };
 ```
 
-Two `Tie`s on one Net combine: stronger wins; equal strength and different values → `X` drive at that strength.
+Two Ties on one Net combine: stronger wins; equal strength and different values → `X` drive at that strength. A Tie's Drive has family TTL.
 
 ## 8. Key Algorithms
 
@@ -343,7 +344,7 @@ finish(hasTtlInput, lastDriven):
 o = outputs_[pin]; assert(delay >= 1)
 target = o.hasPending ? o.pending : o.current
 if value == target: return
-if o.hasPending: ++o.generation; o.hasPending = false     // cancel
+if o.hasPending: o.generation = (o.generation + 1) & (2^29 - 1); o.hasPending = false  // cancel
 if value != o.current:
   queue_.push({ now_ + delay, pin, Stamp(o.generation, false, value) })
   o.pending = value; o.hasPending = true
@@ -487,7 +488,7 @@ tests, bench → bw_sim
 `bench/kernel_bench.cpp`, argument `--seconds N` (default 1):
 
 - Nets `VCC` (tied supply `1`), `CLK`, `Q0..Q15`, `C1..C15` (carries), `N0..N15` (next values).
-- `ClockSource` at 69'841 ps (14.318 MHz). 16 `DFlipFlop` (clock-to-Q 5 ns), 16 `Xor` (2 ns): `N_i = Q_i ⊕ C_i` with `C_0 = VCC`; 15 `And` (1 ns): `C_{i+1} = C_i · Q_i`. Worst path 5 + 15 + 2 = 22 ns < one period, so it counts correctly.
+- `ClockSource` at 69'842 ps (14.318 MHz). 16 `DFlipFlop` (clock-to-Q 5 ns), 16 `Xor` (2 ns): `N_i = Q_i ⊕ C_i` with `C_0 = VCC`; 15 `And` (1 ns): `C_{i+1} = C_i · Q_i`. Worst path 5 + 15 + 2 = 22 ns < one period, so it counts correctly.
 - Runs `powerOn(1)` then `runFor(N s)`; prints wall time, simulated/wall ratio, `appliedEvents/s`, `evaluations/s`, and the counter value as a sanity check.
 - Exit code 1 if applied events per second < 20 M.
 
@@ -501,7 +502,7 @@ Catch2, `tests/sim/`, tag `[sim]`. Circuits are built inline in each test with `
 | `event_queue_test.cpp` | pops in time order; all events of one timestamp popped before later ones; `clear()` |
 | `rng_test.cpp` | fixed seed → fixed first values (platform independence) |
 | `circuit_test.cpp` | `Check` on: pin connected twice, unknown pin name, edit after `finalize`; unconnected pins get private Nets; readers deduplicated; `netHasTtlInput` |
-| `simulator_test.cpp` | inertial: pulse < delay swallowed, pulse > delay passes; pending cancel (0, pending 1, input back → nothing, one stale event); rise ≠ fall delay; simultaneous changes → AND of A and ¬A never pulses; `readBefore` at the same timestamp; floating TTL Net reads 1 with flag; MOS-only bus keeps last driven value after tri-state release; TTL contention reads 0; mixed-family contention reads X; power-on: no X anywhere; same seed → identical recordings, different seed → different initial state |
-| `primitives_test.cpp` | gate truth tables including X; tri-state enable/disable; DFF captures on rising edge only; clock period and duty; Stimulus steps at exact times; 3-inverter ring oscillator period = 2 × 3 × delay; 4-bit ripple counter (Q_N → D) counts |
-| `recorder_test.cpp` | samples start at `record()` with the current value; only changes recorded; cleared by `powerOn` |
+| `simulator_test.cpp` | inertial: pulse < delay swallowed, pulse > delay passes; pending cancel (0, pending 1, input back → nothing, one stale event); rise ≠ fall delay; simultaneous changes → AND of A and ¬A never pulses; `readBefore` at the same timestamp; floating TTL Net reads 1 with flag; MOS-only bus keeps last driven value after tri-state release; TTL contention reads 0; mixed-family contention reads X; `readBit` turns X into seeded random bits; power-on: no X anywhere; same seed → identical recordings, different seed → different initial state; `powerOn` clears recordings |
+| `primitives_test.cpp` | gate truth tables including X; tri-state enable/disable; DFF captures on rising edge only; clock period and duty; Stimulus steps at exact times; ring oscillator (NAND with a Stimulus enable + 2 inverters, so it starts from a known state) period = 2 × 3 × delay; 4-bit ripple counter (Q_N → D) counts |
+| `recorder_test.cpp` | `start()` stores the initial sample; `add()` appends; nets in start order; `clear()` |
 | `vcd_test.cpp` | exact expected text for a two-Net circuit (header, `$var`, `#time` blocks, `x`) |
