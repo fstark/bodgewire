@@ -16,7 +16,7 @@ src/parts/               library bw_parts → bw_sim
   gate_package.hpp/.cpp  GatePackageSpec, GatePackage (00/02/04/08/20/30/32/86)
   ls74.hpp/.cpp          Ls74 (dual D flip-flop)
   ls161.hpp/.cpp         Ls161 (counter)
-  oscillator.hpp/.cpp    Oscillator (OSC)
+  oscillator.hpp/.cpp    Oscillator (OSC), PeriodFromFrequency() (parts must not depend on netlist)
 src/netlist/             library bw_netlist → bw_parts, bw_sim
   units.hpp/.cpp         ParsePeriodFromFrequency(), ParseDuration()
   diagnostic.hpp/.cpp    Diagnostic, Format()
