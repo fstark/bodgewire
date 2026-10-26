@@ -1,5 +1,6 @@
 add_library(bw_sim STATIC
   check.cpp
+  event_queue.cpp
   logic.cpp
 )
 target_include_directories(bw_sim PUBLIC ${PROJECT_SOURCE_DIR}/src)
