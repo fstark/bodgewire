@@ -1,0 +1,36 @@
+# Sample circuit (PARTS.md "Done when"): 1 MHz oscillator, 8-bit counter from two
+# cascaded 74LS161, a 74LS74 toggle that divides C7 by two, and a NAND decode of C6, C7.
+
+part X1 OSC freq=1MHz
+part R1 R value=4k7
+part U1 74LS161
+part U2 74LS161
+part U3 74LS74
+part U4 74LS00
+
+net CLK      X1.OUT U1.CLK U2.CLK
+net RESET_N  R1.2 U1.CLR_N U2.CLR_N
+net VCC      R1.1
+
+# Counter: U1 low nibble, U2 high nibble, enabled by U1's ripple carry.
+net VCC      U1.ENP U1.ENT U1.LOAD_N U2.ENP U2.LOAD_N
+net GND      U1.A U1.B U1.C U1.D U2.A U2.B U2.C U2.D
+net C0       U1.QA
+net C1       U1.QB
+net C2       U1.QC
+net C3       U1.QD
+net CARRY    U1.RCO U2.ENT
+net C4       U2.QA
+net C5       U2.QB
+net C6       U2.QC U4.1A
+net C7       U2.QD U3.1CLK U4.1B
+
+# Divider: flip-flop 1 toggles on each rising C7; flip-flop 2 unused.
+net DIV      U3.1Q
+net DIV_N    U3.1Q_N U3.1D
+net VCC      U3.1PRE_N U3.1CLR_N U3.2PRE_N U3.2CLR_N
+net GND      U3.2CLK U3.2D
+
+# Decode: TOP_N low when C6 and C7 are high; gates 2-4 unused.
+net TOP_N    U4.1Y
+net GND      U4.2A U4.2B U4.3A U4.3B U4.4A U4.4B

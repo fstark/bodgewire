@@ -9,6 +9,7 @@ add_executable(bw_tests
   netlist/builder_test.cpp
   netlist/diagnostic_test.cpp
   netlist/parser_test.cpp
+  netlist/sample_test.cpp
   netlist/units_test.cpp
   parts/catalogue_test.cpp
   parts/gate_package_test.cpp
@@ -27,6 +28,7 @@ add_executable(bw_tests
   sim/vcd_test.cpp
 )
 target_link_libraries(bw_tests PRIVATE bw_netlist bw_warnings Catch2::Catch2WithMain)
+target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR}/netlists")
 
 include(Catch)
 catch_discover_tests(bw_tests)
