@@ -33,9 +33,9 @@ Diagnosis: the time goes into gathering inputs, not computing logic. Each read i
 
 ### S1 Packed inputs (push)
 
-- `Simulator` keeps, per Component, its input values packed into words: two bit-planes, *value* and *known* (known = 0 means X). Bit position = Pin index.
+- `Simulator` keeps, per Component, its input values packed into one 64-bit word per plane: two bit-planes, *value* and *known* (known = 0 means X). Bit position = Pin index.
 - When a Net's value changes, the Simulator updates the corresponding bits of every Component reading it, and wakes the Component (as today: rising-edge-only Pins wake on 0 → 1 only).
-- Per Net, one precomputed fan-out list replaces today's readers list: `{component, word index, bit mask, rising-edge-only}`.
+- Per Net, one precomputed fan-out list replaces today's readers list: `{component, bit mask, rising-edge-only}`.
 - Components have at most 64 Pins (`Check`ed). All planned Parts fit (largest: 40-pin CPU).
 
 ### S2 Part-facing API unchanged
@@ -62,7 +62,7 @@ Diagnosis: the time goes into gathering inputs, not computing logic. Each read i
 
 ### S6 Measurement and gates
 
-- Benchmark: `bw run netlists/test_pattern.bwn --time 5s`, release preset, best of 3 runs. Recorded in the plan after each phase, with `applied_events` and `evaluations`.
+- Benchmark: `bw run netlists/test_pattern.bwn --time 5s`, release preset, best of 3 runs. Recorded in the plan after each phase that changes the run loop or Parts, with `applied_events` and `evaluations`.
 - Behaviour must not change: same `applied_events` and `evaluations` as before each phase (except where a phase removes evaluations on purpose, stated in the plan), P1c golden check passes, all tests pass in debug (sanitizers) and release.
 - VCD of `netlists/test_pattern.bwn` over 40 ms, seed 1, is byte-identical before and after P1d.
 - Profiling: optimised build with symbols in `build/profile` (`-O3 -g -fno-omit-frame-pointer`, not a preset), sampled with macOS `sample`.

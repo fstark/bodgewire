@@ -15,9 +15,9 @@ Spec: [KERNEL_PERF.md](KERNEL_PERF.md)
 Build gate: `cmake --preset debug && cmake --build --preset debug`
 Test gate:  `ctest --preset debug --output-on-failure`
 
-Benchmark (phases 1, 4, 5, 6): `cmake --build --preset release`, then 3 × `./build/release/src/cli/bw run netlists/test_pattern.bwn --time 5s`; record best `ratio`, plus `applied_events` and `evaluations`.
+Benchmark (phases 1, 3, 4, 5, 6): `cmake --build --preset release`, then 3 × `./build/release/src/cli/bw run netlists/test_pattern.bwn --time 5s`; record best `ratio`, plus `applied_events` and `evaluations`.
 
-Behaviour check (phases 3, 4, 5): `applied_events` and `evaluations` equal phase 1's; and
+Behaviour check (phases 1, 3, 4, 5): `applied_events` and `evaluations` equal the pre-revert baseline (1.1); and
 
 ```
 ./build/release/src/cli/bw run netlists/test_pattern.bwn --time 40ms --seed 1 \
@@ -30,13 +30,9 @@ All code follows [STYLE.md](STYLE.md) and [NAMING.md](NAMING.md); run `clang-for
 
 ## Phase 1 — Revert gate-kind dispatch, record baseline
 
-Design §6. Gives the reference numbers and VCD every later phase is compared with.
+Design §6. Gives the reference numbers and VCD every later phase is compared with. The baseline is taken before the revert, so the revert itself is checked too.
 
-### 1.1 — Revert
-
-`git revert --no-edit 738d9e1`. Build and test gates pass.
-
-### 1.2 — Baseline
+### 1.1 — Baseline (current `main`, before the revert)
 
 Release build; run the benchmark; write the numbers under this phase. Produce the baseline VCD:
 
@@ -45,11 +41,15 @@ Release build; run the benchmark; write the numbers under this phase. Produce th
     --record SYNC_N,VIDEO,HSYNC_N,VSYNC_N --vcd /tmp/p1d_baseline.vcd
 ```
 
+### 1.2 — Revert
+
+`git revert --no-edit 738d9e1`. Build and test gates pass. Release build; behaviour check; benchmark recorded under this phase.
+
 ### Fence
 
 - [ ] Build and test gates pass; `ctest --preset release` passes
-- [ ] Baseline `ratio`, `applied_events`, `evaluations` recorded here
-- [ ] `/tmp/p1d_baseline.vcd` exists
+- [ ] Pre-revert `ratio`, `applied_events`, `evaluations` recorded here; `/tmp/p1d_baseline.vcd` exists
+- [ ] Behaviour check passes after the revert; post-revert benchmark recorded here
 - [ ] The revert commit is the phase commit (no extra commit)
 
 ---
@@ -131,6 +131,7 @@ for (const FanOut& f : circuit_.fanOut(net)) {
 
 - [ ] Build and test gates pass; `grep -rn "readers(" src tests` returns nothing
 - [ ] Behaviour check passes
+- [ ] Benchmark recorded here
 - [ ] Commit: `"perf: phase 3 — circuit fan-out lists"`
 
 ---
@@ -202,7 +203,7 @@ Existing gate-package truth-table and delay tests, P1c golden check and `sample_
 Benchmark (best of 3) and a profile (design §9: `build/profile`, `sample`, top functions with shares) recorded here.
 
 - ≥ 10×: spec S6 passes.
-- < 10×: record the shortfall and the profile; add to [KERNEL_PERF.md](KERNEL_PERF.md) "Starting point" a line stating that the event-queue phase is next and needs a design addendum (bucket queue) before planning.
+- < 10×: record the shortfall and the profile. P1d stays open (spec "Done when"): the event-queue work (bucket queue) gets a design addendum in [KERNEL_PERF_DESIGN.md](KERNEL_PERF_DESIGN.md), then its phases are appended to this plan.
 
 ### 6.2 — `docs/KERNEL_DESIGN.md`
 
