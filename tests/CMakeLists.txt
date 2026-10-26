@@ -10,6 +10,7 @@ add_executable(bw_tests
   parts/gate_package_test.cpp
   parts/ls161_test.cpp
   parts/ls74_test.cpp
+  parts/oscillator_test.cpp
   sim/check_test.cpp
   sim/circuit_test.cpp
   sim/event_queue_test.cpp

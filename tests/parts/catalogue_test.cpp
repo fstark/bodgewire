@@ -25,7 +25,11 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         }
         INFO(part.name);
         Circuit circuit;
-        const auto created = part.create(circuit, "U1", {});
+        std::vector<PartParam> params;
+        if (part.name == "OSC") {
+            params.push_back({"freq", "1MHz"});
+        }
+        const auto created = part.create(circuit, "U1", params);
         REQUIRE(created.has_value());
         const auto pins = (*created)->pins();
         const std::size_t count = part.package == "DIP-16" ? 16 : 14;

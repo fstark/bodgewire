@@ -8,6 +8,7 @@
 #include "parts/gate_package.hpp"
 #include "parts/ls161.hpp"
 #include "parts/ls74.hpp"
+#include "parts/oscillator.hpp"
 
 namespace bw {
 
@@ -38,6 +39,25 @@ std::expected<Component*, std::string> CreateChip(Circuit& circuit, std::string 
     return &circuit.add<T>(std::move(reference));
 }
 
+std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::string reference,
+                                                        std::span<const PartParam> params) {
+    const PartParam* freq = nullptr;
+    for (const PartParam& param : params) {
+        if (param.name != "freq") {
+            return std::unexpected("OSC: unknown parameter '" + param.name + "'");
+        }
+        freq = &param;
+    }
+    if (freq == nullptr) {
+        return std::unexpected("OSC needs freq=<frequency>");
+    }
+    const auto period = PeriodFromFrequency(freq->value);
+    if (!period) {
+        return std::unexpected(period.error());
+    }
+    return &circuit.add<Oscillator>(std::move(reference), *period);
+}
+
 using enum PartKind;
 
 // Sorted by name.
@@ -54,6 +74,8 @@ constexpr std::array s_parts{
     PartInfo{"74LS74", "dual D flip-flop, preset and clear", "DIP-14", Chip,
              &CreateChip<Ls74, "74LS74">},
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},
+    PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
+    PartInfo{"R", "resistor", "axial", Resistor, nullptr},
 };
 
 }  // namespace
