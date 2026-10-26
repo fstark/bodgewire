@@ -38,4 +38,4 @@ Generated (gitignored):
 ### Fence
 
 - [x] Benchmark output recorded here
-- [ ] Manual: `pattern.vcd` looks right in a viewer (spec "Done when")
+- [x] Manual: `pattern.vcd` looks right in a viewer (spec "Done when"): 64 µs lines, grid every 8 px / 16 lines, 24 blank lines, 4-line VSYNC with inverted composite sync
