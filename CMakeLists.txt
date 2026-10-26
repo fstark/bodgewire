@@ -12,6 +12,7 @@ target_compile_options(bw_warnings INTERFACE -Wall -Wextra -Wpedantic -Wshadow -
 
 add_subdirectory(src/sim)
 add_subdirectory(src/parts)
+add_subdirectory(src/netlist)
 add_subdirectory(bench)
 
 if(BW_BUILD_TESTS)
