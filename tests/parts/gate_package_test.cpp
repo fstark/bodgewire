@@ -23,7 +23,7 @@ struct GatePart {
     std::string_view name;
     GateKind kind;
     int units;
-    std::string_view inputs; // input pin letters; pins are "<unit><letter>", output "<unit>Y"
+    std::string_view inputs;  // input pin letters; pins are "<unit><letter>", output "<unit>Y"
     Delays delays;
 };
 
@@ -154,7 +154,7 @@ void CheckDelays(const GatePart& part) {
     }
 }
 
-} // namespace
+}  // namespace
 
 TEST_CASE("gate package: 74LS00 truth table", "[parts]") { CheckTruthTable(kLs00); }
 TEST_CASE("gate package: 74LS02 truth table", "[parts]") { CheckTruthTable(kLs02); }

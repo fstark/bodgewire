@@ -6,12 +6,14 @@
 #include <utility>
 
 #include "parts/gate_package.hpp"
+#include "parts/ls74.hpp"
 
 namespace bw {
 
 namespace {
 
-template <std::size_t N> struct PartName {
+template <std::size_t N>
+struct PartName {
     constexpr PartName(const char (&text)[N]) { std::copy_n(text, N, chars); }
     constexpr std::string_view view() const { return {chars, N - 1}; }
     char chars[N];
@@ -26,6 +28,15 @@ std::expected<Component*, std::string> CreateGatePackage(Circuit& circuit, std::
     return &circuit.add<GatePackage>(std::move(reference), GatePackageSpecOf(Name.view()));
 }
 
+template <class T, PartName Name>
+std::expected<Component*, std::string> CreateChip(Circuit& circuit, std::string reference,
+                                                  std::span<const PartParam> params) {
+    if (!params.empty()) {
+        return std::unexpected(std::string(Name.view()) + " takes no parameters");
+    }
+    return &circuit.add<T>(std::move(reference));
+}
+
 using enum PartKind;
 
 // Sorted by name.
@@ -37,10 +48,12 @@ constexpr std::array s_parts{
     PartInfo{"74LS20", "dual 4-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS20">},
     PartInfo{"74LS30", "8-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS30">},
     PartInfo{"74LS32", "quad 2-input OR", "DIP-14", Chip, &CreateGatePackage<"74LS32">},
+    PartInfo{"74LS74", "dual D flip-flop, preset and clear", "DIP-14", Chip,
+             &CreateChip<Ls74, "74LS74">},
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},
 };
 
-} // namespace
+}  // namespace
 
 const PartInfo* FindPart(std::string_view name) {
     for (const PartInfo& part : s_parts) {
@@ -53,4 +66,4 @@ const PartInfo* FindPart(std::string_view name) {
 
 std::span<const PartInfo> AllParts() { return s_parts; }
 
-} // namespace bw
+}  // namespace bw

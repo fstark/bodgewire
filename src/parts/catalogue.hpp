@@ -24,14 +24,14 @@ using PartFactory = std::expected<Component*, std::string> (*)(Circuit& circuit,
                                                                std::span<const PartParam> params);
 
 struct PartInfo {
-    std::string_view name;        // "74LS161"
-    std::string_view description; // "synchronous 4-bit binary counter"
-    std::string_view package;     // "DIP-16"
+    std::string_view name;         // "74LS161"
+    std::string_view description;  // "synchronous 4-bit binary counter"
+    std::string_view package;      // "DIP-16"
     PartKind kind;
-    PartFactory create; // nullptr for resistors (no Component)
+    PartFactory create;  // nullptr for resistors (no Component)
 };
 
-const PartInfo* FindPart(std::string_view name); // nullptr if unknown
+const PartInfo* FindPart(std::string_view name);  // nullptr if unknown
 std::span<const PartInfo> AllParts();
 
-} // namespace bw
+}  // namespace bw

@@ -88,7 +88,7 @@ std::vector<PinSpec> PackagePins(const GatePackageSpec& spec) {
     return pins;
 }
 
-} // namespace
+}  // namespace
 
 const GatePackageSpec& GatePackageSpecOf(std::string_view part) {
     for (const GatePackageSpec& spec : s_specs) {
@@ -116,4 +116,4 @@ void GatePackage::evaluate(EvalContext& ctx) {
     }
 }
 
-} // namespace bw
+}  // namespace bw
