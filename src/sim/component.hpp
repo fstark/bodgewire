@@ -51,7 +51,7 @@ private:
         : sim_(sim), firstPin_(firstPin), component_(component) {}
     Simulator& sim_;
     PinId firstPin_;
-    ComponentId component_;
+    [[maybe_unused]] ComponentId component_;
 };
 
 class Component {

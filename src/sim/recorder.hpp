@@ -13,6 +13,7 @@ namespace bw {
 struct Sample {
     Time time;
     LogicValue value;
+    friend bool operator==(const Sample&, const Sample&) = default;
 };
 
 // Value history of chosen Nets: initial value at start(), then every change.
