@@ -109,10 +109,19 @@ private:
 ## 4. Public Interface — Components
 
 ```cpp
+inline constexpr std::size_t kMaxPins = 64;  // one bit per Pin in PackedInputs; Check()ed
+
+// Input Pin values of one Component, bit = PinIndex. X: known = 0, value = 0.
+struct PackedInputs {
+    std::uint64_t value;  // 1 where the Net is 1
+    std::uint64_t known;  // 1 where the Net is 0 or 1
+};
+
 struct PinSpec {
     std::string name;  // datasheet name, NAMING.md "Pin names"
     PinKind kind;
     Family family;
+    bool risingEdgeOnly = false;  // Input: other changes never alter evaluate()'s result
 };
 
 class Component {
@@ -138,12 +147,13 @@ private:
 class EvalContext {
 public:
     Time now() const;
-    LogicValue read(PinIndex pin) const;        // Net value now
+    LogicValue read(PinIndex pin) const;        // Net value now; Input Pins only
     LogicValue readBefore(PinIndex pin) const;  // Net value before this timestamp (S3)
     bool rose(PinIndex pin) const;              // Net went 0 → 1 at this timestamp
     bool readBit(PinIndex pin);                 // X → seeded random bit (MOS inputs, S4)
     void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
     void wakeAfter(Time delay);                 // evaluate this Component again at now + delay
+    PackedInputs inputs() const;                // Input Pins only; other bits 0
 };
 
 class PowerOnContext {
@@ -153,7 +163,7 @@ public:
 };
 ```
 
-`EvalContext` and `PowerOnContext` hold a `Simulator&`, the Component's `firstPin_` and `id_`; they are created on the stack per call (two pointers and two integers).
+`EvalContext` and `PowerOnContext` hold a `Simulator&`, the Component's `firstPin_` and `id_`; `EvalContext` also holds a reference to the Component's `PackedInputs` in the Simulator. They are created on the stack per call. `read` is a bit test on those inputs; `PackedGateFunction` (primitives.hpp) evaluates a gate over a mask of them.
 
 ## 5. Public Interface — Circuit and Simulator
 
@@ -267,16 +277,22 @@ public:
 
 ```cpp
 // Circuit — fixed after finalize(); flat arrays indexed by ToIndex(id)
-struct PinInfo { NetId net; ComponentId owner; PinKind kind; Family family; };
+struct PinInfo { NetId net; ComponentId owner; PinKind kind; Family family; bool risingEdgeOnly; };
+// One per (Net, reading Component): all Input Pins of that Component on that Net.
+struct FanOut {              // 16 bytes
+    ComponentId component;
+    bool risingEdgeOnly;     // all those Pins are rising-edge-only
+    std::uint64_t mask;      // bit = PinIndex
+};
 std::vector<std::unique_ptr<Component>> components_;
 std::vector<PinInfo> pins_;
 std::vector<std::string> netNames_;
 std::vector<Drive> netTie_;              // strongest tie per Net, None if untied
 std::vector<std::uint8_t> netHasTtlInput_;
-// CSR: drivers (output PinIds) and readers (unique ComponentIds with an input on the Net)
-std::vector<std::uint32_t> driverStart_, readerStart_;  // size netCount + 1
+// CSR: drivers (output PinIds) and fan-out; rebuilt from pins_ by buildTables()
+std::vector<std::uint32_t> driverStart_, fanOutStart_;  // size netCount + 1
 std::vector<PinId> drivers_;
-std::vector<ComponentId> readers_;
+std::vector<FanOut> fanOut_;
 
 // Simulator — reset by powerOn()
 struct NetState {            // 16 bytes
@@ -291,6 +307,7 @@ struct OutputState {         // 8 bytes, one per Pin (inputs unused)
 };
 std::vector<NetState> nets_;
 std::vector<OutputState> outputs_;
+std::vector<PackedInputs> inputs_;       // index = ComponentId; written on Net change
 std::vector<std::uint8_t> componentDirty_;
 std::vector<NetId> dirtyNets_;
 std::vector<ComponentId> dirtyComponents_;
@@ -371,7 +388,13 @@ while !queue_.empty() and queue_.top().time <= end:
     if res.value != s.value:
       s.previous = s.value; s.value = res.value; s.changedAt = now_
       if recorder_.isRecording(net): recorder_.add(net, now_, res.value)
-      for c in readers(net): MarkDirty(c)
+      rose = s.previous == Zero and s.value == One
+      setValue = res.value == One ? ~0 : 0; setKnown = res.value != X ? ~0 : 0
+      for f in fanOut(net):
+        in = inputs_[f.component]
+        in.value = (in.value & ~f.mask) | (setValue & f.mask)
+        in.known = (in.known & ~f.mask) | (setKnown & f.mask)
+        if rose or not f.risingEdgeOnly: MarkDirty(f.component)
   dirtyNets_.clear()
   // evaluate phase
   for c in dirtyComponents_: componentDirty_[c] = 0; components[c].evaluate(ctx); ++stats.evaluations
@@ -389,8 +412,9 @@ Evaluation order is the dirty-list order, which is deterministic; results don't 
 queue_.clear(); now_ = 0; rng_ = Rng(seed); recorder_.clear(); stats_ = {}
 for each output pin: current = rng_.nextBit() ? One : Zero; hasPending = false
 for each component (in id order): component.powerOn(PowerOnContext)
+inputs_ = all zero
 for each net: lastDriven = random bit; resolve (8.3), set value, previous = value,
-              changedAt = -1, floating
+              changedAt = -1, floating; write inputs_ as in 8.3 (no wake)
 for each component (in id order): evaluate
 ```
 
@@ -501,8 +525,8 @@ Catch2, `tests/sim/`, tag `[sim]`. Circuits are built inline in each test with `
 | `logic_test.cpp` | `DriveOf` for each `PinKind`; every row of the S2 table; weak loses to strong; supply beats strong; supply contention → X; open-collector wired-AND with weak pull-up |
 | `event_queue_test.cpp` | pops in time order; all events of one timestamp popped before later ones; `clear()` |
 | `rng_test.cpp` | fixed seed → fixed first values (platform independence) |
-| `circuit_test.cpp` | `Check` on: pin connected twice, unknown pin name, edit after `finalize`; unconnected pins get private Nets; readers deduplicated; `netHasTtlInput` |
-| `simulator_test.cpp` | inertial: pulse < delay swallowed, pulse > delay passes; pending cancel (0, pending 1, input back → nothing, one stale event); rise ≠ fall delay; simultaneous changes → AND of A and ¬A never pulses; `readBefore` at the same timestamp; floating TTL Net reads 1 with flag; MOS-only bus keeps last driven value after tri-state release; TTL contention reads 0; mixed-family contention reads X; `readBit` turns X into seeded random bits; power-on: no X anywhere; same seed → identical recordings, different seed → different initial state; `powerOn` clears recordings |
-| `primitives_test.cpp` | gate truth tables including X; tri-state enable/disable; DFF captures on rising edge only; clock period and duty; Stimulus steps at exact times; ring oscillator (NAND with a Stimulus enable + 2 inverters, so it starts from a known state) period = 2 × 3 × delay; 4-bit ripple counter (Q_N → D) counts |
+| `circuit_test.cpp` | `Check` on: pin connected twice, unknown pin name, edit after `finalize`, more than 64 pins; unconnected pins get private Nets; fan-out merges Pins of one Component (mask, rising-edge-only only if all are); `netHasTtlInput` |
+| `simulator_test.cpp` | `read` sees X, 0, 1 after Net changes; `inputs()` after `powerOn` matches Net values (GND, VCC, X, floating TTL); inertial: pulse < delay swallowed, pulse > delay passes; pending cancel (0, pending 1, input back → nothing, one stale event); rise ≠ fall delay; simultaneous changes → AND of A and ¬A never pulses; `readBefore` at the same timestamp; floating TTL Net reads 1 with flag; MOS-only bus keeps last driven value after tri-state release; TTL contention reads 0; mixed-family contention reads X; `readBit` turns X into seeded random bits; power-on: no X anywhere; same seed → identical recordings, different seed → different initial state; `powerOn` clears recordings |
+| `primitives_test.cpp` | gate truth tables including X; `PackedGateFunction` matches `GateFunction` for every kind, 1–4 inputs, all 0/1/X combinations; tri-state enable/disable; DFF captures on rising edge only; clock period and duty; Stimulus steps at exact times; ring oscillator (NAND with a Stimulus enable + 2 inverters, so it starts from a known state) period = 2 × 3 × delay; 4-bit ripple counter (Q_N → D) counts |
 | `recorder_test.cpp` | `start()` stores the initial sample; `add()` appends; nets in start order; `clear()` |
 | `vcd_test.cpp` | exact expected text for a two-Net circuit (header, `$var`, `#time` blocks, `x`) |

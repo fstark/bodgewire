@@ -26,6 +26,38 @@ Behaviour check (phases 1, 3, 4, 5): `applied_events` and `evaluations` equal th
 
 All code follows [STYLE.md](STYLE.md) and [NAMING.md](NAMING.md); run `clang-format -i` on changed C++ files.
 
+## Results (2026-10-27)
+
+Benchmark, best of 3, `bw run netlists/test_pattern.bwn --time 5s`, release. `applied_events` 30117545 and `evaluations` 60225260 at every step; VCD byte-identical to the baseline at every step.
+
+| Step | Commit | ratio |
+|---|---|---|
+| 1.1 baseline (with 738d9e1) | cc00da1 | 5.41 |
+| 1.2 revert 738d9e1 | 0cf99fd | 5.13 |
+| 3 fan-out lists | 3326650 | 5.03 |
+| 4 packed inputs, `read` | 92ff20f | 4.77 |
+| 5 gate packages packed | 615c3e2 | 5.40 |
+
+S6 **not met**: 5.40× vs 10× (shortfall 1.85×).
+
+Profile (`build/profile`, `sample` 8 s, 6284 samples, top of stack):
+
+| Function | Share |
+|---|---|
+| `Simulator::runUntil` | 29.8% |
+| `Ls161::evaluate` | 16.9% |
+| `PackedGateFunction` | 14.8% |
+| `EventQueue::push` | 10.8% |
+| `GatePackage::evaluate` | 7.0% |
+| `EventQueue::pop` | 6.3% |
+| `Ls74::evaluate` | 4.2% |
+| `Simulator::markNetDirty` | 3.3% |
+| `EvalContext::driveChanged` | 2.9% |
+| `Resolver::finish` | 1.5% |
+| other | 2.4% |
+
+Event queue (push + pop) is 17.1%: removing it entirely would give at most ~6.5×, so a bucket queue alone cannot reach 10×. Next: design addendum in [KERNEL_PERF_DESIGN.md](KERNEL_PERF_DESIGN.md) covering the queue plus the run loop (29.8%) and `Ls161::evaluate` (16.9%), then append its phases here.
+
 ---
 
 ## Phase 1 — Revert gate-kind dispatch, record baseline
