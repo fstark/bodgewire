@@ -220,6 +220,9 @@ struct Delays {
 
 enum class GateKind : std::uint8_t { And, Or, Nand, Nor, Xor, Xnor, Not, Buffer };
 
+// Pure three-valued gate function (§8.5); inputs are 0/1/X.
+LogicValue GateFunction(GateKind kind, std::span<const LogicValue> inputs);
+
 // Pins I0..I(n-1), then Y. Not/Buffer: n = 1. Others: n ≥ 2.
 class Gate final : public Component {
 public:
@@ -250,10 +253,12 @@ public:
 };
 
 // Pin OUT. Test and benchmark stimulus: initial value, then steps at absolute times ≥ 1 ps.
+// Values may be Z (tri-state driver); family selects contention rules.
 class Stimulus final : public Component {
 public:
     struct Step { Time time; LogicValue value; };
-    Stimulus(std::string name, LogicValue initial, std::vector<Step> steps);  // steps sorted
+    Stimulus(std::string name, LogicValue initial, std::vector<Step> steps,
+             Family family = Family::Ttl);  // steps sorted, distinct times
     static constexpr PinIndex kOut = 0;
 };
 ```
