@@ -52,6 +52,35 @@ private:
     bool outputZ_ = false;  // last value driven on Y was Z
 };
 
+// Pins D, CLK, Q, Q_N. Rising-edge; samples D as before the edge.
+class DFlipFlop final : public Component {
+public:
+    DFlipFlop(std::string name, Delays clockToQ, Family family = Family::Ttl);
+    static constexpr PinIndex kD = 0, kClk = 1, kQ = 2, kQN = 3;
+
+    void powerOn(PowerOnContext& ctx) override;
+    void evaluate(EvalContext& ctx) override;
+
+private:
+    Delays clockToQ_;
+    LogicValue q_ = LogicValue::Zero;
+};
+
+// Pin OUT. Square wave; high for period / 2, low for the remainder.
+class ClockSource final : public Component {
+public:
+    ClockSource(std::string name, Time period, Family family = Family::Ttl);
+    static constexpr PinIndex kOut = 0;
+
+    void powerOn(PowerOnContext& ctx) override;
+    void evaluate(EvalContext& ctx) override;
+
+private:
+    Time highTime_;
+    Time lowTime_;
+    LogicValue level_ = LogicValue::Zero;
+};
+
 // Pin OUT. Test and benchmark stimulus: initial value, then steps at absolute times ≥ 1 ps.
 // Values may be Z (tri-state driver); family selects contention rules.
 class Stimulus final : public Component {

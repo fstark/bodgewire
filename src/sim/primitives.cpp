@@ -141,6 +141,51 @@ void TriStateBuffer::evaluate(EvalContext& ctx) {
     outputZ_ = false;
 }
 
+// --- DFlipFlop ---
+
+DFlipFlop::DFlipFlop(std::string name, Delays clockToQ, Family family)
+    : Component(std::move(name), {{"D", PinKind::Input, family},
+                                  {"CLK", PinKind::Input, family},
+                                  {"Q", PinKind::Output, family},
+                                  {"Q_N", PinKind::Output, family}}),
+      clockToQ_(clockToQ) {
+    Check(clockToQ.rise >= 1 && clockToQ.fall >= 1, "flip-flop: delays must be >= 1 ps");
+}
+
+void DFlipFlop::powerOn(PowerOnContext& ctx) {
+    q_ = ctx.randomBit() ? One : Zero;
+    ctx.setOutput(kQ, q_);
+    ctx.setOutput(kQN, Not(q_));
+}
+
+void DFlipFlop::evaluate(EvalContext& ctx) {
+    if (ctx.rose(kClk)) {
+        q_ = ctx.readBefore(kD);
+    }
+    ctx.drive(kQ, q_, DelayFor(clockToQ_, q_));
+    ctx.drive(kQN, Not(q_), DelayFor(clockToQ_, Not(q_)));
+}
+
+// --- ClockSource ---
+
+ClockSource::ClockSource(std::string name, Time period, Family family)
+    : Component(std::move(name), {{"OUT", PinKind::Output, family}}), highTime_(period / 2),
+      lowTime_(period - period / 2) {
+    Check(period >= 2, "clock source: period must be >= 2 ps");
+}
+
+void ClockSource::powerOn(PowerOnContext& ctx) {
+    level_ = ctx.randomBit() ? One : Zero;
+    ctx.setOutput(kOut, level_);
+}
+
+void ClockSource::evaluate(EvalContext& ctx) {
+    level_ = Not(level_);
+    const Time delay = level_ == One ? lowTime_ : highTime_;  // time spent at the old level
+    ctx.drive(kOut, level_, delay);
+    ctx.wakeAfter(delay);
+}
+
 // --- Stimulus ---
 
 Stimulus::Stimulus(std::string name, LogicValue initial, std::vector<Step> steps, Family family)
