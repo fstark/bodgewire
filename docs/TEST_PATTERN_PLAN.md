@@ -65,4 +65,5 @@ Manual: user opens `pattern.vcd` in a viewer (spec "Done when").
 ### Fence
 
 - [ ] Benchmark output recorded here
+- [ ] Manual: `pattern.vcd` looks right in a viewer (spec "Done when")
 - [ ] Commit: `"pattern: phase 2 — benchmark results"`

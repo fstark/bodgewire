@@ -48,7 +48,7 @@ All decodes are partial: they rely on the counter never exceeding its range once
 
 Lock from a random power-on state: the horizontal counter within one line (64 µs); the vertical counter at the next match of the `FRAME_END_N` bit pattern, which recurs every 512 lines (≤ 32.8 ms).
 
-Timing: the longest path after a clock edge is CLK→RCO (20 ns) → U6 (10 ns) → U9 (10 ns) → U7 (13 ns) ≈ 55 ns, far inside the 1 µs pixel.
+Timing: the longest path after a clock edge is the video decode, CLK→QA (15 ns) → U12 OR (14 ns) → U13 NOR (10 ns) → U12 OR (14 ns) → U11 AND (10 ns) ≈ 63 ns; the RCO chain into U5.ENT is ≈ 58 ns. Both are far inside the 1 µs pixel.
 
 ## 4. Netlist — `netlists/test_pattern.bwn`
 
@@ -170,13 +170,14 @@ T = time of the first SYNC_N falling edge after 50 ms that starts a low interval
 n0 = 308 * 64 + 1
 for k in 0 .. 3 * kPixelsPerFrame - 1:
     t = T + k * kPixel + kPixel / 2                  // centre of the pixel
-    CHECK(ValueAt(SYNC_N, t) == Expected(n0 + k).syncN)
-    CHECK(ValueAt(VIDEO,  t) == Expected(n0 + k).video)
+    if ValueAt(SYNC_N, t) != Expected(n0 + k).syncN: ++mismatches   // report first 10
+    if ValueAt(VIDEO,  t) != Expected(n0 + k).video: ++mismatches
+REQUIRE(mismatches == 0)
 CHECK(transitions of SYNC_N in [T, T + 3 frames) == transitions of Expected().syncN)
 same for VIDEO
 ```
 
-`ValueAt(samples, t)`: last sample with `time ≤ t` (binary search). Mismatches are reported as `frame f line v pixel h: SYNC_N expected 1 got 0`, first 10 only (`REQUIRE` the count is 0 after the loop, to avoid 120 k `CHECK` lines).
+`ValueAt(samples, t)`: last sample with `time ≤ t` (binary search). Mismatches are reported as `frame f line v pixel h: SYNC_N expected 1 got 0`, first 10 only (counting instead of a `CHECK` per sample avoids 120 k `CHECK` lines).
 
 Tests:
 
