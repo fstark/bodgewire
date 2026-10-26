@@ -6,6 +6,7 @@ FetchContent_Declare(Catch2
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(bw_tests
+  netlist/builder_test.cpp
   netlist/diagnostic_test.cpp
   netlist/parser_test.cpp
   netlist/units_test.cpp
