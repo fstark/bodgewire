@@ -1,7 +1,10 @@
 #include "sim/circuit.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -27,6 +30,20 @@ public:
     explicit PoweredPart(std::string name)
         : Component(std::move(name), {{"VCC", PinKind::Power, Family::Ttl},
                                       {"NC2", PinKind::NoConnect, Family::Ttl}}) {}
+    void evaluate(EvalContext& /*ctx*/) override {}
+};
+
+std::vector<PinSpec> InputPins(std::size_t count) {
+    std::vector<PinSpec> pins;
+    for (std::size_t i = 0; i < count; ++i) {
+        pins.push_back({"I" + std::to_string(i), PinKind::Input, Family::Ttl});
+    }
+    return pins;
+}
+
+class ManyPins : public Component {
+public:
+    ManyPins(std::string name, std::size_t count) : Component(std::move(name), InputPins(count)) {}
     void evaluate(EvalContext& /*ctx*/) override {}
 };
 
@@ -60,6 +77,12 @@ TEST_CASE("circuit: pin ids are contiguous per component", "[sim]") {
     CHECK(circuit.pinCount() == 6);
     CHECK(circuit.pinInfo(Pin(u2, 2)).owner == u2.id());
     CHECK(circuit.pinInfo(Pin(u2, 2)).kind == PinKind::Output);
+}
+
+TEST_CASE("circuit: more than 64 pins rejected", "[sim]") {
+    Circuit circuit;
+    CHECK_NOTHROW(circuit.add<ManyPins>("U1", 64));
+    CHECK_THROWS_AS(circuit.add<ManyPins>("U2", 65), std::logic_error);
 }
 
 TEST_CASE("circuit: connect twice throws", "[sim]") {

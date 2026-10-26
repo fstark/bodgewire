@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
@@ -18,6 +20,14 @@ struct PinSpec {
     PinKind kind;
     Family family;
     bool risingEdgeOnly = false;  // Input: other changes never alter evaluate()'s result
+};
+
+inline constexpr std::size_t kMaxPins = 64;  // one bit per Pin in PackedInputs
+
+// Input Pin values of one Component, bit = PinIndex. X: known = 0, value = 0.
+struct PackedInputs {
+    std::uint64_t value;  // 1 where the Net is 1
+    std::uint64_t known;  // 1 where the Net is 0 or 1
 };
 
 // Passed to Component::evaluate(); hot members are inline in simulator.hpp, include it to use them.
