@@ -8,6 +8,7 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(bw_tests
   parts/catalogue_test.cpp
   parts/gate_package_test.cpp
+  parts/ls161_test.cpp
   parts/ls74_test.cpp
   sim/check_test.cpp
   sim/circuit_test.cpp

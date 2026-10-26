@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "parts/gate_package.hpp"
+#include "parts/ls161.hpp"
 #include "parts/ls74.hpp"
 
 namespace bw {
@@ -45,6 +46,8 @@ constexpr std::array s_parts{
     PartInfo{"74LS02", "quad 2-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS02">},
     PartInfo{"74LS04", "hex inverter", "DIP-14", Chip, &CreateGatePackage<"74LS04">},
     PartInfo{"74LS08", "quad 2-input AND", "DIP-14", Chip, &CreateGatePackage<"74LS08">},
+    PartInfo{"74LS161", "synchronous 4-bit binary counter", "DIP-16", Chip,
+             &CreateChip<Ls161, "74LS161">},
     PartInfo{"74LS20", "dual 4-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS20">},
     PartInfo{"74LS30", "8-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS30">},
     PartInfo{"74LS32", "quad 2-input OR", "DIP-14", Chip, &CreateGatePackage<"74LS32">},
