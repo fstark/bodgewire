@@ -1,5 +1,7 @@
 add_library(bw_sim STATIC
   check.cpp
+  circuit.cpp
+  component.cpp
   event_queue.cpp
   logic.cpp
 )
