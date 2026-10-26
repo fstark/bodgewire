@@ -21,7 +21,8 @@ std::vector<PinSpec> Ls161Pins() {
     const auto in = [](const char* name) { return PinSpec{name, PinKind::Input, Family::Ttl}; };
     const auto out = [](const char* name) { return PinSpec{name, PinKind::Output, Family::Ttl}; };
     const auto power = [](const char* name) { return PinSpec{name, PinKind::Power, Family::Ttl}; };
-    return {in("CLR_N"), in("CLK"),    in("A"),      in("B"),     in("C"),   in("D"),
+    const PinSpec clk{"CLK", PinKind::Input, Family::Ttl, true};
+    return {in("CLR_N"), clk,          in("A"),      in("B"),     in("C"),   in("D"),
             in("ENP"),   power("GND"), in("LOAD_N"), in("ENT"),   out("QD"), out("QC"),
             out("QB"),   out("QA"),    out("RCO"),   power("VCC")};
 }

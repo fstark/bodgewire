@@ -58,6 +58,7 @@ void Circuit::finalize() {
     const std::size_t netCount = netNames_.size();
     std::vector<std::vector<PinId>> drivers(netCount);
     std::vector<std::vector<ComponentId>> readers(netCount);
+    std::vector<std::vector<std::uint8_t>> risingEdgeOnly(netCount);
     netHasTtlInput_.assign(netCount, 0);
     for (std::uint32_t p = 0; p < pins_.size(); ++p) {
         const PinInfo& info = pins_[p];
@@ -75,6 +76,9 @@ void Circuit::finalize() {
         // Pins of one Component are contiguous, so checking the last reader deduplicates.
         if (readers[n].empty() || readers[n].back() != info.owner) {
             readers[n].push_back(info.owner);
+            risingEdgeOnly[n].push_back(info.risingEdgeOnly ? 1 : 0);
+        } else if (!info.risingEdgeOnly) {
+            risingEdgeOnly[n].back() = 0;
         }
     }
 
@@ -82,9 +86,12 @@ void Circuit::finalize() {
     readerStart_.assign(netCount + 1, 0);
     drivers_.clear();
     readers_.clear();
+    readerRisingEdgeOnly_.clear();
     for (std::size_t n = 0; n < netCount; ++n) {
         drivers_.insert(drivers_.end(), drivers[n].begin(), drivers[n].end());
         readers_.insert(readers_.end(), readers[n].begin(), readers[n].end());
+        readerRisingEdgeOnly_.insert(readerRisingEdgeOnly_.end(), risingEdgeOnly[n].begin(),
+                                     risingEdgeOnly[n].end());
         driverStart_[n + 1] = static_cast<std::uint32_t>(drivers_.size());
         readerStart_[n + 1] = static_cast<std::uint32_t>(readers_.size());
     }

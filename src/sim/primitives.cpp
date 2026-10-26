@@ -80,7 +80,7 @@ void TriStateBuffer::evaluate(EvalContext& ctx) {
 
 DFlipFlop::DFlipFlop(std::string name, Delays clockToQ, Family family)
     : Component(std::move(name), {{"D", PinKind::Input, family},
-                                  {"CLK", PinKind::Input, family},
+                                  {"CLK", PinKind::Input, family, true},
                                   {"Q", PinKind::Output, family},
                                   {"Q_N", PinKind::Output, family}}),
       clockToQ_(clockToQ) {

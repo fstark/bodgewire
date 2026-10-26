@@ -17,6 +17,7 @@ struct PinSpec {
     std::string name;  // datasheet name, NAMING.md "Pin names"
     PinKind kind;
     Family family;
+    bool risingEdgeOnly = false;  // Input: other changes never alter evaluate()'s result
 };
 
 // Passed to Component::evaluate(); hot members are inline in simulator.hpp, include it to use them.

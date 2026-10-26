@@ -21,6 +21,7 @@ struct PinInfo {
     ComponentId owner;
     PinKind kind;
     Family family;
+    bool risingEdgeOnly;
 };
 
 // Fixed topology: built, then finalized; flat arrays indexed by ToIndex(id).
@@ -37,7 +38,7 @@ public:
         base.id_ = ComponentId{static_cast<std::uint32_t>(components_.size())};
         base.firstPin_ = PinId{static_cast<std::uint32_t>(pins_.size())};
         for (const PinSpec& spec : base.pins()) {
-            pins_.push_back({kUnconnected, base.id_, spec.kind, spec.family});
+            pins_.push_back({kUnconnected, base.id_, spec.kind, spec.family, spec.risingEdgeOnly});
         }
         components_.push_back(std::move(component));
         return result;
@@ -64,6 +65,12 @@ public:
         const std::uint32_t i = ToIndex(net);
         return std::span(readers_).subspan(readerStart_[i], readerStart_[i + 1] - readerStart_[i]);
     }
+    // Parallel to readers(): 1 if the reader only cares about 0 → 1 changes of this Net.
+    std::span<const std::uint8_t> readerRisingEdgeOnly(NetId net) const {
+        const std::uint32_t i = ToIndex(net);
+        return std::span(readerRisingEdgeOnly_)
+            .subspan(readerStart_[i], readerStart_[i + 1] - readerStart_[i]);
+    }
     Drive tieOf(NetId net) const { return netTie_[ToIndex(net)]; }
     bool hasTtlInput(NetId net) const { return netHasTtlInput_[ToIndex(net)] != 0; }
 
@@ -82,6 +89,7 @@ private:
     std::vector<std::uint32_t> driverStart_, readerStart_;  // size netCount + 1
     std::vector<PinId> drivers_;
     std::vector<ComponentId> readers_;
+    std::vector<std::uint8_t> readerRisingEdgeOnly_;
 };
 
 }  // namespace bw
