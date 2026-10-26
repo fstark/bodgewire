@@ -1,6 +1,6 @@
 # Kernel Performance — Specification (P1d)
 
-Opened by P1c: the test-pattern generator ran at 2.48× real time against a target of ≥ 10× ([TEST_PATTERN_PLAN.md](TEST_PATTERN_PLAN.md)). Builds on [KERNEL.md](KERNEL.md) and [PARTS.md](PARTS.md). Terminology: [GLOSSARY.md](GLOSSARY.md).
+Opened by P1c: the test-pattern generator ran at 2.48× real time against a target of ≥ 10× ([TEST_PATTERN_PLAN.md](TEST_PATTERN_PLAN.md)). Builds on [KERNEL.md](KERNEL.md) and [PARTS.md](PARTS.md). Design: [KERNEL_PERF_DESIGN.md](KERNEL_PERF_DESIGN.md). Terminology: [GLOSSARY.md](GLOSSARY.md).
 
 ## Scope
 
@@ -48,7 +48,7 @@ Diagnosis: the time goes into gathering inputs, not computing logic. Each read i
 ### S3 Gate packages on packed inputs
 
 - `GatePackage::evaluate` computes all its gates from the packed planes with bit operations (three-valued: X propagates as today).
-- It calls `drive` only for outputs whose value changed since its last evaluation.
+- Unchanged outputs cost only `drive`'s inline fast-path compare; no extra output state in the Part.
 - The 74LS161 stays on `read`/`rose`: one Component, and its work is real (counting).
 
 ### S4 Derived data, rebuilt in one place
