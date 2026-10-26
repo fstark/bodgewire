@@ -1,0 +1,172 @@
+#include <charconv>
+#include <chrono>
+#include <cstdint>
+#include <fstream>
+#include <optional>
+#include <print>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "netlist/builder.hpp"
+#include "netlist/units.hpp"
+#include "sim/simulator.hpp"
+#include "sim/vcd.hpp"
+
+using namespace bw;
+using namespace bw::literals;
+
+namespace {
+
+constexpr int kExitNetlistErrors = 1;
+constexpr int kExitUsage = 2;
+
+constexpr std::string_view kUsage = "usage: bw run <file.bwn> [--time 1ms] [--seed 1] "
+                                    "[--record NET,NET... | --record-all] [--vcd FILE]";
+
+struct Options {
+    std::string file;
+    Time time = 1_ms;
+    std::uint64_t seed = 1;
+    std::vector<std::string> record;
+    bool recordAll = false;
+    std::string vcd;
+};
+
+int UsageError(std::string_view message) {
+    std::println(stderr, "bw: {}", message);
+    std::println(stderr, "{}", kUsage);
+    return kExitUsage;
+}
+
+std::vector<std::string> SplitCommas(std::string_view text) {
+    std::vector<std::string> parts;
+    std::size_t start = 0;
+    while (true) {
+        const std::size_t comma = text.find(',', start);
+        parts.emplace_back(text.substr(start, comma - start));
+        if (comma == std::string_view::npos) {
+            return parts;
+        }
+        start = comma + 1;
+    }
+}
+
+// Error message, or nullopt on success.
+std::optional<std::string> ParseOptions(std::span<char*> args, Options& options) {
+    if (args.size() < 2 || std::string_view(args[1]) != "run") {
+        return "expected 'run'";
+    }
+    for (std::size_t i = 2; i < args.size(); ++i) {
+        const std::string_view arg = args[i];
+        if (!arg.starts_with("--")) {
+            if (!options.file.empty()) {
+                return "more than one netlist file";
+            }
+            options.file = arg;
+            continue;
+        }
+        if (arg == "--record-all") {
+            options.recordAll = true;
+            continue;
+        }
+        if (arg != "--time" && arg != "--seed" && arg != "--record" && arg != "--vcd") {
+            return "unknown option " + std::string(arg);
+        }
+        if (i + 1 >= args.size()) {
+            return std::string(arg) + " needs a value";
+        }
+        const std::string_view value = args[++i];
+        if (arg == "--time") {
+            const auto time = ParseDuration(value);
+            if (!time) {
+                return time.error();
+            }
+            options.time = *time;
+        } else if (arg == "--seed") {
+            const auto [end, ec] =
+                std::from_chars(value.data(), value.data() + value.size(), options.seed);
+            if (ec != std::errc{} || end != value.data() + value.size()) {
+                return "bad seed '" + std::string(value) + "'";
+            }
+        } else if (arg == "--record") {
+            options.record = SplitCommas(value);
+        } else {
+            options.vcd = value;
+        }
+    }
+    if (options.file.empty()) {
+        return "missing netlist file";
+    }
+    if (options.recordAll && !options.record.empty()) {
+        return "--record and --record-all are exclusive";
+    }
+    return std::nullopt;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    Options options;
+    if (const auto error = ParseOptions(std::span(argv, static_cast<std::size_t>(argc)), options)) {
+        return UsageError(*error);
+    }
+
+    auto result = LoadNetlistFile(options.file);
+    if (!result) {
+        for (const Diagnostic& d : result.error()) {
+            std::println(stderr, "{}", Format(d));
+        }
+        return kExitNetlistErrors;
+    }
+    LoadedCircuit& loaded = **result;
+    for (const Diagnostic& d : loaded.warnings) {
+        std::println(stderr, "{}", Format(d));
+    }
+
+    std::vector<NetId> recorded;
+    if (options.recordAll) {
+        for (const auto& [name, net] : loaded.nets) {
+            if (name != "GND" && name != "VCC") {
+                recorded.push_back(net);
+            }
+        }
+    }
+    for (const std::string& name : options.record) {
+        const auto it = loaded.nets.find(name);
+        if (it == loaded.nets.end()) {
+            return UsageError("unknown net '" + name + "'");
+        }
+        recorded.push_back(it->second);
+    }
+
+    std::ofstream vcd;
+    if (!options.vcd.empty()) {
+        vcd.open(options.vcd, std::ios::binary);
+        if (!vcd) {
+            return UsageError("cannot write " + options.vcd);
+        }
+    }
+
+    Simulator sim(loaded.circuit);
+    sim.powerOn(options.seed);
+    for (const NetId net : recorded) {
+        sim.record(net);
+    }
+    const auto start = std::chrono::steady_clock::now();
+    sim.runFor(options.time);
+    const std::chrono::duration<double> wall = std::chrono::steady_clock::now() - start;
+
+    if (vcd.is_open()) {
+        WriteVcd(vcd, loaded.circuit, sim.recorder(), sim.now());
+    }
+
+    const double simulated = static_cast<double>(sim.now()) / static_cast<double>(kPicosPerSecond);
+    std::println("simulated_s {}", simulated);
+    std::println("wall_s {}", wall.count());
+    std::println("ratio {}", wall.count() > 0 ? simulated / wall.count() : 0.0);
+    std::println("applied_events {}", sim.stats().appliedEvents);
+    std::println("evaluations {}", sim.stats().evaluations);
+    return 0;
+}
