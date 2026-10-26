@@ -177,6 +177,7 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P1a | Kernel | nominal inertial delays, nets, drive strengths, primitive gates/flip-flops, recording + VCD export (dev logic analyzer), event-rate benchmark. [KERNEL.md](KERNEL.md) |
 | P1b | Parts + netlist | basic TTL Parts (gates, flip-flops, counters) with datasheet delays, netlist format and parser |
 | P1c | Test-pattern generator netlist | the circuit as a netlist, sync checks, benchmark on it (see Performance) |
+| P1d | Kernel performance | packed Component inputs pushed on Net change, gate packages on bit operations; ≥ 10× on the P1c benchmark. [KERNEL_PERF.md](KERNEL_PERF.md) |
 | P2 | Test-pattern generator — **first playable** | crystal, TTL counters → H/V sync + bars/grid, TV model, see-through board view, logic probe, chip swap, trace repair. Faults: dead counter output, broken trace, stuck gate output |
 | P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files), repair validation; still on the P2 board |
 | P4 | Procedural faults | random fault generation, headless vetting (reject symptom-less or trivial candidates) |
