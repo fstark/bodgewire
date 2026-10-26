@@ -15,6 +15,7 @@ add_executable(bw_tests
   sim/rng_test.cpp
   sim/simulator_test.cpp
   sim/time_test.cpp
+  sim/vcd_test.cpp
 )
 target_link_libraries(bw_tests PRIVATE bw_sim bw_warnings Catch2::Catch2WithMain)
 
