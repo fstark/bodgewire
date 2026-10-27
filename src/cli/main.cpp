@@ -12,6 +12,8 @@
 #include <utility>
 #include <vector>
 
+#include "board/board_check.hpp"
+#include "board/kicad_board.hpp"
 #include "board/kicad_netlist.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/units.hpp"
@@ -139,6 +141,32 @@ int ExportKicad(std::span<char*> args) {
     return 0;
 }
 
+int CheckBoardFile(std::span<char*> args) {
+    if (args.size() != 4) {
+        return UsageError("expected: check-board <file.bwn> <file.kicad_pcb>");
+    }
+    const auto loaded = Load(args[2]);
+    if (loaded == nullptr) {
+        return kExitNetlistErrors;
+    }
+    const auto board = ReadKicadBoardFile(args[3]);
+    if (!board) {
+        for (const Diagnostic& d : board.error()) {
+            std::println(stderr, "{}", Format(d));
+        }
+        return kExitNetlistErrors;
+    }
+    const auto problems = CheckBoard(*loaded, *board);
+    for (const std::string& problem : problems) {
+        std::println("{}", problem);
+    }
+    if (!problems.empty()) {
+        return kExitNetlistErrors;
+    }
+    std::println("ok");
+    return 0;
+}
+
 int Run(std::span<char*> args) {
     Options options;
     if (const auto error = ParseOptions(args, options)) {
@@ -207,6 +235,9 @@ int main(int argc, char** argv) {
     }
     if (command == "export-kicad") {
         return ExportKicad(args);
+    }
+    if (command == "check-board") {
+        return CheckBoardFile(args);
     }
     return UsageError("expected 'run', 'export-kicad' or 'check-board'");
 }

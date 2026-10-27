@@ -6,6 +6,7 @@ FetchContent_Declare(Catch2
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(bw_tests
+  board/board_check_test.cpp
   board/copper_test.cpp
   board/kicad_board_test.cpp
   board/kicad_netlist_test.cpp
