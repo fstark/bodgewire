@@ -91,7 +91,12 @@ void Circuit::buildTables() {
     fanOutStart_.assign(netCount + 1, 0);
     drivers_.clear();
     fanOut_.clear();
+    netSingleDriver_.assign(netCount, kNoPin);
     for (std::size_t n = 0; n < netCount; ++n) {
+        if (drivers[n].size() == 1 && pins_[ToIndex(drivers[n][0])].kind == PinKind::Output &&
+            netTie_[n].strength == DriveStrength::None) {
+            netSingleDriver_[n] = drivers[n][0];
+        }
         drivers_.insert(drivers_.end(), drivers[n].begin(), drivers[n].end());
         fanOut_.insert(fanOut_.end(), fanOut[n].begin(), fanOut[n].end());
         driverStart_[n + 1] = static_cast<std::uint32_t>(drivers_.size());

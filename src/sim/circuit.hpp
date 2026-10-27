@@ -75,12 +75,16 @@ public:
     }
     Drive tieOf(NetId net) const { return netTie_[ToIndex(net)]; }
     bool hasTtlInput(NetId net) const { return netHasTtlInput_[ToIndex(net)] != 0; }
+    // The Net's only Driver if it is a totem-pole Output and the Net is untied, else kNoPin.
+    PinId singleDriver(NetId net) const { return netSingleDriver_[ToIndex(net)]; }
+
+    static constexpr PinId kNoPin{UINT32_MAX};
 
 private:
     static constexpr NetId kUnconnected{UINT32_MAX};
 
     void checkNet(NetId net) const;
-    void buildTables();  // drivers_, fanOut_, netHasTtlInput_ from pins_
+    void buildTables();  // drivers_, fanOut_, netHasTtlInput_, netSingleDriver_ from pins_
 
     bool finalized_ = false;
     std::vector<std::unique_ptr<Component>> components_;
@@ -88,6 +92,7 @@ private:
     std::vector<std::string> netNames_;
     std::vector<Drive> netTie_;  // strongest tie per Net, None if untied
     std::vector<std::uint8_t> netHasTtlInput_;
+    std::vector<PinId> netSingleDriver_;
     // CSR: drivers (output PinIds) and fan-out (one entry per Component with an input on the Net)
     std::vector<std::uint32_t> driverStart_, fanOutStart_;  // size netCount + 1
     std::vector<PinId> drivers_;

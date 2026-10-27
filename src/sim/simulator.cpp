@@ -81,6 +81,13 @@ void Simulator::markComponentDirty(ComponentId component) {
 }
 
 Resolution Simulator::resolveNet(NetId net) const {
+    const PinId single = circuit_.singleDriver(net);
+    if (single != Circuit::kNoPin) {
+        const LogicValue value = outputs_[ToIndex(single)].current;
+        if (value != LogicValue::Z) {
+            return {value, false};  // what Resolver gives for one Strong drive and no tie
+        }
+    }
     Resolver resolver;
     resolver.add(circuit_.tieOf(net));
     for (const PinId pin : circuit_.drivers(net)) {

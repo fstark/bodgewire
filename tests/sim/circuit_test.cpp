@@ -214,3 +214,26 @@ TEST_CASE("circuit: ties combine", "[sim]") {
     CHECK(circuit.tieOf(clash).strength == DriveStrength::Weak);
     CHECK(circuit.tieOf(clash).value == LogicValue::X);
 }
+
+TEST_CASE("circuit: single driver only for one untied totem-pole output", "[sim]") {
+    Circuit circuit;
+    Dummy& u1 = circuit.add<Dummy>("U1");
+    Dummy& u2 = circuit.add<Dummy>("U2");
+    Dummy& u3 = circuit.add<Dummy>("U3");
+    Dummy& u4 = circuit.add<Dummy>("U4");
+    const NetId single = circuit.addNet("single");
+    const NetId shared = circuit.addNet("shared");
+    const NetId pulled = circuit.addNet("pulled");
+    circuit.connect(u1, "Y", single);
+    circuit.connect(u1, "A", shared);
+    circuit.connect(u2, "Y", shared);
+    circuit.connect(u3, "Y", shared);
+    circuit.connect(u4, "Y", pulled);
+    circuit.connect(u2, "A", pulled);
+    circuit.tie(pulled, LogicValue::One, DriveStrength::Weak);
+    circuit.finalize();
+
+    CHECK(circuit.singleDriver(single) == Pin(u1, 2));
+    CHECK(circuit.singleDriver(shared) == Circuit::kNoPin);
+    CHECK(circuit.singleDriver(pulled) == Circuit::kNoPin);
+}
