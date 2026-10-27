@@ -26,6 +26,10 @@ One electrical terminal of a Component.
 **Socket**:
 A holder on the Board that a Component plugs into, making it removable without soldering.
 
+**Connector**:
+A Component through which power enters a Board or signals leave it, such as the power connector or the video connector. Each type has one fixed job.
+_Avoid_: Port, jack, header
+
 **Joint**:
 A solder connection between a Pin (or Socket contact) and the Copper.
 _Avoid_: Solder point
