@@ -38,6 +38,12 @@ TEST_CASE("boards: counter matches its netlist", "[board]") {
     CHECK(CheckBoard(*counter.circuit, counter.board).empty());
 }
 
+TEST_CASE("boards: test pattern matches its netlist", "[board]") {
+    const Loaded pattern = Load("test_pattern");
+    CHECK_FALSE(pattern.board.vias.empty());
+    CHECK(CheckBoard(*pattern.circuit, pattern.board).empty());
+}
+
 TEST_CASE("boards: counter with a track removed has one open", "[board]") {
     Loaded counter = Load("counter");
     REQUIRE_FALSE(counter.board.traces.empty());
