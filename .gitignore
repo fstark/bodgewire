@@ -4,6 +4,9 @@ build/
 *.vcd
 boards/**/*.net
 boards/**/*.kicad_prl
+boards/**/*.kicad_sch
+boards/**/*.dsn
+boards/**/*.ses
 boards/**/*-backups/
 boards/**/fp-info-cache
 boards/**/~*.lck
