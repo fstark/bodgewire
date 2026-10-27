@@ -112,3 +112,15 @@ TEST_CASE("board check: on the board twice", "[board]") {
     board.components.back().pads.clear();
     CHECK(Check(board).front() == "R1: on the board twice");
 }
+
+TEST_CASE("board check: a board needs one POWER connector", "[board]") {
+    const auto problems = [](std::string_view netlist) {
+        const auto loaded = LoadNetlist(netlist, "t.bwn");
+        REQUIRE(loaded.has_value());
+        return BoardNetlistProblems(**loaded);
+    };
+    const Lines missing{"a board needs one POWER connector"};
+    CHECK(problems("part U1 74LS00\n") == missing);
+    CHECK(problems("part J1 POWER\n").empty());
+    CHECK(problems("part J1 POWER\npart J2 POWER\n") == missing);
+}

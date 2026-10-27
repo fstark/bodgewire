@@ -133,6 +133,12 @@ int ExportKicad(std::span<char*> args) {
     if (loaded == nullptr) {
         return kExitNetlistErrors;
     }
+    if (const auto problems = BoardNetlistProblems(*loaded); !problems.empty()) {
+        for (const std::string& problem : problems) {
+            std::println(stderr, "bw: {}", problem);
+        }
+        return kExitNetlistErrors;
+    }
     std::ofstream out(args[4], std::ios::binary);
     if (!out) {
         return UsageError("cannot write " + std::string(args[4]));
@@ -156,7 +162,10 @@ int CheckBoardFile(std::span<char*> args) {
         }
         return kExitNetlistErrors;
     }
-    const auto problems = CheckBoard(*loaded, *board);
+    auto problems = BoardNetlistProblems(*loaded);
+    for (std::string& problem : CheckBoard(*loaded, *board)) {
+        problems.push_back(std::move(problem));
+    }
     for (const std::string& problem : problems) {
         std::println("{}", problem);
     }

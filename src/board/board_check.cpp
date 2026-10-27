@@ -42,6 +42,15 @@ std::string JoinPads(const std::set<PadKey>& pads) {
 
 }  // namespace
 
+std::vector<std::string> BoardNetlistProblems(const LoadedCircuit& loaded) {
+    const auto power = std::ranges::count_if(
+        loaded.parts, [](const LoadedPart& part) { return part.info->name == "POWER"; });
+    if (power != 1) {
+        return {"a board needs one POWER connector"};
+    }
+    return {};
+}
+
 std::vector<std::string> CheckBoard(const LoadedCircuit& loaded, const Board& board) {
     std::vector<std::string> problems;
 
