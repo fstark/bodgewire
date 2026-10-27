@@ -1,4 +1,5 @@
 add_library(bw_board STATIC
+  kicad_board.cpp
   kicad_netlist.cpp
   sexpr.cpp
 )
