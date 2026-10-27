@@ -3,7 +3,7 @@
 Design: [CONNECTORS_DESIGN.md](CONNECTORS_DESIGN.md)
 Spec: [CONNECTORS.md](CONNECTORS.md)
 
-**P2b done 2026-10-27**, commits 2d0a456..(phase 4 commit). All 4 phases completed:
+**P2b done 2026-10-27**, commits 2d0a456..129fd25. All 4 phases completed:
 
 1. `Connector` Component, `PartKind::Connector`, `POWER` (KK-2) and `VIDEO` (KK-3) in the catalogue and footprint table.
 2. `BoardNetlistProblems`: `export-kicad` and `check-board` need exactly one POWER connector.
