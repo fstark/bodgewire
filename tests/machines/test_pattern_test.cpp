@@ -71,6 +71,19 @@ std::unique_ptr<LoadedCircuit> LoadTestPattern() {
     return std::move(*result);
 }
 
+// Net on `pin` of the board's `part` connector: outputs are read where the monitor plugs in.
+NetId ConnectorNet(const LoadedCircuit& loaded, std::string_view part, std::string_view pin) {
+    for (const LoadedPart& p : loaded.parts) {
+        if (p.info->name == part) {
+            const Component& connector = *loaded.components.at(p.reference);
+            return loaded.circuit.netOf(
+                PinId{ToIndex(connector.firstPin()) + connector.pinIndex(pin)});
+        }
+    }
+    FAIL("no " << part << " connector");
+    return {};
+}
+
 // Start of the first vertical sync after `after`: a falling edge after a high interval longer
 // than an HSYNC pulse, starting a low interval of at least 32 us.
 Time FindVsyncStart(std::span<const Sample> samples, Time after) {
@@ -90,15 +103,15 @@ Time FindVsyncStart(std::span<const Sample> samples, Time after) {
 TEST_CASE("test pattern: loads without warnings", "[machines]") {
     const auto loaded = LoadTestPattern();
     CHECK(loaded->warnings.empty());
-    CHECK(loaded->components.size() == 15);
+    CHECK(loaded->components.size() == 17);  // 15 chips, 2 connectors
 }
 
 TEST_CASE("test pattern: outputs match golden function", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2, 3);
     INFO("seed " << seed);
     const auto loaded = LoadTestPattern();
-    const NetId syncN = loaded->nets.at("SYNC_N");
-    const NetId video = loaded->nets.at("VIDEO");
+    const NetId syncN = ConnectorNet(*loaded, "VIDEO", "SYNC_N");
+    const NetId video = ConnectorNet(*loaded, "VIDEO", "VIDEO");
     Simulator sim(loaded->circuit);
     sim.powerOn(seed);
     sim.record(syncN);

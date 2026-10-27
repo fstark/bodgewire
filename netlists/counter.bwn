@@ -2,6 +2,7 @@
 # cascaded 74LS161, a 74LS74 toggle that divides C7 by two, and a NAND decode of C6, C7.
 
 part X1 OSC freq=1MHz
+part J1 POWER
 part R1 R value=4k7
 part U1 74LS161
 part U2 74LS161

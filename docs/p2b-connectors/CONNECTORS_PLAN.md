@@ -3,40 +3,11 @@
 Design: [CONNECTORS_DESIGN.md](CONNECTORS_DESIGN.md)
 Spec: [CONNECTORS.md](CONNECTORS.md)
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1 | Connector Component, catalogue entries, footprints | |
-| 2 | Board netlist rule, CLI | |
-| 3 | Headless DRC tests | |
-| 4 | Netlists with connectors, outputs through J2, Boards re-laid (needs the user) | |
+**P2b done 2026-10-27**, commits 2d0a456..(phase 4 commit). All 4 phases completed:
 
-Build gate: `cmake --preset debug && cmake --build --preset debug`
-Test gate:  `ctest --preset debug --output-on-failure`
+1. `Connector` Component, `PartKind::Connector`, `POWER` (KK-2) and `VIDEO` (KK-3) in the catalogue and footprint table.
+2. `BoardNetlistProblems`: `export-kicad` and `check-board` need exactly one POWER connector.
+3. `drc_<board>` CTest tests run `kicad-cli pcb drc` on every committed Board (skipped without KiCad).
+4. J1 on both netlists, J2 on the test pattern; golden check reads SYNC_N/VIDEO at J2's Pins; both Boards re-laid by the user and pass `check-board` and DRC.
 
-All code follows [STYLE.md](../STYLE.md) and [NAMING.md](../NAMING.md); `clang-format -i` on changed C++ files.
-
----
-
-## Phase 1 — Connector Component, catalogue, footprints
-
-Design §2, §3. `src/parts/connector.hpp/.cpp` (add to `src/parts/CMakeLists.txt`); `PartKind::Connector`; `CreateConnector<Name>`; POWER and VIDEO entries; KK-2/KK-3 in `kFootprints`. Tests: `tests/parts/connector_test.cpp`, builder implicit power for J1, footprint table.
-
-Commit `"connectors: phase 1 — POWER and VIDEO Parts"`.
-
-## Phase 2 — Board netlist rule, CLI
-
-Design §4. `BoardNetlistProblems`; `export-kicad` and `check-board` use it. Tests in `board_check_test.cpp`.
-
-Commit `"connectors: phase 2 — board needs one POWER connector"`.
-
-## Phase 3 — Headless DRC tests
-
-Design §6, in `tests/CMakeLists.txt`. Check that a Board with a deleted track fails (manual, temporary copy).
-
-Commit `"connectors: phase 3 — KiCad DRC in ctest"`.
-
-## Phase 4 — Netlists, outputs through J2, Boards
-
-Design §5, spec S3. Add J1 to `counter.bwn`, J1 and J2 to `test_pattern.bwn`; update `test_pattern_test.cpp`; export both `.net`. The user re-imports, places and routes J1/J2; `bw check-board` and DRC pass. One commit with netlists, test and Boards.
-
-Commit `"connectors: phase 4 — connectors on the Boards"`.
+Follow-up (small, when convenient): `export-kicad` lists every unconnected Pin in a single-pin net (`unconnected-(U3-Pad8)`, as KiCad's own exporter does), so pcbnew's import shows no "no net found" warnings and real problems stand out.

@@ -302,7 +302,7 @@
   "pcbnew": {
     "last_paths": {
       "idf": "",
-      "netlist": "./",
+      "netlist": "counter.net",
       "plot": "",
       "specctra_dsn": "",
       "step": "",

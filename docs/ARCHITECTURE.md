@@ -180,7 +180,7 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P1c | Test-pattern generator netlist | the circuit as a netlist, sync checks, benchmark on it (see Performance) |
 | P1d | Kernel performance | done at ~5× on the P1c benchmark (10× not met; enough for P2–P3). Further work deferred until a BW-80-like load is measured. [KERNEL_PERF_PLAN.md](p1d-kernel-perf/KERNEL_PERF_PLAN.md), [OPTIMISATION_IDEAS.md](p1d-kernel-perf/OPTIMISATION_IDEAS.md) |
 | P2a | Board layout via KiCad (spike) | done: KiCad kept as layout tool; `bw export-kicad`, `.kicad_pcb` reader, copper check from geometry (`bw check-board`). [BOARD_LAYOUT.md](p2a-board-layout/BOARD_LAYOUT.md) |
-| P2b | Connectors | `POWER` and `VIDEO` connector Parts on the Boards; outputs read through the connector; headless KiCad DRC. [CONNECTORS.md](p2b-connectors/CONNECTORS.md) |
+| P2b | Connectors | done: `POWER` and `VIDEO` connector Parts on the Boards; outputs read through the connector; headless KiCad DRC. [CONNECTORS.md](p2b-connectors/CONNECTORS.md) |
 | P2 | Test-pattern generator — **first playable** | crystal, TTL counters → H/V sync + bars/grid, TV model, see-through board view, logic probe, chip swap, trace repair. Faults: dead counter output, broken trace, stuck gate output |
 | P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files), repair validation; still on the P2 board |
 | P4 | Procedural faults | random fault generation, headless vetting (reject symptom-less or trivial candidates) |

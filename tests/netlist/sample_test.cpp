@@ -104,7 +104,7 @@ struct ApiCounter {
 TEST_CASE("sample: counter.bwn loads without warnings", "[netlist]") {
     const auto loaded = LoadCounter();
     CHECK(loaded->warnings.empty());
-    CHECK(loaded->components.size() == 5);
+    CHECK(loaded->components.size() == 6);  // 5 chips, POWER connector
 }
 
 TEST_CASE("sample: counter counts", "[netlist]") {

@@ -16,6 +16,8 @@ part U11 74LS08     # blanking, video gate
 part U12 74LS32     # grid ORs
 part U13 74LS02     # grid NORs, ACTIVE
 part U14 74LS74     # output registers
+part J1  POWER      # 5 V in
+part J2  VIDEO      # to the monitor
 
 net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U4.CLK U5.CLK U14.1CLK U14.2CLK
 
@@ -72,8 +74,8 @@ net GRID        U12.4Y U11.3B
 net VIDEO_D     U11.3Y U14.2D
 
 # Output registers.
-net SYNC_N      U14.1Q
-net VIDEO       U14.2Q
+net SYNC_N      U14.1Q J2.SYNC_N
+net VIDEO       U14.2Q J2.VIDEO
 net VCC         U14.1PRE_N U14.1CLR_N U14.2PRE_N U14.2CLR_N
 
 # Unused gate inputs.
