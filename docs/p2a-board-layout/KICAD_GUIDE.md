@@ -30,14 +30,16 @@ mkdir -p boards/counter
 4. Set **"Link footprints using: Reference designators"**. Click **Update PCB**, then **Close**.
 5. The chips follow the mouse as a bunch: click to drop them anywhere.
 
+If the import says `footprint '...' not found`: **Preferences → Manage Footprint Libraries… → Global Libraries**; the `KiCad` row must point to `/Applications/KiCad/KiCad.app/Contents/SharedSupport/template/fp-lib-table` (a fresh install may point to a non-existent `~/Applications/...` copy).
+
 Each chip is a footprint: its outline and its pads (holes with copper rings). The square pad is pin 1. Thin straight lines between pads (the "ratsnest") show what must be connected; they are not copper yet.
 
 ## 5. Draw the board outline
 
-1. In the **Appearance** panel (right), click the layer **Edge.Cuts**.
-2. **Place → Draw Rectangle**, drag a rectangle around the chips, press **Esc**.
+1. In the **Appearance** panel (right), click the layer **Edge.Cuts** (the layer box in the top toolbar then shows Edge.Cuts).
+2. Click the **square outline icon** in the vertical toolbar right of the canvas (or menu bar **Place → Draw Rectangle**). Click one corner, then the opposite corner, a few mm around the chips. Press **Esc**.
 
-You can resize it later: select it and drag a corner.
+You can resize it later: select it and drag a corner. The big pink frame with a title block is the paper sheet, not the board: ignore it.
 
 ## 6. Place the chips
 
@@ -60,9 +62,10 @@ The ratsnest line disappears once a connection is made. GND and VCC have many pi
 
 Auto-routing with Freerouting (optional, all at once):
 
-1. **Plugin and Content Manager** (project window) → **Plugins** → install **Freerouting**, then restart the PCB editor.
-2. **Tools → External Plugins → Freerouting**. Wait, then accept the result.
-3. If the plugin doesn't work: **File → Export → Specctra DSN…**, open the `.dsn` in the Freerouting app ([freerouting.app](https://freerouting.app)), let it route, save the `.ses`, then **File → Import → Specctra Session…**.
+1. Freerouting needs Java 25 or later: `brew install --cask temurin` (asks for your password), then quit and reopen KiCad.
+2. **Plugin and Content Manager** (project window) → **Plugins** → install **Freerouting**, then restart the PCB editor.
+3. **Tools → External Plugins → Freerouting**. Wait, then accept the result.
+4. If the plugin doesn't work: **File → Export → Specctra DSN…**, open the `.dsn` in the Freerouting app ([freerouting.app](https://freerouting.app)), let it route, save the `.ses`, then **File → Import → Specctra Session…**.
 
 Mixing is fine: route the tricky nets by hand, then let Freerouting do the rest.
 

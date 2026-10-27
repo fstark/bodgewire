@@ -7,7 +7,7 @@ Phases 1–7 completed 2026-10-27, commits dd33ff2..ff9b0ac plus the guide: netl
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 8 | User layouts, integration tests, decision (needs the user) | |
+| 8 | User layouts, integration tests, decision (needs the user) | **In progress**: counter done |
 
 Build gate: `cmake --preset debug && cmake --build --preset debug`
 Test gate:  `ctest --preset debug --output-on-failure`
@@ -22,7 +22,7 @@ Needs the user.
 
 1. The user lays out `boards/counter`, then `boards/test_pattern`, following the guide; fix any reader or export problem found on the way (with a unit test each).
 2. `tests/board/boards_test.cpp` (tag `[board]`; `BW_BOARD_DIR="${PROJECT_SOURCE_DIR}/boards"` in `tests/CMakeLists.txt`): both Boards pass `CheckBoard` against their netlists.
-3. Fixture `tests/board/fixtures/counter_open.kicad_pcb`: the counter Board with one track removed; reports exactly one open.
+3. In `boards_test.cpp`: the counter Board with one track removed (in memory, no fixture file) reports exactly one open.
 4. Decision in [ARCHITECTURE.md](../ARCHITECTURE.md), Board authoring: keep KiCad or switch to our own generator, with the pain points.
 
 Fence: tests pass; commit `"board: phase 8 — real boards and decision"`.
