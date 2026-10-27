@@ -11,7 +11,7 @@
 
 namespace bw {
 
-enum class PartKind : std::uint8_t { Chip, Resistor };
+enum class PartKind : std::uint8_t { Chip, Resistor, Connector };
 
 struct PartParam {
     std::string name;

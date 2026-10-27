@@ -34,6 +34,10 @@ TEST_CASE("kicad netlist: footprint table", "[board]") {
     CHECK(KicadFootprint("DIP-16") == "Package_DIP:DIP-16_W7.62mm");
     CHECK(KicadFootprint("axial") ==
           "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal");
+    CHECK(KicadFootprint("KK-2") ==
+          "Connector_Molex:Molex_KK-254_AE-6410-02A_1x02_P2.54mm_Vertical");
+    CHECK(KicadFootprint("KK-3") ==
+          "Connector_Molex:Molex_KK-254_AE-6410-03A_1x03_P2.54mm_Vertical");
     CHECK(KicadFootprint("DIP-40").empty());
 }
 

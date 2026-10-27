@@ -19,6 +19,7 @@ add_executable(bw_tests
   netlist/sample_test.cpp
   netlist/units_test.cpp
   parts/catalogue_test.cpp
+  parts/connector_test.cpp
   parts/gate_package_test.cpp
   parts/ls161_test.cpp
   parts/ls74_test.cpp

@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <utility>
 
+#include "parts/connector.hpp"
 #include "parts/gate_package.hpp"
 #include "parts/ls161.hpp"
 #include "parts/ls74.hpp"
@@ -37,6 +38,15 @@ std::expected<Component*, std::string> CreateChip(Circuit& circuit, std::string 
         return std::unexpected(std::string(Name.view()) + " takes no parameters");
     }
     return &circuit.add<T>(std::move(reference));
+}
+
+template <PartName Name>
+std::expected<Component*, std::string> CreateConnector(Circuit& circuit, std::string reference,
+                                                       std::span<const PartParam> params) {
+    if (!params.empty()) {
+        return std::unexpected(std::string(Name.view()) + " takes no parameters");
+    }
+    return &circuit.add<Connector>(std::move(reference), ConnectorPins(Name.view()));
 }
 
 std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::string reference,
@@ -75,7 +85,9 @@ constexpr std::array s_parts{
              &CreateChip<Ls74, "74LS74">},
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
+    PartInfo{"POWER", "5 V power connector", "KK-2", Connector, &CreateConnector<"POWER">},
     PartInfo{"R", "resistor", "axial", Resistor, nullptr},
+    PartInfo{"VIDEO", "TTL monitor connector", "KK-3", Connector, &CreateConnector<"VIDEO">},
 };
 
 }  // namespace
