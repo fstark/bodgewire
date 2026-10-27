@@ -2,3 +2,8 @@ venv/
 build/
 .DS_Store
 *.vcd
+boards/**/*.net
+boards/**/*.kicad_prl
+boards/**/*-backups/
+boards/**/fp-info-cache
+boards/**/~*.lck
