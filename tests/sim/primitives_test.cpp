@@ -60,38 +60,6 @@ TEST_CASE("gate function: X handling", "[sim]") {
     CHECK(Eval(GateKind::Buffer, {X}) == X);
 }
 
-TEST_CASE("gate function: packed matches GateFunction", "[sim]") {
-    constexpr std::array kinds{GateKind::And, GateKind::Or,   GateKind::Nand, GateKind::Nor,
-                               GateKind::Xor, GateKind::Xnor, GateKind::Not,  GateKind::Buffer};
-    constexpr std::array values{Zero, One, X};
-    constexpr unsigned kOffset = 3;
-    for (const GateKind kind : kinds) {
-        const bool single = kind == GateKind::Not || kind == GateKind::Buffer;
-        for (unsigned n = single ? 1 : 2; n <= (single ? 1u : 4u); ++n) {
-            unsigned combinations = 1;
-            for (unsigned i = 0; i < n; ++i) {
-                combinations *= 3;
-            }
-            for (unsigned c = 0; c < combinations; ++c) {
-                std::vector<LogicValue> inputs;
-                PackedInputs packed{1, 1};  // unrelated bit 0, outside the mask
-                std::uint64_t mask = 0;
-                unsigned rest = c;
-                for (unsigned i = 0; i < n; ++i) {
-                    const LogicValue v = values[rest % 3];
-                    rest /= 3;
-                    inputs.push_back(v);
-                    const std::uint64_t bit = std::uint64_t{1} << (i + kOffset);
-                    mask |= bit;
-                    packed.value |= v == One ? bit : 0;
-                    packed.known |= v != X ? bit : 0;
-                }
-                CHECK(PackedGateFunction(kind, packed, mask) == GateFunction(kind, inputs));
-            }
-        }
-    }
-}
-
 TEST_CASE("tri-state: disable gives Z, enable restores", "[sim]") {
     Circuit circuit;
     const NetId a = circuit.addNet("a");

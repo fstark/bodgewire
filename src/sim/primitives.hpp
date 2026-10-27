@@ -1,6 +1,5 @@
 #pragma once
 
-#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -87,46 +86,6 @@ constexpr LogicValue GateFunction(GateKind kind, std::span<const LogicValue> inp
         return Not(inputs[0]);
     case GateKind::Buffer:
         return inputs[0];
-    }
-    return LogicValue::X;
-}
-
-// GateFunction over the Pins in `mask`, three-valued. Not/Buffer: mask has one bit.
-constexpr LogicValue PackedGateFunction(GateKind kind, PackedInputs inputs, std::uint64_t mask) {
-    const std::uint64_t ones = inputs.value & mask;
-    const std::uint64_t zeros = inputs.known & ~inputs.value & mask;
-    const auto andOf = [&] {
-        return zeros != 0 ? LogicValue::Zero : ones == mask ? LogicValue::One : LogicValue::X;
-    };
-    const auto orOf = [&] {
-        return ones != 0 ? LogicValue::One : zeros == mask ? LogicValue::Zero : LogicValue::X;
-    };
-    const auto xorOf = [&] {
-        if ((ones | zeros) != mask) {
-            return LogicValue::X;
-        }
-        return (std::popcount(ones) & 1) != 0 ? LogicValue::One : LogicValue::Zero;
-    };
-    const auto bufferOf = [&] {
-        return ones != 0 ? LogicValue::One : zeros != 0 ? LogicValue::Zero : LogicValue::X;
-    };
-    switch (kind) {
-    case GateKind::And:
-        return andOf();
-    case GateKind::Or:
-        return orOf();
-    case GateKind::Nand:
-        return Not(andOf());
-    case GateKind::Nor:
-        return Not(orOf());
-    case GateKind::Xor:
-        return xorOf();
-    case GateKind::Xnor:
-        return Not(xorOf());
-    case GateKind::Not:
-        return Not(bufferOf());
-    case GateKind::Buffer:
-        return bufferOf();
     }
     return LogicValue::X;
 }

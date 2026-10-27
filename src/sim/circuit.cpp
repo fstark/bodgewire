@@ -76,13 +76,10 @@ void Circuit::buildTables() {
         if (info.family == Family::Ttl) {
             netHasTtlInput_[n] = 1;
         }
-        const std::uint32_t local = p - ToIndex(components_[ToIndex(info.owner)]->firstPin());
-        const std::uint64_t bit = std::uint64_t{1} << local;
         // Pins of one Component are contiguous, so checking the last entry merges them.
         if (fanOut[n].empty() || fanOut[n].back().component != info.owner) {
-            fanOut[n].push_back({info.owner, info.risingEdgeOnly, bit});
+            fanOut[n].push_back({info.owner, info.risingEdgeOnly});
         } else {
-            fanOut[n].back().mask |= bit;
             fanOut[n].back().risingEdgeOnly &= info.risingEdgeOnly;
         }
     }

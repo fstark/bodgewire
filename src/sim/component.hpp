@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
@@ -22,14 +20,6 @@ struct PinSpec {
     bool risingEdgeOnly = false;  // Input: other changes never alter evaluate()'s result
 };
 
-inline constexpr std::size_t kMaxPins = 64;  // one bit per Pin in PackedInputs
-
-// Input Pin values of one Component, bit = PinIndex. X: known = 0, value = 0.
-struct PackedInputs {
-    std::uint64_t value;  // 1 where the Net is 1
-    std::uint64_t known;  // 1 where the Net is 0 or 1
-};
-
 // Passed to Component::evaluate(); hot members are inline in simulator.hpp, include it to use them.
 class EvalContext {
 public:
@@ -39,19 +29,17 @@ public:
     inline bool rose(PinIndex pin) const;              // Net went 0 → 1 at this timestamp
     bool readBit(PinIndex pin);                        // X → seeded random bit (MOS inputs, S4)
     inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
-    void wakeAfter(Time delay);                      // evaluate this Component again at now + delay
-    PackedInputs inputs() const { return inputs_; }  // Input Pins only; other bits 0
+    void wakeAfter(Time delay);  // evaluate this Component again at now + delay
 
 private:
     friend class Simulator;
-    EvalContext(Simulator& sim, PinId firstPin, ComponentId component, const PackedInputs& inputs)
-        : sim_(sim), firstPin_(firstPin), component_(component), inputs_(inputs) {}
+    EvalContext(Simulator& sim, PinId firstPin, ComponentId component)
+        : sim_(sim), firstPin_(firstPin), component_(component) {}
     PinId pinId(PinIndex pin) const { return PinId{ToIndex(firstPin_) + pin}; }
     void driveChanged(PinId id, LogicValue value, Time delay);
     Simulator& sim_;
     PinId firstPin_;
     ComponentId component_;
-    const PackedInputs& inputs_;
 };
 
 // Passed to Component::powerOn(); members defined in simulator.cpp.

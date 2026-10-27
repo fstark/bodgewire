@@ -8,9 +8,7 @@
 namespace bw {
 
 Component::Component(std::string name, std::vector<PinSpec> pins)
-    : name_(std::move(name)), pins_(std::move(pins)) {
-    Check(pins_.size() <= kMaxPins, "component: more than 64 pins");
-}
+    : name_(std::move(name)), pins_(std::move(pins)) {}
 
 PinIndex Component::pinIndex(std::string_view pinName) const {
     for (PinIndex i = 0; i < pins_.size(); ++i) {

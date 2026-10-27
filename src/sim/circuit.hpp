@@ -28,9 +28,8 @@ struct PinInfo {
 struct FanOut {
     ComponentId component;
     bool risingEdgeOnly;  // all those Pins are rising-edge-only
-    std::uint64_t mask;   // bit = PinIndex
 };
-static_assert(sizeof(FanOut) == 16);
+static_assert(sizeof(FanOut) == 8);
 
 // Fixed topology: built, then finalized; flat arrays indexed by ToIndex(id).
 class Circuit {

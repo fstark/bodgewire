@@ -50,3 +50,17 @@ Profile (`build/profile`, `sample` 8 s, 6284 samples, top of stack):
 | other | 2.4% |
 
 Event queue (push + pop) is 17.1%: removing it entirely would give at most ~6.5×, so a bucket queue alone cannot reach 10×. Next: design addendum in [KERNEL_PERF_DESIGN.md](KERNEL_PERF_DESIGN.md) covering the queue plus the run loop (29.8%) and `Ls161::evaluate` (16.9%), then append its phases here.
+
+## Follow-up (2026-10-27)
+
+Measured with `/usr/bin/time -l` (instructions retired; 5 s simulated). The CPU runs at ~6.4 instructions per cycle, so cost = instruction count; misses and mispredictions are not the problem. `-mcpu=native` changes nothing.
+
+| Change | Instructions | Kept |
+|---|---|---|
+| After phase 5 | 25.41 G | — |
+| Single-driver fast path in `resolveNet` (fe5fb17) | 23.28 G | yes |
+| Gate packages skip units with unchanged inputs | 23.03 G (from 25.41) | no: 74LS gates only |
+| Timing wheel instead of the binary heap | 25.45–26.11 G | no: the heap holds only ~8–15 events |
+| Packed inputs removed (phases 2, 4, 5 reverted; `FanOut` keeps component + rising-edge-only) | 22.91 G | yes |
+
+Differential cost per operation: heap push + pop ≤ 102, Net resolution 77 (before the fast path), gate package or 74LS74 evaluation ~306. Evaluations are over half the instructions. 10× is out of reach without part-specific evaluation work.

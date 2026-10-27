@@ -50,24 +50,34 @@ std::vector<Sample> Samples(const Simulator& sim, NetId net) {
     return {samples.begin(), samples.end()};
 }
 
-// Pin 0 is an Output; Pins 1-4 are Inputs. Stores what it reads on each evaluation.
+// Stores what it reads on Pin A at each evaluation.
 class Probe final : public Component {
 public:
     explicit Probe(std::string name)
-        : Component(std::move(name), {{"Y", PinKind::Output, Family::Ttl},
-                                      {"A", PinKind::Input, Family::Ttl},
-                                      {"B", PinKind::Input, Family::Ttl},
-                                      {"C", PinKind::Input, Family::Ttl},
-                                      {"D", PinKind::Input, Family::Ttl}}) {}
-    void evaluate(EvalContext& ctx) override {
-        a = ctx.read(1);
-        inputs = ctx.inputs();
-    }
+        : Component(std::move(name), {{"A", PinKind::Input, Family::Ttl}}) {}
+    void evaluate(EvalContext& ctx) override { a = ctx.read(0); }
     LogicValue a = Z;
-    PackedInputs inputs{};
 };
 
 }  // namespace
+
+TEST_CASE("simulator: read sees X, 0, 1 after net changes", "[sim]") {
+    Circuit circuit;
+    const NetId net = circuit.addNet("n");
+    AddDrivers(circuit, net, {{Zero, {{10_ns, One}, {20_ns, X}, {30_ns, Zero}}}});
+    auto& probe = circuit.add<Probe>("U1");
+    circuit.connect(probe, "A", net);
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    CHECK(probe.a == Zero);
+    sim.runUntil(15_ns);
+    CHECK(probe.a == One);
+    sim.runUntil(25_ns);
+    CHECK(probe.a == X);
+    sim.runUntil(35_ns);
+    CHECK(probe.a == Zero);
+}
 
 TEST_CASE("simulator: stimulus steps at exact times", "[sim]") {
     Circuit circuit;
@@ -393,41 +403,4 @@ TEST_CASE("simulator: floating TTL input reads 1", "[sim]") {
     CHECK(sim.isFloating(in));
     CHECK(sim.value(out) == One);
     CHECK_FALSE(sim.isFloating(out));
-}
-
-TEST_CASE("simulator: read sees X, 0, 1 after net changes", "[sim]") {
-    Circuit circuit;
-    const NetId net = circuit.addNet("n");
-    AddDrivers(circuit, net, {{Zero, {{10_ns, One}, {20_ns, X}, {30_ns, Zero}}}});
-    auto& probe = circuit.add<Probe>("U1");
-    circuit.connect(probe, "A", net);
-    circuit.finalize();
-    Simulator sim(circuit);
-    sim.powerOn(1);
-    CHECK(probe.a == Zero);
-    sim.runUntil(15_ns);
-    CHECK(probe.a == One);
-    sim.runUntil(25_ns);
-    CHECK(probe.a == X);
-    sim.runUntil(35_ns);
-    CHECK(probe.a == Zero);
-}
-
-TEST_CASE("simulator: inputs() after powerOn matches net values", "[sim]") {
-    Circuit circuit;
-    const NetId gnd = circuit.addNet("GND");
-    const NetId vcc = circuit.addNet("VCC");
-    const NetId x = circuit.addNet("x");
-    circuit.tie(gnd, Zero, DriveStrength::Supply);
-    circuit.tie(vcc, One, DriveStrength::Supply);
-    AddDrivers(circuit, x, {{X}});
-    auto& probe = circuit.add<Probe>("U1");
-    circuit.connect(probe, "A", gnd);
-    circuit.connect(probe, "B", vcc);
-    circuit.connect(probe, "C", x);  // D unconnected: floating TTL input reads 1
-    circuit.finalize();
-    Simulator sim(circuit);
-    sim.powerOn(1);
-    CHECK(probe.inputs.value == 0b10100);
-    CHECK(probe.inputs.known == 0b10110);
 }
