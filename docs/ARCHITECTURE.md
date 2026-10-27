@@ -179,7 +179,7 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P1b | Parts + netlist | basic TTL Parts (gates, flip-flops, counters) with datasheet delays, netlist format and parser |
 | P1c | Test-pattern generator netlist | the circuit as a netlist, sync checks, benchmark on it (see Performance) |
 | P1d | Kernel performance | done at ~5× on the P1c benchmark (10× not met; enough for P2–P3). Further work deferred until a BW-80-like load is measured. [KERNEL_PERF_PLAN.md](p1d-kernel-perf/KERNEL_PERF_PLAN.md), [OPTIMISATION_IDEAS.md](p1d-kernel-perf/OPTIMISATION_IDEAS.md) |
-| P2a | Board layout via KiCad (spike) | export netlist to KiCad, layout by hand in pcbnew, read `.kicad_pcb` back, copper check from geometry; decides KiCad vs own generator. [BOARD_LAYOUT.md](p2a-board-layout/BOARD_LAYOUT.md) |
+| P2a | Board layout via KiCad (spike) | done: KiCad kept as layout tool; `bw export-kicad`, `.kicad_pcb` reader, copper check from geometry (`bw check-board`). [BOARD_LAYOUT.md](p2a-board-layout/BOARD_LAYOUT.md) |
 | P2 | Test-pattern generator — **first playable** | crystal, TTL counters → H/V sync + bars/grid, TV model, see-through board view, logic probe, chip swap, trace repair. Faults: dead counter output, broken trace, stuck gate output |
 | P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files), repair validation; still on the P2 board |
 | P4 | Procedural faults | random fault generation, headless vetting (reject symptom-less or trivial candidates) |
@@ -193,9 +193,9 @@ P1–P3 test the idea, with hand-placed faults only. P1 (a–c): is the kernel f
 KiCad is not the source of truth: its scope is real-world manufacturing, ours is "works in Bodgewire". At most it is a layout editor. Own pipeline, two separate steps:
 
 - **Netlist** (authored, text): parts from our own chip library (only parts we model) + named nets listing pins. Own compact line format (`part U1 74LS161`, `net CLK X1.OUT U1.2 U2.2`), own parser with electronics-aware errors (unknown part, bad pin, pin on two nets). Validated headlessly with our tools (does it produce sync, pass its tests?) before any layout exists. This is the design netlist.
-- **Layout**, two candidates, both producing the physical board (copper graph):
-  - KiCad PCB editor as layout tool only: export our netlist in KiCad netlist format, import it into pcbnew, place and route there (ratsnest, DRC, interactive router or Freerouting), read `.kicad_pcb` back (footprint positions, track segments, vias). No schematic editor, no circuit editing. Removes the need to write a router. To try first, on the P2 board.
-  - Own generator (fallback): placement on a grid (grouped by function), 2-layer router (horizontal traces on one side, vertical on the other); hand adjustments in a small overrides file, the generator re-runs around them.
+- **Layout**: KiCad PCB editor as layout tool only (decided in P2a, 2026-10-27). Export our netlist in KiCad netlist format (`bw export-kicad`), import it into pcbnew, place and route there (ratsnest, DRC, interactive router or Freerouting), read `.kicad_pcb` back (footprint positions, track segments, vias). No schematic editor, no circuit editing. Projects in `boards/<name>/`; steps in [KICAD_GUIDE.md](p2a-board-layout/KICAD_GUIDE.md).
+  - P2a result: counter and test-pattern Boards laid out by a KiCad newcomer (KiCad 10, test pattern auto-routed by Freerouting: 479 segments, 13 vias), both pass `bw check-board`. Pain points were one-offs or guide material: library table path after install, Java for Freerouting, ratsnest redrawn differently while moving, outline drawn on F.Cu by mistake, one connection left by Freerouting.
+  - Next: everything after the hand layout is automated (export, read, check; KiCad's DRC headless via `kicad-cli pcb drc` in the tests). Boards need connectors as Parts in the netlist: power entry (VCC, GND) and outputs (video), so they get footprints, pads and Traces like any chip.
 - Whatever the layout source, Bodgewire checks the copper connects exactly what the netlist says.
 - Schematic generated from the netlist (net labels, no wire routing, grouped by function).
 - Layout quality is a visual problem only; improvable later without touching simulation.

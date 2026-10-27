@@ -39,7 +39,7 @@ Each chip is a footprint: its outline and its pads (holes with copper rings). Th
 1. In the **Appearance** panel (right), click the layer **Edge.Cuts** (the layer box in the top toolbar then shows Edge.Cuts).
 2. Click the **square outline icon** in the vertical toolbar right of the canvas (or menu bar **Place → Draw Rectangle**). Click one corner, then the opposite corner, a few mm around the chips. Press **Esc**.
 
-You can resize it later: select it and drag a corner. The big pink frame with a title block is the paper sheet, not the board: ignore it.
+You can resize it later: select it and drag a corner. The big pink frame with a title block is the paper sheet, not the board: ignore it. The outline must be light grey: if it is red or blue it went onto a copper Layer; select it, press **E** and set Layer to Edge.Cuts.
 
 ## 6. Place the chips
 
