@@ -41,3 +41,15 @@ target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR
 
 include(Catch)
 catch_discover_tests(bw_tests)
+
+# KiCad's own design rule check on every committed Board; no kicad-cli, no tests.
+find_program(BW_KICAD_CLI kicad-cli PATHS /Applications/KiCad/KiCad.app/Contents/MacOS)
+if(BW_KICAD_CLI)
+  file(GLOB boards CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/boards/*/*.kicad_pcb)
+  foreach(board ${boards})
+    get_filename_component(name ${board} NAME_WE)
+    add_test(NAME drc_${name}
+             COMMAND ${BW_KICAD_CLI} pcb drc --severity-error --exit-code-violations
+                     -o ${CMAKE_CURRENT_BINARY_DIR}/${name}_drc.rpt ${board})
+  endforeach()
+endif()
