@@ -1,14 +1,18 @@
 #include <charconv>
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
+#include <memory>
 #include <optional>
 #include <print>
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
+#include "board/kicad_netlist.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/units.hpp"
 #include "sim/simulator.hpp"
@@ -23,7 +27,9 @@ constexpr int kExitNetlistErrors = 1;
 constexpr int kExitUsage = 2;
 
 constexpr std::string_view kUsage = "usage: bw run <file.bwn> [--time 1ms] [--seed 1] "
-                                    "[--record NET,NET... | --record-all] [--vcd FILE]";
+                                    "[--record NET,NET... | --record-all] [--vcd FILE]\n"
+                                    "       bw export-kicad <file.bwn> -o <file.net>\n"
+                                    "       bw check-board <file.bwn> <file.kicad_pcb>";
 
 struct Options {
     std::string file;
@@ -55,9 +61,6 @@ std::vector<std::string> SplitCommas(std::string_view text) {
 
 // Error message, or nullopt on success.
 std::optional<std::string> ParseOptions(std::span<char*> args, Options& options) {
-    if (args.size() < 2 || std::string_view(args[1]) != "run") {
-        return "expected 'run'";
-    }
     for (std::size_t i = 2; i < args.size(); ++i) {
         const std::string_view arg = args[i];
         if (!arg.starts_with("--")) {
@@ -105,25 +108,48 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
     return std::nullopt;
 }
 
-}  // namespace
-
-int main(int argc, char** argv) {
-    Options options;
-    if (const auto error = ParseOptions(std::span(argv, static_cast<std::size_t>(argc)), options)) {
-        return UsageError(*error);
-    }
-
-    auto result = LoadNetlistFile(options.file);
+// Diagnostics printed; nullptr on errors.
+std::unique_ptr<LoadedCircuit> Load(const std::string& file) {
+    auto result = LoadNetlistFile(file);
     if (!result) {
         for (const Diagnostic& d : result.error()) {
             std::println(stderr, "{}", Format(d));
         }
-        return kExitNetlistErrors;
+        return nullptr;
     }
-    LoadedCircuit& loaded = **result;
-    for (const Diagnostic& d : loaded.warnings) {
+    for (const Diagnostic& d : (*result)->warnings) {
         std::println(stderr, "{}", Format(d));
     }
+    return std::move(*result);
+}
+
+int ExportKicad(std::span<char*> args) {
+    if (args.size() != 5 || std::string_view(args[3]) != "-o") {
+        return UsageError("expected: export-kicad <file.bwn> -o <file.net>");
+    }
+    const auto loaded = Load(args[2]);
+    if (loaded == nullptr) {
+        return kExitNetlistErrors;
+    }
+    std::ofstream out(args[4], std::ios::binary);
+    if (!out) {
+        return UsageError("cannot write " + std::string(args[4]));
+    }
+    WriteKicadNetlist(out, *loaded, std::filesystem::path(args[2]).filename().string());
+    return 0;
+}
+
+int Run(std::span<char*> args) {
+    Options options;
+    if (const auto error = ParseOptions(args, options)) {
+        return UsageError(*error);
+    }
+
+    const auto result = Load(options.file);
+    if (result == nullptr) {
+        return kExitNetlistErrors;
+    }
+    LoadedCircuit& loaded = *result;
 
     std::vector<NetId> recorded;
     if (options.recordAll) {
@@ -169,4 +195,18 @@ int main(int argc, char** argv) {
     std::println("applied_events {}", sim.stats().appliedEvents);
     std::println("evaluations {}", sim.stats().evaluations);
     return 0;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    const std::span args(argv, static_cast<std::size_t>(argc));
+    const std::string_view command = args.size() >= 2 ? args[1] : "";
+    if (command == "run") {
+        return Run(args);
+    }
+    if (command == "export-kicad") {
+        return ExportKicad(args);
+    }
+    return UsageError("expected 'run', 'export-kicad' or 'check-board'");
 }
