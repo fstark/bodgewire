@@ -2,7 +2,7 @@
 
 Implements the specification in [TEST_PATTERN.md](TEST_PATTERN.md) (sections S1–S4).
 
-All code must follow [STYLE.md](STYLE.md) and [NAMING.md](NAMING.md). Terminology: [GLOSSARY.md](GLOSSARY.md). Uses the P1b Parts and netlist format ([PARTS_DESIGN.md](PARTS_DESIGN.md)); no new library code.
+All code must follow [STYLE.md](../STYLE.md) and [NAMING.md](../NAMING.md). Terminology: [GLOSSARY.md](../GLOSSARY.md). Uses the P1b Parts and netlist format ([PARTS_DESIGN.md](../p1b-parts/PARTS_DESIGN.md)); no new library code.
 
 ---
 

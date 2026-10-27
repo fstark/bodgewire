@@ -2,7 +2,7 @@
 
 Implements the specification in [PARTS.md](PARTS.md) (sections S1–S4).
 
-All code must follow [STYLE.md](STYLE.md) and [NAMING.md](NAMING.md). Terminology: [GLOSSARY.md](GLOSSARY.md). Builds on the kernel ([KERNEL_DESIGN.md](KERNEL_DESIGN.md)).
+All code must follow [STYLE.md](../STYLE.md) and [NAMING.md](../NAMING.md). Terminology: [GLOSSARY.md](../GLOSSARY.md). Builds on the kernel ([KERNEL_DESIGN.md](../p1a-kernel/KERNEL_DESIGN.md)).
 
 ---
 

@@ -2,7 +2,7 @@
 
 Implements the specification in [KERNEL_PERF.md](KERNEL_PERF.md) (sections S1–S6).
 
-All code must follow [STYLE.md](STYLE.md) and [NAMING.md](NAMING.md). Terminology: [GLOSSARY.md](GLOSSARY.md). Changes the kernel of [KERNEL_DESIGN.md](KERNEL_DESIGN.md); no new files.
+All code must follow [STYLE.md](../STYLE.md) and [NAMING.md](../NAMING.md). Terminology: [GLOSSARY.md](../GLOSSARY.md). Changes the kernel of [KERNEL_DESIGN.md](../p1a-kernel/KERNEL_DESIGN.md); no new files.
 
 ---
 
@@ -42,7 +42,7 @@ private:
 };
 ```
 
-Invariant: `value & ~known == 0`. Net values are never Z ([KERNEL_DESIGN.md](KERNEL_DESIGN.md) §3, `Resolution`), so two planes cover 0, 1, X.
+Invariant: `value & ~known == 0`. Net values are never Z ([KERNEL_DESIGN.md](../p1a-kernel/KERNEL_DESIGN.md) §3, `Resolution`), so two planes cover 0, 1, X.
 
 `Component::Component` adds `Check(pins.size() <= kMaxPins, "component: more than 64 pins")`.
 

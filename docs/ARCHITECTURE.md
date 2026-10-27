@@ -159,8 +159,9 @@ Discrete-event with nominal delays. Every change is an event with a real timesta
 - Nominal delays add real glitches (a few more events); inertial delay filters the shortest ones.
 - Levers: behavioural CPU/RAM/ROM (no internal events), only real output changes scheduled, only probed nets recorded, UI refreshed per frame, compact event storage (no per-event allocation).
 - Goal: as fast as possible, ideally real time for a full machine with UI live.
-- P1a benchmark: synthetic counter circuit, measured in applied events per second (see [KERNEL.md](KERNEL.md), S7).
+- P1a benchmark: synthetic counter circuit, measured in applied events per second (see [KERNEL.md](p1a-kernel/KERNEL.md), S7).
 - P1c benchmark: the test-pattern generator's netlist (crystal + TTL counters, no board, no UI), run headless on one thread. Pass: ≥ 10× real time. Full machines are several times larger, plus CPU, instruments and UI, so anything near 1× here means trouble later. 10× at a 14 MHz dot clock means hundreds of millions of events per second: the generator uses a low dot clock (≈ 1–2 MHz is enough for bars and a coarse grid).
+- Outcome (P1c + P1d): ~5× real time; 10× not met. Accepted for P2–P3. Before the Machines milestone, measure a BW-80-like load (stub CPU driving the bus) and decide on further kernel work ([OPTIMISATION_IDEAS.md](p1d-kernel-perf/OPTIMISATION_IDEAS.md)).
 - Plan for it, don't optimise early.
 
 ## Reference machines
@@ -174,10 +175,10 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 
 | | Milestone | Content |
 |---|---|---|
-| P1a | Kernel | nominal inertial delays, nets, drive strengths, primitive gates/flip-flops, recording + VCD export (dev logic analyzer), event-rate benchmark. [KERNEL.md](KERNEL.md) |
+| P1a | Kernel | nominal inertial delays, nets, drive strengths, primitive gates/flip-flops, recording + VCD export (dev logic analyzer), event-rate benchmark. [KERNEL.md](p1a-kernel/KERNEL.md) |
 | P1b | Parts + netlist | basic TTL Parts (gates, flip-flops, counters) with datasheet delays, netlist format and parser |
 | P1c | Test-pattern generator netlist | the circuit as a netlist, sync checks, benchmark on it (see Performance) |
-| P1d | Kernel performance | packed Component inputs pushed on Net change, gate packages on bit operations; ≥ 10× on the P1c benchmark. [KERNEL_PERF.md](KERNEL_PERF.md) |
+| P1d | Kernel performance | done at ~5× on the P1c benchmark (10× not met; enough for P2–P3). Further work deferred until a BW-80-like load is measured. [KERNEL_PERF_PLAN.md](p1d-kernel-perf/KERNEL_PERF_PLAN.md), [OPTIMISATION_IDEAS.md](p1d-kernel-perf/OPTIMISATION_IDEAS.md) |
 | P2 | Test-pattern generator — **first playable** | crystal, TTL counters → H/V sync + bars/grid, TV model, see-through board view, logic probe, chip swap, trace repair. Faults: dead counter output, broken trace, stuck gate output |
 | P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files), repair validation; still on the P2 board |
 | P4 | Procedural faults | random fault generation, headless vetting (reject symptom-less or trivial candidates) |

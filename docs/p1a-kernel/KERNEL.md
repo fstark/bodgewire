@@ -1,8 +1,8 @@
 # Kernel — Specification (P1a)
 
-First milestone of P1 (see [ARCHITECTURE.md](ARCHITECTURE.md), Roadmap). A headless digital simulation kernel: Logic Values, Drivers, Nets, event-driven scheduling with inertial delays, a few primitive Components built in C++, recording of Nets and VCD export. Design: [KERNEL_DESIGN.md](KERNEL_DESIGN.md).
+First milestone of P1 (see [ARCHITECTURE.md](../ARCHITECTURE.md), Roadmap). A headless digital simulation kernel: Logic Values, Drivers, Nets, event-driven scheduling with inertial delays, a few primitive Components built in C++, recording of Nets and VCD export. Design: [KERNEL_DESIGN.md](KERNEL_DESIGN.md).
 
-Terminology: [GLOSSARY.md](GLOSSARY.md).
+Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 ## Scope
 

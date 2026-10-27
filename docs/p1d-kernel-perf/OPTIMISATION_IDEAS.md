@@ -1,6 +1,6 @@
 # Optimisation Ideas — Kernel Performance
 
-Notes from P1d ([KERNEL_PERF.md](KERNEL_PERF.md), [KERNEL_PERF_PLAN.md](KERNEL_PERF_PLAN.md)) to come back to once a real Machine runs. Terminology: [GLOSSARY.md](GLOSSARY.md).
+Notes from P1d ([KERNEL_PERF.md](KERNEL_PERF.md), [KERNEL_PERF_PLAN.md](KERNEL_PERF_PLAN.md)) to come back to once a real Machine runs. Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 ## Target
 

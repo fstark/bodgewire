@@ -1,8 +1,8 @@
 # Test-pattern Generator — Specification (P1c)
 
-Last milestone of P1 (see [ARCHITECTURE.md](ARCHITECTURE.md), Roadmap). The first real Machine as a netlist: an oscillator and 74LS chips that produce TV sync and a grid picture, checked automatically, and the P1 performance benchmark run on it. Builds on [KERNEL.md](KERNEL.md) and [PARTS.md](PARTS.md). Design: [TEST_PATTERN_DESIGN.md](TEST_PATTERN_DESIGN.md).
+Last milestone of P1 (see [ARCHITECTURE.md](../ARCHITECTURE.md), Roadmap). The first real Machine as a netlist: an oscillator and 74LS chips that produce TV sync and a grid picture, checked automatically, and the P1 performance benchmark run on it. Builds on [KERNEL.md](../p1a-kernel/KERNEL.md) and [PARTS.md](../p1b-parts/PARTS.md). Design: [TEST_PATTERN_DESIGN.md](TEST_PATTERN_DESIGN.md).
 
-Terminology: [GLOSSARY.md](GLOSSARY.md).
+Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 ## Scope
 

@@ -2,7 +2,7 @@
 
 Implements the specification in [KERNEL.md](KERNEL.md) (sections S1–S7).
 
-All code must follow [STYLE.md](STYLE.md) and [NAMING.md](NAMING.md). Terminology: [GLOSSARY.md](GLOSSARY.md).
+All code must follow [STYLE.md](../STYLE.md) and [NAMING.md](../NAMING.md). Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 There is no existing code: this design also creates the repository skeleton.
 

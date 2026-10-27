@@ -1,8 +1,8 @@
 # Parts and Netlist — Specification (P1b)
 
-Second milestone of P1 (see [ARCHITECTURE.md](ARCHITECTURE.md), Roadmap). A catalogue of real Parts (74LS chips, oscillator, resistor) with datasheet pinouts and delays, a text netlist format that describes a circuit with them, and a CLI that runs a netlist and writes a VCD. Builds on the kernel ([KERNEL.md](KERNEL.md)). Design: [PARTS_DESIGN.md](PARTS_DESIGN.md).
+Second milestone of P1 (see [ARCHITECTURE.md](../ARCHITECTURE.md), Roadmap). A catalogue of real Parts (74LS chips, oscillator, resistor) with datasheet pinouts and delays, a text netlist format that describes a circuit with them, and a CLI that runs a netlist and writes a VCD. Builds on the kernel ([KERNEL.md](../p1a-kernel/KERNEL.md)). Design: [PARTS_DESIGN.md](PARTS_DESIGN.md).
 
-Terminology: [GLOSSARY.md](GLOSSARY.md).
+Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 ## Scope
 

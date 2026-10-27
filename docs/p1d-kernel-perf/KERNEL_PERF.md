@@ -1,6 +1,6 @@
 # Kernel Performance — Specification (P1d)
 
-Opened by P1c: the test-pattern generator ran at 2.48× real time against a target of ≥ 10× ([TEST_PATTERN_PLAN.md](TEST_PATTERN_PLAN.md)). Builds on [KERNEL.md](KERNEL.md) and [PARTS.md](PARTS.md). Design: [KERNEL_PERF_DESIGN.md](KERNEL_PERF_DESIGN.md). Terminology: [GLOSSARY.md](GLOSSARY.md).
+Opened by P1c: the test-pattern generator ran at 2.48× real time against a target of ≥ 10× ([TEST_PATTERN_PLAN.md](../p1c-test-pattern/TEST_PATTERN_PLAN.md)). Builds on [KERNEL.md](../p1a-kernel/KERNEL.md) and [PARTS.md](../p1b-parts/PARTS.md). Design: [KERNEL_PERF_DESIGN.md](KERNEL_PERF_DESIGN.md). Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 ## Scope
 
@@ -71,5 +71,7 @@ Diagnosis: the time goes into gathering inputs, not computing logic. Each read i
 
 ## Done when
 
+Closed 2026-10-27 without meeting S6: ~5–5.7× real time, shortfall and profile in [KERNEL_PERF_PLAN.md](KERNEL_PERF_PLAN.md). Packed inputs were removed (no gain); the event-queue phase was tried as a timing wheel and reverted (heap holds ~8–15 events).
+
 - S6 pass, or S1–S3 and the event-queue phase done and the shortfall recorded with a profile.
-- [KERNEL_DESIGN.md](KERNEL_DESIGN.md) updated to describe packed inputs and fan-out lists.
+- [KERNEL_DESIGN.md](../p1a-kernel/KERNEL_DESIGN.md) updated to describe packed inputs and fan-out lists.

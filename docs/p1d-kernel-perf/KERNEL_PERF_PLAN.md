@@ -3,7 +3,9 @@
 Design: [KERNEL_PERF_DESIGN.md](KERNEL_PERF_DESIGN.md)
 Spec: [KERNEL_PERF.md](KERNEL_PERF.md)
 
-Phases 1–6 (packed inputs) completed 2026-10-27, commits 0cf99fd..b70a360. P1d stays open: S6 not met (see Results).
+Phases 1–6 (packed inputs) completed 2026-10-27, commits 0cf99fd..b70a360. Packed inputs later removed (bd7c516, no gain).
+
+**P1d closed 2026-10-27 at ~5–5.7× real time** (S6 not met). 5× is enough for P2–P3, which run on the test-pattern board. Further kernel work deferred until a BW-80-like load is measured: [OPTIMISATION_IDEAS.md](OPTIMISATION_IDEAS.md), Next steps.
 
 Build gate: `cmake --preset debug && cmake --build --preset debug`
 Test gate:  `ctest --preset debug --output-on-failure`
@@ -17,7 +19,7 @@ Behaviour check (phases 1, 3, 4, 5): `applied_events` and `evaluations` equal th
     --record SYNC_N,VIDEO,HSYNC_N,VSYNC_N --vcd /tmp/p1d.vcd && cmp /tmp/p1d.vcd /tmp/p1d_baseline.vcd
 ```
 
-All code follows [STYLE.md](STYLE.md) and [NAMING.md](NAMING.md); run `clang-format -i` on changed C++ files.
+All code follows [STYLE.md](../STYLE.md) and [NAMING.md](../NAMING.md); run `clang-format -i` on changed C++ files.
 
 ## Results (2026-10-27)
 
