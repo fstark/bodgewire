@@ -8,5 +8,6 @@ boards/**/*.kicad_sch
 boards/**/*.dsn
 boards/**/*.ses
 boards/**/*-backups/
+boards/**/.history/
 boards/**/fp-info-cache
 boards/**/~*.lck
