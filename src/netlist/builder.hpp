@@ -15,10 +15,24 @@
 
 namespace bw {
 
+struct LoadedPart {
+    std::string reference;
+    const PartInfo* info;
+    std::string value;  // resistor "value" parameter, else the Part name
+};
+
+struct Connection {
+    std::string reference;
+    PinIndex pin;
+    std::string net;
+};
+
 struct LoadedCircuit {
     Circuit circuit;                                            // finalized
     std::map<std::string, NetId, std::less<>> nets;             // includes GND, VCC
     std::map<std::string, Component*, std::less<>> components;  // chips only
+    std::vector<LoadedPart> parts;                              // netlist order
+    std::vector<Connection> connections;  // incl. implicit power; by reference, pin
     std::vector<Diagnostic> warnings;
 };
 

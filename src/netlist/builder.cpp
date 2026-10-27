@@ -62,6 +62,17 @@ public:
             if (part.component != nullptr) {
                 circuit.connect(*part.component, pin.second, net.net);
             }
+            loaded_->connections.push_back({pin.first, pin.second, std::string(net.name)});
+        }
+        for (const PartDecl& decl : netlist_.parts) {
+            const PlacedPart& part = placed_.find(decl.reference)->second;
+            std::string value = decl.part;
+            if (IsResistor(part)) {
+                for (const PartParam& param : decl.params) {
+                    value = param.value;  // only "value" is accepted
+                }
+            }
+            loaded_->parts.push_back({decl.reference, part.info, std::move(value)});
         }
         warnUnconnectedInputs();
         circuit.finalize();

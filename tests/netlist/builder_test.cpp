@@ -212,3 +212,29 @@ TEST_CASE("builder: LoadNetlistFile missing file", "[netlist]") {
     REQUIRE(result.error().size() == 1);
     CHECK(Format(result.error()[0]) == "missing.bwn: error: cannot read file");
 }
+
+TEST_CASE("builder: parts in netlist order with values", "[netlist]") {
+    const auto result = LoadNetlist("part U2 74LS04\npart R1 R value=4k7\npart U1 74LS00\n"
+                                    "net VCC R1.1\nnet A R1.2 U2.1\n",
+                                    "t.bwn");
+    REQUIRE(result.has_value());
+    const auto& parts = (*result)->parts;
+    REQUIRE(parts.size() == 3);
+    CHECK(parts[0].reference == "U2");
+    CHECK(parts[0].info->name == "74LS04");
+    CHECK(parts[0].value == "74LS04");
+    CHECK(parts[1].reference == "R1");
+    CHECK(parts[1].value == "4k7");
+    CHECK(parts[2].reference == "U1");
+}
+
+TEST_CASE("builder: connections include implicit power and resistor pins", "[netlist]") {
+    const auto result =
+        LoadNetlist("part U1 74LS04\npart R1 R\nnet VCC R1.1\nnet A R1.2 U1.1A U1.3\n", "t.bwn");
+    REQUIRE(result.has_value());
+    std::vector<std::string> connections;
+    for (const Connection& c : (*result)->connections) {
+        connections.push_back(c.reference + "." + std::to_string(c.pin + 1) + " " + c.net);
+    }
+    CHECK(connections == Lines{"R1.1 VCC", "R1.2 A", "U1.1 A", "U1.3 A", "U1.7 GND", "U1.14 VCC"});
+}
