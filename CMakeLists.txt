@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BW_BUILD_TESTS "Build unit tests" ON)
+option(BW_BUILD_UI "Build bw_ui" ON)
 
 add_library(bw_warnings INTERFACE)
 target_compile_options(bw_warnings INTERFACE -Wall -Wextra -Wpedantic -Wshadow -Werror)
@@ -19,6 +20,9 @@ add_subdirectory(src/netlist)
 add_subdirectory(src/board)
 add_subdirectory(src/machine)
 add_subdirectory(src/cli)
+if(BW_BUILD_UI)
+  add_subdirectory(src/ui)
+endif()
 add_subdirectory(bench)
 
 if(BW_BUILD_TESTS)

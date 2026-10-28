@@ -3,6 +3,7 @@
 #include <expected>
 #include <filesystem>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -22,9 +23,12 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
 // Design netlist + Board + Faults. Repairs edit it; build() makes the Circuit for one power-on.
 class Machine {
 public:
-    bool swap(std::string_view reference);         // chip swap; false if no such Component
-    bool mend(Layer layer, Point at);              // removes cracks within 1 mm; false if none
-    LoadResult build() const;                      // electrical Circuit with the current Faults
+    std::string_view name() const {
+        return name_;
+    }                                       // never the Puzzle's file name: it names the Fault
+    bool swap(std::string_view reference);  // chip swap; false if no such Component
+    bool mend(Layer layer, Point at);       // removes cracks within 1 mm; false if none
+    LoadResult build() const;               // electrical Circuit with the current Faults
     const Board& board() const { return board_; }  // with cracks
 
 private:
@@ -33,6 +37,7 @@ private:
     LoadMachine(const Puzzle&, const std::filesystem::path&);
 
     Netlist design_;
+    std::string name_;
     std::unique_ptr<LoadedCircuit> designCircuit_;  // design Nets: pin lookup, check-board
     Board pristine_, board_;                        // board_ = pristine_ + cracks_
     std::vector<StuckPin> stuck_;

@@ -69,6 +69,7 @@ TEST_CASE("machine: a crack must cut the copper", "[machine]") {
 TEST_CASE("machine: no faults builds the design", "[machine]") {
     const auto machine = LoadMachine(TestPattern(), Root());
     REQUIRE(machine.has_value());
+    CHECK(machine->name() == "test_pattern");
     const auto built = machine->build();
     REQUIRE(built.has_value());
     const auto design = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");

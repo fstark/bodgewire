@@ -40,6 +40,7 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
     };
 
     Machine machine;
+    machine.name_ = puzzle.machine;
     const auto netlistPath = root / "netlists" / (puzzle.machine + ".bwn");
     const auto boardPath = root / "boards" / puzzle.machine / (puzzle.machine + ".kicad_pcb");
     const auto text = ReadFile(netlistPath);
