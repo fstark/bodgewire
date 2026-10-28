@@ -26,7 +26,7 @@ Out: UI (P2e, P2f), Fault appearance on the Board view (P2f), golden comparison 
 
 - Each copper island (pads, Traces, vias connected by geometry, as `bw check-board` computes them) is one Net; a Pin joins the Net of its pad.
 - Ties per Decisions; a Pin on no copper at all is unconnected (floats, TTL input reads 1).
-- Each Net is named after the design Net of its Pins; a design Net split in several islands gives `NAME`, `NAME~2`, `NAME~3`… ordered by first Pin in netlist order.
+- Each Net is named after the design Net of its Pins; a design Net split in several islands gives `NAME`, `NAME~2`, `NAME~3`… ordered by their first Pin (by reference, then pin number).
 - Without Faults, electrical Nets equal the design Nets (already guaranteed by `check-board`), so the Machine behaves exactly as with the netlist alone.
 
 ### S2 Faults
