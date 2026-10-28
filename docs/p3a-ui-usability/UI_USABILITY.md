@@ -84,7 +84,8 @@ Out (later P3 milestones fix these): Schematic (P3b), new instruments (P3c, P3d)
 
 - Hover and click use the same pick, so what is highlighted is what a click acts on.
 - Pads: the nearest pad within 12 screen pixels or half the pin pitch, whichever is larger, wins over everything else.
-- Otherwise vias, then Traces on the Active Layer: the nearest within 10 screen pixels of its copper edge (not its centreline). A thin Trace is as easy to hit as a wide one.
+- Otherwise vias, then Traces: the nearest within 10 screen pixels of its copper edge (not its centreline). A thin Trace is as easy to hit as a wide one.
+- Layers: the Active Layer wins when both Layers have a Trace in range; when it has none, the other Layer's Trace is picked. Hover, probe and Mend then act on the picked Trace's Layer (a crack on B.Cu can be mended with F.Cu active). The Active Layer stays the one drawn on top and the tie-breaker.
 - Otherwise the Component under the cursor (courtyard), as in P2f.
 - The probe tip stays on the probed point until another probe click. Clicking empty board does not unprobe; `Esc` does.
 - "Frames" (S2, S6): pans and zooms so the target is centred at a zoom where its pads are at least 14 px.
@@ -102,7 +103,7 @@ Out (later P3 milestones fix these): Schematic (P3b), new instruments (P3c, P3d)
   - Manuals of `counter` and `test_pattern`: required sections present and in order; exactly one `Components` bullet per Component of the netlist; every backticked reference names an existing Component, and every `pin N` an existing pin;
   - Datasheets: one per catalogue Part; title matches the Part name; every pin name of the Part is covered by a `Pins` bullet (ranges like `1A`–`1D` allowed);
   - Markdown subset parser: headings, bullets, code spans, bold, unknown syntax kept as text;
-  - snapping on the test-pattern Board, at the fitted zoom and at 100 px/mm: a point 0.5 mm off a pad picks that pad over a Trace underneath; between two pads, the nearer; 8 px beside a 0.2 mm Trace, that Trace; off everything, nothing.
+  - snapping on the test-pattern Board, at the fitted zoom and at 100 px/mm: a point 0.5 mm off a pad picks that pad over a Trace underneath; between two pads, the nearer; 8 px beside a 0.2 mm Trace, that Trace; a B.Cu-only spot with F.Cu active, the B.Cu Trace; off everything, nothing.
 - `--screenshot` of each Puzzle, fitted and with `--probe`, read by the agent: banner, toolbar, sections, Chip panel, labels. A `--manual` option opens the Manual window for the screenshot.
 - Release: test pattern still ≈ 1.00× at `1×`; UI frame < 16 ms fitted and at full zoom with pin names.
 

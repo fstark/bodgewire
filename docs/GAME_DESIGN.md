@@ -78,7 +78,7 @@ Likely custom machines inspired by real ones, named after them: we choose their 
 ## Presentation
 
 - Pure 2D, no 3D. Panels: board, schematic, instruments, inspector, inventory, machine output.
-- **See-through board** instead of flipping: one top-down view with every layer in the same frame (the back as seen through the board, i.e. mirrored compared with a physical flip), so a pin sits at the same spot on every layer. Per-layer colour and opacity; the selected net highlighted on all layers; actions (probe, cut, solder) target the active layer. Scales beyond 2 layers. Real-world equivalent: holding the board up to a lamp.
+- **See-through board** instead of flipping: one top-down view with every layer in the same frame (the back as seen through the board, i.e. mirrored compared with a physical flip), so a pin sits at the same spot on every layer. Per-layer colour and opacity; the selected net highlighted on all layers; actions (probe, cut, solder) prefer the active layer and fall through to another where it has nothing under the cursor. Scales beyond 2 layers. Real-world equivalent: holding the board up to a lamp.
 - **Schematic**: ours, generated from the netlist and hand-adjusted, not the original's. No schematic if generation can't produce something usable.
 - Look: dark green PCB, scope traces, amber highlights, vintage terminal typography.
 

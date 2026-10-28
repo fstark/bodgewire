@@ -190,7 +190,7 @@ A condition, such as an address appearing on a Bus, that marks when an Instrumen
 The single top-down view of a Board showing every Layer at once, the back seen through the board rather than flipped.
 
 **Active Layer**:
-The Layer that player actions such as probing, cutting and soldering apply to.
+The Layer drawn on top and preferred by player actions such as probing, cutting and soldering. Where it has nothing under the cursor, actions fall through to another Layer.
 
 **Schematic**:
 Our own circuit diagram of a Machine, generated from its Nets and hand-adjusted. It is a view only, not a source of connectivity.
