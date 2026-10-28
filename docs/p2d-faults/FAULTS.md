@@ -18,7 +18,7 @@ Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 In: electrical Nets from the Board; the two Fault kinds; the two Repairs; Puzzle files; the logic probe model; `bw run` on a Puzzle with Repairs and probes; three Puzzles on the test pattern.
 
-Out: UI (P2e, P2f), Fault appearance on the Board view (P2f), golden comparison as a game rule and repair validation (P3), Bodge Wires (P3), other Fault kinds, wrong or slow Parts.
+Out: UI (P2e–P2h), Fault appearance on the Board view (P2f), golden comparison as a game rule and repair validation (P3), Bodge Wires (P3), other Fault kinds, wrong or slow Parts.
 
 ## Behaviour
 

@@ -1,6 +1,6 @@
 # UI Shell — Specification (P2e)
 
-Fifth milestone of P2 (see [ARCHITECTURE.md](../ARCHITECTURE.md), Stack, Performance, Run control, Roadmap). The first window: a Machine runs live on a worker thread and its TV picture is shown as it is drawn. No Board view, probing or Repairs yet (P2f). Builds on [TV.md](../p2c-tv/TV.md) and [FAULTS.md](../p2d-faults/FAULTS.md).
+Fifth milestone of P2 (see [ARCHITECTURE.md](../ARCHITECTURE.md), Stack, Performance, Run control, Roadmap). The first window: a Machine runs live on a worker thread and its TV picture is shown as it is drawn. No Board view, probing or Repairs yet (P2f–P2h). Builds on [TV.md](../p2c-tv/TV.md) and [FAULTS.md](../p2d-faults/FAULTS.md).
 
 Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
@@ -18,7 +18,7 @@ Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 In: `bw_ui <file.bwn|file.bwp>`; window with the live TV picture, status and run controls; SPSC ring, triple buffer and threaded runner (simulation + devices threads) in the headless library, with tests; SDL3/ImGui build integration.
 
-Out: Board view, probe by clicking, Repair actions (P2f); file-open dialog; sound; phosphor glow and persistence; settings persistence; Windows/Linux packaging (macOS only for now, nothing macOS-specific in the code).
+Out: Board view (P2f), probe by clicking (P2g), Repair actions (P2h); file-open dialog; sound; phosphor glow and persistence; settings persistence; Windows/Linux packaging (macOS only for now, nothing macOS-specific in the code).
 
 ## Behaviour
 
@@ -39,7 +39,7 @@ Out: Board view, probe by clicking, Repair actions (P2f); file-open dialog; soun
 - Runs the Simulator in slices of 1 ms simulated time; at `1×` it sleeps between slices so simulated time does not get ahead of wall time.
 - Pause: stops at the end of the current slice. Power off: stops; the TV shows black, not locked. Power on: builds a fresh Simulator state for the same Circuit with the chosen seed.
 - Commands from the UI (power, pause, speed, seed) take effect at the next slice boundary.
-- Watching a Net (start/stop writing its ring) is also a command at a slice boundary; watches are counted, so a probe un-watching VIDEO does not cut the TV off. P2e only watches VIDEO and SYNC_N, but the runner supports it for P2f's probe.
+- Watching a Net (start/stop writing its ring) is also a command at a slice boundary; watches are counted, so a probe un-watching VIDEO does not cut the TV off. P2e only watches VIDEO and SYNC_N, but the runner supports it for P2g's probe.
 
 ### S4 Determinism
 
