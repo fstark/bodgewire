@@ -32,7 +32,11 @@ public:
     bool isFloating(NetId net) const { return nets_[ToIndex(net)].floating; }
     void record(NetId net);  // from now on; kept until the next powerOn
     const Recorder& recorder() const { return recorder_; }
-    void trimRecording(NetId net) { recorder_.trim(net); }  // bounded memory on long runs
+    void trimRecordings() {  // bounded memory on long runs; consumers must be up to date
+        for (const NetId net : recorder_.nets()) {
+            recorder_.trim(net);
+        }
+    }
     const SimStats& stats() const { return stats_; }
 
 private:

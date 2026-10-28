@@ -5,6 +5,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "instruments/logic_probe.hpp"
 #include "netlist/builder.hpp"
 
 using namespace bw;
@@ -18,7 +19,7 @@ struct Run {
     std::unique_ptr<TvInput> input;
 };
 
-Run Start(TvInput::History history) {
+Run Start() {
     auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
     REQUIRE(result.has_value());
     Run run{std::move(*result), nullptr, nullptr};
@@ -28,7 +29,7 @@ Run Start(TvInput::History history) {
     REQUIRE(syncN.has_value());
     run.sim = std::make_unique<Simulator>(run.loaded->circuit);
     run.sim->powerOn(1);
-    run.input = std::make_unique<TvInput>(*run.sim, *video, *syncN, history);
+    run.input = std::make_unique<TvInput>(*run.sim, *video, *syncN);
     return run;
 }
 
@@ -43,11 +44,12 @@ std::size_t Recorded(const Simulator& sim) {
 }  // namespace
 
 TEST_CASE("tv input: trim keeps the recorder bounded, keep draws the same", "[devices]") {
-    Run trimmed = Start(TvInput::History::Trim);
-    Run kept = Start(TvInput::History::Keep);
+    Run trimmed = Start();
+    Run kept = Start();
     for (int ms = 0; ms < 45; ++ms) {
         trimmed.sim->runFor(1_ms);
         trimmed.input->update();
+        trimmed.sim->trimRecordings();
         CHECK(Recorded(*trimmed.sim) == 2);
         kept.sim->runFor(1_ms);
         kept.input->update();
@@ -56,4 +58,23 @@ TEST_CASE("tv input: trim keeps the recorder bounded, keep draws the same", "[de
     REQUIRE(trimmed.input->tv().completedFrames() == kept.input->tv().completedFrames());
     CHECK(trimmed.input->tv().completedFrames() >= 2);
     CHECK(trimmed.input->tv().completedFrame().cells == kept.input->tv().completedFrame().cells);
+}
+
+TEST_CASE("tv input: probe and TV share a net", "[devices]") {
+    Run alone = Start();
+    Run shared = Start();
+    LogicProbe probe(*shared.sim, *ConnectorNet(*shared.loaded, "VIDEO", "VIDEO"));
+    bool pulsed = false;
+    for (int ms = 0; ms < 45; ++ms) {
+        alone.sim->runFor(1_ms);
+        alone.input->update();
+        shared.sim->runFor(1_ms);
+        shared.input->update();
+        probe.update();
+        shared.sim->trimRecordings();
+        pulsed = pulsed || probe.lamps().pulse;
+    }
+    CHECK(pulsed);
+    REQUIRE(alone.input->tv().completedFrames() == shared.input->tv().completedFrames());
+    CHECK(alone.input->tv().completedFrame().cells == shared.input->tv().completedFrame().cells);
 }

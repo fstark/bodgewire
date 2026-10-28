@@ -242,9 +242,7 @@ int Run(std::span<char*> args) {
     }
     std::unique_ptr<TvInput> tv;
     if (tvFile.is_open()) {
-        tv = std::make_unique<TvInput>(sim, *tvVideo, *tvSyncN,
-                                       vcd.is_open() ? TvInput::History::Keep
-                                                     : TvInput::History::Trim);
+        tv = std::make_unique<TvInput>(sim, *tvVideo, *tvSyncN);
     }
     const auto start = std::chrono::steady_clock::now();
     if (tv) {
@@ -252,6 +250,9 @@ int Run(std::span<char*> args) {
         while (sim.now() < end) {
             sim.runUntil(std::min(end, sim.now() + 1_ms));
             tv->update();
+            if (!vcd.is_open()) {
+                sim.trimRecordings();
+            }
         }
     } else {
         sim.runFor(options.time);

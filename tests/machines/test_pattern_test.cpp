@@ -171,13 +171,13 @@ TEST_CASE("test pattern: TV shows the grid", "[machines]") {
     const auto loaded = LoadTestPattern();
     Simulator sim(loaded->circuit);
     sim.powerOn(seed);
-    TvInput input(sim, VideoNet(*loaded, "VIDEO"), VideoNet(*loaded, "SYNC_N"),
-                  TvInput::History::Trim);
+    TvInput input(sim, VideoNet(*loaded, "VIDEO"), VideoNet(*loaded, "SYNC_N"));
     // Vertical pull-in slips 1 ms per free-running frame: up to ~16 frames from a bad phase.
     int ms = 0;
     for (; ms < 500 && !input.tv().isLocked(); ++ms) {
         sim.runFor(1_ms);
         input.update();
+        sim.trimRecordings();
     }
     INFO("locked after " << ms << " ms");
     REQUIRE(input.tv().isLocked());
@@ -185,6 +185,7 @@ TEST_CASE("test pattern: TV shows the grid", "[machines]") {
     while (input.tv().completedFrames() == frames) {
         sim.runFor(1_ms);
         input.update();
+        sim.trimRecordings();
     }
     REQUIRE(input.tv().isLocked());
     const TvFrame& frame = input.tv().completedFrame();

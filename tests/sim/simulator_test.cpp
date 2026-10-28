@@ -96,7 +96,7 @@ TEST_CASE("simulator: stimulus steps at exact times", "[sim]") {
     CHECK((samples[2] == Sample{25_ns, Zero}));
 }
 
-TEST_CASE("simulator: recording continues after trimRecording", "[sim]") {
+TEST_CASE("simulator: recording continues after trimRecordings", "[sim]") {
     Circuit circuit;
     const NetId net = circuit.addNet("n");
     AddDrivers(circuit, net, {{Zero, {{10_ns, One}, {25_ns, Zero}, {40_ns, One}}}});
@@ -105,7 +105,7 @@ TEST_CASE("simulator: recording continues after trimRecording", "[sim]") {
     sim.powerOn(1);
     sim.record(net);
     sim.runFor(30_ns);
-    sim.trimRecording(net);
+    sim.trimRecordings();
     CHECK(Samples(sim, net) == std::vector<Sample>{{25_ns, Zero}});
     sim.runFor(30_ns);
     CHECK(Samples(sim, net) == std::vector<Sample>{{25_ns, Zero}, {40_ns, One}});
