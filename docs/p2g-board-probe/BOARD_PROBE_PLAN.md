@@ -55,7 +55,7 @@ Same measurement as 1.1: instructions retired within +0.5 %. Note both numbers i
 
 (design 2, 3.4, 5.1)
 
-- [src/instruments/logic_probe.hpp](../../src/instruments/logic_probe.hpp): `ProbeState` as design 2; `LogicProbe` keeps its interface, holds a `ProbeState`, `update()` feeds Samples after `fedUntil_`, `lamps()` = `state_.lamps(sim_.now())`.
+- [src/instruments/logic_probe.hpp](../../src/instruments/logic_probe.hpp): `ProbeState` as design 2 (`kPulseStretch` moves to it); `LogicProbe` keeps its interface, holds a `ProbeState`, `update()` feeds Samples after `fedUntil_`, `lamps()` = `state_.lamps(sim_.now())`.
 - [tests/instruments/logic_probe_test.cpp](../../tests/instruments/logic_probe_test.cpp): `"probe state: first Sample is the level, no PULSE"`, `"probe state: change lights PULSE for 100 ms"`, `"probe state: floating-only change no PULSE"`, `"probe state: floating is dark"`, `"probe state: reset"`. Existing `LogicProbe` tests unchanged and passing.
 
 ### Fence
@@ -96,7 +96,7 @@ Same measurement as 1.1: instructions retired within +0.5 %. Note both numbers i
 ### 4.2 — Tests
 
 - `tests/runner/probe_consumer_test.cpp` (`[runner]`): the cases of design 9 `probe_consumer_test`. Helper: `RunTo(runner, t)` (existing pattern: `pauseAt`, `resume`, `waitIdle`).
-- `tests/machines/board_probe_test.cpp` (`[machine]`): the Puzzle cases of design 9 `board_probe_test`, each with `LoadPuzzleFile`, `build()`, a Runner with only the `ProbeConsumer`, `padPosition` + `probeNet` + `touch`, run to 300 ms, `FormatLamps(probe.lamps())`.
+- `tests/machines/board_probe_test.cpp` (`[machines]`): the Puzzle cases of design 9 `board_probe_test`, each with `LoadPuzzleFile`, `build()`, a Runner with only the `ProbeConsumer`, `padPosition` + `probeNet` + `touch`, run to 300 ms, `FormatLamps(probe.lamps())`.
 - Add both to [tests/CMakeLists.txt](../../tests/CMakeLists.txt).
 
 ### Fence

@@ -44,6 +44,8 @@ class Recorder {
 // The P2d lamp model over one Net's Samples: the first Sample is the initial state.
 class ProbeState {
 public:
+    static constexpr Time kPulseStretch = 100'000'000'000;  // ps, 100 ms (from LogicProbe)
+
     void reset();                     // no Sample yet: all lamps dark
     void feed(Sample sample);         // in time order
     ProbeLamps lamps(Time now) const;
@@ -167,6 +169,8 @@ lamps():          p = published; valid and p >> 32 == touched → bits, else dar
 
 Samples of the old Net still staged after the move are filtered by the Dispatcher (`nets()` no longer lists it). A newly watched Net's first Sample is its state at the watch (`Simulator::record`), so lamps light within one slice. A Net already watched by another Consumer (VIDEO, SYNC_N) gets no initial Sample: its lamps light at its next change, < 64 µs for those two.
 
+Known limit, accepted: a ring slot is freed only once the devices thread has handled the Unwatch marker, so touching more than `kMaxWatched` (16) different Nets before the devices thread catches up trips the Runner's "too many watched nets" Check. Out of reach at UI frame rates; revisit if instruments multiply (P3).
+
 ### 5.3 probeNet (S1)
 
 ```
@@ -229,11 +233,9 @@ ui ──► view ──► board ──► netlist ──► parts ──► si
 
 - **recorder/simulator tests**: a Net whose only Driver goes to Z records a Sample with `floating = true` and the same value; recording an undriven Net starts with `floating = true`.
 - **logic_probe_test**: `ProbeState` — first Sample lights HIGH/LOW, no PULSE; a value change lights PULSE for 100 ms; a floating-only change does not; floating → dark. Existing `LogicProbe` cases still pass.
-- **probe_consumer_test** (`[runner]`, test pattern netlist, `Speed::Max`, `pauseAt` + `waitIdle`): touch CLK → HIGH or LOW plus PULSE; move to a steady Net → old Net unwatched (lamps follow the new Net, no stale PULSE after 100 ms); lift → dark; touch VIDEO then move away → the TV frame still equals the reference; power off → dark.
-- **board_probe_test** (`[machine]`, through the Runner):
-  - `broken_trace`: `probeNet` at a Trace point on each side of `kH0Crack` → two different NetIds; at U1 pin 14's pad and at a via → the NetId of `PinNet` of a Pin on that island;
-  - each Puzzle at 300 ms: `dead_counter` U3.QA pad → `LOW`; `stuck_gate` U12.4Y pad → `HIGH`; `broken_trace` past the crack (U13.2B pad) → `-`, U1.QA pad → `… PULSE`;
-  - `padPosition("U1", "QA")` == `padPosition("U1", "14")`; unknown → nullopt.
-- **machine_test**: `IslandNetNames` agrees with the net names of `ElectricalNetlist` for every pad of `broken_trace`.
+- **probe_consumer_test** (`[runner]`, test pattern netlist, `Speed::Max`, `pauseAt` + `waitIdle`): touch CLK → HIGH or LOW plus PULSE; move to a steady Net → old Net unwatched (lamps follow the new Net, no stale PULSE after 100 ms); lift → dark; touch VIDEO then move away → the TV frame still equals the reference; power off → dark; touching more Nets in turn than `kMaxWatched` (16) works (a leaked watch would trip the Runner's "too many watched nets" Check).
+- **board_probe_test** (`[machines]`, through the Runner): each Puzzle at 300 ms: `dead_counter` U3.QA pad → `LOW`; `stuck_gate` U12.4Y pad → `HIGH`; `broken_trace` past the crack (U13.2B pad) → `-`, U1.QA pad → `… PULSE`.
+- **machine_test**: `broken_trace`: `probeNet` at a Trace point on each side of `kH0Crack` → two different NetIds; at U1 pin 14's pad and at a via → the NetId of `PinNet` of a Pin on that island; `padPosition("U1", "QA")` == `padPosition("U1", "14")`; unknown → nullopt.
+- **electrical_test**: `IslandNetNames` agrees with the net names of `ElectricalNetlist` for every pad of `broken_trace`.
 - **Agent, screenshot**: `bw_ui puzzles/<p>.bwp --probe <pin> --screenshot /tmp/bw-<p>.png` for the three Puzzles; the agent views tip and lamps.
 - **Manual**: Done-when of BOARD_PROBE.md; ≈ 1.00× at `1×` probing U1.CLK (S4).
