@@ -100,12 +100,12 @@ File-local helpers in `board_scene.cpp`: `NearestOnSegment(Point a, Point b, Poi
 
 ### 2.3 — `Viewport::frame` (design §4.4)
 
-`void frame(Bounds box, double share = 0.5);` centres `box`, zoom = `share × min(panel.x / width, panel.y / height)` clamped to `[minNmToPixel_, kMaxPixelsPerMm / 1e6]`, `fitted_ = false` unless equal to the fitted scale. Degenerate box (zero width/height): keep the zoom, centre only.
+`void frame(Bounds box, double share, double minPixelsPerMm);` centres `box`, zoom = `max(share × min(panel.x / width, panel.y / height), minPixelsPerMm / 1e6)` clamped to `[minNmToPixel_, kMaxPixelsPerMm / 1e6]`, `fitted_ = false` unless equal to the fitted scale. Degenerate box (zero width/height): keep the zoom (still at least `minPixelsPerMm`), centre only.
 
 ### 2.4 — Tests
 
 - `tests/view/board_scene_test.cpp`: rewrite `"view: hit test"` on `pick(..., {})`; the front-Trace midpoint with `Layer::Back` active now picks that Trace with `layer == Front`. New `"view: pick snapping"` at the fitted scale and at 100 px/mm (reach = px / pixelsPerMm × 1e6): 0.5 mm off a pad over a Trace → pad; midway-ish between two pads → the nearer; 8 px beside a 0.2 mm Trace on bare board → that Trace, `Covers(trace, contact)`; B.Cu-only spot with F.Cu active → B.Cu Trace, `layer == Back`; off the Board → nullopt. `"view: scene accessors"`: `componentIndex("U6")`, `padIndex(u1, "QA") == padIndex(u1, "14")`, `pinName`, `powerPin` on VCC/GND, `partName(R1) == "R"` on the counter.
-- `tests/view/viewport_test.cpp`: `"viewport: frame"` centres a box, clamps to fitted and to 100 px/mm.
+- `tests/view/viewport_test.cpp`: `"viewport: frame"` centres a box, honours `minPixelsPerMm`, clamps to fitted and to 100 px/mm.
 
 ### Fence
 
@@ -134,7 +134,7 @@ File-local helpers in `board_scene.cpp`: `NearestOnSegment(Point a, Point b, Poi
 
 ### 3.3 — Selection, focus, outside hover
 
-- Members `selected_`, `hovered_`, `outside_`, `flash_` (target + `steady_clock` deadline); `chip()`, `select()`, `focus()` (§6.6), `hoverFromOutside()` (highlights the target's pad Net, or the whole Component outline, for this frame only).
+- Members `selected_`, `hovered_`, `outside_`, `flash_` (target + `steady_clock` deadline); `chip()`, `select()`, `focus()` (§6.6), `hoverFromOutside()` (highlights the target's pad Net, or the whole Component outline, at the next draw only: panels draw after the Board, one frame of lag), `route(TargetHits)` (hovered → `hoverFromOutside`, clicked → `focus`). `TargetHits` lives in `board_view.hpp`.
 - Flash: a white ring on the pad (or every pad of the Component), alpha pulsing over 1 s.
 
 ### 3.4 — Labels (design §6.5)
@@ -211,7 +211,7 @@ Release build. The user plays the three Puzzles with the new navigation, snappin
 ### 6.4 — Tests
 
 - `tests/manual/markdown_test.cpp`: `"markdown: blocks"`, `"markdown: bullet continuation"`, `"markdown: inline spans"`, `"markdown: unmatched markers"`, `"markdown: section"`.
-- `tests/manual/manual_test.cpp`: `"manual: bullet pins and ranges"` (`1A`–`1D`, `QA`–`QD`, `1A`–`4A`, `-` too, `CLK`/`CLR_N` list, mismatched pair not expanded), `"manual: pin bullet"`, `"manual: component role"`, `"manual: links"` (on the counter design: `` `U1` pin 15 `` → pin "15", `` `QA` `` → none), `"manual: part pin names"` (74LS161 has `CLR_N`, R empty), one failing case per check message, `"manual: load with missing files"` (temp dir: no problems, nothing loaded).
+- `tests/manual/manual_test.cpp`: `"manual: bullet pins and ranges"` (`1A`–`1D`, `QA`–`QD`, `1A`–`4A`, `-` too, `CLK`/`CLR_N` list, mismatched pair not expanded), `"manual: pin bullet"`, `"manual: component role"`, `"manual: links"` (on the counter design: `` `U1` pin 15 (RCO) `` → pin "15", `pinChars` = length of `" pin 15"`, rest kept as text; `` `QA` `` → none), `"manual: part pin names"` (74LS161 has `CLR_N`, R empty), one failing case per check message (including a bad reference in a User Manual), `"manual: load with missing files"` (temp dir: no problems, nothing loaded).
 
 ### Fence
 
@@ -248,13 +248,13 @@ Release build. The user plays the three Puzzles with the new navigation, snappin
 
 ### 8.1 — `ManualView` (design §5)
 
-`src/ui/manual_view.hpp/.cpp`: draws `std::span<const Block>`: Title/Heading as collapsing headers, Paragraph/Bullet wrapped; Code spans in a distinct colour; `LinkAt` spans underlined, hover → `Hits::hovered`, click → `Hits::clicked` (main calls `focus`); signature as design §5.
+`src/ui/manual_view.hpp/.cpp`: draws `std::span<const Block>`: Title/Heading as collapsing headers, Paragraph/Bullet wrapped; Code spans in a distinct colour; `LinkAt` spans underlined, hover → `TargetHits::hovered`, click → `TargetHits::clicked` (caller passes them to `BoardView::route`); signature as design §5.
 
-Windows `User Manual` / `Service Manual` (floating, 480 × 600 first use), toggled by toolbar buttons and `U`/`H`; `Troubleshooting` header collapsed, labelled `Troubleshooting (easy mode)`; `no user manual` / `no service manual` when absent.
+`ManualWindows` (same file): windows `User Manual` / `Service Manual` (floating, 480 × 600 first use), toggled by toolbar buttons and `U`/`H`; `Troubleshooting` header collapsed, labelled `Troubleshooting (easy mode)`; `no user manual` / `no service manual` when absent.
 
 ### 8.2 — `ChipPanel` (design §5, S6)
 
-`src/ui/chip_panel.hpp/.cpp`: header line; role (`ComponentRole`); `Zoom to` button; pinout: DIP (package starts with `DIP`) two columns, pins 1..n/2 down the left, n/2+1..n up the right, else one column; each row `number name net`, power greyed; hovered row → `PinBullet` line in a tooltip and `hoverFromOutside`; clicked row → `focus`; Datasheet `Function` (collapsing) and `Pins`.
+`src/ui/chip_panel.hpp/.cpp`: returns `TargetHits` (SidePanel calls `board.route`); header line; role (`ComponentRole`); `Zoom to` button → `clicked {component}`; pinout: DIP (package starts with `DIP`) two columns, pins 1..n/2 down the left, n/2+1..n up the right, else one column; each row `number name net`, power greyed; hovered row → `PinBullet` line in a tooltip and `hovered`; clicked row → `clicked`; Datasheet `Function` (collapsing) and `Pins`.
 
 ### 8.3 — Wiring
 

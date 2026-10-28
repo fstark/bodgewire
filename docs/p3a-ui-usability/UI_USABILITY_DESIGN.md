@@ -26,6 +26,7 @@ src/ui/
   side_panel.hpp/.cpp       # new: right column sections
   chip_panel.hpp/.cpp       # new: Chip section (pinout, Datasheet)
   manual_view.hpp/.cpp      # new: Markdown drawing with links; manual windows
+  loaded.hpp                # new: Loaded (main + SidePanel)
   main.cpp                  # options, loading, frame loop only
 tests/manual/markdown_test.cpp, manual_test.cpp
 tests/machines/manuals_test.cpp   # the committed manuals and Datasheets
@@ -88,13 +89,14 @@ LoadedManuals LoadManuals(const std::filesystem::path& root, std::string_view ma
                           const LoadedCircuit& design);
 
 // S10 checks; each returns all problems found, empty if fine.
-std::vector<Diagnostic> CheckUserManual(const Markdown& doc, std::string_view file);
+std::vector<Diagnostic> CheckUserManual(const Markdown& doc, std::string_view file,
+                                        const LoadedCircuit& design);
 std::vector<Diagnostic> CheckServiceManual(const Markdown& doc, std::string_view file,
                                            const LoadedCircuit& design);
 std::vector<Diagnostic> CheckDatasheet(const Markdown& doc, std::string_view file,
                                        const PartInfo& part);
 
-std::vector<std::string> PartPinNames(const PartInfo& part);  // empty for resistors
+std::vector<std::string> PartPinNames(const PartInfo& part);  // empty without `create` (R)
 
 // "- `U6` end-of-frame decoder: detail" → {"end-of-frame decoder", "detail"}.
 struct Role {
@@ -111,7 +113,7 @@ const Block* PinBullet(const Markdown& datasheet, std::string_view pin);  // nul
 struct ManualLink {
     std::string reference;
     std::optional<std::string> pin;  // number
-    std::size_t length;              // spans covered (1, or 2 when the pin is in the next Text)
+    std::size_t pinChars = 0;        // leading chars of spans[i + 1] that are " pin N"; rest drawn as text
 };
 std::optional<ManualLink> LinkAt(std::span<const Span> spans, std::size_t i,
                                  const LoadedCircuit& design);
@@ -185,8 +187,9 @@ private:
 ### 4.4 `src/view/viewport.hpp` (S8, S9)
 
 ```cpp
-// Centres `box` and zooms so it fills `share` of the panel, within [fitted, kMaxPixelsPerMm].
-void frame(Bounds box, double share = 0.5);
+// Centres `box` and zooms so it fills `share` of the panel, but at least `minPixelsPerMm`;
+// clamped to [fitted, kMaxPixelsPerMm].
+void frame(Bounds box, double share, double minPixelsPerMm);
 ```
 
 ### 4.5 `src/ui/board_view.hpp`
@@ -195,6 +198,10 @@ void frame(Bounds box, double share = 0.5);
 struct BoardTarget {
     std::size_t component;
     std::optional<std::size_t> pad;
+};
+
+struct TargetHits {  // from a side panel or manual this frame
+    std::optional<BoardTarget> hovered, clicked;
 };
 
 struct BoardClick {
@@ -213,16 +220,20 @@ public:
     void toggleLayer();
     void fit();
     std::optional<BoardClick> takeClick();          // released without dragging
+    bool takeEscape();                              // Esc pressed over the Board since last call
     std::optional<std::size_t> chip() const;        // hovered Component, else selected (S6)
     void select(std::size_t component);
-    void hoverFromOutside(std::optional<BoardTarget> target);  // this frame only
+    // Highlighted like a Board hover (pad + its design Net) at the next draw only: panels draw
+    // after the Board, so this lags one frame.
+    void hoverFromOutside(std::optional<BoardTarget> target);
     void focus(BoardTarget target);                 // frame (§6.6) + flash 1 s
+    void route(const TargetHits& hits);             // hovered → hoverFromOutside, clicked → focus
     const BoardScene* scene() const;
     ...
 };
 ```
 
-`controls()` disappears (moved to `Toolbar`). New input in `input()`: left-drag pans in every tool once past ImGui's drag threshold (the click is then dropped), click on release, double-click where `pick` finds nothing → `fit()`, `+`/`-` → `zoomAt(panel centre, ±1)`, `Esc` → `escape_ = true` (read by main via `takeEscape()`), `U`/`H` handled by `Toolbar`. The Chip panel has a `Zoom to` button → `focus({component})`. The tooltip is built by the caller-supplied `TooltipText` callback so `BoardView` does not depend on `bw_manual`:
+`controls()` disappears (moved to `Toolbar`). New input in `input()`: left-drag pans in every tool once past ImGui's drag threshold (the click is then dropped), click on release, double-click where `pick` finds nothing → `fit()`, `+`/`-` → `zoomAt(panel centre, ±1)`, `Esc` → `escape_ = true` (read by main via `takeEscape()`), `U`/`H` handled by `Toolbar`. The tooltip is built by the caller-supplied `TooltipText` callback so `BoardView` does not depend on `bw_manual`:
 
 ```cpp
 using TooltipText = std::function<std::string(const BoardScene&, const Hit&)>;
@@ -231,7 +242,7 @@ void setTooltip(TooltipText text);
 
 ### 4.6 `src/ui/main.cpp`
 
-Keeps `ParseOptions` (+ `--manual user|service`), `Load`, `SaveScreenshot`, SDL/ImGui set-up and the frame loop. `Load` returns:
+Keeps `ParseOptions` (+ `--manual user|service`), `Load`, `SaveScreenshot`, SDL/ImGui set-up and the frame loop. `Load` returns (`src/ui/loaded.hpp`, shared with `SidePanel`):
 
 ```cpp
 struct Loaded {
@@ -242,15 +253,15 @@ struct Loaded {
 };
 ```
 
-For `.bwp`: `ReadPuzzleFile` → `LoadMachine(puzzle, MachineRoot(file))`. Manuals load for any Machine with a design (`LoadManuals(MachineRoot(file), machine.name(), machine.designCircuit())`); a netlist without a Board loads them from its `LoadedCircuit`.
+The window title is `Bodgewire — <title>`. For `.bwp`: `ReadPuzzleFile` → `LoadMachine(puzzle, MachineRoot(file))`. Manuals load for any Machine with a design (`LoadManuals(MachineRoot(file), machine.name(), machine.designCircuit())`); a netlist without a Board loads them from its `LoadedCircuit`.
 
 The frame loop becomes:
 
 ```
 banner/toolbar row (Toolbar::draw)
-BoardView::draw(left)  → route takeClick() (§6.7)
+BoardView::draw(left)  → route takeClick(), takeEscape() (§6.7)
 SidePanel::draw(right)
-ManualWindows::draw()  (floating, toggled)
+ManualWindows::draw()  (floating, toggled by Toolbar flags)
 ```
 
 ### 4.7 Click routing (§6.7) and the Probe tip
@@ -269,12 +280,13 @@ private:
     std::chrono::steady_clock::time_point flashUntil_{};
 };
 
-class SidePanel {  // src/ui/side_panel.hpp
+class SidePanel {  // src/ui/side_panel.hpp; routes Chip and Puzzle hits via BoardView::route
 public:
     void draw(Session& session, TvView& tv, BoardView& board, const Loaded& loaded,
               DebugStats stats, std::uint64_t& seed);
 private:
     ChipPanel chip_;
+    ManualView puzzle_;  // the User Manual's `What it does`
 };
 
 struct DebugStats {
@@ -284,17 +296,23 @@ struct DebugStats {
 
 class ChipPanel {  // src/ui/chip_panel.hpp
 public:
-    // Draws the Component's section; returns the pinout pin under the mouse, if any.
-    std::optional<BoardTarget> draw(const BoardScene& scene, std::size_t component,
-                                    const Manuals& manuals);
+    // Header "U6 · 74LS20 · <PartInfo::description>"; hits: pinout pin hovered/clicked,
+    // `Zoom to` → clicked {component}.
+    TargetHits draw(const BoardScene& scene, std::size_t component, const Manuals& manuals);
 };
 
-class ManualView {  // src/ui/manual_view.hpp; one per window, plus one for the Puzzle section
+class ManualView {  // src/ui/manual_view.hpp; links under the mouse / clicked this frame
 public:
-    struct Hits {
-        std::optional<BoardTarget> hovered, clicked;  // link under the mouse / clicked this frame
-    };
-    Hits draw(std::span<const Block> blocks, const BoardScene* scene, const LoadedCircuit& design);
+    TargetHits draw(std::span<const Block> blocks, const BoardScene* scene,
+                    const LoadedCircuit& design);
+};
+
+class ManualWindows {  // src/ui/manual_view.hpp; `##` headings collapsible,
+public:                // `Troubleshooting` collapsed as "Troubleshooting (easy mode)"
+    void draw(bool& userOpen, bool& serviceOpen, const Manuals& manuals, BoardView& board,
+              const LoadedCircuit& design);
+private:
+    ManualView user_, service_;
 };
 ```
 
@@ -333,9 +351,9 @@ BulletPins(bullet):
     → every name with that character from a[i] to b[i]; else both names as written
 ```
 
-`CheckDatasheet`: `Title` starts with the Part name, `Function` and `Pins` present in that order, and every name in `PartPinNames(part)` is in some `BulletPins`. `PartPinNames` builds the Part in a scratch `Circuit` through `PartInfo::create` (with `freq=1MHz` for `OSC`) and reads `pins()`.
+`CheckDatasheet`: `Title` starts with the Part name, `Function` and `Pins` present in that order, and every name in `PartPinNames(part)` is in some `BulletPins`. `PartPinNames` builds the Part in a scratch `Circuit` through `PartInfo::create` (with `freq=1MHz` for `OSC`) and reads `pins()`; a Part without `create` (`R`) has none.
 
-`CheckServiceManual`: `How it works`, `Components` in order, `Troubleshooting` optional and last; one `Components` bullet per `design.parts` reference (each bullet starts with a Code span naming it; none missing, none extra, no duplicates); in every block of both manuals each Code span that looks like a reference (`[A-Z]+[0-9]+`) must be in `design.parts`, and a following ` pin N` must name an existing pin number of that Component. `CheckUserManual`: `What it does` then `Connections`.
+`CheckServiceManual`: `How it works`, `Components` in order, `Troubleshooting` optional and last; one `Components` bullet per `design.parts` reference (each bullet starts with a Code span naming it; none missing, none extra, no duplicates). Both checks: in every block, each Code span that looks like a reference (`[A-Z]+[0-9]+`) must be in `design.parts`, and a following ` pin N` must name an existing pin number of that Component. `CheckUserManual`: `What it does` then `Connections`.
 
 ### 6.4 Picking (S8)
 
@@ -373,18 +391,20 @@ pin names, only for chip() (hovered, else selected), when min(pad.size) in px �
 ```
 focus(target):
   box = pad ? pad.position ± 4 mm : bounds of courtyard(component)
-  viewport.frame(box, pad ? 0.3 : 0.5); flash_ = {target, now + 1 s}
+  minPx = 14 / smallest pad side of the Component in mm   (S8: pads ≥ 14 px)
+  viewport.frame(box, pad ? 0.3 : 0.5, minPx); flash_ = {target, now + 1 s}
 draw: the flashed pad (or every pad of the Component) gets a pulsing white ring
 ```
 
 ### 6.7 Click routing (main)
 
 ```
+if board.takeEscape(): touch(nullopt)        (any tool)
 click = board.takeClick(); if click:
   if click.component: board.select(*click.component)
   switch tool:
     Probe: if pick and pick.hit.kind != Component: touch(ProbeTip{contact, pick.layer})
-           (empty board: nothing; Esc: touch(nullopt))
+           (empty board: nothing)
     Swap:  if component: r = session.repair(Swap{reference}); r == Refused → toolbar.refused()
     Mend:  layer, at = pick is Trace ? (pick.layer, contact) : (active, click.at)
            r = session.repair(Mend{layer, at}); r == Refused → toolbar.refused()
@@ -403,7 +423,7 @@ whole banner background amber while now < flashUntil_ (0.4 s)
 ## 7. Reused Infrastructure
 
 - `Diagnostic`/`Format` (netlist) for manual problems and `.bwp` errors.
-- `PartInfo`, `AllParts`, `FindPart`, `PartInfo::create` (parts) for Datasheet checks and pin names; no pin tables duplicated.
+- `PartInfo`, `AllParts`, `FindPart`, `PartInfo::create` (parts) for Datasheet checks and pin names; `PartInfo::description` for the Chip panel header; no pin tables duplicated.
 - `LoadedCircuit::parts`/`components`/`connections` and `FindPin` for references, pin numbers and pinout Nets.
 - `BoardScene` pad Nets, `netName`, `courtyard`, `hoverText`; `Covers`, `ArcPolyline` (board) for picking.
 - `Viewport::zoomAt`/`pan`/`fit`; `Session::touch`/`repair` return values (`Refused`); `Machine::probeNet` unchanged.
@@ -438,9 +458,9 @@ No cycles: `bw_manual` knows neither the Board nor the UI; `bw_view` knows no ma
 | `tests/machine/puzzle_test.cpp` | `title`/`brief` parse; `#` inside quotes; empty value; duplicate; missing closing quote; text after the quote; absent → empty |
 | `tests/machine/machine_test.cpp` | `MachineRoot`; `ReadPuzzleFile` + `LoadMachine` equals `LoadPuzzleFile` |
 | `tests/manual/markdown_test.cpp` | Title/Heading/Paragraph/Bullet, continuation lines, code and bold spans, unmatched markers literal, line numbers, `Section` |
-| `tests/manual/manual_test.cpp` | `BulletPins` ranges (`1A`–`1D`, `QA`–`QD`, `1A`–`4A`, non-range), `PinBullet`, `ComponentRole`, `LinkAt` (`` `U1` pin 15 ``, non-reference code), each check failing on a crafted bad document, `LoadManuals` with missing files |
+| `tests/manual/manual_test.cpp` | `BulletPins` ranges (`1A`–`1D`, `QA`–`QD`, `1A`–`4A`, non-range), `PinBullet`, `ComponentRole`, `LinkAt` (`` `U1` pin 15 (RCO) `` with `pinChars`, non-reference code), reference checks in both manuals, each check failing on a crafted bad document, `LoadManuals` with missing files |
 | `tests/machines/manuals_test.cpp` `[machines]` | committed User/Service Manuals of `counter` and `test_pattern` and every catalogue Part's Datasheet pass their checks; the three Puzzles have title and brief |
 | `tests/view/board_scene_test.cpp` | `pick` replaces `hitTest` cases; S10 snapping at fitted zoom and 100 px/mm; B.Cu-only spot with F.Cu active → B.Cu Trace with `layer == Back`; contact lies on the picked copper (`Covers`); `componentIndex`/`padIndex`/`pinName`/`powerPin` |
-| `tests/view/viewport_test.cpp` | `frame`: box centred, zoom clamped to [fitted, max] |
+| `tests/view/viewport_test.cpp` | `frame`: box centred, `minPixelsPerMm` honoured, zoom clamped to [fitted, max] |
 | `tests/machines/board_probe_test.cpp` | probing at a pick's contact 8 px beside a Trace reads that Trace's Net |
 | Manual | `--screenshot` of each Puzzle (fitted, `--probe`, `--manual user`, `--manual service`) viewed by the agent; release ≈ 1.00× at `1×`, `ui` < 16 ms fitted and at 100 px/mm |
