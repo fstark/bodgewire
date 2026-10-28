@@ -1,6 +1,9 @@
 #include "view/board_scene.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -10,6 +13,7 @@
 #include "board/copper.hpp"
 #include "board/kicad_board.hpp"
 #include "machine/crack.hpp"
+#include "view/viewport.hpp"
 
 using namespace bw;
 
@@ -78,6 +82,64 @@ std::size_t PadIndex(const BoardComponent& component, std::string_view number) {
     return 0;
 }
 
+double Distance(Point a, Point b) {
+    return std::hypot(static_cast<double>(a.x - b.x), static_cast<double>(a.y - b.y));
+}
+
+// Any pad or via centre within `nm` of p.
+bool NearPadOrVia(const Board& board, Point p, double nm) {
+    for (const BoardComponent& component : board.components) {
+        for (const Pad& pad : component.pads) {
+            if (Distance(pad.position, p) <= nm) {
+                return true;
+            }
+        }
+    }
+    for (const Via& via : board.vias) {
+        if (Distance(via.position, p) <= nm) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Distance from p to the centreline of a straight Trace.
+double CentrelineDistance(const Trace& trace, Point p) {
+    const double dx = static_cast<double>(trace.end.x - trace.start.x);
+    const double dy = static_cast<double>(trace.end.y - trace.start.y);
+    const double length2 = dx * dx + dy * dy;
+    const double t = length2 == 0 ? 0
+                                  : std::clamp((static_cast<double>(p.x - trace.start.x) * dx +
+                                                static_cast<double>(p.y - trace.start.y) * dy) /
+                                                   length2,
+                                               0.0, 1.0);
+    return std::hypot(static_cast<double>(trace.start.x) + dx * t - static_cast<double>(p.x),
+                      static_cast<double>(trace.start.y) + dy * t - static_cast<double>(p.y));
+}
+
+// No Trace on `layer` other than `except` has its edge within `nm` of p.
+bool ClearOfTraces(const Board& board, Layer layer, Point p, double nm,
+                   std::optional<std::size_t> except = std::nullopt) {
+    for (std::size_t t = 0; t < board.traces.size(); ++t) {
+        const Trace& trace = board.traces[t];
+        if (t == except || trace.layer != layer) {
+            continue;
+        }
+        if (trace.mid ||
+            CentrelineDistance(trace, p) - static_cast<double>(trace.width) / 2 <= nm) {
+            if (!trace.mid || Distance(trace.start, p) < 20'000'000) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+PickReach Reach(double pixelsPerMm) {
+    return {static_cast<std::int64_t>(12 / pixelsPerMm * 1e6),
+            static_cast<std::int64_t>(10 / pixelsPerMm * 1e6)};
+}
+
 }  // namespace
 
 TEST_CASE("view: outline of both Boards is a rectangle", "[view]") {
@@ -98,32 +160,51 @@ TEST_CASE("view: outline of both Boards is a rectangle", "[view]") {
     }
 }
 
-TEST_CASE("view: hit test", "[view]") {
+TEST_CASE("view: pick", "[view]") {
     const Fixture f = Load("test_pattern");
     const BoardScene scene = Scene(f);
     const Board& board = scene.board();
+    const auto hitAt = [&](Point p, Layer active) -> std::optional<Hit> {
+        const auto picked = scene.pick(p, active, {});
+        return picked ? std::optional(picked->hit) : std::nullopt;
+    };
 
     const Point pad = board.components[0].pads[0].position;
-    CHECK(scene.hitTest(pad, Layer::Front) == Hit{HitKind::Pad, 0, 0});
-    CHECK(scene.hitTest(pad, Layer::Back) == Hit{HitKind::Pad, 0, 0});
+    CHECK(hitAt(pad, Layer::Front) == Hit{HitKind::Pad, 0, 0});
+    CHECK(hitAt(pad, Layer::Back) == Hit{HitKind::Pad, 0, 0});
 
-    REQUIRE_FALSE(board.vias.empty());
-    CHECK(scene.hitTest(board.vias[0].position, Layer::Back) == Hit{HitKind::Via, 0, 0});
+    bool viaChecked = false;
+    for (std::size_t v = 0; v < board.vias.size() && !viaChecked; ++v) {
+        bool nearPad = false;
+        for (const BoardComponent& component : board.components) {
+            for (const Pad& p : component.pads) {
+                nearPad = nearPad || Distance(p.position, board.vias[v].position) < 3'000'000;
+            }
+        }
+        if (!nearPad) {
+            CHECK(hitAt(board.vias[v].position, Layer::Back) == Hit{HitKind::Via, 0, v});
+            viaChecked = true;
+        }
+    }
+    CHECK(viaChecked);
 
     bool traceChecked = false;
     for (std::size_t t = 0; t < board.traces.size() && !traceChecked; ++t) {
         const Trace& trace = board.traces[t];
         const Point m{(trace.start.x + trace.end.x) / 2, (trace.start.y + trace.end.y) / 2};
-        if (trace.layer != Layer::Front || trace.mid || OnAnyPadOrVia(board, m) ||
+        if (trace.layer != Layer::Front || trace.mid || NearPadOrVia(board, m, 3'000'000) ||
             OnTrace(board, Layer::Back, m)) {
             continue;
         }
-        const auto hit = scene.hitTest(m, Layer::Front);
-        REQUIRE(hit.has_value());
-        CHECK(hit->kind == HitKind::Trace);
-        CHECK(Covers(board.traces[hit->index], m));
-        const auto back = scene.hitTest(m, Layer::Back);
-        CHECK((!back || back->kind == HitKind::Component));
+        const auto front = scene.pick(m, Layer::Front, {});
+        REQUIRE(front.has_value());
+        CHECK(front->hit.kind == HitKind::Trace);
+        CHECK(front->layer == Layer::Front);
+        CHECK(Covers(board.traces[front->hit.index], m));
+        const auto back = scene.pick(m, Layer::Back, {});
+        REQUIRE(back.has_value());
+        CHECK(back->hit == front->hit);
+        CHECK(back->layer == Layer::Front);
         traceChecked = true;
     }
     CHECK(traceChecked);
@@ -142,10 +223,11 @@ TEST_CASE("view: hit test", "[view]") {
             return from < to ? from + 200'000 : from - 200'000;
         };
         const Point p{inward(c.x, centre.x), inward(c.y, centre.y)};
-        if (OnAnyPadOrVia(board, p) || OnTrace(board, Layer::Front, p)) {
+        if (NearPadOrVia(board, p, 1'300'000) || OnTrace(board, Layer::Front, p) ||
+            OnTrace(board, Layer::Back, p)) {
             continue;
         }
-        const auto hit = scene.hitTest(p, Layer::Front);
+        const auto hit = hitAt(p, Layer::Front);
         REQUIRE(hit.has_value());
         CHECK(hit->kind == HitKind::Component);
         courtyardChecked = true;
@@ -153,12 +235,12 @@ TEST_CASE("view: hit test", "[view]") {
     CHECK(courtyardChecked);
 
     const Bounds b = scene.bounds();
-    CHECK_FALSE(scene.hitTest({b.min.x - 1'000'000, b.min.y - 1'000'000}, Layer::Front));
+    CHECK_FALSE(hitAt({b.min.x - 5'000'000, b.min.y - 5'000'000}, Layer::Front));
 
     bool padWins = false;
     for (const Trace& trace : board.traces) {
         if (trace.layer == Layer::Front && OnAnyPadOrVia(board, trace.start)) {
-            const auto hit = scene.hitTest(trace.start, Layer::Front);
+            const auto hit = hitAt(trace.start, Layer::Front);
             REQUIRE(hit.has_value());
             CHECK((hit->kind == HitKind::Pad || hit->kind == HitKind::Via));
             padWins = true;
@@ -166,6 +248,141 @@ TEST_CASE("view: hit test", "[view]") {
         }
     }
     CHECK(padWins);
+}
+
+TEST_CASE("view: pick snapping", "[view]") {
+    const Fixture f = Load("test_pattern");
+    const BoardScene scene = Scene(f);
+    const Board& board = scene.board();
+    const std::size_t u1 = ComponentIndex(board, "U1");
+    const auto& u1Pads = board.components[u1].pads;
+
+    Viewport viewport;
+    viewport.fit(scene.bounds(), {850, 780});
+    const double fittedScale = viewport.pixelsPerMm();
+    for (const double scale : {fittedScale, 100.0}) {
+        INFO("px/mm " << scale);
+        const PickReach reach = Reach(scale);
+
+        // 0.5 mm off a pad, along a Trace leaving it: the pad.
+        bool padOverTrace = false;
+        for (std::size_t p = 0; p < u1Pads.size() && !padOverTrace; ++p) {
+            for (const Trace& trace : board.traces) {
+                if (trace.mid || trace.layer != Layer::Front || trace.start != u1Pads[p].position) {
+                    continue;
+                }
+                const double length = Distance(trace.start, trace.end);
+                if (length < 1'000'000) {
+                    continue;
+                }
+                const double k = 500'000 / length;
+                const Point at{
+                    trace.start.x +
+                        std::llround(static_cast<double>(trace.end.x - trace.start.x) * k),
+                    trace.start.y +
+                        std::llround(static_cast<double>(trace.end.y - trace.start.y) * k)};
+                const auto picked = scene.pick(at, Layer::Front, reach);
+                REQUIRE(picked.has_value());
+                CHECK(picked->hit == Hit{HitKind::Pad, u1, p});
+                CHECK(picked->contact == u1Pads[p].position);
+                padOverTrace = true;
+                break;
+            }
+        }
+        CHECK(padOverTrace);
+
+        // Between two neighbouring pads: the nearer.
+        const std::size_t pin1 = PadIndex(board.components[u1], "1");
+        const std::size_t pin2 = PadIndex(board.components[u1], "2");
+        const Point a = u1Pads[pin1].position;
+        const Point b = u1Pads[pin2].position;
+        const Point nearA{a.x + (b.x - a.x) * 4 / 10, a.y + (b.y - a.y) * 4 / 10};
+        const Point nearB{a.x + (b.x - a.x) * 6 / 10, a.y + (b.y - a.y) * 6 / 10};
+        CHECK(scene.pick(nearA, Layer::Front, reach)->hit == Hit{HitKind::Pad, u1, pin1});
+        CHECK(scene.pick(nearB, Layer::Front, reach)->hit == Hit{HitKind::Pad, u1, pin2});
+
+        // 8 px beside a thin Trace on bare board: that Trace, contact on its copper.
+        const double eightPx = 8 / scale * 1e6;
+        bool beside = false;
+        for (std::size_t t = 0; t < board.traces.size() && !beside; ++t) {
+            const Trace& trace = board.traces[t];
+            if (trace.mid || trace.layer != Layer::Front || trace.width > 250'000) {
+                continue;
+            }
+            const double dx = static_cast<double>(trace.end.x - trace.start.x);
+            const double dy = static_cast<double>(trace.end.y - trace.start.y);
+            const double length = std::hypot(dx, dy);
+            if (length < 4'000'000) {
+                continue;
+            }
+            const double offset = static_cast<double>(trace.width) / 2 + eightPx;
+            const Point at{(trace.start.x + trace.end.x) / 2 + std::llround(-dy / length * offset),
+                           (trace.start.y + trace.end.y) / 2 + std::llround(dx / length * offset)};
+            if (NearPadOrVia(board, at, 3'000'000 + eightPx) ||
+                !ClearOfTraces(board, Layer::Front, at, 2 * eightPx, t) ||
+                !ClearOfTraces(board, Layer::Back, at, 2 * eightPx)) {
+                continue;
+            }
+            const auto picked = scene.pick(at, Layer::Front, reach);
+            REQUIRE(picked.has_value());
+            CHECK(picked->hit == Hit{HitKind::Trace, 0, t});
+            CHECK(Covers(trace, picked->contact));
+            beside = true;
+        }
+        CHECK(beside);
+
+        // B.Cu-only spot with F.Cu active: the B.Cu Trace.
+        bool backOnly = false;
+        for (std::size_t t = 0; t < board.traces.size() && !backOnly; ++t) {
+            const Trace& trace = board.traces[t];
+            if (trace.mid || trace.layer != Layer::Back) {
+                continue;
+            }
+            const Point m{(trace.start.x + trace.end.x) / 2, (trace.start.y + trace.end.y) / 2};
+            if (NearPadOrVia(board, m, 3'000'000 + eightPx) ||
+                !ClearOfTraces(board, Layer::Front, m, 2 * eightPx) ||
+                !ClearOfTraces(board, Layer::Back, m, 2 * eightPx, t)) {
+                continue;
+            }
+            const auto picked = scene.pick(m, Layer::Front, reach);
+            REQUIRE(picked.has_value());
+            CHECK(picked->hit == Hit{HitKind::Trace, 0, t});
+            CHECK(picked->layer == Layer::Back);
+            backOnly = true;
+        }
+        CHECK(backOnly);
+
+        const Bounds bounds = scene.bounds();
+        CHECK_FALSE(scene.pick({bounds.min.x - 20'000'000, bounds.min.y - 20'000'000}, Layer::Front,
+                               reach));
+    }
+}
+
+TEST_CASE("view: scene accessors", "[view]") {
+    const Fixture f = Load("test_pattern");
+    const BoardScene scene = Scene(f);
+    const auto u6 = scene.componentIndex("U6");
+    REQUIRE(u6.has_value());
+    CHECK(scene.board().components[*u6].reference == "U6");
+    CHECK_FALSE(scene.componentIndex("U99"));
+    CHECK(scene.partName(*u6) == "74LS20");
+
+    const std::size_t u1 = *scene.componentIndex("U1");
+    const auto qa = scene.padIndex(u1, "QA");
+    REQUIRE(qa.has_value());
+    CHECK(qa == scene.padIndex(u1, "14"));
+    CHECK(scene.pinName(u1, *qa) == "QA");
+    CHECK_FALSE(scene.padIndex(u1, "XX"));
+    CHECK(scene.powerPin(u1, *scene.padIndex(u1, "VCC")));
+    CHECK(scene.powerPin(u1, *scene.padIndex(u1, "GND")));
+    CHECK_FALSE(scene.powerPin(u1, *qa));
+
+    const Fixture counter = Load("counter");
+    const BoardScene counterScene = Scene(counter);
+    const auto r1 = counterScene.componentIndex("R1");
+    REQUIRE(r1.has_value());
+    CHECK(counterScene.partName(*r1) == "R");
+    CHECK(counterScene.pinName(*r1, 0).empty());
 }
 
 TEST_CASE("board scene: componentAt", "[view]") {
@@ -200,8 +417,8 @@ TEST_CASE("view: highlight crosses the broken_trace crack", "[view]") {
     const NetId h0 = f.design->nets.at("H0");
     CHECK(scene.traceNet(board.traces.size() - 2) == h0);
     CHECK(scene.traceNet(board.traces.size() - 1) == h0);
-    const auto hit = scene.hitTest(kH0Crack, Layer::Front);
-    CHECK((!hit || hit->kind != HitKind::Trace));
+    const auto hit = scene.pick(kH0Crack, Layer::Front, {});
+    CHECK((!hit || hit->hit.kind != HitKind::Trace));
 }
 
 TEST_CASE("view: every Trace and via has a design Net", "[view]") {

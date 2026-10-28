@@ -1,7 +1,9 @@
 #include "view/board_scene.hpp"
 
 #include <algorithm>
+#include <cfloat>
 #include <charconv>
+#include <cmath>
 #include <format>
 #include <map>
 #include <utility>
@@ -13,6 +15,7 @@ namespace bw {
 namespace {
 
 constexpr std::int64_t kCourtyardFallbackMargin = 500'000;  // nm
+constexpr std::int64_t kMaxHalfPitch = 1'270'000;  // nm: a wide resistor must not grab the board
 
 bool Contains(std::span<const Point> polygon, Point p) {
     bool inside = false;
@@ -111,6 +114,42 @@ std::optional<std::size_t> PinNumber(std::string_view text) {
     return n;
 }
 
+double Distance(Point a, Point b) {
+    return std::hypot(static_cast<double>(a.x - b.x), static_cast<double>(a.y - b.y));
+}
+
+Point NearestOnSegment(Point a, Point b, Point at) {
+    const double dx = static_cast<double>(b.x - a.x);
+    const double dy = static_cast<double>(b.y - a.y);
+    const double length2 = dx * dx + dy * dy;
+    if (length2 == 0) {
+        return a;
+    }
+    const double t = std::clamp(
+        (static_cast<double>(at.x - a.x) * dx + static_cast<double>(at.y - a.y) * dy) / length2,
+        0.0, 1.0);
+    return {a.x + std::llround(dx * t), a.y + std::llround(dy * t)};
+}
+
+struct EdgeDistance {
+    double edge;    // nm from the copper edge, 0 inside
+    Point nearest;  // on the centreline
+};
+
+EdgeDistance TraceEdgeDistance(const Trace& trace, Point at) {
+    const std::vector<Point> points = trace.mid ? ArcPolyline(trace.start, *trace.mid, trace.end)
+                                                : std::vector<Point>{trace.start, trace.end};
+    EdgeDistance best{DBL_MAX, trace.start};
+    for (std::size_t i = 0; i + 1 < points.size(); ++i) {
+        const Point p = NearestOnSegment(points[i], points[i + 1], at);
+        const double edge = std::max(0.0, Distance(p, at) - static_cast<double>(trace.width) / 2);
+        if (edge < best.edge) {
+            best = {edge, p};
+        }
+    }
+    return best;
+}
+
 }  // namespace
 
 BoardScene::BoardScene(Board drawn, const Board& pristine, const LoadedCircuit& design)
@@ -149,19 +188,35 @@ BoardScene::BoardScene(Board drawn, const Board& pristine, const LoadedCircuit& 
         for (const LoadedPart& part : design.parts) {
             if (part.reference == component.reference) {
                 info.value = part.value;
+                info.part = part.info;
             }
         }
         const auto chip = design.components.find(component.reference);
         for (const Pad& pad : component.pads) {
             nets.push_back(pinNet(component.reference, pad.number));
             std::string name;
+            bool power = false;
             const auto number = PinNumber(pad.number);
             if (chip != design.components.end() && number &&
                 *number <= chip->second->pins().size()) {
-                name = chip->second->pins()[*number - 1].name;
+                const PinSpec& spec = chip->second->pins()[*number - 1];
+                name = spec.name;
+                power = spec.kind == PinKind::Power;
             }
             info.pinNames.push_back(std::move(name));
+            info.powerPins.push_back(power);
         }
+        double pitch = DBL_MAX;
+        for (std::size_t a = 0; a < component.pads.size(); ++a) {
+            for (std::size_t b = a + 1; b < component.pads.size(); ++b) {
+                pitch = std::min(pitch,
+                                 Distance(component.pads[a].position, component.pads[b].position));
+            }
+        }
+        info.halfPitch =
+            pitch == DBL_MAX
+                ? 0
+                : std::min(static_cast<std::int64_t>(std::llround(pitch / 2)), kMaxHalfPitch);
     }
 
     const Islands islands = FindIslands(pristine);
@@ -223,28 +278,55 @@ std::string_view BoardScene::netName(NetId net) const {
     return index < netNames_.size() ? std::string_view(netNames_[index]) : std::string_view{};
 }
 
-std::optional<Hit> BoardScene::hitTest(Point at, Layer active) const {
+std::optional<Pick> BoardScene::pick(Point at, Layer active, PickReach reach) const {
+    std::optional<Pick> best;
+    double bestDistance = DBL_MAX;
     for (std::size_t k = 0; k < board_.components.size(); ++k) {
         const auto& pads = board_.components[k].pads;
+        const double limit = static_cast<double>(std::max(reach.pad, info_[k].halfPitch));
         for (std::size_t p = 0; p < pads.size(); ++p) {
-            if (Covers(pads[p], at)) {
-                return Hit{HitKind::Pad, k, p};
+            const double distance = Covers(pads[p], at) ? 0 : Distance(pads[p].position, at);
+            if (distance <= limit && distance < bestDistance) {
+                best = Pick{{HitKind::Pad, k, p}, active, pads[p].position};
+                bestDistance = distance;
             }
         }
     }
+    if (best) {
+        return best;
+    }
     for (std::size_t v = 0; v < board_.vias.size(); ++v) {
-        if (Covers(board_.vias[v], at)) {
-            return Hit{HitKind::Via, 0, v};
+        const Via& via = board_.vias[v];
+        const double edge =
+            std::max(0.0, Distance(via.position, at) - static_cast<double>(via.diameter) / 2);
+        if (edge <= static_cast<double>(reach.copper) && edge < bestDistance) {
+            best = Pick{{HitKind::Via, 0, v}, active, via.position};
+            bestDistance = edge;
         }
     }
-    for (std::size_t t = 0; t < board_.traces.size(); ++t) {
-        if (board_.traces[t].layer == active && Covers(board_.traces[t], at)) {
-            return Hit{HitKind::Trace, 0, t};
+    if (best) {
+        return best;
+    }
+    const Layer other = active == Layer::Front ? Layer::Back : Layer::Front;
+    for (const Layer layer : {active, other}) {
+        for (std::size_t t = 0; t < board_.traces.size(); ++t) {
+            const Trace& trace = board_.traces[t];
+            if (trace.layer != layer) {
+                continue;
+            }
+            const EdgeDistance d = TraceEdgeDistance(trace, at);
+            if (d.edge <= static_cast<double>(reach.copper) && d.edge < bestDistance) {
+                best = Pick{{HitKind::Trace, 0, t}, layer, d.nearest};
+                bestDistance = d.edge;
+            }
+        }
+        if (best) {
+            return best;
         }
     }
     for (std::size_t k = 0; k < courtyards_.size(); ++k) {
         if (Contains(courtyards_[k], at)) {
-            return Hit{HitKind::Component, k, 0};
+            return Pick{{HitKind::Component, k, 0}, active, at};
         }
     }
     return std::nullopt;
@@ -288,6 +370,43 @@ std::string BoardScene::hoverText(const Hit& hit) const {
                            info_[hit.component].value);
     }
     return {};
+}
+
+std::string_view BoardScene::partName(std::size_t component) const {
+    const PartInfo* part = info_[component].part;
+    return part ? part->name : std::string_view{};
+}
+
+std::string_view BoardScene::pinName(std::size_t component, std::size_t pad) const {
+    return info_[component].pinNames[pad];
+}
+
+bool BoardScene::powerPin(std::size_t component, std::size_t pad) const {
+    return info_[component].powerPins[pad];
+}
+
+std::optional<std::size_t> BoardScene::componentIndex(std::string_view reference) const {
+    for (std::size_t k = 0; k < board_.components.size(); ++k) {
+        if (board_.components[k].reference == reference) {
+            return k;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<std::size_t> BoardScene::padIndex(std::size_t component, std::string_view pin) const {
+    const auto& pads = board_.components[component].pads;
+    for (std::size_t p = 0; p < pads.size(); ++p) {
+        if (pads[p].number == pin) {
+            return p;
+        }
+    }
+    for (std::size_t p = 0; p < pads.size(); ++p) {
+        if (!pin.empty() && info_[component].pinNames[p] == pin) {
+            return p;
+        }
+    }
+    return std::nullopt;
 }
 
 }  // namespace bw

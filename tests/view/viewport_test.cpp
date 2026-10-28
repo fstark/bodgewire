@@ -79,3 +79,28 @@ TEST_CASE("view: viewport resize", "[view]") {
     CHECK(v.pixelsPerMm() == Catch::Approx(scale));
     CHECK(Near(v.toBoard({500, 250}), centre, 1));
 }
+
+TEST_CASE("view: viewport frame", "[view]") {
+    Viewport v;
+    v.fit(kBoard, kPanel);
+    const Bounds box{{50 * kMm, 40 * kMm}, {60 * kMm, 45 * kMm}};  // 10 × 5 mm
+    v.frame(box, 0.5, 0);
+    CHECK(v.pixelsPerMm() == Catch::Approx(40));  // 0.5 × min(800 / 10, 600 / 5)
+    CHECK_FALSE(v.fitted());
+    const ScreenPoint centre = v.toScreen({55 * kMm, 42'500'000});
+    CHECK(centre.x == Catch::Approx(400));
+    CHECK(centre.y == Catch::Approx(300));
+
+    v.frame(box, 0.5, 70);
+    CHECK(v.pixelsPerMm() == Catch::Approx(70));
+    v.frame(box, 0.5, 500);
+    CHECK(v.pixelsPerMm() == Catch::Approx(Viewport::kMaxPixelsPerMm));
+    v.frame(kBoard, 0.1, 0);
+    CHECK(v.pixelsPerMm() == Catch::Approx(Viewport::kFitMargin * 8));
+
+    v.frame({{30 * kMm, 30 * kMm}, {30 * kMm, 30 * kMm}}, 0.5, 20);
+    CHECK(v.pixelsPerMm() == Catch::Approx(20));
+    const ScreenPoint point = v.toScreen({30 * kMm, 30 * kMm});
+    CHECK(point.x == Catch::Approx(400));
+    CHECK(point.y == Catch::Approx(300));
+}

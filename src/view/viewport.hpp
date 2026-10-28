@@ -23,6 +23,9 @@ public:
     void resize(ScreenPoint panel);             // refits if fitted, else keeps the centre point
     void zoomAt(ScreenPoint cursor, double notches);  // the board point under the cursor stays
     void pan(ScreenPoint delta);
+    // Centres `box` and zooms so it fills `share` of the panel, but at least `minPixelsPerMm`;
+    // clamped to [fitted, kMaxPixelsPerMm].
+    void frame(Bounds box, double share, double minPixelsPerMm);
 
     ScreenPoint toScreen(Point p) const;
     Point toBoard(ScreenPoint s) const;

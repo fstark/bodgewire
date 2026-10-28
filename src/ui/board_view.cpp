@@ -298,7 +298,8 @@ void BoardView::input(ImVec2 origin) {
         }
     }
     const Point at = viewport_.toBoard(mouse);
-    const auto hover = scene_->hitTest(at, active_);
+    const auto picked = scene_->pick(at, active_, {});
+    const auto hover = picked ? std::optional(picked->hit) : std::nullopt;
     if (hover) {
         highlight_ = scene_->netOf(*hover);
         const std::string text = scene_->hoverText(*hover);
@@ -307,8 +308,8 @@ void BoardView::input(ImVec2 origin) {
         }
     }
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        click_ = BoardClick{at, active_, hover && hover->kind != HitKind::Component,
-                            scene_->componentAt(at)};
+        click_ = BoardClick{at, picked ? picked->layer : active_,
+                            hover && hover->kind != HitKind::Component, scene_->componentAt(at)};
     }
 }
 

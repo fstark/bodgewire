@@ -46,6 +46,21 @@ void Viewport::pan(ScreenPoint delta) {
     fitted_ = false;
 }
 
+void Viewport::frame(Bounds box, double share, double minPixelsPerMm) {
+    const double width = static_cast<double>(box.max.x - box.min.x);
+    const double height = static_cast<double>(box.max.y - box.min.y);
+    double scale = nmToPixel_;
+    if (width > 0 && height > 0 && panel_.x > 0 && panel_.y > 0) {
+        scale = share * std::min(panel_.x / width, panel_.y / height);
+    }
+    nmToPixel_ = std::clamp(std::max(scale, minPixelsPerMm / 1e6), minNmToPixel_,
+                            std::max(minNmToPixel_, kMaxPixelsPerMm / 1e6));
+    const double cx = (static_cast<double>(box.min.x) + static_cast<double>(box.max.x)) / 2;
+    const double cy = (static_cast<double>(box.min.y) + static_cast<double>(box.max.y)) / 2;
+    offset_ = {panel_.x / 2 - cx * nmToPixel_, panel_.y / 2 - cy * nmToPixel_};
+    fitted_ = false;
+}
+
 ScreenPoint Viewport::toScreen(Point p) const {
     return {static_cast<double>(p.x) * nmToPixel_ + offset_.x,
             static_cast<double>(p.y) * nmToPixel_ + offset_.y};
