@@ -13,11 +13,13 @@ constexpr Time kLine = 64_us;
 constexpr int kLinesPerFrame = 312;
 constexpr Time kFrame = kLinesPerFrame * kLine;
 
-// SYNC_N up to `end`: 4 us low at each line start (if horizontal); the first 3 lines of each
-// frame low throughout (if vertical).
-void FeedSync(Tv& tv, Time end, bool horizontal, bool vertical) {
-    tv.setSyncN(0, One);
-    for (int k = 0; k * kLine < end; ++k) {
+// SYNC_N for the lines starting in [from, end): 4 us low at each line start (if horizontal); the
+// first 3 lines of each frame low throughout (if vertical).
+void FeedSync(Tv& tv, Time from, Time end, bool horizontal, bool vertical) {
+    if (from == 0) {
+        tv.setSyncN(0, One);
+    }
+    for (Time k = (from + kLine - 1) / kLine; k * kLine < end; ++k) {
         const Time t = k * kLine;
         if (vertical && k % kLinesPerFrame < 3) {
             tv.setSyncN(t, Zero);
@@ -31,7 +33,65 @@ void FeedSync(Tv& tv, Time end, bool horizontal, bool vertical) {
     tv.advanceTo(end);
 }
 
+void FeedSync(Tv& tv, Time end, bool horizontal, bool vertical) {
+    FeedSync(tv, 0, end, horizontal, vertical);
+}
+
+bool Near(float a, float b) { return a > b - 1e-4f && a < b + 1e-4f; }
+
+// Locked 50 Hz sync with `video` called at the start of line 1600 (row 40 of its frame); returns
+// once that frame has completed.
+template <typename Video>
+Tv PaintLine(Video video) {
+    constexpr Time kStart = 1600 * kLine;
+    Tv tv;
+    FeedSync(tv, kStart, true, true);
+    FeedSync(tv, kStart, kStart + 5_us, true, true);
+    video(tv, kStart);
+    FeedSync(tv, kStart + 5_us, 1872 * kLine + 20_us, true, true);
+    return tv;
+}
+
 }  // namespace
+
+TEST_CASE("tv: video paints its columns", "[devices]") {
+    const Tv tv = PaintLine([](Tv& t, Time line) {
+        t.setVideo(line + 10_us, One);
+        t.setVideo(line + 20_us, Zero);
+    });
+    REQUIRE(tv.isLocked());
+    const TvFrame& frame = tv.completedFrame();
+    for (int column = 80; column < 160; ++column) {
+        INFO("column " << column);
+        CHECK(Near(frame.at(40, column), 1.0f));
+    }
+    CHECK(frame.at(40, 79) == 0.0f);
+    CHECK(frame.at(40, 160) == 0.0f);
+    CHECK(frame.at(39, 100) == 0.0f);
+    CHECK(frame.at(41, 100) == 0.0f);
+}
+
+TEST_CASE("tv: X paints grey, half a column paints half", "[devices]") {
+    const Tv tv = PaintLine([](Tv& t, Time line) {
+        t.setVideo(line + 10_us, X);
+        t.setVideo(line + 20_us, Zero);
+        t.setVideo(line + 30_us, One);
+        t.setVideo(line + 30_us + 62'500, Zero);
+    });
+    const TvFrame& frame = tv.completedFrame();
+    CHECK(Near(frame.at(40, 100), 0.5f));
+    CHECK(Near(frame.at(40, 240), 0.5f));
+    CHECK(frame.at(40, 241) == 0.0f);
+}
+
+TEST_CASE("tv: no signal gives black frames", "[devices]") {
+    Tv tv;
+    tv.advanceTo(50_ms);
+    REQUIRE(tv.completedFrames() == 2);
+    for (const float cell : tv.completedFrame().cells) {
+        REQUIRE(cell == 0.0f);
+    }
+}
 
 TEST_CASE("tv: 50 Hz sync locks", "[devices]") {
     Tv tv;

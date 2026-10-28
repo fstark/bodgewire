@@ -52,7 +52,24 @@ void Tv::advanceTo(Time time) {
     paint(time);
 }
 
-void Tv::paint(Time to) { now_ = to; }
+// [now_, to) lies inside one line: every line start paints first.
+void Tv::paint(Time to) {
+    const float weight = video_ == LogicValue::One ? 1.0f : video_ == LogicValue::X ? 0.5f : 0.0f;
+    if (weight > 0.0f && row_ < kTvRows) {
+        const std::size_t rowStart = static_cast<std::size_t>(row_) * kTvColumns;
+        for (Time t = now_; t < to;) {
+            const Time column = (t - lineStart_) / kColumnTime;
+            if (column >= kTvColumns) {
+                break;
+            }
+            const Time end = std::min(to, lineStart_ + (column + 1) * kColumnTime);
+            drawing_.cells[rowStart + static_cast<std::size_t>(column)] +=
+                weight * static_cast<float>(end - t) / static_cast<float>(kColumnTime);
+            t = end;
+        }
+    }
+    now_ = to;
+}
 
 void Tv::startLine(Time time, bool synced) {
     lineStart_ = time;

@@ -12,6 +12,7 @@ add_executable(bw_tests
   board/kicad_board_test.cpp
   board/kicad_netlist_test.cpp
   board/sexpr_test.cpp
+  devices/bmp_test.cpp
   devices/tv_test.cpp
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp
