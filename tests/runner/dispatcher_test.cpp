@@ -80,13 +80,12 @@ TEST_CASE("dispatcher: two consumers on one Net", "[runner]") {
     CHECK(one.log == Log{"1 3 1", "adv 10"});
 }
 
-TEST_CASE("dispatcher: power on clears staging", "[runner]") {
+TEST_CASE("dispatcher: power on keeps Samples of the new run", "[runner]") {
     RecordingConsumer consumer({NetId{1}});
     Dispatcher dispatcher({&consumer});
     dispatcher.apply(Watch(0, NetId{1}));
-    dispatcher.stage(0, {3, LogicValue::One});
-    dispatcher.apply({MarkerKind::PowerOn});
     dispatcher.stage(0, {0, LogicValue::Zero});
+    dispatcher.apply({MarkerKind::PowerOn});
     dispatcher.apply(SliceEnd(10));
     dispatcher.apply({MarkerKind::PowerOff});
     CHECK(consumer.log == Log{"on", "1 0 0", "adv 10", "off"});

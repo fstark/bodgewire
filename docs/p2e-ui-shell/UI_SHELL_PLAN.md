@@ -71,7 +71,7 @@ SliceEnd merge: repeatedly pick the active slot whose first unsent staged Sample
 ### 2.5 — Tests: [tests/runner/dispatcher_test.cpp](../../tests/runner/dispatcher_test.cpp)
 
 - `RecordingConsumer` (test helper): logs `"on"`, `"N t v"`, `"adv t"`, `"off"`.
-- `"dispatcher: merges by time then slot"`, `"dispatcher: keeps Samples past the slice end"`, `"dispatcher: two consumers on one Net"`, `"dispatcher: power on clears staging"`, `"dispatcher: unwatch"`.
+- `"dispatcher: merges by time then slot"`, `"dispatcher: keeps Samples past the slice end"`, `"dispatcher: two consumers on one Net"`, `"dispatcher: power on keeps Samples of the new run"`, `"dispatcher: unwatch"`.
 - `"dispatcher: TV frame equals TvInput"`: test pattern seed 1, single thread: each 1 ms, copy recorder Samples (time > fedUntil) of VIDEO, SYNC_N into `stage(0|1, …)`, `apply(SliceEnd)`, `trimRecordings()`; at 60 ms `TvConsumer` picture frame == `TvInput` frame from a second run.
 
 ### Fence
@@ -85,7 +85,7 @@ SliceEnd merge: repeatedly pick the active slot whose first unsent staged Sample
 
 ### 3.1 — `src/runner/runner.hpp/.cpp`
 
-`Speed`, `RunState`, `RunnerStatus`, `Runner` per design §2, state §4, algorithms §5.1–5.2. Commands: `struct Command { CommandKind kind; std::uint64_t value; NetId net; }` with `enum class CommandKind : std::uint8_t { PowerOn, PowerOff, Pause, Resume, SetSpeed, PauseAt, Watch, Unwatch }`; each public method locks `mutex_`, appends, `wake_.notify_one()`. The constructor queues `Watch` for each consumer's `nets()` in order (counted, design §5.1), then starts `devices_`, then `simulation_` (`std::jthread`, loops check `stop_token`; the destructor requests stop, notifies `wake_` and `markersPushed_`). Pacing uses `std::chrono::steady_clock`. `status().ringWaitShare = waitedNs_ / max(1, runNs_)` (pacing sleeps not in `runNs_`). `pauseAt` is one-shot and cleared by `powerOn`. `waitIdle()`: loop until `commandsApplied_ == commandsQueued_`, `state_ != Running` and `markersDone_ == markersPushed_` (wait with `std::atomic::wait`). Add `runner.cpp` to `bw_runner`.
+`Speed`, `RunState`, `RunnerStatus`, `Runner` per design §2, state §4, algorithms §5.1–5.2. Commands: `struct Command { CommandKind kind; std::uint64_t value; NetId net; }` with `enum class CommandKind : std::uint8_t { PowerOn, PowerOff, Pause, Resume, SetSpeed, PauseAt, Watch, Unwatch }`; each public method locks `mutex_`, appends, `wake_.notify_one()`. The constructor queues `Watch` for each consumer's `nets()` in order (counted, design §5.1), then starts `devices_`, then `simulation_` (`std::jthread`, loops check `stop_token`; the destructor requests stop, notifies `wake_` and `devicesWake_`). Pacing uses `std::chrono::steady_clock`. `status().ringWaitShare = waitedNs_ / max(1, runNs_)` (pacing sleeps not in `runNs_`). `pauseAt` is one-shot (cleared when it fires) and queued before `powerOn`/`resume` in tests, so it is applied before the first slice. `waitIdle()`: loop until `commandsApplied_ == commandsQueued_`, `state_ != Running` and `markersDone_ == markersPushed_` (wait with `std::atomic::wait`). Add `runner.cpp` to `bw_runner`.
 
 ### 3.2 — Tests: [tests/runner/runner_test.cpp](../../tests/runner/runner_test.cpp)
 

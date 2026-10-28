@@ -20,10 +20,7 @@ void Dispatcher::apply(const Marker& marker) {
         active_[marker.slot] = false;
         staged_[marker.slot].clear();
         break;
-    case MarkerKind::PowerOn:
-        for (auto& staged : staged_) {
-            staged.clear();
-        }
+    case MarkerKind::PowerOn:  // nothing stale is staged: the Runner waits for us first
         for (Consumer* consumer : consumers_) {
             consumer->powerOn();
         }

@@ -34,6 +34,7 @@ add_executable(bw_tests
   parts/ls74_test.cpp
   parts/oscillator_test.cpp
   runner/dispatcher_test.cpp
+  runner/runner_test.cpp
   runner/spsc_ring_test.cpp
   runner/triple_buffer_test.cpp
   sim/check_test.cpp

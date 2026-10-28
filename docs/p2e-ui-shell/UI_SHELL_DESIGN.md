@@ -100,7 +100,7 @@ public:
     void pause();
     void resume();
     void setSpeed(Speed speed);
-    void pauseAt(Time time);  // one-shot: pause at the first slice end >= time; powerOn clears it
+    void pauseAt(Time time);  // one-shot: pause at the first slice end >= time (queue before powerOn)
     void watch(NetId net);    // counted: the Net's ring is written while any watch is held
     void unwatch(NetId net);  // undoes one watch(); the slot is freed when none remain
 
@@ -171,6 +171,7 @@ class Runner {
     std::uint64_t commandsQueued_ = 0;                  // guarded by mutex_
     std::atomic<std::uint64_t> commandsApplied_{0};     // waitIdle
     std::atomic<std::uint64_t> markersPushed_{0}, markersDone_{0};  // waitIdle, power barrier
+    std::atomic<std::uint64_t> devicesWake_{0};         // bumped on each marker and full ring
     std::atomic<RunState> state_{RunState::Off};
     std::atomic<Time> simTime_{0};
     std::atomic<std::int64_t> waitedNs_{0}, runNs_{0};
@@ -194,7 +195,7 @@ loop until stop:
   apply commands (under mutex_), in order:
     PowerOn(seed): wait markersDone_ == markersPushed_   (all old Samples consumed)
                    sim_.powerOn(seed); re-record watched Nets, pushedUntil = -1
-                   push PowerOn; state Running; pauseAt_ = nullopt; rebase pacing; seed saved
+                   push PowerOn; state Running; rebase pacing; seed saved
     PowerOff:      push PowerOff; state Off
     Pause/Resume:  state Paused / Running (Resume rebases pacing)
     Speed:         set; rebase pacing
@@ -220,19 +221,21 @@ loop until stop:
 
 The devices thread drains rings into `staged_` without limit, so the real bound on Samples in flight is the marker ring: at most 1024 slices (≈ 1 s simulated) ahead of the devices thread.
 
-`markersPushed_` is incremented after each marker push and notified (`std::atomic::notify_one`); the devices thread waits on it when idle.
+`markersPushed_` is incremented after each marker push. `devicesWake_` is bumped and notified after each marker push and on every full-ring wait; the devices thread waits on it when idle, so a full ring always gets drained (no deadlock with a devices thread waiting for a marker).
 
 ### 5.2 Devices thread and Dispatcher (S4)
 
 ```
 loop until stop:
+  seen = devicesWake_; if stop: return
   for each active slot: drain ring into staged_[slot]          (keeps the producer unblocked)
-  m = markers_.tryPop(); if none: markersPushed_.wait(markersDone_); continue
+  m = markers_.tryPop(); if none: devicesWake_.wait(seen); continue
   for each active slot: drain ring again                       (acquire: every Sample before m)
   switch m.kind:
     Watch:    slotNet_[slot] = net; active
     Unwatch:  inactive; staged_[slot].clear(); slotFree_[slot] = true
-    PowerOn:  clear staged_; every consumer powerOn()
+    PowerOn:  every consumer powerOn()   (don't clear staged_: it may already hold the new run's
+              Samples; nothing stale is left, as the Runner waits for the devices thread first)
     PowerOff: every consumer powerOff()
     SliceEnd: merge staged Samples with time <= m.time over active slots, by (time, slot);
               each goes to every consumer whose nets() contains its Net;
@@ -322,7 +325,7 @@ ui ──► runner ──► devices ──► sim
 
 - **spsc_ring_test**: push/pop FIFO, full at capacity, empty, wrap-around over many cycles; two threads, 10 M Samples with increasing time, consumer checks order and content.
 - **triple_buffer_test**: `update()` false before any publish; after publish → true, front is it; two publishes before a read → the latest; two threads, writer publishes structs whose fields must all agree, reader never sees a mix.
-- **dispatcher_test** (single-threaded): Watch + Samples + SliceEnd feed a recording Consumer in (time, slot) order; Samples past the SliceEnd stay staged; two consumers on one Net get the same Samples; PowerOn clears staging; Unwatch frees the slot.
+- **dispatcher_test** (single-threaded): Watch + Samples + SliceEnd feed a recording Consumer in (time, slot) order; Samples past the SliceEnd stay staged; two consumers on one Net get the same Samples; PowerOn keeps the new run's staged Samples; Unwatch frees the slot.
 - **runner_test** (`[runner]`, test pattern, `Speed::Max`, `pauseAt` + `waitIdle`, no wall clock):
   - seeds 1–2: TvConsumer frame at 60 ms == `TvInput` frame at 60 ms (headless helper as in test_pattern_faults_test);
   - ring capacity 4: same frame;
