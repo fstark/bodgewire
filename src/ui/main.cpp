@@ -94,7 +94,8 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
 
 struct Loaded {
     std::optional<Session> session;
-    std::string name;
+    std::string title;  // Puzzle title, else Machine name, else netlist stem
+    std::string brief;
 };
 
 void Print(std::span<const Diagnostic> diagnostics) {
@@ -107,8 +108,16 @@ void Print(std::span<const Diagnostic> diagnostics) {
 Loaded Load(const std::filesystem::path& file) {
     std::expected<Machine, std::vector<Diagnostic>> machine =
         std::unexpected(std::vector<Diagnostic>{});
+    std::string title, brief;
     if (file.extension() == ".bwp") {
-        machine = LoadPuzzleFile(file);
+        const auto puzzle = ReadPuzzleFile(file);
+        if (!puzzle) {
+            Print(puzzle.error());
+            return {};
+        }
+        title = puzzle->title;
+        brief = puzzle->brief;
+        machine = LoadMachine(*puzzle, MachineRoot(file));
     } else if (HasBoard(file)) {
         machine = LoadNetlistMachine(file);
     } else {
@@ -118,7 +127,7 @@ Loaded Load(const std::filesystem::path& file) {
             return {};
         }
         Print((*result)->warnings);
-        return {Session(std::nullopt, std::move(*result)), file.stem().string()};
+        return {Session(std::nullopt, std::move(*result)), file.stem().string(), ""};
     }
     if (!machine) {
         Print(machine.error());
@@ -129,8 +138,10 @@ Loaded Load(const std::filesystem::path& file) {
         Print(built.error());
         return {};
     }
-    std::string name(machine->name());
-    return {Session(std::move(*machine), std::move(*built)), std::move(name)};
+    if (title.empty()) {
+        title = machine->name();
+    }
+    return {Session(std::move(*machine), std::move(*built)), std::move(title), std::move(brief)};
 }
 
 // Simulated / wall time over the last second.
@@ -408,7 +419,7 @@ int main(int argc, char** argv) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         return kExitErrors;
     }
-    const std::string title = "Bodgewire \u2014 " + loaded.name;
+    const std::string title = "Bodgewire \u2014 " + loaded.title;
     SDL_Window* window = SDL_CreateWindow(title.c_str(), kWindowWidth, kWindowHeight,
                                           SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     SDL_Renderer* renderer = window != nullptr ? SDL_CreateRenderer(window, nullptr) : nullptr;

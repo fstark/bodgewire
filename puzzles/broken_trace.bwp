@@ -1,3 +1,5 @@
 # Broken Trace: H0 cracked between U1.QA and U13.2B, vertical grid lines gone.
 machine test_pattern
+title "Missing grid lines"
+brief "The vertical lines of the test grid are gone; the horizontal ones are fine."
 fault crack F.Cu 137.59 99.17

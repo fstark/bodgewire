@@ -126,6 +126,28 @@ TEST_CASE("machine: HasBoard", "[machine]") {
     std::filesystem::remove_all(temp);
 }
 
+TEST_CASE("machine: MachineRoot", "[machine]") {
+    CHECK(MachineRoot(std::filesystem::path(BW_PUZZLE_DIR) / "dead_counter.bwp") == Root());
+    CHECK(MachineRoot("/a/b/c.bwp") == "/a");
+}
+
+TEST_CASE("machine: ReadPuzzleFile + LoadMachine", "[machine]") {
+    const auto file = std::filesystem::path(BW_PUZZLE_DIR) / "dead_counter.bwp";
+    const auto puzzle = ReadPuzzleFile(file);
+    REQUIRE(puzzle.has_value());
+    CHECK(puzzle->machine == "test_pattern");
+    REQUIRE(puzzle->stuck.size() == 1);
+    const auto viaRead = LoadMachine(*puzzle, MachineRoot(file));
+    const auto direct = LoadPuzzleFile(file);
+    REQUIRE(viaRead.has_value());
+    REQUIRE(direct.has_value());
+    CHECK(viaRead->name() == direct->name());
+    const auto built = viaRead->build();
+    REQUIRE(built.has_value());
+    CHECK((*built)->circuit.tieOf((*built)->nets.at("V0")).strength == DriveStrength::Strong);
+    CHECK_FALSE(ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "nope.bwp").has_value());
+}
+
 TEST_CASE("machine: netlist with a Board loads fault-free", "[machine]") {
     const auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
     REQUIRE(machine.has_value());

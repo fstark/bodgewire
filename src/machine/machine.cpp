@@ -196,24 +196,32 @@ std::optional<Point> Machine::padPosition(std::string_view reference, std::strin
     return std::nullopt;
 }
 
-std::expected<Machine, std::vector<Diagnostic>> LoadPuzzleFile(const std::filesystem::path& path) {
+std::filesystem::path MachineRoot(const std::filesystem::path& file) {
+    return std::filesystem::absolute(file).parent_path().parent_path();
+}
+
+std::expected<Puzzle, std::vector<Diagnostic>> ReadPuzzleFile(const std::filesystem::path& path) {
     std::string file = path.filename().string();
     const auto text = ReadFile(path);
     if (!text) {
         return std::unexpected(
             std::vector<Diagnostic>{{std::move(file), 0, Severity::Error, "cannot read file"}});
     }
-    const auto puzzle = ParsePuzzle(*text, std::move(file));
+    return ParsePuzzle(*text, std::move(file));
+}
+
+std::expected<Machine, std::vector<Diagnostic>> LoadPuzzleFile(const std::filesystem::path& path) {
+    const auto puzzle = ReadPuzzleFile(path);
     if (!puzzle) {
         return std::unexpected(puzzle.error());
     }
-    return LoadMachine(*puzzle, std::filesystem::absolute(path).parent_path().parent_path());
+    return LoadMachine(*puzzle, MachineRoot(path));
 }
 
 bool HasBoard(const std::filesystem::path& netlist) {
     const auto path = std::filesystem::absolute(netlist);
     const std::string stem = path.stem().string();
-    const auto root = path.parent_path().parent_path();
+    const auto root = MachineRoot(path);
     return path.parent_path().filename() == "netlists" &&
            std::filesystem::exists(root / "boards" / stem / (stem + ".kicad_pcb"));
 }
@@ -222,7 +230,7 @@ std::expected<Machine, std::vector<Diagnostic>>
 LoadNetlistMachine(const std::filesystem::path& netlist) {
     const auto path = std::filesystem::absolute(netlist);
     return LoadMachine(Puzzle{.file = path.filename().string(), .machine = path.stem().string()},
-                       path.parent_path().parent_path());
+                       MachineRoot(path));
 }
 
 }  // namespace bw

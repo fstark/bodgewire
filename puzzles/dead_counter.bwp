@@ -1,3 +1,5 @@
 # Dead counter output: U3.QA (V0) stuck low, the frame end is never decoded.
 machine test_pattern
+title "Rolling picture"
+brief "The picture will not hold still: the grid repeats in short bands down the screen and rolls."
 fault stuck U3.QA 0

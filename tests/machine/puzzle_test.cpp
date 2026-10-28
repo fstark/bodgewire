@@ -70,3 +70,30 @@ TEST_CASE("puzzle: errors", "[machine]") {
         Lines{"2: expected: fault crack F.Cu|B.Cu X Y", "3: expected: fault crack F.Cu|B.Cu X Y"});
     CHECK(Errors("machine m\nfault crack F.Cu 1 2mm\n") == Lines{"2: bad coordinate '2mm'"});
 }
+
+TEST_CASE("puzzle: title and brief", "[machine]") {
+    const auto result = ParsePuzzle("machine m\n"
+                                    "title \"Dead # counter\"   # comment\n"
+                                    "  brief \"\"\n",
+                                    "t.bwp");
+    REQUIRE(result.has_value());
+    CHECK(result->title == "Dead # counter");
+    CHECK(result->titleLine == 2);
+    CHECK(result->brief.empty());
+    CHECK(result->briefLine == 3);
+
+    const auto absent = ParsePuzzle("machine m\n", "t.bwp");
+    REQUIRE(absent.has_value());
+    CHECK(absent->title.empty());
+    CHECK(absent->brief.empty());
+    CHECK(absent->titleLine == 0);
+}
+
+TEST_CASE("puzzle: bad title or brief", "[machine]") {
+    CHECK(Errors("machine m\ntitle \"open\n") == Lines{"2: expected: title \"TEXT\""});
+    CHECK(Errors("machine m\ntitle bare\n") == Lines{"2: expected: title \"TEXT\""});
+    CHECK(Errors("machine m\nbrief \"a\" b\n") == Lines{"2: expected: brief \"TEXT\""});
+    CHECK(Errors("machine m\nbrief\n") == Lines{"2: expected: brief \"TEXT\""});
+    CHECK(Errors("machine m\ntitle \"a\"\ntitle \"b\"\n") ==
+          Lines{"3: title already given at line 2"});
+}

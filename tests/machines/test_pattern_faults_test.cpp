@@ -75,6 +75,16 @@ std::vector<float> FaultFree(std::uint64_t seed) {
 
 }  // namespace
 
+TEST_CASE("faults: Puzzles have a title and a brief", "[machines]") {
+    for (const char* name : {"broken_trace", "dead_counter", "stuck_gate"}) {
+        const auto puzzle =
+            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        REQUIRE(puzzle.has_value());
+        CHECK_FALSE(puzzle->title.empty());
+        CHECK_FALSE(puzzle->brief.empty());
+    }
+}
+
 TEST_CASE("faults: fault-free Machine on its Board is the netlist", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2);
     auto netlist = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");

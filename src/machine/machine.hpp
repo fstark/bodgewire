@@ -53,7 +53,14 @@ private:
     std::vector<CrackDecl> cracks_;
 };
 
-// Parse + LoadMachine with root = the puzzle file's directory's parent (puzzles/../).
+// The directory holding netlists/, boards/, puzzles/, manuals/, datasheets/: the file's
+// directory's parent.
+std::filesystem::path MachineRoot(const std::filesystem::path& file);
+
+// Read + ParsePuzzle.
+std::expected<Puzzle, std::vector<Diagnostic>> ReadPuzzleFile(const std::filesystem::path& path);
+
+// ReadPuzzleFile + LoadMachine with root = MachineRoot(path).
 std::expected<Machine, std::vector<Diagnostic>> LoadPuzzleFile(const std::filesystem::path& path);
 
 // root/netlists/<stem>.bwn whose root/boards/<stem>/<stem>.kicad_pcb exists.

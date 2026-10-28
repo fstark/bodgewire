@@ -1,3 +1,5 @@
 # Stuck gate output: U12.4Y (GRID) stuck high, the whole active area is white.
 machine test_pattern
+title "White screen"
+brief "The whole picture area is white; no grid at all."
 fault stuck U12.4Y 1

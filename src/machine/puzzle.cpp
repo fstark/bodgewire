@@ -51,11 +51,41 @@ std::optional<Layer> ParseLayer(std::string_view text) {
     return std::nullopt;
 }
 
+// `"TEXT"` then only spaces or a # comment; nullopt otherwise.
+std::optional<std::string> QuotedValue(std::string_view rest) {
+    std::size_t i = 0;
+    while (i < rest.size() && IsSpace(rest[i])) {
+        ++i;
+    }
+    if (i == rest.size() || rest[i] != '"') {
+        return std::nullopt;
+    }
+    const std::size_t close = rest.find('"', i + 1);
+    if (close == std::string_view::npos) {
+        return std::nullopt;
+    }
+    for (std::size_t j = close + 1; j < rest.size(); ++j) {
+        if (rest[j] == '#') {
+            break;
+        }
+        if (!IsSpace(rest[j])) {
+            return std::nullopt;
+        }
+    }
+    return std::string(rest.substr(i + 1, close - i - 1));
+}
+
 class Parser {
 public:
     explicit Parser(std::string file) { puzzle_.file = std::move(file); }
 
     void line(std::uint32_t number, std::string_view text) {
+        if (const std::vector<std::string_view> raw = Tokens(text);
+            !raw.empty() && (raw[0] == "title" || raw[0] == "brief")) {
+            const std::size_t start = static_cast<std::size_t>(raw[0].data() - text.data());
+            quoted(number, raw[0], text.substr(start + raw[0].size()));
+            return;
+        }
         if (const std::size_t hash = text.find('#'); hash != std::string_view::npos) {
             text = text.substr(0, hash);
         }
@@ -106,6 +136,22 @@ private:
         }
         puzzle_.machineLine = line;
         puzzle_.machine = tokens[1];
+    }
+
+    void quoted(std::uint32_t line, std::string_view keyword, std::string_view rest) {
+        const bool isTitle = keyword == "title";
+        std::uint32_t& given = isTitle ? puzzle_.titleLine : puzzle_.briefLine;
+        const auto value = QuotedValue(rest);
+        if (!value) {
+            error(line, "expected: " + std::string(keyword) + " \"TEXT\"");
+            return;
+        }
+        if (given != 0) {
+            error(line, std::string(keyword) + " already given at line " + std::to_string(given));
+            return;
+        }
+        given = line;
+        (isTitle ? puzzle_.title : puzzle_.brief) = *value;
     }
 
     void stuck(std::uint32_t line, const std::vector<std::string_view>& tokens) {
