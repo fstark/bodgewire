@@ -41,7 +41,7 @@ Out: schematic view; Bodge Wires, Trace cuts and other Repairs (P3); scope, anal
 ### S4 Navigation
 
 - Opens fitted: the whole outline visible, centred. Mouse wheel zooms around the cursor, from the fitted view down to 50 px/mm; right-button drag (or middle) pans; `F` or a Fit button refits.
-- At 50 px/mm a crack on a 0.2 mm Trace (0.3 mm gap, P2d) is 15 px wide; fitted (≈ 5 px/mm) it is under 2 px.
+- At 50 px/mm a crack on a 0.2 mm Trace (0.3 mm gap, P2d) is 15 px wide; fitted it is only 2–3 px, easy to miss.
 
 ### S5 Hover and highlight
 
