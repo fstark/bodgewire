@@ -20,6 +20,7 @@ add_executable(bw_tests
   machine/electrical_test.cpp
   machine/machine_test.cpp
   machine/puzzle_test.cpp
+  machines/board_probe_test.cpp
   machines/test_pattern_faults_test.cpp
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp
@@ -34,6 +35,7 @@ add_executable(bw_tests
   parts/ls74_test.cpp
   parts/oscillator_test.cpp
   runner/dispatcher_test.cpp
+  runner/probe_consumer_test.cpp
   runner/runner_test.cpp
   runner/spsc_ring_test.cpp
   runner/triple_buffer_test.cpp
