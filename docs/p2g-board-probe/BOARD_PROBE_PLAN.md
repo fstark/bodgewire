@@ -10,7 +10,7 @@ Spec: [BOARD_PROBE.md](BOARD_PROBE.md)
 | 3 | Machine: `IslandNetNames`, `probeNet`, `padPosition` | done 1886f40 |
 | 4 | Runner: `ProbeConsumer`; Puzzles probed through the Runner | done ab34826 (TSan clean) |
 | 5 | `bw_ui`: click to probe, tip, lamps, `--probe` | done 42497c7 (screenshots checked) |
-| 6 | Performance, release, Done-when | awaiting user Done-when |
+| 6 | Performance, release, Done-when | done: user located all three Faults |
 
 Build gate: `cmake --preset debug && cmake --build --preset debug`
 Test gate:  `ctest --preset debug`
@@ -30,5 +30,5 @@ All C++ is `clang-format` clean (never run it on CMakeLists.txt).
 
 - [x] S4 met: `--probe U1.CLK`, release, 1.00×, locked, ui 0.6 ms
 - [x] Debug and release tests pass (306)
-- [ ] User confirms the Done-when
-- [ ] Commit: `"board probe: phase 6 — release check"`
+- [x] User confirms the Done-when (minor tuning wishes deferred until after first playable)
+- [x] Commit: `"board probe: phase 6 — release check"`
