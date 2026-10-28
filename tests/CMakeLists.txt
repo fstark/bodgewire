@@ -25,6 +25,7 @@ add_executable(bw_tests
   manual/markdown_test.cpp
   machines/board_probe_test.cpp
   machines/board_repair_test.cpp
+  machines/manuals_test.cpp
   machines/test_pattern_faults_test.cpp
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp
