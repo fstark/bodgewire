@@ -229,7 +229,7 @@ ImVec2 PadHalf(const Mapper& map, const Pad& pad) {
     return {map.pixels(std::llround(c * w + s * h)), map.pixels(std::llround(s * w + c * h))};
 }
 
-// Pin names beside the pads, towards the courtyard centre, on dark plates.
+// Pin names beside the pads, away from the courtyard centre, on dark plates.
 void DrawPinNames(ImDrawList& list, const Mapper& map, const BoardScene& scene,
                   std::size_t component) {
     const BoardComponent& c = scene.board().components[component];
@@ -267,10 +267,10 @@ void DrawPinNames(ImDrawList& list, const Mapper& map, const BoardScene& scene,
         ImVec2 corner;
         if (across) {
             const float start = half.x + kPinNameGapPx;
-            corner = {dx >= 0 ? at.x + start : at.x - start - text.x, at.y - text.y / 2};
+            corner = {dx >= 0 ? at.x - start - text.x : at.x + start, at.y - text.y / 2};
         } else {
             const float start = half.y + kPinNameGapPx;
-            corner = {at.x - text.x / 2, dy >= 0 ? at.y + start : at.y - start - text.y};
+            corner = {at.x - text.x / 2, dy >= 0 ? at.y - start - text.y : at.y + start};
         }
         list.AddRectFilled({corner.x - 2, corner.y - 2},
                            {corner.x + text.x + 2, corner.y + text.y + 2}, kPinPlate, 2.0f);
