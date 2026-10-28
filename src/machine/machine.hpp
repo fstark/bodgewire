@@ -3,6 +3,7 @@
 #include <expected>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -32,6 +33,12 @@ public:
     const Board& board() const { return board_; }  // with cracks
     const Board& pristineBoard() const { return pristine_; }  // fault-free Copper, for the view
     const LoadedCircuit& designCircuit() const { return *designCircuit_; }
+
+    // Electrical Net under `at` in `built` (this Machine's build()), in the current Copper: a pad
+    // or via on either Layer, else a Trace on `layer`. nullopt off Copper or on an unnamed island.
+    std::optional<NetId> probeNet(const LoadedCircuit& built, Layer layer, Point at) const;
+    // Position of a Pin's pad: "U1", "QA" or "14"; nullopt if unknown.
+    std::optional<Point> padPosition(std::string_view reference, std::string_view pin) const;
 
 private:
     Machine() = default;

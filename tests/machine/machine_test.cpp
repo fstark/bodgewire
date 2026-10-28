@@ -1,11 +1,15 @@
 #include "machine/machine.hpp"
 
+#include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "board/copper.hpp"
+#include "machine/crack.hpp"
 #include "runner/runner.hpp"
 #include "test_points.hpp"
 
@@ -147,4 +151,103 @@ TEST_CASE("machine: crack adds a Trace to the drawn Board", "[machine]") {
     const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
     REQUIRE(machine.has_value());
     CHECK(machine->board().traces.size() == machine->pristineBoard().traces.size() + 1);
+}
+
+TEST_CASE("machine: probeNet across a crack", "[machine]") {
+    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    const LoadedCircuit& loaded = **built;
+    const Board& board = machine->board();
+
+    const auto index = FindCrackTrace(machine->pristineBoard(), Layer::Front, kH0Crack);
+    REQUIRE(index.has_value());
+    const Trace& h0 = machine->pristineBoard().traces[*index];
+    const double dx = static_cast<double>(h0.end.x - h0.start.x);
+    const double dy = static_cast<double>(h0.end.y - h0.start.y);
+    const double length = std::hypot(dx, dy);
+    const auto along = [&](double nm) {
+        return Point{kH0Crack.x + static_cast<std::int64_t>(dx / length * nm),
+                     kH0Crack.y + static_cast<std::int64_t>(dy / length * nm)};
+    };
+    const auto before = machine->probeNet(loaded, Layer::Front, along(-1'000'000));
+    const auto after = machine->probeNet(loaded, Layer::Front, along(1'000'000));
+    REQUIRE(before.has_value());
+    REQUIRE(after.has_value());
+    CHECK(*before != *after);
+
+    const auto qa = machine->padPosition("U1", "14");
+    REQUIRE(qa.has_value());
+    CHECK(machine->probeNet(loaded, Layer::Back, *qa) == PinNet(loaded, "U1", "QA"));
+
+    const Islands islands = FindIslands(board);
+    std::size_t vias = 0;
+    for (std::size_t v = 0; v < board.vias.size(); ++v) {
+        for (std::size_t k = 0; k < board.components.size(); ++k) {
+            const auto& pads = board.components[k].pads;
+            for (std::size_t p = 0; p < pads.size(); ++p) {
+                if (islands.padIsland[k][p] != islands.viaIsland[v]) {
+                    continue;
+                }
+                const auto net = PinNet(loaded, board.components[k].reference, pads[p].number);
+                if (net) {
+                    CHECK(machine->probeNet(loaded, Layer::Front, board.vias[v].position) == net);
+                    ++vias;
+                }
+            }
+        }
+    }
+    CHECK(vias > 0);
+
+    CHECK_FALSE(machine->probeNet(loaded, Layer::Front, {0, 0}));
+    std::size_t backOnly = 0;
+    for (const Trace& trace : board.traces) {
+        const Point mid{(trace.start.x + trace.end.x) / 2, (trace.start.y + trace.end.y) / 2};
+        if (trace.layer != Layer::Back || trace.mid || !Covers(trace, mid)) {
+            continue;
+        }
+        bool covered = false;
+        for (const BoardComponent& component : board.components) {
+            for (const Pad& pad : component.pads) {
+                covered = covered || Covers(pad, mid);
+            }
+        }
+        for (const Via& via : board.vias) {
+            covered = covered || Covers(via, mid);
+        }
+        for (const Trace& front : board.traces) {
+            covered = covered || (front.layer == Layer::Front && Covers(front, mid));
+        }
+        if (!covered) {
+            CHECK(machine->probeNet(loaded, Layer::Back, mid).has_value());
+            CHECK_FALSE(machine->probeNet(loaded, Layer::Front, mid));
+            ++backOnly;
+        }
+    }
+    CHECK(backOnly > 0);
+}
+
+TEST_CASE("machine: padPosition", "[machine]") {
+    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
+    REQUIRE(machine.has_value());
+    const auto qa = machine->padPosition("U1", "QA");
+    REQUIRE(qa.has_value());
+    CHECK(machine->padPosition("U1", "14") == qa);
+    bool found = false;
+    for (const BoardComponent& component : machine->board().components) {
+        for (const Pad& pad : component.pads) {
+            if (component.reference == "U1" && pad.number == "14") {
+                CHECK(pad.position == *qa);
+                found = true;
+            }
+        }
+    }
+    CHECK(found);
+    CHECK_FALSE(machine->padPosition("U99", "1"));
+    CHECK_FALSE(machine->padPosition("U1", "XX"));
+
+    const auto counter = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    REQUIRE(counter.has_value());
+    CHECK(counter->padPosition("R1", "1").has_value());
 }

@@ -73,33 +73,62 @@ std::pair<std::string, int> SplitName(const std::string& name) {
     return {name.substr(0, tilde), std::stoi(name.substr(tilde + 1))};
 }
 
-}  // namespace
-
-Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCircuit,
-                          const Board& board) {
-    const Islands islands = FindIslands(board);
-    Namer namer(board, islands);
-
-    std::map<std::string, const PartInfo*, std::less<>> infoOf;
+bool IsResistor(const LoadedCircuit& designCircuit, const std::string& reference) {
     for (const LoadedPart& part : designCircuit.parts) {
-        infoOf.emplace(part.reference, part.info);
+        if (part.reference == reference) {
+            return part.info->kind == PartKind::Resistor;
+        }
+    }
+    return false;
+}
+
+// Names islands: POWER pads first, then non-resistor, non-power Pins in connection order.
+Namer NameIslands(const LoadedCircuit& designCircuit, const Board& board, const Islands& islands) {
+    Namer namer(board, islands);
+    for (const LoadedPart& part : designCircuit.parts) {
         if (part.info->name == "POWER") {
             namer.preset(namer.island(part.reference, 0), "VCC");
             namer.preset(namer.island(part.reference, 1), "GND");
         }
     }
+    for (const Connection& c : designCircuit.connections) {
+        if (IsResistor(designCircuit, c.reference) ||
+            designCircuit.components.at(c.reference)->pins()[c.pin].kind == PinKind::Power) {
+            continue;
+        }
+        namer.name(namer.island(c.reference, c.pin), c.net);
+    }
+    return namer;
+}
+
+}  // namespace
+
+std::vector<std::string> IslandNetNames(const LoadedCircuit& designCircuit, const Board& board,
+                                        const Islands& islands) {
+    const Namer namer = NameIslands(designCircuit, board, islands);
+    std::vector<std::string> names(islands.islandSize.size());
+    for (std::uint32_t i = 0; i < names.size(); ++i) {
+        names[i] = namer.nameOf(i).value_or("");
+    }
+    return names;
+}
+
+Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCircuit,
+                          const Board& board) {
+    const Islands islands = FindIslands(board);
+    const Namer namer = NameIslands(designCircuit, board, islands);
 
     std::map<std::string, std::vector<PinRef>> pins;
     std::map<std::string, std::vector<const Connection*>> resistors;
     for (const Connection& c : designCircuit.connections) {
-        if (infoOf.at(c.reference)->kind == PartKind::Resistor) {
+        if (IsResistor(designCircuit, c.reference)) {
             resistors[c.reference].push_back(&c);
             continue;
         }
         if (designCircuit.components.at(c.reference)->pins()[c.pin].kind == PinKind::Power) {
             continue;
         }
-        const std::string& name = namer.name(namer.island(c.reference, c.pin), c.net);
+        const std::string name = *namer.nameOf(namer.island(c.reference, c.pin));
         pins[name].push_back({c.reference, std::to_string(c.pin + 1)});
     }
 

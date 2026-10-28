@@ -142,6 +142,60 @@ LoadResult Machine::build() const {
     return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_), stuck_);
 }
 
+std::optional<NetId> Machine::probeNet(const LoadedCircuit& built, Layer layer, Point at) const {
+    const Islands islands = FindIslands(board_);
+    std::optional<std::uint32_t> island;
+    for (std::size_t k = 0; k < board_.components.size() && !island; ++k) {
+        const auto& pads = board_.components[k].pads;
+        for (std::size_t p = 0; p < pads.size() && !island; ++p) {
+            if (Covers(pads[p], at)) {
+                island = islands.padIsland[k][p];
+            }
+        }
+    }
+    for (std::size_t v = 0; v < board_.vias.size() && !island; ++v) {
+        if (Covers(board_.vias[v], at)) {
+            island = islands.viaIsland[v];
+        }
+    }
+    for (std::size_t t = 0; t < board_.traces.size() && !island; ++t) {
+        if (board_.traces[t].layer == layer && Covers(board_.traces[t], at)) {
+            island = islands.traceIsland[t];
+        }
+    }
+    if (!island) {
+        return std::nullopt;
+    }
+    const std::string name = IslandNetNames(*designCircuit_, board_, islands)[*island];
+    if (name.empty()) {
+        return std::nullopt;
+    }
+    const auto it = built.nets.find(name);
+    return it == built.nets.end() ? std::nullopt : std::optional(it->second);
+}
+
+std::optional<Point> Machine::padPosition(std::string_view reference, std::string_view pin) const {
+    for (const BoardComponent& component : board_.components) {
+        if (component.reference != reference) {
+            continue;
+        }
+        std::string number(pin);
+        if (const auto chip = designCircuit_->components.find(reference);
+            chip != designCircuit_->components.end()) {
+            if (const auto index = FindPin(*chip->second, pin)) {
+                number = std::to_string(*index + 1);
+            }
+        }
+        for (const Pad& pad : component.pads) {
+            if (pad.number == number) {
+                return pad.position;
+            }
+        }
+        return std::nullopt;
+    }
+    return std::nullopt;
+}
+
 std::expected<Machine, std::vector<Diagnostic>> LoadPuzzleFile(const std::filesystem::path& path) {
     std::string file = path.filename().string();
     const auto text = ReadFile(path);
