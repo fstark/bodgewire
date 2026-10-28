@@ -21,9 +21,7 @@
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
 #include "netlist/units.hpp"
-#include "runner/probe_consumer.hpp"
-#include "runner/runner.hpp"
-#include "runner/tv_consumer.hpp"
+#include "session/session.hpp"
 #include "ui/board_view.hpp"
 #include "ui/tv_view.hpp"
 
@@ -83,8 +81,7 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
 }
 
 struct Loaded {
-    std::optional<Machine> machine;
-    std::unique_ptr<LoadedCircuit> circuit;
+    std::optional<Session> session;
     std::string name;
 };
 
@@ -94,7 +91,7 @@ void Print(std::span<const Diagnostic> diagnostics) {
     }
 }
 
-// Diagnostics printed; no circuit on errors.
+// Diagnostics printed; no session on errors.
 Loaded Load(const std::filesystem::path& file) {
     std::expected<Machine, std::vector<Diagnostic>> machine =
         std::unexpected(std::vector<Diagnostic>{});
@@ -109,7 +106,7 @@ Loaded Load(const std::filesystem::path& file) {
             return {};
         }
         Print((*result)->warnings);
-        return {std::nullopt, std::move(*result), file.stem().string()};
+        return {Session(std::nullopt, std::move(*result)), file.stem().string()};
     }
     if (!machine) {
         Print(machine.error());
@@ -121,7 +118,7 @@ Loaded Load(const std::filesystem::path& file) {
         return {};
     }
     std::string name(machine->name());
-    return {std::move(*machine), std::move(*built), std::move(name)};
+    return {Session(std::move(*machine), std::move(*built)), std::move(name)};
 }
 
 // Simulated / wall time over the last second.
@@ -193,36 +190,17 @@ void DrawLamps(ProbeLamps lamps) {
     lamp(lamps.pulse, kLampPulse, "PULSE");
 }
 
-int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const Options& options,
-              std::optional<Point> probeAt) {
+int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
+              const Options& options) {
     TvView view(renderer);
-    const auto video = ConnectorNet(*loaded.circuit, "VIDEO", "VIDEO");
-    const auto syncN = ConnectorNet(*loaded.circuit, "VIDEO", "SYNC_N");
-    std::optional<TvConsumer> tv;
-    if (video && syncN) {
-        tv.emplace(*video, *syncN);
-    }
-    ProbeConsumer probe;
-    std::vector<Consumer*> consumers;
-    if (tv) {
-        consumers.push_back(&*tv);
-    }
-    if (loaded.machine) {
-        consumers.push_back(&probe);
-    }
-    Runner runner(loaded.circuit->circuit, consumers);
-    BoardView boardView(loaded.machine
-                            ? std::optional<BoardScene>(std::in_place, loaded.machine->board(),
-                                                        loaded.machine->pristineBoard(),
-                                                        loaded.machine->designCircuit())
-                            : std::nullopt);
-    if (probeAt) {
-        probe.touch(runner, loaded.machine->probeNet(*loaded.circuit, Layer::Front, *probeAt));
-        boardView.setProbeTip(probeAt);
-    }
+    const Machine* machine = session.machine();
+    BoardView boardView(machine ? std::optional<BoardScene>(std::in_place, *session.drawnBoard(),
+                                                            machine->pristineBoard(),
+                                                            machine->designCircuit())
+                                : std::nullopt);
     std::uint64_t seed = 1;
     Speed speed = Speed::RealTime;
-    runner.powerOn(seed);
+    session.powerOn(seed);
     const auto start = std::chrono::steady_clock::now();
     SpeedRatio ratio;
     double uiMilliseconds = 0;
@@ -240,10 +218,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const 
                 running = false;
             }
         }
+        TvConsumer* tv = session.tv();
         if (tv && tv->pictures().update()) {
             view.show(tv->pictures().front());
         }
-        const RunnerStatus status = runner.status();
+        const RunnerStatus status = session.runner().status();
         const double speedRatio = ratio.update(status.simTime);
 
         ImGui_ImplSDLRenderer3_NewFrame();
@@ -258,12 +237,12 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const 
 
         const ImVec2 available = ImGui::GetContentRegionAvail();
         boardView.draw({available.x * kBoardShare, available.y});
-        if (const auto click = boardView.takeClick(); click && loaded.machine) {
-            probe.touch(runner, click->onCopper ? loaded.machine->probeNet(*loaded.circuit,
-                                                                           click->layer, click->at)
-                                                : std::nullopt);
-            boardView.setProbeTip(click->onCopper ? std::optional(click->at) : std::nullopt);
+        if (const auto click = boardView.takeClick()) {
+            session.touch(click->onCopper ? std::optional(ProbeTip{click->at, click->layer})
+                                          : std::nullopt);
         }
+        const auto tip = session.probeTip();
+        boardView.setProbeTip(tip ? std::optional(tip->at) : std::nullopt);
         ImGui::SameLine();
         ImGui::BeginChild("side", {0, available.y});
         const float sideWidth = ImGui::GetContentRegionAvail().x;
@@ -280,27 +259,27 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const 
                          IM_COL32_WHITE, text);
             ImGui::Dummy(tvSize);
         }
-        if (loaded.machine) {
-            DrawLamps(status.state == RunState::Off ? ProbeLamps{} : probe.lamps());
+        if (machine) {
+            DrawLamps(session.lamps());
         }
 
         boardView.controls();
 
-        if (status.state == RunState::Off) {
+        if (!session.powered()) {
             if (ImGui::Button("Power on")) {
-                runner.powerOn(seed);
+                session.powerOn(seed);
             }
         } else if (ImGui::Button("Power off")) {
-            runner.powerOff();
+            session.powerOff();
         }
         ImGui::SameLine();
-        ImGui::BeginDisabled(status.state == RunState::Off);
+        ImGui::BeginDisabled(!session.powered());
         if (status.state == RunState::Paused) {
             if (ImGui::Button("Resume")) {
-                runner.resume();
+                session.runner().resume();
             }
         } else if (ImGui::Button("Pause")) {
-            runner.pause();
+            session.runner().pause();
         }
         ImGui::EndDisabled();
         ImGui::SameLine();
@@ -310,12 +289,12 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const 
         ImGui::SameLine();
         if (ImGui::RadioButton("1\u00d7", speed == Speed::RealTime)) {
             speed = Speed::RealTime;
-            runner.setSpeed(speed);
+            session.setSpeed(speed);
         }
         ImGui::SameLine();
         if (ImGui::RadioButton("Max", speed == Speed::Max)) {
             speed = Speed::Max;
-            runner.setSpeed(speed);
+            session.setSpeed(speed);
         }
 
         const std::string_view lock =
@@ -357,21 +336,23 @@ int main(int argc, char** argv) {
         return kExitUsage;
     }
     Loaded loaded = Load(options->file);
-    if (!loaded.circuit) {
+    if (!loaded.session) {
         return kExitErrors;
     }
-    std::optional<Point> probeAt;
+    Session& session = *loaded.session;
     if (options->probe) {
         const std::string& pin = *options->probe;
         const std::size_t dot = pin.find('.');
-        if (loaded.machine && dot != std::string::npos) {
-            probeAt = loaded.machine->padPosition(pin.substr(0, dot), pin.substr(dot + 1));
+        std::optional<Point> at;
+        if (session.machine() && dot != std::string::npos) {
+            at = session.machine()->padPosition(pin.substr(0, dot), pin.substr(dot + 1));
         }
-        if (!probeAt) {
+        if (!at) {
             std::println(stderr, "bw_ui: unknown pin '{}'", pin);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
+        session.touch(ProbeTip{*at, Layer::Front});
     }
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -395,7 +376,7 @@ int main(int argc, char** argv) {
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
-    const int exitCode = RunWindow(window, renderer, loaded, *options, probeAt);
+    const int exitCode = RunWindow(window, renderer, session, *options);
 
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
