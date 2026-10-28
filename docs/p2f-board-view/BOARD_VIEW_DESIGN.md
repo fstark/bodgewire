@@ -57,7 +57,7 @@ public:
     std::string_view netName(NetId net) const;
 
     std::optional<Hit> hitTest(Point at, Layer active) const;  // S5 priority
-    std::string hoverText(const Hit& hit) const;  // "U5 pin 14 QA · H0", "H0", "U5 74LS161"
+    std::string hoverText(const Hit& hit) const;  // "U1 pin 14 QA · H0", "H0", "U5 74LS161"
 };
 ```
 
@@ -106,7 +106,7 @@ std::vector<Point> ArcPolyline(Point start, Point mid, Point end);  // FindIslan
 class Machine {
     // ...
     const Board& pristineBoard() const { return pristine_; }  // fault-free Copper (highlight)
-    const LoadedCircuit& design() const { return *designCircuit_; }
+    const LoadedCircuit& designCircuit() const { return *designCircuit_; }
 };
 // root/netlists/<stem>.bwn whose root/boards/<stem>/<stem>.kicad_pcb exists.
 bool HasBoard(const std::filesystem::path& netlist);
@@ -133,7 +133,7 @@ public:
 4. **`bw_ui` `main.cpp`** — [src/ui/main.cpp](../../src/ui/main.cpp):
    - `Load()`: `.bwp` → `LoadPuzzleFile`; `.bwn` with `HasBoard` → `LoadNetlistMachine`; else `LoadNetlistFile` as today. `Loaded` gains `std::optional<Machine> machine`.
    - The VIDEO check is no longer an error: `TvConsumer` exists only when both connector Nets do; `Runner` gets `{}` otherwise (S1).
-   - `RunWindow` builds `BoardView` from `BoardScene(machine.board(), machine.pristineBoard(), machine.design())`, lays out the window (4.5), and returns an exit code for `--screenshot` (5.4).
+   - `RunWindow` builds `BoardView` from `BoardScene(machine.board(), machine.pristineBoard(), machine.designCircuit())`, lays out the window (4.5), and returns an exit code for `--screenshot` (5.4).
    - Window 1280 × 800 (S2). Arguments: `bw_ui FILE [--screenshot OUT.png] [--after DURATION]`.
 5. **CMake** — root: `add_subdirectory(src/view)` after `src/board`; `src/ui`: `board_view.cpp`, link `bw_view`; tests: link `bw_view`, add `tests/view/*`.
 
@@ -249,14 +249,14 @@ One ImGui child region; one `ImDrawList`, clipped to it, coordinates `origin + v
 
 ```
 1 board fill: AddConcavePolyFilled(outline), dark green
-2 Traces of the inactive Layer, its colour at 35% alpha     (thick line + round end caps)
-3 Traces of the active Layer, full colour
-4 highlighted Traces (traceNet == hovered Net), amber; inactive Layer at 60%
-5 pads (Circle: circle; Oval: capsule; Rectangle: rotated quad;
+2 Traces of the inactive Layer, its colour at 35% alpha     (thick line + round end caps);
+  highlighted ones (traceNet == hovered Net) amber at 60%
+3 Traces of the active Layer, full colour; highlighted ones amber (above all inactive copper)
+4 pads (Circle: circle; Oval: capsule; Rectangle: rotated quad;
         RoundedRectangle: rotated path with PathArcTo corners), then drill holes
   vias: ring of `diameter`, hole of `drill`
   highlighted pads and vias in amber
-6 courtyards: 1 px light-grey polyline; reference centred, font size clamp(1.5 mm, 10 px, 28 px);
+5 courtyards: 1 px light-grey polyline; reference centred, font size clamp(1.5 mm, 10 px, 28 px);
   pin-1 mark: dot at the courtyard corner nearest pad "1"
 ```
 

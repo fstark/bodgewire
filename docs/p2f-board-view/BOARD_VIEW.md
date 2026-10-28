@@ -45,7 +45,7 @@ Out: probing on the Board (P2g); Repairs from the UI (P2h); schematic view; deve
 
 ### S5 Hover and highlight
 
-- Hovering shows one line under the cursor: a pad → `U5 pin 14 QA · H0` (reference, pin number, pin name, design Net; `—` when the Pin is on no Net); a Trace or via → its design Net; inside a courtyard → `U5 74LS161`; elsewhere nothing.
+- Hovering shows one line under the cursor: a pad → `U1 pin 14 QA · H0` (reference, pin number, pin name, design Net; `—` when the Pin is on no Net); a Trace or via → its design Net; inside a courtyard → `U5 74LS161`; elsewhere nothing.
 - Pads, vias and Traces of the hovered design Net are highlighted (amber) on both Layers, crossing cracks (fault-free Copper).
 - Hit priority (first guess): pad, then via, then Trace on the Active Layer, then Component. Pads and vias hit on either Layer (through-hole).
 
@@ -65,7 +65,7 @@ Out: probing on the Board (P2g); Repairs from the UI (P2h); schematic view; deve
   - hit testing on the test-pattern Board: a point on each kind of object returns it, with the S5 priority; a point off everything returns nothing;
   - design-Net highlight from a Trace on one side of the `broken_trace` crack includes the Trace on the other side;
   - `.bwn` with and without a Board loads as S1; the counter Machine (no VIDEO) loads and runs.
-- `--screenshot` of the test pattern and of the counter at 1 s: a PNG of the window size exists; the agent reads it to check the drawing.
+- `--screenshot` of the test pattern and of the counter at 1 s: a PNG of the window's pixel size (×2 on Retina) exists; the agent reads it to check the drawing.
 - Manual: the Done-when check.
 
 ## Done when

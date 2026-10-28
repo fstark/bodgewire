@@ -108,7 +108,7 @@ The headless model of the Board panel (design 2, 4, 5.1–5.5).
 
 ### 3.1 — Accessors
 
-[src/machine/machine.hpp](../../src/machine/machine.hpp): `const Board& pristineBoard() const` (comment: fault-free Copper, for the view's highlight), `const LoadedCircuit& design() const`.
+[src/machine/machine.hpp](../../src/machine/machine.hpp): `const Board& pristineBoard() const` (comment: fault-free Copper, for the view's highlight), `const LoadedCircuit& designCircuit() const` (`design_` is already the parsed `Netlist`).
 
 ### 3.2 — `HasBoard`, `LoadNetlistMachine`
 
@@ -162,9 +162,9 @@ The window shape and the screenshot first, so the agent can see every later phas
 ### 4.3 — Layout and status
 
 - `SDL_CreateWindow(..., 1280, 800, ...)`.
-- `src/ui/board_view.hpp/.cpp` with the design-2 interface; this phase: `draw()` fills the child with the board-panel background and the centred text `no board` when there is no scene (else nothing yet); `controls()` draws the Active Layer radio (F.Cu | B.Cu, `L` toggles) and a `Fit` button. Add `board_view.cpp` to `bw_ui`, link `bw_view`.
+- `src/ui/board_view.hpp/.cpp` with the design-2 interface; this phase: `draw()` fills the child with the board-panel background and the centred text `no board` when there is no scene (else nothing yet); `controls()` draws the Active Layer radio (F.Cu | B.Cu) and a `Fit` button (the `L` and `F` keys come in phase 5). Add `board_view.cpp` to `bw_ui`, link `bw_view`.
 - Layout of design 5.7: left child ⅔ width (`boardView.draw`), right child: TV (`TvView::draw({w, w * 0.75f})` or a black box with `no video`), `boardView.controls()`, P2e power row, status line with `no video` when there is no TV and ` ui {:.1f} ms` (steady_clock from the start of the frame to just before `SDL_RenderPresent`, previous frame's value).
-- `BoardScene` built from the Machine when there is one: `BoardScene(machine->board(), machine->pristineBoard(), machine->design())`.
+- `BoardScene` built from the Machine when there is one: `BoardScene(machine->board(), machine->pristineBoard(), machine->designCircuit())`.
 
 ### 4.4 — Screenshot
 
@@ -190,7 +190,7 @@ The window shape and the screenshot first, so the agent can see every later phas
 
 ### 5.1 — Drawing
 
-[src/ui/board_view.cpp](../../src/ui/board_view.cpp): the draw order of design 5.6 (steps 1–3, 5, 6; no highlight yet). Local helpers in the anonymous namespace: `DrawTrace(ImDrawList&, const Viewport&, ImVec2 origin, const Trace&, ImU32)` (line + two filled circles; arcs via `ArcPolyline`), `DrawPad(...)` per `PadShape`, `DrawVia(...)`. Named colour constants (`kBoardGreen`, `kFrontCopper`, `kBackCopper`, `kPadTin`, `kHole`, `kCourtyard`, `kInactiveAlpha`). Bounding-box culling per item.
+[src/ui/board_view.cpp](../../src/ui/board_view.cpp): the draw order of design 5.6 (all steps, no highlight yet). Local helpers in the anonymous namespace: `DrawTrace(ImDrawList&, const Viewport&, ImVec2 origin, const Trace&, ImU32)` (line + two filled circles; arcs via `ArcPolyline`), `DrawPad(...)` per `PadShape`, `DrawVia(...)`. Named colour constants (`kBoardGreen`, `kFrontCopper`, `kBackCopper`, `kPadTin`, `kHole`, `kCourtyard`, `kInactiveAlpha`). Bounding-box culling per item.
 
 ### 5.2 — Navigation and Active Layer
 
@@ -215,7 +215,7 @@ Input of design 5.6 (wheel, right/middle drag, `L`, `F`, resize), guarded by `Im
 
 ### 6.1 — Hover and highlight
 
-`hover_ = scene.hitTest(...)` each frame while hovered; `ImGui::SetTooltip("%s", text.c_str())` when `hoverText` is non-empty; highlighted Net = `netOf(*hover_)`; draw step 4 and the amber pads and vias of step 5.
+`hover_ = scene.hitTest(...)` each frame while hovered; `ImGui::SetTooltip("%s", text.c_str())` when `hoverText` is non-empty; highlighted Net = `netOf(*hover_)`; the amber Traces of steps 2–3 and the amber pads and vias of step 4.
 
 ### 6.2 — Performance
 
