@@ -36,7 +36,7 @@ Create `src/netlist/net_pins.hpp` exactly as design §2 (`PinRole`, `NetPin`, `N
 Create `src/netlist/net_pins.cpp`:
 
 - `ReferenceLess` (§5.2): split at the first digit of a trailing digit run; prefixes compared as strings; numbers parsed with `std::from_chars` (no digits sorts before any number); then `a < b`.
-- `DescribeNet` (§5.1): scan `design.connections` for `c.net == net`; find the `LoadedPart` by reference in `design.parts`; resistor (`info->kind == PartKind::Resistor`): find the other connection `(c.reference, 1 - c.pin)`; role Load on a rail, else PullUp if the other Net is `VCC`, else PullDown; `value` = `LoadedPart::value`. Otherwise `spec = design.components.at(c.reference)->pins()[c.pin]`: `IsDriver(spec.kind)` → Output; `spec.kind == PinKind::Power && info->kind == PartKind::Connector` → Supply; else Load. Sort both vectors by `ReferenceLess(reference)` then `pin` (`std::ranges::sort` with a lambda).
+- `DescribeNet` (§5.1): scan `design.connections` for `c.net == net`; find the `LoadedPart` by reference in `design.parts`; resistor (`info->kind == PartKind::Resistor`): find the other connection `(c.reference, 1 - c.pin)`; role Load on a rail, else PullUp if the other Net is `VCC`, else PullDown; `value` = `LoadedPart::value`. Otherwise `spec = design.components.at(c.reference)->pins()[c.pin]`: `IsDriver(spec.kind)` → Output; `spec.kind == PinKind::Power && info->name == "POWER"` → Supply (the video `GND` is a Load); else Load. Sort both vectors by `ReferenceLess(reference)` then `pin` (`std::ranges::sort` with a lambda).
 - `FormatNetPin` (§5.3) with `std::format`; the separator is `" \u00b7 "`.
 
 `src/netlist/CMakeLists.txt`: add `net_pins.cpp` to `bw_netlist`.
@@ -111,7 +111,7 @@ Create `src/ui/net_panel.cpp` implementing §5.4:
 - header `std::format("{} \u00b7 {} pins", ...)`, `ImGui::SameLine()`, `SmallButton("Clear")`;
 - `Driven by` then entries or `TextDisabled("nothing")`;
 - `Feeds`: rail → `ImGui::TreeNode` labelled `std::format("Feeds ({} pins)", n)` (closed by default); else `TreeNodeEx("Feeds", ImGuiTreeNodeFlags_DefaultOpen)`; `TreePop` when open;
-- entry helper in the anonymous namespace: `void Entry(const NetPin& pin, const BoardScene& scene, const Manuals& manuals, TargetHits& hits)`; `PushID` on `FormatNetPin` text; `Selectable`; hover tooltip `partName` + `" \u00b7 " + role->name` when `ComponentRole` finds one; text through `Displayable`.
+- entry helper in the anonymous namespace: `void Entry(const NetPin& pin, const BoardScene& scene, const Manuals& manuals, TargetHits& hits)`; pad via `componentIndex`/`padIndex(…, std::to_string(pin.pin + 1))`, plain `TextUnformatted` if none; `PushID` on `FormatNetPin` text; `Selectable`; hover tooltip `partName` + `" \u00b7 " + role->name` when `ComponentRole` finds one; text through `Displayable`.
 
 `src/ui/CMakeLists.txt`: add `net_panel.cpp` to `bw_ui`.
 
@@ -123,7 +123,7 @@ Create `src/ui/net_panel.cpp` implementing §5.4:
 
 - `bw_ui puzzles/broken_trace.bwp --probe U6.6 --screenshot /tmp/p3b-3a.png --after 1s`: section `Net` with `LINE_END_N · 3 pins`, `Clear`, `Driven by U6 pin 6 1Y`, `Feeds U2 pin 9 LOAD_N`, `U9 pin 5 3A`; Chip section still visible below or reachable by scrolling.
 - `--probe U1.16 --screenshot /tmp/p3b-3b.png`: `VCC · N pins`, `Driven by J1 pin 1 VCC · supply`, `Feeds (N pins)` folded.
-- `--probe U1.CLK` on `dead_counter.bwp` (test pattern): `X1 pin 8 OUT` and the eight `CLK` loads, `U5` before `U14`.
+- `--probe U1.CLK` on `dead_counter.bwp` (test pattern): `X1 pin 8 OUT` and the seven `CLK` loads, `U5` before `U14`.
 
 If the right column overflows so that `Chip` is pushed off-screen at 1280 × 800 with the TV open, note it in this plan's implementation notes for the user check; do not redesign the layout here.
 

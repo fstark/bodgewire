@@ -31,6 +31,7 @@ The listing only needs the design `LoadedCircuit` and the Parts catalogue, both 
 // src/netlist/net_pins.hpp
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -202,7 +203,7 @@ for c in design.connections where c.net == net:
     else:
         spec = design.components[c.reference]->pins()[c.pin]
         role = IsDriver(spec.kind)                                  ? Output
-             : spec.kind == Power && part.info->kind == Connector  ? Supply
+             : spec.kind == Power && part.info->name == "POWER"   ? Supply
              :                                                       Load
         add {ref, pin, spec.name, role, ""}
 sort drivers and loads by (ReferenceLess(reference), pin)
@@ -239,7 +240,7 @@ entry(pin):
     component = scene.componentIndex(pin.reference)
     pad = component ? scene.padIndex(*component, to_string(pin.pin + 1)) : nullopt
     if !pad: TextUnformatted(label); continue
-    PushID(index); Selectable(Displayable(label)) → targets.clicked = {component, pad}
+    PushID(label); Selectable(Displayable(label)) → targets.clicked = {component, pad}
     hovered → targets.hovered = {component, pad};
               tooltip: partName + (service role ? " · " + role.name : "")
 ```

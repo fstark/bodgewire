@@ -44,8 +44,8 @@ Out: Schematic (revisit at BW-80), bus grouping, Net search by name, live Logic 
 - Entry text, like the Board tooltip:
   - output (incl. open collector): `U6 pin 6 1Y`;
   - pull-up / pull-down resistor, the end on this Net: `R1 pin 2 · 4k7 pull-up`;
-  - Connector supply pin on GND/VCC: `J1 pin 1 VCC · supply`;
-  - Load (any input, a chip's power pin, a Connector input, the rail end of a pull-up): `U2 pin 9 LOAD_N`.
+  - power connector (`POWER`) pin: `J1 pin 1 VCC · supply`;
+  - Load (any input, a chip's power pin, another Connector's pin such as the video `GND`, the rail end of a pull-up): `U2 pin 9 LOAD_N`.
 - Drivers are outputs, pull-ups/pull-downs and supplies; everything else is a Load.
 - Order: by reference in natural order (`U2` before `U10`), then pin number.
 - GND and VCC: `Feeds (N pins)` is a closed tree node. Other Nets show `Feeds` open.

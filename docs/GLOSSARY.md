@@ -70,7 +70,7 @@ One of `0`, `1`, `Z` (high impedance, nothing driving) or `X` (unknown or confli
 _Avoid_: Level, voltage
 
 **Driver**:
-A Pin's contribution to the value of its Net: what it drives and how strongly.
+A Pin's contribution to the value of its Net: what it drives and how strongly. Also, a Pin that drives its Net: an output, a pull-up/pull-down or a supply.
 
 **Load**:
 A Pin that only reads its Net, such as a gate input or a chip's power pin.
