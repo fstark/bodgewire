@@ -23,5 +23,5 @@ add_library(bw_imgui STATIC
 target_include_directories(bw_imgui SYSTEM PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 target_link_libraries(bw_imgui PUBLIC SDL3::SDL3-static)
 
-add_executable(bw_ui main.cpp board_view.cpp tv_view.cpp)
+add_executable(bw_ui main.cpp board_view.cpp side_panel.cpp toolbar.cpp tv_view.cpp)
 target_link_libraries(bw_ui PRIVATE bw_session bw_machine bw_runner bw_view bw_imgui bw_warnings)

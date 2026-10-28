@@ -41,7 +41,6 @@ public:
     explicit BoardView(std::optional<BoardScene> scene) : scene_(std::move(scene)) {}
 
     void draw(ImVec2 size);  // child region: input, Board, tooltip
-    void controls(bool powered);
     Tool tool() const { return tool_; }
     void setTool(Tool tool) { tool_ = tool; }
     Layer activeLayer() const { return active_; }

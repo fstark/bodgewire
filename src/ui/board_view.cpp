@@ -549,36 +549,4 @@ void BoardView::route(const TargetHits& hits) {
 
 void BoardView::setProbeTip(std::optional<Point> tip) { tip_ = tip; }
 
-void BoardView::controls(bool powered) {
-    ImGui::TextUnformatted("Tool ");
-    ImGui::SameLine();
-    const auto toolButton = [&](const char* label, Tool tool) {
-        if (ImGui::RadioButton(label, tool_ == tool)) {
-            tool_ = tool;
-        }
-    };
-    toolButton("Probe", Tool::Probe);
-    ImGui::SameLine();
-    toolButton("Swap", Tool::Swap);
-    ImGui::SameLine();
-    toolButton("Mend", Tool::Mend);
-    if (powered) {
-        ImGui::SameLine();
-        ImGui::TextDisabled("power off to repair");
-    }
-    ImGui::TextUnformatted("Layer");
-    ImGui::SameLine();
-    if (ImGui::RadioButton("F.Cu", active_ == Layer::Front)) {
-        active_ = Layer::Front;
-    }
-    ImGui::SameLine();
-    if (ImGui::RadioButton("B.Cu", active_ == Layer::Back)) {
-        active_ = Layer::Back;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Fit")) {
-        needFit_ = true;
-    }
-}
-
 }  // namespace bw

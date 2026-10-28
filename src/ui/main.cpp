@@ -23,6 +23,9 @@
 #include "netlist/units.hpp"
 #include "session/session.hpp"
 #include "ui/board_view.hpp"
+#include "ui/loaded.hpp"
+#include "ui/side_panel.hpp"
+#include "ui/toolbar.hpp"
 #include "ui/tv_view.hpp"
 
 using namespace bw;
@@ -34,10 +37,6 @@ constexpr int kExitUsage = 2;
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 800;
 constexpr float kBoardShare = 2.0f / 3.0f;
-constexpr ImU32 kLampOff = IM_COL32(70, 70, 70, 255);
-constexpr ImU32 kLampHigh = IM_COL32(230, 40, 40, 255);
-constexpr ImU32 kLampLow = IM_COL32(40, 200, 60, 255);
-constexpr ImU32 kLampPulse = IM_COL32(255, 170, 0, 255);
 constexpr std::string_view kUsage =
     "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] [--repair swap:REF,mend:LAYER:X:Y] "
     "[--screenshot OUT.png [--after 1s]]";
@@ -91,12 +90,6 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
     }
     return options;
 }
-
-struct Loaded {
-    std::optional<Session> session;
-    std::string title;  // Puzzle title, else Machine name, else netlist stem
-    std::string brief;
-};
 
 void Print(std::span<const Diagnostic> diagnostics) {
     for (const Diagnostic& d : diagnostics) {
@@ -194,28 +187,11 @@ bool SaveScreenshot(SDL_Renderer* renderer, const std::filesystem::path& path) {
     return ok;
 }
 
-// "Probe  ● HIGH  ● LOW  ● PULSE", one row.
-void DrawLamps(ProbeLamps lamps) {
-    ImGui::TextUnformatted("Probe");
-    const auto lamp = [](bool lit, ImU32 colour, const char* name) {
-        ImGui::SameLine();
-        const float height = ImGui::GetTextLineHeight();
-        const float radius = height * 0.4f;
-        const ImVec2 at = ImGui::GetCursorScreenPos();
-        ImGui::GetWindowDrawList()->AddCircleFilled({at.x + radius, at.y + height / 2}, radius,
-                                                    lit ? colour : kLampOff);
-        ImGui::Dummy({2 * radius, height});
-        ImGui::SameLine();
-        ImGui::TextUnformatted(name);
-    };
-    lamp(lamps.high, kLampHigh, "HIGH");
-    lamp(lamps.low, kLampLow, "LOW");
-    lamp(lamps.pulse, kLampPulse, "PULSE");
-}
-
-int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
+int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, Session& session,
               const Options& options) {
     TvView view(renderer);
+    Toolbar toolbar;
+    SidePanel sidePanel;
     const Machine* machine = session.machine();
     BoardView boardView(machine ? std::optional<BoardScene>(std::in_place, *session.drawnBoard(),
                                                             machine->pristineBoard(),
@@ -264,6 +240,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
+        toolbar.draw(session, boardView, speed, seed);
         const ImVec2 available = ImGui::GetContentRegionAvail();
         boardView.draw({available.x * kBoardShare, available.y});
         if (boardView.takeEscape()) {
@@ -274,6 +251,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
                 boardView.select(*click->component);
             }
             const auto& pick = click->pick;
+            RepairResult result = RepairResult::Done;
             switch (boardView.tool()) {
             case Tool::Probe:
                 if (pick && pick->hit.kind != HitKind::Component) {
@@ -282,17 +260,20 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
                 break;
             case Tool::Swap:
                 if (click->component) {
-                    session.repair(
+                    result = session.repair(
                         SwapRepair{session.drawnBoard()->components[*click->component].reference});
                 }
                 break;
             case Tool::Mend:
                 if (pick && pick->hit.kind == HitKind::Trace) {
-                    session.repair(MendRepair{pick->layer, pick->contact});
+                    result = session.repair(MendRepair{pick->layer, pick->contact});
                 } else {
-                    session.repair(MendRepair{click->active, click->at});
+                    result = session.repair(MendRepair{click->active, click->at});
                 }
                 break;
+            }
+            if (result == RepairResult::Refused) {
+                toolbar.refused();
             }
         }
         const auto tip = session.probeTip();
@@ -300,72 +281,16 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
         boardView.setBlobs(session.blobs());
         ImGui::SameLine();
         ImGui::BeginChild("side", {0, available.y});
-        const float sideWidth = ImGui::GetContentRegionAvail().x;
-        const ImVec2 tvSize{sideWidth, sideWidth * 0.75f};
-        if (tv) {
-            view.draw(tvSize);
-        } else {
-            const ImVec2 at = ImGui::GetCursorScreenPos();
-            ImDrawList& list = *ImGui::GetWindowDrawList();
-            list.AddRectFilled(at, {at.x + tvSize.x, at.y + tvSize.y}, IM_COL32_BLACK);
-            const char* text = "no video";
-            const ImVec2 textSize = ImGui::CalcTextSize(text);
-            list.AddText({at.x + (tvSize.x - textSize.x) / 2, at.y + (tvSize.y - textSize.y) / 2},
-                         IM_COL32_WHITE, text);
-            ImGui::Dummy(tvSize);
-        }
-        if (machine) {
-            DrawLamps(session.lamps());
-        }
-
-        boardView.controls(session.powered());
-
-        if (!session.powered()) {
-            if (ImGui::Button("Power on")) {
-                session.powerOn(seed);
-            }
-        } else if (ImGui::Button("Power off")) {
-            session.powerOff();
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!session.powered());
-        if (status.state == RunState::Paused) {
-            if (ImGui::Button("Resume")) {
-                session.runner().resume();
-            }
-        } else if (ImGui::Button("Pause")) {
-            session.runner().pause();
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(120.0f);
-        ImGui::InputScalar("Seed", ImGuiDataType_U64, &seed);
-        ImGui::TextUnformatted("Speed");
-        ImGui::SameLine();
-        if (ImGui::RadioButton("1\u00d7", speed == Speed::RealTime)) {
-            speed = Speed::RealTime;
-            session.setSpeed(speed);
-        }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("Max", speed == Speed::Max)) {
-            speed = Speed::Max;
-            session.setSpeed(speed);
-        }
-
         const std::string_view lock =
             !tv ? "no video" : (tv->pictures().front().locked ? "locked" : "no lock");
-        const std::string line = std::format(
-            "t {:.3f} s  {:.2f}\u00d7  {}  {}  ring wait {:.0f}%  ui {:.1f} ms",
-            static_cast<double>(status.simTime) / static_cast<double>(kPicosPerSecond), speedRatio,
-            lock, StateName(status.state), status.ringWaitShare * 100.0, uiMilliseconds);
-        ImGui::TextWrapped("%s", line.c_str());
-        if (machine) {
-            ImGui::Separator();
-            ImGui::TextUnformatted("Repairs");
-            for (const std::string& entry : session.log()) {
-                ImGui::TextUnformatted(entry.c_str());
-            }
-        }
+        const DebugStats stats{static_cast<double>(status.simTime) /
+                                   static_cast<double>(kPicosPerSecond),
+                               speedRatio,
+                               status.ringWaitShare,
+                               uiMilliseconds,
+                               lock,
+                               StateName(status.state)};
+        sidePanel.draw(session, view, boardView, loaded, stats, seed);
         ImGui::EndChild();
         ImGui::End();
 
@@ -378,6 +303,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
         const auto now = std::chrono::steady_clock::now();
         uiMilliseconds = std::chrono::duration<double, std::milli>(now - frameStart).count();
         if (options.screenshot && now - start >= options.after) {
+            std::println("bw_ui: t {:.3f} s  {:.2f}\u00d7  ui {:.1f} ms",
+                         static_cast<double>(status.simTime) / static_cast<double>(kPicosPerSecond),
+                         speedRatio, uiMilliseconds);
             if (!SaveScreenshot(renderer, *options.screenshot)) {
                 std::println(stderr, "bw_ui: {}", SDL_GetError());
                 exitCode = kExitErrors;
@@ -454,7 +382,7 @@ int main(int argc, char** argv) {
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
-    const int exitCode = RunWindow(window, renderer, session, *options);
+    const int exitCode = RunWindow(window, renderer, loaded, session, *options);
 
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
