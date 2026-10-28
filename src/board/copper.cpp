@@ -101,6 +101,37 @@ double HullDistance(const CopperShape& a, const CopperShape& b) {
     return best;
 }
 
+// Chord end points of the arc start → mid → end; collinear → straight.
+std::vector<Vec> ArcPoints(Vec start, Vec mid, Vec end) {
+    const Vec b = mid - start;
+    const Vec c = end - start;
+    const double d = 2 * Cross(b, c);
+    if (std::abs(d) < 1e-9 * Dot(c, c)) {
+        return {start, end};
+    }
+    const Vec centre = start + Vec{(c.y * Dot(b, b) - b.y * Dot(c, c)) / d,
+                                   (b.x * Dot(c, c) - c.x * Dot(b, b)) / d};
+    const auto angleOf = [&](Vec p) { return std::atan2(p.y - centre.y, p.x - centre.x); };
+    const auto positive = [](double a) {
+        const double turn = 2 * std::numbers::pi;
+        return std::fmod(std::fmod(a, turn) + turn, turn);
+    };
+    const double a0 = angleOf(start);
+    double sweep = positive(angleOf(end) - a0);
+    if (positive(angleOf(mid) - a0) > sweep) {
+        sweep -= 2 * std::numbers::pi;
+    }
+    const Vec r = start - centre;
+    const double radius = std::sqrt(Dot(r, r));
+    std::vector<Vec> points{start};
+    for (int i = 1; i < kArcChords; ++i) {
+        const double a = a0 + sweep * i / kArcChords;
+        points.push_back(centre + Vec{std::cos(a), std::sin(a)} * radius);
+    }
+    points.push_back(end);
+    return points;
+}
+
 class ShapeBuilder {
 public:
     std::vector<CopperShape> shapes;
@@ -160,39 +191,28 @@ public:
             add(item, layer, {points[i], points[i + 1]}, radius);
         }
     }
-
-private:
-    // Chord end points of the arc start → mid → end; collinear → straight.
-    static std::vector<Vec> ArcPoints(Vec start, Vec mid, Vec end) {
-        const Vec b = mid - start;
-        const Vec c = end - start;
-        const double d = 2 * Cross(b, c);
-        if (std::abs(d) < 1e-9 * Dot(c, c)) {
-            return {start, end};
-        }
-        const Vec centre = start + Vec{(c.y * Dot(b, b) - b.y * Dot(c, c)) / d,
-                                       (b.x * Dot(c, c) - c.x * Dot(b, b)) / d};
-        const auto angleOf = [&](Vec p) { return std::atan2(p.y - centre.y, p.x - centre.x); };
-        const auto positive = [](double a) {
-            const double turn = 2 * std::numbers::pi;
-            return std::fmod(std::fmod(a, turn) + turn, turn);
-        };
-        const double a0 = angleOf(start);
-        double sweep = positive(angleOf(end) - a0);
-        if (positive(angleOf(mid) - a0) > sweep) {
-            sweep -= 2 * std::numbers::pi;
-        }
-        const Vec r = start - centre;
-        const double radius = std::sqrt(Dot(r, r));
-        std::vector<Vec> points{start};
-        for (int i = 1; i < kArcChords; ++i) {
-            const double a = a0 + sweep * i / kArcChords;
-            points.push_back(centre + Vec{std::cos(a), std::sin(a)} * radius);
-        }
-        points.push_back(end);
-        return points;
-    }
 };
+
+bool Covers(const ShapeBuilder& builder, Point at) {
+    const Vec p = ToVec(at);
+    for (const CopperShape& shape : builder.shapes) {
+        if (p.x < shape.min.x || p.x > shape.max.x || p.y < shape.min.y || p.y > shape.max.y) {
+            continue;
+        }
+        if (Inside(p, shape)) {
+            return true;
+        }
+        const int edges = shape.hullSize < 3 ? 1 : shape.hullSize;
+        for (int i = 0; i < edges; ++i) {
+            const Vec a = shape.hull[i];
+            const Vec b = shape.hull[(i + 1) % shape.hullSize];
+            if (PointSegmentDistance(p, a, b) <= shape.radius) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 std::uint32_t Root(std::vector<std::uint32_t>& parent, std::uint32_t i) {
     while (parent[i] != i) {
@@ -256,7 +276,39 @@ Islands FindIslands(const Board& board) {
             pads.push_back(islandOf[next++]);
         }
     }
+    for (std::size_t v = 0; v < board.vias.size(); ++v) {
+        islands.viaIsland.push_back(islandOf[next++]);
+    }
+    for (std::size_t t = 0; t < board.traces.size(); ++t) {
+        islands.traceIsland.push_back(islandOf[next++]);
+    }
     return islands;
+}
+
+bool Covers(const Pad& pad, Point at) {
+    ShapeBuilder builder;
+    builder.addPad(0, pad);
+    return Covers(builder, at);
+}
+
+bool Covers(const Via& via, Point at) {
+    ShapeBuilder builder;
+    builder.add(0, kBothLayers, {ToVec(via.position)}, static_cast<double>(via.diameter) / 2);
+    return Covers(builder, at);
+}
+
+bool Covers(const Trace& trace, Point at) {
+    ShapeBuilder builder;
+    builder.addTrace(0, trace);
+    return Covers(builder, at);
+}
+
+std::vector<Point> ArcPolyline(Point start, Point mid, Point end) {
+    std::vector<Point> result;
+    for (const Vec v : ArcPoints(ToVec(start), ToVec(mid), ToVec(end))) {
+        result.push_back({std::llround(v.x), std::llround(v.y)});
+    }
+    return result;
 }
 
 }  // namespace bw

@@ -176,20 +176,51 @@ private:
         const double radians = component.angle * std::numbers::pi / 180;
         const double cos = std::cos(radians);
         const double sin = std::sin(radians);
+        const Point origin = component.position;
+        const auto place = [origin, cos, sin](double x, double y) {
+            return Point{origin.x + std::llround(x * cos + y * sin),
+                         origin.y + std::llround(-x * sin + y * cos)};
+        };
         for (const SExpr& child : node.list) {
             const std::string_view head = child.head();
             if (head == "pad") {
-                readPad(child, component, cos, sin);
+                readPad(child, component, place);
             } else if (head == "zone") {
                 error(child, "copper zones are not supported");
             } else if (head.starts_with("fp_") && IsCopper(LayerOf(child))) {
                 error(child, component.reference + ": copper graphics are not supported");
+            } else if ((head == "fp_rect" || head == "fp_poly") &&
+                       LayerOf(child).ends_with(".CrtYd") && component.courtyard.empty()) {
+                component.courtyard = readCourtyard(child, place);
             }
         }
         board_.components.push_back(std::move(component));
     }
 
-    void readPad(const SExpr& node, BoardComponent& component, double cos, double sin) {
+    template <typename Place>
+    std::vector<Point> readCourtyard(const SExpr& node, const Place& place) {
+        std::vector<Point> points;
+        if (node.head() == "fp_rect") {
+            const Point a = point(node, "start");
+            const Point c = point(node, "end");
+            for (const Point p : {a, Point{c.x, a.y}, c, Point{a.x, c.y}}) {
+                points.push_back(place(static_cast<double>(p.x), static_cast<double>(p.y)));
+            }
+            return points;
+        }
+        if (const SExpr* pts = node.find("pts")) {
+            for (const SExpr& xy : pts->list) {
+                if (xy.head() == "xy") {
+                    points.push_back(place(static_cast<double>(length(xy, 1)),
+                                           static_cast<double>(length(xy, 2))));
+                }
+            }
+        }
+        return points;
+    }
+
+    template <typename Place>
+    void readPad(const SExpr& node, BoardComponent& component, const Place& place) {
         const std::string_view type = node.atomAt(2);
         if (type == "np_thru_hole") {
             return;
@@ -218,10 +249,8 @@ private:
             error(node, where + ": missing (at)");
             return;
         }
-        const double x = static_cast<double>(length(*at, 1));
-        const double y = static_cast<double>(length(*at, 2));
-        pad.position = {component.position.x + std::llround(x * cos + y * sin),
-                        component.position.y + std::llround(-x * sin + y * cos)};
+        pad.position =
+            place(static_cast<double>(length(*at, 1)), static_cast<double>(length(*at, 2)));
         pad.angle = angle(*at);
         pad.size = point(node, "size");
         if (const SExpr* drill = node.find("drill")) {

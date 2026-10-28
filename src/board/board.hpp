@@ -36,6 +36,7 @@ struct BoardComponent {
     double angle;
     Layer side;
     std::vector<Pad> pads;
+    std::vector<Point> courtyard;  // F.CrtYd/B.CrtYd fp_rect or fp_poly, absolute; empty if none
 };
 
 struct Trace {

@@ -130,3 +130,54 @@ TEST_CASE("copper: oval pad along its long axis", "[board]") {
     board.traces.push_back(Line(Layer::Front, Mm(0, 1.8), Mm(10, 1.8)));
     CHECK(Joined(board));
 }
+
+TEST_CASE("copper: Covers trace caps and width", "[board]") {
+    const Trace trace = Line(Layer::Front, Mm(0, 0), Mm(10, 0));  // half width 0.125 mm
+    CHECK(Covers(trace, Mm(5, 0.12)));
+    CHECK_FALSE(Covers(trace, Mm(5, 0.13)));
+    CHECK(Covers(trace, Mm(-0.12, 0)));
+    CHECK_FALSE(Covers(trace, Mm(-0.13, 0)));
+    CHECK_FALSE(Covers(trace, Mm(-0.1, 0.1)));
+}
+
+TEST_CASE("copper: Covers rotated rectangular pad", "[board]") {
+    Pad pad = RoundPad("1", Mm(0, 0));
+    pad.shape = PadShape::Rectangle;
+    pad.size = Mm(2, 1);
+    pad.angle = 90;  // now 1 mm wide, 2 mm tall
+    CHECK(Covers(pad, Mm(0.45, 0.95)));
+    CHECK_FALSE(Covers(pad, Mm(0.55, 0)));
+    CHECK_FALSE(Covers(pad, Mm(0, 1.05)));
+}
+
+TEST_CASE("copper: Covers via", "[board]") {
+    const Via via{.position = Mm(5, 5), .diameter = 600'000, .drill = 300'000};
+    CHECK(Covers(via, Mm(5.29, 5)));
+    CHECK(Covers(via, Mm(5, 5)));
+    CHECK_FALSE(Covers(via, Mm(5.31, 5)));
+}
+
+TEST_CASE("copper: via and trace islands", "[board]") {
+    Board board = TwoPads();
+    board.traces.push_back(Line(Layer::Front, Mm(0, 0), Mm(5, 5)));
+    board.vias.push_back({.position = Mm(5, 5), .diameter = 600'000, .drill = 300'000});
+    const Islands islands = FindIslands(board);
+    REQUIRE(islands.viaIsland.size() == 1);
+    REQUIRE(islands.traceIsland.size() == 1);
+    CHECK(islands.viaIsland[0] == islands.padIsland[0][0]);
+    CHECK(islands.traceIsland[0] == islands.padIsland[0][0]);
+    CHECK(islands.padIsland[1][0] != islands.padIsland[0][0]);
+}
+
+TEST_CASE("copper: arc polyline ends", "[board]") {
+    const auto points = ArcPolyline(Mm(0, 0), Mm(5, 5), Mm(10, 0));
+    REQUIRE(points.size() > 2);
+    CHECK(points.front() == Mm(0, 0));
+    CHECK(points.back() == Mm(10, 0));
+    bool nearMid = false;
+    for (const Point p : points) {
+        nearMid =
+            nearMid || (std::abs(p.x - 5 * kMm) < 100'000 && std::abs(p.y - 5 * kMm) < 100'000);
+    }
+    CHECK(nearMid);
+}

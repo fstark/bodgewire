@@ -164,3 +164,26 @@ TEST_CASE("kicad board: errors", "[board]") {
     CHECK(Errors("(kicad_pcb (version 20241229)") ==
           std::vector<std::string>{"1: unbalanced parentheses"});
 }
+
+TEST_CASE("kicad board: courtyard rect is placed like pads", "[board]") {
+    const Board board =
+        Read(Footprint("10 20 90", "    (fp_rect (start -1 -2) (end 3 4) (layer \"F.CrtYd\"))\n" +
+                                       std::string(kTwoPads)));
+    CHECK(board.components[0].courtyard == std::vector<Point>{{8 * kMm, 21 * kMm},
+                                                              {8 * kMm, 17 * kMm},
+                                                              {14 * kMm, 17 * kMm},
+                                                              {14 * kMm, 21 * kMm}});
+}
+
+TEST_CASE("kicad board: courtyard poly", "[board]") {
+    const Board board = Read(
+        Footprint("10 20", "    (fp_poly (pts (xy 0 0) (xy 2 0) (xy 1 3)) (layer \"B.CrtYd\"))\n" +
+                               std::string(kTwoPads)));
+    CHECK(board.components[0].courtyard ==
+          std::vector<Point>{{10 * kMm, 20 * kMm}, {12 * kMm, 20 * kMm}, {11 * kMm, 23 * kMm}});
+}
+
+TEST_CASE("kicad board: no courtyard", "[board]") {
+    const Board board = Read(Footprint("10 20", kTwoPads));
+    CHECK(board.components[0].courtyard.empty());
+}
