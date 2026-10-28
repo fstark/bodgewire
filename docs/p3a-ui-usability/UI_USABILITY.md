@@ -82,7 +82,7 @@ Out (later P3 milestones fix these): Schematic (P3b), new instruments (P3c, P3d)
 ### S7 Pin names and labels on the Board
 
 - Fitted view: each Chip shows its reference and Part (`U3` and `74LS161` under it) inside the courtyard.
-- When a pad is at least ~14 px wide, its pin name (`QA`, `CLK`, `VCC`) is drawn on the chip body beside it (inside the courtyard, towards its centre), where it does not cover Traces.
+- Pin names (`QA`, `CLK`, `VCC`) are drawn for one Chip at a time: the hovered one, else the selected one. Each sits beside its pad on the chip body on a small dark plate, so it stays readable over Traces and only hides copper of the Chip being looked at. Shown when a pad is at least ~10 px wide; below that the Chip panel's pinout does the job.
 
 ### S8 Snapping
 
@@ -96,8 +96,9 @@ Out (later P3 milestones fix these): Schematic (P3b), new instruments (P3c, P3d)
 
 ### S9 Navigation
 
-- Double-click a Chip: zoom so its courtyard fills about half the Board panel, centred.
-- Left-drag on the Board pans once the drag passes a few pixels, so a click is still a click. Right/middle drag keep working.
+- Left-drag anywhere on the Board pans, in every tool. Only a click without movement acts (probe, swap, mend), so exploring never changes anything. Right/middle drag keep working.
+- Double-click on free board (no copper, no Component): fit. Zooming to a Chip is done from the Chip panel (`Zoom to`) or a manual link.
+- No separate view tool: Probe is the default tool and is harmless (it only moves the probe tip).
 - `+` / `-` zoom around the panel centre. `F` and Fit unchanged.
 
 ### S10 Checks

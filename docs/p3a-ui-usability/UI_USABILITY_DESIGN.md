@@ -222,7 +222,7 @@ public:
 };
 ```
 
-`controls()` disappears (moved to `Toolbar`). New input in `input()`: left-drag pan past ImGui's drag threshold (the click is then dropped), click on release, double-click on a Component → `focus`, `+`/`-` → `zoomAt(panel centre, ±1)`, `Esc` → `escape_ = true` (read by main via `takeEscape()`), `U`/`H` handled by `Toolbar`. The tooltip is built by the caller-supplied `TooltipText` callback so `BoardView` does not depend on `bw_manual`:
+`controls()` disappears (moved to `Toolbar`). New input in `input()`: left-drag pans in every tool once past ImGui's drag threshold (the click is then dropped), click on release, double-click where `pick` finds nothing → `fit()`, `+`/`-` → `zoomAt(panel centre, ±1)`, `Esc` → `escape_ = true` (read by main via `takeEscape()`), `U`/`H` handled by `Toolbar`. The Chip panel has a `Zoom to` button → `focus({component})`. The tooltip is built by the caller-supplied `TooltipText` callback so `BoardView` does not depend on `bw_manual`:
 
 ```cpp
 using TooltipText = std::function<std::string(const BoardScene&, const Hit&)>;
@@ -360,10 +360,11 @@ pick(at, active, reach):
 ```
 fitted or larger: reference at courtyard centre (as now); Part name under it at 0.6× size
                   when it fits the courtyard width
-pin names, per pad, when min(pad.size) in px ≥ 14 and the pad is on the panel:
+pin names, only for chip() (hovered, else selected), when min(pad.size) in px ≥ 10:
   d = courtyard centre − pad centre; axis = the larger of |d.x|, |d.y|
   text starts pad half-size + 3 px from the centre along that axis, towards the centre,
-  vertically centred on the pad; font size clamp(0.9 mm in px, 10, 16)
+  vertically centred on the pad; font size clamp(0.9 mm in px, 10, 16);
+  a dark plate (alpha ~0.8) 2 px larger than the text is drawn under it
 ```
 
 ### 6.6 Framing
