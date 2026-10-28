@@ -1,0 +1,159 @@
+#include "manual/manual.hpp"
+
+#include <algorithm>
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <catch2/catch_test_macros.hpp>
+
+using namespace bw;
+
+namespace {
+
+using Names = std::vector<std::string>;
+
+std::unique_ptr<LoadedCircuit> Counter() {
+    auto design = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    REQUIRE(design.has_value());
+    return std::move(*design);
+}
+
+Names Pins(std::string_view bullet) {
+    const Markdown doc = ParseMarkdown(bullet);
+    REQUIRE(doc.blocks.size() == 1);
+    return BulletPins(doc.blocks[0]);
+}
+
+std::vector<std::string> Messages(const std::vector<Diagnostic>& problems) {
+    std::vector<std::string> messages;
+    for (const Diagnostic& d : problems) {
+        CHECK(d.severity == Severity::Warning);
+        messages.push_back(std::to_string(d.line) + ": " + d.message);
+    }
+    return messages;
+}
+
+constexpr std::string_view kGoodService = "# Counter \u2014 Service Manual\n"
+                                          "## How it works\n"
+                                          "`X1` drives `U1` pin 2 (CLK) on net `CLK`.\n"
+                                          "## Components\n"
+                                          "- `X1` clock: 1 MHz\n"
+                                          "- `J1` power\n"
+                                          "- `R1` pull-up: holds RESET_N high\n"
+                                          "- `U1` low nibble counter: counts\n"
+                                          "- `U2` high nibble counter: counts\n"
+                                          "- `U3` divider: toggles\n"
+                                          "- `U4` decoder: NAND\n"
+                                          "## Troubleshooting\n"
+                                          "- check `U1` pin 15\n";
+
+}  // namespace
+
+TEST_CASE("manual: bullet pins and ranges", "[manual]") {
+    CHECK(Pins("- `1A`\u2013`1D`: inputs") == Names{"1A", "1B", "1C", "1D"});
+    CHECK(Pins("- `QA`\u2013`QD`: outputs") == Names{"QA", "QB", "QC", "QD"});
+    CHECK(Pins("- `1A`\u2013`4A`: inputs") == Names{"1A", "2A", "3A", "4A"});
+    CHECK(Pins("- `1Y` - `3Y`: outputs") == Names{"1Y", "2Y", "3Y"});
+    CHECK(Pins("- `CLK`, `CLR_N`: clock and clear") == Names{"CLK", "CLR_N"});
+    CHECK(Pins("- `1A`\u2013`2B`: odd") == Names{"1A", "2B"});
+    CHECK(Pins("- `VCC`: +5 V, `GND` is not listed here") == Names{"VCC"});
+}
+
+TEST_CASE("manual: pin bullet", "[manual]") {
+    const Markdown sheet = ParseMarkdown("# 74LS00 \u2014 quad NAND\n"
+                                         "## Function\nNAND.\n"
+                                         "## Pins\n"
+                                         "- `1A`\u2013`4A`, `1B`\u2013`4B`: inputs\n"
+                                         "- `1Y`\u2013`4Y`: outputs\n");
+    const Block* bullet = PinBullet(sheet, "3B");
+    REQUIRE(bullet != nullptr);
+    CHECK(PlainText(bullet->spans).ends_with(": inputs"));
+    CHECK(PinBullet(sheet, "2Y") != nullptr);
+    CHECK(PinBullet(sheet, "VCC") == nullptr);
+}
+
+TEST_CASE("manual: component role", "[manual]") {
+    const Markdown service = ParseMarkdown(kGoodService);
+    const auto role = ComponentRole(service, "R1");
+    REQUIRE(role.has_value());
+    CHECK(role->name == "pull-up");
+    CHECK(role->detail == "holds RESET_N high");
+    const auto power = ComponentRole(service, "J1");
+    REQUIRE(power.has_value());
+    CHECK(power->name == "power");
+    CHECK(power->detail.empty());
+    CHECK_FALSE(ComponentRole(service, "U9"));
+}
+
+TEST_CASE("manual: links", "[manual]") {
+    const auto design = Counter();
+    const Markdown doc = ParseMarkdown("check `U1` pin 15 (RCO): a pulse; `QA` and `CLK`\n");
+    const auto& spans = doc.blocks[0].spans;
+    const auto link = LinkAt(spans, 1, *design);
+    REQUIRE(link.has_value());
+    CHECK(link->reference == "U1");
+    CHECK(link->pin == "15");
+    CHECK(link->pinChars == std::string(" pin 15").size());
+    CHECK(spans[2].text.substr(link->pinChars) == " (RCO): a pulse; ");
+    CHECK_FALSE(LinkAt(spans, 0, *design));
+    CHECK_FALSE(LinkAt(spans, 3, *design));  // `QA`
+    CHECK_FALSE(LinkAt(spans, 5, *design));  // `CLK`: a Net
+}
+
+TEST_CASE("manual: part pin names", "[manual]") {
+    const Names ls161 = PartPinNames(*FindPart("74LS161"));
+    CHECK(ls161.size() == 16);
+    CHECK(std::ranges::find(ls161, "CLR_N") != ls161.end());
+    CHECK(PartPinNames(*FindPart("OSC")).size() == 14);
+    CHECK(PartPinNames(*FindPart("R")).empty());
+}
+
+TEST_CASE("manual: checks", "[manual]") {
+    const auto design = Counter();
+    CHECK(CheckServiceManual(ParseMarkdown(kGoodService), "s.md", *design).empty());
+    CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## Components\n## How it works\n"),
+                                      "s.md", *design))
+              .front() == "2: sections must be: How it works, Components, [Troubleshooting]");
+
+    std::string service(kGoodService);
+    service.replace(service.find("- `U4` decoder: NAND\n"), 21, "- `U3` again\n- `U9` x\n");
+    service += "- `U1` pin 17 floats\n";
+    CHECK(Messages(CheckServiceManual(ParseMarkdown(service), "s.md", *design)) ==
+          std::vector<std::string>{"12: unknown reference 'U9'", "15: U1 has no pin 17",
+                                   "11: Components: U3 listed twice", "4: Components: missing U4"});
+    CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## How it works\n## Components\nx\n"),
+                                      "s.md", *design))
+              .front() == "4: Components: each bullet starts with a `REF`");
+
+    CHECK(CheckUserManual(ParseMarkdown("# Counter\n## What it does\nCounts.\n## Connections\n- "
+                                        "`J1`: power\n"),
+                          "u.md", *design)
+              .empty());
+    CHECK(Messages(CheckUserManual(ParseMarkdown("## What it does\n## Connections\n- `J7`\n"),
+                                   "u.md", *design)) ==
+          std::vector<std::string>{"1: must start with a # title", "3: unknown reference 'J7'"});
+
+    const PartInfo& ls00 = *FindPart("74LS00");
+    const std::string sheet =
+        "# 74LS00 \u2014 quad 2-input NAND\n## Function\nNAND.\n## Pins\n"
+        "- `1A`\u2013`4A`, `1B`\u2013`4B`: inputs\n- `1Y`\u2013`4Y`: outputs\n";
+    CHECK(Messages(CheckDatasheet(ParseMarkdown(sheet), "d.md", ls00)) ==
+          std::vector<std::string>{"0: Pins: missing GND", "0: Pins: missing VCC"});
+    CHECK(CheckDatasheet(ParseMarkdown(sheet + "- `VCC`, `GND`: power\n"), "d.md", ls00).empty());
+    CHECK(Messages(CheckDatasheet(ParseMarkdown("# 74LS00X\n## Pins\n## Function\n"), "d.md", ls00))
+              .front() == "2: sections must be: Function, Pins");
+}
+
+TEST_CASE("manual: load with missing files", "[manual]") {
+    const auto design = Counter();
+    const auto root = std::filesystem::temp_directory_path() / "bw_manuals_empty";
+    std::filesystem::create_directories(root);
+    const LoadedManuals loaded = LoadManuals(root, "counter", *design);
+    CHECK(loaded.problems.empty());
+    CHECK_FALSE(loaded.manuals.user);
+    CHECK_FALSE(loaded.manuals.service);
+    CHECK(loaded.manuals.datasheets.empty());
+    std::filesystem::remove_all(root);
+}
