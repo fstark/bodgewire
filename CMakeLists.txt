@@ -16,6 +16,7 @@ add_subdirectory(src/instruments)
 add_subdirectory(src/parts)
 add_subdirectory(src/netlist)
 add_subdirectory(src/board)
+add_subdirectory(src/machine)
 add_subdirectory(src/cli)
 add_subdirectory(bench)
 

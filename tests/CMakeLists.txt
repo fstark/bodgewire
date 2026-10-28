@@ -16,6 +16,8 @@ add_executable(bw_tests
   devices/tv_input_test.cpp
   devices/tv_test.cpp
   instruments/logic_probe_test.cpp
+  machine/crack_test.cpp
+  machine/puzzle_test.cpp
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp
   netlist/diagnostic_test.cpp
@@ -39,10 +41,11 @@ add_executable(bw_tests
   sim/time_test.cpp
   sim/vcd_test.cpp
 )
-target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_warnings
+target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_machine bw_warnings
                                        Catch2::Catch2WithMain)
 target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR}/netlists"
-                                           BW_BOARD_DIR="${PROJECT_SOURCE_DIR}/boards")
+                                           BW_BOARD_DIR="${PROJECT_SOURCE_DIR}/boards"
+                                           BW_PUZZLE_DIR="${PROJECT_SOURCE_DIR}/puzzles")
 
 include(Catch)
 catch_discover_tests(bw_tests)
