@@ -323,7 +323,7 @@ void BoardView::draw(ImVec2 size) {
     }
     list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), kBoardGreen);
 
-    const std::optional<NetId> lit = highlight_;
+    const std::optional<NetId> lit = highlight_ ? highlight_ : net_;
     const auto drawTraces = [&](Layer layer, float alpha, float litAlpha) {
         const ImU32 colour = WithAlpha(layer == Layer::Front ? kFrontCopper : kBackCopper, alpha);
         const ImU32 litColour = WithAlpha(kHighlight, litAlpha);
@@ -544,6 +544,12 @@ void BoardView::route(const TargetHits& hits) {
     }
     if (hits.clicked) {
         focus(*hits.clicked);
+        select(hits.clicked->component);
+        if (hits.clicked->pad && scene_) {
+            if (const auto net = scene_->padNet(hits.clicked->component, *hits.clicked->pad)) {
+                net_ = net;
+            }
+        }
     }
 }
 

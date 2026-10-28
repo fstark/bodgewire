@@ -247,6 +247,10 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         if (const auto component =
                 scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
             boardView.select(*component);
+            const std::string pin = options.probe->substr(options.probe->find('.') + 1);
+            if (const auto pad = scene->padIndex(*component, pin)) {
+                boardView.selectNet(scene->padNet(*component, *pad));
+            }
         }
     }
     Speed speed = Speed::RealTime;
@@ -298,10 +302,15 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             session.touch(std::nullopt);
         }
         if (const auto click = boardView.takeClick()) {
+            const auto& pick = click->pick;
             if (click->component) {
                 boardView.select(*click->component);
             }
-            const auto& pick = click->pick;
+            if (pick && boardView.scene()) {
+                if (const auto net = boardView.scene()->netOf(pick->hit)) {
+                    boardView.selectNet(*net);  // any tool
+                }
+            }
             RepairResult result = RepairResult::Done;
             switch (boardView.tool()) {
             case Tool::Probe:

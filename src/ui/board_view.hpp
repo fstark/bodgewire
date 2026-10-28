@@ -50,6 +50,8 @@ public:
     bool takeEscape();                      // Esc pressed since the last call
     std::optional<std::size_t> chip() const { return hovered_ ? hovered_ : selected_; }
     void select(std::size_t component) { selected_ = component; }
+    std::optional<NetId> net() const { return net_; }
+    void selectNet(std::optional<NetId> net) { net_ = net; }
     // Highlighted like a Board hover at the next draw only: panels draw after the Board.
     void hoverFromOutside(std::optional<BoardTarget> target) { outside_ = target; }
     void focus(BoardTarget target);  // frame + flash 1 s
@@ -76,6 +78,7 @@ private:
     bool needFit_ = true;  // first draw knows the panel size
     ImVec2 panel_{};
     std::optional<NetId> highlight_;
+    std::optional<NetId> net_;  // the Net panel's Net; drawn when the hover highlights none
     std::optional<BoardTarget> hoverTarget_;  // drawn highlighted: hovered pad or Component
     std::optional<std::size_t> hovered_, selected_;
     std::optional<BoardTarget> outside_;
