@@ -72,6 +72,10 @@ _Avoid_: Level, voltage
 **Driver**:
 A Pin's contribution to the value of its Net: what it drives and how strongly.
 
+**Load**:
+A Pin that only reads its Net, such as a gate input or a chip's power pin.
+_Avoid_: Sink, receiver
+
 **Drive Strength**:
 How hard a Driver forces its Net, so stronger Drivers win over weaker ones (e.g. an output beats a pull-up).
 
