@@ -1,0 +1,45 @@
+#pragma once
+
+#include <expected>
+#include <filesystem>
+#include <memory>
+#include <string_view>
+#include <vector>
+
+#include "board/board.hpp"
+#include "machine/puzzle.hpp"
+#include "netlist/builder.hpp"
+#include "netlist/parser.hpp"
+
+namespace bw {
+
+class Machine;
+
+// root/netlists/<machine>.bwn + root/boards/<machine>/<machine>.kicad_pcb; all semantic errors.
+std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle,
+                                                            const std::filesystem::path& root);
+
+// Design netlist + Board + Faults. Repairs edit it; build() makes the Circuit for one power-on.
+class Machine {
+public:
+    bool swap(std::string_view reference);         // chip swap; false if no such Component
+    bool mend(Layer layer, Point at);              // removes cracks within 1 mm; false if none
+    LoadResult build() const;                      // electrical Circuit with the current Faults
+    const Board& board() const { return board_; }  // with cracks
+
+private:
+    Machine() = default;
+    friend std::expected<Machine, std::vector<Diagnostic>>
+    LoadMachine(const Puzzle&, const std::filesystem::path&);
+
+    Netlist design_;
+    std::unique_ptr<LoadedCircuit> designCircuit_;  // design Nets: pin lookup, check-board
+    Board pristine_, board_;                        // board_ = pristine_ + cracks_
+    std::vector<StuckPin> stuck_;
+    std::vector<CrackDecl> cracks_;
+};
+
+// Parse + LoadMachine with root = the puzzle file's directory's parent (puzzles/../).
+std::expected<Machine, std::vector<Diagnostic>> LoadPuzzleFile(const std::filesystem::path& path);
+
+}  // namespace bw

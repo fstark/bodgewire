@@ -304,28 +304,32 @@ LoadResult LoadNetlistFile(const std::filesystem::path& path) {
     return LoadNetlist(text, std::move(file));
 }
 
+std::optional<PinIndex> FindPin(const Component& component, std::string_view pin) {
+    const auto pins = component.pins();
+    if (AllDigits(pin)) {
+        if (pin.size() <= 3) {
+            const std::size_t number = std::stoul(std::string(pin));
+            if (number >= 1 && number <= pins.size()) {
+                return static_cast<PinIndex>(number - 1);
+            }
+        }
+        return std::nullopt;
+    }
+    for (PinIndex i = 0; i < pins.size(); ++i) {
+        if (pins[i].name == pin) {
+            return i;
+        }
+    }
+    return std::nullopt;
+}
+
 std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view reference,
                             std::string_view pin) {
     const auto component = loaded.components.find(reference);
     if (component == loaded.components.end()) {
         return std::nullopt;
     }
-    const auto pins = component->second->pins();
-    std::optional<PinIndex> index;
-    if (AllDigits(pin)) {
-        if (pin.size() <= 3) {
-            const std::size_t number = std::stoul(std::string(pin));
-            if (number >= 1 && number <= pins.size()) {
-                index = static_cast<PinIndex>(number - 1);
-            }
-        }
-    } else {
-        for (PinIndex i = 0; i < pins.size(); ++i) {
-            if (pins[i].name == pin) {
-                index = i;
-            }
-        }
-    }
+    const auto index = FindPin(*component->second, pin);
     if (!index) {
         return std::nullopt;
     }

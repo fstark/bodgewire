@@ -53,6 +53,9 @@ LoadResult BuildCircuit(const Netlist& netlist,
 LoadResult LoadNetlist(std::string_view text, std::string file);
 LoadResult LoadNetlistFile(const std::filesystem::path& path);  // diagnostics name the file only
 
+// Pin by package number ("3") or datasheet name ("1Y"); nullopt if none.
+std::optional<PinIndex> FindPin(const Component& component, std::string_view pin);
+
 // Net at a Pin's pad: the Net it is listed on (also for a stuck Pin), else its own Net.
 // `pin` is a name or a number; nullopt if the reference or pin is unknown.
 std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view reference,
