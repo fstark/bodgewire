@@ -2,6 +2,29 @@
 
 namespace bw {
 
+void ProbeState::reset() {
+    started_ = false;
+    lastChange_ = -1;
+}
+
+void ProbeState::feed(Sample sample) {
+    if (started_ && sample.value != value_) {
+        lastChange_ = sample.time;
+    }
+    value_ = sample.value;
+    floating_ = sample.floating;
+    started_ = true;
+}
+
+ProbeLamps ProbeState::lamps(Time now) const {
+    const bool level = started_ && !floating_;
+    return {
+        .high = level && value_ == LogicValue::One,
+        .low = level && value_ == LogicValue::Zero,
+        .pulse = lastChange_ >= 0 && now - lastChange_ < kPulseStretch,
+    };
+}
+
 LogicProbe::LogicProbe(Simulator& sim, NetId net) : sim_(sim), net_(net) { sim_.record(net_); }
 
 void LogicProbe::update() {
@@ -11,24 +34,12 @@ void LogicProbe::update() {
         --first;
     }
     for (std::size_t i = first; i < samples.size(); ++i) {
-        if (started_) {
-            lastChange_ = samples[i].time;
-        } else {
-            started_ = true;
-        }
+        state_.feed(samples[i]);
     }
     fedUntil_ = sim_.now();
 }
 
-ProbeLamps LogicProbe::lamps() const {
-    const bool floating = sim_.isFloating(net_);
-    const LogicValue value = sim_.value(net_);
-    return {
-        .high = !floating && value == LogicValue::One,
-        .low = !floating && value == LogicValue::Zero,
-        .pulse = lastChange_ >= 0 && sim_.now() - lastChange_ < kPulseStretch,
-    };
-}
+ProbeLamps LogicProbe::lamps() const { return state_.lamps(sim_.now()); }
 
 std::string FormatLamps(ProbeLamps lamps) {
     std::string text;

@@ -94,3 +94,45 @@ TEST_CASE("logic probe: FormatLamps", "[instruments]") {
     CHECK(FormatLamps({.low = true, .pulse = true}) == "LOW PULSE");
     CHECK(FormatLamps({.pulse = true}) == "PULSE");
 }
+
+TEST_CASE("probe state: first Sample is the level, no PULSE", "[instruments]") {
+    ProbeState state;
+    CHECK(FormatLamps(state.lamps(0)) == "-");
+    state.feed({5_ms, One});
+    CHECK(FormatLamps(state.lamps(5_ms)) == "HIGH");
+    ProbeState low;
+    low.feed({5_ms, Zero});
+    CHECK(FormatLamps(low.lamps(5_ms)) == "LOW");
+}
+
+TEST_CASE("probe state: change lights PULSE for 100 ms", "[instruments]") {
+    ProbeState state;
+    state.feed({0, Zero});
+    state.feed({10_ms, One});
+    CHECK(FormatLamps(state.lamps(10_ms)) == "HIGH PULSE");
+    CHECK(FormatLamps(state.lamps(109_ms)) == "HIGH PULSE");
+    CHECK(FormatLamps(state.lamps(110_ms)) == "HIGH");
+}
+
+TEST_CASE("probe state: floating-only change no PULSE", "[instruments]") {
+    ProbeState state;
+    state.feed({0, One});
+    state.feed({10_ms, One, true});
+    CHECK(FormatLamps(state.lamps(10_ms)) == "-");
+}
+
+TEST_CASE("probe state: floating is dark", "[instruments]") {
+    ProbeState state;
+    state.feed({0, One, true});
+    CHECK(FormatLamps(state.lamps(1_ms)) == "-");
+}
+
+TEST_CASE("probe state: reset", "[instruments]") {
+    ProbeState state;
+    state.feed({0, Zero});
+    state.feed({10_ms, One});
+    state.reset();
+    CHECK(FormatLamps(state.lamps(10_ms)) == "-");
+    state.feed({0, Zero});
+    CHECK(FormatLamps(state.lamps(0)) == "LOW");
+}
