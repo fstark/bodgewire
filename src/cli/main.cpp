@@ -21,6 +21,7 @@
 #include "instruments/logic_probe.hpp"
 #include "machine/crack.hpp"
 #include "machine/machine.hpp"
+#include "machine/repair.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/units.hpp"
 #include "sim/simulator.hpp"
@@ -150,37 +151,19 @@ std::unique_ptr<LoadedCircuit> Load(const std::string& file) {
 
 // Applies `repair` ("swap:U3" or "mend:F.Cu:52.30:41.00"); error message, or nullopt.
 std::optional<std::string> Repair(Machine& machine, std::string_view repair) {
-    const std::string bad = "bad repair '" + std::string(repair) + "'";
-    if (repair.starts_with("swap:")) {
-        const std::string_view reference = repair.substr(5);
-        if (!machine.swap(reference)) {
-            return "unknown reference '" + std::string(reference) + "'";
+    const auto parsed = ParseRepair(repair);
+    if (!parsed) {
+        return parsed.error();
+    }
+    if (const auto* swap = std::get_if<SwapRepair>(&*parsed)) {
+        if (!machine.swap(swap->reference)) {
+            return "unknown reference '" + swap->reference + "'";
         }
         return std::nullopt;
     }
-    if (!repair.starts_with("mend:")) {
-        return bad;
-    }
-    std::vector<std::string_view> fields;
-    for (std::size_t start = 5;;) {
-        const std::size_t colon = repair.find(':', start);
-        fields.push_back(repair.substr(start, colon - start));
-        if (colon == std::string_view::npos) {
-            break;
-        }
-        start = colon + 1;
-    }
-    if (fields.size() != 3 || (fields[0] != "F.Cu" && fields[0] != "B.Cu")) {
-        return bad;
-    }
-    const Layer layer = fields[0] == "F.Cu" ? Layer::Front : Layer::Back;
-    const auto x = ParseMillimetres(fields[1]);
-    const auto y = ParseMillimetres(fields[2]);
-    if (!x || !y) {
-        return bad;
-    }
-    if (!machine.mend(layer, {*x, *y})) {
-        std::println(stderr, "bw: no crack near {}", FormatPoint(layer, {*x, *y}));
+    const auto& mend = std::get<MendRepair>(*parsed);
+    if (!machine.mend(mend.layer, mend.at)) {
+        std::println(stderr, "bw: no crack near {}", FormatPoint(mend.layer, mend.at));
     }
     return std::nullopt;
 }

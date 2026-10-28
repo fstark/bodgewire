@@ -3,5 +3,6 @@ add_library(bw_machine STATIC
   electrical.cpp
   machine.cpp
   puzzle.cpp
+  repair.cpp
 )
 target_link_libraries(bw_machine PUBLIC bw_board PRIVATE bw_warnings)
