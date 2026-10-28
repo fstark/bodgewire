@@ -62,6 +62,7 @@ enum class RepairResult : std::uint8_t { Done, Refused, Unknown };  // Refused: 
 class Session {
 public:
     Session(std::optional<Machine> machine, std::unique_ptr<LoadedCircuit> circuit);
+    Session(Session&&) noexcept;  // safe: the Runner only points into *live_
     ~Session();
 
     const Machine* machine() const;           // nullptr without a Board
@@ -201,7 +202,7 @@ after vias, before courtyards and the tip:
 
 ### 5.5 `--repair` (S4)
 
-In `main`, after loading and `--probe`, before `SDL_Init`: for each comma-separated item, `ParseRepair` then `session.repair`; a parse error or `Unknown` → `bw_ui: <message>` + usage, exit 2. The first power-on then rebuilds, as in the UI.
+In `main`, after loading and `--probe`, before `SDL_Init`: for each comma-separated item, `ParseRepair` then `session.repair`; a parse error or `Unknown` → `bw_ui: <message>` + usage, exit 2. Messages: the `ParseRepair` error; `unknown reference 'U9'`; `no Board to repair` without a Machine. The first power-on then rebuilds, as in the UI.
 
 ## 6. Reused Infrastructure
 
@@ -238,7 +239,7 @@ ui ──► session ──► machine ──► board ──► netlist ──�
   - `drawnBoard()` Traces equal before and after a mend at `kH0Crack`;
   - probe 1 mm each side of `kH0Crack`: two different `probedNet()`; power off, mend, power on: the same Net; the tip is unchanged;
   - netlist without a Board: `repair` → Unknown, `touch` ignored, power cycle runs.
-- **board_repair_test** (`[machines]`): for each Puzzle, a Session at seed 1: right Repair, power on to 60 ms → TV frame equals the fault-free Session's; a wrong swap does not (as P2d's faults test).
-- **Perf** (`[.perf]`, hidden): 20 rebuilds of `broken_trace` (mend, power on, power off); mean < 100 ms in release.
+- **board_repair_test** (`[machines]`): for each Puzzle, a Session at seed 1, `Speed::Max`: right Repair, power on to 60 ms → TV frame equals the fault-free Session's; a wrong Repair (wrong swap, or a mend away from the crack) does not (as P2d's faults test).
+- **Perf** (`[.perf]`, hidden): 20 rebuilds of `broken_trace` (mend, timed `powerOn`, power off); mean < 100 ms in release. The rebuild is synchronous inside `powerOn`.
 - **Agent, screenshot**: `bw_ui puzzles/broken_trace.bwp --repair mend:F.Cu:137.59:99.17 --probe U13.2B --screenshot /tmp/bw-repair.png --after 2s`: blob at the crack, log line, grid, U13.2B pulsing.
 - **Manual**: Done-when play-through.

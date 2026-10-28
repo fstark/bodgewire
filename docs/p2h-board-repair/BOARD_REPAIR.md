@@ -46,7 +46,7 @@ Out: Bodge Wires, Trace cuts and other Repairs (P3); Repair Validation (P3); und
   - Repairs are refused while powered and accepted while off; mend blobs and the repair log record every action, mended or not;
   - touching both sides of the `broken_trace` crack reads the same Net after a mend there and power-on;
   - the drawn Board is the same before and after a mend;
-  - for each Puzzle: right Repair, power on → TV frame equals the fault-free frame (as in P2e S4); a wrong swap does not.
+  - for each Puzzle: right Repair, power on → TV frame equals the fault-free frame (as in P2e S4); a wrong Repair does not.
 - `--screenshot --repair` on `broken_trace`: the agent reads the PNG to check blob, log and grid.
 - Manual: the Done-when play-through.
 

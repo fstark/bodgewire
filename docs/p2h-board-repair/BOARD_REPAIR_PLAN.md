@@ -60,13 +60,13 @@ All C++ is `clang-format` clean (never run it on CMakeLists.txt).
 ### 3.1 — Module
 
 - New `src/session/session.hpp/.cpp`: `SolderBlob`, `ProbeTip`, `RepairResult`, `Session` exactly as design 2 and 4 (`Live` struct, member order: `circuit`, `tv`, `probe`, `runner`).
-- Constructor: keep `machine`, `drawn_ = machine->board()` if any, `live_ = MakeLive(std::move(circuit))`, `dirty_ = false`.
+- Constructor: keep `machine`, `drawn_ = machine->board()` if any, `live_ = MakeLive(std::move(circuit))`, `dirty_ = false`. Move constructor and destructor `= default` in the .cpp.
 - `powerOn`, `powerOff`, `setSpeed`, `repair`, `touch`, `probedNet` (`live_->probe.touched()`), `lamps` (dark unless `powered_`) as design 5.1, 5.2. `touch` without a Machine: ignored.
 - New `src/session/CMakeLists.txt` (design 7); top-level [CMakeLists.txt](../../CMakeLists.txt): `add_subdirectory(src/session)` after `src/machine`; `bw_tests` links `bw_session`.
 
 ### 3.2 — Tests
 
-New `tests/session/session_test.cpp` (`[session]`), helper `RunTo(session, t)` (`runner().pauseAt`, `resume`, `waitIdle`) and `Along(nm)` (point on the `kH0Crack` Trace, as `"machine: probeNet across a crack"`; include `../machine/test_points.hpp`):
+New `tests/session/session_test.cpp` (`[session]`), every Session at `setSpeed(Speed::Max)` (as the runner tests), helper `RunTo(session, t)` (`runner().pauseAt`, `resume`, `waitIdle`) and `Along(nm)` (point on the `kH0Crack` Trace: a copy of the `along` lambda of `"machine: probeNet across a crack"`; include `../machine/test_points.hpp`):
 
 - `"session: repairs only with the power off"`: `broken_trace`; `powerOn(1)` → `repair(SwapRepair{"U3"})` == Refused, `log()` empty; `powerOff()` → Swap U3 Done, `MendRepair{Front, {0, 0}}` Done (no crack there); `log()` == `{"swap U3", "mend F.Cu 0.00 0.00"}`; `blobs().size() == 1`; Swap U99 → Unknown.
 - `"session: drawn Board unchanged by a mend"`: Traces of `drawnBoard()` (count, each start/end) equal before and after mending `kH0Crack`; `machine()->board()` did change (one Trace fewer).
@@ -87,12 +87,12 @@ Add to [tests/CMakeLists.txt](../../tests/CMakeLists.txt).
 
 (design 9)
 
-- New `tests/machines/board_repair_test.cpp` (`[machines]`). Helper `Frame(Session&, seed)`: `powerOn(seed, 60_ms)`, `runner().waitIdle()`, `tv()->pictures().update()`, cells. Fault-free: Session on `LoadNetlistMachine(test_pattern.bwn)` + its `build()`.
+- New `tests/machines/board_repair_test.cpp` (`[machines]`). Helper `Frame(Session&, seed)`: `setSpeed(Speed::Max)`, `powerOn(seed, 60_ms)`, `runner().waitIdle()`, `REQUIRE(tv()->pictures().update())`, cells. Fault-free: Session on `LoadNetlistMachine(test_pattern.bwn)` + its `build()`.
   - `"board repair: dead counter"`: Swap U3 → frame == fault-free; a fresh Session, Swap U4 → ≠.
   - `"board repair: stuck gate"`: Swap U12 → ==; Swap U13 → ≠.
   - `"board repair: broken trace"`: Mend F.Cu `kH0Crack` → ==; Mend 5 mm away → ≠.
   - Each Repair after a first powered run (power on to 10 ms, power off, repair, `Frame`), so the rebuild path is the one tested.
-- `"board repair: rebuild time"` (`[.perf]`, hidden): `broken_trace`, 20 × (power off, mend far away, power on, `waitIdle`); print mean ms; `CHECK(mean < 100)`. Run it in release in phase 7.
+- `"board repair: rebuild time"` (`[.perf]`, hidden): `broken_trace`, 20 × (power off, mend far away, time `powerOn(1, 1_ms)` (the rebuild is synchronous in it), `waitIdle`); print mean ms; `CHECK(mean < 100)`. Run it in release in phase 7. (`waitIdle` without `pauseAt` would never return.)
 - Add to [tests/CMakeLists.txt](../../tests/CMakeLists.txt).
 
 ### Fence
@@ -107,9 +107,9 @@ Add to [tests/CMakeLists.txt](../../tests/CMakeLists.txt).
 
 (design 3.4) No visible change: the probe and TV work as in P2g.
 
-- [src/ui/main.cpp](../../src/ui/main.cpp): `Load` returns `std::optional<Session>` (or nullopt on errors); `main` resolves `--probe` with `session.machine()->padPosition` and calls `session.touch(ProbeTip{at, Layer::Front})` before `SDL_Init` (unknown pin → exit 2 as now); `RunWindow(window, renderer, session, options)`:
-  - `BoardView` from `BoardScene(*session.drawnBoard(), machine.pristineBoard(), machine.designCircuit())`;
-  - power buttons → `session.powerOn(seed)` / `powerOff()`; Pause/Resume/status → `session.runner()`; speed → `session.setSpeed`;
+- [src/ui/main.cpp](../../src/ui/main.cpp): `Loaded` becomes `{std::optional<Session> session; std::string name;}` (no session on errors; `name` still titles the window); `main` resolves `--probe` with `session.machine()->padPosition` and calls `session.touch(ProbeTip{at, Layer::Front})` before `SDL_Init` (unknown pin → exit 2 as now); `RunWindow(window, renderer, session, options)`:
+  - `BoardView` from `BoardScene(*session.drawnBoard(), machine.pristineBoard(), machine.designCircuit())`, nullopt without a Board as now;
+  - power buttons → `session.powerOn(seed)` / `powerOff()`, shown from `session.powered()` (not the Runner's state, so the button agrees with Refused Repairs); Pause/Resume/status → `session.runner()`; speed → `session.setSpeed`;
   - TV: `session.tv()` each frame (it may be replaced by a rebuild);
   - probe clicks → `session.touch(onCopper ? ProbeTip{at, layer} : nullopt)`; `setProbeTip(session.probeTip() → at)`; lamps `session.lamps()`.
 - [src/ui/CMakeLists.txt](../../src/ui/CMakeLists.txt): `bw_ui` links `bw_session`.
