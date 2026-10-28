@@ -291,9 +291,10 @@ public:
 
 class ManualView {  // src/ui/manual_view.hpp; one per window, plus one for the Puzzle section
 public:
-    // Draws blocks; returns the link under the mouse; a clicked link sets `clicked`.
-    std::optional<BoardTarget> draw(std::span<const Block> blocks, const BoardScene* scene,
-                                    const LoadedCircuit& design, std::optional<BoardTarget>& clicked);
+    struct Hits {
+        std::optional<BoardTarget> hovered, clicked;  // link under the mouse / clicked this frame
+    };
+    Hits draw(std::span<const Block> blocks, const BoardScene* scene, const LoadedCircuit& design);
 };
 ```
 
