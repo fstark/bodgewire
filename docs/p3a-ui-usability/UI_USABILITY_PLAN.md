@@ -3,27 +3,12 @@
 Design: [UI_USABILITY_DESIGN.md](UI_USABILITY_DESIGN.md)
 Spec: [UI_USABILITY.md](UI_USABILITY.md)
 
-Phases 1–4 and 6–8 done 2026-10-28, commits 465e757..743ee9f (340 tests, debug and release). Release: `broken_trace --probe U1.CLK` at 1.00× after 3 s, `ui` 0.4 ms fitted; 0.7 ms with the Service Manual window and Chip panel open.
+P3a DONE 2026-10-28. Phases 1–4 and 6–8: commits 465e757..743ee9f (340 tests, debug and release). Release: `broken_trace --probe U1.CLK` at 1.00× after 3 s, `ui` 0.4 ms fitted; 0.7 ms with the Service Manual window and Chip panel open. User check: "way better than before"; manuals and Datasheets approved; pin names moved outside the chip (a7c86f0).
 
-What remains needs the user at the screen.
+## Later (from the user check)
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 5 | User check A: usability half | deferred: merged into the user check below |
-| 7 | Content review by the user | waiting for the user |
-| 9 | User check, Done-when, roadmap | waiting for the user |
-
-## User check (phases 5, 7 and 9)
-
-- Release build: `build/release/src/ui/bw_ui puzzles/<name>.bwp` for the three Puzzles.
-- Navigation and snapping: left-drag pans, double-click on free board fits, `+`/`-` zoom, `Esc` lifts the probe; hovering pads, Traces and vias from a few pixels away; a B.Cu Trace picked with F.Cu active.
-- Pin names on the hovered or selected Chip once pads are ≥ 10 px; `ui` < 16 ms at 100 px/mm (Debug section).
-- Banner: amber `power off first` with Swap or Mend while powered; a refused click flashes it.
-- Content: read the four manuals (`manuals/`) and the 14 Datasheets (`datasheets/`); wording and level of detail.
-- Done-when (spec): knows what the Board should do and what each chip is for, sees the state, hits pins and Traces without hunting.
-- Then: [ARCHITECTURE.md](../ARCHITECTURE.md) roadmap P3a row marked done; commit `"ui usability: phase 9 — user check"`.
-
-Record tuning wishes here.
+- Selection still feels odd in places (hovered vs selected Chip, picks); not yet described in detail.
+- The Puzzle section's `When it works` is closed by default; revisit once the layout settles.
 
 ## Implementation notes (differences from the design)
 

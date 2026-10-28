@@ -8,7 +8,7 @@ Game design: [GAME_DESIGN.md](GAME_DESIGN.md).
 
 - C++23, CMake, a unit-test framework.
 - SDL3 (window, input, audio), Dear ImGui (UI), ImPlot + custom renderer (waveforms).
-- Board and schematic: custom zoomable 2D viewport on ImGui draw lists. Board layers share one frame, each with its own colour/opacity; picking on the active layer.
+- Board view: custom zoomable 2D viewport on ImGui draw lists. Board layers share one frame, each with its own colour/opacity; picking on the active layer.
 - Machines and scenarios described in data files (JSON or TOML).
 - Pure 2D. No game engine, ECS, physics or scene graph. Fallback if ImGui limits the game UI: Qt.
 
@@ -95,12 +95,12 @@ struct Net    { std::vector<DriverId> drivers; LogicState resolved; };
 
 | Level | Contents | Changed by |
 |---|---|---|
-| Design netlist | intended connections; source of the schematic | nobody (fixed per machine) |
+| Design netlist | intended connections; source of Net names, pinouts, the net panel and the manual checks | nobody (fixed per machine) |
 | Physical board | copper graph (pads, track segments, vias, bodge wires, pin-to-pad contacts: solder joints, socket contacts) + fitted parts | faults, then repairs |
 | Electrical nets | connected components of the copper graph; what the simulator uses | recomputed after each physical change |
 
 - Faults and repairs edit the physical board, never the nets directly. A pin reaches its net only through a contact edge, so joint and socket faults are ordinary graph edits; `Pin::net` is derived.
-- The UI must not leak faults. Board drawing, schematic, net names and net highlighting come from the design netlist and the visible physical state, so highlighting ignores breaks and the player's bodge wires. Only instruments (probe, scope, analyzer, multimeter) read electrical nets. Developer mode may show everything.
+- The UI must not leak faults. Board drawing, net names, net highlighting, pinouts and the net panel come from the design netlist and the visible physical state, so highlighting ignores breaks and the player's bodge wires. Only instruments (probe, scope, analyzer, multimeter) read electrical nets. Developer mode may show everything.
 - Each fault declares its appearance: invisible, subtle (seen when zoomed in), or obvious.
 
 ## Repair validation
@@ -189,8 +189,8 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P2g | Board probe | done: logic probe by clicking the running Board (electrical Nets, one watched Net). [BOARD_PROBE.md](p2g-board-probe/BOARD_PROBE.md) |
 | P2h | Board repair | done: Swap and Mend tools with the power off, repair log, Nets rebuilt at power-on (`src/session`), `bw_ui --repair`: completes the first playable. [BOARD_REPAIR_PLAN.md](p2h-board-repair/BOARD_REPAIR_PLAN.md) |
 | P2 | Test-pattern generator — **first playable** | done 2026-10-28: the three Puzzles played end to end in `bw_ui` (works, but the UI is hard to use). P2a–P2h together: crystal, TTL counters → H/V sync + bars/grid, TV model, see-through board view, logic probe, chip swap, trace repair. Faults: dead counter output, broken trace, stuck gate output |
-| P3a | UI usability | Puzzle Brief, User and Service Manuals and Datasheets (authored files), state banner, toolbar, Chip panel, pin names on the Board, larger snapping, grouped layout, navigation. [UI_USABILITY.md](p3a-ui-usability/UI_USABILITY.md) |
-| P3b | Schematic view | Schematic generated from the design Netlist, cross-highlighting with the Board; view only (probing stays on the Board) |
+| P3a | UI usability | done 2026-10-28: Puzzle Brief, User and Service Manuals and Datasheets (authored, checked against the netlist), state banner, toolbar, Chip panel, pin names on the Board, snapping, grouped layout, navigation (`src/manual`). [UI_USABILITY_PLAN.md](p3a-ui-usability/UI_USABILITY_PLAN.md) |
+| P3b | Net panel | click a Net: its driver and loads (`U6` pin 6 1Y → `U2` pin 9, `U9` pin 5), each a link that frames it on the Board; design Netlist only. Replaces the schematic view (see Board authoring) |
 | P3c | Logic analyzer | many Nets at once, Trigger, pre-trigger history; built on the per-Net counted watches |
 | P3d | Oscilloscope + multimeter | few Nets at fine timing; logic-state voltages and continuity; the counter Board gets an output connector to measure |
 | P3e | Bodge wires + trace cuts | new Repairs through the Session |
@@ -200,7 +200,7 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | Later | Machines | BW-1, BW-80, BW-2001: CPU models (6502, Z80), RAM/ROM, keyboards, LED display |
 | Later | Timing | setup/hold checks, slow and wrong parts, timing faults |
 
-P1–P3 test the idea, with hand-placed faults only. P1 (a–c): is the kernel fast enough? P2: can we produce boards (and schematics)? Do symptoms emerge without scripting, and can a player diagnose them? P3: is the full loop fun?
+P1–P3 test the idea, with hand-placed faults only. P1 (a–c): is the kernel fast enough? P2: can we produce boards? Do symptoms emerge without scripting, and can a player diagnose them? P3: is the full loop fun?
 
 ## Board authoring
 
@@ -211,6 +211,6 @@ KiCad is not the source of truth: its scope is real-world manufacturing, ours is
   - P2a result: counter and test-pattern Boards laid out by a KiCad newcomer (KiCad 10, test pattern auto-routed by Freerouting: 479 segments, 13 vias), both pass `bw check-board`. Pain points were one-offs or guide material: library table path after install, Java for Freerouting, ratsnest redrawn differently while moving, outline drawn on F.Cu by mistake, one connection left by Freerouting.
   - Next: everything after the hand layout is automated (export, read, check; KiCad's DRC headless via `kicad-cli pcb drc` in the tests). Boards need connectors as Parts in the netlist: power entry (VCC, GND) and outputs (video), so they get footprints, pads and Traces like any chip.
 - Whatever the layout source, Bodgewire checks the copper connects exactly what the netlist says.
-- Schematic generated from the netlist (net labels, no wire routing, grouped by function).
+- No schematic for now (decided 2026-10-28): on small Boards, Net highlighting, the Chip pinout, the net panel and the Service Manual's "How it works" answer "what feeds what"; a generated net-label schematic would only repeat the pinouts, and a wired one costs hand work per Machine. Revisit when Machines outgrow that (BW-80, ~40 chips).
 - Layout quality is a visual problem only; improvable later without touching simulation.
 - Risk: dense boards the router can't finish (BW-80 on 2 layers). Fallbacks: extra layer, wire jumpers (common on period boards).
