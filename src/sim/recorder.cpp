@@ -5,7 +5,7 @@
 
 namespace bw {
 
-void Recorder::start(NetId net, Time now, LogicValue value) {
+void Recorder::start(NetId net, Sample initial) {
     if (isRecording(net)) {
         return;
     }
@@ -14,13 +14,13 @@ void Recorder::start(NetId net, Time now, LogicValue value) {
         slotOfNet_.resize(i + 1, -1);
     }
     slotOfNet_[i] = static_cast<std::int32_t>(slots_.size());
-    slots_.push_back({{now, value}});
+    slots_.push_back({initial});
     nets_.push_back(net);
 }
 
-void Recorder::add(NetId net, Time time, LogicValue value) {
+void Recorder::add(NetId net, Sample sample) {
     assert(isRecording(net));
-    slots_[static_cast<std::size_t>(slotOfNet_[ToIndex(net)])].push_back({time, value});
+    slots_[static_cast<std::size_t>(slotOfNet_[ToIndex(net)])].push_back(sample);
 }
 
 std::span<const Sample> Recorder::samples(NetId net) const {

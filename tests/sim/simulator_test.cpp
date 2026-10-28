@@ -162,6 +162,31 @@ TEST_CASE("simulator: released MOS bus keeps last driven value, floating", "[sim
     }
 }
 
+TEST_CASE("simulator: recording an undriven Net starts floating", "[sim]") {
+    Circuit circuit;
+    const NetId net = circuit.addNet("n");
+    AddDrivers(circuit, net, {{Z}});
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.record(net);
+    const auto samples = Samples(sim, net);
+    REQUIRE(samples.size() == 1);
+    CHECK(samples[0].floating);
+}
+
+TEST_CASE("simulator: floating-only change is recorded", "[sim]") {
+    Circuit circuit;
+    const NetId net = circuit.addNet("n");
+    AddDrivers(circuit, net, {{One, {{10_ns, Z}}, Family::Mos}});
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.record(net);
+    sim.runFor(20_ns);
+    CHECK(Samples(sim, net) == std::vector<Sample>{{0, One, false}, {10_ns, One, true}});
+}
+
 TEST_CASE("simulator: weak pull-up wins over Z", "[sim]") {
     Circuit circuit;
     const NetId net = circuit.addNet("n");

@@ -103,7 +103,7 @@ void Simulator::scheduleWake(ComponentId component, Time delay) {
 
 void Simulator::record(NetId net) {
     Check(ToIndex(net) < nets_.size(), "simulator: unknown net");
-    recorder_.start(net, now_, value(net));
+    recorder_.start(net, {now_, value(net), isFloating(net)});
 }
 
 void Simulator::powerOn(std::uint64_t seed) {
@@ -181,6 +181,7 @@ void Simulator::runUntil(Time end) {
             const Resolution r = resolveNet(net);
             NetState& s = nets_[ToIndex(net)];
             s.dirty = false;
+            const bool wasFloating = s.floating;
             s.floating = r.floating;
             if (!r.floating) {
                 s.lastDriven = r.value;
@@ -190,7 +191,7 @@ void Simulator::runUntil(Time end) {
                 s.value = r.value;
                 s.changedAt = now_;
                 if (recorder_.isRecording(net)) {
-                    recorder_.add(net, now_, r.value);
+                    recorder_.add(net, {now_, r.value, r.floating});
                 }
                 const bool rose = s.previous == LogicValue::Zero && s.value == LogicValue::One;
                 for (const FanOut& f : circuit_.fanOut(net)) {
@@ -198,6 +199,8 @@ void Simulator::runUntil(Time end) {
                         markComponentDirty(f.component);
                     }
                 }
+            } else if (r.floating != wasFloating && recorder_.isRecording(net)) {
+                recorder_.add(net, {now_, r.value, r.floating});
             }
         }
         dirtyNets_.clear();

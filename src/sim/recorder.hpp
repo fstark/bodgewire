@@ -13,14 +13,15 @@ namespace bw {
 struct Sample {
     Time time;
     LogicValue value;
+    bool floating = false;  // no Driver: instruments only (logic is still `value`)
     friend bool operator==(const Sample&, const Sample&) = default;
 };
 
-// Value history of chosen Nets: initial value at start(), then every change.
+// Value history of chosen Nets: initial value at start(), then every value or floating change.
 class Recorder {
 public:
-    void start(NetId net, Time now, LogicValue value);  // no-op if already recording
-    void add(NetId net, Time time, LogicValue value);   // only called for recorded Nets
+    void start(NetId net, Sample initial);  // no-op if already recording
+    void add(NetId net, Sample sample);     // only called for recorded Nets
     bool isRecording(NetId net) const {
         const std::uint32_t i = ToIndex(net);
         return i < slotOfNet_.size() && slotOfNet_[i] >= 0;
