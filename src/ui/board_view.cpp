@@ -4,6 +4,7 @@
 #include <cfloat>
 #include <cmath>
 #include <numbers>
+#include <string>
 #include <vector>
 
 #include "board/copper.hpp"
@@ -251,6 +252,7 @@ void BoardView::draw(ImVec2 size) {
 }
 
 void BoardView::input(ImVec2 origin) {
+    highlight_.reset();
     if (!ImGui::IsWindowHovered()) {
         return;
     }
@@ -269,6 +271,13 @@ void BoardView::input(ImVec2 origin) {
         }
         if (ImGui::IsKeyPressed(ImGuiKey_F, false)) {
             viewport_.fit(scene_->bounds(), {panel_.x, panel_.y});
+        }
+    }
+    if (const auto hover = scene_->hitTest(viewport_.toBoard(mouse), active_)) {
+        highlight_ = scene_->netOf(*hover);
+        const std::string text = scene_->hoverText(*hover);
+        if (!text.empty()) {
+            ImGui::SetTooltip("%s", text.c_str());
         }
     }
 }
