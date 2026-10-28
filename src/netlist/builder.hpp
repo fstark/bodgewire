@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -30,7 +31,7 @@ struct Connection {
 struct LoadedCircuit {
     Circuit circuit;                                            // finalized
     std::map<std::string, NetId, std::less<>> nets;             // includes GND, VCC
-    std::map<std::string, Component*, std::less<>> components;  // chips only
+    std::map<std::string, Component*, std::less<>> components;  // chips and connectors
     std::vector<LoadedPart> parts;                              // netlist order
     std::vector<Connection> connections;  // incl. implicit power; by reference, pin
     std::vector<Diagnostic> warnings;
@@ -42,5 +43,9 @@ using LoadResult = std::expected<std::unique_ptr<LoadedCircuit>, std::vector<Dia
 LoadResult BuildCircuit(const Netlist& netlist);  // all errors, sorted by line
 LoadResult LoadNetlist(std::string_view text, std::string file);
 LoadResult LoadNetlistFile(const std::filesystem::path& path);  // diagnostics name the file only
+
+// Net on `pin` of the first `part` connector, e.g. ("VIDEO", "SYNC_N"); nullopt if none.
+std::optional<NetId> ConnectorNet(const LoadedCircuit& loaded, std::string_view part,
+                                  std::string_view pin);
 
 }  // namespace bw

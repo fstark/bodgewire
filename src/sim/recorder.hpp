@@ -27,6 +27,7 @@ public:
     }
     std::span<const NetId> nets() const { return nets_; }  // in start() order
     std::span<const Sample> samples(NetId net) const;
+    void trim(NetId net);  // keeps only the last Sample; no-op if not recording
     void clear();
 
 private:

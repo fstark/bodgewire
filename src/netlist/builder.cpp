@@ -282,4 +282,16 @@ LoadResult LoadNetlistFile(const std::filesystem::path& path) {
     return LoadNetlist(text, std::move(file));
 }
 
+std::optional<NetId> ConnectorNet(const LoadedCircuit& loaded, std::string_view part,
+                                  std::string_view pin) {
+    for (const LoadedPart& p : loaded.parts) {
+        if (p.info->name == part) {
+            const Component& connector = *loaded.components.at(p.reference);
+            return loaded.circuit.netOf(
+                PinId{ToIndex(connector.firstPin()) + connector.pinIndex(pin)});
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace bw

@@ -1,5 +1,6 @@
 #include "netlist/builder.hpp"
 
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -211,6 +212,23 @@ TEST_CASE("builder: LoadNetlistFile missing file", "[netlist]") {
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error().size() == 1);
     CHECK(Format(result.error()[0]) == "missing.bwn: error: cannot read file");
+}
+
+TEST_CASE("builder: ConnectorNet finds the VIDEO pins", "[netlist]") {
+    const auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    REQUIRE(result.has_value());
+    const auto video = ConnectorNet(**result, "VIDEO", "VIDEO");
+    const auto syncN = ConnectorNet(**result, "VIDEO", "SYNC_N");
+    REQUIRE(video.has_value());
+    REQUIRE(syncN.has_value());
+    CHECK(*video != *syncN);
+    CHECK(*video == (*result)->nets.at("VIDEO"));
+}
+
+TEST_CASE("builder: ConnectorNet without the connector", "[netlist]") {
+    const auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    REQUIRE(result.has_value());
+    CHECK_FALSE(ConnectorNet(**result, "VIDEO", "VIDEO").has_value());
 }
 
 TEST_CASE("builder: parts in netlist order with values", "[netlist]") {

@@ -29,6 +29,14 @@ std::span<const Sample> Recorder::samples(NetId net) const {
     return slots_[static_cast<std::size_t>(slotOfNet_[ToIndex(net)])];
 }
 
+void Recorder::trim(NetId net) {
+    if (!isRecording(net)) {
+        return;
+    }
+    auto& samples = slots_[static_cast<std::size_t>(slotOfNet_[ToIndex(net)])];
+    samples.erase(samples.begin(), samples.end() - 1);
+}
+
 void Recorder::clear() {
     slotOfNet_.clear();
     slots_.clear();
