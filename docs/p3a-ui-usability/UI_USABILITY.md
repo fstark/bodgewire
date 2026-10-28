@@ -27,7 +27,7 @@ Out (later P3 milestones fix these): Schematic (P3b), new instruments (P3c, P3d)
 
 ### S1 Brief
 
-- `.bwp` gains two optional lines: `title "Dead counter"` and `brief "The bottom of the picture is missing and the rest rolls."`. Double-quoted, one line each, at most once. If they are missing, the title is the file stem and the brief is empty.
+- `.bwp` gains two optional lines: `title "Dead counter"` and `brief "The bottom of the picture is missing and the rest rolls."`. Double-quoted, one line each, at most once. If they are missing, the title is the Machine name (never the file stem: it names the Fault) and the brief is empty. `#` inside the quotes is text, not a comment.
 - The three existing Puzzles get a title and a brief written from their Symptoms (checked on the TV), not their Faults. The dev comment stays.
 - `bw_ui` shows the title in the window title (`Bodgewire — Dead counter`) and the Brief at the top of the right column. `bw run` ignores both.
 
@@ -82,7 +82,7 @@ Out (later P3 milestones fix these): Schematic (P3b), new instruments (P3c, P3d)
 ### S7 Pin names and labels on the Board
 
 - Fitted view: each Chip shows its reference and Part (`U3` and `74LS161` under it) inside the courtyard.
-- When a pad is at least ~14 px wide, its pin name (`QA`, `CLK`, `VCC`) is drawn next to it, outside the courtyard.
+- When a pad is at least ~14 px wide, its pin name (`QA`, `CLK`, `VCC`) is drawn on the chip body beside it (inside the courtyard, towards its centre), where it does not cover Traces.
 
 ### S8 Snapping
 
