@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <charconv>
 #include <chrono>
 #include <cstdint>
@@ -15,6 +16,8 @@
 #include "board/board_check.hpp"
 #include "board/kicad_board.hpp"
 #include "board/kicad_netlist.hpp"
+#include "devices/bmp.hpp"
+#include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/units.hpp"
 #include "sim/simulator.hpp"
@@ -29,7 +32,8 @@ constexpr int kExitNetlistErrors = 1;
 constexpr int kExitUsage = 2;
 
 constexpr std::string_view kUsage = "usage: bw run <file.bwn> [--time 1ms] [--seed 1] "
-                                    "[--record NET,NET... | --record-all] [--vcd FILE]\n"
+                                    "[--record NET,NET... | --record-all] [--vcd FILE] "
+                                    "[--tv FILE.bmp]\n"
                                     "       bw export-kicad <file.bwn> -o <file.net>\n"
                                     "       bw check-board <file.bwn> <file.kicad_pcb>";
 
@@ -40,6 +44,7 @@ struct Options {
     std::vector<std::string> record;
     bool recordAll = false;
     std::string vcd;
+    std::string tv;
 };
 
 int UsageError(std::string_view message) {
@@ -76,7 +81,8 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
             options.recordAll = true;
             continue;
         }
-        if (arg != "--time" && arg != "--seed" && arg != "--record" && arg != "--vcd") {
+        if (arg != "--time" && arg != "--seed" && arg != "--record" && arg != "--vcd" &&
+            arg != "--tv") {
             return "unknown option " + std::string(arg);
         }
         if (i + 1 >= args.size()) {
@@ -97,6 +103,8 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
             }
         } else if (arg == "--record") {
             options.record = SplitCommas(value);
+        } else if (arg == "--tv") {
+            options.tv = value;
         } else {
             options.vcd = value;
         }
@@ -212,17 +220,49 @@ int Run(std::span<char*> args) {
         }
     }
 
+    std::ofstream tvFile;
+    std::optional<NetId> tvVideo, tvSyncN;
+    if (!options.tv.empty()) {
+        tvVideo = ConnectorNet(loaded, "VIDEO", "VIDEO");
+        tvSyncN = ConnectorNet(loaded, "VIDEO", "SYNC_N");
+        if (!tvVideo || !tvSyncN) {
+            std::println(stderr, "bw: netlist has no VIDEO connector");
+            return kExitNetlistErrors;
+        }
+        tvFile.open(options.tv, std::ios::binary);
+        if (!tvFile) {
+            return UsageError("cannot write " + options.tv);
+        }
+    }
+
     Simulator sim(loaded.circuit);
     sim.powerOn(options.seed);
     for (const NetId net : recorded) {
         sim.record(net);
     }
+    std::unique_ptr<TvInput> tv;
+    if (tvFile.is_open()) {
+        tv = std::make_unique<TvInput>(sim, *tvVideo, *tvSyncN,
+                                       vcd.is_open() ? TvInput::History::Keep
+                                                     : TvInput::History::Trim);
+    }
     const auto start = std::chrono::steady_clock::now();
-    sim.runFor(options.time);
+    if (tv) {
+        const Time end = sim.now() + options.time;
+        while (sim.now() < end) {
+            sim.runUntil(std::min(end, sim.now() + 1_ms));
+            tv->update();
+        }
+    } else {
+        sim.runFor(options.time);
+    }
     const std::chrono::duration<double> wall = std::chrono::steady_clock::now() - start;
 
     if (vcd.is_open()) {
         WriteVcd(vcd, loaded.circuit, sim.recorder(), sim.now());
+    }
+    if (tv) {
+        WriteGreyscaleBmp(tvFile, tv->tv().completedFrame());
     }
 
     const double simulated = static_cast<double>(sim.now()) / static_cast<double>(kPicosPerSecond);
@@ -231,6 +271,9 @@ int Run(std::span<char*> args) {
     std::println("ratio {}", wall.count() > 0 ? simulated / wall.count() : 0.0);
     std::println("applied_events {}", sim.stats().appliedEvents);
     std::println("evaluations {}", sim.stats().evaluations);
+    if (tv) {
+        std::println("tv_locked {}", tv->tv().isLocked());
+    }
     return 0;
 }
 

@@ -203,7 +203,7 @@ The first `update()` feeds the initial Sample written by `record()`. The connect
 
 ### 5.5 Where the test pattern lands (S5)
 
-Hsync falls at h = 52, so column = 8·((h − 52) mod 64) + offset within the pixel. The frame starts 16 µs into the first vsync line (v = 308) while the line that began at v = 307, h = 52 is row 0. During vsync the falling edges arrive at h = 56: one line free-runs (v = 308, h = 54), then lines start at h = 56 (v = 309–311) and at h = 52 from v = 0 on. So for v ≥ 1 and h < 52: **row = v + 4, column = 8·(h + 12) + 0..7**. Row 4 (v = 0) is shifted 4 µs right, the "hook" a real set shows at the top. Each frame has 312 lines, 311 synced: locked.
+Hsync falls at h = 52, so column = 8·((h − 52) mod 64) + offset within the pixel. The frame starts 16 µs into the first vsync line (v = 308) while the line that began at v = 307, h = 52 is row 0. During vsync the falling edges arrive at h = 56: one line free-runs (v = 308, h = 54), then lines start at h = 56 (v = 309–311) and at h = 52 from v = 0 on. So for v ≥ 1 and h < 52: **row = v + 4, column = 8·(h + 12) + 0..7**. Row 4 (v = 0) is shifted 4 µs left, the "hook" a real set shows at the top. Each frame has 312 lines, 311 synced: locked.
 
 ### 5.6 BMP (S4)
 
