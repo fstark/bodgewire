@@ -1,0 +1,3 @@
+# Broken Trace: H0 cracked between U1.QA and U13.2B, vertical grid lines gone.
+machine test_pattern
+fault crack F.Cu 137.59 99.17

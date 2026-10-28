@@ -20,6 +20,7 @@ add_executable(bw_tests
   machine/electrical_test.cpp
   machine/machine_test.cpp
   machine/puzzle_test.cpp
+  machines/test_pattern_faults_test.cpp
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp
   netlist/diagnostic_test.cpp

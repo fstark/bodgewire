@@ -1,0 +1,3 @@
+# Stuck gate output: U12.4Y (GRID) stuck high, the whole active area is white.
+machine test_pattern
+fault stuck U12.4Y 1

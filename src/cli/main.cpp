@@ -18,6 +18,9 @@
 #include "board/kicad_netlist.hpp"
 #include "devices/bmp.hpp"
 #include "devices/tv_input.hpp"
+#include "instruments/logic_probe.hpp"
+#include "machine/crack.hpp"
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/units.hpp"
 #include "sim/simulator.hpp"
@@ -31,9 +34,10 @@ namespace {
 constexpr int kExitNetlistErrors = 1;
 constexpr int kExitUsage = 2;
 
-constexpr std::string_view kUsage = "usage: bw run <file.bwn> [--time 1ms] [--seed 1] "
+constexpr std::string_view kUsage = "usage: bw run <file.bwn|file.bwp> [--time 1ms] [--seed 1] "
                                     "[--record NET,NET... | --record-all] [--vcd FILE] "
-                                    "[--tv FILE.bmp]\n"
+                                    "[--tv FILE.bmp] [--repair swap:REF,mend:LAYER:X:Y] "
+                                    "[--probe REF.PIN,...]\n"
                                     "       bw export-kicad <file.bwn> -o <file.net>\n"
                                     "       bw check-board <file.bwn> <file.kicad_pcb>";
 
@@ -45,6 +49,8 @@ struct Options {
     bool recordAll = false;
     std::string vcd;
     std::string tv;
+    std::vector<std::string> repair;
+    std::vector<std::string> probe;
 };
 
 int UsageError(std::string_view message) {
@@ -66,6 +72,8 @@ std::vector<std::string> SplitCommas(std::string_view text) {
     }
 }
 
+bool IsPuzzle(std::string_view file) { return file.ends_with(".bwp"); }
+
 // Error message, or nullopt on success.
 std::optional<std::string> ParseOptions(std::span<char*> args, Options& options) {
     for (std::size_t i = 2; i < args.size(); ++i) {
@@ -82,7 +90,7 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
             continue;
         }
         if (arg != "--time" && arg != "--seed" && arg != "--record" && arg != "--vcd" &&
-            arg != "--tv") {
+            arg != "--tv" && arg != "--repair" && arg != "--probe") {
             return "unknown option " + std::string(arg);
         }
         if (i + 1 >= args.size()) {
@@ -105,12 +113,19 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
             options.record = SplitCommas(value);
         } else if (arg == "--tv") {
             options.tv = value;
+        } else if (arg == "--repair") {
+            options.repair = SplitCommas(value);
+        } else if (arg == "--probe") {
+            options.probe = SplitCommas(value);
         } else {
             options.vcd = value;
         }
     }
     if (options.file.empty()) {
         return "missing netlist file";
+    }
+    if (!options.repair.empty() && !IsPuzzle(options.file)) {
+        return "--repair needs a .bwp puzzle file";
     }
     if (options.recordAll && !options.record.empty()) {
         return "--record and --record-all are exclusive";
@@ -129,6 +144,68 @@ std::unique_ptr<LoadedCircuit> Load(const std::string& file) {
     }
     for (const Diagnostic& d : (*result)->warnings) {
         std::println(stderr, "{}", Format(d));
+    }
+    return std::move(*result);
+}
+
+// Applies `repair` ("swap:U3" or "mend:F.Cu:52.30:41.00"); error message, or nullopt.
+std::optional<std::string> Repair(Machine& machine, std::string_view repair) {
+    const std::string bad = "bad repair '" + std::string(repair) + "'";
+    if (repair.starts_with("swap:")) {
+        const std::string_view reference = repair.substr(5);
+        if (!machine.swap(reference)) {
+            return "unknown reference '" + std::string(reference) + "'";
+        }
+        return std::nullopt;
+    }
+    if (!repair.starts_with("mend:")) {
+        return bad;
+    }
+    std::vector<std::string_view> fields;
+    for (std::size_t start = 5;;) {
+        const std::size_t colon = repair.find(':', start);
+        fields.push_back(repair.substr(start, colon - start));
+        if (colon == std::string_view::npos) {
+            break;
+        }
+        start = colon + 1;
+    }
+    if (fields.size() != 3 || (fields[0] != "F.Cu" && fields[0] != "B.Cu")) {
+        return bad;
+    }
+    const Layer layer = fields[0] == "F.Cu" ? Layer::Front : Layer::Back;
+    const auto x = ParseMillimetres(fields[1]);
+    const auto y = ParseMillimetres(fields[2]);
+    if (!x || !y) {
+        return bad;
+    }
+    if (!machine.mend(layer, {*x, *y})) {
+        std::println(stderr, "bw: no crack near {}", FormatPoint(layer, {*x, *y}));
+    }
+    return std::nullopt;
+}
+
+// Diagnostics printed; nullptr on errors (`usage` set for a bad --repair).
+std::unique_ptr<LoadedCircuit> LoadPuzzle(const Options& options,
+                                          std::optional<std::string>& usage) {
+    auto machine = LoadPuzzleFile(options.file);
+    if (!machine) {
+        for (const Diagnostic& d : machine.error()) {
+            std::println(stderr, "{}", Format(d));
+        }
+        return nullptr;
+    }
+    for (const std::string& repair : options.repair) {
+        if ((usage = Repair(*machine, repair))) {
+            return nullptr;
+        }
+    }
+    auto result = machine->build();
+    if (!result) {
+        for (const Diagnostic& d : result.error()) {
+            std::println(stderr, "{}", Format(d));
+        }
+        return nullptr;
     }
     return std::move(*result);
 }
@@ -190,11 +267,27 @@ int Run(std::span<char*> args) {
         return UsageError(*error);
     }
 
-    const auto result = Load(options.file);
+    std::optional<std::string> usage;
+    const auto result = IsPuzzle(options.file) ? LoadPuzzle(options, usage) : Load(options.file);
+    if (usage) {
+        return UsageError(*usage);
+    }
     if (result == nullptr) {
         return kExitNetlistErrors;
     }
     LoadedCircuit& loaded = *result;
+
+    std::vector<NetId> probed;
+    for (const std::string& probe : options.probe) {
+        const std::size_t dot = probe.find('.');
+        const auto net = dot == std::string::npos
+                             ? std::nullopt
+                             : PinNet(loaded, probe.substr(0, dot), probe.substr(dot + 1));
+        if (!net) {
+            return UsageError("unknown pin '" + probe + "'");
+        }
+        probed.push_back(*net);
+    }
 
     std::vector<NetId> recorded;
     if (options.recordAll) {
@@ -244,12 +337,21 @@ int Run(std::span<char*> args) {
     if (tvFile.is_open()) {
         tv = std::make_unique<TvInput>(sim, *tvVideo, *tvSyncN);
     }
+    std::vector<LogicProbe> probes;
+    for (const NetId net : probed) {
+        probes.emplace_back(sim, net);
+    }
     const auto start = std::chrono::steady_clock::now();
-    if (tv) {
+    if (tv || !probes.empty()) {
         const Time end = sim.now() + options.time;
         while (sim.now() < end) {
             sim.runUntil(std::min(end, sim.now() + 1_ms));
-            tv->update();
+            if (tv) {
+                tv->update();
+            }
+            for (LogicProbe& probe : probes) {
+                probe.update();
+            }
             if (!vcd.is_open()) {
                 sim.trimRecordings();
             }
@@ -274,6 +376,9 @@ int Run(std::span<char*> args) {
     std::println("evaluations {}", sim.stats().evaluations);
     if (tv) {
         std::println("tv_locked {}", tv->tv().isLocked());
+    }
+    for (std::size_t i = 0; i < probes.size(); ++i) {
+        std::println("probe {} {}", options.probe[i], FormatLamps(probes[i].lamps()));
     }
     return 0;
 }
