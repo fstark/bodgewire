@@ -94,7 +94,7 @@ std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view refere
 
 ## 3. Integration Points
 
-1. **Stuck-at in the builder** — [src/netlist/builder.cpp](../../src/netlist/builder.cpp) `Builder::build()`, loop `for (const auto& [pin, net] : pinNet_)`: if `(reference, pin)` is in `stuck`, call `circuit.tie(net.net, value, DriveStrength::Strong)` instead of `circuit.connect(...)`; the `Connection` is still recorded. The chip's own output Pin then has a private Net (finalize), so its Driver is gone and the Net is held at full strength from power-on. Zero cost in the run loop. `Builder` stores the span; `Check()` each entry names an Output Pin of a placed Component (the Machine validated it already).
+1. **Stuck-at in the builder** — [src/netlist/builder.cpp](../../src/netlist/builder.cpp) `Builder::build()`, loop `for (const auto& [pin, net] : pinNet_)`: if `(reference, pin)` is in `stuck`, call `circuit.tie(net.net, value, DriveStrength::Strong)` instead of `circuit.connect(...)`; the `Connection` is still recorded. The chip's own output Pin then has a private Net (finalize), so its Driver is gone and the Net is held at full strength from power-on. Zero cost in the run loop. `Builder` stores the span; `Check()` each entry names an Output or OpenCollector Pin of a placed Component (the Machine validated it already).
 2. **`PinNet()`** — builder.cpp: resolve the pin like `resolvePin` (number or name, no `Check()`), look it up in `loaded.connections` → `loaded.nets.at(net)`; not listed → `circuit.netOf()` (unconnected Pin, private Net). `ConnectorNet()` becomes a call to `PinNet()` with the connector's reference.
 3. **Recorder trimming by the caller** — [src/sim/simulator.hpp](../../src/sim/simulator.hpp): `void trimRecordings();` trims every recorded Net. [src/devices/tv_input.hpp](../../src/devices/tv_input.hpp): `History` and per-Net index cursors are replaced by `Time fedUntil_ = -1`: `update()` feeds Samples with `time > fedUntil_` (all on the first call) and never trims. Several consumers (TV, probes) can now share a Net; whoever runs the loop calls `sim.trimRecordings()` after updating all of them (unless a VCD needs the history). Tests of phase P2c are adapted.
 4. **CLI** — [src/cli/main.cpp](../../src/cli/main.cpp) `Run()`:
@@ -110,7 +110,7 @@ std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view refere
 class LogicProbe {
     Simulator& sim_;
     NetId net_;
-    Time fedUntil_ = -1;     // Samples up to here already read
+    Time fedUntil_ = -1;     // Samples up to here already read (sim.now() at the last update)
     Time lastChange_ = -1;   // last change after the recording started; -1 = none
     bool started_ = false;   // the first Sample is the initial value, not a change
 };
@@ -151,9 +151,10 @@ LoadMachine(puzzle, root):
 FindCrackTrace(board, layer, p): index of the straight Trace on `layer` with the smallest
   distance from p to its centre line, if that distance ≤ width / 2; arcs → error
   "cracks on arc Traces are not supported"
-CrackBoard(board, cracks): for each crack, trace t = FindCrackTrace(...);
+CrackBoard(board, cracks): result = board; for each crack in order, t = FindCrackTrace(result, ...)
+  (so a second crack on the same Trace finds the half it lies on);
   u = unit(t.end − t.start); g = t.width / 2 + 50 µm   (the two halves end > width apart)
-  replace t by [t.start, p − u·g] and [p + u·g, t.end], each dropped if shorter than 0
+  replace t by [t.start, p − u·g] and [p + u·g, t.end]; a half is dropped if p is within g of its end
 ```
 
 The gap is wider than the Trace, so `FindIslands` (unchanged) sees two islands; a pad or via within `g` of the crack can still bridge it, which the "does not cut" check rejects.
@@ -165,13 +166,17 @@ ElectricalNetlist(design, designCircuit, board) → Netlist:
   islands = FindIslands(board); padIsland[(reference, pad number)] → island
   name islands: J1 (the POWER part) pad 1 → "VCC", pad 2 → "GND"
   for c in designCircuit.connections (order: reference, then pin):
-      skip Power Pins (implicit, always powered) and resistors (below)
+      skip resistors (below; test first: they are not in designCircuit.components)
+      skip Power Pins (implicit, always powered)
       island = padIsland[(c.reference, c.pin + 1)]
       name = islandName[island] ?: first free of c.net, c.net + "~2", "~3"…
       nets[name] += PinRef{c.reference, to_string(c.pin + 1)}
   resistor: kept (PartDecl and both pins) only if one pin's island is named VCC or GND and the
-      other's is not; otherwise left out (its rail side is cut: an open pull-up)
-  parts = design.parts minus left-out resistors; nets in first-use order; lines 0
+      other's island already has a name (a non-resistor Pin on it) that is not VCC or GND;
+      otherwise left out (rail side cut, or nothing to pull: an open pull-up)
+  parts = design.parts minus left-out resistors; lines 0
+  net order: the design's net declaration order (first NetDecl of each name), each "~N" split
+      right after its parent — so NetIds, hence same-seed runs, match the netlist-only Circuit
 ```
 
 Without cracks every island is one design Net (check-board guarantees it), so names and Pins equal the design netlist's.
@@ -183,7 +188,7 @@ Without cracks every island is one design Net (check-board guarantees it), so na
 ```
 update(): for Samples s of net_ with s.time > fedUntil_:
               if started_: lastChange_ = s.time      else started_ = true
-          fedUntil_ = last Sample time
+          fedUntil_ = sim.now()   (runUntil(end) handles every event ≤ end, then now = end)
 lamps():  floating = sim.isFloating(net_); v = sim.value(net_)
           high = !floating && v == One;  low = !floating && v == Zero
           pulse = lastChange_ >= 0 && sim.now() - lastChange_ < kPulseStretch
@@ -233,7 +238,7 @@ cli ──► machine ──► board ──► netlist ──► parts ──�
 
 - **puzzle_test**: valid file → fields (coordinates in nm); each error message with its line.
 - **crack_test**: synthetic Board (two pads joined by one Trace): crack splits it into 2 islands; crack off the Trace / on an arc → nullopt or error; crack next to a pad does not cut.
-- **electrical_test**: test_pattern with its Board and no cracks → same Net names and Pins as the design; crack on `H0` → `H0` and `H0~2`; counter.bwn with a crack between R1 and VCC → R1 left out.
+- **electrical_test**: test_pattern with its Board and no cracks → same Net names, order and Pins as the design; crack on `H0` → `H0` and `H0~2`; counter.bwn with a crack between R1 and VCC → R1 left out.
 - **builder_test**: Stuck-at Pin → Net tied Strong, chip Pin on a private Net, `PinNet()` returns the tied Net; `PinNet` by name and number.
 - **machine_test**: `LoadMachine` errors (unknown machine, pin, non-output, crack off copper, crack not cutting); `swap` removes only that Component's Stuck-at; `mend` near / far.
 - **logic_probe_test**: Stimulus circuit: steady 1 → HIGH; toggle → PULSE until 100 ms after the last change; floating Net → no lamp.

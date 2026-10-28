@@ -100,9 +100,10 @@ Types and `ParsePuzzle` per design §2, §5.1. Error texts: `unknown directive '
 // Straight Trace on `layer` whose centre line is nearest to `at`, within half its width.
 std::expected<std::size_t, std::string> FindCrackTrace(const Board& board, Layer layer, Point at);
 Board CrackBoard(const Board& board, std::span<const CrackDecl> cracks);  // design §5.3
+std::string FormatMillimetres(std::int64_t nm);  // "52.30"; also used by the CLI
 ```
 
-Error texts: `no Trace at F.Cu 52.30 41.00`, `cracks on arc Traces are not supported`. Coordinates formatted in mm with 2 decimals (small helper `FormatMillimetres(std::int64_t nm)`).
+Error texts: `no Trace at F.Cu 52.30 41.00`, `cracks on arc Traces are not supported`. Coordinates formatted with `FormatMillimetres` (2 decimals).
 
 ### 3.4 — Tests
 
@@ -125,7 +126,7 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
                           const Board& board);
 ```
 
-Per design §5.4. `padIsland` keyed by `(reference, pad number string)` from `FindIslands(board).padIsland` and `board.components`. J1 = the `loaded.parts` entry with `info->name == "POWER"`. Power Pins: `designCircuit.components.at(ref)->pins()[pin].kind == PinKind::Power`. Resistors: `info->kind == PartKind::Resistor`.
+Per design §5.4. `padIsland` keyed by `(reference, pad number string)` from `FindIslands(board).padIsland` and `board.components`. J1 = the `loaded.parts` entry with `info->name == "POWER"`. Resistors (`info->kind == PartKind::Resistor`) are tested first: they are not in `components`. Power Pins: `designCircuit.components.at(ref)->pins()[pin].kind == PinKind::Power`. Nets emitted in the design's declaration order, `~N` splits right after their parent.
 
 ### 4.2 — `src/machine/machine.hpp` / `.cpp`
 
@@ -133,7 +134,7 @@ Per design §5.4. `padIsland` keyed by `(reference, pad number string)` from `Fi
 
 ### 4.3 — Tests
 
-- [tests/machine/electrical_test.cpp](../../tests/machine/electrical_test.cpp): test_pattern without cracks → every design Connection's Net name and Pin set equal; with a crack on an `H0` segment → `H0` and `H0~2`, U1.QA on one, U13.2B on the other; counter.bwn with a crack on the Trace from R1 to VCC → R1 absent.
+- [tests/machine/electrical_test.cpp](../../tests/machine/electrical_test.cpp): test_pattern without cracks → Net names in the same order and the same Pin sets as the design; with a crack on an `H0` segment → `H0` and `H0~2`, U1.QA on one, U13.2B on the other; counter.bwn with a crack on the Trace from R1 to VCC → R1 absent; a synthetic case where R1's signal side is cut off alone → R1 absent.
 - [tests/machine/machine_test.cpp](../../tests/machine/machine_test.cpp): `LoadMachine` errors above (in-memory `Puzzle`, root = `BW_NETLIST_DIR/..`); `swap` of the stuck chip removes its fault, of another keeps it; `mend` near → true, far → false; `build()` with no faults == `LoadNetlistFile` (same Net names).
 
 Pick the `H0` crack point now: a straight `(segment … (net "H0"))` in boards/test_pattern/test_pattern.kicad_pcb, midpoint of its longest segment; record it in a constant shared by the tests and in `puzzles/broken_trace.bwp` (phase 5).
@@ -167,7 +168,7 @@ Helper `Frame(LoadedCircuit&, seed, probes)` → completed frame at 60 ms plus p
 ### 5.5 — Docs
 
 - ARCHITECTURE.md roadmap row P2d: `done: …`, link to this plan.
-- GLOSSARY.md: nothing new expected (Stuck-at Fault, Broken Trace, Repair, Puzzle exist); add **Crack** only if the user agrees.
+- GLOSSARY.md: nothing new (Stuck-at Fault, Broken Trace, Repair, Puzzle exist). "crack" stays a code/Puzzle-file word for the point of a Broken Trace; no Glossary entry.
 - Prune this plan to a summary.
 
 ### Fence
