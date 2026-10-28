@@ -156,4 +156,19 @@ std::expected<Machine, std::vector<Diagnostic>> LoadPuzzleFile(const std::filesy
     return LoadMachine(*puzzle, std::filesystem::absolute(path).parent_path().parent_path());
 }
 
+bool HasBoard(const std::filesystem::path& netlist) {
+    const auto path = std::filesystem::absolute(netlist);
+    const std::string stem = path.stem().string();
+    const auto root = path.parent_path().parent_path();
+    return path.parent_path().filename() == "netlists" &&
+           std::filesystem::exists(root / "boards" / stem / (stem + ".kicad_pcb"));
+}
+
+std::expected<Machine, std::vector<Diagnostic>>
+LoadNetlistMachine(const std::filesystem::path& netlist) {
+    const auto path = std::filesystem::absolute(netlist);
+    return LoadMachine(Puzzle{.file = path.filename().string(), .machine = path.stem().string()},
+                       path.parent_path().parent_path());
+}
+
 }  // namespace bw

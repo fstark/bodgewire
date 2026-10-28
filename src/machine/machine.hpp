@@ -25,11 +25,13 @@ class Machine {
 public:
     std::string_view name() const {
         return name_;
-    }                                       // never the Puzzle's file name: it names the Fault
-    bool swap(std::string_view reference);  // chip swap; false if no such Component
-    bool mend(Layer layer, Point at);       // removes cracks within 1 mm; false if none
-    LoadResult build() const;               // electrical Circuit with the current Faults
+    }  // never the Puzzle's file name: it names the Fault
+    bool swap(std::string_view reference);         // chip swap; false if no such Component
+    bool mend(Layer layer, Point at);              // removes cracks within 1 mm; false if none
+    LoadResult build() const;                      // electrical Circuit with the current Faults
     const Board& board() const { return board_; }  // with cracks
+    const Board& pristineBoard() const { return pristine_; }  // fault-free Copper, for the view
+    const LoadedCircuit& designCircuit() const { return *designCircuit_; }
 
 private:
     Machine() = default;
@@ -46,5 +48,11 @@ private:
 
 // Parse + LoadMachine with root = the puzzle file's directory's parent (puzzles/../).
 std::expected<Machine, std::vector<Diagnostic>> LoadPuzzleFile(const std::filesystem::path& path);
+
+// root/netlists/<stem>.bwn whose root/boards/<stem>/<stem>.kicad_pcb exists.
+bool HasBoard(const std::filesystem::path& netlist);
+// The fault-free Machine of such a netlist.
+std::expected<Machine, std::vector<Diagnostic>>
+LoadNetlistMachine(const std::filesystem::path& netlist);
 
 }  // namespace bw

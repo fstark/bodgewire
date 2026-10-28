@@ -6,9 +6,11 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "runner/runner.hpp"
 #include "test_points.hpp"
 
 using namespace bw;
+using namespace bw::literals;
 
 namespace {
 
@@ -106,4 +108,43 @@ TEST_CASE("machine: mend near and far", "[machine]") {
     CHECK(machine->mend(Layer::Front, {kH0Crack.x + 900'000, kH0Crack.y}));
     CHECK_FALSE(machine->build().value()->nets.contains("H0~2"));
     CHECK_FALSE(machine->mend(Layer::Front, kH0Crack));
+}
+
+TEST_CASE("machine: HasBoard", "[machine]") {
+    const std::filesystem::path netlists(BW_NETLIST_DIR);
+    CHECK(HasBoard(netlists / "test_pattern.bwn"));
+    CHECK(HasBoard(netlists / "counter.bwn"));
+    const auto temp = std::filesystem::temp_directory_path() / "bw_has_board";
+    std::filesystem::create_directories(temp);
+    std::filesystem::copy_file(netlists / "test_pattern.bwn", temp / "test_pattern.bwn",
+                               std::filesystem::copy_options::overwrite_existing);
+    CHECK_FALSE(HasBoard(temp / "test_pattern.bwn"));
+    std::filesystem::remove_all(temp);
+}
+
+TEST_CASE("machine: netlist with a Board loads fault-free", "[machine]") {
+    const auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    REQUIRE(machine.has_value());
+    CHECK(machine->name() == "counter");
+    CHECK(machine->board().traces.size() == machine->pristineBoard().traces.size());
+    CHECK(machine->designCircuit().nets.contains("VCC"));
+}
+
+TEST_CASE("machine: Machine without VIDEO runs", "[machine]") {
+    const auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    REQUIRE(machine.has_value());
+    auto loaded = machine->build();
+    REQUIRE(loaded.has_value());
+    Runner runner((*loaded)->circuit, {});
+    runner.setSpeed(Speed::Max);
+    runner.pauseAt(1_ms);
+    runner.powerOn(1);
+    runner.waitIdle();
+    CHECK(runner.status().simTime >= 1_ms);
+}
+
+TEST_CASE("machine: crack adds a Trace to the drawn Board", "[machine]") {
+    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
+    REQUIRE(machine.has_value());
+    CHECK(machine->board().traces.size() == machine->pristineBoard().traces.size() + 1);
 }
