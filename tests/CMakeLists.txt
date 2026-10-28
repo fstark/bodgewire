@@ -33,6 +33,8 @@ add_executable(bw_tests
   parts/ls161_test.cpp
   parts/ls74_test.cpp
   parts/oscillator_test.cpp
+  runner/spsc_ring_test.cpp
+  runner/triple_buffer_test.cpp
   sim/check_test.cpp
   sim/circuit_test.cpp
   sim/event_queue_test.cpp
