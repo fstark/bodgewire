@@ -40,6 +40,7 @@ add_executable(bw_tests
   runner/runner_test.cpp
   runner/spsc_ring_test.cpp
   runner/triple_buffer_test.cpp
+  session/session_test.cpp
   sim/check_test.cpp
   sim/circuit_test.cpp
   sim/event_queue_test.cpp
@@ -53,7 +54,7 @@ add_executable(bw_tests
   view/board_scene_test.cpp
   view/viewport_test.cpp
 )
-target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_machine bw_runner
+target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_machine bw_runner bw_session
                                        bw_view bw_warnings Catch2::Catch2WithMain)
 target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR}/netlists"
                                            BW_BOARD_DIR="${PROJECT_SOURCE_DIR}/boards"
