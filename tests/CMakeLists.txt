@@ -47,9 +47,11 @@ add_executable(bw_tests
   sim/simulator_test.cpp
   sim/time_test.cpp
   sim/vcd_test.cpp
+  view/board_scene_test.cpp
+  view/viewport_test.cpp
 )
 target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_machine bw_runner
-                                       bw_warnings Catch2::Catch2WithMain)
+                                       bw_view bw_warnings Catch2::Catch2WithMain)
 target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR}/netlists"
                                            BW_BOARD_DIR="${PROJECT_SOURCE_DIR}/boards"
                                            BW_PUZZLE_DIR="${PROJECT_SOURCE_DIR}/puzzles")
