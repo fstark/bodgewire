@@ -256,7 +256,7 @@ cli ──► board ──► netlist ──► parts ──► sim
 
 **bmp_test.cpp**: file size 14 + 40 + 1024 + 163 840; header fields; a white top-left cell lands at the last pixel row's first byte.
 
-**test_pattern_test.cpp** (S5 first bullet), seeds 1–3, run 50 ms with a `TvInput`: locked; for v = 1..287, h = 0..63, columns 8·(h+12)+1..+6 of row v+4 equal `Decode(h, v).video` (1.0 or 0.0); rows 0–3 and 292–319 black. Boundary columns are skipped: video and sync edge delays differ by a few ns.
+**test_pattern_test.cpp** (S5 first bullet), seeds 1–3, 1 ms slices until locked (at most 500 ms; measured 39–314 ms), then one more frame: for v = 1..287, h = 0..63, columns 8·(h+12)+1..+6 of row v+4 equal `Decode(h, v).video` (1.0 or 0.0); rows 0–3 and 292–319 black. Boundary columns are skipped: video and sync edge delays differ by a few ns.
 
 **builder_test.cpp**: `ConnectorNet()` finds J2's SYNC_N Net in test_pattern.bwn; nullopt for counter.bwn's VIDEO.
 

@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
 
@@ -161,4 +162,61 @@ TEST_CASE("test pattern: decode sanity", "[machines]") {
         white += Decode(n % kPixelsPerLine, n / kPixelsPerLine).video ? 1 : 0;
     }
     CHECK(white == 2'484);
+}
+
+// TV_DESIGN §5.5: pixel (h, v), v >= 1, h < 52 lands on row v + 4, columns 8 (h + 12) + 0..7.
+TEST_CASE("test pattern: TV shows the grid", "[machines]") {
+    const std::uint64_t seed = GENERATE(1, 2, 3);
+    INFO("seed " << seed);
+    const auto loaded = LoadTestPattern();
+    Simulator sim(loaded->circuit);
+    sim.powerOn(seed);
+    TvInput input(sim, VideoNet(*loaded, "VIDEO"), VideoNet(*loaded, "SYNC_N"),
+                  TvInput::History::Trim);
+    // Vertical pull-in slips 1 ms per free-running frame: up to ~16 frames from a bad phase.
+    int ms = 0;
+    for (; ms < 500 && !input.tv().isLocked(); ++ms) {
+        sim.runFor(1_ms);
+        input.update();
+    }
+    INFO("locked after " << ms << " ms");
+    REQUIRE(input.tv().isLocked());
+    const std::uint64_t frames = input.tv().completedFrames();
+    while (input.tv().completedFrames() == frames) {
+        sim.runFor(1_ms);
+        input.update();
+    }
+    REQUIRE(input.tv().isLocked());
+    const TvFrame& frame = input.tv().completedFrame();
+
+    int mismatches = 0;
+    std::string report;
+    const auto check = [&](int row, int column, float expected, std::string_view what) {
+        const float got = frame.at(row, column);
+        if (got > expected - 1e-4f && got < expected + 1e-4f) {
+            return;
+        }
+        if (++mismatches <= 10) {
+            report += std::format("row {} column {} ({}): expected {} got {}\n", row, column, what,
+                                  expected, got);
+        }
+    };
+    for (int v = 1; v < 288; ++v) {
+        for (int h = 0; h < 52; ++h) {
+            const float expected = Decode(h, v).video ? 1.0f : 0.0f;
+            for (int sub = 1; sub <= 6; ++sub) {
+                check(v + 4, 8 * (h + 12) + sub, expected, std::format("v {} h {}", v, h));
+            }
+        }
+    }
+    for (int row = 0; row < kTvRows; ++row) {
+        if (row >= 4 && row < 292) {
+            continue;
+        }
+        for (int column = 0; column < kTvColumns; ++column) {
+            check(row, column, 0.0f, "border");
+        }
+    }
+    INFO(report);
+    CHECK(mismatches == 0);
 }

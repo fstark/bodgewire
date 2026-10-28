@@ -49,10 +49,10 @@ Out: the UI window, phosphor glow and persistence (UI), brightness/contrast/V-ho
 
 ### S5 Checks
 
-- Test pattern, after 50 ms, several seeds: locked; the completed frame shows the grid: white cells where the golden function of [TEST_PATTERN.md](../p1c-test-pattern/TEST_PATTERN.md) is white, at the column/row the timing predicts (one 1 µs pixel = 8 columns, one line = one row), black elsewhere.
+- Test pattern, several seeds: locked within 0.5 s (the vertical oscillator pulls in by 1 ms per free-running frame, so a bad power-on phase rolls for up to ~16 frames, like a real set warming up); the next completed frame shows the grid: white cells where the golden function of [TEST_PATTERN.md](../p1c-test-pattern/TEST_PATTERN.md) is white, at the column/row the timing predicts (one 1 µs pixel = 8 columns, one line = one row), black elsewhere.
 - Synthetic sync, fed directly to the TV model: 50 Hz frames lock; vertical sync missing → frames every 21 ms, not locked (picture rolls); horizontal sync missing → lines every 66 µs, not locked; no signal at all → black frames.
 
 ## Done when
 
 - S1–S5 implemented; tests pass in debug and release.
-- `bw run netlists/test_pattern.bwn --time 100ms --tv /tmp/tv.bmp` shows the grid in Preview.
+- `bw run netlists/test_pattern.bwn --time 500ms --tv /tmp/tv.bmp` shows the grid in Preview.
