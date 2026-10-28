@@ -5,8 +5,6 @@
 
 #include <imgui.h>
 
-#include "parts/catalogue.hpp"
-
 namespace bw {
 
 namespace {
@@ -53,6 +51,7 @@ void DrawNoVideo(ImVec2 size) {
 void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loaded& loaded,
                      DebugStats stats, std::uint64_t& seed) {
     const BoardScene* scene = board.scene();
+    const LoadedCircuit& design = DesignOf(session);
     const ImGuiTreeNodeFlags open = ImGuiTreeNodeFlags_DefaultOpen;
 
     if (ImGui::CollapsingHeader("Puzzle", open)) {
@@ -61,6 +60,11 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
         ImGui::PopFont();
         if (!loaded.brief.empty()) {
             ImGui::TextWrapped("%s", loaded.brief.c_str());
+        }
+        if (const auto& user = loaded.manuals.manuals.user;
+            user && ImGui::TreeNode("When it works")) {
+            board.route(puzzle_.draw(Section(*user, "What it does"), scene, design));
+            ImGui::TreePop();
         }
     }
 
@@ -86,12 +90,7 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
 
     if (scene && ImGui::CollapsingHeader("Chip", open)) {
         if (const auto chip = board.chip()) {
-            const std::string_view part = scene->partName(*chip);
-            const PartInfo* info = FindPart(part);
-            const std::string header =
-                std::format("{} \u00b7 {} \u00b7 {}", scene->board().components[*chip].reference,
-                            part, info ? info->description : std::string_view{});
-            ImGui::TextWrapped("%s", header.c_str());
+            board.route(chip_.draw(*scene, *chip, loaded.manuals.manuals, design));
         } else {
             ImGui::TextDisabled("hover or click a chip");
         }

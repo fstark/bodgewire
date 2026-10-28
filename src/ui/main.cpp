@@ -24,6 +24,7 @@
 #include "session/session.hpp"
 #include "ui/board_view.hpp"
 #include "ui/loaded.hpp"
+#include "ui/manual_view.hpp"
 #include "ui/side_panel.hpp"
 #include "ui/toolbar.hpp"
 #include "ui/tv_view.hpp"
@@ -39,7 +40,7 @@ constexpr int kWindowHeight = 800;
 constexpr float kBoardShare = 2.0f / 3.0f;
 constexpr std::string_view kUsage =
     "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] [--repair swap:REF,mend:LAYER:X:Y] "
-    "[--screenshot OUT.png [--after 1s]]";
+    "[--manual user|service] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
     std::filesystem::path file;
@@ -47,6 +48,7 @@ struct Options {
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
     std::optional<std::string> probe;  // REF.PIN
     std::vector<std::string> repair;
+    bool userManual = false, serviceManual = false;
 };
 
 std::optional<Options> ParseOptions(int argc, char** argv) {
@@ -71,6 +73,15 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             after = true;
         } else if (arg == "--probe") {
             options.probe = argv[++i];
+        } else if (arg == "--manual") {
+            const std::string_view which = argv[++i];
+            if (which == "user") {
+                options.userManual = true;
+            } else if (which == "service") {
+                options.serviceManual = true;
+            } else {
+                return std::nullopt;
+            }
         } else if (arg == "--repair") {
             const std::string_view list = argv[++i];
             for (std::size_t start = 0;;) {
@@ -120,7 +131,10 @@ Loaded Load(const std::filesystem::path& file) {
             return {};
         }
         Print((*result)->warnings);
-        return {Session(std::nullopt, std::move(*result)), file.stem().string(), ""};
+        LoadedManuals manuals = LoadManuals(MachineRoot(file), file.stem().string(), **result);
+        Print(manuals.problems);
+        return {Session(std::nullopt, std::move(*result)), file.stem().string(), "",
+                std::move(manuals)};
     }
     if (!machine) {
         Print(machine.error());
@@ -134,7 +148,11 @@ Loaded Load(const std::filesystem::path& file) {
     if (title.empty()) {
         title = machine->name();
     }
-    return {Session(std::move(*machine), std::move(*built)), std::move(title), std::move(brief)};
+    LoadedManuals manuals =
+        LoadManuals(MachineRoot(file), machine->name(), machine->designCircuit());
+    Print(manuals.problems);
+    return {Session(std::move(*machine), std::move(*built)), std::move(title), std::move(brief),
+            std::move(manuals)};
 }
 
 // Simulated / wall time over the last second.
@@ -178,6 +196,33 @@ std::string_view StateName(RunState state) {
     return "";
 }
 
+// Board hover text plus the Component's role, or the pin's Datasheet line.
+std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manuals) {
+    std::string text = scene.hoverText(hit);
+    if (hit.kind == HitKind::Component && manuals.service) {
+        if (const auto role = ComponentRole(*manuals.service,
+                                            scene.board().components[hit.component].reference)) {
+            text += " \u00b7 " + role->name;
+        }
+    }
+    if (hit.kind == HitKind::Pad) {
+        const auto sheet = manuals.datasheets.find(scene.partName(hit.component));
+        const std::string name(scene.pinName(hit.component, hit.index));
+        if (sheet != manuals.datasheets.end() && !name.empty()) {
+            if (const Block* bullet = PinBullet(sheet->second, name)) {
+                const std::string line = PlainText(bullet->spans);
+                const std::size_t colon = line.find(':');
+                const std::size_t start =
+                    colon == std::string::npos ? 0 : line.find_first_not_of(' ', colon + 1);
+                if (start != std::string::npos) {
+                    text += " - " + line.substr(start);
+                }
+            }
+        }
+    }
+    return Displayable(text);
+}
+
 // Saves the whole framebuffer; false with SDL's error on failure.
 bool SaveScreenshot(SDL_Renderer* renderer, const std::filesystem::path& path) {
     SDL_SetRenderScale(renderer, 1, 1);
@@ -205,6 +250,12 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         }
     }
     Speed speed = Speed::RealTime;
+    toolbar.userManualOpen = options.userManual;
+    toolbar.serviceManualOpen = options.serviceManual;
+    ManualWindows manualWindows;
+    boardView.setTooltip([&loaded](const BoardScene& scene, const Hit& hit) {
+        return Tooltip(scene, hit, loaded.manuals.manuals);
+    });
     session.powerOn(seed);
     const auto start = std::chrono::steady_clock::now();
     SpeedRatio ratio;
@@ -293,6 +344,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         sidePanel.draw(session, view, boardView, loaded, stats, seed);
         ImGui::EndChild();
         ImGui::End();
+        manualWindows.draw(toolbar.userManualOpen, toolbar.serviceManualOpen,
+                           loaded.manuals.manuals, boardView, DesignOf(session));
 
         ImGui::Render();
         const ImGuiIO& io = ImGui::GetIO();
