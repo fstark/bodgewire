@@ -250,6 +250,22 @@ std::optional<Hit> BoardScene::hitTest(Point at, Layer active) const {
     return std::nullopt;
 }
 
+std::optional<std::size_t> BoardScene::componentAt(Point at) const {
+    for (std::size_t k = 0; k < board_.components.size(); ++k) {
+        for (const Pad& pad : board_.components[k].pads) {
+            if (Covers(pad, at)) {
+                return k;
+            }
+        }
+    }
+    for (std::size_t k = 0; k < courtyards_.size(); ++k) {
+        if (Contains(courtyards_[k], at)) {
+            return k;
+        }
+    }
+    return std::nullopt;
+}
+
 std::string BoardScene::hoverText(const Hit& hit) const {
     const auto name = [&](std::optional<NetId> net) {
         return net ? std::string(netName(*net)) : std::string();

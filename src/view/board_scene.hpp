@@ -46,6 +46,8 @@ public:
     std::string_view netName(NetId net) const;
 
     std::optional<Hit> hitTest(Point at, Layer active) const;
+    // Component whose pad covers `at`, else whose courtyard contains it.
+    std::optional<std::size_t> componentAt(Point at) const;
     std::string hoverText(const Hit& hit) const;  // "U1 pin 14 QA · H0", "H0", "U5 74LS161"
 
 private:

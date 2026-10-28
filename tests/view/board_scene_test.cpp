@@ -168,6 +168,29 @@ TEST_CASE("view: hit test", "[view]") {
     CHECK(padWins);
 }
 
+TEST_CASE("board scene: componentAt", "[view]") {
+    const Fixture f = Load("test_pattern");
+    const BoardScene scene = Scene(f);
+    const Board& board = scene.board();
+    const std::size_t u1 = ComponentIndex(board, "U1");
+
+    CHECK(scene.componentAt(
+              board.components[u1].pads[PadIndex(board.components[u1], "14")].position) == u1);
+
+    Point centre{0, 0};
+    const auto courtyard = scene.courtyard(u1);
+    for (const Point p : courtyard) {
+        centre = {centre.x + p.x, centre.y + p.y};
+    }
+    const auto n = static_cast<std::int64_t>(courtyard.size());
+    centre = {centre.x / n, centre.y / n};
+    REQUIRE_FALSE(OnAnyPadOrVia(board, centre));
+    CHECK(scene.componentAt(centre) == u1);
+
+    const Bounds b = scene.bounds();
+    CHECK_FALSE(scene.componentAt({b.min.x - 1'000'000, b.min.y - 1'000'000}));
+}
+
 TEST_CASE("view: highlight crosses the broken_trace crack", "[view]") {
     const Fixture f = Load("test_pattern");
     const CrackDecl crack{1, Layer::Front, kH0Crack};
