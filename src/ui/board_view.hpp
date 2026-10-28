@@ -18,10 +18,14 @@ public:
     void controls();         // Active Layer (F.Cu | B.Cu) and Fit, one row
 
 private:
+    void input(ImVec2 origin);  // zoom, pan, L, F while the panel is hovered
+
     std::optional<BoardScene> scene_;
     Viewport viewport_;
     Layer active_ = Layer::Front;
     bool needFit_ = true;  // first draw knows the panel size
+    ImVec2 panel_{};
+    std::optional<NetId> highlight_;
 };
 
 }  // namespace bw
