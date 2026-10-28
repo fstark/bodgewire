@@ -11,7 +11,7 @@ Spec: [BOARD_REPAIR.md](BOARD_REPAIR.md)
 | 4 | Puzzles repaired through a Session; rebuild time | done d34a4b9 |
 | 5 | `bw_ui` on a Session (no visible change) | done c1c4e3e |
 | 6 | `bw_ui`: tools, Swap, Mend, blobs, repair log, `--repair` | done acf499a |
-| 7 | Release, Done-when | waiting for the user's play-through |
+| 7 | Release, Done-when | done: user played the three Puzzles; UI works but is hard to use |
 
 Build gate: `cmake --preset debug && cmake --build --preset debug`
 Test gate:  `ctest --preset debug`
@@ -36,5 +36,5 @@ Phases 1–6 done (8357493..acf499a); their sections are removed. Deviations: `p
 
 - [x] Rebuild < 100 ms (release mean 0.7 ms); 1.00× kept (locked, probing U1.CLK)
 - [x] Debug and release tests pass (317)
-- [ ] User confirms the Done-when
-- [ ] Commit: `"board repair: phase 7 — release check"`
+- [x] User confirms the Done-when (2026-10-28: all three work; the UI is hard to use)
+- [x] Commit: `"board repair: phase 7 — release check"`
