@@ -222,6 +222,12 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
                                                             machine->designCircuit())
                                 : std::nullopt);
     std::uint64_t seed = 1;
+    if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
+        if (const auto component =
+                scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
+            boardView.select(*component);
+        }
+    }
     Speed speed = Speed::RealTime;
     session.powerOn(seed);
     const auto start = std::chrono::steady_clock::now();
@@ -260,11 +266,19 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
 
         const ImVec2 available = ImGui::GetContentRegionAvail();
         boardView.draw({available.x * kBoardShare, available.y});
+        if (boardView.takeEscape()) {
+            session.touch(std::nullopt);
+        }
         if (const auto click = boardView.takeClick()) {
+            if (click->component) {
+                boardView.select(*click->component);
+            }
+            const auto& pick = click->pick;
             switch (boardView.tool()) {
             case Tool::Probe:
-                session.touch(click->onCopper ? std::optional(ProbeTip{click->at, click->layer})
-                                              : std::nullopt);
+                if (pick && pick->hit.kind != HitKind::Component) {
+                    session.touch(ProbeTip{pick->contact, pick->layer});
+                }
                 break;
             case Tool::Swap:
                 if (click->component) {
@@ -273,7 +287,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
                 }
                 break;
             case Tool::Mend:
-                session.repair(MendRepair{click->layer, click->at});
+                if (pick && pick->hit.kind == HitKind::Trace) {
+                    session.repair(MendRepair{pick->layer, pick->contact});
+                } else {
+                    session.repair(MendRepair{click->active, click->at});
+                }
                 break;
             }
         }

@@ -34,6 +34,21 @@ constexpr float kInactiveHighlightAlpha = 0.6f;
 constexpr double kReferenceMm = 1.5;
 constexpr float kReferenceMinPx = 10;
 constexpr float kReferenceMaxPx = 28;
+constexpr float kPartNameShare = 0.6f;
+constexpr ImU32 kPartName = IM_COL32(200, 200, 200, 170);
+constexpr float kPinNameMinPadPx = 10;
+constexpr double kPinNameMm = 0.9;
+constexpr float kPinNameMinPx = 10;
+constexpr float kPinNameMaxPx = 16;
+constexpr float kPinNameGapPx = 3;
+constexpr ImU32 kPinPlate = IM_COL32(0, 0, 0, 200);
+constexpr ImU32 kPinName = IM_COL32(240, 240, 240, 255);
+constexpr ImU32 kFlash = IM_COL32(255, 255, 255, 255);
+constexpr double kPadReachPx = 12;
+constexpr double kCopperReachPx = 10;
+constexpr double kFocusPadMinPx = 14;
+constexpr std::int64_t kFocusPadMargin = 4'000'000;  // nm around a focused pad
+constexpr auto kFlashTime = std::chrono::seconds(1);
 
 ImU32 WithAlpha(ImU32 colour, float alpha) {
     const auto a =
@@ -150,26 +165,45 @@ void DrawVia(ImDrawList& list, const Mapper& map, const Via& via, ImU32 colour) 
     list.AddCircleFilled(map(via.position), map.pixels(via.drill) / 2, kHole);
 }
 
-void DrawCourtyard(ImDrawList& list, const Mapper& map, const BoardComponent& component,
-                   std::span<const Point> courtyard) {
-    std::vector<ImVec2> points;
+ImVec2 Centre(std::span<const ImVec2> points) {
     ImVec2 centre{0, 0};
-    for (const Point p : courtyard) {
-        points.push_back(map(p));
-        centre = {centre.x + points.back().x, centre.y + points.back().y};
+    for (const ImVec2 p : points) {
+        centre = {centre.x + p.x, centre.y + p.y};
     }
     const auto n = static_cast<float>(points.size());
-    centre = {centre.x / n, centre.y / n};
-    list.AddPolyline(points.data(), static_cast<int>(points.size()), kCourtyard, ImDrawFlags_Closed,
-                     1.0f);
+    return {centre.x / n, centre.y / n};
+}
+
+void DrawCourtyard(ImDrawList& list, const Mapper& map, const BoardComponent& component,
+                   std::span<const Point> courtyard, std::string_view partName, bool lit) {
+    std::vector<ImVec2> points;
+    for (const Point p : courtyard) {
+        points.push_back(map(p));
+    }
+    const ImVec2 centre = Centre(points);
+    list.AddPolyline(points.data(), static_cast<int>(points.size()), lit ? kHighlight : kCourtyard,
+                     ImDrawFlags_Closed, lit ? 2.0f : 1.0f);
 
     const float size = std::clamp(static_cast<float>(kReferenceMm * map.pixelsPerMm()),
                                   kReferenceMinPx, kReferenceMaxPx);
     ImFont* font = ImGui::GetFont();
     const char* text = component.reference.c_str();
     const ImVec2 textSize = font->CalcTextSizeA(size, FLT_MAX, 0, text);
-    list.AddText(font, size, {centre.x - textSize.x / 2, centre.y - textSize.y / 2}, kReference,
-                 text);
+    const float partSize = size * kPartNameShare;
+    const std::string part(partName);
+    const ImVec2 partTextSize = font->CalcTextSizeA(partSize, FLT_MAX, 0, part.c_str());
+    float width = 0;
+    for (const ImVec2 p : points) {
+        width = std::max(width, std::abs(p.x - centre.x) * 2);
+    }
+    const bool showPart = !part.empty() && part != component.reference && partTextSize.x <= width &&
+                          textSize.x <= width;
+    const float top = centre.y - (textSize.y + (showPart ? partTextSize.y : 0)) / 2;
+    list.AddText(font, size, {centre.x - textSize.x / 2, top}, kReference, text);
+    if (showPart) {
+        list.AddText(font, partSize, {centre.x - partTextSize.x / 2, top + textSize.y}, kPartName,
+                     part.c_str());
+    }
 
     for (const Pad& pad : component.pads) {
         if (pad.number != "1") {
@@ -182,6 +216,65 @@ void DrawCourtyard(ImDrawList& list, const Mapper& map, const BoardComponent& co
         const ImVec2 corner = *std::ranges::min_element(
             points, [&](ImVec2 a, ImVec2 b) { return distance(a) < distance(b); });
         list.AddCircleFilled(corner, std::max(2.0f, map.pixels(300'000)), kPinOne);
+    }
+}
+
+// Pad's half extent along screen x and y, rotation included.
+ImVec2 PadHalf(const Mapper& map, const Pad& pad) {
+    const double radians = pad.angle * std::numbers::pi / 180;
+    const double c = std::abs(std::cos(radians));
+    const double s = std::abs(std::sin(radians));
+    const double w = static_cast<double>(pad.size.x) / 2;
+    const double h = static_cast<double>(pad.size.y) / 2;
+    return {map.pixels(std::llround(c * w + s * h)), map.pixels(std::llround(s * w + c * h))};
+}
+
+// Pin names beside the pads, towards the courtyard centre, on dark plates.
+void DrawPinNames(ImDrawList& list, const Mapper& map, const BoardScene& scene,
+                  std::size_t component) {
+    const BoardComponent& c = scene.board().components[component];
+    float smallest = FLT_MAX;
+    for (const Pad& pad : c.pads) {
+        smallest = std::min(smallest, map.pixels(std::min(pad.size.x, pad.size.y)));
+    }
+    if (c.pads.empty() || smallest < kPinNameMinPadPx) {
+        return;
+    }
+    std::vector<ImVec2> points;
+    for (const Point p : scene.courtyard(component)) {
+        points.push_back(map(p));
+    }
+    const ImVec2 centre = Centre(points);
+    ImVec2 extent{0, 0};
+    for (const ImVec2 p : points) {
+        extent = {std::max(extent.x, std::abs(p.x - centre.x)),
+                  std::max(extent.y, std::abs(p.y - centre.y))};
+    }
+    const bool across = extent.y >= extent.x;  // tall chip: names left/right of the pads
+    const float size = std::clamp(static_cast<float>(kPinNameMm * map.pixelsPerMm()), kPinNameMinPx,
+                                  kPinNameMaxPx);
+    ImFont* font = ImGui::GetFont();
+    for (std::size_t p = 0; p < c.pads.size(); ++p) {
+        const std::string name(scene.pinName(component, p));
+        if (name.empty()) {
+            continue;
+        }
+        const ImVec2 at = map(c.pads[p].position);
+        const ImVec2 half = PadHalf(map, c.pads[p]);
+        const ImVec2 text = font->CalcTextSizeA(size, FLT_MAX, 0, name.c_str());
+        const float dx = centre.x - at.x;
+        const float dy = centre.y - at.y;
+        ImVec2 corner;
+        if (across) {
+            const float start = half.x + kPinNameGapPx;
+            corner = {dx >= 0 ? at.x + start : at.x - start - text.x, at.y - text.y / 2};
+        } else {
+            const float start = half.y + kPinNameGapPx;
+            corner = {at.x - text.x / 2, dy >= 0 ? at.y + start : at.y - start - text.y};
+        }
+        list.AddRectFilled({corner.x - 2, corner.y - 2},
+                           {corner.x + text.x + 2, corner.y + text.y + 2}, kPinPlate, 2.0f);
+        list.AddText(font, size, corner, kPinName, name.c_str());
     }
 }
 
@@ -213,7 +306,14 @@ void BoardView::draw(ImVec2 size) {
         }
         panel_ = panel;
     }
+    keys();
     input(origin);
+    const std::optional<BoardTarget> outside = std::exchange(outside_, std::nullopt);
+    if (!ImGui::IsWindowHovered() && outside) {
+        hoverTarget_ = outside;
+        highlight_ =
+            outside->pad ? scene_->padNet(outside->component, *outside->pad) : std::nullopt;
+    }
 
     const Mapper map(viewport_, origin, panel);
     const Board& board = scene_->board();
@@ -256,7 +356,32 @@ void BoardView::draw(ImVec2 size) {
                              WithAlpha(kSolder, alpha));
     }
     for (std::size_t k = 0; k < board.components.size(); ++k) {
-        DrawCourtyard(list, map, board.components[k], scene_->courtyard(k));
+        const bool outlined = hoverTarget_ && hoverTarget_->component == k && !hoverTarget_->pad;
+        DrawCourtyard(list, map, board.components[k], scene_->courtyard(k), scene_->partName(k),
+                      outlined);
+    }
+    if (hoverTarget_ && hoverTarget_->pad) {
+        const Pad& pad = board.components[hoverTarget_->component].pads[*hoverTarget_->pad];
+        const ImVec2 half = PadHalf(map, pad);
+        list.AddCircle(map(pad.position), std::max(half.x, half.y) + 3, kHighlight, 0, 2.0f);
+    }
+    if (flash_ && std::chrono::steady_clock::now() < flash_->until) {
+        const double left =
+            std::chrono::duration<double>(flash_->until - std::chrono::steady_clock::now()).count();
+        const float alpha = static_cast<float>(0.5 + 0.5 * std::cos(left * 6 * std::numbers::pi));
+        const auto& pads = board.components[flash_->target.component].pads;
+        for (std::size_t p = 0; p < pads.size(); ++p) {
+            if (!flash_->target.pad || flash_->target.pad == p) {
+                const ImVec2 half = PadHalf(map, pads[p]);
+                list.AddCircle(map(pads[p].position), std::max(half.x, half.y) + 4,
+                               WithAlpha(kFlash, alpha), 0, 3.0f);
+            }
+        }
+    } else {
+        flash_.reset();
+    }
+    if (const auto component = chip()) {
+        DrawPinNames(list, map, *scene_, *component);
     }
     if (tip_) {
         const float radius = std::max(4.0f, map.pixels(400'000));
@@ -266,54 +391,161 @@ void BoardView::draw(ImVec2 size) {
     ImGui::EndChild();
 }
 
-void BoardView::input(ImVec2 origin) {
-    highlight_.reset();
-    if (!ImGui::IsWindowHovered()) {
+void BoardView::keys() {
+    const ImGuiIO& io = ImGui::GetIO();
+    if (io.WantTextInput) {
         return;
     }
+    if (ImGui::IsKeyPressed(ImGuiKey_L, false)) {
+        toggleLayer();
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_F, false)) {
+        fit();
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_P, false)) {
+        tool_ = Tool::Probe;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_S, false)) {
+        tool_ = Tool::Swap;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_M, false)) {
+        tool_ = Tool::Mend;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        escape_ = true;
+    }
+    const ScreenPoint centre{panel_.x / 2, panel_.y / 2};
+    if (ImGui::IsKeyPressed(ImGuiKey_Equal) || ImGui::IsKeyPressed(ImGuiKey_KeypadAdd)) {
+        viewport_.zoomAt(centre, 1);
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_Minus) || ImGui::IsKeyPressed(ImGuiKey_KeypadSubtract)) {
+        viewport_.zoomAt(centre, -1);
+    }
+}
+
+PickReach BoardView::reach() const {
+    const double nmPerPixel = 1e6 / viewport_.pixelsPerMm();
+    return {std::llround(kPadReachPx * nmPerPixel), std::llround(kCopperReachPx * nmPerPixel)};
+}
+
+void BoardView::input(ImVec2 origin) {
+    highlight_.reset();
+    hoverTarget_.reset();
+    hovered_.reset();
     const ImGuiIO& io = ImGui::GetIO();
     const ScreenPoint mouse{io.MousePos.x - origin.x, io.MousePos.y - origin.y};
+    const bool hoveredPanel = ImGui::IsWindowHovered();
+
+    if (pressed_) {
+        if (!dragging_ && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            dragging_ = true;
+            const ImVec2 total = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+            viewport_.pan({total.x, total.y});
+        } else if (dragging_) {
+            viewport_.pan({io.MouseDelta.x, io.MouseDelta.y});
+        }
+    }
+    if (hoveredPanel && (ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0) ||
+                         ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0))) {
+        viewport_.pan({io.MouseDelta.x, io.MouseDelta.y});
+    }
+
+    const Point at = viewport_.toBoard(mouse);
+    std::optional<Pick> picked;
+    if (hoveredPanel || pressed_) {
+        picked = scene_->pick(at, active_, reach());
+    }
+    if (pressed_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        if (!dragging_) {
+            std::optional<std::size_t> component;
+            if (picked &&
+                (picked->hit.kind == HitKind::Pad || picked->hit.kind == HitKind::Component)) {
+                component = picked->hit.component;
+            } else {
+                component = scene_->componentAt(at);
+            }
+            click_ = BoardClick{at, active_, picked, component};
+        }
+        pressed_ = false;
+        dragging_ = false;
+    }
+    if (!hoveredPanel) {
+        return;
+    }
     if (io.MouseWheel != 0) {
         viewport_.zoomAt(mouse, io.MouseWheel);
     }
-    if (ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0) ||
-        ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0)) {
-        viewport_.pan({io.MouseDelta.x, io.MouseDelta.y});
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        pressed_ = true;
+        dragging_ = false;
     }
-    if (!io.WantTextInput) {
-        if (ImGui::IsKeyPressed(ImGuiKey_L, false)) {
-            active_ = active_ == Layer::Front ? Layer::Back : Layer::Front;
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_F, false)) {
-            viewport_.fit(scene_->bounds(), {panel_.x, panel_.y});
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_P, false)) {
-            tool_ = Tool::Probe;
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_S, false)) {
-            tool_ = Tool::Swap;
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_M, false)) {
-            tool_ = Tool::Mend;
-        }
+    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked) {
+        fit();
     }
-    const Point at = viewport_.toBoard(mouse);
-    const auto picked = scene_->pick(at, active_, {});
-    const auto hover = picked ? std::optional(picked->hit) : std::nullopt;
-    if (hover) {
-        highlight_ = scene_->netOf(*hover);
-        const std::string text = scene_->hoverText(*hover);
+    if (dragging_) {
+        return;
+    }
+    if (picked) {
+        const Hit& hit = picked->hit;
+        highlight_ = scene_->netOf(hit);
+        if (hit.kind == HitKind::Pad) {
+            hoverTarget_ = BoardTarget{hit.component, hit.index};
+            hovered_ = hit.component;
+        } else if (hit.kind == HitKind::Component) {
+            hovered_ = hit.component;
+        }
+        const std::string text = tooltip_ ? tooltip_(*scene_, hit) : scene_->hoverText(hit);
         if (!text.empty()) {
             ImGui::SetTooltip("%s", text.c_str());
         }
     }
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        click_ = BoardClick{at, picked ? picked->layer : active_,
-                            hover && hover->kind != HitKind::Component, scene_->componentAt(at)};
+    if (!hovered_) {
+        hovered_ = scene_->componentAt(at);
     }
 }
 
 std::optional<BoardClick> BoardView::takeClick() { return std::exchange(click_, std::nullopt); }
+
+bool BoardView::takeEscape() { return std::exchange(escape_, false); }
+
+void BoardView::focus(BoardTarget target) {
+    if (!scene_) {
+        return;
+    }
+    const BoardComponent& component = scene_->board().components[target.component];
+    Bounds box{};
+    if (target.pad) {
+        const Point p = component.pads[*target.pad].position;
+        box = {{p.x - kFocusPadMargin, p.y - kFocusPadMargin},
+               {p.x + kFocusPadMargin, p.y + kFocusPadMargin}};
+    } else {
+        const auto courtyard = scene_->courtyard(target.component);
+        box = {courtyard[0], courtyard[0]};
+        for (const Point p : courtyard) {
+            box.min = {std::min(box.min.x, p.x), std::min(box.min.y, p.y)};
+            box.max = {std::max(box.max.x, p.x), std::max(box.max.y, p.y)};
+        }
+    }
+    std::int64_t smallest = 0;
+    for (const Pad& pad : component.pads) {
+        const std::int64_t side = std::min(pad.size.x, pad.size.y);
+        smallest = smallest == 0 ? side : std::min(smallest, side);
+    }
+    const double minPixelsPerMm =
+        smallest > 0 ? kFocusPadMinPx / (static_cast<double>(smallest) / 1e6) : 0;
+    needFit_ = false;
+    viewport_.frame(box, target.pad ? 0.3 : 0.5, minPixelsPerMm);
+    flash_ = Flash{target, std::chrono::steady_clock::now() + kFlashTime};
+}
+
+void BoardView::route(const TargetHits& hits) {
+    if (hits.hovered) {
+        hoverFromOutside(hits.hovered);
+    }
+    if (hits.clicked) {
+        focus(*hits.clicked);
+    }
+}
 
 void BoardView::setProbeTip(std::optional<Point> tip) { tip_ = tip; }
 
