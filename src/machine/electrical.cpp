@@ -15,8 +15,6 @@ namespace bw {
 
 namespace {
 
-bool IsRail(std::string_view net) { return net == "GND" || net == "VCC"; }
-
 class Namer {
 public:
     Namer(const Board& board, const Islands& islands) {

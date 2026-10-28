@@ -1,6 +1,7 @@
 add_library(bw_netlist STATIC
   builder.cpp
   diagnostic.cpp
+  net_pins.cpp
   parser.cpp
   units.cpp
 )

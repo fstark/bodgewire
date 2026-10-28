@@ -30,8 +30,6 @@ bool AllDigits(std::string_view text) {
            std::all_of(text.begin(), text.end(), [](char c) { return c >= '0' && c <= '9'; });
 }
 
-bool IsRail(std::string_view net) { return net == "GND" || net == "VCC"; }
-
 bool IsResistor(const PlacedPart& part) {
     return part.info != nullptr && part.info->kind == PartKind::Resistor;
 }
@@ -280,6 +278,8 @@ private:
 };
 
 }  // namespace
+
+bool IsRail(std::string_view net) { return net == "GND" || net == "VCC"; }
 
 LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck) {
     return Builder(netlist, stuck).build();

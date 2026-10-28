@@ -65,4 +65,6 @@ std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view refere
 std::optional<NetId> ConnectorNet(const LoadedCircuit& loaded, std::string_view part,
                                   std::string_view pin);
 
+bool IsRail(std::string_view net);  // "GND" or "VCC"
+
 }  // namespace bw

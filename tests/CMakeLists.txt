@@ -26,10 +26,12 @@ add_executable(bw_tests
   machines/board_probe_test.cpp
   machines/board_repair_test.cpp
   machines/manuals_test.cpp
+  machines/net_panel_test.cpp
   machines/test_pattern_faults_test.cpp
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp
   netlist/diagnostic_test.cpp
+  netlist/net_pins_test.cpp
   netlist/parser_test.cpp
   netlist/sample_test.cpp
   netlist/units_test.cpp
