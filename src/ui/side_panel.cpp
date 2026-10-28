@@ -88,6 +88,18 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
         ImGui::TextUnformatted(text.c_str());
     }
 
+    if (scene && ImGui::CollapsingHeader("Net", open)) {
+        if (const auto net = board.net()) {
+            const NetPanelHits hits = net_.draw(*scene, *net, design, loaded.manuals.manuals);
+            board.route(hits.targets);
+            if (hits.clear) {
+                board.selectNet(std::nullopt);
+            }
+        } else {
+            ImGui::TextDisabled("click a pin or trace");
+        }
+    }
+
     if (scene && ImGui::CollapsingHeader("Chip", open)) {
         if (const auto chip = board.chip()) {
             board.route(chip_.draw(*scene, *chip, loaded.manuals.manuals, design));
