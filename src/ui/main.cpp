@@ -39,13 +39,15 @@ constexpr ImU32 kLampHigh = IM_COL32(230, 40, 40, 255);
 constexpr ImU32 kLampLow = IM_COL32(40, 200, 60, 255);
 constexpr ImU32 kLampPulse = IM_COL32(255, 170, 0, 255);
 constexpr std::string_view kUsage =
-    "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] [--screenshot OUT.png [--after 1s]]";
+    "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] [--repair swap:REF,mend:LAYER:X:Y] "
+    "[--screenshot OUT.png [--after 1s]]";
 
 struct Options {
     std::filesystem::path file;
     std::optional<std::filesystem::path> screenshot;
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
     std::optional<std::string> probe;  // REF.PIN
+    std::vector<std::string> repair;
 };
 
 std::optional<Options> ParseOptions(int argc, char** argv) {
@@ -70,6 +72,16 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             after = true;
         } else if (arg == "--probe") {
             options.probe = argv[++i];
+        } else if (arg == "--repair") {
+            const std::string_view list = argv[++i];
+            for (std::size_t start = 0;;) {
+                const std::size_t comma = list.find(',', start);
+                options.repair.emplace_back(list.substr(start, comma - start));
+                if (comma == std::string_view::npos) {
+                    break;
+                }
+                start = comma + 1;
+            }
         } else {
             return std::nullopt;
         }
@@ -238,11 +250,25 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
         const ImVec2 available = ImGui::GetContentRegionAvail();
         boardView.draw({available.x * kBoardShare, available.y});
         if (const auto click = boardView.takeClick()) {
-            session.touch(click->onCopper ? std::optional(ProbeTip{click->at, click->layer})
-                                          : std::nullopt);
+            switch (boardView.tool()) {
+            case Tool::Probe:
+                session.touch(click->onCopper ? std::optional(ProbeTip{click->at, click->layer})
+                                              : std::nullopt);
+                break;
+            case Tool::Swap:
+                if (click->component) {
+                    session.repair(
+                        SwapRepair{session.drawnBoard()->components[*click->component].reference});
+                }
+                break;
+            case Tool::Mend:
+                session.repair(MendRepair{click->layer, click->at});
+                break;
+            }
         }
         const auto tip = session.probeTip();
         boardView.setProbeTip(tip ? std::optional(tip->at) : std::nullopt);
+        boardView.setBlobs(session.blobs());
         ImGui::SameLine();
         ImGui::BeginChild("side", {0, available.y});
         const float sideWidth = ImGui::GetContentRegionAvail().x;
@@ -263,7 +289,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
             DrawLamps(session.lamps());
         }
 
-        boardView.controls();
+        boardView.controls(session.powered());
 
         if (!session.powered()) {
             if (ImGui::Button("Power on")) {
@@ -304,6 +330,13 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Session& session,
             static_cast<double>(status.simTime) / static_cast<double>(kPicosPerSecond), speedRatio,
             lock, StateName(status.state), status.ringWaitShare * 100.0, uiMilliseconds);
         ImGui::TextWrapped("%s", line.c_str());
+        if (machine) {
+            ImGui::Separator();
+            ImGui::TextUnformatted("Repairs");
+            for (const std::string& entry : session.log()) {
+                ImGui::TextUnformatted(entry.c_str());
+            }
+        }
         ImGui::EndChild();
         ImGui::End();
 
@@ -353,6 +386,22 @@ int main(int argc, char** argv) {
             return kExitUsage;
         }
         session.touch(ProbeTip{*at, Layer::Front});
+    }
+    for (const std::string& text : options->repair) {
+        const auto repair = ParseRepair(text);
+        std::optional<std::string> error;
+        if (!repair) {
+            error = repair.error();
+        } else if (session.repair(*repair) != RepairResult::Done) {
+            error = !session.machine()
+                        ? std::string("no Board to repair")
+                        : "unknown reference '" + std::get<SwapRepair>(*repair).reference + "'";
+        }
+        if (error) {
+            std::println(stderr, "bw_ui: {}", *error);
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
     }
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {

@@ -26,6 +26,9 @@ constexpr ImU32 kReference = IM_COL32(230, 230, 230, 200);
 constexpr ImU32 kPinOne = IM_COL32(230, 230, 230, 230);
 constexpr ImU32 kHighlight = IM_COL32(255, 190, 0, 255);
 constexpr ImU32 kProbeRed = IM_COL32(220, 30, 30, 255);
+constexpr ImU32 kSolder = IM_COL32(205, 205, 210, 255);
+constexpr std::int64_t kBlobRadius = 600'000;  // covers the gap of a cracked 0.2 mm Trace
+constexpr float kBlobMinPx = 3;
 constexpr float kInactiveAlpha = 0.35f;
 constexpr float kInactiveHighlightAlpha = 0.6f;
 constexpr double kReferenceMm = 1.5;
@@ -247,6 +250,11 @@ void BoardView::draw(ImVec2 size) {
         const bool on = lit && scene_->viaNet(v) == lit;
         DrawVia(list, map, board.vias[v], on ? kHighlight : kPadTin);
     }
+    for (const SolderBlob& blob : blobs_) {
+        const float alpha = blob.layer == active_ ? 1.0f : kInactiveAlpha;
+        list.AddCircleFilled(map(blob.at), std::max(kBlobMinPx, map.pixels(kBlobRadius)),
+                             WithAlpha(kSolder, alpha));
+    }
     for (std::size_t k = 0; k < board.components.size(); ++k) {
         DrawCourtyard(list, map, board.components[k], scene_->courtyard(k));
     }
@@ -279,6 +287,15 @@ void BoardView::input(ImVec2 origin) {
         if (ImGui::IsKeyPressed(ImGuiKey_F, false)) {
             viewport_.fit(scene_->bounds(), {panel_.x, panel_.y});
         }
+        if (ImGui::IsKeyPressed(ImGuiKey_P, false)) {
+            tool_ = Tool::Probe;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_S, false)) {
+            tool_ = Tool::Swap;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_M, false)) {
+            tool_ = Tool::Mend;
+        }
     }
     const Point at = viewport_.toBoard(mouse);
     const auto hover = scene_->hitTest(at, active_);
@@ -290,7 +307,8 @@ void BoardView::input(ImVec2 origin) {
         }
     }
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        click_ = BoardClick{at, active_, hover && hover->kind != HitKind::Component};
+        click_ = BoardClick{at, active_, hover && hover->kind != HitKind::Component,
+                            scene_->componentAt(at)};
     }
 }
 
@@ -298,7 +316,23 @@ std::optional<BoardClick> BoardView::takeClick() { return std::exchange(click_, 
 
 void BoardView::setProbeTip(std::optional<Point> tip) { tip_ = tip; }
 
-void BoardView::controls() {
+void BoardView::controls(bool powered) {
+    ImGui::TextUnformatted("Tool ");
+    ImGui::SameLine();
+    const auto toolButton = [&](const char* label, Tool tool) {
+        if (ImGui::RadioButton(label, tool_ == tool)) {
+            tool_ = tool;
+        }
+    };
+    toolButton("Probe", Tool::Probe);
+    ImGui::SameLine();
+    toolButton("Swap", Tool::Swap);
+    ImGui::SameLine();
+    toolButton("Mend", Tool::Mend);
+    if (powered) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("power off to repair");
+    }
     ImGui::TextUnformatted("Layer");
     ImGui::SameLine();
     if (ImGui::RadioButton("F.Cu", active_ == Layer::Front)) {
