@@ -33,6 +33,7 @@ add_executable(bw_tests
   parts/ls161_test.cpp
   parts/ls74_test.cpp
   parts/oscillator_test.cpp
+  runner/dispatcher_test.cpp
   runner/spsc_ring_test.cpp
   runner/triple_buffer_test.cpp
   sim/check_test.cpp
@@ -46,8 +47,8 @@ add_executable(bw_tests
   sim/time_test.cpp
   sim/vcd_test.cpp
 )
-target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_machine bw_warnings
-                                       Catch2::Catch2WithMain)
+target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_machine bw_runner
+                                       bw_warnings Catch2::Catch2WithMain)
 target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR}/netlists"
                                            BW_BOARD_DIR="${PROJECT_SOURCE_DIR}/boards"
                                            BW_PUZZLE_DIR="${PROJECT_SOURCE_DIR}/puzzles")

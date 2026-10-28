@@ -1,6 +1,7 @@
 #include "sim/recorder.hpp"
 
 #include <cassert>
+#include <utility>
 
 namespace bw {
 
@@ -35,6 +36,21 @@ void Recorder::trim(NetId net) {
     }
     auto& samples = slots_[static_cast<std::size_t>(slotOfNet_[ToIndex(net)])];
     samples.erase(samples.begin(), samples.end() - 1);
+}
+
+void Recorder::stop(NetId net) {
+    if (!isRecording(net)) {
+        return;
+    }
+    const auto slot = static_cast<std::size_t>(slotOfNet_[ToIndex(net)]);
+    if (slot + 1 != slots_.size()) {
+        slots_[slot] = std::move(slots_.back());
+        slotOfNet_[ToIndex(nets_.back())] = static_cast<std::int32_t>(slot);
+        nets_[slot] = nets_.back();
+    }
+    slots_.pop_back();
+    nets_.pop_back();
+    slotOfNet_[ToIndex(net)] = -1;
 }
 
 void Recorder::clear() {

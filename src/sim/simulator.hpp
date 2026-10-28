@@ -31,6 +31,7 @@ public:
     LogicValue value(NetId net) const { return nets_[ToIndex(net)].value; }
     bool isFloating(NetId net) const { return nets_[ToIndex(net)].floating; }
     void record(NetId net);  // from now on; kept until the next powerOn
+    void stopRecording(NetId net) { recorder_.stop(net); }
     const Recorder& recorder() const { return recorder_; }
     void trimRecordings() {  // bounded memory on long runs; consumers must be up to date
         for (const NetId net : recorder_.nets()) {

@@ -79,3 +79,25 @@ TEST_CASE("recorder: clear forgets everything", "[sim]") {
     CHECK(recorder.nets().empty());
     CHECK(recorder.samples(NetId{2}).empty());
 }
+
+TEST_CASE("recorder: stop", "[sim]") {
+    Recorder recorder;
+    recorder.start(NetId{5}, 0, LogicValue::Zero);
+    recorder.start(NetId{1}, 0, LogicValue::One);
+    recorder.start(NetId{3}, 0, LogicValue::X);
+    recorder.add(NetId{5}, 4, LogicValue::One);
+    recorder.add(NetId{3}, 6, LogicValue::Zero);
+    recorder.stop(NetId{1});
+    recorder.stop(NetId{9});
+    CHECK_FALSE(recorder.isRecording(NetId{1}));
+    CHECK(recorder.samples(NetId{1}).empty());
+    CHECK(recorder.nets().size() == 2);
+    CHECK((recorder.samples(NetId{5})[1] == Sample{4, LogicValue::One}));
+    CHECK((recorder.samples(NetId{3})[1] == Sample{6, LogicValue::Zero}));
+    recorder.add(NetId{3}, 8, LogicValue::One);
+    CHECK(recorder.samples(NetId{3}).size() == 3);
+
+    recorder.start(NetId{1}, 10, LogicValue::Zero);
+    REQUIRE(recorder.samples(NetId{1}).size() == 1);
+    CHECK((recorder.samples(NetId{1})[0] == Sample{10, LogicValue::Zero}));
+}
