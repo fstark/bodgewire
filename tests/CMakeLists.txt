@@ -22,6 +22,7 @@ add_executable(bw_tests
   machine/puzzle_test.cpp
   machine/repair_test.cpp
   machines/board_probe_test.cpp
+  machines/board_repair_test.cpp
   machines/test_pattern_faults_test.cpp
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp
