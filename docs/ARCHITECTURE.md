@@ -189,10 +189,10 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P2g | Board probe | done: logic probe by clicking the running Board (electrical Nets, one watched Net). [BOARD_PROBE.md](p2g-board-probe/BOARD_PROBE.md) |
 | P2h | Board repair | done: Swap and Mend tools with the power off, repair log, Nets rebuilt at power-on (`src/session`), `bw_ui --repair`: completes the first playable. [BOARD_REPAIR_PLAN.md](p2h-board-repair/BOARD_REPAIR_PLAN.md) |
 | P2 | Test-pattern generator — **first playable** | done 2026-10-28: the three Puzzles played end to end in `bw_ui` (works, but the UI is hard to use). P2a–P2h together: crystal, TTL counters → H/V sync + bars/grid, TV model, see-through board view, logic probe, chip swap, trace repair. Faults: dead counter output, broken trace, stuck gate output |
-| P3a | UI usability | Puzzle Brief and Golden picture, state banner, chip pinout panel, pin names on the Board, snap-to-pin, grouped layout, navigation. [UI_USABILITY.md](p3a-ui-usability/UI_USABILITY.md) |
+| P3a | UI usability | Puzzle Brief, Service Manuals and Datasheets (authored files), state banner, toolbar, Chip panel, pin names on the Board, larger snapping, grouped layout, navigation. [UI_USABILITY.md](p3a-ui-usability/UI_USABILITY.md) |
 | P3b | Schematic view | Schematic generated from the design Netlist, cross-highlighting with the Board; view only (probing stays on the Board) |
 | P3c | Logic analyzer | many Nets at once, Trigger, pre-trigger history; built on the per-Net counted watches |
-| P3d | Oscilloscope + multimeter | few Nets at fine timing; logic-state voltages and continuity |
+| P3d | Oscilloscope + multimeter | few Nets at fine timing; logic-state voltages and continuity; the counter Board gets an output connector to measure |
 | P3e | Bodge wires + trace cuts | new Repairs through the Session |
 | P3f | Repair validation + new faults | outputs-only comparison with the Golden Machine; shorts, Wrong Part |
 | P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files), repair validation; still on the P2 board. P3a–P3f together answer: is the full loop fun? |

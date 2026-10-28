@@ -143,9 +143,13 @@ _Avoid_: Scenario, level, case
 The player-facing text of a Puzzle: a title and the Symptom as a customer would report it. It never names the Fault.
 _Avoid_: Description, hint
 
-**Golden Picture**:
-The TV picture of the Golden Machine, shown beside the live one so the player sees what "working" looks like.
-_Avoid_: Reference picture
+**Service Manual**:
+The per-Machine document the player reads: what the Machine does, how it works, the role of each Component, and optional Troubleshooting steps. Written by hand.
+_Avoid_: Help, documentation
+
+**Datasheet**:
+Our simplified per-Part document: what the Part does and what each pin is for.
+_Avoid_: Spec sheet
 
 **Procedural Puzzle**:
 A Puzzle whose Faults are randomly generated and then vetted.
