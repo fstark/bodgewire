@@ -231,6 +231,48 @@ TEST_CASE("builder: ConnectorNet without the connector", "[netlist]") {
     CHECK_FALSE(ConnectorNet(**result, "VIDEO", "VIDEO").has_value());
 }
 
+TEST_CASE("builder: stuck pin ties its net", "[netlist]") {
+    // 1Y drives 2A on net A; 1A is on GND, so a working 1Y would drive 1.
+    const auto netlist = ParseNetlist("part U1 74LS04\nnet A U1.2 U1.3\nnet GND U1.1\n", "t.bwn");
+    REQUIRE(netlist.has_value());
+    const StuckPin stuck[] = {{"U1", 1, Zero}};
+    const auto result = BuildCircuit(*netlist, stuck);
+    REQUIRE(result.has_value());
+    LoadedCircuit& loaded = **result;
+    const NetId a = loaded.nets.at("A");
+    CHECK(loaded.circuit.tieOf(a).strength == DriveStrength::Strong);
+    CHECK(loaded.circuit.tieOf(a).value == Zero);
+    const PinId pin2{ToIndex(loaded.components.at("U1")->firstPin()) + 1};
+    CHECK(loaded.circuit.netOf(pin2) != a);
+    CHECK(PinNet(loaded, "U1", "1Y") == a);
+    Simulator sim(loaded.circuit);
+    sim.powerOn(1);
+    sim.runUntil(100_ns);
+    CHECK(sim.value(a) == Zero);
+    CHECK(sim.value(loaded.circuit.netOf(pin2)) == One);
+}
+
+TEST_CASE("builder: PinNet by name and number", "[netlist]") {
+    const auto result = LoadNetlist("part U1 74LS04\nnet A U1.2 U1.3\n", "t.bwn");
+    REQUIRE(result.has_value());
+    const LoadedCircuit& loaded = **result;
+    CHECK(PinNet(loaded, "U1", "1Y") == loaded.nets.at("A"));
+    CHECK(PinNet(loaded, "U1", "3") == loaded.nets.at("A"));
+    CHECK(PinNet(loaded, "U1", "14") == loaded.nets.at("VCC"));
+    const auto unconnected = PinNet(loaded, "U1", "4");
+    REQUIRE(unconnected.has_value());
+    CHECK(*unconnected != loaded.nets.at("A"));
+}
+
+TEST_CASE("builder: PinNet unknown", "[netlist]") {
+    const auto result = LoadNetlist("part U1 74LS04\nnet A U1.2 U1.3\n", "t.bwn");
+    REQUIRE(result.has_value());
+    CHECK_FALSE(PinNet(**result, "U2", "1Y").has_value());
+    CHECK_FALSE(PinNet(**result, "U1", "9Y").has_value());
+    CHECK_FALSE(PinNet(**result, "U1", "15").has_value());
+    CHECK_FALSE(PinNet(**result, "U1", "0").has_value());
+}
+
 TEST_CASE("builder: parts in netlist order with values", "[netlist]") {
     const auto result = LoadNetlist("part U2 74LS04\npart R1 R value=4k7\npart U1 74LS00\n"
                                     "net VCC R1.1\nnet A R1.2 U2.1\n",

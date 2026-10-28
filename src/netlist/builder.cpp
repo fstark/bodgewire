@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "parts/catalogue.hpp"
+#include "sim/check.hpp"
 
 namespace bw {
 
@@ -19,7 +20,7 @@ struct PlacedPart {
     Component* component;  // nullptr: resistor, or creation failed
 };
 
-struct PinNet {
+struct NetOfPin {
     NetId net;
     std::string_view name;
 };
@@ -42,8 +43,8 @@ void SortByLine(std::vector<Diagnostic>& diagnostics) {
 
 class Builder {
 public:
-    explicit Builder(const Netlist& netlist)
-        : netlist_(netlist), loaded_(std::make_unique<LoadedCircuit>()) {}
+    explicit Builder(const Netlist& netlist, std::span<const StuckPin> stuck)
+        : netlist_(netlist), stuck_(stuck), loaded_(std::make_unique<LoadedCircuit>()) {}
 
     LoadResult build() {
         Circuit& circuit = loaded_->circuit;
@@ -57,9 +58,18 @@ public:
             SortByLine(errors_);
             return std::unexpected(std::move(errors_));
         }
+        for (const StuckPin& s : stuck_) {
+            const auto it = loaded_->components.find(s.reference);
+            Check(it != loaded_->components.end() && s.pin < it->second->pins().size() &&
+                      IsDriver(it->second->pins()[s.pin].kind) &&
+                      (s.value == LogicValue::Zero || s.value == LogicValue::One),
+                  "builder: stuck pin must be an output of a placed Component");
+        }
         for (const auto& [pin, net] : pinNet_) {
             const PlacedPart& part = placed_.find(pin.first)->second;
-            if (part.component != nullptr) {
+            if (const StuckPin* s = stuckAt(pin.first, pin.second)) {
+                circuit.tie(net.net, s->value, DriveStrength::Strong);
+            } else if (part.component != nullptr) {
                 circuit.connect(*part.component, pin.second, net.net);
             }
             loaded_->connections.push_back({pin.first, pin.second, std::string(net.name)});
@@ -80,6 +90,15 @@ public:
     }
 
 private:
+    const StuckPin* stuckAt(std::string_view reference, PinIndex pin) const {
+        for (const StuckPin& s : stuck_) {
+            if (s.reference == reference && s.pin == pin) {
+                return &s;
+            }
+        }
+        return nullptr;
+    }
+
     void error(std::uint32_t line, std::string message) {
         errors_.push_back({netlist_.file, line, Severity::Error, std::move(message)});
     }
@@ -187,7 +206,7 @@ private:
                     }
                 }
                 const auto [existing, inserted] =
-                    pinNet_.try_emplace({ref.reference, *index}, PinNet{net, decl.name});
+                    pinNet_.try_emplace({ref.reference, *index}, NetOfPin{net, decl.name});
                 if (!inserted && existing->second.name != decl.name) {
                     error(decl.line, where + " is on nets " + std::string(existing->second.name) +
                                          " and " + decl.name);
@@ -205,7 +224,7 @@ private:
             for (PinIndex i = 0; i < pins.size(); ++i) {
                 if (pins[i].kind == PinKind::Power) {
                     const std::string_view rail = loaded_->nets.find(pins[i].name)->first;
-                    pinNet_.try_emplace({reference, i}, PinNet{netNamed(rail), rail});
+                    pinNet_.try_emplace({reference, i}, NetOfPin{netNamed(rail), rail});
                 }
             }
         }
@@ -226,8 +245,8 @@ private:
                                            "pin on GND or VCC, the other on a signal net)");
                 continue;
             }
-            const PinNet& rail = IsRail(a->second.name) ? a->second : b->second;
-            const PinNet& signal = IsRail(a->second.name) ? b->second : a->second;
+            const NetOfPin& rail = IsRail(a->second.name) ? a->second : b->second;
+            const NetOfPin& signal = IsRail(a->second.name) ? b->second : a->second;
             loaded_->circuit.tie(signal.net,
                                  rail.name == "VCC" ? LogicValue::One : LogicValue::Zero,
                                  DriveStrength::Weak);
@@ -253,15 +272,18 @@ private:
     }
 
     const Netlist& netlist_;
+    std::span<const StuckPin> stuck_;
     std::unique_ptr<LoadedCircuit> loaded_;
     std::map<std::string, PlacedPart, std::less<>> placed_;  // by reference
-    std::map<std::pair<std::string, PinIndex>, PinNet> pinNet_;
+    std::map<std::pair<std::string, PinIndex>, NetOfPin> pinNet_;
     std::vector<Diagnostic> errors_;
 };
 
 }  // namespace
 
-LoadResult BuildCircuit(const Netlist& netlist) { return Builder(netlist).build(); }
+LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck) {
+    return Builder(netlist, stuck).build();
+}
 
 LoadResult LoadNetlist(std::string_view text, std::string file) {
     const auto netlist = ParseNetlist(text, std::move(file));
@@ -282,13 +304,44 @@ LoadResult LoadNetlistFile(const std::filesystem::path& path) {
     return LoadNetlist(text, std::move(file));
 }
 
+std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view reference,
+                            std::string_view pin) {
+    const auto component = loaded.components.find(reference);
+    if (component == loaded.components.end()) {
+        return std::nullopt;
+    }
+    const auto pins = component->second->pins();
+    std::optional<PinIndex> index;
+    if (AllDigits(pin)) {
+        if (pin.size() <= 3) {
+            const std::size_t number = std::stoul(std::string(pin));
+            if (number >= 1 && number <= pins.size()) {
+                index = static_cast<PinIndex>(number - 1);
+            }
+        }
+    } else {
+        for (PinIndex i = 0; i < pins.size(); ++i) {
+            if (pins[i].name == pin) {
+                index = i;
+            }
+        }
+    }
+    if (!index) {
+        return std::nullopt;
+    }
+    for (const Connection& c : loaded.connections) {
+        if (c.reference == reference && c.pin == *index) {
+            return loaded.nets.at(c.net);
+        }
+    }
+    return loaded.circuit.netOf(PinId{ToIndex(component->second->firstPin()) + *index});
+}
+
 std::optional<NetId> ConnectorNet(const LoadedCircuit& loaded, std::string_view part,
                                   std::string_view pin) {
     for (const LoadedPart& p : loaded.parts) {
         if (p.info->name == part) {
-            const Component& connector = *loaded.components.at(p.reference);
-            return loaded.circuit.netOf(
-                PinId{ToIndex(connector.firstPin()) + connector.pinIndex(pin)});
+            return PinNet(loaded, p.reference, pin);
         }
     }
     return std::nullopt;

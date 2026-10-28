@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -40,9 +41,22 @@ struct LoadedCircuit {
 // unique_ptr: a Simulator keeps a Circuit&, so the circuit must not move after loading.
 using LoadResult = std::expected<std::unique_ptr<LoadedCircuit>, std::vector<Diagnostic>>;
 
-LoadResult BuildCircuit(const Netlist& netlist);  // all errors, sorted by line
+// Stuck-at Fault: the Pin's Net is held at `value` (Zero or One) at full strength.
+struct StuckPin {
+    std::string reference;
+    PinIndex pin;
+    LogicValue value;
+};
+
+LoadResult BuildCircuit(const Netlist& netlist,
+                        std::span<const StuckPin> stuck = {});  // all errors, by line
 LoadResult LoadNetlist(std::string_view text, std::string file);
 LoadResult LoadNetlistFile(const std::filesystem::path& path);  // diagnostics name the file only
+
+// Net at a Pin's pad: the Net it is listed on (also for a stuck Pin), else its own Net.
+// `pin` is a name or a number; nullopt if the reference or pin is unknown.
+std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view reference,
+                            std::string_view pin);
 
 // Net on `pin` of the first `part` connector, e.g. ("VIDEO", "SYNC_N"); nullopt if none.
 std::optional<NetId> ConnectorNet(const LoadedCircuit& loaded, std::string_view part,
