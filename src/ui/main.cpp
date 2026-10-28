@@ -21,6 +21,7 @@
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
 #include "netlist/units.hpp"
+#include "runner/probe_consumer.hpp"
 #include "runner/runner.hpp"
 #include "runner/tv_consumer.hpp"
 #include "ui/board_view.hpp"
@@ -35,11 +36,18 @@ constexpr int kExitUsage = 2;
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 800;
 constexpr float kBoardShare = 2.0f / 3.0f;
+constexpr ImU32 kLampOff = IM_COL32(70, 70, 70, 255);
+constexpr ImU32 kLampHigh = IM_COL32(230, 40, 40, 255);
+constexpr ImU32 kLampLow = IM_COL32(40, 200, 60, 255);
+constexpr ImU32 kLampPulse = IM_COL32(255, 170, 0, 255);
+constexpr std::string_view kUsage =
+    "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
     std::filesystem::path file;
     std::optional<std::filesystem::path> screenshot;
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
+    std::optional<std::string> probe;  // REF.PIN
 };
 
 std::optional<Options> ParseOptions(int argc, char** argv) {
@@ -62,6 +70,8 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             }
             options.after = std::chrono::nanoseconds(*duration / 1000);
             after = true;
+        } else if (arg == "--probe") {
+            options.probe = argv[++i];
         } else {
             return std::nullopt;
         }
@@ -164,7 +174,27 @@ bool SaveScreenshot(SDL_Renderer* renderer, const std::filesystem::path& path) {
     return ok;
 }
 
-int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const Options& options) {
+// "Probe  ● HIGH  ● LOW  ● PULSE", one row.
+void DrawLamps(ProbeLamps lamps) {
+    ImGui::TextUnformatted("Probe");
+    const auto lamp = [](bool lit, ImU32 colour, const char* name) {
+        ImGui::SameLine();
+        const float height = ImGui::GetTextLineHeight();
+        const float radius = height * 0.4f;
+        const ImVec2 at = ImGui::GetCursorScreenPos();
+        ImGui::GetWindowDrawList()->AddCircleFilled({at.x + radius, at.y + height / 2}, radius,
+                                                    lit ? colour : kLampOff);
+        ImGui::Dummy({2 * radius, height});
+        ImGui::SameLine();
+        ImGui::TextUnformatted(name);
+    };
+    lamp(lamps.high, kLampHigh, "HIGH");
+    lamp(lamps.low, kLampLow, "LOW");
+    lamp(lamps.pulse, kLampPulse, "PULSE");
+}
+
+int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const Options& options,
+              std::optional<Point> probeAt) {
     TvView view(renderer);
     const auto video = ConnectorNet(*loaded.circuit, "VIDEO", "VIDEO");
     const auto syncN = ConnectorNet(*loaded.circuit, "VIDEO", "SYNC_N");
@@ -172,13 +202,24 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const 
     if (video && syncN) {
         tv.emplace(*video, *syncN);
     }
-    Runner runner(loaded.circuit->circuit,
-                  tv ? std::vector<Consumer*>{&*tv} : std::vector<Consumer*>{});
+    ProbeConsumer probe;
+    std::vector<Consumer*> consumers;
+    if (tv) {
+        consumers.push_back(&*tv);
+    }
+    if (loaded.machine) {
+        consumers.push_back(&probe);
+    }
+    Runner runner(loaded.circuit->circuit, consumers);
     BoardView boardView(loaded.machine
                             ? std::optional<BoardScene>(std::in_place, loaded.machine->board(),
                                                         loaded.machine->pristineBoard(),
                                                         loaded.machine->designCircuit())
                             : std::nullopt);
+    if (probeAt) {
+        probe.touch(runner, loaded.machine->probeNet(*loaded.circuit, Layer::Front, *probeAt));
+        boardView.setProbeTip(probeAt);
+    }
     std::uint64_t seed = 1;
     Speed speed = Speed::RealTime;
     runner.powerOn(seed);
@@ -217,6 +258,12 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const 
 
         const ImVec2 available = ImGui::GetContentRegionAvail();
         boardView.draw({available.x * kBoardShare, available.y});
+        if (const auto click = boardView.takeClick(); click && loaded.machine) {
+            probe.touch(runner, click->onCopper ? loaded.machine->probeNet(*loaded.circuit,
+                                                                           click->layer, click->at)
+                                                : std::nullopt);
+            boardView.setProbeTip(click->onCopper ? std::optional(click->at) : std::nullopt);
+        }
         ImGui::SameLine();
         ImGui::BeginChild("side", {0, available.y});
         const float sideWidth = ImGui::GetContentRegionAvail().x;
@@ -232,6 +279,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const 
             list.AddText({at.x + (tvSize.x - textSize.x) / 2, at.y + (tvSize.y - textSize.y) / 2},
                          IM_COL32_WHITE, text);
             ImGui::Dummy(tvSize);
+        }
+        if (loaded.machine) {
+            DrawLamps(status.state == RunState::Off ? ProbeLamps{} : probe.lamps());
         }
 
         boardView.controls();
@@ -303,13 +353,25 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, Loaded& loaded, const 
 int main(int argc, char** argv) {
     const auto options = ParseOptions(argc, argv);
     if (!options) {
-        std::println(stderr,
-                     "usage: bw_ui <file.bwn|file.bwp> [--screenshot OUT.png [--after 1s]]");
+        std::println(stderr, "{}", kUsage);
         return kExitUsage;
     }
     Loaded loaded = Load(options->file);
     if (!loaded.circuit) {
         return kExitErrors;
+    }
+    std::optional<Point> probeAt;
+    if (options->probe) {
+        const std::string& pin = *options->probe;
+        const std::size_t dot = pin.find('.');
+        if (loaded.machine && dot != std::string::npos) {
+            probeAt = loaded.machine->padPosition(pin.substr(0, dot), pin.substr(dot + 1));
+        }
+        if (!probeAt) {
+            std::println(stderr, "bw_ui: unknown pin '{}'", pin);
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
     }
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -333,7 +395,7 @@ int main(int argc, char** argv) {
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
-    const int exitCode = RunWindow(window, renderer, loaded, *options);
+    const int exitCode = RunWindow(window, renderer, loaded, *options, probeAt);
 
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();

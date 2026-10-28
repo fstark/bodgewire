@@ -5,6 +5,7 @@
 #include <cmath>
 #include <numbers>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "board/copper.hpp"
@@ -24,6 +25,7 @@ constexpr ImU32 kCourtyard = IM_COL32(190, 190, 190, 150);
 constexpr ImU32 kReference = IM_COL32(230, 230, 230, 200);
 constexpr ImU32 kPinOne = IM_COL32(230, 230, 230, 230);
 constexpr ImU32 kHighlight = IM_COL32(255, 190, 0, 255);
+constexpr ImU32 kProbeRed = IM_COL32(220, 30, 30, 255);
 constexpr float kInactiveAlpha = 0.35f;
 constexpr float kInactiveHighlightAlpha = 0.6f;
 constexpr double kReferenceMm = 1.5;
@@ -248,6 +250,11 @@ void BoardView::draw(ImVec2 size) {
     for (std::size_t k = 0; k < board.components.size(); ++k) {
         DrawCourtyard(list, map, board.components[k], scene_->courtyard(k));
     }
+    if (tip_) {
+        const float radius = std::max(4.0f, map.pixels(400'000));
+        list.AddCircleFilled(map(*tip_), radius, kProbeRed);
+        list.AddCircle(map(*tip_), radius, IM_COL32_WHITE, 0, 1.0f);
+    }
     ImGui::EndChild();
 }
 
@@ -273,14 +280,23 @@ void BoardView::input(ImVec2 origin) {
             viewport_.fit(scene_->bounds(), {panel_.x, panel_.y});
         }
     }
-    if (const auto hover = scene_->hitTest(viewport_.toBoard(mouse), active_)) {
+    const Point at = viewport_.toBoard(mouse);
+    const auto hover = scene_->hitTest(at, active_);
+    if (hover) {
         highlight_ = scene_->netOf(*hover);
         const std::string text = scene_->hoverText(*hover);
         if (!text.empty()) {
             ImGui::SetTooltip("%s", text.c_str());
         }
     }
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        click_ = BoardClick{at, active_, hover && hover->kind != HitKind::Component};
+    }
 }
+
+std::optional<BoardClick> BoardView::takeClick() { return std::exchange(click_, std::nullopt); }
+
+void BoardView::setProbeTip(std::optional<Point> tip) { tip_ = tip; }
 
 void BoardView::controls() {
     ImGui::TextUnformatted("Layer");
