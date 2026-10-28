@@ -82,7 +82,7 @@ struct RunnerStatus {
     RunState state;
     Time simTime;              // ps
     std::uint64_t seed;
-    double ringWaitShare;      // fraction of the simulation thread's wall time spent waiting (S5)
+    double ringWaitShare;      // ring waits / (runUntil + ring pushes); pacing sleeps excluded (S5)
 };
 
 // Owns a Simulator on the Circuit; consumers and Circuit must outlive it. Starts Off.
@@ -100,11 +100,11 @@ public:
     void pause();
     void resume();
     void setSpeed(Speed speed);
-    void pauseAt(Time time);  // pause at the first slice end >= time (tests)
-    void watch(NetId net);    // start writing the Net's ring (P2f probe)
-    void unwatch(NetId net);
+    void pauseAt(Time time);  // one-shot: pause at the first slice end >= time; powerOn clears it
+    void watch(NetId net);    // counted: the Net's ring is written while any watch is held
+    void unwatch(NetId net);  // undoes one watch(); the slot is freed when none remain
 
-    void waitIdle();  // blocks until not Running and the devices thread has caught up
+    void waitIdle();  // blocks until all commands applied, not Running, devices caught up
     RunnerStatus status() const;
 };
 ```
@@ -160,12 +160,16 @@ class Runner {
     Dispatcher dispatcher_;                             // devices thread only
 
     // simulation thread
-    struct Watched { NetId net; Time pushedUntil; };    // Samples up to here already pushed
+    struct Watched { NetId net; int count; Time pushedUntil; };  // Samples up to here pushed
     std::array<std::optional<Watched>, kMaxWatched> watched_;
-    std::array<std::atomic<bool>, kMaxWatched> slotFree_;  // set by devices after Unwatch
+    std::array<std::atomic<bool>, kMaxWatched> slotFree_;  // all true; false on Watch, true again
+                                                           // once devices has applied Unwatch
+    std::optional<Time> pauseAt_;
 
     std::mutex mutex_; std::condition_variable wake_;   // commands
     std::vector<Command> commands_;                     // guarded by mutex_
+    std::uint64_t commandsQueued_ = 0;                  // guarded by mutex_
+    std::atomic<std::uint64_t> commandsApplied_{0};     // waitIdle
     std::atomic<std::uint64_t> markersPushed_{0}, markersDone_{0};  // waitIdle, power barrier
     std::atomic<RunState> state_{RunState::Off};
     std::atomic<Time> simTime_{0};
@@ -190,13 +194,16 @@ loop until stop:
   apply commands (under mutex_), in order:
     PowerOn(seed): wait markersDone_ == markersPushed_   (all old Samples consumed)
                    sim_.powerOn(seed); re-record watched Nets, pushedUntil = -1
-                   push PowerOn; state Running; rebase pacing; seed saved
+                   push PowerOn; state Running; pauseAt_ = nullopt; rebase pacing; seed saved
     PowerOff:      push PowerOff; state Off
     Pause/Resume:  state Paused / Running (Resume rebases pacing)
     Speed:         set; rebase pacing
-    PauseAt(t):    pauseAt = t
-    Watch(net):    free slot s (slotFree_); sim_.record(net); watched_[s] = {net, -1}; push Watch
-    Unwatch(net):  push Unwatch(s); sim_.stopRecording(net); watched_[s] = nullopt; slotFree_[s] = false
+    PauseAt(t):    pauseAt_ = t
+    Watch(net):    already watched: count += 1
+                   else lowest s with slotFree_[s]: slotFree_[s] = false; sim_.record(net);
+                   watched_[s] = {net, 1, -1}; push Watch(s, net)
+    Unwatch(net):  count -= 1; at 0: push Unwatch(s); sim_.stopRecording(net); watched_[s] = nullopt
+    then commandsApplied_ += 1 per command (notify)
   if state != Running: wait on wake_; continue
   if speed == RealTime:
       due = wallBase + (sim_.now() + 1 ms − simBase)      (as wall duration)
@@ -207,8 +214,11 @@ loop until stop:
       while !rings_[s].tryPush(sample): sleep 50 µs, waitedNs_ += …   (never drop, S3)
       pushedUntil = sim_.now()
   push SliceEnd(sim_.now()) (same wait); sim_.trimRecordings(); simTime_ = sim_.now()
-  if sim_.now() >= pauseAt: state Paused
+  runNs_ += time of runUntil + pushes (waits included)
+  if pauseAt_ && sim_.now() >= *pauseAt_: state Paused; pauseAt_ = nullopt
 ```
+
+The devices thread drains rings into `staged_` without limit, so the real bound on Samples in flight is the marker ring: at most 1024 slices (≈ 1 s simulated) ahead of the devices thread.
 
 `markersPushed_` is incremented after each marker push and notified (`std::atomic::notify_one`); the devices thread waits on it when idle.
 
@@ -230,7 +240,7 @@ loop until stop:
   markersDone_ += 1 (notify)
 ```
 
-Ties at the same time go in slot order. Slots are allocated in watch order and the Runner watches each consumer's `nets()` in order at construction, so `TvConsumer` gets VIDEO before SYNC_N at equal times, exactly like `TvInput::update()` (`video.time <= syncN.time`). The Tv thus receives the same calls as on the headless path: identical frames (S4).
+Ties at the same time go in slot order. Slots are allocated lowest-free first and the Runner watches each consumer's `nets()` in order at construction (never unwatched while the Runner lives), so `TvConsumer` gets VIDEO before SYNC_N at equal times, exactly like `TvInput::update()` (`video.time <= syncN.time`). The Tv thus receives the same calls as on the headless path: identical frames (S4).
 
 The ring wait cannot deadlock: the devices thread drains rings without waiting for a marker.
 
@@ -319,5 +329,6 @@ ui ──► runner ──► devices ──► sim
   - a second Consumer on VIDEO sees the same Samples as a Recorder-based reference;
   - pause at 20 ms, resume, pause at 60 ms: same frame; power on seed 2, run to 30 ms, power on seed 1, pause at 60 ms: frame of a fresh seed-1 run;
   - power off → published picture black, not locked;
-  - watch a Net mid-run → its Consumer gets the initial Sample at the watch time, then changes; unwatch → nothing more.
+  - watch a Net mid-run (a test Consumer whose `nets()` lists a Net no other Consumer uses, unwatched once right after construction) → it gets the initial Sample at the watch time, then changes; unwatch → nothing more;
+  - watch VIDEO a second time then unwatch it once → the TV still gets VIDEO (counted watches).
 - **Manual (bw_ui)**: Done-when list of UI_SHELL.md, plus: drag/resize the window for 2 s at `1×`, simulated time keeps pace (S5); status line ring wait < 25% at `1×`; `Max` ratio ≥ 80% of `bw run --tv`.

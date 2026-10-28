@@ -37,9 +37,9 @@ Out: Board view, probe by clicking, Repair actions (P2f); file-open dialog; soun
 ### S3 Simulation thread
 
 - Runs the Simulator in slices of 1 ms simulated time; at `1×` it sleeps between slices so simulated time does not get ahead of wall time.
-- Pause: stops at the end of the current slice. Power off: stops, the TV gets no signal (its inputs go to Z: black screen per TV.md). Power on: builds a fresh Simulator state for the same Circuit with the chosen seed.
+- Pause: stops at the end of the current slice. Power off: stops; the TV shows black, not locked. Power on: builds a fresh Simulator state for the same Circuit with the chosen seed.
 - Commands from the UI (power, pause, speed, seed) take effect at the next slice boundary.
-- Watching a Net (start/stop writing its ring) is also a command at a slice boundary; P2e only watches VIDEO and SYNC_N, but the runner supports it for P2f's probe.
+- Watching a Net (start/stop writing its ring) is also a command at a slice boundary; watches are counted, so a probe un-watching VIDEO does not cut the TV off. P2e only watches VIDEO and SYNC_N, but the runner supports it for P2f's probe.
 
 ### S4 Determinism
 
