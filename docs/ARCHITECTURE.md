@@ -183,7 +183,10 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P2a | Board layout via KiCad (spike) | done: KiCad kept as layout tool; `bw export-kicad`, `.kicad_pcb` reader, copper check from geometry (`bw check-board`). [BOARD_LAYOUT.md](p2a-board-layout/BOARD_LAYOUT.md) |
 | P2b | Connectors | done: `POWER` and `VIDEO` connector Parts on the Boards; outputs read through the connector; headless KiCad DRC. [CONNECTORS.md](p2b-connectors/CONNECTORS.md) |
 | P2c | TV | done: monitor model on the VIDEO connector (`src/devices`): sync separation, triggered deflection (rolls when sync is wrong), frame buffer; `bw run --tv` writes a BMP; no measurable cost on the simulation. [TV_PLAN.md](p2c-tv/TV_PLAN.md) |
-| P2 | Test-pattern generator — **first playable** | crystal, TTL counters → H/V sync + bars/grid, TV model, see-through board view, logic probe, chip swap, trace repair. Faults: dead counter output, broken trace, stuck gate output |
+| P2d | Faults, repairs, logic probe | headless: Nets from the Board's Copper; Stuck-at Faults and Broken Traces placed by hand in Puzzle files; chip swap and Trace mend; logic probe; checked on the TV picture. [FAULTS.md](p2d-faults/FAULTS.md) |
+| P2e | UI shell | SDL3 + ImGui window, simulation on a worker thread (rings, see Performance), live TV picture |
+| P2f | Board view | see-through Board drawn from the `.kicad_pcb`, probe by clicking, repair actions: completes the first playable |
+| P2 | Test-pattern generator — **first playable** | P2a–P2f together: crystal, TTL counters → H/V sync + bars/grid, TV model, see-through board view, logic probe, chip swap, trace repair. Faults: dead counter output, broken trace, stuck gate output |
 | P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files), repair validation; still on the P2 board |
 | P4 | Procedural faults | random fault generation, headless vetting (reject symptom-less or trivial candidates) |
 | Later | Machines | BW-1, BW-80, BW-2001: CPU models (6502, Z80), RAM/ROM, keyboards, LED display |
