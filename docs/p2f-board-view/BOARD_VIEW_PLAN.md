@@ -11,8 +11,8 @@ All 6 phases implemented 2026-10-28, commits ceb671e..72b5427 (289 tests, debug 
 - Screenshots (`--screenshot`, 2560 × 1600 on Retina) of the test pattern, counter (`no video`) and broken_trace show both Layers, pads, vias, courtyards, references and pin-1 marks.
 - Exit codes: screenshot ok 0, unwritable path 1, `--after` alone 2.
 
-## Remaining: user check (spec Done-when)
+## User check (spec Done-when): done 2026-10-28
 
-- [ ] Open `bw_ui puzzles/broken_trace.bwp`, hover H0, zoom along the highlight and find the crack.
-- [ ] Status `ui` < 16 ms at 100 px/mm (not measurable headlessly: needs the mouse wheel).
-- [ ] Look good enough to build P2g on; record tuning wishes here.
+- [x] Open `bw_ui puzzles/broken_trace.bwp`, hover H0, zoom along the highlight and find the crack.
+- [x] Status `ui` < 16 ms at 100 px/mm (not measurable headlessly: needs the mouse wheel).
+- [x] Look good enough to build P2g on ("works perfectly").
