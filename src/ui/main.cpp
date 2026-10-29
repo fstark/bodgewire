@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -40,6 +41,7 @@ constexpr int kWindowHeight = 800;
 constexpr float kBoardShare = 2.0f / 3.0f;
 constexpr std::string_view kUsage =
     "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] [--repair swap:REF,mend:LAYER:X:Y] "
+    "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] "
     "[--manual user|service] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -48,8 +50,22 @@ struct Options {
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
     std::optional<std::string> probe;  // REF.PIN
     std::vector<std::string> repair;
+    std::vector<std::string> clip;  // REF.PIN[:T]
+    std::optional<Time> rate;       // Analyzer sample period, ps
     bool userManual = false, serviceManual = false;
 };
+
+std::vector<std::string> SplitCommas(std::string_view list) {
+    std::vector<std::string> items;
+    for (std::size_t start = 0;;) {
+        const std::size_t comma = list.find(',', start);
+        items.emplace_back(list.substr(start, comma - start));
+        if (comma == std::string_view::npos) {
+            return items;
+        }
+        start = comma + 1;
+    }
+}
 
 std::optional<Options> ParseOptions(int argc, char** argv) {
     if (argc < 2) {
@@ -83,15 +99,15 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
         } else if (arg == "--repair") {
-            const std::string_view list = argv[++i];
-            for (std::size_t start = 0;;) {
-                const std::size_t comma = list.find(',', start);
-                options.repair.emplace_back(list.substr(start, comma - start));
-                if (comma == std::string_view::npos) {
-                    break;
-                }
-                start = comma + 1;
+            options.repair = SplitCommas(argv[++i]);
+        } else if (arg == "--clip") {
+            options.clip = SplitCommas(argv[++i]);
+        } else if (arg == "--rate") {
+            const auto period = ParsePeriodFromFrequency(argv[++i]);
+            if (!period || std::ranges::find(kAnalyzerPeriods, *period) == kAnalyzerPeriods.end()) {
+                return std::nullopt;
             }
+            options.rate = *period;
         } else {
             return std::nullopt;
         }
@@ -256,6 +272,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     Speed speed = Speed::RealTime;
     toolbar.userManualOpen = options.userManual;
     toolbar.serviceManualOpen = options.serviceManual;
+    toolbar.analyzerOpen = !options.clip.empty();
     ManualWindows manualWindows;
     boardView.setTooltip([&loaded](const BoardScene& scene, const Hit& hit) {
         return Tooltip(scene, hit, loaded.manuals.manuals);
@@ -331,6 +348,20 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     result = session.repair(MendRepair{click->active, click->at});
                 }
                 break;
+            case Tool::Clip:
+                if (pick && pick->hit.kind == HitKind::Pad) {
+                    const BoardComponent& part =
+                        session.drawnBoard()->components[pick->hit.component];
+                    const std::string& pin = part.pads[pick->hit.index].number;
+                    if (const auto channel = session.clipAt(part.reference, pin)) {
+                        session.unclip(*channel);
+                    } else if (session.clip(part.reference, pin)) {
+                        toolbar.analyzerOpen = true;
+                    } else {
+                        result = RepairResult::Refused;  // all Channels used: amber flash
+                    }
+                }
+                break;
             }
             if (result == RepairResult::Refused) {
                 toolbar.refused();
@@ -339,6 +370,13 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         const auto tip = session.probeTip();
         boardView.setProbeTip(tip ? std::optional(tip->at) : std::nullopt);
         boardView.setBlobs(session.blobs());
+        std::vector<ClipTag> tags;
+        for (std::size_t c = 0; c < kChannels; ++c) {
+            if (const auto& clip = session.clips()[c]) {
+                tags.push_back({clip->at, c});
+            }
+        }
+        boardView.setClips(tags);
         ImGui::SameLine();
         ImGui::BeginChild("side", {0, available.y});
         const std::string_view lock =
@@ -405,6 +443,31 @@ int main(int argc, char** argv) {
             return kExitUsage;
         }
         session.touch(ProbeTip{*at, Layer::Front});
+    }
+    AnalyzerSettings analyzer;
+    if (options->rate) {
+        analyzer.period = *options->rate;
+    }
+    for (const std::string& item : options->clip) {
+        const std::size_t colon = item.find(':');
+        const std::string pin = item.substr(0, colon);
+        const std::size_t dot = pin.find('.');
+        const auto trigger = colon == std::string::npos
+                                 ? std::optional(TriggerCondition::Any)
+                                 : ParseTrigger(std::string_view(item).substr(colon + 1));
+        const auto channel = dot == std::string::npos
+                                 ? std::nullopt
+                                 : session.clip(pin.substr(0, dot), pin.substr(dot + 1));
+        if (!trigger || !channel) {
+            std::println(stderr, "bw_ui: unknown pin '{}'", item);
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+        analyzer.trigger[*channel] = *trigger;
+    }
+    if (!options->clip.empty()) {
+        session.setAnalyzer(analyzer);
+        session.arm();
     }
     for (const std::string& text : options->repair) {
         const auto repair = ParseRepair(text);

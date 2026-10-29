@@ -1,5 +1,6 @@
 #include "ui/toolbar.hpp"
 
+#include <algorithm>
 #include <string>
 
 #include <imgui.h>
@@ -69,6 +70,11 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
             blocked = powered;
             action = powered ? "Mend: power off first" : "Mend: click a crack";
             break;
+        case Tool::Clip:
+            blocked =
+                std::ranges::all_of(session.clips(), [](const auto& c) { return c.has_value(); });
+            action = blocked ? "Clip: all 8 channels used" : "Clip: click a pin";
+            break;
         }
         ImGui::SameLine(0, 40);
         ImGui::TextColored(blocked ? kAmber : kPlain, "%s", action);
@@ -118,6 +124,10 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
         if (ToolButton("Mend (M)", board.tool() == Tool::Mend)) {
             board.setTool(Tool::Mend);
         }
+        ImGui::SameLine(0, 2);
+        if (ToolButton("Clip (C)", board.tool() == Tool::Clip)) {
+            board.setTool(Tool::Clip);
+        }
         ImGui::SameLine(0, 24);
         const bool front = board.activeLayer() == Layer::Front;
         if (ToolButton(front ? "F.Cu (L)" : "B.Cu (L)", false)) {
@@ -136,12 +146,21 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
     if (ToolButton("Service Manual (H)", serviceManualOpen)) {
         serviceManualOpen = !serviceManualOpen;
     }
+    if (session.machine()) {
+        ImGui::SameLine(0, 24);
+        if (ToolButton("Analyzer (A)", analyzerOpen)) {
+            analyzerOpen = !analyzerOpen;
+        }
+    }
     if (!ImGui::GetIO().WantTextInput) {
         if (ImGui::IsKeyPressed(ImGuiKey_U, false)) {
             userManualOpen = !userManualOpen;
         }
         if (ImGui::IsKeyPressed(ImGuiKey_H, false)) {
             serviceManualOpen = !serviceManualOpen;
+        }
+        if (session.machine() && ImGui::IsKeyPressed(ImGuiKey_A, false)) {
+            analyzerOpen = !analyzerOpen;
         }
     }
 }

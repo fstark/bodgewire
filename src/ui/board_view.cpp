@@ -388,6 +388,20 @@ void BoardView::draw(ImVec2 size) {
         list.AddCircleFilled(map(*tip_), radius, kProbeRed);
         list.AddCircle(map(*tip_), radius, IM_COL32_WHITE, 0, 1.0f);
     }
+    for (const ClipTag& tag : clips_) {
+        const float side = std::max(12.0f, map.pixels(1'000'000));
+        const ImVec2 pad = map(tag.at);
+        const ImVec2 min{pad.x + 2, pad.y - 2 - side};
+        const ImVec2 max{pad.x + 2 + side, pad.y - 2};
+        list.AddRectFilled(min, max, kChannelColours[tag.channel], 3.0f);
+        list.AddRect(min, max, IM_COL32_BLACK, 3.0f, 0, 1.0f);
+        const char digit[2] = {static_cast<char>('1' + tag.channel), '\0'};
+        const float fontSize = std::min(ImGui::GetFontSize(), side);
+        const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, digit);
+        list.AddText(nullptr, fontSize,
+                     {(min.x + max.x - text.x) / 2, (min.y + max.y - text.y) / 2}, IM_COL32_BLACK,
+                     digit);
+    }
     ImGui::EndChild();
 }
 
@@ -410,6 +424,9 @@ void BoardView::keys() {
     }
     if (ImGui::IsKeyPressed(ImGuiKey_M, false)) {
         tool_ = Tool::Mend;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_C, false)) {
+        tool_ = Tool::Clip;
     }
     if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
         escape_ = true;

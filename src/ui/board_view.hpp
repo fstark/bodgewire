@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <functional>
 #include <optional>
@@ -9,13 +10,25 @@
 
 #include <imgui.h>
 
+#include "instruments/logic_analyzer.hpp"
 #include "session/session.hpp"
 #include "view/board_scene.hpp"
 #include "view/viewport.hpp"
 
 namespace bw {
 
-enum class Tool : std::uint8_t { Probe, Swap, Mend };
+enum class Tool : std::uint8_t { Probe, Swap, Mend, Clip };
+
+// Analyzer Channel colours, readable on the green Board; shared with the Analyzer window.
+inline constexpr std::array<ImU32, kChannels> kChannelColours{
+    IM_COL32(255, 230, 0, 255),   IM_COL32(0, 230, 255, 255),   IM_COL32(255, 60, 220, 255),
+    IM_COL32(255, 140, 0, 255),   IM_COL32(140, 255, 100, 255), IM_COL32(110, 160, 255, 255),
+    IM_COL32(255, 150, 180, 255), IM_COL32(255, 255, 255, 255)};
+
+struct ClipTag {
+    Point at;  // pad, nm
+    std::size_t channel;
+};
 
 struct BoardTarget {
     std::size_t component;
@@ -60,6 +73,7 @@ public:
     void setTooltip(TooltipText text) { tooltip_ = std::move(text); }
     void setProbeTip(std::optional<Point> tip);  // drawn above everything
     void setBlobs(std::span<const SolderBlob> blobs) { blobs_.assign(blobs.begin(), blobs.end()); }
+    void setClips(std::span<const ClipTag> clips) { clips_.assign(clips.begin(), clips.end()); }
 
 private:
     struct Flash {
@@ -67,7 +81,7 @@ private:
         std::chrono::steady_clock::time_point until;
     };
 
-    void keys();                // L, F, P, S, M, +, -, Esc
+    void keys();                // L, F, P, S, M, C, +, -, Esc
     void input(ImVec2 origin);  // hover, zoom, pan, click while the panel is hovered or dragged
     PickReach reach() const;
 
@@ -89,6 +103,7 @@ private:
     std::optional<BoardClick> click_;
     std::optional<Point> tip_;
     std::vector<SolderBlob> blobs_;
+    std::vector<ClipTag> clips_;
     TooltipText tooltip_;
 };
 

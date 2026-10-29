@@ -15,7 +15,7 @@ public:
     void draw(Session& session, BoardView& board, Speed& speed, std::uint64_t seed);
     void refused();  // a click the tool could not act on: flash amber
 
-    bool userManualOpen = false, serviceManualOpen = false;
+    bool userManualOpen = false, serviceManualOpen = false, analyzerOpen = false;
 
 private:
     std::chrono::steady_clock::time_point flashUntil_{};
