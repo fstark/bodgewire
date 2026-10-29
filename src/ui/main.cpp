@@ -23,6 +23,7 @@
 #include "netlist/diagnostic.hpp"
 #include "netlist/units.hpp"
 #include "session/session.hpp"
+#include "ui/analyzer_window.hpp"
 #include "ui/board_view.hpp"
 #include "ui/loaded.hpp"
 #include "ui/manual_view.hpp"
@@ -274,6 +275,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     toolbar.serviceManualOpen = options.serviceManual;
     toolbar.analyzerOpen = !options.clip.empty();
     ManualWindows manualWindows;
+    AnalyzerWindow analyzerWindow;
     boardView.setTooltip([&loaded](const BoardScene& scene, const Hit& hit) {
         return Tooltip(scene, hit, loaded.manuals.manuals);
     });
@@ -393,6 +395,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         ImGui::End();
         manualWindows.draw(toolbar.userManualOpen, toolbar.serviceManualOpen,
                            loaded.manuals.manuals, boardView, DesignOf(session));
+        if (session.machine()) {
+            analyzerWindow.draw(toolbar.analyzerOpen, session);
+        }
 
         ImGui::Render();
         const ImGuiIO& io = ImGui::GetIO();
