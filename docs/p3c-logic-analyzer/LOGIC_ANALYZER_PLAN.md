@@ -11,7 +11,9 @@ Spec: [LOGIC_ANALYZER.md](LOGIC_ANALYZER.md)
 | 4 | Session: Clips, settings, arm/disarm, rebuild | done f86e8fd |
 | 5 | Board: `Clip (C)` tool, Clip tags, `Analyzer (A)` toggle, `--clip`/`--rate` | done 090f547 |
 | 6 | `Logic Analyzer` window + screenshots | done 5d18ddc |
-| 7 | Release check, user check, docs | release done; user check pending |
+| 7 | Release check, user check, docs | done |
+
+P3c DONE 2026-10-29 (user: "worked well", good enough; feedback below).
 
 Implemented ca60a68..5d18ddc (2026-10-29): 374 tests pass in debug and release. Release `broken_trace` with 8 Clips at 100 MHz (`CLK` included), armed with a Trigger that never fires: 1.00×, `ui` 0.4 ms (P3b: 0.5 ms).
 
@@ -24,13 +26,10 @@ Implemented ca60a68..5d18ddc (2026-10-29): 374 tests pass in debug and release. 
 - `Analyzer (A)` button and key only with a Machine.
 - Screenshot `stuck_gate --clip U12.11,U12.12,U12.13 --rate 100kHz`: `4Y` flat high as expected; `4A` reads flat low at 100 kHz (the plan guessed "moving").
 
-## Remaining
+## Later (user check feedback)
 
-### 7.2 — User check
-
-User diagnoses the three Puzzles with the Analyzer (spec "Done when"). Record feedback under "Later" in this plan.
-
-### 7.3 — Docs
-
-- `docs/ARCHITECTURE.md` roadmap P3c row: done with the commit range and a link to this plan.
-- Commit: `"docs: P3c logic analyzer done"`
+- Hard to understand how the Analyzer works: the link between the `Clip` tool and the Analyzer window is not self-evident.
+- Poor UI feedback on refused actions, e.g. clipping (or probing) a Trace instead of a pin.
+- 4096 points per Channel is not enough.
+- Intermittent bugs when navigating the Capture (zoom/pan).
+- General UI improvements needed (with P3b "Later").
