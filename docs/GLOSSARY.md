@@ -194,6 +194,16 @@ An Instrument reading voltage levels and continuity.
 **Trigger**:
 A condition, such as an address appearing on a Bus, that marks when an Instrument should capture.
 
+**Channel**:
+One input of an Instrument, recorded as one waveform.
+
+**Clip**:
+A Logic Analyzer lead attached to one pad; it feeds one Channel.
+_Avoid_: Probe (that is the Logic Probe)
+
+**Capture**:
+What a Logic Analyzer recorded around one Trigger: every Channel over the same sample points.
+
 **See-through Board**:
 The single top-down view of a Board showing every Layer at once, the back seen through the board rather than flipped.
 
