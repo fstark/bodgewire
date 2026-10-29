@@ -55,9 +55,10 @@ Out: bus grouping and hex display, protocol decoding, repeat/auto-arm, pause-on-
   - Trigger: `rise`/`fall` only on a 0→1 / 1→0 between consecutive points; levels ANDed with an edge; all-`any` triggers at the first point; position 10/50/90 % puts the Trigger at point 409/2048/3686; a Trigger before the pre-Trigger memory is full leaves the start empty;
   - test pattern at 1 MHz, Trigger `fall` on `U6.6` (`LINE_END_N`): the next falling edge is 64 points after the Trigger; `U2.9` follows `U6.6`;
   - no leaks: in `broken_trace`, `U1.14` toggles and `U13.6` does not; in `stuck_gate`, `U12.11` is constant 1;
-  - Session: Clips survive a Repair and resolve to the rebuilt Circuit's Nets; arming with the power off captures after power-on.
+  - Session: Clips survive a Repair and resolve to the rebuilt Circuit's Nets; arming with the power off captures after power-on; a Capture does not re-arm across a Repair;
+  - a Clip added on a Net already watched (another Clip, the probe, the TV) gets its current value, not X.
 - `--screenshot` of `broken_trace --clip U1.14:r,U13.6,U6.6 --rate 1MHz`, read by the agent: tags on the Board, window, lanes, Trigger line.
-- Release: test pattern at `1×` with 8 Clips including `CLK` at 100 MHz: ≈ 1.00×, `ui` ms within noise.
+- Release: `broken_trace` (the test pattern Board) at `1×` with 8 Clips including `CLK` at 100 MHz: ≈ 1.00×, `ui` ms within noise.
 
 ## Done when
 

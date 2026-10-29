@@ -71,7 +71,7 @@ Add the class to `logic_analyzer.hpp` (include `"sim/simulator.hpp"`). In the `.
 
 ### 2.2 — Tests
 
-- `tests/instruments/logic_analyzer_test.cpp`: `analyzer: LINE_END_N every 64 points` on `test_pattern.bwn` (`LoadNetlistFile`, `Simulator sim(loaded->circuit)`, `sim.powerOn(1)`, construct, arm, `runUntil` in 1 ms steps with `update()` until `Captured`; Trigger `Fall` on ch0, 1 MHz, `Early`; the next 1→0 on ch0 after `trigger` is at `trigger + 64`).
+- `tests/instruments/logic_analyzer_test.cpp`: `analyzer: LINE_END_N every 64 points` on `test_pattern.bwn` (`LoadNetlistFile`, `Simulator sim(loaded->circuit)`, `sim.powerOn(1)`, construct, arm, `runUntil` in 1 ms steps with `update()` until `Captured`; Trigger `Fall` on ch0, 1 MHz, `Early`; the next 1→0 on ch0 after `trigger` is at `trigger + 64`; ch1 on `PinNet(*loaded, "U2", "9")` equals ch0 at every point from `first`).
 - Create `tests/machines/logic_analyzer_test.cpp` (tag `[machines]`): `analyzer: crack stops H0` (`broken_trace`, `machine->build()`, nets via `PinNet(**built, "U1", "14")` and `("U13", "6")`, 1 MHz, all `Any`: ch0 has at least one change across the Capture, ch1 none) and `analyzer: stuck gate` (`stuck_gate`, `U12.11`: every point from `first` is 1).
 
 `tests/CMakeLists.txt`: add `machines/logic_analyzer_test.cpp`.
@@ -88,16 +88,23 @@ Add the class to `logic_analyzer.hpp` (include `"sim/simulator.hpp"`). In the `.
 
 The engine on the devices thread, configured from the UI thread (design §2.2, §4.2, §5.3).
 
+### 3.0 — Runner: `Rewatch` and `Consumer::seed`
+
+- `consumer.hpp`: `virtual void seed(NetId net, Sample sample) {}` ("current value of a Net already watched; may be older than Samples already fed").
+- `dispatcher.hpp`: `MarkerKind::Rewatch`; `std::array<std::optional<Sample>, kMaxWatched> last_;`. `dispatcher.cpp`: `sliceEnd` stores `last_[best]` per dispatched Sample; `Watch` resets the slot's `last_`; `PowerOn` resets all; `Rewatch`: if `active_` and `last_`, `seed` on each Consumer whose `nets()` contain the slot's Net.
+- `runner.cpp` `CommandKind::Watch` on an already-watched Net: `++count`, then `pushMarker({MarkerKind::Rewatch, slot, net})`.
+- Test `runner: rewatch seeds the last value` in `tests/runner/runner_test.cpp`: a test Consumer on the `VCC`-tied `U1.CLR_N` Net recording `seed` calls; run 1 ms, `watch` the Net again, `waitIdle`: one `seed` with value 1.
+
 ### 3.1 — Consumer
 
 Create `src/runner/analyzer_consumer.hpp/.cpp` as design §2.2:
 
-- `configure(runner, config)`: lock, `pending_ = config`, unlock, `generation_.fetch_add(1, release)`; then `runner.watch` each Net in `config.nets` not in `watched_` (one watch per Clip, so counted per Channel), `runner.unwatch` each Net of `watched_` no longer present (per Channel); `watched_ = config.nets`. Simplest correct form: watch all new Channels' Nets first, then unwatch all old Channels' Nets.
+- `configure(runner, config)`: lock, `pending_ = config`, unlock, `generation_.fetch_add(1, release)`; set the expected phase (design §4.2) from `sent_`, then `sent_ = config`; then `runner.watch` each Net in `config.nets` not in `watched_` (one watch per Clip, so counted per Channel), `runner.unwatch` each Net of `watched_` no longer present (per Channel); `watched_ = config.nets`. Simplest correct form: watch all new Channels' Nets first, then unwatch all old Channels' Nets.
 - `nets()`: if `generation_.load(acquire) != netsGeneration_`: `adoptNets()` (lock, rebuild distinct `nets_` and `masks_` from `pending_.nets`, store generation). Return `nets_`.
-- `sample(net, s)`: `adopt(s.time)` if `generation_ != configGeneration_`; find `net` in `nets_` (≤ 8, linear); `state_.change(s.time, masks_[i], s.value)`.
-- `advanceTo(t)`: adopt if needed; `state_.advanceTo(t)`; `phase_.store(state_.phase(), release)`; publish the Capture if `serial != published_` (`captures_.back() = state_.capture(); captures_.publish();`).
-- `powerOn()`/`powerOff()`: forward to `state_`, store `phase_`.
-- `adopt(now)`: design §5.3.
+- `sample(net, s)`: `adopt()` if `generation_ != configGeneration_`; find `net` in `nets_` (≤ 8, linear); `state_.change(s.time, masks_[i], s.value)`. `seed` = `sample`.
+- `advanceTo(t)`: adopt if needed; `state_.advanceTo(t)`; `now_ = t`; `phase_.store(state_.phase(), release)`; publish the Capture if `serial != published_` (`captures_.back() = state_.capture(); captures_.publish();`).
+- `powerOn()`/`powerOff()`: forward to `state_` (`powerOn` also `now_ = 0`), store `phase_`.
+- `adopt()`: design §5.3, at `now_`.
 
 `src/runner/CMakeLists.txt`: add `analyzer_consumer.cpp` (first).
 
@@ -109,6 +116,7 @@ Create `tests/runner/analyzer_consumer_test.cpp` (tag `[runner]`), on `test_patt
 - `analyzer consumer: armed before power-on` — `phase()` is `Armed` after `configure` while Off; `Captured` after the run.
 - `analyzer consumer: reconfigure while armed restarts` — impossible Trigger (`LINE_END_N` `High` and `Low` on two Channels of the same Net), run 1 ms, reconfigure with a possible one: Captured, `triggerTime >= 1 ms`.
 - `analyzer consumer: new clip gets its initial value` — run 1 ms with no Clips, then configure ch0 on `VCC`-tied `U1.CLR_N` Net (`PinNet(*loaded, "U1", "1")`) armed `Any`, run to 2 ms: every point from `first` is 1, none X.
+- `analyzer consumer: second clip on a watched net` — as above with ch0 only (not armed), run 1 ms, then ch0 and ch1 on that Net armed `Any`, run to 2 ms: ch1 every point from `first` is 1.
 
 `tests/CMakeLists.txt`: add `runner/analyzer_consumer_test.cpp`.
 
@@ -131,7 +139,7 @@ Clips and Analyzer state on the bench (design §2.3, §3.1).
 `src/session/session.cpp`:
 
 - `makeLive`: `consumers.push_back(&live->analyzer)` when `machine_`, after the probe.
-- `powerOn`: after `touchLive()` in the rebuild branch, `configureLive()`.
+- `powerOn`: in the rebuild branch, before `live_.reset()`, `analyzer_.armed = false` unless the old phase is `Armed`/`Filling` (design §3.1); after `touchLive()`, `configureLive()`.
 - `clip(reference, pin)`: no Machine → nullopt; `component = machine_->designCircuit().components.find(reference)`; pin index via `FindPin` (number or name) else nullopt; `number = std::to_string(index + 1)`; `at = machine_->padPosition(reference, number)` else nullopt; already clipped there → that Channel; lowest free Channel else nullopt; `label = std::format("{}.{} {}", reference, number, spec.name)`; store, `configureLive()`.
 - `unclip(c)`: reset, `configureLive()`. `clipAt`: match reference and number (pin given as number, as the Board passes it).
 - `setAnalyzer(settings)`: `analyzer_.settings = settings`, `configureLive()`. `arm()`/`disarm()`: design §3.1.
@@ -145,7 +153,8 @@ Resistors have no `Component`: `clip` on `R1` returns nullopt (no Datasheet pins
 
 - `session: clips` — `broken_trace`: `clip("U6", "6")` → 0, `clip("U2", "9")` → 1, `clipAt("U6", "6")` → 0, `clips()[0]->label == "U6.6 1Y"`, `clip("U6", "1Y")` → 0 (same pad), unclip 0 then `clip("U9", "5")` → 0; fill to 8 then a ninth → nullopt; `clip("U99", "1")` → nullopt.
 - `session: clips survive a repair` — clip `U13.6` and `U1.14`: `clipNet(0) != clipNet(1)`; power on, `RunTo` 1 ms, power off, mend at `kH0Crack`, power on: `clipNet(0) == clipNet(1)`; power off.
-- `session: arm before power-on captures` — `stuck_gate`, clip `U12.11`, `setAnalyzer({.period = 1'000'000})`, `arm()`, power on, `RunTo` 5 ms: `analyzerPhase() == Captured`, `captures().update()`, every point from `first` has bit 0 high.
+- `session: arm before power-on captures` — `stuck_gate`, clip `U12.11`, `setAnalyzer({.period = 1'000'000})`, `arm()`: `analyzerPhase() == Armed` while Off; power on, `RunTo` 5 ms: `analyzerPhase() == Captured`, `captures().update()`, every point from `first` has bit 0 high.
+- `session: a capture is not re-armed by a repair` — `broken_trace`, clip `U1.14`, arm, power on, `RunTo` 5 ms (Captured), power off, mend at `kH0Crack`, power on, `RunTo` 6 ms: `analyzerPhase() == Idle`.
 
 ### Fence
 
@@ -167,7 +176,7 @@ Clipping from the Board, visible tags, the window toggle (window body in phase 6
 
 ### 5.2 — Toolbar
 
-`src/ui/toolbar.hpp`: `bool analyzerOpen = false;`. `src/ui/toolbar.cpp`: action text `case Tool::Clip:` → `"Clip: click a pin"`; `Clip (C)` button after `Mend (M)`; `Analyzer (A)` toggle after `Service Manual (H)`, key `A` in the same `WantTextInput` guard.
+`src/ui/toolbar.hpp`: `bool analyzerOpen = false;`. `src/ui/toolbar.cpp`: action text `case Tool::Clip:` → `"Clip: click a pin"`, or `"Clip: all 8 channels used"` in amber when every `session.clips()` entry is set; `Clip (C)` button after `Mend (M)`; `Analyzer (A)` toggle after `Service Manual (H)`, key `A` in the same `WantTextInput` guard.
 
 ### 5.3 — `main.cpp`
 
@@ -210,8 +219,8 @@ private:
 ```
 
 - Window: `SetNextWindowSize({760, 330}, FirstUseEver)`, position bottom-left of the work area, `ImGuiWindowFlags_NoSavedSettings`, title `Logic Analyzer`.
-- Header: phase text (spec S2 names; `Armed` and `!session.powered()` → `armed: waiting for power`; `Captured` or Idle with `shown_` → `captured`), `Arm` (calls `session.arm()`) or `Stop` (`session.disarm()`) when Armed/Filling, `Rate` combo over `kAnalyzerPeriods` labelled `FormatFrequency` (`1 kHz` … `100 MHz`), `Trigger at` combo `10 %`/`50 %`/`90 %`; changes → `session.setAnalyzer`.
-- Table, 3 columns (`ImGuiTableFlags_SizingFixedFit`, last stretch): per Channel colour swatch + label or greyed `free`, trigger combo (`any`, `0`, `1`, `rise`, `fall`; `PushID(channel)`), `x` small button (`session.unclip`), lane (`Dummy` of lane height, drawn with the window draw list).
+- Header: phase text (spec S2 names; `Armed` and `!session.powered()` → `armed: waiting for power`; `Idle` → `idle` even with an old Capture shown), `Arm` (calls `session.arm()`) or `Stop` (`session.disarm()`) when Armed/Filling, `Rate` combo over `kAnalyzerPeriods` labelled `FormatFrequency` (`1 kHz` … `100 MHz`), `Trigger at` combo `10 %`/`50 %`/`90 %`; changes → `session.setAnalyzer`.
+- Table, 3 columns (`ImGuiTableFlags_SizingFixedFit`, last stretch): per Channel colour swatch + label or greyed `free`, trigger combo (`any`, `0`, `1`, `rise`, `fall`; `PushID(channel)`), `×` small button (`session.unclip`), lane (`Dummy` of lane height, drawn with the window draw list).
 - Lanes, axis, input, readouts: design §5.4. `FormatTime` and `FormatFrequency` in the anonymous namespace. Lane label from `shown_->labels[c]` drawn faintly inside the lane when it differs from the current Clip label.
 - No Capture: `arm, then power on` greyed in place of the lanes.
 

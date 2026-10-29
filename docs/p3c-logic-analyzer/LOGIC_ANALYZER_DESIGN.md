@@ -157,15 +157,17 @@ public:
     std::span<const NetId> nets() const override;  // distinct clipped Nets
     void powerOn() override;
     void sample(NetId net, Sample sample) override;
+    void seed(NetId net, Sample sample) override;  // = sample()
     void advanceTo(Time time) override;
     void powerOff() override;
 
 private:
     void adoptNets() const;            // devices: pending Nets → nets_, masks_
-    void adopt(Time now);              // devices: pending config → state_
+    void adopt();                      // devices: pending config → state_, from now_
 
     // UI thread
     std::array<std::optional<NetId>, kChannels> watched_;
+    AnalyzerConfig sent_;              // last configure(), for the UI-side phase
     // shared
     mutable std::mutex mutex_;
     AnalyzerConfig pending_;                   // guarded by mutex_
@@ -177,6 +179,7 @@ private:
     mutable std::vector<NetId> nets_;          // distinct
     mutable std::vector<std::uint8_t> masks_;  // Channels per nets_ entry
     std::uint64_t configGeneration_ = 0;
+    Time now_ = 0;                 // last slice end; 0 after power-on
     AnalyzerConfig applied_;
     std::uint64_t published_ = 0;  // Capture serial last published
     AnalyzerState state_;
@@ -228,6 +231,8 @@ void Session::configureLive() {
 
 `PinNet` on the built Circuit gives the electrical Net at the pad (the same lookup `bw run --probe` uses), so no Fault leaks into labels and a crack shows. `clip()` resolves the pin through `FindPin` on `machine_->designCircuit()` (number or name → number), the label from the `PinSpec` name, `at` from `Machine::padPosition`. `arm()`: `++analyzer_.arms; analyzer_.armed = true;` then configure; `disarm()`: `armed = false`.
 
+Rebuild: the new `AnalyzerConsumer` starts with `arms = 0`, so a still-`armed` config would re-arm it. Before replacing the Live, `powerOn` sets `analyzer_.armed = false` unless the old phase is `Armed`/`Filling` (a finished Capture is not re-armed by a Repair; the window keeps showing it).
+
 Cost: none per event; one `configure` per user action.
 
 ### 3.2 Board view (`src/ui/board_view.hpp/.cpp`)
@@ -263,7 +268,7 @@ case Tool::Clip:
     break;
 ```
 
-- Each frame before `boardView.draw`: `boardView.setClips(tags)` built from `session.clips()`. After the side panel: `analyzerWindow.draw(toolbar.analyzerOpen, session)`.
+- Each frame before `boardView.draw`: `boardView.setClips(tags)` built from `session.clips()`. After `manualWindows.draw`, when `session.machine()`: `analyzerWindow.draw(toolbar.analyzerOpen, session)`.
 
 ### 3.5 Build
 
@@ -279,10 +284,14 @@ case Tool::Clip:
 
 `configure()` (UI): lock, `pending_ = config`, unlock, `generation_++` (release), then `watch` every new Net and `unwatch` every Net no longer clipped (counted, as `ProbeConsumer::touch`: the generation is visible before the Watch marker, so the initial Sample of a new Net is not dropped).
 
+The devices thread adopts only while slices run, so `configure()` also stores the expected phase itself (Off and Paused show the right state): `Armed` when armed and (`arms` changed or the phase is `Armed`/`Filling`), `Idle` when disarmed from `Armed`/`Filling`. The next `advanceTo` overwrites it with the real one.
+
+Already watched Nets: a counted `watch` of a Net that already has a slot sends no initial Sample, so a second Clip on a constant Net (or one on the probe's or TV's Net) would stay X. Runner change: a repeated watch pushes a `Rewatch` marker for the slot; the Dispatcher keeps the last dispatched Sample per slot (cleared on Watch and PowerOn) and on `Rewatch` calls the new `Consumer::seed(net, sample)` (default no-op) on each Consumer whose `nets()` include the Net. `AnalyzerConsumer::seed` is `sample()`: an older time is harmless (no point is emitted, the value is the current one).
+
 Devices side, two adoption points:
 
 - `nets()` (const, called by the Dispatcher before each fan-out): if `generation_ != netsGeneration_`, `adoptNets()` rebuilds `nets_`/`masks_` from `pending_` under the lock. One relaxed atomic load per call otherwise.
-- `sample()` / `advanceTo()`: if `generation_ != configGeneration_`, `adopt(now)` copies `pending_` to `applied_` and updates `state_` (§5.3).
+- `sample()` / `seed()` / `advanceTo()`: if `generation_ != configGeneration_`, `adopt()` copies `pending_` to `applied_` and updates `state_` (§5.3). Commands land between slices, so the change takes effect at the last slice end `now_`.
 
 `advanceTo()` then stores `phase_` and, if `state_.capture().serial != published_`, copies the Capture into `captures_.back()` and publishes.
 
@@ -325,14 +334,14 @@ Edges compare consecutive *points*, so a pulse that falls between two points nei
 ### 5.3 Adopting a config (devices)
 
 ```
-adopt(now):
+adopt():
     previous = applied_; applied_ = pending_
     if !applied_.armed:                      state_.disarm()
-    else if applied_.arms != previous.arms:  state_.arm(settings, labels, now)   // Arm pressed
-    else if phase Armed/Filling:             state_.arm(settings, labels, now)   // S2 restart
+    else if applied_.arms != previous.arms:  state_.arm(settings, labels, now_)   // Arm pressed
+    else if phase Armed/Filling:             state_.arm(settings, labels, now_)   // S2 restart
 ```
 
-`powerOn()`: `state_.powerOn()` (Armed → arm at 0 with the applied settings); `powerOff()`: `state_.powerOff()`. `sample(net, s)`: `state_.change(s.time, masks_[index of net], s.value)`.
+`powerOn()`: `now_ = 0`, `state_.powerOn()` (Armed → arm at 0 with the applied settings); `powerOff()`: `state_.powerOff()`. `sample(net, s)`: `state_.change(s.time, masks_[index of net], s.value)`. `advanceTo(t)`: …, `now_ = t`.
 
 ### 5.4 Window drawing (`AnalyzerWindow::draw`)
 
@@ -341,7 +350,7 @@ take a newer Capture: session.captures().update() and front().serial != shown_.s
 header: phase text (Armed && !powered → "armed: waiting for power"), Arm/Stop, Rate combo,
         Trigger-at combo; any change → session.setAnalyzer / arm / disarm
 table, one row per Channel:
-    colour swatch, current label or "free" (greyed), trigger combo (any/0/1/rise/fall), "x"
+    colour swatch, current label or "free" (greyed), trigger combo (any/0/1/rise/fall), "×"
     lane (stretch column): shown_ Channel c over the view range
 lane drawing over [from, to) points:
     if points per pixel <= 1: one segment per run, vertical edges between runs
@@ -356,7 +365,7 @@ input over lanes: wheel zooms around the cursor (16 points … kDepth), drag pan
 
 ## 6. Reused Infrastructure
 
-- `Consumer`, `Dispatcher` fan-out, `Runner::watch`/`unwatch` counted watches, `kMaxWatched` (16: TV 2 + probe 1 + 8 Clips fits) — no change to the runner core.
+- `Consumer`, `Dispatcher` fan-out, `Runner::watch`/`unwatch` counted watches, `kMaxWatched` (16: TV 2 + probe 1 + 8 Clips, +1 while a Clip moves, fits). One runner change: `Rewatch` marker and `Consumer::seed` (§4.2).
 - `TripleBuffer` (as `TvConsumer`'s pictures) for Captures to the UI.
 - `Sample`, `Recorder`, `Simulator::record` — the `LogicAnalyzer` wrapper reads like `LogicProbe`.
 - `PinNet` (`netlist/builder.hpp`) for electrical Nets at a pad; `FindPin`, `Machine::padPosition`, `Machine::designCircuit()` for Clip labels and tags.
@@ -407,13 +416,15 @@ Catch2, tags `[instruments]`, `[runner]`, `[session]`, `[machines]`.
 
 Same file, `LogicAnalyzer` on `test_pattern.bwn`:
 
-- `analyzer: LINE_END_N every 64 points` — ch0 `LINE_END_N` `Fall`, 1 MHz, `Early`: the next 1→0 on ch0 is at `trigger + 64`.
+- `analyzer: LINE_END_N every 64 points` — ch0 `LINE_END_N` `Fall`, 1 MHz, `Early`: the next 1→0 on ch0 is at `trigger + 64`; ch1 on `U2.9` equals ch0 at every point.
 
 `tests/runner/analyzer_consumer_test.cpp` (Runner + `pauseAt` + `waitIdle`, as the probe consumer tests):
 
 - `analyzer consumer: capture through the runner` — same Capture as the headless `LogicAnalyzer` for the same Nets, settings and seed.
 - `analyzer consumer: armed before power-on` — configure armed while Off, power on: Captured at 2 ms.
 - `analyzer consumer: reconfigure while armed restarts` and `… new clip gets its initial value` (a constant Net clipped mid-run is 0/1, not X).
+- `analyzer consumer: second clip on a watched net` — ch0 on a constant Net, run, then ch1 on the same Net: ch1 is 0/1, not X.
+- `runner: rewatch seeds the last value` (`tests/runner/runner_test.cpp`): a second watch of a constant Net delivers `seed` with its value.
 
 `tests/machines/logic_analyzer_test.cpp` (built Puzzle Circuits, `PinNet`):
 
@@ -424,5 +435,7 @@ Same file, `LogicAnalyzer` on `test_pattern.bwn`:
 
 - `session: clips` — lowest free Channel, `clipAt`, unclip, ninth refused, label `U6.6 1Y`, pin by name `U6.1Y` → `6`.
 - `session: clips survive a repair` — `broken_trace`, clip `U13.6`, mend the crack, power on: the Clip's Net is the one of `U1.14` in the rebuilt Circuit.
+- `session: arm before power-on captures` — `stuck_gate`, armed while Off: `Captured` after the run.
+- `session: a capture is not re-armed by a repair` — Captured, power off, mend, power on: phase `Idle`.
 
 UI (S4, by the agent): `bw_ui puzzles/broken_trace.bwp --clip U1.14:r,U13.6,U6.6 --rate 1MHz --screenshot /tmp/la.png --after 1s`; read the PNG.
