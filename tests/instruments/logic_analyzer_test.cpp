@@ -1,10 +1,12 @@
 #include "instruments/logic_analyzer.hpp"
 
+#include <filesystem>
 #include <optional>
 #include <utility>
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "netlist/builder.hpp"
 using namespace bw;
 
 namespace {
@@ -200,4 +202,36 @@ TEST_CASE("analyzer: ParseTrigger", "[instruments]") {
     CHECK(ParseTrigger("f") == TriggerCondition::Fall);
     CHECK(ParseTrigger("x") == std::nullopt);
     CHECK(ParseTrigger("") == std::nullopt);
+}
+
+TEST_CASE("analyzer: LINE_END_N every 64 points", "[instruments]") {
+    using namespace bw::literals;
+    const auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    REQUIRE(loaded.has_value());
+    const auto lineEnd = PinNet(**loaded, "U6", "6");
+    const auto load = PinNet(**loaded, "U2", "9");
+    REQUIRE(lineEnd.has_value());
+    REQUIRE(load.has_value());
+    Simulator sim((*loaded)->circuit);
+    sim.powerOn(1);
+    LogicAnalyzer analyzer(sim, {lineEnd, load});
+    AnalyzerSettings settings{.period = 1_us};
+    settings.trigger[0] = TriggerCondition::Fall;
+    analyzer.arm(settings);
+    while (analyzer.state().phase() != AnalyzerPhase::Captured && sim.now() < 100_ms) {
+        sim.runUntil(sim.now() + 1_ms);
+        analyzer.update();
+    }
+    REQUIRE(analyzer.state().phase() == AnalyzerPhase::Captured);
+    const Capture& capture = analyzer.state().capture();
+    CHECK(Bit(capture, capture.trigger, 0) == false);
+    std::size_t next = capture.trigger + 1;
+    while (next < kDepth &&
+           !(Bit(capture, next - 1, 0) == true && Bit(capture, next, 0) == false)) {
+        ++next;
+    }
+    CHECK(next == capture.trigger + 64);
+    for (std::size_t p = capture.first; p < kDepth; ++p) {
+        CHECK(Bit(capture, p, 1) == Bit(capture, p, 0));
+    }
 }

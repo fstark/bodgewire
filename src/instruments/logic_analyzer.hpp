@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "sim/logic.hpp"
+#include "sim/simulator.hpp"
 #include "sim/time.hpp"
 
 namespace bw {
@@ -83,6 +84,21 @@ private:
     std::uint64_t triggerPoint_ = 0;  // emitted_ index of the Trigger point
     std::uint64_t remaining_ = 0;     // Filling: points still to sample
     Capture capture_;
+};
+
+// Headless Logic Analyzer on a Simulator (tests). Construct after powerOn().
+class LogicAnalyzer {
+public:
+    LogicAnalyzer(Simulator& sim, std::array<std::optional<NetId>, kChannels> channels);
+    void arm(const AnalyzerSettings& settings);  // from sim.now()
+    void update();  // feeds changes recorded since the last update, in time order
+    const AnalyzerState& state() const { return state_; }
+
+private:
+    Simulator& sim_;
+    std::array<std::optional<NetId>, kChannels> channels_;
+    Time fedUntil_ = -1;
+    AnalyzerState state_;
 };
 
 std::optional<TriggerCondition> ParseTrigger(std::string_view text);  // "0" "1" "r" "f"

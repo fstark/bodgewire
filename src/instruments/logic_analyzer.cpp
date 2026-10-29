@@ -177,4 +177,48 @@ void AnalyzerState::freeze() {
     phase_ = AnalyzerPhase::Captured;
 }
 
+LogicAnalyzer::LogicAnalyzer(Simulator& sim, std::array<std::optional<NetId>, kChannels> channels)
+    : sim_(sim), channels_(channels) {
+    for (const auto& net : channels_) {
+        if (net) {
+            sim_.record(*net);
+        }
+    }
+}
+
+void LogicAnalyzer::arm(const AnalyzerSettings& settings) { state_.arm(settings, {}, sim_.now()); }
+
+void LogicAnalyzer::update() {
+    struct Change {
+        Time time;
+        std::uint8_t channels;
+        LogicValue value;
+    };
+    std::vector<Change> changes;
+    std::vector<NetId> done;
+    for (const auto& net : channels_) {
+        if (!net || std::ranges::find(done, *net) != done.end()) {
+            continue;
+        }
+        done.push_back(*net);
+        std::uint8_t mask = 0;
+        for (std::size_t c = 0; c < kChannels; ++c) {
+            if (channels_[c] == net) {
+                mask |= static_cast<std::uint8_t>(1u << c);
+            }
+        }
+        for (const Sample sample : sim_.recorder().samples(*net)) {
+            if (sample.time > fedUntil_) {
+                changes.push_back({sample.time, mask, sample.value});
+            }
+        }
+    }
+    std::ranges::stable_sort(changes, {}, &Change::time);
+    for (const Change& change : changes) {
+        state_.change(change.time, change.channels, change.value);
+    }
+    state_.advanceTo(sim_.now());
+    fedUntil_ = sim_.now();
+}
+
 }  // namespace bw
