@@ -15,6 +15,7 @@ add_executable(bw_tests
   devices/bmp_test.cpp
   devices/tv_input_test.cpp
   devices/tv_test.cpp
+  instruments/logic_analyzer_test.cpp
   instruments/logic_probe_test.cpp
   machine/crack_test.cpp
   machine/electrical_test.cpp
