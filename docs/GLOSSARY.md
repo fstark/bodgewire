@@ -201,6 +201,16 @@ One input of an Instrument, recorded as one waveform.
 A Logic Analyzer lead attached to one pad; it feeds one Channel.
 _Avoid_: Probe (that is the Logic Probe)
 
+**Hook**:
+An Oscilloscope lead attached to one pad; it feeds one Channel.
+_Avoid_: Probe (that is the Logic Probe)
+
+**Test Lead**:
+One of the two Multimeter tips (red, black), held on any copper.
+
+**Sweep**:
+One pass of the Oscilloscope across its screen, starting at a Trigger.
+
 **Capture**:
 What a Logic Analyzer recorded around one Trigger: every Channel over the same sample points.
 

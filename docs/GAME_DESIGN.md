@@ -25,7 +25,7 @@ Faulty machine + symptom → run, observe, measure, study the board and the manu
 - **Board** view (see-through), with the chip pinouts and a net panel (what drives a net, what it feeds).
 - **User and Service Manuals** per machine (what it does; how it works, chip roles, optional troubleshooting) and simplified **datasheets** per part.
 - **Logic probe**: level/activity of one net.
-- **Oscilloscope**: timing between signals; required for timing faults.
+- **Oscilloscope**: timing between signals; required for timing faults. Over the logic analyzer: exact edge times (ns delays between two signals, no sampling), floating and X levels visible, live without arming.
 - **Logic analyzer** (key tool): many channels, triggers, pre-trigger history. E.g. probe A0–A15, D0–D7, R/W and a chip select, trigger on an address, inspect the bus activity leading up to it.
 - **Multimeter**, **component inspector**, **parts inventory**, **machine output** (its TV picture or LED digits).
 
@@ -88,6 +88,5 @@ Likely custom machines inspired by real ones, named after them: we choose their 
 
 - Timing faults: worth it, or too brutal?
 - Visual layout: realistic or stylised board? (Authoring: see [ARCHITECTURE.md](ARCHITECTURE.md).)
-- Without analog simulation, what does the oscilloscope add over the logic analyzer (ns-scale timing, Z/X levels)?
 - *Bitrot* as the name of an expert mode / nasty-fault campaign?
 - "Bodgewire" not yet checked against existing games and trademarks.

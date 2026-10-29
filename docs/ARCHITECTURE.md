@@ -150,6 +150,8 @@ Discrete-event with nominal delays. Every change is an event with a real timesta
 - Build the logic analyzer before the game UI: it is the main tool for debugging the simulator itself.
 - Instruments record only probed nets, from the moment they are probed. Normal workflow, as on a real bench: move the probes and restart the machine. Deterministic faults reproduce identically; random activations get a fresh draw on each power-on.
 - In-game instruments are deliberately limited (scope: 2 channels, no memory; analyzer: few channels, no decoding). The dev analyzer is not.
+- Where instruments go (decided 2026-10-29, realism): held tips (logic probe, multimeter leads) touch any copper: pads, Traces, vias. Attached leads (logic analyzer Clips, oscilloscope Hooks) go on pads only, like real grabbers; a click elsewhere is refused with the reason on the toolbar.
+- Each instrument with a window carries its tool's button in that window; picking the tool opens the window. Focusing a window never changes the tool.
 - Multimeter, derived from logic state: voltage 0 ≈ 0.2 V, 1 ≈ 3.5 V, floating TTL ≈ 1.4 V, supply short = 0 V / 5 V; continuity from electrical nets (beeps through bodge wires, silent across breaks).
 - The in-game analyzer samples at its own rate, derived from recorded transitions: pulses shorter than a sample period can be missed, as on a real one. Memory is a ring buffer of m samples; the trigger freezes it after the post-trigger share.
 
@@ -192,7 +194,7 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P3a | UI usability | done 2026-10-28: Puzzle Brief, User and Service Manuals and Datasheets (authored, checked against the netlist), state banner, toolbar, Chip panel, pin names on the Board, snapping, grouped layout, navigation (`src/manual`). [UI_USABILITY_PLAN.md](p3a-ui-usability/UI_USABILITY_PLAN.md) |
 | P3b | Net panel | done 2026-10-29: click a pin or Trace to select its Net; it stays highlighted and the `Net` section lists its Drivers and Loads (`U6` pin 6 1Y → `U2` pin 9, `U9` pin 5), each a link that frames it on the Board; design Netlist only (`src/netlist/net_pins`). Replaces the schematic view (see Board authoring). Later: consistent Chip/Net selection, floating info windows, less hover. [NET_PANEL_PLAN.md](p3b-net-panel/NET_PANEL_PLAN.md) |
 | P3c | Logic analyzer | done 2026-10-29: 8 Channels × 4096 points clipped on pads (`Clip (C)`), per-Channel Trigger, floating `Logic Analyzer` window, `bw_ui --clip`; electrical Nets, 1.00× with 8 Clips at 100 MHz. Later: discoverability, refusal feedback, deeper memory, navigation bugs. [LOGIC_ANALYZER_PLAN.md](p3c-logic-analyzer/LOGIC_ANALYZER_PLAN.md) |
-| P3d | Oscilloscope + multimeter | few Nets at fine timing; logic-state voltages and continuity; the counter Board gets an output connector to measure |
+| P3d | Oscilloscope + multimeter | 2 Hooks on pads, exact edge timing, live sweeps; held meter leads anywhere: logic-state voltages, continuity with the power off; the placement rule applied to the analyzer too. [SCOPE_METER.md](p3d-scope-meter/SCOPE_METER.md) |
 | P3e | Bodge wires + trace cuts | new Repairs through the Session |
 | P3f | Repair validation + new faults | outputs-only comparison with the Golden Machine; shorts, Wrong Part |
 | P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files), repair validation; still on the P2 board. P3a–P3f together answer: is the full loop fun? |

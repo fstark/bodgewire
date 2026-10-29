@@ -28,8 +28,8 @@ Implemented ca60a68..5d18ddc (2026-10-29): 374 tests pass in debug and release. 
 
 ## Later (user check feedback)
 
-- Hard to understand how the Analyzer works: the link between the `Clip` tool and the Analyzer window is not self-evident.
-- Poor UI feedback on refused actions, e.g. clipping (or probing) a Trace instead of a pin.
+- Hard to understand how the Analyzer works: the link between the `Clip` tool and the Analyzer window is not self-evident. → P3d (tool button in the window, tool opens the window).
+- Poor UI feedback on refused actions, e.g. clipping a Trace instead of a pin. → P3d (placement rule: Clips on pads only, by design; refusal says why).
 - 4096 points per Channel is not enough.
 - Intermittent bugs when navigating the Capture (zoom/pan).
 - General UI improvements needed (with P3b "Later").
