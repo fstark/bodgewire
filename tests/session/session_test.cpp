@@ -100,6 +100,72 @@ TEST_CASE("session: probe across a mend", "[session]") {
     session.powerOff();
 }
 
+TEST_CASE("session: clips", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    CHECK(session.clip("U6", "6") == 0);
+    CHECK(session.clip("U2", "9") == 1);
+    CHECK(session.clipAt("U6", "6") == 0);
+    REQUIRE(session.clips()[0].has_value());
+    CHECK(session.clips()[0]->label == "U6.6 1Y");
+    CHECK(session.clip("U6", "1Y") == 0);
+    session.unclip(0);
+    CHECK_FALSE(session.clipAt("U6", "6").has_value());
+    CHECK(session.clip("U9", "5") == 0);
+    for (std::size_t c = 2; c < kChannels; ++c) {
+        CHECK(session.clip("U1", std::to_string(c + 9)) == c);
+    }
+    CHECK_FALSE(session.clip("U1", "2").has_value());
+    CHECK_FALSE(session.clip("U99", "1").has_value());
+}
+
+TEST_CASE("session: clips survive a repair", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    REQUIRE(session.clip("U13", "6") == 0);
+    REQUIRE(session.clip("U1", "14") == 1);
+    CHECK(session.clipNet(0) != session.clipNet(1));
+    session.powerOn(1);
+    RunTo(session, 1_ms);
+    session.powerOff();
+    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    session.powerOn(1);
+    CHECK(session.clipNet(0) == session.clipNet(1));
+    session.powerOff();
+}
+
+TEST_CASE("session: arm before power-on captures", "[session]") {
+    Session session = PuzzleSession("stuck_gate");
+    REQUIRE(session.clip("U12", "11") == 0);
+    session.setAnalyzer({.period = 1'000'000});
+    session.arm();
+    CHECK(session.analyzerPhase() == AnalyzerPhase::Armed);
+    session.powerOn(1);
+    RunTo(session, 5_ms);
+    REQUIRE(session.analyzerPhase() == AnalyzerPhase::Captured);
+    REQUIRE(session.captures().update());
+    const Capture& capture = session.captures().front();
+    for (std::size_t p = capture.first; p < kDepth; ++p) {
+        CHECK((capture.points[p].unknown & 1) == 0);
+        CHECK((capture.points[p].high & 1) == 1);
+    }
+    session.powerOff();
+}
+
+TEST_CASE("session: a capture is not re-armed by a repair", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    REQUIRE(session.clip("U1", "14") == 0);
+    session.setAnalyzer({.period = 1'000'000});
+    session.arm();
+    session.powerOn(1);
+    RunTo(session, 5_ms);
+    REQUIRE(session.analyzerPhase() == AnalyzerPhase::Captured);
+    session.powerOff();
+    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    session.powerOn(1);
+    RunTo(session, 6_ms);
+    CHECK(session.analyzerPhase() == AnalyzerPhase::Idle);
+    session.powerOff();
+}
+
 TEST_CASE("session: netlist without a Board", "[session]") {
     auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
     REQUIRE(loaded.has_value());

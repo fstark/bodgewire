@@ -1,14 +1,17 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "machine/machine.hpp"
 #include "machine/repair.hpp"
+#include "runner/analyzer_consumer.hpp"
 #include "runner/probe_consumer.hpp"
 #include "runner/runner.hpp"
 #include "runner/tv_consumer.hpp"
@@ -26,6 +29,12 @@ struct ProbeTip {
 };
 
 enum class RepairResult : std::uint8_t { Done, Refused, Unknown };  // Refused: powered
+
+struct Clip {
+    std::string reference, pin;  // pin by number: "6"
+    std::string label;           // "U6.6 1Y"
+    Point at;                    // pad, nm
+};
 
 // One Machine on the bench, UI thread only. Repairs edit the Machine; the next power-on rebuilds
 // the Circuit, Runner, TV and probe from it. Without a Machine (netlist without a Board): no
@@ -56,17 +65,32 @@ public:
     std::optional<NetId> probedNet() const { return live_->probe.touched(); }
     ProbeLamps lamps() const;  // dark when not powered
 
+    // Lowest free Channel; nullopt without a Machine, unknown pad, or all Channels used.
+    std::optional<std::size_t> clip(std::string_view reference, std::string_view pin);
+    void unclip(std::size_t channel);
+    std::optional<std::size_t> clipAt(std::string_view reference, std::string_view pin) const;
+    std::span<const std::optional<Clip>, kChannels> clips() const { return clips_; }
+    std::optional<NetId> clipNet(std::size_t channel) const { return analyzer_.nets[channel]; }
+    void setAnalyzer(const AnalyzerSettings& settings);
+    const AnalyzerSettings& analyzerSettings() const { return analyzer_.settings; }
+    void arm();
+    void disarm();
+    AnalyzerPhase analyzerPhase() const { return live_->analyzer.phase(); }
+    TripleBuffer<Capture>& captures() { return live_->analyzer.captures(); }  // replaced on rebuild
+
 private:
     // What one build of the Machine runs on. Members in this order: the Runner is destroyed first.
     struct Live {
         std::unique_ptr<LoadedCircuit> circuit;
         std::optional<TvConsumer> tv;
         ProbeConsumer probe;
+        AnalyzerConsumer analyzer;
         std::unique_ptr<Runner> runner;
     };
 
     std::unique_ptr<Live> makeLive(std::unique_ptr<LoadedCircuit> circuit) const;
     void touchLive();
+    void configureLive();
 
     std::optional<Machine> machine_;
     std::optional<Board> drawn_;
@@ -77,6 +101,8 @@ private:
     std::optional<ProbeTip> tip_;
     std::vector<std::string> log_;
     std::vector<SolderBlob> blobs_;
+    std::array<std::optional<Clip>, kChannels> clips_;
+    AnalyzerConfig analyzer_;  // nets filled per build
 };
 
 }  // namespace bw

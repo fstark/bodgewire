@@ -1,5 +1,8 @@
 #include "session/session.hpp"
 
+#include <algorithm>
+#include <format>
+#include <string>
 #include <utility>
 #include <variant>
 
@@ -30,6 +33,7 @@ std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> 
     }
     if (machine_) {
         consumers.push_back(&live->probe);
+        consumers.push_back(&live->analyzer);
     }
     live->runner = std::make_unique<Runner>(live->circuit->circuit, consumers);
     live->runner->setSpeed(speed_);
@@ -44,11 +48,16 @@ void Session::touchLive() {
 
 void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
     if (dirty_) {
+        const AnalyzerPhase phase = analyzerPhase();
+        if (phase != AnalyzerPhase::Armed && phase != AnalyzerPhase::Filling) {
+            analyzer_.armed = false;  // the new consumer would re-arm a finished Capture
+        }
         live_.reset();
         auto built = machine_->build();
         Check(built.has_value(), "session: a repaired Machine does not build");
         live_ = makeLive(std::move(*built));
         touchLive();
+        configureLive();
         dirty_ = false;
     }
     if (pauseAt) {
@@ -98,5 +107,82 @@ void Session::touch(std::optional<ProbeTip> tip) {
 }
 
 ProbeLamps Session::lamps() const { return powered_ ? live_->probe.lamps() : ProbeLamps{}; }
+
+std::optional<std::size_t> Session::clip(std::string_view reference, std::string_view pin) {
+    if (!machine_) {
+        return std::nullopt;
+    }
+    const auto& components = machine_->designCircuit().components;
+    const auto component = components.find(reference);
+    if (component == components.end()) {
+        return std::nullopt;
+    }
+    const auto index = FindPin(*component->second, pin);
+    if (!index) {
+        return std::nullopt;
+    }
+    const std::string number = std::to_string(*index + 1);
+    const auto at = machine_->padPosition(reference, number);
+    if (!at) {
+        return std::nullopt;
+    }
+    if (const auto channel = clipAt(reference, number)) {
+        return channel;
+    }
+    const auto free = std::ranges::find_if(clips_, [](const auto& c) { return !c; });
+    if (free == clips_.end()) {
+        return std::nullopt;
+    }
+    *free = Clip{
+        .reference = std::string(reference),
+        .pin = number,
+        .label = std::format("{}.{} {}", reference, number, component->second->pins()[*index].name),
+        .at = *at};
+    configureLive();
+    return static_cast<std::size_t>(free - clips_.begin());
+}
+
+void Session::unclip(std::size_t channel) {
+    clips_[channel].reset();
+    configureLive();
+}
+
+std::optional<std::size_t> Session::clipAt(std::string_view reference, std::string_view pin) const {
+    for (std::size_t c = 0; c < kChannels; ++c) {
+        if (clips_[c] && clips_[c]->reference == reference && clips_[c]->pin == pin) {
+            return c;
+        }
+    }
+    return std::nullopt;
+}
+
+void Session::setAnalyzer(const AnalyzerSettings& settings) {
+    analyzer_.settings = settings;
+    configureLive();
+}
+
+void Session::arm() {
+    ++analyzer_.arms;
+    analyzer_.armed = true;
+    configureLive();
+}
+
+void Session::disarm() {
+    analyzer_.armed = false;
+    configureLive();
+}
+
+void Session::configureLive() {
+    if (!machine_) {
+        return;
+    }
+    for (std::size_t c = 0; c < kChannels; ++c) {
+        analyzer_.nets[c] = clips_[c]
+                                ? PinNet(*live_->circuit, clips_[c]->reference, clips_[c]->pin)
+                                : std::nullopt;
+        analyzer_.labels[c] = clips_[c] ? clips_[c]->label : "";
+    }
+    live_->analyzer.configure(*live_->runner, analyzer_);
+}
 
 }  // namespace bw
