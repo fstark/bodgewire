@@ -1,4 +1,5 @@
 add_library(bw_runner STATIC
+  analyzer_consumer.cpp
   dispatcher.cpp
   probe_consumer.cpp
   runner.cpp

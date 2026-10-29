@@ -14,13 +14,25 @@ void Dispatcher::apply(const Marker& marker) {
     case MarkerKind::Watch:
         slotNet_[marker.slot] = marker.net;
         staged_[marker.slot].clear();
+        last_[marker.slot].reset();
         active_[marker.slot] = true;
+        break;
+    case MarkerKind::Rewatch:
+        if (active_[marker.slot] && last_[marker.slot]) {
+            for (Consumer* consumer : consumers_) {
+                const auto nets = consumer->nets();
+                if (std::ranges::find(nets, slotNet_[marker.slot]) != nets.end()) {
+                    consumer->seed(slotNet_[marker.slot], *last_[marker.slot]);
+                }
+            }
+        }
         break;
     case MarkerKind::Unwatch:
         active_[marker.slot] = false;
         staged_[marker.slot].clear();
         break;
     case MarkerKind::PowerOn:  // nothing stale is staged: the Runner waits for us first
+        last_.fill(std::nullopt);
         for (Consumer* consumer : consumers_) {
             consumer->powerOn();
         }
@@ -52,6 +64,7 @@ void Dispatcher::sliceEnd(Time end) {
             break;
         }
         const Sample sample = staged_[best][next[best]++];
+        last_[best] = sample;
         for (Consumer* consumer : consumers_) {
             const auto nets = consumer->nets();
             if (std::ranges::find(nets, slotNet_[best]) != nets.end()) {

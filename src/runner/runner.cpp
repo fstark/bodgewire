@@ -182,9 +182,12 @@ void Runner::apply(const Command& command, std::stop_token stop) {
         pauseAt_ = command.value;
         break;
     case CommandKind::Watch: {
-        for (auto& watched : watched_) {
+        for (std::size_t slot = 0; slot < kMaxWatched; ++slot) {
+            auto& watched = watched_[slot];
             if (watched && watched->net == command.net) {
                 ++watched->count;
+                pushMarker({MarkerKind::Rewatch, static_cast<std::uint8_t>(slot), command.net},
+                           stop);
                 return;
             }
         }

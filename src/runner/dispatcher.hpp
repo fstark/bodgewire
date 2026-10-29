@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "runner/consumer.hpp"
@@ -14,12 +15,12 @@ namespace bw {
 
 inline constexpr std::size_t kMaxWatched = 16;  // ring slots
 
-enum class MarkerKind : std::uint8_t { PowerOn, SliceEnd, Watch, Unwatch, PowerOff };
+enum class MarkerKind : std::uint8_t { PowerOn, SliceEnd, Watch, Rewatch, Unwatch, PowerOff };
 
 // Control marker, simulation → devices thread, in order with the Samples.
 struct Marker {
     MarkerKind kind;
-    std::uint8_t slot = 0;  // Watch, Unwatch
+    std::uint8_t slot = 0;  // Watch, Rewatch, Unwatch
     NetId net{};            // Watch
     Time time = 0;          // SliceEnd: slice end
 };
@@ -38,6 +39,7 @@ private:
     std::vector<Consumer*> consumers_;
     std::array<NetId, kMaxWatched> slotNet_{};
     std::array<std::vector<Sample>, kMaxWatched> staged_;  // drained, not yet dispatched
+    std::array<std::optional<Sample>, kMaxWatched> last_;  // last dispatched, for Rewatch
     std::array<bool, kMaxWatched> active_{};
 };
 

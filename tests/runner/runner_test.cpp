@@ -57,10 +57,11 @@ public:
     std::span<const NetId> nets() const override { return {&net_, 1}; }
     void powerOn() override {}
     void sample(NetId, Sample sample) override { samples.push_back(sample); }
+    void seed(NetId, Sample sample) override { seeds.push_back(sample); }
     void advanceTo(Time) override {}
     void powerOff() override {}
 
-    std::vector<Sample> samples;
+    std::vector<Sample> samples, seeds;
 
 private:
     NetId net_;
@@ -214,4 +215,21 @@ TEST_CASE("runner: watches are counted", "[runner]") {
     runner.unwatch(pattern.video);
     RunTo(runner, 60_ms);
     CHECK(Latest(tv) == reference);
+}
+
+TEST_CASE("runner: rewatch seeds the last value", "[runner]") {
+    TestPattern pattern = Load();
+    const auto clear = PinNet(*pattern.loaded, "U1", "1");
+    REQUIRE(clear.has_value());
+    SampleLog log(*clear);
+    Runner runner(pattern.loaded->circuit, {&log});
+    runner.setSpeed(Speed::Max);
+    runner.pauseAt(1_ms);
+    runner.powerOn(1);
+    runner.waitIdle();
+    CHECK(log.seeds.empty());
+    runner.watch(*clear);
+    runner.waitIdle();
+    REQUIRE(log.seeds.size() == 1);
+    CHECK(log.seeds[0].value == LogicValue::One);
 }
