@@ -141,6 +141,7 @@ The three new Repairs through text, Session and `bw run` (design §2.2, §3.3, �
 - `tests/session/session_test.cpp`:
   - `session: cut and wire only with the power off` — powered: `CutRepair`, `WireRepair`, `UnwireRepair` → `Refused`; off: Cut at `kH0Crack` on `broken_trace` → `Unknown` (already cracked: inside the gap); wire `U1.14`–`U13.6` → `Done`; log ends with `wire U1.14 U13.6`; unwire → `Done`; unwire again → `Unknown`.
   - `session: continuity through a bodge wire` — Continuity mode, Leads on `U1.14` and `U13.6`: false; wire → true, with the power off; `drawnBoard()->bodgeWires` empty.
+  - `session: continuity across a cut` — fault-free test pattern, Continuity mode, Leads on `U1.14` and `U13.6`: true; `CutRepair{Front, kH0Crack}` → `Done`, false; `drawnBoard()->traces.size()` unchanged; Mend → true.
 - `tests/machines/bodge_wire_test.cpp` (new, in `tests/CMakeLists.txt`), helpers copied from `board_repair_test.cpp` (`MakeSession`, `Frame`, `FaultFree`):
   - `bodge wire: broken trace repaired by a wire` — `broken_trace`, power on 10 ms, off, `WireRepair{{"U1","14"},{"U13","6"}}` → frame == `FaultFree()`.
   - `bodge wire: cut and mend on the test pattern` — fault-free test pattern Session: `CutRepair{Front, kH0Crack}` → frame != fault-free; `MendRepair{Front, kH0Crack}` → frame == fault-free.
@@ -173,9 +174,9 @@ Tools, drawing and clicks in `bw_ui` (design §2.4, §3.5–§3.7, §5.2).
 ### 4.3 — `main.cpp`
 
 - `RunWindow` state `std::optional<PinRef> wireStart; Point wireStartAt{};`.
-- Click switch: `Tool::Cut` and `Tool::Wire` cases per design §3.7 (powered → `result = RepairResult::Refused`). Cut: `boardView.wireAt(click->at)` first → `UnwireRepair` with that wire's `a`, `b`; Trace hit → arc check (`scene->board().traces[pick->hit.index].mid`) → `CutRepair{pick->layer, pick->contact}`; any `Unknown` result → `toolbar.refused("Cut: click a trace or a wire")`. Wire: pad hit → `PinRef{part.reference, pad.number}`; first → `wireStart`, `wireStartAt = pad.position`; same pad → drop; else `session.repair(WireRepair{*wireStart, end})`, drop.
+- Click switch: `Tool::Cut` and `Tool::Wire` cases per design §3.7 (powered → `result = RepairResult::Refused`). Cut: `boardView.wireAt(click->at)` first → `UnwireRepair` with that wire's `a`, `b`; Trace hit → arc check (`boardView.scene()->board().traces[pick->hit.index].mid` → `toolbar.refused("Cut: straight traces only")`) → `CutRepair{pick->layer, pick->contact}`; any `Unknown` result → `toolbar.refused("Cut: click a trace or a wire")`. Wire: pad hit → `PinRef{part.reference, pad.number}`; first → `wireStart`, `wireStartAt = pad.position`; same pad → drop; else `session.repair(WireRepair{*wireStart, end})`, drop.
 - `Esc` with `Tool::Wire` drops `wireStart`; a `takePicked()` of any tool drops it (before the pairing flags).
-- Each frame: `setCuts` from `machine->cuts()`, `setBodgeWires` from `machine->wires()[i].wire`, `setWireStart`, `toolbar.wireStarted`.
+- Each frame: `setCuts` from `machine->cuts()` (as `CutMark{layer, at}`), `setBodgeWires` from `machine->wires()[i].wire`, `setWireStart`, `toolbar.wireStarted`.
 - `--repair` error: replace the `std::get<SwapRepair>` message with `"cannot apply '" + text + "'"` for any `Unknown`; usage text mentions `cut:`/`wire:`/`unwire:`.
 
 ### 4.4 — Check (spec S5)
@@ -196,7 +197,7 @@ Release build, then read both PNGs:
 
 ### 5.1 — Release
 
-`cmake --preset release && cmake --build --preset release && ctest --preset release -j 12`. `bw_tests "[.perf]"` rebuild time with a wire and a Cut added to the loop's Repairs: mean < 100 ms. `bw_ui puzzles/broken_trace.bwp --repair wire:U1.14:U13.6 --screenshot /tmp/p3e.png --after 5s`: 1.00×.
+`cmake --preset release && cmake --build --preset release && ctest --preset release -j 12`. `bw_tests "[.perf]"` rebuild time with `WireRepair{U1.14, U13.6}` before the loop and, in the loop, `MendRepair{Front, kH0Crack}` then `CutRepair{Front, kH0Crack}` (each `Done`: the Mend removes the crack or the previous Cut) instead of the `away` Mend: mean < 100 ms. `bw_ui puzzles/broken_trace.bwp --repair wire:U1.14:U13.6 --screenshot /tmp/p3e.png --after 5s`: 1.00×.
 
 ### 5.2 — User check
 

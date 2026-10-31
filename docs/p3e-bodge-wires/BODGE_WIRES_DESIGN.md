@@ -19,7 +19,7 @@ src/session/session.cpp            repair() dispatches the new Repairs
 src/cli/main.cpp                   Repair() through std::visit
 src/ui/board_view.hpp / .cpp       Tool::Cut (K), Tool::Wire (W); Cut marks, Bodge Wires,
                                    the started wire
-src/ui/toolbar.cpp                 Cut/Wire buttons and action texts
+src/ui/toolbar.hpp / .cpp          wireStarted; Cut/Wire buttons and action texts
 src/ui/main.cpp                    Cut and Wire clicks, Esc, tags, --repair errors
 tests/machines/bodge_wire_test.cpp NEW: Puzzles and the test pattern with wires and Cuts
 ```
@@ -74,7 +74,7 @@ std::string FormatRepair(const RepairAction& repair);
 ### 2.3 Machine (`src/machine/machine.hpp`)
 
 ```cpp
-// A Bodge Wire with its ends as the player named them, pins as numbers.
+// A Bodge Wire with its ends as pin numbers.
 struct WireEnds {
     PinRef a, b;
     BodgeWire wire;  // pad positions
@@ -112,7 +112,7 @@ struct CutMark {
     void setCuts(std::span<const CutMark> cuts);
     void setBodgeWires(std::span<const BodgeWire> wires);
     void setWireStart(std::optional<Point> start);  // rubber band to the cursor
-    // Index of the wire within `reach` px of the cursor's Board point; for the Cut tool.
+    // Index of the nearest wire within reach().copper of `at`; for the Cut tool.
     std::optional<std::size_t> wireAt(Point at) const;
 ```
 
@@ -184,14 +184,15 @@ case Tool::Cut:
     if (powered) { result = Refused; break; }  // the usual amber flash
     if (const auto wire = boardView.wireAt(click->at)) {
         const WireEnds& w = machine->wires()[*wire];
-        session.repair(UnwireRepair{w.a, w.b});
+        result = session.repair(UnwireRepair{w.a, w.b});
     } else if (!pick || pick->hit.kind != HitKind::Trace) {
         toolbar.refused("Cut: click a trace or a wire");
-    } else if (scene.board().traces[pick->hit.index].mid) {
+    } else if (boardView.scene()->board().traces[pick->hit.index].mid) {
         toolbar.refused("Cut: straight traces only");
     } else {
-        session.repair(CutRepair{pick->layer, pick->contact});
+        result = session.repair(CutRepair{pick->layer, pick->contact});
     }
+    if (result == Unknown) { toolbar.refused("Cut: click a trace or a wire"); }  // e.g. in a gap
     break;
 case Tool::Wire:
     if (powered) { result = Refused; break; }
@@ -201,7 +202,7 @@ case Tool::Wire:
     break;
 ```
 
-`Esc` with `Tool::Wire` drops `wireStart`; changing tool drops it too (`takePicked`). Each frame: `setCuts` from `machine->cuts()`, `setBodgeWires` from `machine->wires()`, `setWireStart(wireStart ? wireStartAt : nullopt)`, `toolbar.wireStarted = wireStart.has_value()`.
+`Esc` with `Tool::Wire` drops `wireStart`; changing tool drops it too (`takePicked`). Each frame: `setCuts` from `machine->cuts()` (as `CutMark{layer, at}`), `setBodgeWires` from `machine->wires()[i].wire`, `setWireStart(wireStart ? wireStartAt : nullopt)`, `toolbar.wireStarted = wireStart.has_value()`.
 
 `--repair` errors: `RepairResult::Unknown` prints `cannot apply '<text>'` (the Swap-only `std::get<SwapRepair>` goes).
 
@@ -270,6 +271,5 @@ Catch2.
 - `tests/machines/bodge_wire_test.cpp` (TV frames as `board_repair_test.cpp`):
   - `broken_trace` + `WireRepair{U1.14, U13.6}` == fault-free frame;
   - fault-free test pattern + `CutRepair{Front, kH0Crack}` != fault-free; + Mend there == fault-free.
-- `tests/session/session_test.cpp`: Cut, Wire, Unwire `Refused` while powered; log lines; continuity across the crack beeps after a wire with the power off; `drawnBoard()` unchanged and `bodgeWires` empty after a wire.
-- `tests/view/board_scene_test.cpp`: a `BoardScene` built from the drawn Board highlights the same Net on both sides of a Cut (design Nets).
+- `tests/session/session_test.cpp`: Cut, Wire, Unwire `Refused` while powered; log lines; continuity across the crack beeps after a wire, and goes silent after a Cut, with the power off; `drawnBoard()` keeps its Traces after a Cut and `bodgeWires` empty after a wire. The `BoardScene` and Net highlighting are built from the drawn Board, so that covers the design Net highlight (spec S5).
 - UI (by the agent, spec S5): `bw_ui puzzles/broken_trace.bwp --repair wire:U1.14:U13.6 --screenshot /tmp/wire.png --after 1s`; `bw_ui netlists/test_pattern.bwn --repair cut:F.Cu:137.59:99.17 --screenshot /tmp/cut.png --after 1s`.

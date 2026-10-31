@@ -25,7 +25,7 @@ Out: wires to Traces or vias, wire routing or colours chosen by the player, cutt
 
 ### S1 Cut
 
-- `Cut (K)` with the power off: a click on a Bodge Wire removes it (`unwire U1.14 U13.6`); otherwise a click on a straight Trace on the Active Layer cuts it at the nearest centre-line point (`cut F.Cu 52.30 41.00`).
+- `Cut (K)` with the power off: a click on a Bodge Wire removes it (`unwire U1.14 U13.6`); otherwise a click on a straight Trace (Active Layer first, as Mend) cuts it at the nearest centre-line point (`cut F.Cu 52.30 41.00`).
 - Refused with the reason in the toolbar action text: on a pad, via, Component or bare board `Cut: click a trace or a wire`; on an arc Trace `Cut: straight traces only`; powered `Cut: power off first` (amber, as Swap and Mend).
 - A Cut mark stays drawn until a Mend within 1 mm removes the Cut.
 
