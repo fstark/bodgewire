@@ -80,7 +80,7 @@ struct Net    { std::vector<DriverId> drivers; LogicState resolved; };
 | Remove / insert IC | removes / adds its drivers, inputs and faults |
 
 - Topology is fixed during a run: board faults are applied at load, repairs are made with the power off, nets are recomputed before the next power-on.
-- Power (later, not built yet): today power Pins are wired to their Nets but Part models ignore them. Direction: a Part works only while its power Pins sit on the right rails. Rails are static per build (fixed topology), so "powered" and each rail's voltage are worked out at build from the electrical Nets, not simulated: a cracked VCC Trace or open socket contact leaves a chip unpowered (outputs Z), a VCC–GND short kills the rail (instruments read 0 V), a chip on the wrong rail misbehaves. Only intermittent power contacts need runtime checks, through the existing contact-switch mechanism.
+- Power (later, P3f; not built yet): today power Pins are wired to their Nets but Part models ignore them. Direction: a Part works only while its power Pins sit on the right rails. Rails are static per build (fixed topology), so "powered" and each rail's voltage are worked out at build from the electrical Nets, not simulated: a cracked VCC Trace or open socket contact leaves a chip unpowered (outputs Z), a VCC–GND short kills the rail (instruments read 0 V), a chip on the wrong rail misbehaves. Only intermittent power contacts need runtime checks, through the existing contact-switch mechanism.
 
 ## Faults
 
@@ -197,7 +197,7 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P3c | Logic analyzer | done 2026-10-29: 8 Channels × 4096 points clipped on pads (`Clip (C)`), per-Channel Trigger, floating `Logic Analyzer` window, `bw_ui --clip`; electrical Nets, 1.00× with 8 Clips at 100 MHz. Later: discoverability, refusal feedback, deeper memory, navigation bugs. [LOGIC_ANALYZER_PLAN.md](p3c-logic-analyzer/LOGIC_ANALYZER_PLAN.md) |
 | P3d | Oscilloscope + multimeter | 2 Hooks on pads, exact edge timing, live sweeps; held meter leads anywhere: logic-state voltages, continuity with the power off; the placement rule applied to the analyzer too. [SCOPE_METER.md](p3d-scope-meter/SCOPE_METER.md) |
 | P3e | Bodge wires + trace cuts | new Repairs through the Session |
-| P3f | Repair validation + new faults | outputs-only comparison with the Golden Machine; shorts, Wrong Part |
+| P3f | Repair validation + new faults | outputs-only comparison with the Golden Machine; shorts, Wrong Part; real power (see Pins, nets, drivers: "Power"): chips powered only through their power Pins, worked out per build — unpowered chips (cracked VCC Trace, open contact), dead rail (VCC–GND short), chip on the wrong rail |
 | P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files), repair validation; still on the P2 board. P3a–P3f together answer: is the full loop fun? |
 | P4 | Procedural faults | random fault generation, headless vetting (reject symptom-less or trivial candidates) |
 | Later | Machines | BW-1, BW-80, BW-2001: CPU models (6502, Z80), RAM/ROM, keyboards, LED display |
