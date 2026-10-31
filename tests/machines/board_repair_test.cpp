@@ -78,12 +78,13 @@ TEST_CASE("board repair: broken trace", "[machines]") {
 TEST_CASE("board repair: rebuild time", "[.perf]") {
     Session session = PuzzleSession("broken_trace");
     session.setSpeed(Speed::Max);
-    const Point away{kH0Crack.x + 5'000'000, kH0Crack.y};
+    REQUIRE(session.repair(WireRepair{{"U1", "14"}, {"U13", "6"}}) == RepairResult::Done);
     constexpr int kRebuilds = 20;
     std::chrono::duration<double, std::milli> total{0};
     for (int i = 0; i < kRebuilds; ++i) {
         session.powerOff();
-        REQUIRE(session.repair(MendRepair{Layer::Front, away}) == RepairResult::Done);
+        REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+        REQUIRE(session.repair(CutRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
         const auto start = std::chrono::steady_clock::now();
         session.powerOn(1, 1_ms);
         total += std::chrono::steady_clock::now() - start;
