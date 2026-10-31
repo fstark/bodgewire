@@ -176,7 +176,7 @@ While powered, the live Circuit is the current Machine (Repairs are refused), so
 
 11. **Toolbar LED** — [toolbar.cpp](../../src/ui/toolbar.cpp#L126): after the Power button, `SameLine`, a filled circle (radius 0.4 × text height, as `DrawLamps`) red `IM_COL32(230, 40, 40, 255)` when `session.currentLimited()`, else `IM_COL32(70, 70, 70, 255)`, followed by the text `LIMIT`; tooltip `Bench supply in current limit`.
 
-12. **`bw run` CLI** — accepts `unbridge:` through `ParseRepair` with no change beyond the usage string.
+12. **`bw run` CLI** — [src/cli/main.cpp](../../src/cli/main.cpp#L156) `Repair()`: an `UnbridgeRepair` branch calling `machine.removeBridge()` (its last branch is currently `std::get<UnwireRepair>`); usage string adds `unbridge:`.
 
 ## 4. Internal State
 
