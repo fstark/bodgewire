@@ -420,17 +420,18 @@ void BoardView::draw(ImVec2 size) {
         const float ring = std::max(4.0f, map.pixels(350'000));
         list.AddCircle(point, ring, fill, 0, 2.5f);
         const float side = std::max(12.0f, map.pixels(1'000'000));
-        const ImVec2 corner{point.x - ring - 10, point.y - ring - 10};
+        const ImVec2 corner{point.x - ring - 10, point.y + ring + 10};  // down-left: Hooks up-left
         list.AddLine(point, corner, fill, 2.0f);
-        const ImVec2 min{corner.x - side, corner.y - side};
-        list.AddRectFilled(min, corner, fill, 4.0f);
-        list.AddRect(min, corner, IM_COL32_WHITE, 4.0f, 0, 1.0f);
+        const ImVec2 min{corner.x - side, corner.y};
+        const ImVec2 max{corner.x, corner.y + side};
+        list.AddRectFilled(min, max, fill, 4.0f);
+        list.AddRect(min, max, IM_COL32_WHITE, 4.0f, 0, 1.0f);
         const char* sign = tag.red ? "+" : "-";
         const float fontSize = std::min(ImGui::GetFontSize(), side);
         const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, sign);
         list.AddText(nullptr, fontSize,
-                     {(min.x + corner.x - text.x) / 2, (min.y + corner.y - text.y) / 2},
-                     IM_COL32_WHITE, sign);
+                     {(min.x + max.x - text.x) / 2, (min.y + max.y - text.y) / 2}, IM_COL32_WHITE,
+                     sign);
     }
     ImGui::EndChild();
 }

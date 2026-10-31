@@ -28,6 +28,7 @@
 #include "ui/loaded.hpp"
 #include "ui/manual_view.hpp"
 #include "ui/meter_window.hpp"
+#include "ui/scope_window.hpp"
 #include "ui/side_panel.hpp"
 #include "ui/toolbar.hpp"
 #include "ui/tv_view.hpp"
@@ -43,7 +44,8 @@ constexpr int kWindowHeight = 800;
 constexpr float kBoardShare = 2.0f / 3.0f;
 constexpr std::string_view kUsage =
     "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] [--repair swap:REF,mend:LAYER:X:Y] "
-    "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--meter REF.PIN] "
+    "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--hook REF.PIN,...] [--timebase 1us] "
+    "[--meter REF.PIN] "
     "[--manual user|service] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -55,6 +57,8 @@ struct Options {
     std::vector<std::string> clip;     // REF.PIN[:T]
     std::optional<Time> rate;          // Analyzer sample period, ps
     std::optional<std::string> meter;  // REF.PIN: red Test Lead, V mode
+    std::vector<std::string> hook;     // REF.PIN, at most 2
+    std::optional<Time> timebase;      // Oscilloscope ps per division
     bool userManual = false, serviceManual = false;
 };
 
@@ -113,6 +117,17 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             options.rate = *period;
         } else if (arg == "--meter") {
             options.meter = argv[++i];
+        } else if (arg == "--hook") {
+            options.hook = SplitCommas(argv[++i]);
+            if (options.hook.size() > kScopeChannels) {
+                return std::nullopt;
+            }
+        } else if (arg == "--timebase") {
+            const auto timebase = ParseDuration(argv[++i]);
+            if (!timebase || !TimebaseIndex(*timebase)) {
+                return std::nullopt;
+            }
+            options.timebase = *timebase;
         } else {
             return std::nullopt;
         }
@@ -279,9 +294,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     toolbar.serviceManualOpen = options.serviceManual;
     toolbar.analyzerOpen = !options.clip.empty();
     toolbar.meterOpen = options.meter.has_value();
+    toolbar.scopeOpen = !options.hook.empty();
     ManualWindows manualWindows;
     AnalyzerWindow analyzerWindow;
     MeterWindow meterWindow;
+    ScopeWindow scopeWindow;
     boardView.setTooltip([&loaded](const BoardScene& scene, const Hit& hit) {
         return Tooltip(scene, hit, loaded.manuals.manuals);
     });
@@ -444,6 +461,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         if (session.machine()) {
             analyzerWindow.draw(toolbar.analyzerOpen, session, boardView);
             meterWindow.draw(toolbar.meterOpen, session, boardView);
+            scopeWindow.draw(toolbar.scopeOpen, session, boardView);
         }
         if (const auto picked = boardView.takePicked()) {
             toolbar.analyzerOpen |= *picked == Tool::Clip;
@@ -525,6 +543,19 @@ int main(int argc, char** argv) {
     if (!options->clip.empty()) {
         session.setAnalyzer(analyzer);
         session.arm();
+    }
+    for (const std::string& item : options->hook) {
+        const std::size_t dot = item.find('.');
+        if (dot == std::string::npos || !session.hook(item.substr(0, dot), item.substr(dot + 1))) {
+            std::println(stderr, "bw_ui: unknown pin '{}'", item);
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+    }
+    if (options->timebase) {
+        ScopeSettings scope = session.scopeSettings();
+        scope.timebase = *options->timebase;
+        session.setScope(scope);
     }
     if (options->meter) {
         const std::size_t dot = options->meter->find('.');
