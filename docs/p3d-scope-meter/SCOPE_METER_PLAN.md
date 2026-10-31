@@ -13,15 +13,11 @@ Spec: [SCOPE_METER.md](SCOPE_METER.md)
 | 6 | UI groundwork: tool↔window pairing, refusal reasons, placement rule, Hook/Lead tags | done 6c06d28 |
 | 7 | `Multimeter` window, Meter clicks, `--meter` | done 94dd63b |
 | 8 | `Oscilloscope` window, `--hook`/`--timebase`, screenshot | done d3388bf |
-| 9 | Release check, user check, docs | release done f0e57fd; user check pending |
+| 9 | Release check, user check, docs | done |
+
+P3d DONE 2026-10-31 (user: "works well enough").
 
 Implemented ecb3915..f0e57fd (2026-10-31): 404 tests pass in debug and release (runner tests also under TSan). Release `broken_trace` with 8 Clips at 100 MHz (`CLK` included), Hooks on `U1.2`/`U1.14` at 5 ns/div and the meter on `U1.2`: 1.00×, `ui` 0.8–0.9 ms (same run without Hooks and meter: 0.7 ms; P3c measured 0.4 ms). Screenshots read: meter `1.85 V` on `CLK`; at 20 ns/div `QA` rises 0.65 div after the Trigger mark.
-
-## Remaining
-
-### 9.2 — User check
-
-The user measures a gate delay with the Oscilloscope and finds the `broken_trace` crack by continuity with the power off. Record feedback under "Later", then mark P3d done in the ARCHITECTURE roadmap.
 
 ## Implementation notes (differences from the design)
 
