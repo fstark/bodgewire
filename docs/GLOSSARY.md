@@ -129,6 +129,10 @@ _Avoid_: Wrong IC
 A physical change the player makes to fix a Machine: swapping a Component, cutting or mending a Trace, adding a Bodge Wire, or resoldering a Joint.
 _Avoid_: Fix, patch
 
+**Cut**:
+A gap the player makes across a Trace, splitting it like a Broken Trace; a Repair, undone by mending.
+_Avoid_: Break (that is the Fault)
+
 **Golden Machine**:
 The fault-free version of a Machine, used as the reference a repaired Machine must behave like.
 _Avoid_: Reference machine (that means the real-world original)
