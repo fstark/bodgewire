@@ -273,3 +273,65 @@ TEST_CASE("machine: padPosition", "[machine]") {
     REQUIRE(counter.has_value());
     CHECK(counter->padPosition("R1", "1").has_value());
 }
+
+namespace {
+
+Machine BrokenTrace() {
+    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
+bool PadsConnected(const Machine& machine, const char* refA, const char* pinA, const char* refB,
+                   const char* pinB) {
+    const auto a = machine.padPosition(refA, pinA);
+    const auto b = machine.padPosition(refB, pinB);
+    REQUIRE(a.has_value());
+    REQUIRE(b.has_value());
+    return machine.connected(Layer::Front, *a, Layer::Front, *b);
+}
+
+}  // namespace
+
+TEST_CASE("machine: bodge wire across the crack", "[machine]") {
+    Machine machine = BrokenTrace();
+    CHECK_FALSE(PadsConnected(machine, "U1", "14", "U13", "6"));
+    CHECK(machine.addWire({"U1", "14"}, {"U13", "6"}));
+    CHECK(PadsConnected(machine, "U1", "14", "U13", "6"));
+    REQUIRE(machine.wires().size() == 1);
+    CHECK(machine.wires()[0].a.pin == "14");
+    CHECK(machine.removeWire({"U13", "6"}, {"U1", "QA"}));
+    CHECK_FALSE(PadsConnected(machine, "U1", "14", "U13", "6"));
+    CHECK_FALSE(machine.removeWire({"U13", "6"}, {"U1", "QA"}));
+}
+
+TEST_CASE("machine: bad wires", "[machine]") {
+    Machine machine = BrokenTrace();
+    CHECK_FALSE(machine.addWire({"U99", "1"}, {"U13", "6"}));
+    CHECK_FALSE(machine.addWire({"U1", "XX"}, {"U13", "6"}));
+    CHECK_FALSE(machine.addWire({"U1", "14"}, {"U1", "QA"}));
+    CHECK(machine.wires().empty());
+}
+
+TEST_CASE("machine: cut and mend", "[machine]") {
+    auto loaded = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    REQUIRE(loaded.has_value());
+    Machine& machine = *loaded;
+    CHECK(PadsConnected(machine, "U1", "14", "U13", "6"));
+    CHECK(machine.cut(Layer::Front, kH0Crack));
+    CHECK_FALSE(PadsConnected(machine, "U1", "14", "U13", "6"));
+    CHECK(machine.cuts().size() == 1);
+    CHECK_FALSE(machine.cut(Layer::Front, kH0Crack));
+    CHECK_FALSE(machine.cut(Layer::Front, {0, 0}));
+    CHECK(machine.mend(Layer::Front, kH0Crack));
+    CHECK(PadsConnected(machine, "U1", "14", "U13", "6"));
+    CHECK(machine.cuts().empty());
+}
+
+TEST_CASE("machine: build with a wire", "[machine]") {
+    Machine machine = BrokenTrace();
+    REQUIRE(machine.addWire({"U1", "14"}, {"U13", "6"}));
+    const auto built = machine.build();
+    REQUIRE(built.has_value());
+    CHECK(PinNet(**built, "U1", "14") == PinNet(**built, "U13", "6"));
+}

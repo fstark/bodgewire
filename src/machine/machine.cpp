@@ -1,5 +1,6 @@
 #include "machine/machine.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iterator>
@@ -113,7 +114,7 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
     if (!errors.empty()) {
         return std::unexpected(std::move(errors));
     }
-    machine.board_ = CrackBoard(machine.pristine_, machine.cracks_);
+    machine.rebuildBoard();
     return machine;
 }
 
@@ -126,16 +127,84 @@ bool Machine::swap(std::string_view reference) {
 }
 
 bool Machine::mend(Layer layer, Point at) {
-    const auto removed = std::erase_if(cracks_, [&](const CrackDecl& crack) {
+    const auto near = [&](const CrackDecl& crack) {
         return crack.layer == layer &&
                std::hypot(static_cast<double>(crack.at.x - at.x),
                           static_cast<double>(crack.at.y - at.y)) <= kMendReach;
-    });
+    };
+    const auto removed = std::erase_if(cracks_, near) + std::erase_if(cuts_, near);
     if (removed == 0) {
         return false;
     }
-    board_ = CrackBoard(pristine_, cracks_);
+    rebuildBoard();
     return true;
+}
+
+bool Machine::cut(Layer layer, Point at) {
+    if (!FindCrackTrace(board_, layer, at)) {
+        return false;
+    }
+    cuts_.push_back({0, layer, at});
+    rebuildBoard();
+    return true;
+}
+
+bool Machine::addWire(const PinRef& a, const PinRef& b) {
+    const auto pa = padOf(a);
+    const auto pb = padOf(b);
+    if (!pa || !pb || (pa->reference == pb->reference && pa->pin == pb->pin)) {
+        return false;
+    }
+    const auto atA = padPosition(pa->reference, pa->pin);
+    const auto atB = padPosition(pb->reference, pb->pin);
+    wires_.push_back({*pa, *pb, {*atA, *atB}});
+    rebuildBoard();
+    return true;
+}
+
+bool Machine::removeWire(const PinRef& a, const PinRef& b) {
+    const auto pa = padOf(a);
+    const auto pb = padOf(b);
+    if (!pa || !pb) {
+        return false;
+    }
+    const auto same = [](const PinRef& x, const PinRef& y) {
+        return x.reference == y.reference && x.pin == y.pin;
+    };
+    const auto it = std::ranges::find_if(wires_, [&](const WireEnds& w) {
+        return (same(w.a, *pa) && same(w.b, *pb)) || (same(w.a, *pb) && same(w.b, *pa));
+    });
+    if (it == wires_.end()) {
+        return false;
+    }
+    wires_.erase(it);
+    rebuildBoard();
+    return true;
+}
+
+void Machine::rebuildBoard() {
+    std::vector<CrackDecl> all = cracks_;
+    all.insert(all.end(), cuts_.begin(), cuts_.end());
+    board_ = CrackBoard(pristine_, all);
+    for (const WireEnds& w : wires_) {
+        board_.bodgeWires.push_back(w.wire);
+    }
+}
+
+std::optional<PinRef> Machine::padOf(const PinRef& pin) const {
+    const auto chip = designCircuit_->components.find(pin.reference);
+    if (chip == designCircuit_->components.end()) {
+        return std::nullopt;
+    }
+    const auto index = FindPin(*chip->second, pin.pin);
+    if (!index) {
+        return std::nullopt;
+    }
+    PinRef number{pin.reference, std::to_string(*index + 1)};
+    if (!padPosition(number.reference, number.pin)) {
+        return std::nullopt;
+    }
+    return number;
 }
 
 LoadResult Machine::build() const {
