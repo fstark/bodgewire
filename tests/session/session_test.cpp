@@ -267,3 +267,68 @@ TEST_CASE("session: netlist without a Board", "[session]") {
     session.runner().waitIdle();
     CHECK(session.runner().status().simTime >= 1_ms);
 }
+
+namespace {
+
+Session TestPatternSession() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    return session;
+}
+
+// Continuity Leads on U1.14 and U13.6, the two ends of H0.
+void LeadsAcrossH0(Session& session) {
+    const auto qa = session.padLead("U1", "14");
+    const auto far = session.padLead("U13", "6");
+    REQUIRE(qa.has_value());
+    REQUIRE(far.has_value());
+    session.setMeterMode(MeterMode::Continuity);
+    REQUIRE(session.placeLead({qa->at, Layer::Front, qa->label}));
+    REQUIRE(session.placeLead({far->at, Layer::Front, far->label}));
+}
+
+const WireRepair kH0Wire{{"U1", "14"}, {"U13", "6"}};
+
+}  // namespace
+
+TEST_CASE("session: cut and wire only with the power off", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    session.powerOn(1);
+    CHECK(session.repair(CutRepair{Layer::Front, kH0Crack}) == RepairResult::Refused);
+    CHECK(session.repair(kH0Wire) == RepairResult::Refused);
+    CHECK(session.repair(UnwireRepair{kH0Wire.a, kH0Wire.b}) == RepairResult::Refused);
+    session.powerOff();
+    CHECK(session.repair(CutRepair{Layer::Front, kH0Crack}) == RepairResult::Unknown);
+    CHECK(session.repair(kH0Wire) == RepairResult::Done);
+    REQUIRE_FALSE(session.log().empty());
+    CHECK(session.log().back() == "wire U1.14 U13.6");
+    CHECK(session.repair(UnwireRepair{kH0Wire.a, kH0Wire.b}) == RepairResult::Done);
+    CHECK(session.repair(UnwireRepair{kH0Wire.a, kH0Wire.b}) == RepairResult::Unknown);
+    CHECK(session.log().size() == 2);
+    CHECK(session.blobs().empty());
+}
+
+TEST_CASE("session: continuity through a bodge wire", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    LeadsAcrossH0(session);
+    CHECK(session.continuity() == false);
+    REQUIRE(session.repair(kH0Wire) == RepairResult::Done);
+    CHECK(session.continuity() == true);
+    CHECK(session.drawnBoard()->bodgeWires.empty());
+}
+
+TEST_CASE("session: continuity across a cut", "[session]") {
+    Session session = TestPatternSession();
+    const std::size_t traces = session.drawnBoard()->traces.size();
+    LeadsAcrossH0(session);
+    CHECK(session.continuity() == true);
+    REQUIRE(session.repair(CutRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    CHECK(session.continuity() == false);
+    CHECK(session.drawnBoard()->traces.size() == traces);
+    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    CHECK(session.continuity() == true);
+}

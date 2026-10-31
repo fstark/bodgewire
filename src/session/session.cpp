@@ -10,6 +10,15 @@
 
 namespace bw {
 
+namespace {
+
+template <class... Ts>
+struct Overloaded : Ts... {
+    using Ts::operator()...;
+};
+
+}  // namespace
+
 Session::Session(std::optional<Machine> machine, std::unique_ptr<LoadedCircuit> circuit)
     : machine_(std::move(machine)) {
     if (machine_) {
@@ -91,14 +100,19 @@ RepairResult Session::repair(const RepairAction& repair) {
     if (powered_) {
         return RepairResult::Refused;
     }
-    if (const auto* swap = std::get_if<SwapRepair>(&repair)) {
-        if (!machine_->swap(swap->reference)) {
-            return RepairResult::Unknown;
-        }
-    } else {
-        const auto& mend = std::get<MendRepair>(repair);
-        machine_->mend(mend.layer, mend.at);
-        blobs_.push_back({mend.layer, mend.at});
+    const bool done = std::visit(
+        Overloaded{[&](const SwapRepair& r) { return machine_->swap(r.reference); },
+                   [&](const MendRepair& r) {
+                       machine_->mend(r.layer, r.at);
+                       blobs_.push_back({r.layer, r.at});
+                       return true;
+                   },
+                   [&](const CutRepair& r) { return machine_->cut(r.layer, r.at); },
+                   [&](const WireRepair& r) { return machine_->addWire(r.a, r.b); },
+                   [&](const UnwireRepair& r) { return machine_->removeWire(r.a, r.b); }},
+        repair);
+    if (!done) {
+        return RepairResult::Unknown;
     }
     log_.push_back(FormatRepair(repair));
     dirty_ = true;

@@ -35,12 +35,14 @@ namespace {
 constexpr int kExitNetlistErrors = 1;
 constexpr int kExitUsage = 2;
 
-constexpr std::string_view kUsage = "usage: bw run <file.bwn|file.bwp> [--time 1ms] [--seed 1] "
-                                    "[--record NET,NET... | --record-all] [--vcd FILE] "
-                                    "[--tv FILE.bmp] [--repair swap:REF,mend:LAYER:X:Y] "
-                                    "[--probe REF.PIN,...]\n"
-                                    "       bw export-kicad <file.bwn> -o <file.net>\n"
-                                    "       bw check-board <file.bwn> <file.kicad_pcb>";
+constexpr std::string_view kUsage =
+    "usage: bw run <file.bwn|file.bwp> [--time 1ms] [--seed 1] "
+    "[--record NET,NET... | --record-all] [--vcd FILE] "
+    "[--tv FILE.bmp] [--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,"
+    "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN] "
+    "[--probe REF.PIN,...]\n"
+    "       bw export-kicad <file.bwn> -o <file.net>\n"
+    "       bw check-board <file.bwn> <file.kicad_pcb>";
 
 struct Options {
     std::string file;
@@ -149,7 +151,8 @@ std::unique_ptr<LoadedCircuit> Load(const std::string& file) {
     return std::move(*result);
 }
 
-// Applies `repair` ("swap:U3" or "mend:F.Cu:52.30:41.00"); error message, or nullopt.
+// Applies `repair` ("swap:U3", "mend:F.Cu:52.30:41.00", "cut:...", "wire:U1.14:U13.6",
+// "unwire:..."); error message, or nullopt.
 std::optional<std::string> Repair(Machine& machine, std::string_view repair) {
     const auto parsed = ParseRepair(repair);
     if (!parsed) {
@@ -161,9 +164,23 @@ std::optional<std::string> Repair(Machine& machine, std::string_view repair) {
         }
         return std::nullopt;
     }
-    const auto& mend = std::get<MendRepair>(*parsed);
-    if (!machine.mend(mend.layer, mend.at)) {
-        std::println(stderr, "bw: no crack near {}", FormatPoint(mend.layer, mend.at));
+    if (const auto* mend = std::get_if<MendRepair>(&*parsed)) {
+        if (!machine.mend(mend->layer, mend->at)) {
+            std::println(stderr, "bw: no crack near {}", FormatPoint(mend->layer, mend->at));
+        }
+        return std::nullopt;
+    }
+    bool done = false;
+    if (const auto* cut = std::get_if<CutRepair>(&*parsed)) {
+        done = machine.cut(cut->layer, cut->at);
+    } else if (const auto* wire = std::get_if<WireRepair>(&*parsed)) {
+        done = machine.addWire(wire->a, wire->b);
+    } else {
+        const auto& unwire = std::get<UnwireRepair>(*parsed);
+        done = machine.removeWire(unwire.a, unwire.b);
+    }
+    if (!done) {
+        return "cannot apply '" + std::string(repair) + "'";
     }
     return std::nullopt;
 }
