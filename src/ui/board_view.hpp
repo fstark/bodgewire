@@ -19,7 +19,12 @@
 
 namespace bw {
 
-enum class Tool : std::uint8_t { Probe, Swap, Mend, Clip, Hook, Meter };
+enum class Tool : std::uint8_t { Probe, Swap, Mend, Cut, Wire, Clip, Hook, Meter };
+
+struct CutMark {
+    Layer layer;
+    Point at;  // nm
+};
 
 // Analyzer Channel colours, readable on the green Board; shared with the Analyzer window.
 inline constexpr std::array<ImU32, kChannels> kChannelColours{
@@ -94,6 +99,13 @@ public:
     void setClips(std::span<const ClipTag> clips) { clips_.assign(clips.begin(), clips.end()); }
     void setHooks(std::span<const HookTag> hooks) { hooks_.assign(hooks.begin(), hooks.end()); }
     void setLeads(std::span<const LeadTag> leads) { leads_.assign(leads.begin(), leads.end()); }
+    void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
+    void setBodgeWires(std::span<const BodgeWire> wires) {
+        bodgeWires_.assign(wires.begin(), wires.end());
+    }
+    void setWireStart(std::optional<Point> start) { wireStart_ = start; }  // rubber band
+    // Index of the nearest wire within reach().copper of `at`; for the Cut tool.
+    std::optional<std::size_t> wireAt(Point at) const;
 
 private:
     struct Flash {
@@ -101,7 +113,7 @@ private:
         std::chrono::steady_clock::time_point until;
     };
 
-    void keys();                // L, F, P, S, M, C, O, V, +, -, Esc
+    void keys();                // L, F, P, S, M, K, W, C, O, V, +, -, Esc
     void input(ImVec2 origin);  // hover, zoom, pan, click while the panel is hovered or dragged
     PickReach reach() const;
 
@@ -127,6 +139,9 @@ private:
     std::vector<ClipTag> clips_;
     std::vector<HookTag> hooks_;
     std::vector<LeadTag> leads_;
+    std::vector<CutMark> cuts_;
+    std::vector<BodgeWire> bodgeWires_;
+    std::optional<Point> wireStart_;
     TooltipText tooltip_;
 };
 

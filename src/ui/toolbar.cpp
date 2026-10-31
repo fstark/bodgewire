@@ -81,6 +81,16 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
             blocked = powered;
             action = powered ? "Mend: power off first" : "Mend: click a crack";
             break;
+        case Tool::Cut:
+            blocked = powered;
+            action = powered ? "Cut: power off first" : "Cut: click a trace or a wire";
+            break;
+        case Tool::Wire:
+            blocked = powered;
+            action = powered       ? "Wire: power off first"
+                     : wireStarted ? "Wire: click the second pin"
+                                   : "Wire: click the first pin";
+            break;
         case Tool::Clip:
             blocked = full(session.clips());
             action = blocked ? "Clip: all 8 channels used" : "Clip: click a pin";
@@ -152,6 +162,14 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
         ImGui::SameLine(0, 2);
         if (ToolButton("Mend (M)", board.tool() == Tool::Mend)) {
             board.setTool(Tool::Mend);
+        }
+        ImGui::SameLine(0, 2);
+        if (ToolButton("Cut (K)", board.tool() == Tool::Cut)) {
+            board.setTool(Tool::Cut);
+        }
+        ImGui::SameLine(0, 2);
+        if (ToolButton("Wire (W)", board.tool() == Tool::Wire)) {
+            board.setTool(Tool::Wire);
         }
         ImGui::SameLine(0, 2);
         if (ToolButton("Clip (C)", board.tool() == Tool::Clip)) {

@@ -27,6 +27,11 @@ constexpr ImU32 kPinOne = IM_COL32(230, 230, 230, 230);
 constexpr ImU32 kHighlight = IM_COL32(255, 190, 0, 255);
 constexpr ImU32 kProbeRed = IM_COL32(220, 30, 30, 255);
 constexpr ImU32 kSolder = IM_COL32(205, 205, 210, 255);
+constexpr ImU32 kCutMark = IM_COL32(20, 20, 20, 255);
+constexpr std::int64_t kCutHalf = 300'000;  // nm: half the X's arm
+constexpr float kCutMinPx = 4;
+constexpr ImU32 kWireInsulation = IM_COL32(120, 170, 255, 255);
+constexpr std::int64_t kWireWidth = 300'000;
 constexpr std::int64_t kBlobRadius = 600'000;  // covers the gap of a cracked 0.2 mm Trace
 constexpr float kBlobMinPx = 3;
 constexpr float kInactiveAlpha = 0.35f;
@@ -54,6 +59,16 @@ ImU32 WithAlpha(ImU32 colour, float alpha) {
     const auto a =
         static_cast<ImU32>(static_cast<float>((colour >> IM_COL32_A_SHIFT) & 0xFF) * alpha + 0.5f);
     return (colour & ~IM_COL32_A_MASK) | (a << IM_COL32_A_SHIFT);
+}
+
+double SegmentDistance(Point p, Point a, Point b) {
+    const double abx = static_cast<double>(b.x - a.x);
+    const double aby = static_cast<double>(b.y - a.y);
+    const double apx = static_cast<double>(p.x - a.x);
+    const double apy = static_cast<double>(p.y - a.y);
+    const double length2 = abx * abx + aby * aby;
+    const double t = length2 == 0 ? 0 : std::clamp((apx * abx + apy * aby) / length2, 0.0, 1.0);
+    return std::hypot(apx - abx * t, apy - aby * t);
 }
 
 // Board nm → absolute ImGui screen position.
@@ -355,6 +370,13 @@ void BoardView::draw(ImVec2 size) {
         list.AddCircleFilled(map(blob.at), std::max(kBlobMinPx, map.pixels(kBlobRadius)),
                              WithAlpha(kSolder, alpha));
     }
+    for (const CutMark& cut : cuts_) {
+        const ImU32 colour = WithAlpha(kCutMark, cut.layer == active_ ? 1.0f : kInactiveAlpha);
+        const ImVec2 c = map(cut.at);
+        const float h = std::max(kCutMinPx, map.pixels(kCutHalf));
+        list.AddLine({c.x - h, c.y - h}, {c.x + h, c.y + h}, colour, 2.0f);
+        list.AddLine({c.x - h, c.y + h}, {c.x + h, c.y - h}, colour, 2.0f);
+    }
     for (std::size_t k = 0; k < board.components.size(); ++k) {
         const bool outlined = hoverTarget_ && hoverTarget_->component == k && !hoverTarget_->pad;
         DrawCourtyard(list, map, board.components[k], scene_->courtyard(k), scene_->partName(k),
@@ -382,6 +404,17 @@ void BoardView::draw(ImVec2 size) {
     }
     if (const auto component = chip()) {
         DrawPinNames(list, map, *scene_, *component);
+    }
+    const float wireWidth = std::max(2.0f, map.pixels(kWireWidth));
+    const float wireBlob = std::max(kBlobMinPx, map.pixels(kBlobRadius / 2));
+    for (const BodgeWire& wire : bodgeWires_) {
+        list.AddLine(map(wire.a), map(wire.b), kWireInsulation, wireWidth);
+        list.AddCircleFilled(map(wire.a), wireBlob, kSolder);
+        list.AddCircleFilled(map(wire.b), wireBlob, kSolder);
+    }
+    if (wireStart_ && ImGui::IsWindowHovered()) {
+        list.AddLine(map(*wireStart_), ImGui::GetIO().MousePos, kWireInsulation, wireWidth);
+        list.AddCircleFilled(map(*wireStart_), wireBlob, kSolder);
     }
     if (tip_) {
         const float radius = std::max(4.0f, map.pixels(400'000));
@@ -456,6 +489,12 @@ void BoardView::keys() {
     if (ImGui::IsKeyPressed(ImGuiKey_M, false)) {
         setTool(Tool::Mend);
     }
+    if (ImGui::IsKeyPressed(ImGuiKey_K, false)) {
+        setTool(Tool::Cut);
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_W, false)) {
+        setTool(Tool::Wire);
+    }
     if (ImGui::IsKeyPressed(ImGuiKey_C, false)) {
         setTool(Tool::Clip);
     }
@@ -480,6 +519,19 @@ void BoardView::keys() {
 PickReach BoardView::reach() const {
     const double nmPerPixel = 1e6 / viewport_.pixelsPerMm();
     return {std::llround(kPadReachPx * nmPerPixel), std::llround(kCopperReachPx * nmPerPixel)};
+}
+
+std::optional<std::size_t> BoardView::wireAt(Point at) const {
+    std::optional<std::size_t> best;
+    double bestDistance = static_cast<double>(reach().copper);
+    for (std::size_t i = 0; i < bodgeWires_.size(); ++i) {
+        const double d = SegmentDistance(at, bodgeWires_[i].a, bodgeWires_[i].b);
+        if (d <= bestDistance) {
+            best = i;
+            bestDistance = d;
+        }
+    }
+    return best;
 }
 
 void BoardView::input(ImVec2 origin) {

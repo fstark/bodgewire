@@ -43,7 +43,8 @@ constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 800;
 constexpr float kBoardShare = 2.0f / 3.0f;
 constexpr std::string_view kUsage =
-    "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] [--repair swap:REF,mend:LAYER:X:Y] "
+    "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] "
+    "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN] "
     "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--hook REF.PIN,...] [--timebase 1us] "
     "[--meter REF.PIN] "
     "[--manual user|service] [--screenshot OUT.png [--after 1s]]";
@@ -279,6 +280,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                                                             machine->designCircuit())
                                 : std::nullopt);
     std::uint64_t seed = 1;
+    std::optional<PinRef> wireStart;  // Wire tool: the first pin
+    Point wireStartAt{};
     if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
         if (const auto component =
                 scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
@@ -343,6 +346,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         if (boardView.takeEscape()) {
             if (boardView.tool() == Tool::Meter) {
                 session.liftLeads();
+            } else if (boardView.tool() == Tool::Wire) {
+                wireStart.reset();
             } else {
                 session.touch(std::nullopt);
             }
@@ -377,6 +382,48 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     result = session.repair(MendRepair{click->active, click->at});
                 }
                 break;
+            case Tool::Cut:
+                if (session.powered()) {
+                    result = RepairResult::Refused;
+                    break;
+                }
+                if (const auto wire = boardView.wireAt(click->at)) {
+                    const WireEnds& w = machine->wires()[*wire];
+                    result = session.repair(UnwireRepair{w.a, w.b});
+                } else if (!pick || pick->hit.kind != HitKind::Trace) {
+                    toolbar.refused("Cut: click a trace or a wire");
+                } else if (boardView.scene()->board().traces[pick->hit.index].mid) {
+                    toolbar.refused("Cut: straight traces only");
+                } else {
+                    result = session.repair(CutRepair{pick->layer, pick->contact});
+                }
+                if (result == RepairResult::Unknown) {
+                    toolbar.refused("Cut: click a trace or a wire");
+                }
+                break;
+            case Tool::Wire: {
+                if (session.powered()) {
+                    result = RepairResult::Refused;
+                    break;
+                }
+                if (!pick || pick->hit.kind != HitKind::Pad) {
+                    toolbar.refused("Wire: solder to pins only");
+                    break;
+                }
+                const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
+                const Pad& pad = part.pads[pick->hit.index];
+                const PinRef end{part.reference, pad.number};
+                if (!wireStart) {
+                    wireStart = end;
+                    wireStartAt = pad.position;
+                    break;
+                }
+                if (wireStart->reference != end.reference || wireStart->pin != end.pin) {
+                    result = session.repair(WireRepair{*wireStart, end});
+                }
+                wireStart.reset();
+                break;
+            }
             case Tool::Clip:
             case Tool::Hook: {
                 const bool isClip = boardView.tool() == Tool::Clip;
@@ -442,6 +489,20 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             leadTags.push_back({session.black()->at, false});
         }
         boardView.setLeads(leadTags);
+        if (machine) {
+            std::vector<CutMark> cuts;
+            for (const CrackDecl& cut : machine->cuts()) {
+                cuts.push_back({cut.layer, cut.at});
+            }
+            boardView.setCuts(cuts);
+            std::vector<BodgeWire> wires;
+            for (const WireEnds& w : machine->wires()) {
+                wires.push_back(w.wire);
+            }
+            boardView.setBodgeWires(wires);
+        }
+        boardView.setWireStart(wireStart ? std::optional(wireStartAt) : std::nullopt);
+        toolbar.wireStarted = wireStart.has_value();
         ImGui::SameLine();
         ImGui::BeginChild("side", {0, available.y});
         const std::string_view lock =
@@ -464,6 +525,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             scopeWindow.draw(toolbar.scopeOpen, session, boardView);
         }
         if (const auto picked = boardView.takePicked()) {
+            wireStart.reset();
             toolbar.analyzerOpen |= *picked == Tool::Clip;
             toolbar.scopeOpen |= *picked == Tool::Hook;
             toolbar.meterOpen |= *picked == Tool::Meter;
@@ -576,9 +638,8 @@ int main(int argc, char** argv) {
         if (!repair) {
             error = repair.error();
         } else if (session.repair(*repair) != RepairResult::Done) {
-            error = !session.machine()
-                        ? std::string("no Board to repair")
-                        : "unknown reference '" + std::get<SwapRepair>(*repair).reference + "'";
+            error = !session.machine() ? std::string("no Board to repair")
+                                       : "cannot apply '" + text + "'";
         }
         if (error) {
             std::println(stderr, "bw_ui: {}", *error);

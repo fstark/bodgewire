@@ -22,6 +22,7 @@ public:
 
     bool userManualOpen = false, serviceManualOpen = false;
     bool analyzerOpen = false, scopeOpen = false, meterOpen = false;
+    bool wireStarted = false;  // Wire tool: first pin clicked
 
 private:
     std::chrono::steady_clock::time_point flashUntil_{}, reasonUntil_{};
