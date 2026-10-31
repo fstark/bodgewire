@@ -80,7 +80,7 @@ struct Net    { std::vector<DriverId> drivers; LogicState resolved; };
 | Remove / insert IC | removes / adds its drivers, inputs and faults |
 
 - Topology is fixed during a run: board faults are applied at load, repairs are made with the power off, nets are recomputed before the next power-on.
-- Power (later, P3f; not built yet): today power Pins are wired to their Nets but Part models ignore them. Direction: a Part works only while its power Pins sit on the right rails. Rails are static per build (fixed topology), so "powered" and each rail's voltage are worked out at build from the electrical Nets, not simulated: a cracked VCC Trace or open socket contact leaves a chip unpowered (outputs Z), a VCC–GND short kills the rail (instruments read 0 V), a chip on the wrong rail misbehaves. Only intermittent power contacts need runtime checks, through the existing contact-switch mechanism.
+- Power (P3f, [SHORTS_POWER.md](p3f-shorts-power/SHORTS_POWER.md)): each power Pin of a Part declares the voltage it expects; a Rail is a Net holding a `POWER` connector supply pin, at that pin's voltage. Rails are static per build (fixed topology), so "Powered" is worked out at build from the electrical Nets, not simulated: a chip is Powered when every power Pin sits on a Rail of exactly its voltage, otherwise its outputs are Z and its inputs ignored (cracked VCC Trace, chip on the wrong Rail). A Net holding supply pins of different voltages is a Dead Rail (bench supply in current limit: 0 V, nothing damaged). Rules in volts, so more Rails (12 V, −5 V) are data only. Only intermittent power contacts will need runtime checks, through the existing contact-switch mechanism.
 
 ## Faults
 
@@ -106,13 +106,7 @@ struct Net    { std::vector<DriverId> drivers; LogicState resolved; };
 
 ## Repair validation
 
-Golden comparison of outputs, never a per-fault check:
-
-- Run the fault-free machine and the player's machine side by side, same seed, same inputs, on a stimulus: the machine's standard tests plus the job's complaint (e.g. the graphics demo).
-- Compare only machine outputs (video, LED digits, sound), sampled at the centre of each pixel / per frame, not exact edge times, so a slower but in-spec part doesn't fail on a tiny edge shift. Internal pins are not compared: a repair may legitimately change the implementation (bypassed dead gate, rerouted signal).
-- Standard tests act as diagnostics: they exercise RAM, ROM, I/O and report on the output, so internal faults become visible.
-- Repaired = no divergence for N frames. Intermittent faults: several seeds or a longer run.
-- Any valid fix passes (repaired trace, bodge wire, replaced chip, rerouting through a spare gate).
+Dropped (2026-11-01, P3f): no win condition for now; the player decides when the Machine is fixed. A golden comparison of outputs can't be trusted on larger Machines (a fault seen only under one specific use, such as a program touching one bad RAM chip), and a per-fault check rejects valid workarounds. Revisit later.
 
 ## Component models
 
@@ -197,8 +191,8 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P3c | Logic analyzer | done 2026-10-29: 8 Channels × 4096 points clipped on pads (`Clip (C)`), per-Channel Trigger, floating `Logic Analyzer` window, `bw_ui --clip`; electrical Nets, 1.00× with 8 Clips at 100 MHz. Later: discoverability, refusal feedback, deeper memory, navigation bugs. [LOGIC_ANALYZER_PLAN.md](p3c-logic-analyzer/LOGIC_ANALYZER_PLAN.md) |
 | P3d | Oscilloscope + multimeter | done 2026-10-31: 2 Hooks on pads, exact edge timing, live sweeps; held meter leads anywhere: logic-state voltages, continuity with the power off; the placement rule applied to the analyzer too; 1.00× with every instrument attached. [SCOPE_METER_PLAN.md](p3d-scope-meter/SCOPE_METER_PLAN.md) |
 | P3e | Bodge wires + trace cuts | done 2026-10-31: new Repairs through the Session: `Cut (K)` on straight Traces (a player-made crack, mended like one; also snips wires), `Wire (W)` between two pads; drawn, but Net highlighting ignores them; continuity follows them at once. [BODGE_WIRES_PLAN.md](p3e-bodge-wires/BODGE_WIRES_PLAN.md) |
-| P3f | Repair validation + new faults | outputs-only comparison with the Golden Machine; shorts, Wrong Part; real power (see Pins, nets, drivers: "Power"): chips powered only through their power Pins, worked out per build — unpowered chips (cracked VCC Trace, open contact), dead rail (VCC–GND short), chip on the wrong rail |
-| P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files), repair validation; still on the P2 board. P3a–P3f together answer: is the full loop fun? |
+| P3f | Solder bridges + real power | Solder Bridges between neighbouring pins on the solder side (subtle, removed with Cut); chips Powered only through their power Pins, worked out per build in volts; Dead Rail with a current-limit LED; four new Puzzles on the test-pattern board. Repair Validation dropped; Wrong Part, sockets, chip removal later. [SHORTS_POWER.md](p3f-shorts-power/SHORTS_POWER.md) |
+| P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files); still on the P2 board. P3a–P3f together answer: is the full loop fun? |
 | P4 | Procedural faults | random fault generation, headless vetting (reject symptom-less or trivial candidates) |
 | Later | Machines | BW-1, BW-80, BW-2001: CPU models (6502, Z80), RAM/ROM, keyboards, LED display |
 | Later | Timing | setup/hold checks, slow and wrong parts, timing faults |

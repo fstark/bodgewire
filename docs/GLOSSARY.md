@@ -107,7 +107,22 @@ _Avoid_: Dead output
 
 **Short**:
 A Fault that joins two Nets, or a Net to GND/VCC, that should be separate.
-_Avoid_: Bridge
+_Avoid_: Bridge (that is one kind, the Solder Bridge)
+
+**Solder Bridge**:
+A Short made by solder joining two neighbouring pins of one chip on the solder side.
+_Avoid_: Blob, splash
+
+**Rail**:
+A Net that carries a supply voltage from the power connector, such as VCC (5 V) or GND (0 V).
+_Avoid_: Power line, supply net
+
+**Powered**:
+A chip whose every power Pin sits on a Rail of the voltage it expects; an Unpowered chip drives nothing.
+
+**Dead Rail**:
+A Net joining supply pins of different voltages, such as VCC shorted to GND; it reads 0 V and powers nothing.
+_Avoid_: Shorted supply
 
 **Broken Trace**:
 A Fault where a Trace is cracked, splitting one Net in two.
@@ -174,7 +189,7 @@ Running a candidate Fault headlessly to reject it if it shows no Symptom or is t
 _Avoid_: Validation (that is for Repairs)
 
 **Repair Validation**:
-Checking a Repair by running the player's Machine against the Golden Machine and comparing their outputs.
+Checking a Repair by running the player's Machine against the Golden Machine and comparing their outputs. Dropped for now (P3f): the player decides when a Machine is fixed.
 
 ## Instruments and views
 
