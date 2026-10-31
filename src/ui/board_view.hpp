@@ -6,18 +6,20 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <imgui.h>
 
 #include "instruments/logic_analyzer.hpp"
+#include "instruments/oscilloscope.hpp"
 #include "session/session.hpp"
 #include "view/board_scene.hpp"
 #include "view/viewport.hpp"
 
 namespace bw {
 
-enum class Tool : std::uint8_t { Probe, Swap, Mend, Clip };
+enum class Tool : std::uint8_t { Probe, Swap, Mend, Clip, Hook, Meter };
 
 // Analyzer Channel colours, readable on the green Board; shared with the Analyzer window.
 inline constexpr std::array<ImU32, kChannels> kChannelColours{
@@ -28,6 +30,20 @@ inline constexpr std::array<ImU32, kChannels> kChannelColours{
 struct ClipTag {
     Point at;  // pad, nm
     std::size_t channel;
+};
+
+// Oscilloscope Channel colours: yellow, cyan.
+inline constexpr std::array<ImU32, kScopeChannels> kHookColours{IM_COL32(255, 230, 0, 255),
+                                                                IM_COL32(0, 230, 255, 255)};
+
+struct HookTag {
+    Point at;  // pad, nm
+    std::size_t channel;
+};
+
+struct LeadTag {
+    Point at;  // nm
+    bool red;
 };
 
 struct BoardTarget {
@@ -55,7 +71,9 @@ public:
 
     void draw(ImVec2 size);  // child region: input, Board, tooltip
     Tool tool() const { return tool_; }
-    void setTool(Tool tool) { tool_ = tool; }
+    // Button or key: a pick of the current tool still counts (reopens a closed window).
+    void setTool(Tool tool) { tool_ = tool, picked_ = tool; }
+    std::optional<Tool> takePicked() { return std::exchange(picked_, std::nullopt); }
     Layer activeLayer() const { return active_; }
     void toggleLayer() { active_ = active_ == Layer::Front ? Layer::Back : Layer::Front; }
     void fit() { needFit_ = true; }
@@ -74,6 +92,8 @@ public:
     void setProbeTip(std::optional<Point> tip);  // drawn above everything
     void setBlobs(std::span<const SolderBlob> blobs) { blobs_.assign(blobs.begin(), blobs.end()); }
     void setClips(std::span<const ClipTag> clips) { clips_.assign(clips.begin(), clips.end()); }
+    void setHooks(std::span<const HookTag> hooks) { hooks_.assign(hooks.begin(), hooks.end()); }
+    void setLeads(std::span<const LeadTag> leads) { leads_.assign(leads.begin(), leads.end()); }
 
 private:
     struct Flash {
@@ -81,7 +101,7 @@ private:
         std::chrono::steady_clock::time_point until;
     };
 
-    void keys();                // L, F, P, S, M, C, +, -, Esc
+    void keys();                // L, F, P, S, M, C, O, V, +, -, Esc
     void input(ImVec2 origin);  // hover, zoom, pan, click while the panel is hovered or dragged
     PickReach reach() const;
 
@@ -89,6 +109,7 @@ private:
     Viewport viewport_;
     Layer active_ = Layer::Front;
     Tool tool_ = Tool::Probe;
+    std::optional<Tool> picked_;
     bool needFit_ = true;  // first draw knows the panel size
     ImVec2 panel_{};
     std::optional<NetId> highlight_;
@@ -104,6 +125,8 @@ private:
     std::optional<Point> tip_;
     std::vector<SolderBlob> blobs_;
     std::vector<ClipTag> clips_;
+    std::vector<HookTag> hooks_;
+    std::vector<LeadTag> leads_;
     TooltipText tooltip_;
 };
 

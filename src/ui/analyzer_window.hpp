@@ -7,10 +7,12 @@
 
 namespace bw {
 
+class BoardView;
+
 // The floating Logic Analyzer: settings, Channel rows, the last Capture's waveforms.
 class AnalyzerWindow {
 public:
-    void draw(bool& open, Session& session);
+    void draw(bool& open, Session& session, BoardView& board);
 
 private:
     void fit() { from_ = 0, to_ = kDepth; }

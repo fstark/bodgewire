@@ -402,6 +402,36 @@ void BoardView::draw(ImVec2 size) {
                      {(min.x + max.x - text.x) / 2, (min.y + max.y - text.y) / 2}, IM_COL32_BLACK,
                      digit);
     }
+    for (const HookTag& tag : hooks_) {
+        const float radius = std::max(7.0f, map.pixels(600'000));
+        const ImVec2 pad = map(tag.at);
+        const ImVec2 centre{pad.x - 2 - radius, pad.y - 2 - radius};
+        list.AddCircleFilled(centre, radius, kHookColours[tag.channel]);
+        list.AddCircle(centre, radius, IM_COL32_BLACK, 0, 1.0f);
+        const char digit[2] = {static_cast<char>('1' + tag.channel), '\0'};
+        const float fontSize = std::min(ImGui::GetFontSize(), radius * 2);
+        const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, digit);
+        list.AddText(nullptr, fontSize, {centre.x - text.x / 2, centre.y - text.y / 2},
+                     IM_COL32_BLACK, digit);
+    }
+    for (const LeadTag& tag : leads_) {
+        const ImU32 fill = tag.red ? kProbeRed : IM_COL32(20, 20, 20, 255);
+        const ImVec2 point = map(tag.at);
+        const float ring = std::max(4.0f, map.pixels(350'000));
+        list.AddCircle(point, ring, fill, 0, 2.5f);
+        const float side = std::max(12.0f, map.pixels(1'000'000));
+        const ImVec2 corner{point.x - ring - 10, point.y - ring - 10};
+        list.AddLine(point, corner, fill, 2.0f);
+        const ImVec2 min{corner.x - side, corner.y - side};
+        list.AddRectFilled(min, corner, fill, 4.0f);
+        list.AddRect(min, corner, IM_COL32_WHITE, 4.0f, 0, 1.0f);
+        const char* sign = tag.red ? "+" : "-";
+        const float fontSize = std::min(ImGui::GetFontSize(), side);
+        const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, sign);
+        list.AddText(nullptr, fontSize,
+                     {(min.x + corner.x - text.x) / 2, (min.y + corner.y - text.y) / 2},
+                     IM_COL32_WHITE, sign);
+    }
     ImGui::EndChild();
 }
 
@@ -417,16 +447,22 @@ void BoardView::keys() {
         fit();
     }
     if (ImGui::IsKeyPressed(ImGuiKey_P, false)) {
-        tool_ = Tool::Probe;
+        setTool(Tool::Probe);
     }
     if (ImGui::IsKeyPressed(ImGuiKey_S, false)) {
-        tool_ = Tool::Swap;
+        setTool(Tool::Swap);
     }
     if (ImGui::IsKeyPressed(ImGuiKey_M, false)) {
-        tool_ = Tool::Mend;
+        setTool(Tool::Mend);
     }
     if (ImGui::IsKeyPressed(ImGuiKey_C, false)) {
-        tool_ = Tool::Clip;
+        setTool(Tool::Clip);
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_O, false)) {
+        setTool(Tool::Hook);
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_V, false)) {
+        setTool(Tool::Meter);
     }
     if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
         escape_ = true;

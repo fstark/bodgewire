@@ -11,6 +11,8 @@
 #include <imgui.h>
 
 #include "ui/board_view.hpp"
+#include "ui/time_text.hpp"
+#include "ui/toolbar.hpp"
 
 namespace bw {
 
@@ -29,32 +31,6 @@ constexpr ImU32 kFaint = IM_COL32(200, 200, 200, 90);
 constexpr ImVec4 kGrey{0.5f, 0.5f, 0.5f, 1.0f};
 constexpr std::array<const char*, 5> kConditions{"any", "0", "1", "rise", "fall"};
 constexpr std::array<const char*, 3> kPositions{"10 %", "50 %", "90 %"};
-
-// Three significant digits, trailing zeros dropped; `sign`: "+" before positive values.
-std::string FormatTime(Time ps, bool sign) {
-    if (ps == 0) {
-        return "0";
-    }
-    const double magnitude = std::abs(static_cast<double>(ps));
-    static constexpr std::array<std::pair<double, const char*>, 5> kUnits{
-        {{1e12, "s"}, {1e9, "ms"}, {1e6, "\u00b5s"}, {1e3, "ns"}, {1, "ps"}}};
-    auto unit = kUnits.back();
-    for (const auto& u : kUnits) {
-        if (magnitude >= u.first) {
-            unit = u;
-            break;
-        }
-    }
-    const double value = magnitude / unit.first;
-    std::string digits = std::format("{:.{}f}", value, value >= 100 ? 0 : value >= 10 ? 1 : 2);
-    if (digits.find('.') != std::string::npos) {
-        digits.erase(digits.find_last_not_of('0') + 1);
-        if (digits.back() == '.') {
-            digits.pop_back();
-        }
-    }
-    return std::format("{}{} {}", ps < 0 ? "-" : (sign ? "+" : ""), digits, unit.second);
-}
 
 std::string FormatFrequency(Time period) {
     const Time hz = kPicosPerSecond / period;
@@ -100,7 +76,7 @@ Time TickStep(double span, int ticks) {
 
 }  // namespace
 
-void AnalyzerWindow::draw(bool& open, Session& session) {
+void AnalyzerWindow::draw(bool& open, Session& session, BoardView& board) {
     if (session.captures().update()) {
         shown_ = session.captures().front();
         marker_.reset();
@@ -120,6 +96,10 @@ void AnalyzerWindow::draw(bool& open, Session& session) {
     }
 
     // Header.
+    if (ToolButton("Clip (C)", board.tool() == Tool::Clip)) {
+        board.setTool(Tool::Clip);
+    }
+    ImGui::SameLine(0, 16);
     const AnalyzerPhase phase = session.analyzerPhase();
     const bool running = phase == AnalyzerPhase::Armed || phase == AnalyzerPhase::Filling;
     if (ImGui::Button(running ? "Stop" : "Arm", {60, 0})) {
@@ -129,11 +109,11 @@ void AnalyzerWindow::draw(bool& open, Session& session) {
             session.arm();
         }
     }
-    ImGui::SameLine();
+    ImGui::SameLine(0, 16);
     ImGui::TextUnformatted(PhaseText(phase, session.powered()));
     AnalyzerSettings settings = session.analyzerSettings();
     bool changed = false;
-    ImGui::SameLine(300);
+    ImGui::SameLine(390);
     ImGui::SetNextItemWidth(100);
     if (ImGui::BeginCombo("Rate", FormatFrequency(settings.period).c_str())) {
         for (const Time period : kAnalyzerPeriods) {

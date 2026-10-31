@@ -318,7 +318,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         const ImVec2 available = ImGui::GetContentRegionAvail();
         boardView.draw({available.x * kBoardShare, available.y});
         if (boardView.takeEscape()) {
-            session.touch(std::nullopt);
+            if (boardView.tool() == Tool::Meter) {
+                session.liftLeads();
+            } else {
+                session.touch(std::nullopt);
+            }
         }
         if (const auto click = boardView.takeClick()) {
             const auto& pick = click->pick;
@@ -351,17 +355,38 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 }
                 break;
             case Tool::Clip:
-                if (pick && pick->hit.kind == HitKind::Pad) {
-                    const BoardComponent& part =
-                        session.drawnBoard()->components[pick->hit.component];
-                    const std::string& pin = part.pads[pick->hit.index].number;
+            case Tool::Hook: {
+                const bool isClip = boardView.tool() == Tool::Clip;
+                if (!pick || pick->hit.kind == HitKind::Component) {
+                    break;
+                }
+                if (!AcceptsLead(LeadKind::Attached, pick->hit.kind)) {
+                    toolbar.refused(
+                        std::format("{}: attaches to pins only", isClip ? "Clip" : "Hook"));
+                    break;
+                }
+                const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
+                const std::string& pin = part.pads[pick->hit.index].number;
+                if (isClip) {
                     if (const auto channel = session.clipAt(part.reference, pin)) {
                         session.unclip(*channel);
-                    } else if (session.clip(part.reference, pin)) {
-                        toolbar.analyzerOpen = true;
-                    } else {
-                        result = RepairResult::Refused;  // all Channels used: amber flash
+                    } else if (!session.clip(part.reference, pin)) {
+                        toolbar.refused("Clip: all 8 channels used");
                     }
+                } else {
+                    if (const auto channel = session.hookAt(part.reference, pin)) {
+                        session.unhook(*channel);
+                    } else if (!session.hook(part.reference, pin)) {
+                        toolbar.refused("Hook: both channels used");
+                    }
+                }
+                break;
+            }
+            case Tool::Meter:
+                if (pick && AcceptsLead(LeadKind::Held, pick->hit.kind) &&
+                    !session.placeLead(
+                        {pick->contact, pick->layer, LeadLabel(*boardView.scene(), pick->hit)})) {
+                    toolbar.refused("Meter: power off for continuity");
                 }
                 break;
             }
@@ -379,6 +404,21 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             }
         }
         boardView.setClips(tags);
+        std::vector<HookTag> hookTags;
+        for (std::size_t c = 0; c < kScopeChannels; ++c) {
+            if (const auto& hook = session.hooks()[c]) {
+                hookTags.push_back({hook->at, c});
+            }
+        }
+        boardView.setHooks(hookTags);
+        std::vector<LeadTag> leadTags;
+        if (session.red()) {
+            leadTags.push_back({session.red()->at, true});
+        }
+        if (session.black() && session.meterMode() == MeterMode::Continuity) {
+            leadTags.push_back({session.black()->at, false});
+        }
+        boardView.setLeads(leadTags);
         ImGui::SameLine();
         ImGui::BeginChild("side", {0, available.y});
         const std::string_view lock =
@@ -396,7 +436,12 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         manualWindows.draw(toolbar.userManualOpen, toolbar.serviceManualOpen,
                            loaded.manuals.manuals, boardView, DesignOf(session));
         if (session.machine()) {
-            analyzerWindow.draw(toolbar.analyzerOpen, session);
+            analyzerWindow.draw(toolbar.analyzerOpen, session, boardView);
+        }
+        if (const auto picked = boardView.takePicked()) {
+            toolbar.analyzerOpen |= *picked == Tool::Clip;
+            toolbar.scopeOpen |= *picked == Tool::Hook;
+            toolbar.meterOpen |= *picked == Tool::Meter;
         }
 
         ImGui::Render();
