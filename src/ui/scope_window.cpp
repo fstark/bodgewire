@@ -202,13 +202,20 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
         if (!shown_ || shown_->channels[c].empty()) {
             continue;
         }
-        for (std::size_t px = 0; px < columns_[c].size(); ++px) {
-            const auto [lo, hi] = columns_[c][px];
-            if (lo > hi) {
-                continue;
+        const auto& columns = columns_[c];
+        for (std::size_t px = 0; px < columns.size();) {
+            const auto [lo, hi] = columns[px];
+            std::size_t next = px + 1;
+            while (next < columns.size() && columns[next] == columns[px]) {
+                ++next;  // one rect per run of equal columns
             }
-            const float x = top.x + static_cast<float>(px);
-            list.AddRectFilled({x, bandY(c, hi) - 0.75f}, {x + 1, bandY(c, lo) + 0.75f}, colour);
+            if (lo <= hi) {
+                const float x = top.x + static_cast<float>(px);
+                list.AddRectFilled({x, bandY(c, hi) - 0.75f},
+                                   {top.x + static_cast<float>(next), bandY(c, lo) + 0.75f},
+                                   colour);
+            }
+            px = next;
         }
     }
     list.AddText({top.x + width - 30, top.y + 2}, kScale, "5 V");
