@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "board/board.hpp"
+#include "board/copper.hpp"
 #include "machine/puzzle.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
@@ -39,9 +40,13 @@ public:
     std::optional<NetId> probeNet(const LoadedCircuit& built, Layer layer, Point at) const;
     // Position of a Pin's pad: "U1", "QA" or "14"; nullopt if unknown.
     std::optional<Point> padPosition(std::string_view reference, std::string_view pin) const;
+    // Same copper island under both points, in the current Copper (continuity).
+    bool connected(Layer layerA, Point a, Layer layerB, Point b) const;
 
 private:
     Machine() = default;
+    // Island of the current Copper under `at`; nullopt off Copper.
+    std::optional<std::uint32_t> islandAt(const Islands& islands, Layer layer, Point at) const;
     friend std::expected<Machine, std::vector<Diagnostic>>
     LoadMachine(const Puzzle&, const std::filesystem::path&);
 

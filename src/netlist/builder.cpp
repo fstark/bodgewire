@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "parts/catalogue.hpp"
+#include "parts/connector.hpp"
 #include "sim/check.hpp"
 
 namespace bw {
@@ -346,6 +347,21 @@ std::optional<NetId> ConnectorNet(const LoadedCircuit& loaded, std::string_view 
     for (const LoadedPart& p : loaded.parts) {
         if (p.info->name == part) {
             return PinNet(loaded, p.reference, pin);
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<double> RailVolts(const LoadedCircuit& loaded, NetId net) {
+    for (const LoadedPart& part : loaded.parts) {
+        if (part.info->kind != PartKind::Connector) {
+            continue;
+        }
+        for (const PinSpec& spec : ConnectorPins(part.info->name)) {
+            const auto volts = ConnectorVolts(part.info->name, spec.name);
+            if (volts && PinNet(loaded, part.reference, spec.name) == net) {
+                return volts;
+            }
         }
     }
     return std::nullopt;

@@ -467,3 +467,30 @@ TEST_CASE("view: hover text", "[view]") {
     const std::size_t r1 = ComponentIndex(counterScene.board(), "R1");
     CHECK(counterScene.hoverText({HitKind::Pad, r1, 0}).starts_with("R1 pin 1 · "));
 }
+
+TEST_CASE("leads: attached on pads only", "[view]") {
+    CHECK(AcceptsLead(LeadKind::Held, HitKind::Pad));
+    CHECK(AcceptsLead(LeadKind::Held, HitKind::Via));
+    CHECK(AcceptsLead(LeadKind::Held, HitKind::Trace));
+    CHECK_FALSE(AcceptsLead(LeadKind::Held, HitKind::Component));
+    CHECK(AcceptsLead(LeadKind::Attached, HitKind::Pad));
+    CHECK_FALSE(AcceptsLead(LeadKind::Attached, HitKind::Via));
+    CHECK_FALSE(AcceptsLead(LeadKind::Attached, HitKind::Trace));
+    CHECK_FALSE(AcceptsLead(LeadKind::Attached, HitKind::Component));
+}
+
+TEST_CASE("leads: labels", "[view]") {
+    const Fixture f = Load("test_pattern");
+    const BoardScene scene = Scene(f);
+    const Board& board = scene.board();
+    const std::size_t u1 = ComponentIndex(board, "U1");
+    CHECK(LeadLabel(scene, {HitKind::Pad, u1, PadIndex(board.components[u1], "14")}) == "U1.14 QA");
+    CHECK(LeadLabel(scene, {HitKind::Trace, 0, 0}) == "Trace");
+    REQUIRE_FALSE(board.vias.empty());
+    CHECK(LeadLabel(scene, {HitKind::Via, 0, 0}) == "via");
+
+    const Fixture counter = Load("counter");
+    const BoardScene counterScene = Scene(counter);
+    const std::size_t r1 = ComponentIndex(counterScene.board(), "R1");
+    CHECK(LeadLabel(counterScene, {HitKind::Pad, r1, 0}) == "R1.1");
+}

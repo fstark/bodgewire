@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -16,5 +17,8 @@ public:
 };
 
 std::vector<PinSpec> ConnectorPins(std::string_view part);  // "POWER", "VIDEO"; Check()s the name
+
+// Declared voltage of a connector pin that supplies the Board: POWER VCC 5, GND 0; else nullopt.
+std::optional<double> ConnectorVolts(std::string_view part, std::string_view pin);
 
 }  // namespace bw

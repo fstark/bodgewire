@@ -231,6 +231,16 @@ TEST_CASE("builder: ConnectorNet without the connector", "[netlist]") {
     CHECK_FALSE(ConnectorNet(**result, "VIDEO", "VIDEO").has_value());
 }
 
+TEST_CASE("rails: declared voltages", "[netlist]") {
+    const auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    REQUIRE(result.has_value());
+    const LoadedCircuit& loaded = **result;
+    CHECK(RailVolts(loaded, loaded.nets.at("VCC")) == 5.0);
+    CHECK(RailVolts(loaded, loaded.nets.at("GND")) == 0.0);
+    CHECK_FALSE(RailVolts(loaded, loaded.nets.at("CLK")).has_value());
+    CHECK_FALSE(RailVolts(loaded, loaded.nets.at("VIDEO")).has_value());
+}
+
 TEST_CASE("builder: stuck pin ties its net", "[netlist]") {
     // 1Y drives 2A on net A; 1A is on GND, so a working 1Y would drive 1.
     const auto netlist = ParseNetlist("part U1 74LS04\nnet A U1.2 U1.3\nnet GND U1.1\n", "t.bwn");

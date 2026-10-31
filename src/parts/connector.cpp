@@ -21,4 +21,16 @@ std::vector<PinSpec> ConnectorPins(std::string_view part) {
             {"GND", PinKind::Power, Family::Ttl}};
 }
 
+std::optional<double> ConnectorVolts(std::string_view part, std::string_view pin) {
+    if (part == "POWER") {
+        if (pin == "VCC") {
+            return 5.0;
+        }
+        if (pin == "GND") {
+            return 0.0;
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace bw

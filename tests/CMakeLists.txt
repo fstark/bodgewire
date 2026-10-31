@@ -17,6 +17,7 @@ add_executable(bw_tests
   devices/tv_test.cpp
   instruments/logic_analyzer_test.cpp
   instruments/logic_probe_test.cpp
+  instruments/multimeter_test.cpp
   machine/crack_test.cpp
   machine/electrical_test.cpp
   machine/machine_test.cpp
@@ -29,6 +30,7 @@ add_executable(bw_tests
   machines/logic_analyzer_test.cpp
   machines/manuals_test.cpp
   machines/net_panel_test.cpp
+  machines/scope_meter_test.cpp
   machines/test_pattern_faults_test.cpp
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp

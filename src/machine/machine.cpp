@@ -142,8 +142,8 @@ LoadResult Machine::build() const {
     return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_), stuck_);
 }
 
-std::optional<NetId> Machine::probeNet(const LoadedCircuit& built, Layer layer, Point at) const {
-    const Islands islands = FindIslands(board_);
+std::optional<std::uint32_t> Machine::islandAt(const Islands& islands, Layer layer,
+                                               Point at) const {
     std::optional<std::uint32_t> island;
     for (std::size_t k = 0; k < board_.components.size() && !island; ++k) {
         const auto& pads = board_.components[k].pads;
@@ -163,6 +163,18 @@ std::optional<NetId> Machine::probeNet(const LoadedCircuit& built, Layer layer, 
             island = islands.traceIsland[t];
         }
     }
+    return island;
+}
+
+bool Machine::connected(Layer layerA, Point a, Layer layerB, Point b) const {
+    const Islands islands = FindIslands(board_);
+    const auto first = islandAt(islands, layerA, a);
+    return first && first == islandAt(islands, layerB, b);
+}
+
+std::optional<NetId> Machine::probeNet(const LoadedCircuit& built, Layer layer, Point at) const {
+    const Islands islands = FindIslands(board_);
+    const auto island = islandAt(islands, layer, at);
     if (!island) {
         return std::nullopt;
     }

@@ -409,4 +409,37 @@ std::optional<std::size_t> BoardScene::padIndex(std::size_t component, std::stri
     return std::nullopt;
 }
 
+bool AcceptsLead(LeadKind kind, HitKind hit) {
+    switch (hit) {
+    case HitKind::Pad:
+        return true;
+    case HitKind::Via:
+    case HitKind::Trace:
+        return kind == LeadKind::Held;
+    case HitKind::Component:
+        return false;
+    }
+    return false;
+}
+
+std::string LeadLabel(const BoardScene& scene, const Hit& hit) {
+    switch (hit.kind) {
+    case HitKind::Pad: {
+        const BoardComponent& component = scene.board().components[hit.component];
+        std::string label = component.reference + "." + component.pads[hit.index].number;
+        if (const auto name = scene.pinName(hit.component, hit.index); !name.empty()) {
+            label += " " + std::string(name);
+        }
+        return label;
+    }
+    case HitKind::Via:
+        return "via";
+    case HitKind::Trace:
+        return "Trace";
+    case HitKind::Component:
+        return scene.board().components[hit.component].reference;
+    }
+    return {};
+}
+
 }  // namespace bw

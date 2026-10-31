@@ -26,6 +26,9 @@ struct Hit {
     bool operator==(const Hit&) const = default;
 };
 
+enum class LeadKind : std::uint8_t { Held, Attached };  // probe, Test Leads / Clips, Hooks
+bool AcceptsLead(LeadKind kind, HitKind hit);           // Held: Pad, Via, Trace; Attached: Pad
+
 struct PickReach {
     std::int64_t pad = 0;     // nm: 12 px at the current zoom
     std::int64_t copper = 0;  // nm: 10 px at the current zoom
@@ -88,5 +91,7 @@ private:
     std::vector<std::string> netNames_;  // [NetId]
     std::vector<ComponentInfo> info_;    // [component]
 };
+
+std::string LeadLabel(const BoardScene& scene, const Hit& hit);  // "U1.14 QA", "Trace", "via"
 
 }  // namespace bw
