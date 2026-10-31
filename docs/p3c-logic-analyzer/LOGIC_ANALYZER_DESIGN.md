@@ -150,7 +150,7 @@ struct AnalyzerConfig {
 // AnalyzerState as a Consumer. configure(), phase(), captures(): UI thread; overrides: devices.
 class AnalyzerConsumer final : public Consumer {
 public:
-    void configure(Runner& runner, AnalyzerConfig config);  // watches new Nets, unwatches old
+    void configure(Runner& runner, AnalyzerConfig config);  // re-watches changed Channels only
     AnalyzerPhase phase() const { return phase_.load(std::memory_order_acquire); }
     TripleBuffer<Capture>& captures() { return captures_; }  // completed Captures
 
@@ -282,7 +282,7 @@ case Tool::Clip:
 
 ### 4.2 Consumer handoff
 
-`configure()` (UI): lock, `pending_ = config`, unlock, `generation_++` (release), then `watch` every new Net and `unwatch` every Net no longer clipped (counted, as `ProbeConsumer::touch`: the generation is visible before the Watch marker, so the initial Sample of a new Net is not dropped).
+`configure()` (UI): lock, `pending_ = config`, unlock, `generation_++` (release), then, for each Channel whose Net changed, `unwatch` the old Net and `watch` the new one (counted; unchanged Clips send no `Rewatch`; as `ProbeConsumer::touch`: the generation is visible before the Watch marker, so the initial Sample of a new Net is not dropped).
 
 The devices thread adopts only while slices run, so `configure()` also stores the expected phase itself (Off and Paused show the right state): `Armed` when armed and (`arms` changed or the phase is `Armed`/`Filling`), `Idle` when disarmed from `Armed`/`Filling`. The next `advanceTo` overwrites it with the real one.
 
@@ -346,7 +346,8 @@ adopt():
 ### 5.4 Window drawing (`AnalyzerWindow::draw`)
 
 ```
-take a newer Capture: session.captures().update() and front().serial != shown_.serial → copy, fit
+take a newer Capture: session.captures().update() → copy front() to shown_, fit
+    (not a serial compare: a rebuilt Live restarts serials at 0; shown_ survives Repairs)
 header: phase text (Armed && !powered → "armed: waiting for power"), Arm/Stop, Rate combo,
         Trigger-at combo; any change → session.setAnalyzer / arm / disarm
 table, one row per Channel:
@@ -358,7 +359,8 @@ lane drawing over [from, to) points:
     unknown → grey band; index < first → nothing
 axis under the lanes: ticks at 1-2-5 steps of time, labels relative to the Trigger (FormatTime)
 input over lanes: wheel zooms around the cursor (16 points … kDepth), drag pans, double-click fits;
-    hover: cursor line + "t = …"; click: marker; readout "Δ = …" when a marker is set
+    hover: cursor line + "t = …"; click: marker; readout "dt = …" when a marker is set
+no Capture yet (shown_ empty): "arm, then power on" greyed in the first lane
 ```
 
 `FormatTime(Time ps)`: signed, three significant digits, `ps`/`ns`/`µs`/`ms`/`s` (`µ` is Latin-1, in the default font). ~4096 × 8 point reads per frame at most.

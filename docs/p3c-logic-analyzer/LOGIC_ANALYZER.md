@@ -10,7 +10,7 @@ Terminology: [GLOSSARY.md](../GLOSSARY.md) (adds **Channel**, **Clip**, **Captur
 - **Clips go on pads only**, like real grabbers: a new Board tool `Clip (C)`. Click a pad: the lowest free Channel clips there. Click a clipped pad: unclip. Clips stay across power cycles and Repairs.
 - **Electrical Nets, like the Logic Probe.** A Clip reads the Net at its pad in the built Circuit: a cracked Trace shows on the far side. Labels name the pad (`U6.6 1Y`), never a Net.
 - **Sampling at the Analyzer's own rate**, 1-2-5 steps from 1 kHz to 100 MHz (default 10 MHz). Each sample point reads the state after all changes up to that time; a pulse between two points can be missed, as on a real one.
-- **Two levels plus X.** A Channel shows 0 or 1 as the logic reads it; X is drawn as a grey band. Floating is not shown (that is the Logic Probe's job).
+- **Two levels plus X.** A Channel shows 0 or 1 as the logic reads it; X is drawn as a grey band. Floating (Z) draws as X too, not as the 1 a TTL input would read: telling it apart is the Logic Probe's job.
 - **Trigger: one condition per Channel, ANDed**: `any`, `0`, `1`, `rise`, `fall`. All `any`: triggers at once. The Trigger point sits at 10, 50 or 90 % of memory (default 10 %).
 - **Single capture.** `Arm` waits for the Trigger, fills the post-Trigger memory, then freezes the Capture. `Stop` disarms. To capture again, `Arm` again. Arming with the power off waits for power-on (the bench workflow: arm, power on).
 - **A floating window**, `Logic Analyzer`, toggled from the toolbar (`Analyzer (A)`), opened by the first Clip. Not in the right column (P3b feedback). The last Capture stays shown until the next one completes, across power-off and Repairs.
@@ -45,7 +45,7 @@ Out: bus grouping and hex display, protocol decoding, repeat/auto-arm, pause-on-
 - One lane per clipped Channel, in Channel order, under its label; a time axis relative to the Trigger (`0` at the Trigger, marked by a vertical line; `-12.8 µs`, `+300 µs`).
 - 0 low, 1 high, X a grey band, no data (before arming) blank. Runs narrower than a pixel draw as a filled activity block.
 - Mouse wheel zooms around the cursor, drag pans, double-click fits the whole Capture. Opening a new Capture fits it.
-- Hovering the lanes draws a vertical cursor and shows its time; a click sets a marker and the readout shows `Δ` between marker and cursor (period counting). Hover never touches the Board.
+- Hovering the lanes draws a vertical cursor and shows its time; a click sets a marker and the readout shows `dt` between marker and cursor (period counting). Hover never touches the Board.
 - Before any Capture: `arm, then power on` greyed.
 
 ### S4 Checks

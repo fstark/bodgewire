@@ -11,7 +11,7 @@ Spec: [LOGIC_ANALYZER.md](LOGIC_ANALYZER.md)
 | 4 | Session: Clips, settings, arm/disarm, rebuild | done f86e8fd |
 | 5 | Board: `Clip (C)` tool, Clip tags, `Analyzer (A)` toggle, `--clip`/`--rate` | done 090f547 |
 | 6 | `Logic Analyzer` window + screenshots | done 5d18ddc |
-| 7 | Release check, user check, docs | done |
+| 7 | Release check, user check, docs | done c6ea8a7 |
 
 P3c DONE 2026-10-29 (user: "worked well", good enough; feedback below).
 
@@ -30,6 +30,6 @@ Implemented ca60a68..5d18ddc (2026-10-29): 374 tests pass in debug and release. 
 
 - Hard to understand how the Analyzer works: the link between the `Clip` tool and the Analyzer window is not self-evident. → P3d (tool button in the window, tool opens the window).
 - Poor UI feedback on refused actions, e.g. clipping a Trace instead of a pin. → P3d (placement rule: Clips on pads only, by design; refusal says why).
-- 4096 points per Channel is not enough.
-- Intermittent bugs when navigating the Capture (zoom/pan).
+- 4096 points per Channel is not enough. → general UI pass after P3f (out of P3d).
+- Intermittent bugs when navigating the Capture (zoom/pan). → general UI pass after P3f (out of P3d).
 - General UI improvements needed (with P3b "Later").
