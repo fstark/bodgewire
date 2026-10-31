@@ -48,8 +48,10 @@ add_executable(bw_tests
   parts/oscillator_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
+  runner/meter_consumer_test.cpp
   runner/probe_consumer_test.cpp
   runner/runner_test.cpp
+  runner/scope_consumer_test.cpp
   runner/spsc_ring_test.cpp
   runner/triple_buffer_test.cpp
   session/session_test.cpp
