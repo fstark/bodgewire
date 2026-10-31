@@ -59,11 +59,17 @@ struct OutlineEdge {
     std::optional<Point> mid;  // set for an arc
 };
 
+// Player-soldered wire between two pads (both Layers: through-hole pads only).
+struct BodgeWire {
+    Point a, b;  // pad centres, nm
+};
+
 struct Board {
     std::vector<BoardComponent> components;
     std::vector<Trace> traces;
     std::vector<Via> vias;
     std::vector<OutlineEdge> outline;
+    std::vector<BodgeWire> bodgeWires;  // empty on a loaded Board
 };
 
 }  // namespace bw

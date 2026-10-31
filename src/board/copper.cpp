@@ -7,7 +7,10 @@
 #include <initializer_list>
 #include <numbers>
 #include <numeric>
+#include <optional>
 #include <vector>
+
+#include "sim/check.hpp"
 
 namespace bw {
 
@@ -222,6 +225,22 @@ std::uint32_t Root(std::vector<std::uint32_t>& parent, std::uint32_t i) {
     return i;
 }
 
+// Item index of the first pad covering `at`.
+std::optional<std::uint32_t> PadItemAt(const Board& board, Point at) {
+    std::uint32_t item = 0;
+    for (const BoardComponent& component : board.components) {
+        for (const Pad& pad : component.pads) {
+            ShapeBuilder builder;
+            builder.addPad(item, pad);
+            if (Covers(builder, at)) {
+                return item;
+            }
+            ++item;
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
 Islands FindIslands(const Board& board) {
@@ -255,6 +274,12 @@ Islands FindIslands(const Board& board) {
                 parent[Root(parent, a.item)] = Root(parent, b.item);
             }
         }
+    }
+    for (const BodgeWire& wire : board.bodgeWires) {
+        const auto a = PadItemAt(board, wire.a);
+        const auto b = PadItemAt(board, wire.b);
+        Check(a && b, "copper: Bodge Wire end off a pad");
+        parent[Root(parent, *a)] = Root(parent, *b);
     }
 
     Islands islands;

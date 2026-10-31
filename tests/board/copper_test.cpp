@@ -56,6 +56,13 @@ TEST_CASE("copper: trace between pad centres joins them", "[board]") {
     }
 }
 
+TEST_CASE("copper: bodge wire joins two pads", "[board]") {
+    Board board = TwoPads();
+    board.bodgeWires = {{Mm(0, 0), Mm(10, 0)}};
+    CHECK(Joined(board));
+    CHECK(FindIslands(board).islandSize == std::vector<std::uint32_t>{2});
+}
+
 TEST_CASE("copper: via joins layers", "[board]") {
     Board board = TwoPads();
     board.traces.push_back(Line(Layer::Front, Mm(0, 0), Mm(5, 5)));
