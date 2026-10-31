@@ -18,6 +18,7 @@ add_executable(bw_tests
   instruments/logic_analyzer_test.cpp
   instruments/logic_probe_test.cpp
   instruments/multimeter_test.cpp
+  instruments/oscilloscope_test.cpp
   machine/crack_test.cpp
   machine/electrical_test.cpp
   machine/machine_test.cpp
