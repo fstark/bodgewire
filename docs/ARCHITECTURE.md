@@ -80,6 +80,7 @@ struct Net    { std::vector<DriverId> drivers; LogicState resolved; };
 | Remove / insert IC | removes / adds its drivers, inputs and faults |
 
 - Topology is fixed during a run: board faults are applied at load, repairs are made with the power off, nets are recomputed before the next power-on.
+- Power (later, not built yet): today power Pins are wired to their Nets but Part models ignore them. Direction: a Part works only while its power Pins sit on the right rails. Rails are static per build (fixed topology), so "powered" and each rail's voltage are worked out at build from the electrical Nets, not simulated: a cracked VCC Trace or open socket contact leaves a chip unpowered (outputs Z), a VCC–GND short kills the rail (instruments read 0 V), a chip on the wrong rail misbehaves. Only intermittent power contacts need runtime checks, through the existing contact-switch mechanism.
 
 ## Faults
 

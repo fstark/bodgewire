@@ -8,7 +8,7 @@ Terminology: [GLOSSARY.md](../GLOSSARY.md) (adds **Hook**, **Test Lead**, **Swee
 
 - **Where instruments go** (ARCHITECTURE, Instruments): held tips touch any copper, attached leads go on pads only. Logic probe and Multimeter Test Leads: pads, Traces, vias. Logic Analyzer Clips and Oscilloscope Hooks: pads only; a click on a Trace or via is refused with the reason (`Hook: attaches to pins only`).
 - **Tool and window go together**: picking `Clip (C)`, `Hook (O)` or `Meter (V)` selects the tool and opens its window; each window has its tool's button (pressed while active); focusing a window never changes the tool. The toolbar's separate `Analyzer (A)` toggle goes: the window's `×` closes it, the tool reopens it.
-- **Logic-state voltages, shared** by the Oscilloscope and the Multimeter: 0 → 0.2 V, 1 → 3.5 V, floating → 1.4 V, X → 1.0 V, GND → 0 V, VCC → 5 V, power off → 0 V everywhere. Edges are vertical (no analog rise times).
+- **Logic-state voltages, shared** by the Oscilloscope and the Multimeter: 0 → 0.2 V, 1 → 3.5 V, floating → 1.4 V, X → 1.0 V, power off → 0 V everywhere. A rail (a Net on a `POWER` connector pin) reads that pin's declared voltage (`VCC` 5 V, `GND` 0 V), not a hard-coded value, so later rails (+12 V, −5 V) need no instrument change. Edges are vertical (no analog rise times).
 - **Oscilloscope: 2 Channels, no memory.** Each Sweep is drawn from the exact Sample times, so delays are readable to the picosecond. It shows the last completed Sweep and keeps redrawing while running; pausing the simulation freezes it (the only "memory").
 - **Timebase** 5 ns/div … 10 ms/div in 1-2-5 steps, 10 divisions; the Trigger at the first division. **Vertical** fixed: 0–5 V per Channel, the two Channels in stacked bands.
 - **Trigger**: rising or falling edge on Channel 1 or 2, at the TTL threshold (a logic edge). Mode `auto` (default: free-runs when no Trigger came within one Sweep length or 50 ms of simulated time) or `normal` (waits).
@@ -46,7 +46,7 @@ Out: analog levels or rise times, more than 2 scope Channels, scope memory/singl
 ### S4 Checks
 
 - Headless (engines fed Samples, and on the test pattern through the Simulator):
-  - voltages: 0/1/floating/X/VCC/GND and power off map as above; a 25 % duty Net reads ≈ 1.03 V;
+  - voltages: 0/1/floating/X, rails at their connector pin's voltage, and power off map as above; a 25 % duty Net reads ≈ 1.03 V;
   - scope: Sweep on `CLK` rise shows `U1.14` (`QA`) rising 13 ns or falling 15 ns after the Trigger (the LS161 delays); `auto` free-runs on a constant Net; `normal` waits;
   - continuity: in `broken_trace`, the two sides of the H0 crack are open, beep after the mend; refused with the power on;
   - placement: Clip and Hook on a Trace refused, probe and Leads accepted;
