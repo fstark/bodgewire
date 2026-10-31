@@ -34,6 +34,8 @@ std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> 
     if (machine_) {
         consumers.push_back(&live->probe);
         consumers.push_back(&live->analyzer);
+        consumers.push_back(&live->meter);
+        consumers.push_back(&live->scope);
     }
     live->runner = std::make_unique<Runner>(live->circuit->circuit, consumers);
     live->runner->setSpeed(speed_);
@@ -44,6 +46,11 @@ void Session::touchLive() {
     live_->probe.touch(*live_->runner,
                        tip_ ? machine_->probeNet(*live_->circuit, tip_->layer, tip_->at)
                             : std::nullopt);
+    const auto meterNet = meterMode_ == MeterMode::Volts && red_
+                              ? machine_->probeNet(*live_->circuit, red_->layer, red_->at)
+                              : std::nullopt;
+    live_->meter.touch(*live_->runner, meterNet);
+    meterRail_ = meterNet ? RailVolts(*live_->circuit, *meterNet) : std::nullopt;
 }
 
 void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
@@ -95,6 +102,7 @@ RepairResult Session::repair(const RepairAction& repair) {
     }
     log_.push_back(FormatRepair(repair));
     dirty_ = true;
+    recomputeContinuity();
     return RepairResult::Done;
 }
 
@@ -108,7 +116,7 @@ void Session::touch(std::optional<ProbeTip> tip) {
 
 ProbeLamps Session::lamps() const { return powered_ ? live_->probe.lamps() : ProbeLamps{}; }
 
-std::optional<std::size_t> Session::clip(std::string_view reference, std::string_view pin) {
+std::optional<PadLead> Session::padLead(std::string_view reference, std::string_view pin) const {
     if (!machine_) {
         return std::nullopt;
     }
@@ -121,23 +129,32 @@ std::optional<std::size_t> Session::clip(std::string_view reference, std::string
     if (!index) {
         return std::nullopt;
     }
-    const std::string number = std::to_string(*index + 1);
+    std::string number = std::to_string(*index + 1);
     const auto at = machine_->padPosition(reference, number);
     if (!at) {
         return std::nullopt;
     }
-    if (const auto channel = clipAt(reference, number)) {
+    std::string label =
+        std::format("{}.{} {}", reference, number, component->second->pins()[*index].name);
+    return PadLead{.reference = std::string(reference),
+                   .pin = std::move(number),
+                   .label = std::move(label),
+                   .at = *at};
+}
+
+std::optional<std::size_t> Session::clip(std::string_view reference, std::string_view pin) {
+    auto lead = padLead(reference, pin);
+    if (!lead) {
+        return std::nullopt;
+    }
+    if (const auto channel = clipAt(reference, lead->pin)) {
         return channel;
     }
     const auto free = std::ranges::find_if(clips_, [](const auto& c) { return !c; });
     if (free == clips_.end()) {
         return std::nullopt;
     }
-    *free = Clip{
-        .reference = std::string(reference),
-        .pin = number,
-        .label = std::format("{}.{} {}", reference, number, component->second->pins()[*index].name),
-        .at = *at};
+    *free = std::move(*lead);
     configureLive();
     return static_cast<std::size_t>(free - clips_.begin());
 }
@@ -172,6 +189,109 @@ void Session::disarm() {
     configureLive();
 }
 
+std::optional<std::size_t> Session::hook(std::string_view reference, std::string_view pin) {
+    auto lead = padLead(reference, pin);
+    if (!lead) {
+        return std::nullopt;
+    }
+    if (const auto channel = hookAt(reference, lead->pin)) {
+        return channel;
+    }
+    const auto free = std::ranges::find_if(hooks_, [](const auto& h) { return !h; });
+    if (free == hooks_.end()) {
+        return std::nullopt;
+    }
+    *free = std::move(*lead);
+    configureLive();
+    return static_cast<std::size_t>(free - hooks_.begin());
+}
+
+void Session::unhook(std::size_t channel) {
+    hooks_[channel].reset();
+    configureLive();
+}
+
+std::optional<std::size_t> Session::hookAt(std::string_view reference, std::string_view pin) const {
+    for (std::size_t c = 0; c < kScopeChannels; ++c) {
+        if (hooks_[c] && hooks_[c]->reference == reference && hooks_[c]->pin == pin) {
+            return c;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<double> Session::hookRail(std::size_t channel) const {
+    return scope_.nets[channel] ? RailVolts(*live_->circuit, *scope_.nets[channel]) : std::nullopt;
+}
+
+void Session::setScope(const ScopeSettings& settings) {
+    scope_.settings = settings;
+    configureLive();
+}
+
+void Session::setMeterMode(MeterMode mode) {
+    if (!machine_) {
+        return;
+    }
+    meterMode_ = mode;
+    blackNext_ = false;
+    touchLive();
+    recomputeContinuity();
+}
+
+bool Session::placeLead(TestLead lead) {
+    if (!machine_) {
+        return false;
+    }
+    if (meterMode_ == MeterMode::Volts) {
+        red_ = std::move(lead);
+    } else {
+        if (powered_) {
+            return false;
+        }
+        (blackNext_ ? black_ : red_) = std::move(lead);
+        blackNext_ = !blackNext_;
+    }
+    touchLive();
+    recomputeContinuity();
+    return true;
+}
+
+void Session::liftLeads() {
+    if (!machine_) {
+        return;
+    }
+    red_.reset();
+    black_.reset();
+    blackNext_ = false;
+    touchLive();
+    recomputeContinuity();
+}
+
+std::optional<double> Session::volts() const {
+    if (meterMode_ != MeterMode::Volts || !red_) {
+        return std::nullopt;
+    }
+    if (!powered_ || !live_->meter.touched()) {
+        return 0.0;  // power off; bare Copper
+    }
+    if (meterRail_) {
+        return meterRail_;
+    }
+    return live_->meter.reading();
+}
+
+std::optional<bool> Session::continuity() const {
+    return meterMode_ == MeterMode::Continuity && !powered_ ? connected_ : std::nullopt;
+}
+
+void Session::recomputeContinuity() {
+    connected_ =
+        red_ && black_
+            ? std::optional(machine_->connected(red_->layer, red_->at, black_->layer, black_->at))
+            : std::nullopt;
+}
+
 void Session::configureLive() {
     if (!machine_) {
         return;
@@ -183,6 +303,11 @@ void Session::configureLive() {
         analyzer_.labels[c] = clips_[c] ? clips_[c]->label : "";
     }
     live_->analyzer.configure(*live_->runner, analyzer_);
+    for (std::size_t c = 0; c < kScopeChannels; ++c) {
+        scope_.nets[c] = hooks_[c] ? PinNet(*live_->circuit, hooks_[c]->reference, hooks_[c]->pin)
+                                   : std::nullopt;
+    }
+    live_->scope.configure(*live_->runner, scope_);
 }
 
 }  // namespace bw

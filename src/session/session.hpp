@@ -12,8 +12,10 @@
 #include "machine/machine.hpp"
 #include "machine/repair.hpp"
 #include "runner/analyzer_consumer.hpp"
+#include "runner/meter_consumer.hpp"
 #include "runner/probe_consumer.hpp"
 #include "runner/runner.hpp"
+#include "runner/scope_consumer.hpp"
 #include "runner/tv_consumer.hpp"
 
 namespace bw {
@@ -30,10 +32,18 @@ struct ProbeTip {
 
 enum class RepairResult : std::uint8_t { Done, Refused, Unknown };  // Refused: powered
 
-struct Clip {
+struct PadLead {                 // a Clip or a Hook
     std::string reference, pin;  // pin by number: "6"
     std::string label;           // "U6.6 1Y"
     Point at;                    // pad, nm
+};
+
+enum class MeterMode : std::uint8_t { Volts, Continuity };
+
+struct TestLead {
+    Point at;           // nm
+    Layer layer;        // as ProbeTip
+    std::string label;  // "U1.14 QA", "Trace", "via"
 };
 
 // One Machine on the bench, UI thread only. Repairs edit the Machine; the next power-on rebuilds
@@ -65,11 +75,14 @@ public:
     std::optional<NetId> probedNet() const { return live_->probe.touched(); }
     ProbeLamps lamps() const;  // dark when not powered
 
+    // A Machine pad by pin number or name; nullopt without a Machine or for an unknown pad.
+    std::optional<PadLead> padLead(std::string_view reference, std::string_view pin) const;
+
     // Lowest free Channel; nullopt without a Machine, unknown pad, or all Channels used.
     std::optional<std::size_t> clip(std::string_view reference, std::string_view pin);
     void unclip(std::size_t channel);
     std::optional<std::size_t> clipAt(std::string_view reference, std::string_view pin) const;
-    std::span<const std::optional<Clip>, kChannels> clips() const { return clips_; }
+    std::span<const std::optional<PadLead>, kChannels> clips() const { return clips_; }
     std::optional<NetId> clipNet(std::size_t channel) const { return analyzer_.nets[channel]; }
     void setAnalyzer(const AnalyzerSettings& settings);
     const AnalyzerSettings& analyzerSettings() const { return analyzer_.settings; }
@@ -78,6 +91,29 @@ public:
     AnalyzerPhase analyzerPhase() const { return live_->analyzer.phase(); }
     TripleBuffer<Capture>& captures() { return live_->analyzer.captures(); }  // replaced on rebuild
 
+    // As clip(), with the Oscilloscope's 2 Channels.
+    std::optional<std::size_t> hook(std::string_view reference, std::string_view pin);
+    void unhook(std::size_t channel);
+    std::optional<std::size_t> hookAt(std::string_view reference, std::string_view pin) const;
+    std::span<const std::optional<PadLead>, kScopeChannels> hooks() const { return hooks_; }
+    std::optional<double> hookRail(std::size_t channel) const;  // RailVolts of the Hook's Net
+    std::optional<NetId> hookNet(std::size_t channel) const { return scope_.nets[channel]; }
+    void setScope(const ScopeSettings& settings);
+    const ScopeSettings& scopeSettings() const { return scope_.settings; }
+    SweepKind scopeStatus() const { return live_->scope.status(); }
+    TripleBuffer<Sweep>& sweeps() { return live_->scope.sweeps(); }  // replaced on rebuild
+
+    void setMeterMode(MeterMode mode);
+    MeterMode meterMode() const { return meterMode_; }
+    bool placeLead(TestLead lead);  // false: no Machine, or Continuity with the power on
+    void liftLeads();
+    bool blackNext() const { return blackNext_; }  // Continuity: the next click places black
+    const std::optional<TestLead>& red() const { return red_; }
+    const std::optional<TestLead>& black() const { return black_; }
+    std::optional<NetId> meterNet() const { return live_->meter.touched(); }
+    std::optional<double> volts() const;     // Volts mode; nullopt: no red Lead or no reading yet
+    std::optional<bool> continuity() const;  // nullopt: a Lead missing or powered
+
 private:
     // What one build of the Machine runs on. Members in this order: the Runner is destroyed first.
     struct Live {
@@ -85,12 +121,15 @@ private:
         std::optional<TvConsumer> tv;
         ProbeConsumer probe;
         AnalyzerConsumer analyzer;
+        MeterConsumer meter;
+        ScopeConsumer scope;
         std::unique_ptr<Runner> runner;
     };
 
     std::unique_ptr<Live> makeLive(std::unique_ptr<LoadedCircuit> circuit) const;
     void touchLive();
     void configureLive();
+    void recomputeContinuity();
 
     std::optional<Machine> machine_;
     std::optional<Board> drawn_;
@@ -101,8 +140,15 @@ private:
     std::optional<ProbeTip> tip_;
     std::vector<std::string> log_;
     std::vector<SolderBlob> blobs_;
-    std::array<std::optional<Clip>, kChannels> clips_;
+    std::array<std::optional<PadLead>, kChannels> clips_;
     AnalyzerConfig analyzer_;  // nets filled per build
+    std::array<std::optional<PadLead>, kScopeChannels> hooks_;
+    ScopeConfig scope_;  // nets filled per build
+    MeterMode meterMode_ = MeterMode::Volts;
+    std::optional<TestLead> red_, black_;
+    bool blackNext_ = false;
+    std::optional<bool> connected_;    // red_ and black_ on one island of the current Copper
+    std::optional<double> meterRail_;  // RailVolts of the meter's Net
 };
 
 }  // namespace bw

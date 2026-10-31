@@ -166,6 +166,93 @@ TEST_CASE("session: a capture is not re-armed by a repair", "[session]") {
     session.powerOff();
 }
 
+TEST_CASE("session: hooks", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    CHECK(session.hook("U1", "2") == 0);
+    CHECK(session.hook("U1", "QA") == 1);
+    CHECK(session.hook("U1", "14") == 1);
+    CHECK_FALSE(session.hook("U1", "13").has_value());
+    REQUIRE(session.hooks()[1].has_value());
+    CHECK(session.hooks()[1]->label == "U1.14 QA");
+    CHECK(session.hookAt("U1", "14") == 1);
+    CHECK_FALSE(session.hookRail(0).has_value());
+    session.unhook(0);
+    CHECK_FALSE(session.hookAt("U1", "2").has_value());
+    CHECK(session.hook("J1", "GND") == 0);
+    CHECK(session.hookRail(0) == 0.0);
+}
+
+TEST_CASE("session: meter volts", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    const auto clk = session.padLead("U1", "2");
+    const auto vcc = session.padLead("J1", "VCC");
+    REQUIRE(clk.has_value());
+    REQUIRE(vcc.has_value());
+    CHECK_FALSE(session.volts().has_value());
+    REQUIRE(session.placeLead({clk->at, Layer::Front, clk->label}));
+    CHECK(session.volts() == 0.0);
+    session.powerOn(1);
+    RunTo(session, 1_s);
+    REQUIRE(session.volts().has_value());
+    CHECK(std::abs(*session.volts() - 1.85) < 0.01);
+    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+    RunTo(session, 1_s + 300_ms);
+    CHECK(session.volts() == 5.0);
+    session.powerOff();
+    CHECK(session.volts() == 0.0);
+    session.liftLeads();
+    CHECK_FALSE(session.volts().has_value());
+}
+
+TEST_CASE("session: continuity refused with the power on", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    const auto qa = session.padLead("U1", "14");
+    REQUIRE(qa.has_value());
+    session.setMeterMode(MeterMode::Continuity);
+    session.powerOn(1);
+    CHECK_FALSE(session.placeLead({qa->at, Layer::Front, qa->label}));
+    CHECK_FALSE(session.continuity().has_value());
+    session.powerOff();
+}
+
+TEST_CASE("session: continuity follows a mend", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    const auto qa = session.padLead("U1", "14");
+    const auto far = session.padLead("U13", "6");
+    REQUIRE(qa.has_value());
+    REQUIRE(far.has_value());
+    session.setMeterMode(MeterMode::Continuity);
+    CHECK_FALSE(session.blackNext());
+    REQUIRE(session.placeLead({qa->at, Layer::Front, qa->label}));
+    CHECK(session.blackNext());
+    CHECK_FALSE(session.continuity().has_value());
+    REQUIRE(session.placeLead({far->at, Layer::Front, far->label}));
+    CHECK(session.continuity() == false);
+    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    CHECK(session.continuity() == true);
+    session.setMeterMode(MeterMode::Volts);
+    CHECK_FALSE(session.continuity().has_value());
+}
+
+TEST_CASE("session: hooks and leads survive a repair", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    const auto far = session.padLead("U13", "6");
+    REQUIRE(far.has_value());
+    REQUIRE(session.hook("U13", "6") == 0);
+    REQUIRE(session.placeLead({far->at, Layer::Front, far->label}));
+    session.powerOn(1);
+    RunTo(session, 1_ms);
+    CHECK(session.hookNet(0) != PinNet(session.circuit(), "U1", "14"));
+    session.powerOff();
+    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    session.powerOn(1);
+    const auto qa = PinNet(session.circuit(), "U1", "14");
+    CHECK(session.hookNet(0) == PinNet(session.circuit(), "U13", "6"));
+    CHECK(session.hookNet(0) == qa);
+    CHECK(session.meterNet() == qa);
+    session.powerOff();
+}
+
 TEST_CASE("session: netlist without a Board", "[session]") {
     auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
     REQUIRE(loaded.has_value());
