@@ -27,6 +27,7 @@
 #include "ui/board_view.hpp"
 #include "ui/loaded.hpp"
 #include "ui/manual_view.hpp"
+#include "ui/meter_window.hpp"
 #include "ui/side_panel.hpp"
 #include "ui/toolbar.hpp"
 #include "ui/tv_view.hpp"
@@ -42,7 +43,7 @@ constexpr int kWindowHeight = 800;
 constexpr float kBoardShare = 2.0f / 3.0f;
 constexpr std::string_view kUsage =
     "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] [--repair swap:REF,mend:LAYER:X:Y] "
-    "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] "
+    "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--meter REF.PIN] "
     "[--manual user|service] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -51,8 +52,9 @@ struct Options {
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
     std::optional<std::string> probe;  // REF.PIN
     std::vector<std::string> repair;
-    std::vector<std::string> clip;  // REF.PIN[:T]
-    std::optional<Time> rate;       // Analyzer sample period, ps
+    std::vector<std::string> clip;     // REF.PIN[:T]
+    std::optional<Time> rate;          // Analyzer sample period, ps
+    std::optional<std::string> meter;  // REF.PIN: red Test Lead, V mode
     bool userManual = false, serviceManual = false;
 };
 
@@ -109,6 +111,8 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
             options.rate = *period;
+        } else if (arg == "--meter") {
+            options.meter = argv[++i];
         } else {
             return std::nullopt;
         }
@@ -274,8 +278,10 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     toolbar.userManualOpen = options.userManual;
     toolbar.serviceManualOpen = options.serviceManual;
     toolbar.analyzerOpen = !options.clip.empty();
+    toolbar.meterOpen = options.meter.has_value();
     ManualWindows manualWindows;
     AnalyzerWindow analyzerWindow;
+    MeterWindow meterWindow;
     boardView.setTooltip([&loaded](const BoardScene& scene, const Hit& hit) {
         return Tooltip(scene, hit, loaded.manuals.manuals);
     });
@@ -437,6 +443,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                            loaded.manuals.manuals, boardView, DesignOf(session));
         if (session.machine()) {
             analyzerWindow.draw(toolbar.analyzerOpen, session, boardView);
+            meterWindow.draw(toolbar.meterOpen, session, boardView);
         }
         if (const auto picked = boardView.takePicked()) {
             toolbar.analyzerOpen |= *picked == Tool::Clip;
@@ -518,6 +525,19 @@ int main(int argc, char** argv) {
     if (!options->clip.empty()) {
         session.setAnalyzer(analyzer);
         session.arm();
+    }
+    if (options->meter) {
+        const std::size_t dot = options->meter->find('.');
+        const auto lead =
+            dot == std::string::npos
+                ? std::nullopt
+                : session.padLead(options->meter->substr(0, dot), options->meter->substr(dot + 1));
+        if (!lead) {
+            std::println(stderr, "bw_ui: unknown pin '{}'", *options->meter);
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+        session.placeLead({lead->at, Layer::Front, lead->label});
     }
     for (const std::string& text : options->repair) {
         const auto repair = ParseRepair(text);
