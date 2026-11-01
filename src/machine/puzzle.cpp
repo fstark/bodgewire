@@ -99,8 +99,10 @@ public:
             stuck(number, tokens);
         } else if (tokens[0] == "fault" && tokens.size() >= 2 && tokens[1] == "crack") {
             crack(number, tokens);
+        } else if (tokens[0] == "fault" && tokens.size() >= 2 && tokens[1] == "bridge") {
+            bridge(number, tokens);
         } else if (tokens[0] == "fault") {
-            error(number, "expected: fault stuck|crack ...");
+            error(number, "expected: fault stuck|crack|bridge ...");
         } else {
             error(number, "unknown directive '" + std::string(tokens[0]) + "'");
         }
@@ -184,6 +186,23 @@ private:
             return;
         }
         puzzle_.cracks.push_back({line, *layer, {*x, *y}});
+    }
+
+    void bridge(std::uint32_t line, const std::vector<std::string_view>& tokens) {
+        const auto pin = [](std::string_view token) -> std::optional<PinRef> {
+            const std::size_t dot = token.find('.');
+            if (dot == std::string_view::npos || dot == 0 || dot + 1 == token.size()) {
+                return std::nullopt;
+            }
+            return PinRef{std::string(token.substr(0, dot)), std::string(token.substr(dot + 1))};
+        };
+        const auto a = tokens.size() == 4 ? pin(tokens[2]) : std::nullopt;
+        const auto b = tokens.size() == 4 ? pin(tokens[3]) : std::nullopt;
+        if (!a || !b) {
+            error(line, "expected: fault bridge REF.PIN REF.PIN");
+            return;
+        }
+        puzzle_.bridges.push_back({line, *a, *b});
     }
 
     Puzzle puzzle_;

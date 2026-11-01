@@ -17,7 +17,20 @@ namespace bw {
 
 namespace {
 
-constexpr double kMendReach = 1'000'000;  // nm
+constexpr double kMendReach = 1'000'000;    // nm
+constexpr double kBridgeReach = 2'600'000;  // nm: neighbouring DIP pins are 2.54 mm apart
+
+bool SamePin(const PinRef& x, const PinRef& y) {
+    return x.reference == y.reference && x.pin == y.pin;
+}
+
+// The record joining pins `a` and `b` (numbers), either order.
+std::vector<WireEnds>::iterator FindEnds(std::vector<WireEnds>& list, const PinRef& a,
+                                         const PinRef& b) {
+    return std::ranges::find_if(list, [&](const WireEnds& w) {
+        return (SamePin(w.a, a) && SamePin(w.b, b)) || (SamePin(w.a, b) && SamePin(w.b, a));
+    });
+}
 
 std::optional<std::string> ReadFile(const std::filesystem::path& path) {
     std::ifstream in(path, std::ios::binary);
@@ -111,6 +124,52 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
         }
         machine.cracks_.push_back(crack);
     }
+    for (const BridgeDecl& decl : puzzle.bridges) {
+        const std::string written = "bridge " + decl.a.reference + "." + decl.a.pin + " " +
+                                    decl.b.reference + "." + decl.b.pin;
+        const auto known = [&](const PinRef& pin) {
+            if (!loaded.components.contains(pin.reference)) {
+                error(decl.line, "unknown reference '" + pin.reference + "'");
+                return false;
+            }
+            if (!machine.padOf(pin)) {
+                std::string part;
+                for (const LoadedPart& p : loaded.parts) {
+                    if (p.reference == pin.reference) {
+                        part = p.info->name;
+                    }
+                }
+                error(decl.line, pin.reference + " (" + part + ") has no pin " + pin.pin);
+                return false;
+            }
+            return true;
+        };
+        if (!known(decl.a) || !known(decl.b)) {
+            continue;
+        }
+        const PinRef a = *machine.padOf(decl.a);
+        const PinRef b = *machine.padOf(decl.b);
+        const auto kind = [&] {
+            for (const LoadedPart& p : loaded.parts) {
+                if (p.reference == a.reference) {
+                    return p.info->kind;
+                }
+            }
+            return PartKind::Resistor;
+        }();
+        if (a.reference != b.reference || a.pin == b.pin || kind != PartKind::Chip) {
+            error(decl.line, written + ": pins of one chip only");
+            continue;
+        }
+        const Point atA = *machine.padPosition(a.reference, a.pin);
+        const Point atB = *machine.padPosition(b.reference, b.pin);
+        if (std::hypot(static_cast<double>(atA.x - atB.x), static_cast<double>(atA.y - atB.y)) >
+            kBridgeReach) {
+            error(decl.line, written + ": pins are not neighbours");
+            continue;
+        }
+        machine.bridges_.push_back({a, b, {atA, atB}});
+    }
     if (!errors.empty()) {
         return std::unexpected(std::move(errors));
     }
@@ -168,16 +227,26 @@ bool Machine::removeWire(const PinRef& a, const PinRef& b) {
     if (!pa || !pb) {
         return false;
     }
-    const auto same = [](const PinRef& x, const PinRef& y) {
-        return x.reference == y.reference && x.pin == y.pin;
-    };
-    const auto it = std::ranges::find_if(wires_, [&](const WireEnds& w) {
-        return (same(w.a, *pa) && same(w.b, *pb)) || (same(w.a, *pb) && same(w.b, *pa));
-    });
+    const auto it = FindEnds(wires_, *pa, *pb);
     if (it == wires_.end()) {
         return false;
     }
     wires_.erase(it);
+    rebuildBoard();
+    return true;
+}
+
+bool Machine::removeBridge(const PinRef& a, const PinRef& b) {
+    const auto pa = padOf(a);
+    const auto pb = padOf(b);
+    if (!pa || !pb) {
+        return false;
+    }
+    const auto it = FindEnds(bridges_, *pa, *pb);
+    if (it == bridges_.end()) {
+        return false;
+    }
+    bridges_.erase(it);
     rebuildBoard();
     return true;
 }
@@ -188,6 +257,9 @@ void Machine::rebuildBoard() {
     board_ = CrackBoard(pristine_, all);
     for (const WireEnds& w : wires_) {
         board_.bodgeWires.push_back(w.wire);
+    }
+    for (const WireEnds& b : bridges_) {
+        board_.bodgeWires.push_back(b.wire);
     }
 }
 
@@ -256,7 +328,7 @@ std::optional<NetId> Machine::probeNet(const LoadedCircuit& built, Layer layer, 
 }
 
 std::optional<Point> Machine::padPosition(std::string_view reference, std::string_view pin) const {
-    for (const BoardComponent& component : board_.components) {
+    for (const BoardComponent& component : pristine_.components) {
         if (component.reference != reference) {
             continue;
         }

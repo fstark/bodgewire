@@ -335,3 +335,32 @@ TEST_CASE("machine: build with a wire", "[machine]") {
     REQUIRE(built.has_value());
     CHECK(PinNet(**built, "U1", "14") == PinNet(**built, "U13", "6"));
 }
+
+TEST_CASE("machine: bridge errors", "[machine]") {
+    Puzzle puzzle = TestPattern();
+    puzzle.bridges = {{2, {"U99", "1"}, {"U1", "8"}}, {3, {"U1", "99"}, {"U1", "8"}},
+                      {4, {"U1", "7"}, {"U2", "8"}},  {5, {"J1", "1"}, {"J1", "2"}},
+                      {6, {"U1", "7"}, {"U1", "9"}},  {7, {"U1", "7"}, {"U1", "ENP"}}};
+    CHECK(Errors(puzzle) == Lines{"2: unknown reference 'U99'", "3: U1 (74LS161) has no pin 99",
+                                  "4: bridge U1.7 U2.8: pins of one chip only",
+                                  "5: bridge J1.1 J1.2: pins of one chip only",
+                                  "6: bridge U1.7 U1.9: pins are not neighbours",
+                                  "7: bridge U1.7 U1.ENP: pins of one chip only"});
+}
+
+TEST_CASE("machine: bridge joins two pads until removed", "[machine]") {
+    auto fine = LoadMachine(TestPattern(), Root());
+    REQUIRE(fine.has_value());
+    CHECK_FALSE(PadsConnected(*fine, "U1", "7", "U1", "8"));
+
+    Puzzle puzzle = TestPattern();
+    puzzle.bridges = {{2, {"U1", "7"}, {"U1", "8"}}};
+    auto machine = LoadMachine(puzzle, Root());
+    REQUIRE(machine.has_value());
+    CHECK(machine->bridges().size() == 1);
+    CHECK(PadsConnected(*machine, "U1", "7", "U1", "8"));
+    CHECK(machine->removeBridge({"U1", "GND"}, {"U1", "7"}));
+    CHECK(machine->bridges().empty());
+    CHECK_FALSE(PadsConnected(*machine, "U1", "7", "U1", "8"));
+    CHECK_FALSE(machine->removeBridge({"U1", "7"}, {"U1", "8"}));
+}

@@ -69,7 +69,8 @@ struct Board {
     std::vector<Trace> traces;
     std::vector<Via> vias;
     std::vector<OutlineEdge> outline;
-    std::vector<BodgeWire> bodgeWires;  // empty on a loaded Board
+    std::vector<BodgeWire>
+        bodgeWires;  // pad-to-pad joins: Bodge Wires and Solder Bridges; empty on a loaded Board
 };
 
 }  // namespace bw

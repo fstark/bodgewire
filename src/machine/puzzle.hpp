@@ -8,6 +8,7 @@
 
 #include "board/board.hpp"
 #include "netlist/diagnostic.hpp"
+#include "netlist/parser.hpp"
 #include "sim/logic.hpp"
 
 namespace bw {
@@ -25,6 +26,11 @@ struct CrackDecl {
     Point at;  // nm, KiCad coordinates
 };
 
+struct BridgeDecl {
+    std::uint32_t line;
+    PinRef a, b;  // pin by number or name: U1.7, U1.ENP
+};
+
 struct Puzzle {
     std::string file;
     std::uint32_t machineLine = 0;
@@ -33,6 +39,7 @@ struct Puzzle {
     std::uint32_t titleLine = 0, briefLine = 0;
     std::vector<StuckAtDecl> stuck;
     std::vector<CrackDecl> cracks;
+    std::vector<BridgeDecl> bridges;
 };
 
 // All syntax errors, in line order.

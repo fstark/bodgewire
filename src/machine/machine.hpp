@@ -38,10 +38,12 @@ public:
     bool swap(std::string_view reference);  // chip swap; false if no such Component
     bool mend(Layer layer, Point at);       // removes cracks and Cuts within 1 mm
     bool cut(Layer layer, Point at);        // false: no straight Trace there in the current Copper
-    bool addWire(const PinRef& a, const PinRef& b);     // false: unknown pad, or the same pad
-    bool removeWire(const PinRef& a, const PinRef& b);  // either order; false: no such wire
+    bool addWire(const PinRef& a, const PinRef& b);       // false: unknown pad, or the same pad
+    bool removeWire(const PinRef& a, const PinRef& b);    // either order; false: no such wire
+    bool removeBridge(const PinRef& a, const PinRef& b);  // either order; false: no such bridge
     std::span<const CrackDecl> cuts() const { return cuts_; }
     std::span<const WireEnds> wires() const { return wires_; }
+    std::span<const WireEnds> bridges() const { return bridges_; }
     LoadResult build() const;                      // electrical Circuit with the current Faults
     const Board& board() const { return board_; }  // with cracks, Cuts and Bodge Wires
     const Board& pristineBoard() const { return pristine_; }  // fault-free Copper, for the view
@@ -59,7 +61,7 @@ private:
     Machine() = default;
     // Island of the current Copper under `at`; nullopt off Copper.
     std::optional<std::uint32_t> islandAt(const Islands& islands, Layer layer, Point at) const;
-    void rebuildBoard();  // board_ = pristine_ + cracks_ + cuts_ + wires_
+    void rebuildBoard();  // board_ = pristine_ + cracks_ + cuts_ + wires_ + bridges_
     std::optional<PinRef> padOf(const PinRef& pin) const;  // pin as a number; nullopt unknown
     friend std::expected<Machine, std::vector<Diagnostic>>
     LoadMachine(const Puzzle&, const std::filesystem::path&);
@@ -72,6 +74,7 @@ private:
     std::vector<CrackDecl> cracks_;
     std::vector<CrackDecl> cuts_;  // line 0
     std::vector<WireEnds> wires_;
+    std::vector<WireEnds> bridges_;  // Solder Bridges: same shape as a Bodge Wire
 };
 
 // The directory holding netlists/, boards/, puzzles/, manuals/, datasheets/: the file's
