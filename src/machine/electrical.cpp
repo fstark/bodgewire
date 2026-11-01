@@ -73,13 +73,17 @@ std::pair<std::string, int> SplitName(const std::string& name) {
     return {name.substr(0, tilde), std::stoi(name.substr(tilde + 1))};
 }
 
-bool IsResistor(const LoadedCircuit& designCircuit, const std::string& reference) {
+std::optional<PartKind> KindOf(const LoadedCircuit& designCircuit, const std::string& reference) {
     for (const LoadedPart& part : designCircuit.parts) {
         if (part.reference == reference) {
-            return part.info->kind == PartKind::Resistor;
+            return part.info->kind;
         }
     }
-    return false;
+    return std::nullopt;
+}
+
+bool IsResistor(const LoadedCircuit& designCircuit, const std::string& reference) {
+    return KindOf(designCircuit, reference) == PartKind::Resistor;
 }
 
 // Names islands: POWER pads first, then non-resistor, non-power Pins in connection order.
@@ -119,10 +123,12 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
     const Namer namer = NameIslands(designCircuit, board, islands);
 
     std::map<std::string, std::vector<PinRef>> pins;
-    std::map<std::string, std::vector<const Connection*>> resistors;
+    // Resistors and Buttons: kept only while one end is on a rail and the other on a signal.
+    std::map<std::string, std::vector<const Connection*>> railParts;
     for (const Connection& c : designCircuit.connections) {
-        if (IsResistor(designCircuit, c.reference)) {
-            resistors[c.reference].push_back(&c);
+        if (IsResistor(designCircuit, c.reference) ||
+            KindOf(designCircuit, c.reference) == PartKind::Button) {
+            railParts[c.reference].push_back(&c);
             continue;
         }
         if (designCircuit.components.at(c.reference)->pins()[c.pin].kind == PinKind::Power) {
@@ -133,8 +139,8 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
     }
 
     std::set<std::string, std::less<>> leftOut;
-    for (const auto& [reference, ends] : resistors) {
-        Check(ends.size() == 2, "electrical: resistor without two pins");
+    for (const auto& [reference, ends] : railParts) {
+        Check(ends.size() == 2, "electrical: resistor or button without two pins");
         const auto a = namer.nameOf(namer.island(reference, ends[0]->pin));
         const auto b = namer.nameOf(namer.island(reference, ends[1]->pin));
         const bool pulls = a && b && IsRail(*a) != IsRail(*b);
