@@ -56,6 +56,11 @@ struct LedTag {
     float brightness;  // 0 dark .. 1 fully lit
 };
 
+struct ButtonTag {
+    std::size_t component;
+    bool pressed;
+};
+
 struct BoardTarget {
     std::size_t component;
     std::optional<std::size_t> pad;
@@ -103,6 +108,11 @@ public:
     void setHooks(std::span<const HookTag> hooks) { hooks_.assign(hooks.begin(), hooks.end()); }
     void setLeads(std::span<const LeadTag> leads) { leads_.assign(leads.begin(), leads.end()); }
     void setLeds(std::span<const LedTag> leds) { leds_.assign(leds.begin(), leds.end()); }
+    void setButtons(std::span<const ButtonTag> buttons) {
+        buttons_.assign(buttons.begin(), buttons.end());
+    }
+    std::optional<std::size_t> held() const { return held_; }  // left button down on a body
+    std::optional<std::size_t> takeLatchToggle();              // right-clicked body
     void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
     void setBodgeWires(std::span<const BodgeWire> wires) {
         bodgeWires_.assign(wires.begin(), wires.end());
@@ -147,6 +157,8 @@ private:
     std::vector<HookTag> hooks_;
     std::vector<LeadTag> leads_;
     std::vector<LedTag> leds_;
+    std::vector<ButtonTag> buttons_;
+    std::optional<std::size_t> held_, latchToggle_;
     std::vector<CutMark> cuts_;
     std::vector<BodgeWire> bodgeWires_;
     std::vector<BodgeWire> bridges_;

@@ -367,6 +367,17 @@ std::optional<std::size_t> BoardScene::componentAt(Point at) const {
     return std::nullopt;
 }
 
+std::optional<std::size_t> BoardScene::bodyAt(Point at) const {
+    for (std::size_t k = 0; k < courtyards_.size(); ++k) {
+        if (Contains(courtyards_[k], at) &&
+            std::ranges::none_of(board_.components[k].pads,
+                                 [&](const Pad& pad) { return Covers(pad, at); })) {
+            return k;
+        }
+    }
+    return std::nullopt;
+}
+
 std::string BoardScene::hoverText(const Hit& hit) const {
     const auto name = [&](std::optional<NetId> net) {
         return net ? std::string(netName(*net)) : std::string();

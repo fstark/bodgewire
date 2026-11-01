@@ -57,6 +57,12 @@ constexpr ImU32 kLedLit = IM_COL32(255, 40, 30, 255);
 constexpr float kLedRadiusShare = 0.39f;  // of the courtyard's smaller side: 2.5 mm on LED_D5.0mm
 constexpr float kLedHalo = 1.6f;
 constexpr float kLedHaloAlpha = 0.35f;
+constexpr ImU32 kButtonBody = IM_COL32(40, 40, 45, 255);
+constexpr ImU32 kButtonCap = IM_COL32(170, 170, 175, 255);
+constexpr ImU32 kButtonCapDown = IM_COL32(95, 95, 100, 255);
+constexpr ImU32 kButtonRim = IM_COL32(230, 230, 235, 255);
+constexpr float kButtonCapShare = 0.35f;  // of the courtyard's smaller side
+constexpr float kButtonCapDownScale = 0.85f;
 constexpr double kPadReachPx = 12;
 constexpr double kCopperReachPx = 10;
 constexpr double kFocusPadMinPx = 14;
@@ -404,6 +410,28 @@ void BoardView::draw(ImVec2 size) {
         list.AddCircleFilled(centre, radius, Lerp(kLedDark, kLedLit, glow));
     }
 
+    for (const ButtonTag& button : buttons_) {
+        const auto courtyard = scene_->courtyard(button.component);
+        if (courtyard.empty()) {
+            continue;
+        }
+        const auto [minX, maxX] = std::ranges::minmax(courtyard, {}, &Point::x);
+        const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
+        const ImVec2 min = map({minX.x, minY.y});
+        const ImVec2 max = map({maxX.x, maxY.y});
+        list.AddRectFilled({std::min(min.x, max.x), std::min(min.y, max.y)},
+                           {std::max(min.x, max.x), std::max(min.y, max.y)}, kButtonBody, 2.0f);
+        const ImVec2 centre = map({(minX.x + maxX.x) / 2, (minY.y + maxY.y) / 2});
+        const float radius =
+            kButtonCapShare * map.pixels(std::min(maxX.x - minX.x, maxY.y - minY.y));
+        if (button.pressed) {
+            list.AddCircleFilled(centre, radius * kButtonCapDownScale, kButtonCapDown);
+        } else {
+            list.AddCircleFilled(centre, radius, kButtonCap);
+            list.AddCircle(centre, radius, kButtonRim, 0, 1.5f);
+        }
+    }
+
     for (std::size_t k = 0; k < board.components.size(); ++k) {
         const auto& pads = board.components[k].pads;
         for (std::size_t p = 0; p < pads.size(); ++p) {
@@ -634,14 +662,31 @@ void BoardView::input(ImVec2 origin) {
         pressed_ = false;
         dragging_ = false;
     }
+    if (held_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        held_.reset();
+    }
     if (!hoveredPanel) {
         return;
+    }
+    const auto buttonAt = [&]() -> std::optional<std::size_t> {
+        const auto body = scene_->bodyAt(at);
+        if (body && std::ranges::any_of(buttons_,
+                                        [&](const ButtonTag& b) { return b.component == *body; })) {
+            return body;
+        }
+        return std::nullopt;
+    };
+    if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
+        io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Right] <
+            io.MouseDragThreshold * io.MouseDragThreshold) {
+        latchToggle_ = buttonAt();
     }
     if (io.MouseWheel != 0) {
         viewport_.zoomAt(mouse, io.MouseWheel);
     }
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        pressed_ = true;
+        held_ = buttonAt();
+        pressed_ = !held_;
         dragging_ = false;
     }
     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked) {
@@ -670,6 +715,10 @@ void BoardView::input(ImVec2 origin) {
 }
 
 std::optional<BoardClick> BoardView::takeClick() { return std::exchange(click_, std::nullopt); }
+
+std::optional<std::size_t> BoardView::takeLatchToggle() {
+    return std::exchange(latchToggle_, std::nullopt);
+}
 
 bool BoardView::takeEscape() { return std::exchange(escape_, false); }
 

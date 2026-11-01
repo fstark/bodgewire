@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <print>
+#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -19,6 +20,7 @@
 #include <imgui_impl_sdlrenderer3.h>
 
 #include "machine/machine.hpp"
+#include "machine/press.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
 #include "netlist/units.hpp"
@@ -48,7 +50,7 @@ constexpr std::string_view kUsage =
     "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,"
     "unbridge:REF.PIN:REF.PIN] "
     "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--hook REF.PIN,...] [--timebase 1us] "
-    "[--meter REF.PIN] "
+    "[--meter REF.PIN] [--press REF:DOWN:UP,...] "
     "[--manual user] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -62,6 +64,7 @@ struct Options {
     std::optional<std::string> meter;  // REF.PIN: red Test Lead, V mode
     std::vector<std::string> hook;     // REF.PIN, at most 2
     std::optional<Time> timebase;      // Oscilloscope ps per division
+    std::vector<ButtonPress> press;
     bool userManual = false;
 };
 
@@ -127,6 +130,14 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
             options.timebase = *timebase;
+        } else if (arg == "--press") {
+            for (const std::string& text : SplitCommas(argv[++i])) {
+                auto press = ParsePress(text);
+                if (!press) {
+                    return std::nullopt;
+                }
+                options.press.push_back(std::move(*press));
+            }
         } else {
             return std::nullopt;
         }
@@ -279,6 +290,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     std::uint64_t seed = 1;
     std::optional<PinRef> wireStart;  // Wire tool: the first pin
     Point wireStartAt{};
+    std::set<std::string> latched;  // Buttons kept pressed by a right-click
     if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
         if (const auto component =
                 scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
@@ -487,6 +499,29 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 }
             }
             boardView.setLeds(ledTags);
+
+            if (!session.powered()) {
+                latched.clear();
+            }
+            const auto toggled = boardView.takeLatchToggle();
+            std::vector<ButtonTag> buttonTags;
+            for (const std::string& reference : session.buttons()) {
+                const auto component = scene->componentIndex(reference);
+                if (component && toggled == component && session.powered() &&
+                    !latched.erase(reference)) {
+                    latched.insert(reference);
+                }
+                const bool scripted = std::ranges::any_of(options.press, [&](const ButtonPress& p) {
+                    return p.reference == reference && p.down <= status.simTime &&
+                           status.simTime < p.up;
+                });
+                session.setPressed(reference, latched.contains(reference) || scripted ||
+                                                  (component && boardView.held() == component));
+                if (component) {
+                    buttonTags.push_back({*component, session.pressed(reference)});
+                }
+            }
+            boardView.setButtons(buttonTags);
         }
         if (machine) {
             std::vector<CutMark> cuts;
