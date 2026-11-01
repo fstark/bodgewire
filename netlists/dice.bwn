@@ -1,0 +1,53 @@
+# 030 dice (docs/machines/030-dice/DICE.md): while SW1 is held, U4 passes the 1 MHz clock
+# to U1 as ROLL_CLK; U1 counts 1 to 6 and loads 1 again after 6 (SIX_N). On release the count
+# stops. U2-U4 decode N0-N2 into four active-low LED groups; each LED is lit while its group
+# is low: ODD_N centre D4, TWO_N diagonal D1/D7, FOUR_N diagonal D2/D6, SIX_N middle row D3/D5.
+
+part X1 OSC freq=1MHz
+part J1 POWER
+part SW1 BUTTON
+part R1 R value=4k7
+part R2 R value=330
+part R3 R value=330
+part R4 R value=330
+part R5 R value=330
+part R6 R value=330
+part R7 R value=330
+part R8 R value=330
+part R9 R value=4k7
+part U1 74LS161
+part U2 74LS04
+part U3 74LS00
+part U4 74LS02
+part D1 LED
+part D2 LED
+part D3 LED
+part D4 LED
+part D5 LED
+part D6 LED
+part D7 LED
+
+net CLK      X1.OUT U4.1A
+net BTN_N    R9.2 SW1.1 U4.1B
+net ROLL_CLK U4.1Y U1.CLK
+net RESET_N  R1.2 U1.CLR_N
+net VCC      R1.1 R2.1 R3.1 R4.1 R5.1 R6.1 R7.1 R8.1 R9.1 U1.ENP U1.ENT U1.A
+net GND      SW1.2 U1.B U1.C U1.D
+net GND      U2.3A U2.4A U2.5A U2.6A U3.2A U3.2B U3.3A U3.3B U3.4A U3.4B U4.3A U4.3B U4.4A U4.4B
+
+net N0       U1.QA U2.1A
+net N1       U1.QB U3.1A U4.2A
+net N2       U1.QC U2.2A U3.1B U4.2B
+
+net ODD_N    U2.1Y D4.K
+net FOUR_N   U2.2Y D2.K D6.K
+net TWO_N    U4.2Y D1.K D7.K
+net SIX_N    U3.1Y U1.LOAD_N D3.K D5.K
+
+net LED_A1   R2.2 D1.A
+net LED_A2   R3.2 D2.A
+net LED_A3   R4.2 D3.A
+net LED_A4   R5.2 D4.A
+net LED_A5   R6.2 D5.A
+net LED_A6   R7.2 D6.A
+net LED_A7   R8.2 D7.A

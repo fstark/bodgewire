@@ -33,6 +33,7 @@ add_executable(bw_tests
   machines/bodge_wire_test.cpp
   machines/chaser_test.cpp
   machines/counter_test.cpp
+  machines/dice_test.cpp
   machines/logic_analyzer_test.cpp
   machines/manuals_test.cpp
   machines/net_drivers_test.cpp
