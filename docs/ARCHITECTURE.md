@@ -193,7 +193,9 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P3e | Bodge wires + trace cuts | done 2026-10-31: new Repairs through the Session: `Cut (K)` on straight Traces (a player-made crack, mended like one; also snips wires), `Wire (W)` between two pads; drawn, but Net highlighting ignores them; continuity follows them at once. [BODGE_WIRES_PLAN.md](p3e-bodge-wires/BODGE_WIRES_PLAN.md) |
 | P3f | Solder bridges + real power | done 2026-11-01: Solder Bridges between neighbouring pins on the solder side (subtle, removed with Cut); chips Powered only through their power Pins, worked out per build in volts; Dead Rail with a current-limit LED; four new Puzzles on the test-pattern board. Repair Validation dropped; Wrong Part, sockets, chip removal later. [SHORTS_POWER_PLAN.md](p3f-shorts-power/SHORTS_POWER_PLAN.md) |
 | P3 | Game | scope, logic analyzer, multimeter, bodge wires, hand-placed faults (scenario files); still on the P2 board. P3a–P3f together answer: is the full loop fun? |
-| P4 | Procedural faults | random fault generation, headless vetting (reject symptom-less or trivial candidates) |
+| P4 | Tutorial ladder code | one step per ladder Machine that needs new code (see [GAME_DESIGN.md](GAME_DESIGN.md) Machines); each step ends with that Machine running and its Puzzles playable. Machines needing no new code have only a spec in `docs/machines/` |
+| P4a | Counter LED | on-board LED Part (lit while current flows, drawn lit on the Board, half-lit when switching fast); counter reworked to 20 bits + LED, new Board, manuals, three Puzzles. [COUNTER.md](machines/010-counter/COUNTER.md) |
+| Later | Procedural faults | random fault generation, headless vetting (reject symptom-less or trivial candidates) |
 | Later | Machines | BW-1, BW-80, BW-2001: CPU models (6502, Z80), RAM/ROM, keyboards, LED display |
 | Later | Timing | setup/hold checks, slow and wrong parts, timing faults |
 

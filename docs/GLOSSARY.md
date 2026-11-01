@@ -27,7 +27,7 @@ One electrical terminal of a Component.
 A holder on the Board that a Component plugs into, making it removable without soldering.
 
 **Connector**:
-A Component through which power enters a Board or signals leave it, such as the power connector or the video connector. Each type has one fixed job.
+A Component through which power enters a Board or signals enter or leave it, such as the power connector, the video connector or a keyboard connector. Each type has one fixed job.
 _Avoid_: Port, jack, header
 
 **Joint**:
@@ -57,8 +57,12 @@ A wire the player solders on to join two points, bypassing or replacing Copper.
 _Avoid_: Jumper, patch wire
 
 **Output Device**:
-The part of a Machine the player watches it through: a TV picture or LED digits.
+The part of a Machine the player watches it through. Standard devices (a TV) sit off the Board behind a Connector; LEDs and digits whose arrangement belongs to the Board are Components on it, and can be faulty like any other.
 _Avoid_: Display, screen (when meaning the device in general)
+
+**Input Device**:
+The part of a Machine the player operates it through. Standard devices (an ASCII keyboard) sit off the Board behind a Connector; buttons whose arrangement belongs to the Board are Components on it, and can be faulty like any other.
+_Avoid_: Control, input (when meaning the device)
 
 **Monitor**:
 The small ROM program that runs on a Machine with a CPU; there is no BASIC.

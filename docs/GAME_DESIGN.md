@@ -64,9 +64,24 @@ Faulty machine + symptom → run, observe, measure, study the board and the manu
 
 Likely custom machines inspired by real ones, named after them: we choose their size, write our own ROMs (a monitor is enough, no BASIC) and stay free to sell one day. Exact replicas remain possible.
 
+Tutorial ladder, by difficulty, each spec in `docs/machines/NNN-name/`:
+
+| # | Machine | Output / Input | Notes |
+|---|---|---|---|
+| 010 | Counter | 1 LED | 1 MHz crystal → 20-bit counter chain → LED blinking once a second |
+| 020 | LED chaser | LEDs | shift register |
+| 030 | Dice | LEDs, button | fast counter stopped by the player's release; decoding |
+| 040 | Stopwatch | 7-segment digits | decade counters, decoder chip |
+| 050 | Test-pattern generator | TV | crystal + TTL counters → sync + bars/grid. First playable |
+| 060 | Bouncing ball | TV | Pong's ball circuit on its own |
+| 070 | Pong | TV | TTL only, like the 1972 arcade game |
+
+- LEDs, digits and buttons whose arrangement belongs to the Board are Components on it (clicked or watched in the board view, faulty like any other); standard devices (TV, keyboard) sit off the Board behind a Connector.
+
+Computers, after the ladder:
+
 | Machine | Inspired by | Notes |
 |---|---|---|
-| Test-pattern generator | — | no CPU: crystal + TTL counters → sync + bars/grid on a TV. Tutorial, first playable |
 | BW-1 | KIM-1 | 6502 single-board computer: LED digits + keypad, no video |
 | BW-80 | ZX80 | Z80 + ~20 standard chips, no custom IC. The CPU makes the picture, sync included: nothing on screen unless CPU, ROM and RAM work, but every gate can be probed |
 | BW-2001 | PET 2001 | 6502, TTL text video independent of the CPU (garbage-screen puzzles), keyboard |
