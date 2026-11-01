@@ -34,7 +34,7 @@ add_executable(bw_tests
   machines/counter_test.cpp
   machines/logic_analyzer_test.cpp
   machines/manuals_test.cpp
-  machines/net_panel_test.cpp
+  machines/net_drivers_test.cpp
   machines/scope_meter_test.cpp
   machines/shorts_power_test.cpp
   machines/test_pattern_faults_test.cpp

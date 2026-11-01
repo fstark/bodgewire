@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "board/copper.hpp"
+#include "netlist/net_pins.hpp"
 
 namespace bw {
 
@@ -257,6 +258,24 @@ BoardScene::BoardScene(Board drawn, const Board& pristine, const LoadedCircuit& 
         }
         traceNets_.push_back(net);
     }
+
+    driverPads_.resize(netNames_.size());
+    for (const auto& [name, id] : design.nets) {
+        for (const NetPin& pin : DescribeNet(design, name).drivers) {
+            const auto component = componentIndex(pin.reference);
+            const auto pad =
+                component ? padIndex(*component, std::to_string(pin.pin + 1)) : std::nullopt;
+            if (pad) {
+                driverPads_[std::to_underlying(id)].push_back({*component, *pad});
+            }
+        }
+    }
+}
+
+std::span<const ScenePad> BoardScene::drivers(NetId net) const {
+    const auto index = std::to_underlying(net);
+    return index < driverPads_.size() ? std::span<const ScenePad>(driverPads_[index])
+                                      : std::span<const ScenePad>{};
 }
 
 std::optional<NetId> BoardScene::netOf(const Hit& hit) const {

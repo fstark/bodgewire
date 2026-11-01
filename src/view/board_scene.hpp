@@ -40,6 +40,12 @@ struct Pick {
     Point contact;  // pad/via centre, nearest centreline point of a Trace, else the cursor
 };
 
+struct ScenePad {
+    std::size_t component;  // index in board().components
+    std::size_t pad;        // pad within the Component
+    bool operator==(const ScenePad&) const = default;
+};
+
 // The drawn Board (with cracks) labelled from the design Netlist and the fault-free Copper:
 // nothing here depends on Faults.
 class BoardScene {
@@ -58,6 +64,8 @@ public:
     std::optional<NetId> traceNet(std::size_t trace) const { return traceNets_[trace]; }
     std::optional<NetId> netOf(const Hit& hit) const;  // Component → nullopt
     std::string_view netName(NetId net) const;
+    // Pads of the design Net's Drivers (outputs, pull resistors, supply), in DescribeNet order.
+    std::span<const ScenePad> drivers(NetId net) const;
 
     // Snapping (S8): pads within reach.pad or half their pitch, then vias, then Traces within
     // reach.copper of their edge (Active Layer first), then courtyards.
@@ -88,8 +96,9 @@ private:
     std::vector<std::vector<Point>> courtyards_;              // [component], fallback filled in
     std::vector<std::vector<std::optional<NetId>>> padNets_;  // [component][pad]
     std::vector<std::optional<NetId>> viaNets_, traceNets_;
-    std::vector<std::string> netNames_;  // [NetId]
-    std::vector<ComponentInfo> info_;    // [component]
+    std::vector<std::string> netNames_;              // [NetId]
+    std::vector<std::vector<ScenePad>> driverPads_;  // [NetId]
+    std::vector<ComponentInfo> info_;                // [component]
 };
 
 std::string LeadLabel(const BoardScene& scene, const Hit& hit);  // "U1.14 QA", "Trace", "via"
