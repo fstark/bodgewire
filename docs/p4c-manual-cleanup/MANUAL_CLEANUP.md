@@ -13,12 +13,12 @@ Roadmap step P4c ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): make the game 
 - `manuals/<machine>/service.md` is a title plus one `## Components` section: one bullet per Component with its role on this Board (`` `U6` end-of-frame decoder ``). The check stays: every Component exactly once, every reference real.
 - "How it works" and "Troubleshooting" are removed.
 - No Service Manual window: the `H` toolbar entry goes, and `--manual` accepts only `user`.
-- Roles are shown only on the first line of the Chip panel.
+- Roles are shown only in the Chip panel, on the line under its header (as today).
 
 ## Board hover
 
-- Hovering a Component shows its reference, its Part and the description from the datasheet title: *"U6 74LS20 · dual 4-input NAND"*. Pin hover is unchanged (the pin's datasheet line).
-- When hover highlights a Net, each Driver pad of that Net gets a distinct mark on the Board. Several Drivers get several marks, ready for buses later. The Drivers come from the design netlist (`DescribeNet`), so the mark does not leak faults.
+- Hovering a Component shows its reference, its Part and the Part's description (the same text as the datasheet title): *"U6 74LS20 · dual 4-input NAND"*. Pin hover is unchanged (the pin's datasheet line).
+- When hover highlights a Net (on the Board, or from a Chip panel pin row), each Driver pad of that Net gets a distinct mark on the Board. Several Drivers get several marks, ready for buses later. The Drivers come from the design netlist (`DescribeNet`), so the mark does not leak faults.
 
 ## Removed
 
@@ -41,5 +41,5 @@ Roadmap step P4c ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): make the game 
 - Manual checks: user.md is exactly the title plus `What it does`; service.md is exactly the title plus `Components`; reference checks as today. Unit tests for both shapes, including rejection of extra sections.
 - The three Machines' manuals (counter, chaser, test_pattern) pass the checks.
 - Net panel tests and Net selection tests are removed; `DescribeNet` tests stay.
-- Driver marks: the pads marked for a hovered Net are tested headlessly where the logic allows; one screenshot shows a mark.
+- Driver marks: the Driver pads of a Net are tested headlessly; the drawing is checked by the user (a screenshot has no hover).
 - Release build: 1.00× and UI time unchanged; user check.
