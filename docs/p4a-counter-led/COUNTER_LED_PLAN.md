@@ -113,7 +113,7 @@ Create `src/runner/led_consumer.hpp`, `led_consumer.cpp`; add to `src/runner/CMa
 
 ### 3.2 — Tests
 
-`tests/runner/led_consumer_test.cpp` (tag `[runner]`), on a hand-built Circuit (pattern: [meter_consumer_test.cpp](../../tests/runner/meter_consumer_test.cpp)): `Oscillator` 1 kHz on Net `K`, Net `A` tied `One` Weak, `Led` `D1` on both.
+`tests/runner/led_consumer_test.cpp` (tag `[runner]`), on a hand-built Circuit (Parts via `FindPart(...)->create`, `VCC`/`GND` Supply ties and power Pins connected, as `ApiCounter` in [sample_test.cpp](../../tests/netlist/sample_test.cpp); Runner use as [meter_consumer_test.cpp](../../tests/runner/meter_consumer_test.cpp)): `OSC freq=1kHz` on Net `K`, Net `A` tied `One` Weak, `Led` `D1` on both.
 - `"led consumer: watches its Nets"` (`nets()` = {A, K}, distinct when two LEDs share K);
 - `"led consumer: square wave glows half"` (Runner `pauseAt(100 ms)`, `powerOn`, `waitIdle`: brightness 0.5 ± 0.01);
 - `"led consumer: dark after power off"`;
@@ -144,8 +144,9 @@ Rewrite `manuals/counter/user.md` (What it does: `D1` blinks about once a second
 
 ### 4.4 — Existing tests
 
-- [tests/netlist/sample_test.cpp](../../tests/netlist/sample_test.cpp): `Count()` over `C0`–`C19` (20 bits, wraps at 2^20); `ApiCounter` rebuilt for the new circuit (same creation order as the netlist; `LED_A` Weak One tie for R2; `Led` D1); component count 8 (X1, U1–U5, J1, D1); `counter counts` unchanged otherwise; drop `DIV toggles…` and `TOP_N`; add `"sample: carries pulse at their rates"` (within 600 µs: `CARRY1` high once per 16 µs, `CARRY2` at most once); keep `same as API-built circuit`.
-- [tests/netlist/net_pins_test.cpp](../../tests/netlist/net_pins_test.cpp#L37-L42): `CLK` loads `U1`–`U5` pin 2.
+- [tests/netlist/sample_test.cpp](../../tests/netlist/sample_test.cpp): `Count()` over `C0`–`C19` (20 bits, wraps at 2^20); `ApiCounter` rebuilt for the new circuit (same creation order as the netlist; `LED_A` Weak One tie for R2; `Led` D1); component count 8 (X1, U1–U5, J1, D1); `counter counts` unchanged otherwise; drop `DIV toggles…` and `TOP_N`; add `"sample: carries pulse at their rates"` (600 µs from a seeded power-on: `CARRY1` rises every 16 µs, 37–38 times; `CARRY2` rises 2–3 times, 256 µs apart); keep `same as API-built circuit`.
+- [tests/netlist/net_pins_test.cpp](../../tests/netlist/net_pins_test.cpp#L37-L54): `CLK` and `RESET_N` load `U1`–`U5` (pin 2 `CLK`, pin 1 `CLR_N`).
+- [tests/machine/test_points.hpp](../../tests/machine/test_points.hpp#L11-L13): re-pick `kR1VccCracks` on the new layout (midpoint of every `VCC` Trace at `R1` pad 1) for `electrical: pull-up cut from VCC is left out`.
 - [tests/manual/manual_test.cpp](../../tests/manual/manual_test.cpp#L38-L50): `kGoodService` with the new Components (`R2`, `U1`–`U5`, `D1`; no `DIV`, `TOP_N`).
 - [tests/view/board_scene_test.cpp](../../tests/view/board_scene_test.cpp), [tests/board/boards_test.cpp](../../tests/board/boards_test.cpp), [tests/machine/electrical_test.cpp](../../tests/machine/electrical_test.cpp): fix counter-specific references and counts to the new board (the removed-track test still expects one open).
 
@@ -170,12 +171,12 @@ Three Puzzles with headless Symptom and Repair checks. COUNTER.md Puzzles, desig
 
 ### 5.2 — Tests
 
-`tests/machines/counter_test.cpp` (tag `[machines]`, add to `tests/CMakeLists.txt`), loading via `LoadPuzzleFile(BW_PUZZLE_DIR / …)` / `LoadNetlistMachine`, building with `Machine::build()`, running a `Simulator` with recorded Nets; LED brightness by feeding the recorded `D1.A` / `D1.K` Net Samples to a `LedGlow`:
+`tests/machines/counter_test.cpp` (tag `[machines]`, add to `tests/CMakeLists.txt`), loading via `LoadPuzzleFile(BW_PUZZLE_DIR / …)` / `LoadNetlistMachine`, building with `Machine::build()`, running a `Simulator` (`powerOn(1)`) with recorded Nets; LED brightness by feeding the recorded `D1.A` / `D1.K` Net Samples to a `LedGlow` merged in time order (`LedGlow` time only moves forward), then `advanceTo(end)`. Power-on state is seeded random, so no check may rely on where the counter starts:
 - `"counter: fault-free bits and carries run"`: within 10 ms `C0`–`C11` toggle, `CARRY1`, `CARRY2` pulse;
 - `"counter: frozen_led"`: 10 ms, `CARRY3` never 1, `C12`–`C19` constant; after `swap U3` and rebuild, `CARRY3` pulses within 10 ms;
-- `"counter: too_fast"`: `C19` changes within 70 ms; LedGlow windows differ over 140 ms; after `swap U1`, `C19` constant over 70 ms;
+- `"counter: too_fast"`: `C19` changes within 70 ms; LedGlow windows differ over 140 ms; after `swap U1`, `CARRY1` rises every 16 µs over 100 µs and `C19` changes at most once over 70 ms;
 - `"counter: dark_led"`: `D1.K`'s Net floating, LedGlow 0 over 40 ms; after `mend` at the crack, `D1.K`'s Net is `C19`'s;
-- `"counter: LED blinks once a second" [machines][slow]`: fault-free, 1.1 s, LedGlow has windows at 0 and at 1.
+- `"counter: LED blinks once a second" [machines][slow]`: fault-free, 1.1 s, LedGlow has windows at 0 and at 1. `[slow]` is a plain tag (first in the repo): it runs in both test gates (≈ 16 s in debug); `-R` filters skip it by name only.
 
 ### Fence
 
@@ -202,7 +203,7 @@ Design §3.2–§3.4, §5.3.
 
 ### 6.4 — Tests and screenshots
 
-- `tests/session/session_test.cpp`: `"session: counter LED"` — counter Session: `leds()` = {`D1`, 0} before power-on; `pauseAt(100 ms)`, power on, wait: brightness is 0 or 1 (a C19 level); power off → 0. `"session: no LEDs on the test pattern"`: `leds()` empty.
+- `tests/session/session_test.cpp`: `"session: counter LED"` — counter Session (`LoadNetlistMachine`, `Speed::Max`): `leds()` = {`D1`, 0} before power-on; `powerOn(1, 100 ms)`, `waitIdle`: brightness is 0 or 1 (a C19 level); power off → 0. `"session: no LEDs on the test pattern"`: `leds()` empty.
 - Release screenshots (agent views the PNGs): `bw_ui netlists/counter.bwn --screenshot /tmp/p4a/counter.png --after 1s`, and `puzzles/too_fast.bwp`, `puzzles/dark_led.bwp`. D1 drawn red-lit or dark, pads visible on top; `bw_ui` prints ratio 1.00× and ui ms.
 
 ### Fence
@@ -217,7 +218,7 @@ Design §3.2–§3.4, §5.3.
 
 ### 7.1 — Release
 
-`ctest --preset release -j 12` (includes `[slow]`); `bw_ui` on the counter and each new Puzzle: ratio 1.00×, ui ms noted.
+`ctest --preset release -j 12`; `bw_ui` on the counter and each new Puzzle: ratio 1.00×, ui ms noted.
 
 ### 7.2 — User check
 

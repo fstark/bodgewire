@@ -51,9 +51,12 @@ public:
    ```cpp
    std::vector<LedNets> nets;
    for (const LoadedPart& part : live->circuit->parts) {
+       if (part.info->kind != PartKind::Led) {
+           continue;
+       }
        const auto a = PinNet(*live->circuit, part.reference, "A");
        const auto k = PinNet(*live->circuit, part.reference, "K");
-       if (part.info->kind == PartKind::Led && a && k) {  // an unconnected Pin: never lit
+       if (a && k) {  // an unconnected Pin: never lit
            nets.push_back({part.reference, *a, *k});
        }
    }
@@ -256,6 +259,6 @@ Catch2, tags as the module. Debug runs ≈ 0.07× real time, so headless tests s
 | `tests/devices/led_glow_test.cpp` | steady lit → 1; floating cathode or anode → 0; anode 0 → 0; 50 % square wave at 1 kHz → 0.5; edge inside a window splits it; reset → 0 |
 | `tests/runner/led_consumer_test.cpp` | small Circuit (OSC → LED cathode, pull-up anode) through a Runner: brightness ≈ 0.5, 0 after powerOff; one Net feeding two LEDs |
 | `tests/machines/counter_test.cpp` `[machines]` | fault-free: `C0`–`C11` and `CARRY1`–`CARRY2` toggle at their rates within 10 ms; frozen_led: `CARRY3` never high in 10 ms, `C12`–`C19` constant; swap U3 fixes it; too_fast: `C19` toggles within 70 ms, LedGlow fed from the recorded Samples changes between windows; dark_led: `D1.K`'s Net floating, LedGlow 0, mend fixes it; `[slow]`: fault-free `D1` lit and dark within 1.1 s |
-| existing | `boards_test` counter (new board), `drc_counter`, `electrical_test`, `board_scene_test` (R1/U5 lookups), `net_pins_test` (CLK loads U1–U5), `manual_test` (`kGoodService`), `manuals_test`, `sample_test` (the DIV/TOP_N cases go; counter Nets C0–C19) |
+| existing | `boards_test` counter (new board), `drc_counter`, `electrical_test` + `test_points.hpp` (`kR1VccCracks` re-picked), `board_scene_test` (R1/U5 lookups), `net_pins_test` (CLK, RESET_N load U1–U5), `manual_test` (`kGoodService`), `manuals_test`, `sample_test` (the DIV/TOP_N cases go; counter Nets C0–C19) |
 
 UI check (release build): `bw_ui netlists/counter.bwn --screenshot /tmp/counter.png --after 1s` shows `D1` lit or dark by `C19`; `bw_ui puzzles/too_fast.bwp --screenshot … --after 1s` and `dark_led.bwp` likewise.
