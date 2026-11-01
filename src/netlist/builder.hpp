@@ -48,8 +48,9 @@ struct StuckPin {
     LogicValue value;
 };
 
-LoadResult BuildCircuit(const Netlist& netlist,
-                        std::span<const StuckPin> stuck = {});  // all errors, by line
+// `unpowered`: References of chips left out of the Circuit's Nets (outputs Z, inputs ignored).
+LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck = {},
+                        std::span<const std::string> unpowered = {});  // all errors, by line
 LoadResult LoadNetlist(std::string_view text, std::string file);
 LoadResult LoadNetlistFile(const std::filesystem::path& path);  // diagnostics name the file only
 

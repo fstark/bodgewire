@@ -11,6 +11,7 @@
 
 #include "board/board.hpp"
 #include "board/copper.hpp"
+#include "machine/electrical.hpp"
 #include "machine/puzzle.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
@@ -48,6 +49,7 @@ public:
     const Board& board() const { return board_; }  // with cracks, Cuts and Bodge Wires
     const Board& pristineBoard() const { return pristine_; }  // fault-free Copper, for the view
     const LoadedCircuit& designCircuit() const { return *designCircuit_; }
+    const BoardPower& power() const { return power_; }  // of the current Copper
 
     // Electrical Net under `at` in `built` (this Machine's build()), in the current Copper: a pad
     // or via on either Layer, else a Trace on `layer`. nullopt off Copper or on an unnamed island.
@@ -75,6 +77,7 @@ private:
     std::vector<CrackDecl> cuts_;  // line 0
     std::vector<WireEnds> wires_;
     std::vector<WireEnds> bridges_;  // Solder Bridges: same shape as a Bodge Wire
+    BoardPower power_;               // of board_, see rebuildBoard()
 };
 
 // The directory holding netlists/, boards/, puzzles/, manuals/, datasheets/: the file's

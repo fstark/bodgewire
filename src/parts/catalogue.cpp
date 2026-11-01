@@ -103,4 +103,15 @@ const PartInfo* FindPart(std::string_view name) {
 
 std::span<const PartInfo> AllParts() { return s_parts; }
 
+std::optional<double> PowerPinVolts(std::string_view pin) {
+    constexpr std::array<std::pair<std::string_view, double>, 2> kVolts{
+        {{"VCC", 5.0}, {"GND", 0.0}}};
+    for (const auto& [name, volts] : kVolts) {
+        if (name == pin) {
+            return volts;
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace bw

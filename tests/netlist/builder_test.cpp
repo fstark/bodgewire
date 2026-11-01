@@ -1,6 +1,8 @@
 #include "netlist/builder.hpp"
 
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -260,6 +262,26 @@ TEST_CASE("builder: stuck pin ties its net", "[netlist]") {
     sim.runUntil(100_ns);
     CHECK(sim.value(a) == Zero);
     CHECK(sim.value(loaded.circuit.netOf(pin2)) == One);
+}
+
+TEST_CASE("builder: unpowered chip drives nothing", "[netlist]") {
+    std::ifstream in(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+    const auto netlist = ParseNetlist(text, "test_pattern.bwn");
+    REQUIRE(netlist.has_value());
+    const std::string unpowered[] = {"U1"};
+    const StuckPin stuck[] = {{"U1", 13, One}};  // QA
+    const auto result = BuildCircuit(*netlist, stuck, unpowered);
+    REQUIRE(result.has_value());
+    LoadedCircuit& loaded = **result;
+    const NetId h0 = loaded.nets.at("H0");
+    CHECK(PinNet(loaded, "U1", "QA") == h0);
+    CHECK(loaded.circuit.tieOf(h0).strength == DriveStrength::None);
+    Simulator sim(loaded.circuit);
+    sim.powerOn(1);
+    sim.runUntil(10_us);
+    CHECK(sim.isFloating(h0));
+    CHECK_FALSE(sim.isFloating(loaded.nets.at("H4")));
 }
 
 TEST_CASE("builder: PinNet by name and number", "[netlist]") {

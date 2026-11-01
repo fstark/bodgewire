@@ -261,6 +261,7 @@ void Machine::rebuildBoard() {
     for (const WireEnds& b : bridges_) {
         board_.bodgeWires.push_back(b.wire);
     }
+    power_ = FindPower(*designCircuit_, board_, FindIslands(board_));
 }
 
 std::optional<PinRef> Machine::padOf(const PinRef& pin) const {
@@ -280,7 +281,8 @@ std::optional<PinRef> Machine::padOf(const PinRef& pin) const {
 }
 
 LoadResult Machine::build() const {
-    return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_), stuck_);
+    return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_), stuck_,
+                        power_.unpowered);
 }
 
 std::optional<std::uint32_t> Machine::islandAt(const Islands& islands, Layer layer,

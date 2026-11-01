@@ -20,4 +20,13 @@ std::vector<std::string> IslandNetNames(const LoadedCircuit& designCircuit, cons
 Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCircuit,
                           const Board& board);
 
+struct BoardPower {
+    std::vector<std::string> unpowered;  // chip References, design order
+    bool deadRail = false;               // an island holds supply pins of different voltages
+};
+
+// Powered check of every chip on `board`'s islands. Connectors are always Powered.
+BoardPower FindPower(const LoadedCircuit& designCircuit, const Board& board,
+                     const Islands& islands);
+
 }  // namespace bw

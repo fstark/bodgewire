@@ -1,5 +1,6 @@
 #include "machine/electrical.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -12,6 +13,7 @@
 
 #include "board/kicad_board.hpp"
 #include "machine/crack.hpp"
+#include "machine/machine.hpp"
 #include "test_points.hpp"
 
 using namespace bw;
@@ -122,4 +124,51 @@ TEST_CASE("electrical: pull-up cut from VCC is left out", "[machine]") {
     }
     CHECK(NetOf(netlist, "R1.1").empty());
     CHECK(BuildCircuit(netlist).has_value());
+}
+
+namespace {
+
+Machine PowerMachine(std::vector<CrackDecl> cracks, std::vector<BridgeDecl> bridges) {
+    Puzzle puzzle;
+    puzzle.file = "t.bwp";
+    puzzle.machineLine = 1;
+    puzzle.machine = "test_pattern";
+    puzzle.cracks = std::move(cracks);
+    puzzle.bridges = std::move(bridges);
+    auto machine = LoadMachine(puzzle, std::filesystem::path(BW_NETLIST_DIR).parent_path());
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
+const std::vector<std::string> kAllChips{"X1", "U1", "U2",  "U3",  "U4",  "U5",  "U6", "U7",
+                                         "U8", "U9", "U10", "U11", "U12", "U13", "U14"};
+
+}  // namespace
+
+TEST_CASE("power: fault-free board powers every chip", "[machine]") {
+    const Machine machine = PowerMachine({}, {});
+    CHECK(machine.power().unpowered.empty());
+    CHECK_FALSE(machine.power().deadRail);
+}
+
+TEST_CASE("power: cracked VCC stub leaves one chip Unpowered", "[machine]") {
+    const Machine machine = PowerMachine({{2, Layer::Front, {164'850'000, 51'050'000}}}, {});
+    CHECK(machine.power().unpowered == std::vector<std::string>{"U6"});
+    CHECK_FALSE(machine.power().deadRail);
+}
+
+TEST_CASE("power: VCC bridged to GND is a Dead Rail", "[machine]") {
+    Machine machine = PowerMachine({}, {{2, {"U1", "7"}, {"U1", "8"}}});
+    CHECK(machine.power().deadRail);
+    CHECK(machine.power().unpowered == kAllChips);
+    REQUIRE(machine.removeBridge({"U1", "7"}, {"U1", "8"}));
+    CHECK_FALSE(machine.power().deadRail);
+    CHECK(machine.power().unpowered.empty());
+}
+
+TEST_CASE("power: GND pin wired to VCC", "[machine]") {
+    Machine machine = PowerMachine({}, {});
+    REQUIRE(machine.addWire({"U9", "7"}, {"U9", "14"}));
+    CHECK(machine.power().deadRail);
+    CHECK(std::ranges::find(machine.power().unpowered, "U9") != machine.power().unpowered.end());
 }

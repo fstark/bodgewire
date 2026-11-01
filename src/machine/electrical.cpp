@@ -9,6 +9,8 @@
 #include <vector>
 
 #include "board/copper.hpp"
+#include "parts/catalogue.hpp"
+#include "parts/connector.hpp"
 #include "sim/check.hpp"
 
 namespace bw {
@@ -175,6 +177,44 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
         }
     }
     return result;
+}
+
+BoardPower FindPower(const LoadedCircuit& designCircuit, const Board& board,
+                     const Islands& islands) {
+    const Namer namer(board, islands);
+    std::map<std::uint32_t, std::set<double>> rails;
+    for (const LoadedPart& part : designCircuit.parts) {
+        if (part.info->kind != PartKind::Connector) {
+            continue;
+        }
+        const std::vector<PinSpec> pins = ConnectorPins(part.info->name);
+        for (PinIndex i = 0; i < pins.size(); ++i) {
+            if (const auto volts = ConnectorVolts(part.info->name, pins[i].name)) {
+                rails[namer.island(part.reference, i)].insert(*volts);
+            }
+        }
+    }
+    BoardPower power;
+    power.deadRail = std::ranges::any_of(rails, [](const auto& r) { return r.second.size() > 1; });
+    for (const LoadedPart& part : designCircuit.parts) {
+        if (part.info->kind != PartKind::Chip) {
+            continue;
+        }
+        const auto pins = designCircuit.components.at(part.reference)->pins();
+        for (PinIndex i = 0; i < pins.size(); ++i) {
+            if (pins[i].kind != PinKind::Power) {
+                continue;
+            }
+            const auto want = PowerPinVolts(pins[i].name);
+            Check(want.has_value(), "electrical: power Pin without a voltage");
+            const auto rail = rails.find(namer.island(part.reference, i));
+            if (rail == rails.end() || rail->second != std::set<double>{*want}) {
+                power.unpowered.push_back(part.reference);
+                break;
+            }
+        }
+    }
+    return power;
 }
 
 }  // namespace bw

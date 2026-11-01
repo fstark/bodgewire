@@ -42,8 +42,10 @@ void SortByLine(std::vector<Diagnostic>& diagnostics) {
 
 class Builder {
 public:
-    explicit Builder(const Netlist& netlist, std::span<const StuckPin> stuck)
-        : netlist_(netlist), stuck_(stuck), loaded_(std::make_unique<LoadedCircuit>()) {}
+    explicit Builder(const Netlist& netlist, std::span<const StuckPin> stuck,
+                     std::span<const std::string> unpowered)
+        : netlist_(netlist), stuck_(stuck), unpowered_(unpowered),
+          loaded_(std::make_unique<LoadedCircuit>()) {}
 
     LoadResult build() {
         Circuit& circuit = loaded_->circuit;
@@ -66,7 +68,9 @@ public:
         }
         for (const auto& [pin, net] : pinNet_) {
             const PlacedPart& part = placed_.find(pin.first)->second;
-            if (const StuckPin* s = stuckAt(pin.first, pin.second)) {
+            if (isUnpowered(pin.first)) {
+                // no Driver, no Load: the chip's Pins get private Nets at finalize()
+            } else if (const StuckPin* s = stuckAt(pin.first, pin.second)) {
                 circuit.tie(net.net, s->value, DriveStrength::Strong);
             } else if (part.component != nullptr) {
                 circuit.connect(*part.component, pin.second, net.net);
@@ -96,6 +100,10 @@ private:
             }
         }
         return nullptr;
+    }
+
+    bool isUnpowered(std::string_view reference) const {
+        return std::ranges::find(unpowered_, reference) != unpowered_.end();
     }
 
     void error(std::uint32_t line, std::string message) {
@@ -272,6 +280,7 @@ private:
 
     const Netlist& netlist_;
     std::span<const StuckPin> stuck_;
+    std::span<const std::string> unpowered_;
     std::unique_ptr<LoadedCircuit> loaded_;
     std::map<std::string, PlacedPart, std::less<>> placed_;  // by reference
     std::map<std::pair<std::string, PinIndex>, NetOfPin> pinNet_;
@@ -282,8 +291,9 @@ private:
 
 bool IsRail(std::string_view net) { return net == "GND" || net == "VCC"; }
 
-LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck) {
-    return Builder(netlist, stuck).build();
+LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck,
+                        std::span<const std::string> unpowered) {
+    return Builder(netlist, stuck, unpowered).build();
 }
 
 LoadResult LoadNetlist(std::string_view text, std::string file) {
