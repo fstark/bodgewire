@@ -59,6 +59,7 @@ Faulty machine + symptom → run, observe, measure, study the board and the manu
 - Hard because the machine is complex: good. Hard because the player has no reasonable way to find the fault: bug.
 - Timing example: BASIC runs fine, a graphics demo shows vertical artifacts. RAM, counters and address lines look correct on the logic probe; the scope shows the address decoder output switching too late relative to the pixel clock.
 - A part replaced by a slower equivalent can break a working machine.
+- To author (test pattern): a crack between U9.3Y and U3.ENT (pin 10). U3.ENT floats high, so V0–V3 count on every clock instead of once per line, which makes a visually striking picture. Cracking the same Net on the U4.ENP side does nothing, because U3.RCO already carries `LINE_END` into U4.ENT.
 
 ## Machines
 
