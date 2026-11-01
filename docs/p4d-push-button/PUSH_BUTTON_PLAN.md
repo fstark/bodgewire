@@ -5,14 +5,14 @@ Spec: [PUSH_BUTTON.md](PUSH_BUTTON.md); Machine: [DICE.md](../machines/030-dice/
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | `Simulator::wake`; Button Part: `Button`, `PartKind::Button`, catalogue, footprint, Datasheet | |
-| 2 | Builder `wireButtons`, `ButtonOf` | |
-| 3 | `ParsePress`, `Runner::wake`, `bw run --press` | |
-| 4 | Dice netlist, manuals, headless fault-free test | |
-| 5 | Courtyards from lines, dice Board (**user layout**), per-Machine loops, `bodyAt` | |
-| 6 | Buttons on damaged Boards, dice Puzzles + Symptom/Repair tests | |
-| 7 | Session `buttons` / `setPressed` / `pressed` | |
-| 8 | Board view pressing and drawing, `bw_ui --press`, screenshots | |
+| 1 | `Simulator::wake`; Button Part: `Button`, `PartKind::Button`, catalogue, footprint, Datasheet | done 28ecaea |
+| 2 | Builder `wireButtons`, `ButtonOf` | done e5983f3 |
+| 3 | `ParsePress`, `Runner::wake`, `bw run --press` | done c2958a2 |
+| 4 | Dice netlist, manuals, headless fault-free test | done b23b235 |
+| 5 | Courtyards from lines, dice Board (**user layout**), per-Machine loops, `bodyAt` | 5.1 done 23e790e; `bodyAt` code e86fa8c; waiting for the layout |
+| 6 | Buttons on damaged Boards, dice Puzzles + Symptom/Repair tests | 6.2 code done 175929e; rest needs the Board |
+| 7 | Session `buttons` / `setPressed` / `pressed` | done 469ce1d (LED brightness test needs the Board) |
+| 8 | Board view pressing and drawing, `bw_ui --press`, screenshots | code done e86fa8c; screenshots need the Board |
 | 9 | Release check, user check, docs | |
 
 Build gate: `cmake --preset debug && cmake --build --preset debug`
