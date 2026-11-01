@@ -45,6 +45,7 @@ add_executable(bw_tests
   parts/catalogue_test.cpp
   parts/connector_test.cpp
   parts/gate_package_test.cpp
+  parts/led_test.cpp
   parts/ls161_test.cpp
   parts/ls74_test.cpp
   parts/oscillator_test.cpp

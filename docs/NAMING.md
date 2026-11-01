@@ -30,7 +30,7 @@ Code uses [GLOSSARY.md](GLOSSARY.md) terms, including its _Avoid_ lists:
 
 ## Abbreviations
 
-Allowed: `id`, `ttl`, `mos`, `vcd`, `rng`, `ff` (flip-flop), `clk`. Everything else spelled out. Acronyms are words: `VcdWriter`, `TtlFamily`, not `VCDWriter`.
+Allowed: `id`, `ttl`, `mos`, `vcd`, `rng`, `ff` (flip-flop), `clk`, `led`. Everything else spelled out. Acronyms are words: `VcdWriter`, `TtlFamily`, not `VCDWriter`.
 
 ## Pin names
 

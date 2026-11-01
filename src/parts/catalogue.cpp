@@ -7,6 +7,7 @@
 
 #include "parts/connector.hpp"
 #include "parts/gate_package.hpp"
+#include "parts/led.hpp"
 #include "parts/ls161.hpp"
 #include "parts/ls74.hpp"
 #include "parts/oscillator.hpp"
@@ -68,6 +69,14 @@ std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::s
     return &circuit.add<Oscillator>(std::move(reference), *period);
 }
 
+std::expected<Component*, std::string> CreateLed(Circuit& circuit, std::string reference,
+                                                 std::span<const PartParam> params) {
+    if (!params.empty()) {
+        return std::unexpected("LED takes no parameters");
+    }
+    return &circuit.add<Led>(std::move(reference));
+}
+
 using enum PartKind;
 
 // Sorted by name.
@@ -84,6 +93,7 @@ constexpr std::array s_parts{
     PartInfo{"74LS74", "dual D flip-flop, preset and clear", "DIP-14", Chip,
              &CreateChip<Ls74, "74LS74">},
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},
+    PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
     PartInfo{"POWER", "5 V power connector", "KK-2", Connector, &CreateConnector<"POWER">},
     PartInfo{"R", "resistor", "axial", Resistor, nullptr},

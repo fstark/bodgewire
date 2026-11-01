@@ -38,6 +38,7 @@ TEST_CASE("kicad netlist: footprint table", "[board]") {
           "Connector_Molex:Molex_KK-254_AE-6410-02A_1x02_P2.54mm_Vertical");
     CHECK(KicadFootprint("KK-3") ==
           "Connector_Molex:Molex_KK-254_AE-6410-03A_1x03_P2.54mm_Vertical");
+    CHECK(KicadFootprint("LED-5mm") == "LED_THT:LED_D5.0mm");
     CHECK(KicadFootprint("DIP-40").empty());
 }
 
