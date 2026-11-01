@@ -212,7 +212,7 @@ for part in designCircuit.parts with kind == Chip:
 
 Cases, all from the same rule:
 - fault-free Board: every chip Powered (`CheckBoard` already ties every power pad to J1);
-- cracked VCC Trace: the chip's VCC island holds no supply pin → Unpowered (the meter on that stub shows `- - -`: unnamed island, as any isolated copper since P3d);
+- cracked VCC Trace: the chip's VCC island holds no supply pin → Unpowered (the meter on that stub reads 0 V: bare Copper);
 - GND pin wired to VCC: its island holds 5 V → Unpowered (and usually a Dead Rail, through its own GND Trace);
 - Dead Rail: that island's set is {0, 5} → every chip with a power Pin on it is Unpowered.
 
@@ -284,6 +284,6 @@ All `machine test_pattern`. Coordinates from the `.kicad_pcb` (VCC Trace found b
 | `puzzles/sync_bridge.bwp` | `fault bridge U10.1 U10.2` (HSYNC_N, VSYNC_N) | Contention, 0 wins: both XOR inputs equal, SYNC stays 0, no sync pulses; TV does not lock | `unbridge:U10.1:U10.2` |
 | `puzzles/line_bridge.bwp` | `fault bridge U9.6 U9.7` (3Y LINE_END, GND) | LINE_END held at 0: no vertical count, rolling picture; swapping U9 changes nothing | `unbridge:U9.6:U9.7` |
 | `puzzles/unpowered_chip.bwp` | `fault crack F.Cu 164.85 51.05` (U6's VCC stub) | U6 outputs Z → LINE_END_N and HSYNC_N float high: no line sync | `mend:F.Cu:164.85:51.05` or a wire U6.14 to VCC |
-| `puzzles/dead_rail.bwp` | `fault bridge U1.7 U1.8` (ENP on VCC, GND) | all chips dead, black screen, meter 0 V, LIMIT lit | `unbridge:U1.7:U1.8` |
+| `puzzles/dead_rail.bwp` | `fault bridge U1.7 U1.8` (ENP on VCC, GND) | all chips dead, white screen (J2 inputs float high), meter 0 V, LIMIT lit | `unbridge:U1.7:U1.8` |
 
 Titles and Briefs describe the Symptom only, as a customer would. If a test shows a Symptom differs from the table, the test states the actual Symptom and the Brief follows it.
