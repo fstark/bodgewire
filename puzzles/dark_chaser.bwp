@@ -1,0 +1,5 @@
+# Dark chaser: the SER Trace from U6 pin 8 to U5 pin 1 is cracked; U5.A floats high.
+machine chaser
+title "Dark chaser"
+brief "At power-on the light runs off the end of the row and never comes back."
+fault crack B.Cu 70.17 73.69

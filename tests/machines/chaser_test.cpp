@@ -7,6 +7,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../machine/test_points.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
@@ -25,6 +26,12 @@ constexpr std::size_t kFirstSettled = 9;  // index of STEP rise 10: 9 rises sett
 
 Machine FaultFree() {
     auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "chaser.bwn");
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
+Machine LoadPuzzle(const std::string& name) {
+    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -90,11 +97,12 @@ LogicValue At(const std::vector<Sample>& samples, Time t) {
     return value;
 }
 
-std::vector<std::string> ChaserNames() {
+std::vector<std::string> ChaserNames(std::vector<std::string> extra = {}) {
     std::vector<std::string> names{"STEP"};
     for (char n = '1'; n <= '8'; ++n) {
         names.push_back(std::string("S") + n);
     }
+    names.insert(names.end(), extra.begin(), extra.end());
     return names;
 }
 
@@ -139,4 +147,74 @@ TEST_CASE("chaser: fault-free light runs", "[machines][slow]") {
         CHECK(rises[i] - rises[i - 1] == kStep);
     }
     CheckRunning(Stages(recorded));
+}
+
+TEST_CASE("chaser: Puzzles have a title and a brief", "[machines]") {
+    for (const char* name : {"gap", "stuck_light", "dark_chaser", "twins"}) {
+        INFO(name);
+        const auto puzzle =
+            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        REQUIRE(puzzle.has_value());
+        CHECK(puzzle->machine == "chaser");
+        CHECK_FALSE(puzzle->title.empty());
+        CHECK_FALSE(puzzle->brief.empty());
+    }
+}
+
+TEST_CASE("chaser: gap", "[machines][slow]") {
+    Machine machine = LoadPuzzle("gap");
+    const Recorded recorded = Record(machine, 18 * kStep, ChaserNames({"D5.A"}));
+    for (const Sample& s : recorded.at("D5.A")) {
+        CHECK(s.floating);
+    }
+    const std::vector<std::string> stages = Stages(recorded);
+    CHECK(std::ranges::count_if(stages, [](const std::string& e) { return e[4] == '0'; }) == 1);
+
+    REQUIRE(machine.mend(Layer::Front, kLedA5Crack));
+    for (const Sample& s : Record(machine, 1_ms, {"D5.A"}).at("D5.A")) {
+        CHECK_FALSE(s.floating);
+    }
+}
+
+TEST_CASE("chaser: stuck_light", "[machines][slow]") {
+    Machine machine = LoadPuzzle("stuck_light");
+    for (const std::string& entry : Stages(Record(machine, 18 * kStep, ChaserNames()))) {
+        CHECK(entry == "11101111");
+    }
+
+    REQUIRE(machine.swap("U5"));
+    CheckRunning(Stages(Record(machine, 18 * kStep, ChaserNames())));
+}
+
+TEST_CASE("chaser: dark_chaser", "[machines][slow]") {
+    Machine machine = LoadPuzzle("dark_chaser");
+    const Recorded recorded = Record(machine, 18 * kStep, ChaserNames({"U5.A"}));
+    for (const Sample& s : recorded.at("U5.A")) {
+        CHECK(s.floating);
+        CHECK(s.value == One);
+    }
+    for (const std::string& entry : Stages(recorded)) {
+        CHECK(entry == "11111111");
+    }
+
+    REQUIRE(machine.mend(Layer::Back, kSerCrack));
+    CheckRunning(Stages(Record(machine, 18 * kStep, ChaserNames())));
+}
+
+TEST_CASE("chaser: twins", "[machines][slow]") {
+    Machine machine = LoadPuzzle("twins");
+    const std::vector<std::string> stages = Stages(Record(machine, 18 * kStep, ChaserNames()));
+    std::vector<std::size_t> low;
+    for (std::size_t i = 0; i < stages.size(); ++i) {
+        INFO(stages[i]);
+        CHECK(stages[i][0] == stages[i][1]);
+        if (stages[i][0] == '0') {
+            low.push_back(i);
+        }
+    }
+    REQUIRE(low.size() == 2);
+    CHECK(((low[0] + 1) % 8 == low[1] || (low[1] + 1) % 8 == low[0]));
+
+    REQUIRE(machine.removeBridge({"U5", "3"}, {"U5", "4"}));
+    CheckRunning(Stages(Record(machine, 18 * kStep, ChaserNames())));
 }

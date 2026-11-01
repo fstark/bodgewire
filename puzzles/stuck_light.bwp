@@ -1,0 +1,5 @@
+# Stuck light: U5.QD (S4) stuck low; S4 holds U6's output high, so no new low bit enters.
+machine chaser
+title "Stuck light"
+brief "D4 stays lit all the time and the other lights stay dark."
+fault stuck U5.QD 0

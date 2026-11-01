@@ -1,0 +1,5 @@
+# Gap: the LED_A5 Trace from R6 pin 2 to D5's anode is cracked; D5's anode floats.
+machine chaser
+title "Gap"
+brief "The light runs along the row, but D5 never lights: the light skips it."
+fault crack F.Cu 73.46 101.05

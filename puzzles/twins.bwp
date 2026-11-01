@@ -1,0 +1,5 @@
+# Twins: U5.3 (QA, S1) bridged to U5.4 (QB, S2); the low bit shows on both for two steps.
+machine chaser
+title "Twins"
+brief "D1 and D2 always light together, and stay lit twice as long as the others."
+fault bridge U5.3 U5.4
