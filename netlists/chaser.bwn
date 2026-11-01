@@ -1,0 +1,83 @@
+# 020 LED chaser (docs/machines/020-led-chaser/LED_CHASER.md): a 16-bit divider of four 74LS161
+# makes STEP (about 15.3 Hz); the 74LS164 U5 shifts one low bit along S1–S8, and the 8-input
+# NAND U6 feeds a new low bit into SER each time S1–S7 are all high. LEDs D1–D8 sink into S1–S8
+# through R2–R9, so each is lit while its stage is low.
+
+part X1 OSC freq=1MHz
+part J1 POWER
+part R1 R value=4k7
+part R2 R value=330
+part R3 R value=330
+part R4 R value=330
+part R5 R value=330
+part R6 R value=330
+part R7 R value=330
+part R8 R value=330
+part R9 R value=330
+part U1 74LS161
+part U2 74LS161
+part U3 74LS161
+part U4 74LS161
+part U5 74LS164
+part U6 74LS30
+part D1 LED
+part D2 LED
+part D3 LED
+part D4 LED
+part D5 LED
+part D6 LED
+part D7 LED
+part D8 LED
+
+net CLK      X1.OUT U1.CLK U2.CLK U3.CLK U4.CLK
+net RESET_N  R1.2 U1.CLR_N U2.CLR_N U3.CLR_N U4.CLR_N U5.CLR_N
+net VCC      R1.1 R2.1 R3.1 R4.1 R5.1 R6.1 R7.1 R8.1 R9.1
+
+# Every counter always counts and never loads; U1 is the low nibble, enabled for good.
+net VCC      U1.ENP U1.LOAD_N U2.ENP U2.LOAD_N U3.ENP U3.LOAD_N U4.ENP U4.LOAD_N
+net VCC      U1.ENT
+net GND      U1.A U1.B U1.C U1.D U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
+net GND      U4.A U4.B U4.C U4.D
+
+net C0       U1.QA
+net C1       U1.QB
+net C2       U1.QC
+net C3       U1.QD
+net CARRY1   U1.RCO U2.ENT
+net C4       U2.QA
+net C5       U2.QB
+net C6       U2.QC
+net C7       U2.QD
+net CARRY2   U2.RCO U3.ENT
+net C8       U3.QA
+net C9       U3.QB
+net C10      U3.QC
+net C11      U3.QD
+net CARRY3   U3.RCO U4.ENT
+net C12      U4.QA
+net C13      U4.QB
+net C14      U4.QC
+net STEP     U4.QD U5.CLK
+
+# Shift register: B tied high, so A (SER) is the serial input; the NAND's eighth input is tied
+# high, so SER is low only while S1–S7 are all high.
+net VCC      U5.B U6.H
+net SER      U6.Y U5.A
+net S1       U5.QA U6.A D1.K
+net S2       U5.QB U6.B D2.K
+net S3       U5.QC U6.C D3.K
+net S4       U5.QD U6.D D4.K
+net S5       U5.QE U6.E D5.K
+net S6       U5.QF U6.F D6.K
+net S7       U5.QG U6.G D7.K
+net S8       U5.QH D8.K
+
+# LEDs: +5 V through R2–R9 into the anodes; the cathodes sink into S1–S8.
+net LED_A1   R2.2 D1.A
+net LED_A2   R3.2 D2.A
+net LED_A3   R4.2 D3.A
+net LED_A4   R5.2 D4.A
+net LED_A5   R6.2 D5.A
+net LED_A6   R7.2 D6.A
+net LED_A7   R8.2 D7.A
+net LED_A8   R9.2 D8.A
