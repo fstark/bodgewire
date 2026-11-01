@@ -50,6 +50,11 @@ constexpr float kPinNameGapPx = 3;
 constexpr ImU32 kPinPlate = IM_COL32(0, 0, 0, 200);
 constexpr ImU32 kPinName = IM_COL32(240, 240, 240, 255);
 constexpr ImU32 kFlash = IM_COL32(255, 255, 255, 255);
+constexpr ImU32 kLedDark = IM_COL32(90, 20, 20, 255);
+constexpr ImU32 kLedLit = IM_COL32(255, 40, 30, 255);
+constexpr float kLedRadiusShare = 0.39f;  // of the courtyard's smaller side: 2.5 mm on LED_D5.0mm
+constexpr float kLedHalo = 1.6f;
+constexpr float kLedHaloAlpha = 0.35f;
 constexpr double kPadReachPx = 12;
 constexpr double kCopperReachPx = 10;
 constexpr double kFocusPadMinPx = 14;
@@ -60,6 +65,17 @@ ImU32 WithAlpha(ImU32 colour, float alpha) {
     const auto a =
         static_cast<ImU32>(static_cast<float>((colour >> IM_COL32_A_SHIFT) & 0xFF) * alpha + 0.5f);
     return (colour & ~IM_COL32_A_MASK) | (a << IM_COL32_A_SHIFT);
+}
+
+ImU32 Lerp(ImU32 from, ImU32 to, float t) {
+    ImU32 result = 0;
+    for (const int shift :
+         {IM_COL32_R_SHIFT, IM_COL32_G_SHIFT, IM_COL32_B_SHIFT, IM_COL32_A_SHIFT}) {
+        const auto a = static_cast<float>((from >> shift) & 0xFF);
+        const auto b = static_cast<float>((to >> shift) & 0xFF);
+        result |= static_cast<ImU32>(a + (b - a) * t + 0.5f) << shift;
+    }
+    return result;
 }
 
 double SegmentDistance(Point p, Point a, Point b) {
@@ -367,6 +383,24 @@ void BoardView::draw(ImVec2 size) {
     const Layer inactive = active_ == Layer::Front ? Layer::Back : Layer::Front;
     drawTraces(inactive, kInactiveAlpha, kInactiveHighlightAlpha);
     drawTraces(active_, 1.0f, 1.0f);
+
+    for (const LedTag& led : leds_) {
+        const auto courtyard = scene_->courtyard(led.component);
+        if (courtyard.empty()) {
+            continue;
+        }
+        const auto [minX, maxX] = std::ranges::minmax(courtyard, {}, &Point::x);
+        const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
+        const ImVec2 centre = map({(minX.x + maxX.x) / 2, (minY.y + maxY.y) / 2});
+        const float radius =
+            kLedRadiusShare * map.pixels(std::min(maxX.x - minX.x, maxY.y - minY.y));
+        const float glow = std::clamp(led.brightness, 0.0f, 1.0f);
+        if (glow > 0) {
+            list.AddCircleFilled(centre, radius * kLedHalo,
+                                 WithAlpha(kLedLit, kLedHaloAlpha * glow));
+        }
+        list.AddCircleFilled(centre, radius, Lerp(kLedDark, kLedLit, glow));
+    }
 
     for (std::size_t k = 0; k < board.components.size(); ++k) {
         const auto& pads = board.components[k].pads;

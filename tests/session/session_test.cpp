@@ -332,3 +332,26 @@ TEST_CASE("session: continuity across a cut", "[session]") {
     REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
     CHECK(session.continuity() == true);
 }
+
+TEST_CASE("session: counter LED", "[session]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    REQUIRE(session.leds().size() == 1);
+    CHECK(session.leds()[0].reference == "D1");
+    CHECK(session.leds()[0].brightness == 0);
+
+    session.powerOn(1, 100_ms);
+    session.runner().waitIdle();
+    const float brightness = session.leds()[0].brightness;
+    CHECK((brightness == 0 || brightness == 1));
+    session.powerOff();
+    CHECK(session.leds()[0].brightness == 0);
+}
+
+TEST_CASE("session: no LEDs on the test pattern", "[session]") {
+    CHECK(PuzzleSession("broken_trace").leds().empty());
+}

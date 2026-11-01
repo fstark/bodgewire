@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <format>
+#include <iterator>
 #include <string>
 #include <utility>
 #include <variant>
@@ -45,6 +46,21 @@ std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> 
         consumers.push_back(&live->analyzer);
         consumers.push_back(&live->meter);
         consumers.push_back(&live->scope);
+        std::vector<LedNets> nets;
+        for (const LoadedPart& part : live->circuit->parts) {
+            if (part.info->kind != PartKind::Led) {
+                continue;
+            }
+            const auto a = PinNet(*live->circuit, part.reference, "A");
+            const auto k = PinNet(*live->circuit, part.reference, "K");
+            if (a && k) {  // an unconnected Pin: never lit
+                nets.push_back({part.reference, *a, *k});
+            }
+        }
+        if (!nets.empty()) {
+            live->leds.emplace(std::move(nets));
+            consumers.push_back(&*live->leds);
+        }
     }
     live->runner = std::make_unique<Runner>(live->circuit->circuit, consumers);
     live->runner->setSpeed(speed_);
@@ -298,6 +314,29 @@ std::optional<double> Session::volts() const {
 
 std::optional<bool> Session::continuity() const {
     return meterMode_ == MeterMode::Continuity && !powered_ ? connected_ : std::nullopt;
+}
+
+std::vector<LedLight> Session::leds() const {
+    std::vector<LedLight> lights;
+    if (!machine_) {
+        return lights;
+    }
+    for (const LoadedPart& part : machine_->designCircuit().parts) {
+        if (part.info->kind != PartKind::Led) {
+            continue;
+        }
+        float brightness = 0;
+        if (powered_ && live_->leds) {
+            const auto leds = live_->leds->leds();
+            const auto it = std::ranges::find(leds, part.reference, &LedNets::reference);
+            if (it != leds.end()) {
+                brightness = live_->leds->brightness(
+                    static_cast<std::size_t>(std::distance(leds.begin(), it)));
+            }
+        }
+        lights.push_back({part.reference, brightness});
+    }
+    return lights;
 }
 
 void Session::recomputeContinuity() {

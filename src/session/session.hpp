@@ -12,6 +12,7 @@
 #include "machine/machine.hpp"
 #include "machine/repair.hpp"
 #include "runner/analyzer_consumer.hpp"
+#include "runner/led_consumer.hpp"
 #include "runner/meter_consumer.hpp"
 #include "runner/probe_consumer.hpp"
 #include "runner/runner.hpp"
@@ -44,6 +45,11 @@ struct TestLead {
     Point at;           // nm
     Layer layer;        // as ProbeTip
     std::string label;  // "U1.14 QA", "Trace", "via"
+};
+
+struct LedLight {
+    std::string reference;  // "D1"
+    float brightness;       // 0 dark .. 1 fully lit
 };
 
 // One Machine on the bench, UI thread only. Repairs edit the Machine; the next power-on rebuilds
@@ -116,6 +122,9 @@ public:
     std::optional<double> volts() const;     // Volts mode; nullopt: no red Lead or no reading yet
     std::optional<bool> continuity() const;  // nullopt: a Lead missing or powered
 
+    // Every LED Part of the Machine, in netlist order; 0 when not powered or not in live_->leds.
+    std::vector<LedLight> leds() const;
+
 private:
     // What one build of the Machine runs on. Members in this order: the Runner is destroyed first.
     struct Live {
@@ -125,6 +134,7 @@ private:
         AnalyzerConsumer analyzer;
         MeterConsumer meter;
         ScopeConsumer scope;
+        std::optional<LedConsumer> leds;
         std::unique_ptr<Runner> runner;
     };
 

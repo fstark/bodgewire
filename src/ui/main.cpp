@@ -493,6 +493,15 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             leadTags.push_back({session.black()->at, false});
         }
         boardView.setLeads(leadTags);
+        if (const BoardScene* scene = boardView.scene()) {
+            std::vector<LedTag> ledTags;
+            for (const LedLight& led : session.leds()) {
+                if (const auto component = scene->componentIndex(led.reference)) {
+                    ledTags.push_back({*component, led.brightness});
+                }
+            }
+            boardView.setLeds(ledTags);
+        }
         if (machine) {
             std::vector<CutMark> cuts;
             for (const CrackDecl& cut : machine->cuts()) {

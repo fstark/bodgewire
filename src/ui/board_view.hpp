@@ -51,6 +51,11 @@ struct LeadTag {
     bool red;
 };
 
+struct LedTag {
+    std::size_t component;
+    float brightness;  // 0 dark .. 1 fully lit
+};
+
 struct BoardTarget {
     std::size_t component;
     std::optional<std::size_t> pad;
@@ -99,6 +104,7 @@ public:
     void setClips(std::span<const ClipTag> clips) { clips_.assign(clips.begin(), clips.end()); }
     void setHooks(std::span<const HookTag> hooks) { hooks_.assign(hooks.begin(), hooks.end()); }
     void setLeads(std::span<const LeadTag> leads) { leads_.assign(leads.begin(), leads.end()); }
+    void setLeds(std::span<const LedTag> leds) { leds_.assign(leds.begin(), leds.end()); }
     void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
     void setBodgeWires(std::span<const BodgeWire> wires) {
         bodgeWires_.assign(wires.begin(), wires.end());
@@ -143,6 +149,7 @@ private:
     std::vector<ClipTag> clips_;
     std::vector<HookTag> hooks_;
     std::vector<LeadTag> leads_;
+    std::vector<LedTag> leds_;
     std::vector<CutMark> cuts_;
     std::vector<BodgeWire> bodgeWires_;
     std::vector<BodgeWire> bridges_;
