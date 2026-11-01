@@ -1,5 +1,6 @@
 add_library(bw_devices STATIC
   bmp.cpp
+  led_glow.cpp
   tv.cpp
   tv_input.cpp
 )

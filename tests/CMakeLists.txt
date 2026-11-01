@@ -13,6 +13,7 @@ add_executable(bw_tests
   board/kicad_netlist_test.cpp
   board/sexpr_test.cpp
   devices/bmp_test.cpp
+  devices/led_glow_test.cpp
   devices/tv_input_test.cpp
   devices/tv_test.cpp
   instruments/logic_analyzer_test.cpp
