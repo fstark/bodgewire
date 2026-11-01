@@ -10,13 +10,9 @@ Spec: [SHORTS_POWER.md](SHORTS_POWER.md)
 | 3 | Real power: `PowerPinVolts`, `FindPower`, unpowered chips left out of the Circuit | done 737a706 |
 | 4 | Dead Rail LED state + four Puzzles with headless Symptom/Repair tests | done 43c4f0b |
 | 5 | UI: bridge drawing, Cut on a bridge, `LIMIT` LED, screenshots | done 153df9b |
-| 6 | Release check, user check, docs | user check open |
+| 6 | Release check, user check, docs | done |
 
-Implemented 2026-11-01 (ec317a2..153df9b, 429 tests). Release: all tests pass; rebuild mean 0.8 ms; each new Puzzle in `bw_ui` 1.00×, ui ≤ 0.7 ms. Screenshots: `dead_rail` LIMIT lit, white TV; with `--repair unbridge:U1.7:U1.8` LIMIT dark, picture back.
-
-## Remaining: user check
-
-The user plays `sync_bridge`, `line_bridge`, `unpowered_chip` and `dead_rail` to the end, and looks at a bridge zoomed in on B.Cu (spec S6). Then: ARCHITECTURE P3f row `done <date>`, prune this section.
+Implemented 2026-11-01 (ec317a2..153df9b, 429 tests). Release: all tests pass; rebuild mean 0.8 ms; each new Puzzle in `bw_ui` 1.00×, ui ≤ 0.7 ms. Screenshots: `dead_rail` LIMIT lit, white TV; with `--repair unbridge:U1.7:U1.8` LIMIT dark, picture back. User check: "works".
 
 ## Implementation notes
 
