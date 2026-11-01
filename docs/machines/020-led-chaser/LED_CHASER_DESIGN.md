@@ -70,9 +70,9 @@ net LED_A8   R9.2 D8.A
 
 | File | Fault line | Where |
 |---|---|---|
-| `gap.bwp` | `fault crack <layer> <x> <y>` | a straight `LED_A5` segment between `R6` and `D5`; picked on the layout |
+| `gap.bwp` | `fault crack F.Cu 73.46 101.05` | midpoint of the straight `LED_A5` segment between `R6` and `D5` |
 | `stuck_light.bwp` | `fault stuck U5.QD 0` | `S4` |
-| `dark_chaser.bwp` | `fault crack <layer> <x> <y>` | a straight `SER` segment between `U6` pin 8 and `U5` pin 1; picked on the layout |
+| `dark_chaser.bwp` | `fault crack B.Cu 70.17 73.69` | midpoint of the long straight `SER` segment between `U6` pin 8 and `U5` pin 1 |
 | `twins.bwp` | `fault bridge U5.3 U5.4` | `S1`–`S2`, solder side |
 
 ## Manuals
