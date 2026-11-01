@@ -2,6 +2,7 @@ add_library(bw_machine STATIC
   crack.cpp
   electrical.cpp
   machine.cpp
+  press.cpp
   puzzle.cpp
   repair.cpp
 )

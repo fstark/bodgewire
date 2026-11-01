@@ -21,6 +21,7 @@
 #include "instruments/logic_probe.hpp"
 #include "machine/crack.hpp"
 #include "machine/machine.hpp"
+#include "machine/press.hpp"
 #include "machine/repair.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/units.hpp"
@@ -40,7 +41,7 @@ constexpr std::string_view kUsage =
     "[--record NET,NET... | --record-all] [--vcd FILE] "
     "[--tv FILE.bmp] [--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,"
     "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN] "
-    "[--probe REF.PIN,...]\n"
+    "[--probe REF.PIN,...] [--press REF:DOWN:UP,...]\n"
     "       bw export-kicad <file.bwn> -o <file.net>\n"
     "       bw check-board <file.bwn> <file.kicad_pcb>";
 
@@ -54,6 +55,7 @@ struct Options {
     std::string tv;
     std::vector<std::string> repair;
     std::vector<std::string> probe;
+    std::vector<ButtonPress> press;
 };
 
 int UsageError(std::string_view message) {
@@ -93,7 +95,7 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
             continue;
         }
         if (arg != "--time" && arg != "--seed" && arg != "--record" && arg != "--vcd" &&
-            arg != "--tv" && arg != "--repair" && arg != "--probe") {
+            arg != "--tv" && arg != "--repair" && arg != "--probe" && arg != "--press") {
             return "unknown option " + std::string(arg);
         }
         if (i + 1 >= args.size()) {
@@ -120,6 +122,14 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
             options.repair = SplitCommas(value);
         } else if (arg == "--probe") {
             options.probe = SplitCommas(value);
+        } else if (arg == "--press") {
+            for (const std::string& text : SplitCommas(value)) {
+                auto press = ParsePress(text);
+                if (!press) {
+                    return press.error();
+                }
+                options.press.push_back(std::move(*press));
+            }
         } else {
             options.vcd = value;
         }
@@ -291,6 +301,22 @@ int Run(std::span<char*> args) {
         probed.push_back(*net);
     }
 
+    struct PressEdge {
+        Time at;
+        Button* button;
+        bool down;
+    };
+    std::vector<PressEdge> edges;
+    for (const ButtonPress& press : options.press) {
+        Button* button = ButtonOf(loaded, press.reference);
+        if (button == nullptr) {
+            return UsageError("'" + press.reference + "' is not a button");
+        }
+        edges.push_back({press.down, button, true});
+        edges.push_back({press.up, button, false});
+    }
+    std::ranges::stable_sort(edges, {}, &PressEdge::at);
+
     std::vector<NetId> recorded;
     if (options.recordAll) {
         for (const auto& [name, net] : loaded.nets) {
@@ -344,10 +370,19 @@ int Run(std::span<char*> args) {
         probes.emplace_back(sim, net);
     }
     const auto start = std::chrono::steady_clock::now();
-    if (tv || !probes.empty()) {
+    if (tv || !probes.empty() || !edges.empty()) {
         const Time end = sim.now() + options.time;
+        std::size_t next = 0;
         while (sim.now() < end) {
-            sim.runUntil(std::min(end, sim.now() + 1_ms));
+            Time stop = std::min(end, sim.now() + 1_ms);
+            if (next < edges.size()) {
+                stop = std::min(stop, edges[next].at);
+            }
+            sim.runUntil(stop);
+            for (; next < edges.size() && edges[next].at == sim.now(); ++next) {
+                edges[next].button->setPressed(edges[next].down);
+                sim.wake(edges[next].button->id());
+            }
             if (tv) {
                 tv->update();
             }

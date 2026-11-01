@@ -52,7 +52,8 @@ public:
     void
     pauseAt(Time time);     // one-shot: pause at the first slice end >= time (queue before powerOn)
     void watch(NetId net);  // counted: the Net's ring is written while any watch is held
-    void unwatch(NetId net);  // undoes one watch(); the slot is freed when none remain
+    void unwatch(NetId net);           // undoes one watch(); the slot is freed when none remain
+    void wake(ComponentId component);  // Simulator::wake at the next slice boundary, unless Off
 
     void waitIdle();  // blocks until all commands applied, not Running, devices caught up
     RunnerStatus status() const;
@@ -66,12 +67,14 @@ private:
         SetSpeed,
         PauseAt,
         Watch,
-        Unwatch
+        Unwatch,
+        Wake
     };
     struct Command {
         CommandKind kind;
         std::int64_t value = 0;  // seed, Speed or Time
         NetId net{};
+        ComponentId component{};
     };
     struct Watched {
         NetId net;

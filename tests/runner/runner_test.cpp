@@ -233,3 +233,27 @@ TEST_CASE("runner: rewatch seeds the last value", "[runner]") {
     REQUIRE(log.seeds.size() == 1);
     CHECK(log.seeds[0].value == LogicValue::One);
 }
+
+TEST_CASE("runner: wake applies a button press at the next slice", "[runner]") {
+    auto result = LoadNetlist("part R1 R value=4k7\npart SW1 BUTTON\npart U1 74LS04\n"
+                              "net VCC R1.1\nnet BTN_N R1.2 SW1.1 U1.1A\nnet GND SW1.2\n",
+                              "t.bwn");
+    REQUIRE(result.has_value());
+    const NetId signal = (*result)->nets.at("BTN_N");
+    Button* button = ButtonOf(**result, "SW1");
+    REQUIRE(button != nullptr);
+    SampleLog log(signal);
+    Runner runner((*result)->circuit, {&log});
+    runner.setSpeed(Speed::Max);
+    runner.pauseAt(2_ms);
+    runner.powerOn(1);
+    runner.waitIdle();
+    REQUIRE(runner.status().simTime == 2_ms);
+    button->setPressed(true);
+    runner.wake(button->id());
+    RunTo(runner, 4_ms);
+    REQUIRE_FALSE(log.samples.empty());
+    const Sample& last = log.samples.back();
+    CHECK(last.value == LogicValue::Zero);
+    CHECK(last.time == 2_ms + kButtonDelay);
+}
