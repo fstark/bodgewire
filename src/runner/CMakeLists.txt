@@ -1,6 +1,7 @@
 add_library(bw_runner STATIC
   analyzer_consumer.cpp
   dispatcher.cpp
+  led_consumer.cpp
   meter_consumer.cpp
   probe_consumer.cpp
   runner.cpp

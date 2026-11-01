@@ -52,6 +52,7 @@ add_executable(bw_tests
   parts/oscillator_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
+  runner/led_consumer_test.cpp
   runner/meter_consumer_test.cpp
   runner/probe_consumer_test.cpp
   runner/runner_test.cpp
