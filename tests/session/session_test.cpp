@@ -352,6 +352,41 @@ TEST_CASE("session: counter LED", "[session]") {
     CHECK(session.leds()[0].brightness == 0);
 }
 
+TEST_CASE("session: chaser with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "chaser.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    std::vector<std::string> references;
+    for (const LedLight& led : session.leds()) {
+        references.push_back(led.reference);
+    }
+    CHECK(references == std::vector<std::string>{"D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"});
+
+    for (const char* pin : {"3", "4", "5", "6", "10", "11", "12", "13"}) {
+        REQUIRE(session.clip("U5", pin).has_value());
+    }
+    REQUIRE(session.hook("U5", "8").has_value());
+    REQUIRE(session.hook("U6", "8").has_value());
+    const auto ser = session.padLead("U5", "1");
+    const auto anode = session.padLead("D1", "A");
+    REQUIRE(ser.has_value());
+    REQUIRE(anode.has_value());
+    session.touch(ProbeTip{ser->at, Layer::Front});
+    REQUIRE(session.placeLead({anode->at, Layer::Front, anode->label}));
+
+    session.powerOn(1, 1_s);
+    session.runner().waitIdle();
+    float sum = 0;
+    for (const LedLight& led : session.leds()) {
+        sum += led.brightness;
+    }
+    CHECK(std::abs(sum - 1.0f) < 0.05f);
+    session.powerOff();
+}
+
 TEST_CASE("session: no LEDs on the test pattern", "[session]") {
     CHECK(PuzzleSession("broken_trace").leds().empty());
 }
