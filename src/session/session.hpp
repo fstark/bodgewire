@@ -64,6 +64,8 @@ public:
     void powerOn(std::uint64_t seed, std::optional<Time> pauseAt = std::nullopt);
     void powerOff();
     bool powered() const { return powered_; }
+    // Powered with a Dead Rail: the bench supply is in current limit.
+    bool currentLimited() const { return powered_ && machine_ && machine_->power().deadRail; }
     void setSpeed(Speed speed);  // kept across rebuilds
 
     RepairResult repair(const RepairAction& repair);  // logs and blobs every Done

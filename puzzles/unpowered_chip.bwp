@@ -1,0 +1,5 @@
+# Unpowered chip: U6's VCC Trace cracked; LINE_END_N and HSYNC_N float, no line sync.
+machine test_pattern
+title "Picture breaks up"
+brief "The grid breaks into short slanted dashes all over the screen and will not hold still."
+fault crack F.Cu 164.85 51.05

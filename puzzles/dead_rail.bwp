@@ -1,0 +1,5 @@
+# Dead Rail: U1.7 (ENP, on VCC) bridged to U1.8 (GND); every chip Unpowered, supply in limit.
+machine test_pattern
+title "Nothing works"
+brief "The screen is a blank white glow, nothing else. It worked yesterday."
+fault bridge U1.7 U1.8

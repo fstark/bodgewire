@@ -1,0 +1,5 @@
+# Bridge to a Tie: U9.6 (3Y, LINE_END) bridged to U9.7 (GND); the line counter never advances.
+machine test_pattern
+title "No horizontal lines"
+brief "Only the vertical grid lines show, from top to bottom; the horizontal lines are gone."
+fault bridge U9.6 U9.7

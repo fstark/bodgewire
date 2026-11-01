@@ -1,0 +1,5 @@
+# Sync Bridge: U10.1 (HSYNC_N) bridged to U10.2 (VSYNC_N); the XOR sees equal inputs, no sync.
+machine test_pattern
+title "Torn picture"
+brief "The grid is there, but broken into slanted dashes that drift; the picture never holds still."
+fault bridge U10.1 U10.2
