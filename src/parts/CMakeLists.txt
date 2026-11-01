@@ -1,4 +1,5 @@
 add_library(bw_parts STATIC
+  button.cpp
   catalogue.cpp
   connector.cpp
   gate_package.cpp

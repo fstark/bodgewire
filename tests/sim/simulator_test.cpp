@@ -337,6 +337,38 @@ TEST_CASE("simulator: stats count applied events and wakes", "[sim]") {
 
 namespace {
 
+// Counts its evaluations and remembers the time of the last one.
+class Counter final : public Component {
+public:
+    explicit Counter(std::string name) : Component(std::move(name), {}) {}
+    void evaluate(EvalContext& ctx) override {
+        ++count;
+        at = ctx.now();
+    }
+    int count = 0;
+    Time at = -1;
+};
+
+}  // namespace
+
+TEST_CASE("simulator: wake evaluates at now in the next runUntil", "[sim]") {
+    Circuit circuit;
+    auto& counter = circuit.add<Counter>("C");
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    REQUIRE(counter.count == 1);  // power-on evaluation
+    sim.runUntil(5_ns);
+    sim.wake(counter.id());
+    CHECK(counter.count == 1);
+    sim.runUntil(10_ns);
+    CHECK(counter.count == 2);
+    CHECK(counter.at == 5_ns);
+    CHECK(sim.stats().wakes == 1);
+}
+
+namespace {
+
 // Stimulus → Buffer → out. Settles for 50 ns, then records `out`.
 struct BufferRun {
     Circuit circuit;

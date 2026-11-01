@@ -101,6 +101,11 @@ void Simulator::scheduleWake(ComponentId component, Time delay) {
     queue_.push({now_ + delay, ToIndex(component), MakeStamp(0, true, LogicValue::Zero)});
 }
 
+void Simulator::wake(ComponentId component) {
+    Check(ToIndex(component) < componentDirty_.size(), "simulator: unknown component");
+    queue_.push({now_, ToIndex(component), MakeStamp(0, true, LogicValue::Zero)});
+}
+
 void Simulator::record(NetId net) {
     Check(ToIndex(net) < nets_.size(), "simulator: unknown net");
     recorder_.start(net, {now_, value(net), isFloating(net)});

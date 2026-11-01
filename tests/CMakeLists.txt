@@ -45,6 +45,7 @@ add_executable(bw_tests
   netlist/parser_test.cpp
   netlist/sample_test.cpp
   netlist/units_test.cpp
+  parts/button_test.cpp
   parts/catalogue_test.cpp
   parts/connector_test.cpp
   parts/gate_package_test.cpp
