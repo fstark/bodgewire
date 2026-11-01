@@ -1,0 +1,5 @@
+# Frozen LED: U3.RCO (CARRY3) stuck low; U4 and U5 never count, C19 never changes.
+machine counter
+title "Frozen LED"
+brief "The LED never changes: it stays on, or stays off."
+fault stuck U3.RCO 0

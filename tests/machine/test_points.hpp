@@ -12,4 +12,8 @@ inline constexpr Point kH0Crack{137'590'000, 99'170'000};
 // pad is too short to crack): R1's rail side cut off.
 inline constexpr CrackDecl kR1VccCracks[] = {{1, Layer::Back, {128'310'000, 106'300'000}}};
 
+// Midpoint of the straight C19 Trace (U5.QD → D1.K) of boards/counter; also in
+// puzzles/dark_led.bwp.
+inline constexpr Point kC19Crack{192'520'000, 122'000'000};
+
 }  // namespace bw

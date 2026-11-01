@@ -30,6 +30,7 @@ add_executable(bw_tests
   machines/board_probe_test.cpp
   machines/board_repair_test.cpp
   machines/bodge_wire_test.cpp
+  machines/counter_test.cpp
   machines/logic_analyzer_test.cpp
   machines/manuals_test.cpp
   machines/net_panel_test.cpp

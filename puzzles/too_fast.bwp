@@ -1,0 +1,5 @@
+# Too fast: U1.RCO (CARRY1) stuck high; U2 counts every clock, the LED blinks about 15 times a second.
+machine counter
+title "LED too fast"
+brief "The LED flickers instead of blinking."
+fault stuck U1.RCO 1

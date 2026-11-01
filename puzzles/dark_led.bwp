@@ -1,0 +1,5 @@
+# Dark LED: the C19 Trace from U5 pin 11 to D1 pad 1 is cracked; D1's cathode floats.
+machine counter
+title "Dark LED"
+brief "The LED never lights."
+fault crack F.Cu 192.52 122
