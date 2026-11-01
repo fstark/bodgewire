@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iterator>
 #include <numbers>
+#include <optional>
 #include <utility>
 
 #include "board/sexpr.hpp"
@@ -181,6 +182,7 @@ private:
             return Point{origin.x + std::llround(x * cos + y * sin),
                          origin.y + std::llround(-x * sin + y * cos)};
         };
+        std::optional<std::pair<Point, Point>> lineBox;  // local min, max of .CrtYd fp_lines
         for (const SExpr& child : node.list) {
             const std::string_view head = child.head();
             if (head == "pad") {
@@ -192,6 +194,22 @@ private:
             } else if ((head == "fp_rect" || head == "fp_poly") &&
                        LayerOf(child).ends_with(".CrtYd") && component.courtyard.empty()) {
                 component.courtyard = readCourtyard(child, place);
+            } else if (head == "fp_line" && LayerOf(child).ends_with(".CrtYd")) {
+                for (const Point p : {point(child, "start"), point(child, "end")}) {
+                    if (!lineBox) {
+                        lineBox = {p, p};
+                    }
+                    auto& [min, max] = *lineBox;
+                    min = {std::min(min.x, p.x), std::min(min.y, p.y)};
+                    max = {std::max(max.x, p.x), std::max(max.y, p.y)};
+                }
+            }
+        }
+        if (component.courtyard.empty() && lineBox) {
+            const auto [a, c] = *lineBox;
+            for (const Point p : {a, Point{c.x, a.y}, c, Point{a.x, c.y}}) {
+                component.courtyard.push_back(
+                    place(static_cast<double>(p.x), static_cast<double>(p.y)));
             }
         }
         board_.components.push_back(std::move(component));

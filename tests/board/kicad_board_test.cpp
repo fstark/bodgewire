@@ -183,6 +183,25 @@ TEST_CASE("kicad board: courtyard poly", "[board]") {
           std::vector<Point>{{10 * kMm, 20 * kMm}, {12 * kMm, 20 * kMm}, {11 * kMm, 23 * kMm}});
 }
 
+TEST_CASE("kicad board: courtyard from lines is their placed bounding box", "[board]") {
+    const std::string lines = "    (fp_line (start -1 -2) (end 3 -2) (layer \"F.CrtYd\"))\n"
+                              "    (fp_line (start 3 -2) (end 3 4) (layer \"F.CrtYd\"))\n"
+                              "    (fp_line (start 3 4) (end -1 4) (layer \"F.CrtYd\"))\n"
+                              "    (fp_line (start 0 0) (end 9 9) (layer \"F.SilkS\"))\n";
+    const Board board = Read(Footprint("10 20 90", lines + std::string(kTwoPads)));
+    CHECK(board.components[0].courtyard == std::vector<Point>{{8 * kMm, 21 * kMm},
+                                                              {8 * kMm, 17 * kMm},
+                                                              {14 * kMm, 17 * kMm},
+                                                              {14 * kMm, 21 * kMm}});
+    const Board withRect = Read(
+        Footprint("10 20", lines + "    (fp_rect (start 0 0) (end 1 1) (layer \"F.CrtYd\"))\n" +
+                               std::string(kTwoPads)));
+    CHECK(withRect.components[0].courtyard == std::vector<Point>{{10 * kMm, 20 * kMm},
+                                                                 {11 * kMm, 20 * kMm},
+                                                                 {11 * kMm, 21 * kMm},
+                                                                 {10 * kMm, 21 * kMm}});
+}
+
 TEST_CASE("kicad board: no courtyard", "[board]") {
     const Board board = Read(Footprint("10 20", kTwoPads));
     CHECK(board.components[0].courtyard.empty());
