@@ -36,8 +36,6 @@ std::vector<std::string> Messages(const std::vector<Diagnostic>& problems) {
 }
 
 constexpr std::string_view kGoodService = "# Counter \u2014 Service Manual\n"
-                                          "## How it works\n"
-                                          "`X1` drives `U1` pin 2 (CLK) on net `CLK`.\n"
                                           "## Components\n"
                                           "- `X1` clock: 1 MHz\n"
                                           "- `J1` power\n"
@@ -48,9 +46,7 @@ constexpr std::string_view kGoodService = "# Counter \u2014 Service Manual\n"
                                           "- `U3` counter: bits 8-11\n"
                                           "- `U4` counter: bits 12-15\n"
                                           "- `U5` counter: bits 16-19\n"
-                                          "- `D1` LED: lit while C19 is low\n"
-                                          "## Troubleshooting\n"
-                                          "- check `U1` pin 15\n";
+                                          "- `D1` LED: lit while C19 is low\n";
 
 }  // namespace
 
@@ -116,28 +112,32 @@ TEST_CASE("manual: part pin names", "[manual]") {
 TEST_CASE("manual: checks", "[manual]") {
     const auto design = Counter();
     CHECK(CheckServiceManual(ParseMarkdown(kGoodService), "s.md", *design).empty());
-    CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## Components\n## How it works\n"),
+    CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## How it works\n## Components\n"),
                                       "s.md", *design))
-              .front() == "2: sections must be: How it works, Components, [Troubleshooting]");
+              .front() == "2: sections must be: Components");
 
     std::string service(kGoodService);
     const std::string u5 = "- `U5` counter: bits 16-19\n";
     service.replace(service.find(u5), u5.size(), "- `U3` again\n- `U9` x\n");
     service += "- `U1` pin 17 floats\n";
     CHECK(Messages(CheckServiceManual(ParseMarkdown(service), "s.md", *design)) ==
-          std::vector<std::string>{"14: unknown reference 'U9'", "18: U1 has no pin 17",
-                                   "13: Components: U3 listed twice", "4: Components: missing U5"});
-    CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## How it works\n## Components\nx\n"),
-                                      "s.md", *design))
-              .front() == "4: Components: each bullet starts with a `REF`");
+          std::vector<std::string>{"12: unknown reference 'U9'", "14: U1 has no pin 17",
+                                   "11: Components: U3 listed twice",
+                                   "14: Components: U1 listed twice", "2: Components: missing U5"});
+    CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## Components\nx\n"), "s.md", *design))
+              .front() == "3: Components: each bullet starts with a `REF`");
 
-    CHECK(CheckUserManual(ParseMarkdown("# Counter\n## What it does\nCounts.\n## Connections\n- "
-                                        "`J1`: power\n"),
+    CHECK(CheckUserManual(ParseMarkdown("# Counter\n## What it does\nConnect +5 V to `J1`.\n"),
                           "u.md", *design)
               .empty());
-    CHECK(Messages(CheckUserManual(ParseMarkdown("## What it does\n## Connections\n- `J7`\n"),
-                                   "u.md", *design)) ==
-          std::vector<std::string>{"1: must start with a # title", "3: unknown reference 'J7'"});
+    CHECK(Messages(CheckUserManual(
+                       ParseMarkdown("# Counter\n## What it does\nCounts.\n## Connections\n- "
+                                     "`J1`: power\n"),
+                       "u.md", *design))
+              .front() == "2: sections must be: What it does");
+    CHECK(
+        Messages(CheckUserManual(ParseMarkdown("## What it does\nSee `J7`.\n"), "u.md", *design)) ==
+        std::vector<std::string>{"1: must start with a # title", "2: unknown reference 'J7'"});
 
     const PartInfo& ls00 = *FindPart("74LS00");
     const std::string sheet =

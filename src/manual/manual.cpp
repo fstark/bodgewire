@@ -84,9 +84,9 @@ private:
     std::vector<Diagnostic> list_;
 };
 
-// A Title first, then exactly `required` headings (plus `optional` ones after them, in order).
-void CheckShape(const Markdown& doc, Problems& problems, std::span<const std::string_view> required,
-                std::span<const std::string_view> optional = {}) {
+// A Title first, then exactly `required` headings, in order.
+void CheckShape(const Markdown& doc, Problems& problems,
+                std::span<const std::string_view> required) {
     if (doc.blocks.empty() || doc.blocks.front().kind != BlockKind::Title) {
         problems.add(doc.blocks.empty() ? 0 : doc.blocks.front().line, "must start with a # title");
     }
@@ -100,15 +100,9 @@ void CheckShape(const Markdown& doc, Problems& problems, std::span<const std::st
     for (const std::string_view name : required) {
         expected += (expected.empty() ? "" : ", ") + std::string(name);
     }
-    for (const std::string_view name : optional) {
-        expected += ", [" + std::string(name) + "]";
-    }
-    bool ok =
-        headings.size() >= required.size() && headings.size() <= required.size() + optional.size();
+    bool ok = headings.size() == required.size();
     for (std::size_t i = 0; ok && i < headings.size(); ++i) {
-        const std::string_view want =
-            i < required.size() ? required[i] : optional[i - required.size()];
-        ok = headings[i].first == want;
+        ok = headings[i].first == required[i];
     }
     if (!ok) {
         problems.add(headings.empty() ? 0 : headings.front().second,
@@ -157,7 +151,7 @@ std::optional<std::string> ReadFile(const std::filesystem::path& path) {
 std::vector<Diagnostic> CheckUserManual(const Markdown& doc, std::string_view file,
                                         const LoadedCircuit& design) {
     Problems problems(file);
-    constexpr std::string_view kSections[] = {"What it does", "Connections"};
+    constexpr std::string_view kSections[] = {"What it does"};
     CheckShape(doc, problems, kSections);
     CheckReferences(doc, problems, design);
     return problems.take();
@@ -166,9 +160,8 @@ std::vector<Diagnostic> CheckUserManual(const Markdown& doc, std::string_view fi
 std::vector<Diagnostic> CheckServiceManual(const Markdown& doc, std::string_view file,
                                            const LoadedCircuit& design) {
     Problems problems(file);
-    constexpr std::string_view kSections[] = {"How it works", "Components"};
-    constexpr std::string_view kOptional[] = {"Troubleshooting"};
-    CheckShape(doc, problems, kSections, kOptional);
+    constexpr std::string_view kSections[] = {"Components"};
+    CheckShape(doc, problems, kSections);
     CheckReferences(doc, problems, design);
 
     std::uint32_t headingLine = 0;
