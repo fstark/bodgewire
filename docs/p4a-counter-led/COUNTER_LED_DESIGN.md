@@ -1,6 +1,6 @@
 # P4a Counter LED — Detailed Design
 
-Implements the Machine spec [COUNTER.md](../machines/010-counter/COUNTER.md) and the P4a row of the [roadmap](../ARCHITECTURE.md#roadmap): an on-board LED Part, drawn lit on the Board, and the counter reworked around it with its three Puzzles.
+Implements [COUNTER_LED.md](COUNTER_LED.md): an on-board LED Part, drawn lit on the Board, and the tests of the reworked counter. The Machine's netlist, Board, manuals and Puzzles are in [COUNTER_DESIGN.md](../machines/010-counter/COUNTER_DESIGN.md).
 
 All code must follow [STYLE.md](../STYLE.md) and [NAMING.md](../NAMING.md).
 
@@ -13,10 +13,6 @@ src/parts/led.hpp, led.cpp                 Led Component: two passive Pins (K, A
 src/devices/led_glow.hpp, led_glow.cpp     LedGlow: lit fraction per window (pure, like Tv)
 src/runner/led_consumer.hpp, led_consumer.cpp   LedGlow per LED as a Consumer
 datasheets/LED.md                          Datasheet (checked by src/manual)
-netlists/counter.bwn                       rewritten: 5 × 74LS161, D1, R2
-boards/counter/*                           re-laid out by the user in KiCad
-manuals/counter/user.md, service.md        rewritten
-puzzles/dark_led.bwp, frozen_led.bwp, too_fast.bwp
 tests/parts/led_test.cpp, tests/devices/led_glow_test.cpp,
 tests/runner/led_consumer_test.cpp, tests/machines/counter_test.cpp
 ```
@@ -83,7 +79,7 @@ public:
 
 Cost on the simulation thread: none beyond 2 watched Nets per LED (Samples only on change; `C19` changes twice a second, `LED_A` never). Devices thread: one `LedGlow` per LED, O(Samples). UI: one disc per LED per frame.
 
-Watched Nets: `kMaxWatched` = 16 ([dispatcher.hpp](../../src/runner/dispatcher.hpp#L16)). Counter worst case: 8 Clips + probe + meter + 2 Hooks + 2 LED Nets = 14, distinct Nets counted once. Machines with more LEDs (030 dice, 040 stopwatch) raise the limit in their own P4 step.
+Watched Nets: `kMaxWatched` = 16 ([dispatcher.hpp](../../src/runner/dispatcher.hpp#L16)). Counter worst case: 8 Clips + probe + meter + 2 Hooks + 2 LED Nets = 14, distinct Nets counted once. The LED chaser (P4b, eight LEDs) raises the limit.
 
 ## 4. LedGlow
 
@@ -219,37 +215,7 @@ bw_board (footprint) ← bw_cli (export-kicad)
 
 One direction only; `LedGlow` knows nothing of Parts or Nets.
 
-## 10. Counter Machine
-
-[netlists/counter.bwn](../../netlists/counter.bwn), replacing the P1b sample (COUNTER.md, Circuit):
-
-```
-part X1 OSC freq=1MHz
-part J1 POWER
-part R1 R value=4k7
-part R2 R value=330
-part U1 74LS161
-...
-part U5 74LS161
-part D1 LED
-
-net CLK      X1.OUT U1.CLK U2.CLK U3.CLK U4.CLK U5.CLK
-net RESET_N  R1.2 U1.CLR_N U2.CLR_N U3.CLR_N U4.CLR_N U5.CLR_N
-net VCC      R1.1 R2.1 U1.ENT U1.ENP U1.LOAD_N ... U5.ENP U5.LOAD_N
-net GND      U1.A U1.B U1.C U1.D ... U5.D
-net C0       U1.QA          ...  net C19 U5.QD D1.K
-net CARRY1   U1.RCO U2.ENT  ...  net CARRY4 U4.RCO U5.ENT
-net LED_A    R2.2 D1.A
-```
-
-- User step: `bw export-kicad netlists/counter.bwn`, update `boards/counter` in KiCad (U1, U2, X1, J1, R1 keep their places; U3–U5, R2, D1 new; old U3 74LS74 and U4 74LS00 deleted), route, `bw check-board` and `drc_counter` pass. [KICAD_GUIDE.md](../p2a-board-layout/KICAD_GUIDE.md) covers the steps.
-- Puzzles (COUNTER.md, Puzzles), `machine counter`:
-  - `dark_led.bwp`: `fault crack F.Cu X Y` on the `C19` Trace between `U5` pin 11 and `D1` pad 1; X Y picked on the new layout (as `unpowered_chip.bwp`).
-  - `frozen_led.bwp`: `fault stuck U3.RCO 0`.
-  - `too_fast.bwp`: `fault stuck U1.RCO 1`.
-- Manuals rewritten in the existing shape: User (What it does, Connections), Service (How it works, Components, Troubleshooting: walk `CLK` → `CARRY1`…`CARRY4` → `C19` → `D1`).
-
-## 11. Testing
+## 10. Testing
 
 Catch2, tags as the module. Debug runs ≈ 0.07× real time, so headless tests stay well under one simulated second; full blink checks are `[slow]`.
 

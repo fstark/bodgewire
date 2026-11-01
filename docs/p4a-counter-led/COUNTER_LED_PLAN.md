@@ -1,7 +1,7 @@
 # P4a Counter LED — Implementation Plan
 
 Design: [COUNTER_LED_DESIGN.md](COUNTER_LED_DESIGN.md)
-Spec: [COUNTER.md](../machines/010-counter/COUNTER.md), roadmap row P4a in [ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)
+Spec: [COUNTER_LED.md](COUNTER_LED.md); Machine: [COUNTER.md](../machines/010-counter/COUNTER.md), [COUNTER_DESIGN.md](../machines/010-counter/COUNTER_DESIGN.md)
 
 | Phase | Description | Status |
 |-------|-------------|--------|

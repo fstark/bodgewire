@@ -1,6 +1,6 @@
 # 010 — Counter
 
-First rung of the tutorial ladder. One blinking LED makes a 1 MHz counter chain something the player can watch; the chain itself is checked with the instruments. Built by roadmap step P4a (needs the LED Part).
+First rung of the tutorial ladder. One blinking LED makes a 1 MHz counter chain something the player can watch; the chain itself is checked with the instruments. Its code came with roadmap step P4a ([COUNTER_LED.md](../../p4a-counter-led/COUNTER_LED.md)).
 
 ## Lesson
 
@@ -30,8 +30,4 @@ A symptom ("the LED does not blink") has several possible causes along one chain
 | Frozen LED | `U3.RCO` (`CARRY3`) stuck at 0 | `D1` stays on or off for ever | `CLK`, `C0`–`C11` and `CARRY1`–`CARRY2` pulse; `CARRY3` never does: swap `U3` |
 | Too fast | `U1.RCO` (`CARRY1`) stuck at 1 | `D1` flickers at about 15 Hz | `CARRY1` is high all the time instead of a pulse every 16 µs: swap `U1` |
 
-The Broken Trace's exact position is chosen once the new Board is laid out.
-
-## Changes from the current counter
-
-Netlist, KiCad board, User and Service Manuals, tests: all redone for the 20-bit chain and the LED. No Puzzles existed for the counter before.
+Netlist, Board, Puzzle files and manuals: [COUNTER_DESIGN.md](COUNTER_DESIGN.md).
