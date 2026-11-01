@@ -91,7 +91,7 @@ inline constexpr std::size_t kMaxWatched = 32;  // ring slots
 2. **Delays** — §2, two constants.
 3. **Dispatcher** — §4, one constant.
 4. **Per-Machine test loops** — add `"chaser"` to the lists of Machines:
-   - [boards_test.cpp](../../tests/board/boards_test.cpp#L76) (Board against netlist),
+   - [boards_test.cpp](../../tests/board/boards_test.cpp#L76) (courtyards), plus a `boards: chaser matches its netlist` test case as the counter one at [L36](../../tests/board/boards_test.cpp#L36),
    - [electrical_test.cpp](../../tests/machine/electrical_test.cpp#L73),
    - [board_scene_test.cpp](../../tests/view/board_scene_test.cpp#L146) and [L425](../../tests/view/board_scene_test.cpp#L425),
    - [manuals_test.cpp](../../tests/machines/manuals_test.cpp#L41).
@@ -133,7 +133,7 @@ Catch2, tags as the module. `STEP` rises every 65.5 ms and debug runs at about 0
 |---|---|
 | `tests/parts/ls164_test.cpp` `[parts]` | `FindPart("74LS164")`: kind `Chip`, `DIP-14`, Pin names by index; shift: a 1 clocked in reaches `QH` after 8 rises, at `kLs164ClockToQ`; `A` 0 or `B` 0 shifts in 0; `A` X with `B` 0 shifts in 0; `CLR_N` low clears at once, at `kLs164Clear`, and holds against the clock; `A` changing with the edge is not seen; power-on outputs are 0/1, never X |
 | `tests/machines/chaser_test.cpp` `[machines]` | Puzzles have a title and a brief, `machine chaser`; `[slow]` fault-free: after 9 `STEP` rises, at each of the next 8 exactly one of `S1`–`S8` is low and it moves one stage per rise; `[slow]` per Puzzle, Symptom then Repair (LED_CHASER.md, Puzzles): gap — `D5.A`'s Net floating, `S5` low in turn, mend → not floating; stuck_light — `S4` always 0, the others 1 after 9 rises, swap `U5` → one moving low bit; dark_chaser — `U5.A`'s Net floating, `S1`–`S8` all 1 after 9 rises, mend → one moving low bit; twins — `S1` equals `S2` throughout, low for two consecutive steps, unbridge → one moving low bit |
-| `tests/session/session_test.cpp` `[session]` | chaser with 8 Clips, 2 Hooks, the probe and the meter leads attached, powered: runs without a Check, `leds()` lists `D1`–`D8`, their brightnesses sum to about 1 after 1 s (one LED lit at a time) |
+| `tests/session/session_test.cpp` `[session]` | chaser with 8 Clips, 2 Hooks, the probe and the meter's red Lead attached, powered: runs without a Check, `leds()` lists `D1`–`D8`, their brightnesses sum to about 1 after 1 s (one LED lit at a time) |
 | existing | `boards_test`, `electrical_test`, `board_scene_test`, `manuals_test` (§5.4), `drc_chaser`, `catalogue_test`, `probe_consumer_test` |
 
 UI check (release build): `bw_ui netlists/chaser.bwn --screenshot /tmp/chaser.png --after 1s` shows one LED lit; the status line reads 1.00× with every instrument attached.

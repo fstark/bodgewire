@@ -5,7 +5,7 @@ Roadmap step P4b ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): the code that 
 ## New code
 
 1. **74LS164 Part.** 8-bit serial-in, parallel-out shift register, DIP-14. On each rising `CLK` edge, `QA` takes `A` AND `B` and every other output takes the one before it (`QB` ← `QA`, … `QH` ← `QG`). `CLR_N` low clears all outputs to 0 at once, without the clock. Power-on contents are seeded random, like the other registers. Datasheet `74LS164.md`.
-2. **Watch budget.** Eight LEDs watch 16 Nets. With every instrument attached as well (8 Clips, 2 Hooks, probe, meter: 12) the worst case is 28, plus one while a lead moves. The limit goes from 16 to 32 watched Nets. This costs about 1 MB of memory per extra slot and nothing measurable at run time ([ARCHITECTURE.md](../ARCHITECTURE.md#performance)).
+2. **Watch budget.** Eight LEDs watch 16 Nets. With every instrument attached as well (8 Clips, 2 Hooks, probe, meter: 12) the worst case is 28, plus one while a lead moves. The limit goes from 16 to 32 watched Nets. This costs about 1 MB of memory per extra slot and a little more merging on the devices thread, not on the simulation ([ARCHITECTURE.md](../ARCHITECTURE.md#performance)).
 
 Nothing else is new: the LED, its glow and its drawing (P4a) already handle any number of LEDs; Solder Bridges, cracks and stuck outputs already exist.
 

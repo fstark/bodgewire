@@ -58,7 +58,7 @@ public:
     void evaluate(EvalContext& ctx) override;
 
 private:
-    std::array<LogicValue, 8> stages_{};  // QA..QH
+    std::array<LogicValue, 8> stages_{};  // QA..QH; X after an unknown clear
 };
 
 }  // namespace bw
@@ -269,14 +269,14 @@ In `chaser_test.cpp`, `LoadPuzzle(name)` as counter_test. Each `[slow]` test rec
 | Test case | Symptom | After the Repair |
 |---|---|---|
 | `chaser: Puzzles have a title and a brief` (not slow) | each of the four: `machine == "chaser"`, title and brief not empty | — |
-| `chaser: gap` | `D5.A` reads X (floating) throughout after power-on; `S5` is `'0'` in exactly one `Stages` entry | mend at `kLedA5Crack`: `D5.A` is 1, never X |
+| `chaser: gap` | every `D5.A` Sample has `floating` set (LED Pins never pull a Net, so its value means nothing); `S5` is `'0'` in exactly one `Stages` entry | mend at `kLedA5Crack`: no `D5.A` Sample floating after power-on |
 | `chaser: stuck_light` | every `Stages` entry is `"11101111"` | swap `U5`: one moving `'0'` |
-| `chaser: dark_chaser` | `U5.A` floats; every `Stages` entry is `"11111111"` | mend at `kSerCrack`: one moving `'0'` |
-| `chaser: twins` | in every entry `S1 == S2`; the entries with `S1` `'0'` come in consecutive pairs | `UnbridgeRepair` on `U5.3`–`U5.4` (as in shorts_power_test): one moving `'0'` |
+| `chaser: dark_chaser` | `U5.A` floating and reading 1 (TTL input); every `Stages` entry is `"11111111"` | mend at `kSerCrack`: one moving `'0'` |
+| `chaser: twins` | in every entry `S1 == S2`; exactly two entries have `S1` `'0'` and they are consecutive (mod 8) | `UnbridgeRepair` on `U5.3`–`U5.4` (as in shorts_power_test): one moving `'0'` |
 
 "One moving `'0'`" is the fault-free check of phase 2, factored into a helper `void CheckRunning(const std::vector<std::string>& stages)`.
 
-For `twins`, check how the P3f bridge resolves two drivers: if the result is X rather than the wired value, compare `S1 == S2` and adjust the second check to what the Board shows (Symptom must still be "`D1` and `D2` together").
+For `twins`: two TTL totem-pole outputs in contention resolve to 0 ([logic.cpp](../../src/sim/logic.cpp#L12-L14)), so the bridged Net is low while either stage is low: the low bit shows on `S1` and `S2` while in `QA` and while in `QB`.
 
 ### Fence
 
@@ -304,7 +304,7 @@ TEST_CASE("session: chaser with every instrument", "[session][slow]")
 
 - Machine from `LoadNetlistMachine(BW_NETLIST_DIR "/chaser.bwn")`, `Speed::Max`.
 - `leds()` references are `D1`–`D8`.
-- 8 Clips: `U5` pins 3, 4, 5, 6, 10, 11, 12, 13. Hooks: `U5` pin 8 and `U6` pin 8. Probe: `touch` at `padLead("U5", "1")`. Meter Leads: `placeLead` on `D1.A` and `D8.A` pads.
+- 8 Clips: `U5` pins 3, 4, 5, 6, 10, 11, 12, 13. Hooks: `U5` pin 8 and `U6` pin 8. Probe: `touch` at `padLead("U5", "1")`. Meter in Volts: `placeLead` on the `D1.A` pad (Volts uses only the red Lead; a second `placeLead` would replace it).
 - `powerOn(1, 1_s)`, `waitIdle()`: no Check fired (the test reaching here), sum of the eight brightnesses within 0.05 of 1. `powerOff()`.
 
 ### 5.3 — Screenshot
