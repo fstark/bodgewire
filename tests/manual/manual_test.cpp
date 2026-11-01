@@ -42,10 +42,13 @@ constexpr std::string_view kGoodService = "# Counter \u2014 Service Manual\n"
                                           "- `X1` clock: 1 MHz\n"
                                           "- `J1` power\n"
                                           "- `R1` pull-up: holds RESET_N high\n"
-                                          "- `U1` low nibble counter: counts\n"
-                                          "- `U2` high nibble counter: counts\n"
-                                          "- `U3` divider: toggles\n"
-                                          "- `U4` decoder: NAND\n"
+                                          "- `R2` LED resistor\n"
+                                          "- `U1` counter: bits 0-3\n"
+                                          "- `U2` counter: bits 4-7\n"
+                                          "- `U3` counter: bits 8-11\n"
+                                          "- `U4` counter: bits 12-15\n"
+                                          "- `U5` counter: bits 16-19\n"
+                                          "- `D1` LED: lit while C19 is low\n"
                                           "## Troubleshooting\n"
                                           "- check `U1` pin 15\n";
 
@@ -118,11 +121,12 @@ TEST_CASE("manual: checks", "[manual]") {
               .front() == "2: sections must be: How it works, Components, [Troubleshooting]");
 
     std::string service(kGoodService);
-    service.replace(service.find("- `U4` decoder: NAND\n"), 21, "- `U3` again\n- `U9` x\n");
+    const std::string u5 = "- `U5` counter: bits 16-19\n";
+    service.replace(service.find(u5), u5.size(), "- `U3` again\n- `U9` x\n");
     service += "- `U1` pin 17 floats\n";
     CHECK(Messages(CheckServiceManual(ParseMarkdown(service), "s.md", *design)) ==
-          std::vector<std::string>{"12: unknown reference 'U9'", "15: U1 has no pin 17",
-                                   "11: Components: U3 listed twice", "4: Components: missing U4"});
+          std::vector<std::string>{"14: unknown reference 'U9'", "18: U1 has no pin 17",
+                                   "13: Components: U3 listed twice", "4: Components: missing U5"});
     CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## How it works\n## Components\nx\n"),
                                       "s.md", *design))
               .front() == "4: Components: each bullet starts with a `REF`");

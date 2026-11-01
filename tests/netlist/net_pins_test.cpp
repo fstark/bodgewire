@@ -41,7 +41,9 @@ TEST_CASE("net pins: counter CLK", "[netlist]") {
     CHECK_FALSE(pins.rail);
     REQUIRE(pins.drivers.size() == 1);
     CHECK(pins.drivers[0] == NetPin{"X1", 7, "OUT", PinRole::Output, ""});
-    CHECK(Texts(pins.loads) == std::vector<std::string>{"U1 pin 2 CLK", "U2 pin 2 CLK"});
+    CHECK(Texts(pins.loads) == std::vector<std::string>{"U1 pin 2 CLK", "U2 pin 2 CLK",
+                                                        "U3 pin 2 CLK", "U4 pin 2 CLK",
+                                                        "U5 pin 2 CLK"});
 }
 
 TEST_CASE("net pins: pull-up", "[netlist]") {
@@ -50,7 +52,9 @@ TEST_CASE("net pins: pull-up", "[netlist]") {
     REQUIRE(pins.drivers.size() == 1);
     CHECK(pins.drivers[0].role == PinRole::PullUp);
     CHECK(Texts(pins.drivers) == std::vector<std::string>{"R1 pin 2 \u00b7 4k7 pull-up"});
-    CHECK(Texts(pins.loads) == std::vector<std::string>{"U1 pin 1 CLR_N", "U2 pin 1 CLR_N"});
+    CHECK(Texts(pins.loads) == std::vector<std::string>{"U1 pin 1 CLR_N", "U2 pin 1 CLR_N",
+                                                        "U3 pin 1 CLR_N", "U4 pin 1 CLR_N",
+                                                        "U5 pin 1 CLR_N"});
 }
 
 TEST_CASE("net pins: rail", "[netlist]") {
