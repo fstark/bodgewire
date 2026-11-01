@@ -7,6 +7,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
 
@@ -22,6 +23,12 @@ using Recorded = std::map<std::string, std::vector<Sample>>;
 constexpr Time kStep = 65'536_us;         // STEP period: 2^16 CLK cycles
 constexpr std::size_t kFirstSettled = 9;  // index of STEP rise 10: 9 rises settle the chaser
 
+Machine FaultFree() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "chaser.bwn");
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
 // "S3" → "U5.QC", "STEP" → "U4.QD", "SER" → "U6.Y", else `name` is already "REF.PIN".
 std::string PinOf(const std::string& name) {
     if (name == "STEP") {
@@ -36,9 +43,12 @@ std::string PinOf(const std::string& name) {
     return name;
 }
 
-// Samples of each named Net from a seeded power-on of `loaded` to `end`.
-Recorded Record(LoadedCircuit& loaded, Time end, const std::vector<std::string>& names) {
-    Simulator sim(loaded.circuit);
+// Samples of each named Net from a seeded power-on of `machine` to `end`.
+Recorded Record(const Machine& machine, Time end, const std::vector<std::string>& names) {
+    auto built = machine.build();
+    REQUIRE(built.has_value());
+    const LoadedCircuit& loaded = **built;
+    Simulator sim((*built)->circuit);
     sim.powerOn(1);
     std::map<std::string, NetId> nets;
     for (const std::string& name : names) {
@@ -122,9 +132,7 @@ void CheckRunning(const std::vector<std::string>& stages) {
 }  // namespace
 
 TEST_CASE("chaser: fault-free light runs", "[machines][slow]") {
-    auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "chaser.bwn");
-    REQUIRE(loaded.has_value());
-    const Recorded recorded = Record(**loaded, 18 * kStep, ChaserNames());
+    const Recorded recorded = Record(FaultFree(), 18 * kStep, ChaserNames());
     const std::vector<Time> rises = Rises(recorded.at("STEP"));
     REQUIRE(rises.size() >= 17);
     for (std::size_t i = 1; i < rises.size(); ++i) {
