@@ -20,6 +20,8 @@ constexpr ImVec4 kPowerOff{0.6f, 0.6f, 0.6f, 1.0f};
 constexpr ImVec4 kAmber{1.0f, 0.7f, 0.1f, 1.0f};
 constexpr ImVec4 kPlain{0.92f, 0.92f, 0.92f, 1.0f};
 constexpr ImVec4 kSelected{0.2f, 0.45f, 0.8f, 1.0f};
+constexpr ImU32 kLimitOn = IM_COL32(230, 40, 40, 255);
+constexpr ImU32 kLimitOff = IM_COL32(70, 70, 70, 255);
 
 }  // namespace
 
@@ -129,6 +131,21 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
         } else {
             session.powerOn(seed);
         }
+    }
+    ImGui::SameLine();
+    {
+        const float text = ImGui::GetTextLineHeight();
+        const float radius = text * 0.4f;
+        const ImVec2 at = ImGui::GetCursorScreenPos();
+        ImGui::GetWindowDrawList()->AddCircleFilled(
+            {at.x + radius, at.y + buttonHeight / 2}, radius,
+            session.currentLimited() ? kLimitOn : kLimitOff);
+        ImGui::Dummy({2 * radius, buttonHeight});
+        ImGui::SameLine();
+        ImGui::SetCursorScreenPos(
+            {ImGui::GetCursorScreenPos().x, at.y + (buttonHeight - text) / 2});
+        ImGui::TextUnformatted("LIMIT");
+        ImGui::SetItemTooltip("Bench supply in current limit");
     }
     ImGui::SameLine();
     ImGui::BeginDisabled(!powered);

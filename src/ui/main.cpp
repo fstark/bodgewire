@@ -391,6 +391,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 if (const auto wire = boardView.wireAt(click->at)) {
                     const WireEnds& w = machine->wires()[*wire];
                     result = session.repair(UnwireRepair{w.a, w.b});
+                } else if (const auto bridge = boardView.bridgeAt(click->at)) {
+                    const WireEnds& b = machine->bridges()[*bridge];
+                    result = session.repair(UnbridgeRepair{b.a, b.b});
                 } else if (!pick || pick->hit.kind != HitKind::Trace) {
                     toolbar.refused("Cut: click a trace or a wire");
                 } else if (boardView.scene()->board().traces[pick->hit.index].mid) {
@@ -501,6 +504,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 wires.push_back(w.wire);
             }
             boardView.setBodgeWires(wires);
+            std::vector<BodgeWire> bridges;
+            for (const WireEnds& b : machine->bridges()) {
+                bridges.push_back(b.wire);
+            }
+            boardView.setBridges(bridges);
         }
         boardView.setWireStart(wireStart ? std::optional(wireStartAt) : std::nullopt);
         toolbar.wireStarted = wireStart.has_value();

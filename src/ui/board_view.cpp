@@ -32,7 +32,8 @@ constexpr std::int64_t kCutHalf = 300'000;  // nm: half the X's arm
 constexpr float kCutMinPx = 4;
 constexpr ImU32 kWireInsulation = IM_COL32(120, 170, 255, 255);
 constexpr std::int64_t kWireWidth = 300'000;
-constexpr std::int64_t kBlobRadius = 600'000;  // covers the gap of a cracked 0.2 mm Trace
+constexpr std::int64_t kBridgeWidth = 600'000;  // nm
+constexpr std::int64_t kBlobRadius = 600'000;   // covers the gap of a cracked 0.2 mm Trace
 constexpr float kBlobMinPx = 3;
 constexpr float kInactiveAlpha = 0.35f;
 constexpr float kInactiveHighlightAlpha = 0.6f;
@@ -69,6 +70,19 @@ double SegmentDistance(Point p, Point a, Point b) {
     const double length2 = abx * abx + aby * aby;
     const double t = length2 == 0 ? 0 : std::clamp((apx * abx + apy * aby) / length2, 0.0, 1.0);
     return std::hypot(apx - abx * t, apy - aby * t);
+}
+
+// Index of the wire nearest `at` within `reach` nm.
+std::optional<std::size_t> NearestWire(std::span<const BodgeWire> wires, Point at, double reach) {
+    std::optional<std::size_t> best;
+    for (std::size_t i = 0; i < wires.size(); ++i) {
+        const double d = SegmentDistance(at, wires[i].a, wires[i].b);
+        if (d <= reach) {
+            best = i;
+            reach = d;
+        }
+    }
+    return best;
 }
 
 // Board nm → absolute ImGui screen position.
@@ -365,6 +379,12 @@ void BoardView::draw(ImVec2 size) {
         const bool on = lit && scene_->viaNet(v) == lit;
         DrawVia(list, map, board.vias[v], on ? kHighlight : kPadTin);
     }
+    const float bridgeWidth = std::max(1.0f, map.pixels(kBridgeWidth));
+    for (const BodgeWire& bridge : bridges_) {
+        list.AddLine(map(bridge.a), map(bridge.b),
+                     WithAlpha(kPadTin, active_ == Layer::Back ? 1.0f : kInactiveAlpha),
+                     bridgeWidth);
+    }
     for (const SolderBlob& blob : blobs_) {
         const float alpha = blob.layer == active_ ? 1.0f : kInactiveAlpha;
         list.AddCircleFilled(map(blob.at), std::max(kBlobMinPx, map.pixels(kBlobRadius)),
@@ -522,16 +542,11 @@ PickReach BoardView::reach() const {
 }
 
 std::optional<std::size_t> BoardView::wireAt(Point at) const {
-    std::optional<std::size_t> best;
-    double bestDistance = static_cast<double>(reach().copper);
-    for (std::size_t i = 0; i < bodgeWires_.size(); ++i) {
-        const double d = SegmentDistance(at, bodgeWires_[i].a, bodgeWires_[i].b);
-        if (d <= bestDistance) {
-            best = i;
-            bestDistance = d;
-        }
-    }
-    return best;
+    return NearestWire(bodgeWires_, at, static_cast<double>(reach().copper));
+}
+
+std::optional<std::size_t> BoardView::bridgeAt(Point at) const {
+    return NearestWire(bridges_, at, static_cast<double>(reach().copper));
 }
 
 void BoardView::input(ImVec2 origin) {

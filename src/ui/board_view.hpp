@@ -106,6 +106,10 @@ public:
     void setWireStart(std::optional<Point> start) { wireStart_ = start; }  // rubber band
     // Index of the nearest wire within reach().copper of `at`; for the Cut tool.
     std::optional<std::size_t> wireAt(Point at) const;
+    void setBridges(std::span<const BodgeWire> bridges) {
+        bridges_.assign(bridges.begin(), bridges.end());
+    }
+    std::optional<std::size_t> bridgeAt(Point at) const;  // as wireAt()
 
 private:
     struct Flash {
@@ -141,6 +145,7 @@ private:
     std::vector<LeadTag> leads_;
     std::vector<CutMark> cuts_;
     std::vector<BodgeWire> bodgeWires_;
+    std::vector<BodgeWire> bridges_;
     std::optional<Point> wireStart_;
     TooltipText tooltip_;
 };
