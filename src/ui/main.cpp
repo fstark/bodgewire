@@ -44,7 +44,8 @@ constexpr int kWindowHeight = 800;
 constexpr float kBoardShare = 2.0f / 3.0f;
 constexpr std::string_view kUsage =
     "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] "
-    "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN] "
+    "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,"
+    "unbridge:REF.PIN:REF.PIN] "
     "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--hook REF.PIN,...] [--timebase 1us] "
     "[--meter REF.PIN] "
     "[--manual user|service] [--screenshot OUT.png [--after 1s]]";

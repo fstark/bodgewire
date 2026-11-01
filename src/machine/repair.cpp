@@ -76,7 +76,7 @@ std::expected<RepairAction, std::string> ParseRepair(std::string_view text) {
         }
         return CutRepair{at->first, at->second};
     }
-    for (const std::string_view prefix : {"wire:", "unwire:"}) {
+    for (const std::string_view prefix : {"wire:", "unwire:", "unbridge:"}) {
         if (!text.starts_with(prefix)) {
             continue;
         }
@@ -92,6 +92,9 @@ std::expected<RepairAction, std::string> ParseRepair(std::string_view text) {
         if (prefix == "wire:") {
             return WireRepair{*a, *b};
         }
+        if (prefix == "unbridge:") {
+            return UnbridgeRepair{*a, *b};
+        }
         return UnwireRepair{*a, *b};
     }
     return bad;
@@ -104,8 +107,9 @@ std::string FormatRepair(const RepairAction& repair) {
             [](const MendRepair& r) { return "mend " + FormatPoint(r.layer, r.at); },
             [](const CutRepair& r) { return "cut " + FormatPoint(r.layer, r.at); },
             [](const WireRepair& r) { return "wire " + FormatPin(r.a) + " " + FormatPin(r.b); },
-            [](const UnwireRepair& r) {
-                return "unwire " + FormatPin(r.a) + " " + FormatPin(r.b);
+            [](const UnwireRepair& r) { return "unwire " + FormatPin(r.a) + " " + FormatPin(r.b); },
+            [](const UnbridgeRepair& r) {
+                return "unbridge " + FormatPin(r.a) + " " + FormatPin(r.b);
             }},
         repair);
 }

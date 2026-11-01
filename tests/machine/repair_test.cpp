@@ -57,11 +57,17 @@ TEST_CASE("repair: cut, wire and unwire round trips", "[machine]") {
     REQUIRE(unwire.has_value());
     CHECK(std::get<UnwireRepair>(*unwire).a.pin == "QA");
     CHECK(FormatRepair(*unwire) == "unwire U1.QA U13.6");
+
+    const auto unbridge = ParseRepair("unbridge:U1.7:U1.8");
+    REQUIRE(unbridge.has_value());
+    CHECK(std::get<UnbridgeRepair>(*unbridge).b.pin == "8");
+    CHECK(FormatRepair(*unbridge) == "unbridge U1.7 U1.8");
 }
 
 TEST_CASE("repair: cut and wire parse errors", "[machine]") {
-    for (const char* text : {"cut:F.Cu:1", "cut:X.Cu:1:2", "wire:U1.14", "wire:U1:U2.3",
-                             "wire:.14:U2.3", "wire:U1.14:U1.14", "unwire:U1.:U2.3"}) {
+    for (const char* text :
+         {"cut:F.Cu:1", "cut:X.Cu:1:2", "wire:U1.14", "wire:U1:U2.3", "wire:.14:U2.3",
+          "wire:U1.14:U1.14", "unwire:U1.:U2.3", "unbridge:U1.7", "unbridge:U1:U1.8"}) {
         INFO(text);
         const auto repair = ParseRepair(text);
         REQUIRE_FALSE(repair.has_value());
