@@ -30,7 +30,7 @@ Out: Repair Validation, Wrong Part, sockets, chip removal, other Shorts, damage,
 
 - Puzzle line `fault bridge U1.7 U1.8` (pins by number or name). Error naming it when the two pins are not neighbours on the same chip, or the Reference or pin is unknown.
 - The two pads' islands are joined in every build until the bridge is cut.
-- Drawn as a solder blob between the pads on B.Cu, at the size of a Crack mark (seen zoomed in).
+- Drawn as a thin tin blob joining the two pads on B.Cu (seen zoomed in).
 
 ### S2 Cut a Solder Bridge
 
@@ -66,7 +66,7 @@ Out: Repair Validation, Wrong Part, sockets, chip removal, other Shorts, damage,
   - Dead Rail: all chips Unpowered, Multimeter 0 V, LED state set;
   - each new Puzzle shows its Symptom on the TV and is fixed by its intended Repair (and the Dead Rail also by a Cut of the bridge only);
   - the three existing Puzzles and the fault-free frame unchanged.
-- `--screenshot`, read by the agent: a bridge zoomed in on B.Cu; the Dead Rail Puzzle powered (LED lit).
+- `--screenshot`, read by the agent: the Dead Rail Puzzle powered (LED lit). A bridge zoomed in on B.Cu: user check.
 - Release: 1.00× running, rebuild still under 100 ms.
 
 ## Done when

@@ -157,7 +157,7 @@ Table of `{name, volts}` pairs, linear search.
 ### 3.5 — Tests
 
 - `tests/netlist/builder_test.cpp`: test-pattern netlist with `unpowered = {"U1"}`: after a short run, U1.QA's Net has no Driver (Sample/net floating), `PinNet(loaded, "U1", "QA")` still returns the `H0` Net; a stuck Pin on U1 is ignored when U1 is Unpowered.
-- `tests/machine/electrical_test.cpp` (test-pattern Machine): fault-free → `unpowered` empty, `deadRail` false; inline crack `F.Cu 164.85 51.05` → `{"U6"}`, no Dead Rail; `bridge U1.7 U1.8` → `deadRail`, `unpowered` = all 15 chips (X1, U1–U14), J1/J2 absent; `addWire(U9.7, U9.14)` → `deadRail`; `removeBridge` → back to none.
+- `tests/machine/electrical_test.cpp` (test-pattern Machine): fault-free → `unpowered` empty, `deadRail` false; inline crack `F.Cu 164.85 51.05` → `{"U6"}`, no Dead Rail; `bridge U1.7 U1.8` → `deadRail`, `unpowered` = all 15 chips (X1, U1–U14), J1/J2 absent; `addWire(U9.7, U9.14)` → `deadRail`, U9 in `unpowered`; `removeBridge` → back to none.
 - Existing `[machines]` tests (fault-free frame, three P2 Puzzles, P3e wires) must pass unchanged: they prove every chip is Powered on an intact Board.
 
 ### Fence
@@ -227,7 +227,7 @@ Bridges visible and cuttable; the `LIMIT` LED. Design §3 points 9, 10, 11.
 
 ### 5.4 — Screenshots (agent reads the PNGs)
 
-Release build: `build/release/src/ui/bw_ui puzzles/dead_rail.bwp --screenshot /tmp/dead_rail.png --after 1s` (LED lit, black TV); `puzzles/line_bridge.bwp` zoomed on U9 with B.Cu active if `bw_ui` has flags for it, otherwise `--repair` free shot plus a note for the user check; `puzzles/dead_rail.bwp --repair unbridge:U1.7:U1.8` (LED dark, picture back).
+Release build: `build/release/src/ui/bw_ui puzzles/dead_rail.bwp --screenshot /tmp/dead_rail.png --after 1s` (LED lit, black TV); `puzzles/dead_rail.bwp --repair unbridge:U1.7:U1.8` (LED dark, picture back). `bw_ui` has no zoom/layer flags: the zoomed bridge on B.Cu goes to the user check (6.2).
 
 ### Fence
 
@@ -246,7 +246,7 @@ Release build: `build/release/src/ui/bw_ui puzzles/dead_rail.bwp --screenshot /t
 
 ### 6.2 — User check
 
-The user plays the four Puzzles to the end (spec, Done when). Record feedback here.
+The user plays the four Puzzles to the end (spec, Done when), and looks at a bridge zoomed in on B.Cu (spec S6). Record feedback here.
 
 ### 6.3 — Docs
 

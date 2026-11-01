@@ -164,7 +164,7 @@ While powered, the live Circuit is the current Machine (Repairs are refused), so
    // Index of the nearest bridge within reach().copper of `at`; for the Cut tool.
    std::optional<std::size_t> bridgeAt(Point at) const;
    ```
-   Drawn right after the pads (below cracks, Cut marks and courtyards): a line from pad to pad in `kPadTin`, width `kBridgeWidth = 600'000` nm, alpha `kInactiveAlpha` unless B.Cu is the Active Layer. At fit zoom it reads as two pads touching; zoomed in it is a visible blob.
+   Drawn right after the pads (below cracks, Cut marks and courtyards): a line from pad to pad in `kPadTin`, width `kBridgeWidth = 600'000` nm, alpha `kInactiveAlpha` unless B.Cu is the Active Layer. At fit zoom it reads as two pads touching; zoomed in it is a visible blob. Net highlight and the Net panel use design Nets, so they never show the bridge.
 
 10. **UI main** — [main.cpp](../../src/ui/main.cpp#L386) `Tool::Cut`: after `wireAt`, before the Trace checks:
     ```cpp
@@ -212,7 +212,7 @@ for part in designCircuit.parts with kind == Chip:
 
 Cases, all from the same rule:
 - fault-free Board: every chip Powered (`CheckBoard` already ties every power pad to J1);
-- cracked VCC Trace: the chip's VCC island holds no supply pin → Unpowered;
+- cracked VCC Trace: the chip's VCC island holds no supply pin → Unpowered (the meter on that stub shows `- - -`: unnamed island, as any isolated copper since P3d);
 - GND pin wired to VCC: its island holds 5 V → Unpowered (and usually a Dead Rail, through its own GND Trace);
 - Dead Rail: that island's set is {0, 5} → every chip with a power Pin on it is Unpowered.
 
@@ -273,7 +273,7 @@ Catch2, existing files unless noted.
 | `tests/machines/shorts_power_test.cpp` (new, `[machines]`) | each new Puzzle's TV frame differs from the fault-free one and equals it after its Repair (§10); Dead Rail: `currentLimited()` true when powered, false off and after `unbridge`; meter red lead on U1.16 reads 0 V |
 | existing `[machines]` tests | unchanged results: the three P2 Puzzles and the fault-free frame |
 
-Screenshots (agent reads the PNG): `puzzles/dead_rail.bwp --screenshot` (LED lit); a bridge zoomed in on B.Cu. Release check: 1.00× on each new Puzzle, rebuild < 100 ms.
+Screenshots (agent reads the PNG): `puzzles/dead_rail.bwp --screenshot` (LED lit), and with `--repair unbridge:U1.7:U1.8` (LED dark). `bw_ui` has no zoom or layer flags, so the zoomed-in bridge on B.Cu is checked by the user. Release check: 1.00× on each new Puzzle, rebuild < 100 ms.
 
 ## 10. Puzzles
 
@@ -281,7 +281,7 @@ All `machine test_pattern`. Coordinates from the `.kicad_pcb` (VCC Trace found b
 
 | File | Fault | Expected Symptom | Intended Repair |
 |---|---|---|---|
-| `puzzles/sync_bridge.bwp` | `fault bridge U10.1 U10.2` (HSYNC_N, VSYNC_N) | Contention: sync is their AND; picture unstable | `unbridge:U10.1:U10.2` |
+| `puzzles/sync_bridge.bwp` | `fault bridge U10.1 U10.2` (HSYNC_N, VSYNC_N) | Contention, 0 wins: both XOR inputs equal, SYNC stays 0, no sync pulses; TV does not lock | `unbridge:U10.1:U10.2` |
 | `puzzles/line_bridge.bwp` | `fault bridge U9.6 U9.7` (3Y LINE_END, GND) | LINE_END held at 0: no vertical count, rolling picture; swapping U9 changes nothing | `unbridge:U9.6:U9.7` |
 | `puzzles/unpowered_chip.bwp` | `fault crack F.Cu 164.85 51.05` (U6's VCC stub) | U6 outputs Z → LINE_END_N and HSYNC_N float high: no line sync | `mend:F.Cu:164.85:51.05` or a wire U6.14 to VCC |
 | `puzzles/dead_rail.bwp` | `fault bridge U1.7 U1.8` (ENP on VCC, GND) | all chips dead, black screen, meter 0 V, LIMIT lit | `unbridge:U1.7:U1.8` |
