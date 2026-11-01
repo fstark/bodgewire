@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -125,6 +126,12 @@ public:
     // Every LED Part of the Machine, in netlist order; 0 when not powered or not in live_->leds.
     std::vector<LedLight> leds() const;
 
+    // Every Button Part of the circuit, in netlist order.
+    std::vector<std::string> buttons() const;
+    // Ignored while not powered. Applied at the next slice boundary; power-off releases all.
+    void setPressed(std::string_view reference, bool pressed);
+    bool pressed(std::string_view reference) const { return pressed_.contains(reference); }
+
 private:
     // What one build of the Machine runs on. Members in this order: the Runner is destroyed first.
     struct Live {
@@ -161,6 +168,7 @@ private:
     bool blackNext_ = false;
     std::optional<bool> connected_;    // red_ and black_ on one island of the current Copper
     std::optional<double> meterRail_;  // RailVolts of the meter's Net
+    std::set<std::string, std::less<>> pressed_;  // Buttons held down
 };
 
 }  // namespace bw

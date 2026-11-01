@@ -100,6 +100,12 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
 }
 
 void Session::powerOff() {
+    for (const std::string& reference : pressed_) {
+        if (Button* button = ButtonOf(*live_->circuit, reference)) {
+            button->setPressed(false);
+        }
+    }
+    pressed_.clear();
     live_->runner->powerOff();
     powered_ = false;
 }
@@ -337,6 +343,32 @@ std::vector<LedLight> Session::leds() const {
         lights.push_back({part.reference, brightness});
     }
     return lights;
+}
+
+std::vector<std::string> Session::buttons() const {
+    std::vector<std::string> references;
+    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
+    for (const LoadedPart& part : circuit.parts) {
+        if (part.info->kind == PartKind::Button) {
+            references.push_back(part.reference);
+        }
+    }
+    return references;
+}
+
+void Session::setPressed(std::string_view reference, bool pressed) {
+    if (!powered_ || pressed == pressed_.contains(reference)) {
+        return;
+    }
+    if (pressed) {
+        pressed_.emplace(reference);
+    } else {
+        pressed_.erase(pressed_.find(reference));
+    }
+    if (Button* button = ButtonOf(*live_->circuit, reference)) {
+        button->setPressed(pressed);
+        live_->runner->wake(button->id());
+    }
 }
 
 void Session::recomputeContinuity() {

@@ -390,3 +390,26 @@ TEST_CASE("session: chaser with every instrument", "[session][slow]") {
 TEST_CASE("session: no LEDs on the test pattern", "[session]") {
     CHECK(PuzzleSession("broken_trace").leds().empty());
 }
+
+TEST_CASE("session: buttons only press while powered", "[session]") {
+    auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "dice.bwn");
+    REQUIRE(loaded.has_value());
+    Session session(std::nullopt, std::move(*loaded));
+    session.setSpeed(Speed::Max);
+    CHECK(session.buttons() == std::vector<std::string>{"SW1"});
+    session.setPressed("SW1", true);
+    CHECK_FALSE(session.pressed("SW1"));
+
+    session.powerOn(1);
+    session.setPressed("SW1", true);
+    CHECK(session.pressed("SW1"));
+    const Button* button = ButtonOf(session.circuit(), "SW1");
+    REQUIRE(button != nullptr);
+    CHECK(button->pressed());
+    session.setPressed("SW9", true);  // not a Button: remembered, does nothing
+    session.setPressed("SW9", false);
+    session.powerOff();
+    session.runner().waitIdle();
+    CHECK_FALSE(session.pressed("SW1"));
+    CHECK_FALSE(button->pressed());
+}
