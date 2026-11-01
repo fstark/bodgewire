@@ -330,3 +330,63 @@ TEST_CASE("builder: connections include implicit power and resistor pins", "[net
     }
     CHECK(connections == Lines{"R1.1 VCC", "R1.2 A", "U1.1 A", "U1.3 A", "U1.7 GND", "U1.14 VCC"});
 }
+
+namespace {
+
+constexpr std::string_view kButtonNetlist = "part R1 R value=4k7\n"
+                                            "part SW1 BUTTON\n"
+                                            "part U1 74LS04\n"
+                                            "net VCC R1.1\n"
+                                            "net BTN_N R1.2 SW1.1 U1.1A\n"
+                                            "net GND SW1.2\n"
+                                            "net OUT U1.1Y\n";
+
+}  // namespace
+
+TEST_CASE("builder: a button pulls its signal to the rail while pressed", "[netlist]") {
+    for (const std::string_view text :
+         {kButtonNetlist, std::string_view("part R1 R value=4k7\npart SW1 BUTTON\n"
+                                           "part U1 74LS04\nnet VCC R1.1\n"
+                                           "net BTN_N R1.2 SW1.2 U1.1A\nnet GND SW1.1\n"
+                                           "net OUT U1.1Y\n")}) {
+        auto result = LoadNetlist(text, "t.bwn");
+        REQUIRE(result.has_value());
+        const LoadedCircuit& loaded = **result;
+        CHECK(PinNet(loaded, "SW1", "1") != PinNet(loaded, "SW1", "2"));
+        const NetId gnd = loaded.nets.at("GND");
+        const NetId signal = loaded.nets.at("BTN_N");
+        CHECK((PinNet(loaded, "SW1", "1") == gnd || PinNet(loaded, "SW1", "2") == gnd));
+        Button* button = ButtonOf(loaded, "SW1");
+        REQUIRE(button != nullptr);
+        Simulator sim((*result)->circuit);
+        sim.powerOn(1);
+        sim.runUntil(1_us);
+        CHECK(sim.value(signal) == One);
+        CHECK(sim.value(loaded.nets.at("OUT")) == Zero);
+        button->setPressed(true);
+        sim.wake(button->id());
+        sim.runUntil(2_us);
+        CHECK(sim.value(signal) == Zero);
+        CHECK(sim.value(loaded.nets.at("OUT")) == One);
+        CHECK(sim.value(gnd) == Zero);
+    }
+}
+
+TEST_CASE("builder: a button needs one rail end", "[netlist]") {
+    const std::string message =
+        "2: SW1: a button needs one pin on GND or VCC and the other on a signal net";
+    CHECK(Errors("part U1 74LS04\npart SW1 BUTTON\nnet A SW1.1 U1.1A\nnet B SW1.2 U1.3A\n") ==
+          Lines{message});
+    CHECK(Errors("part U1 74LS04\npart SW1 BUTTON\nnet VCC SW1.1\nnet GND SW1.2\n") ==
+          Lines{message});
+    CHECK(Errors("part U1 74LS04\npart SW1 BUTTON\nnet GND SW1.1\n") == Lines{message});
+}
+
+TEST_CASE("builder: ButtonOf", "[netlist]") {
+    auto result = LoadNetlist(kButtonNetlist, "t.bwn");
+    REQUIRE(result.has_value());
+    CHECK(ButtonOf(**result, "SW1") != nullptr);
+    CHECK(ButtonOf(**result, "R1") == nullptr);
+    CHECK(ButtonOf(**result, "U1") == nullptr);
+    CHECK(ButtonOf(**result, "SW9") == nullptr);
+}

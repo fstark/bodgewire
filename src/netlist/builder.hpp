@@ -13,6 +13,7 @@
 
 #include "netlist/diagnostic.hpp"
 #include "netlist/parser.hpp"
+#include "parts/button.hpp"
 #include "sim/circuit.hpp"
 
 namespace bw {
@@ -70,5 +71,9 @@ std::optional<NetId> ConnectorNet(const LoadedCircuit& loaded, std::string_view 
 std::optional<double> RailVolts(const LoadedCircuit& loaded, NetId net);
 
 bool IsRail(std::string_view net);  // "GND" or "VCC"
+
+// The Button Part `reference` of this build; nullptr if none (unknown, not a Button, or left out
+// of an electrical build).
+Button* ButtonOf(const LoadedCircuit& loaded, std::string_view reference);
 
 }  // namespace bw
