@@ -18,5 +18,7 @@ inline constexpr Delays kLs161ClockToQ{13'000, 15'000};
 inline constexpr Delays kLs161Clear{20'000, 20'000};  // only fall is used
 inline constexpr Delays kLs161ClockToRco{20'000, 18'000};
 inline constexpr Delays kLs161EntToRco{9'000, 9'000};
+inline constexpr Delays kLs164ClockToQ{17'000, 21'000};
+inline constexpr Delays kLs164Clear{24'000, 24'000};  // only fall is used
 
 }  // namespace bw::delays

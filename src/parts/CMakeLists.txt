@@ -4,6 +4,7 @@ add_library(bw_parts STATIC
   gate_package.cpp
   led.cpp
   ls161.cpp
+  ls164.cpp
   ls74.cpp
   oscillator.cpp
 )
