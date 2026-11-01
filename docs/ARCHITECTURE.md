@@ -96,12 +96,12 @@ struct Net    { std::vector<DriverId> drivers; LogicState resolved; };
 
 | Level | Contents | Changed by |
 |---|---|---|
-| Design netlist | intended connections; source of Net names, pinouts, the net panel and the manual checks | nobody (fixed per machine) |
+| Design netlist | intended connections; source of Net names, pinouts, Driver marks and the manual checks | nobody (fixed per machine) |
 | Physical board | copper graph (pads, track segments, vias, bodge wires, pin-to-pad contacts: solder joints, socket contacts) + fitted parts | faults, then repairs |
 | Electrical nets | connected components of the copper graph; what the simulator uses | recomputed after each physical change |
 
 - Faults and repairs edit the physical board, never the nets directly. A pin reaches its net only through a contact edge, so joint and socket faults are ordinary graph edits; `Pin::net` is derived.
-- The UI must not leak faults. Board drawing, net names, net highlighting, pinouts and the net panel come from the design netlist and the visible physical state, so highlighting ignores breaks and the player's bodge wires. Only instruments (probe, scope, analyzer, multimeter) read electrical nets. Developer mode may show everything.
+- The UI must not leak faults. Board drawing, net names, net highlighting, pinouts and Driver marks come from the design netlist and the visible physical state, so highlighting ignores breaks and the player's bodge wires. Only instruments (probe, scope, analyzer, multimeter) read electrical nets. Developer mode may show everything.
 - Each fault declares its appearance: invisible, subtle (seen when zoomed in), or obvious.
 
 ## Repair validation
@@ -217,6 +217,6 @@ KiCad is not the source of truth: its scope is real-world manufacturing, ours is
   - P2a result: counter and test-pattern Boards laid out by a KiCad newcomer (KiCad 10, test pattern auto-routed by Freerouting: 479 segments, 13 vias), both pass `bw check-board`. Pain points were one-offs or guide material: library table path after install, Java for Freerouting, ratsnest redrawn differently while moving, outline drawn on F.Cu by mistake, one connection left by Freerouting.
   - Next: everything after the hand layout is automated (export, read, check; KiCad's DRC headless via `kicad-cli pcb drc` in the tests). Boards need connectors as Parts in the netlist: power entry (VCC, GND) and outputs (video), so they get footprints, pads and Traces like any chip.
 - Whatever the layout source, Bodgewire checks the copper connects exactly what the netlist says.
-- No schematic for now (decided 2026-10-28): on small Boards, Net highlighting, the Chip pinout, the net panel and the Service Manual's "How it works" answer "what feeds what"; a generated net-label schematic would only repeat the pinouts, and a wired one costs hand work per Machine. Revisit when Machines outgrow that (BW-80, ~40 chips).
+- No schematic for now (decided 2026-10-28): on small Boards, Net highlighting with Driver marks, the Chip pinout and the datasheets answer "what feeds what"; a generated net-label schematic would only repeat the pinouts, and a wired one costs hand work per Machine. Revisit when Machines outgrow that (BW-80, ~40 chips).
 - Layout quality is a visual problem only; improvable later without touching simulation.
 - Risk: dense boards the router can't finish (BW-80 on 2 layers). Fallbacks: extra layer, wire jumpers (common on period boards).

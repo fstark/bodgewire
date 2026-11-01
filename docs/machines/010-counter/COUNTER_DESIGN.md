@@ -52,5 +52,5 @@ A crack must sit on a segment long enough that both pieces leave the pads: a 1.2
 
 ## Manuals
 
-- User: What it does, Connections (`J1`).
-- Service: How it works (clock, reset, counter, LED), Components (every reference), Troubleshooting: walk `CLK` → `CARRY1`…`CARRY4` → `C19` → `D1`.
+- User: What it does (one paragraph: power `J1`, `D1` blinks about once a second).
+- Service: Components (every reference).

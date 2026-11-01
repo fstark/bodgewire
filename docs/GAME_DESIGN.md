@@ -22,8 +22,8 @@ Faulty machine + symptom → run, observe, measure, study the board and the manu
 
 ## Tools
 
-- **Board** view (see-through), with the chip pinouts and a net panel (what drives a net, what it feeds).
-- **User and Service Manuals** per machine (what it does; how it works, chip roles, optional troubleshooting) and simplified **datasheets** per part.
+- **Board** view (see-through), with the chip pinouts; hovering a net marks what drives it.
+- **User Manual** per machine (what it does, seen from outside), each chip's role on the board, and simplified **datasheets** per part.
 - **Logic probe**: level/activity of one net.
 - **Oscilloscope**: timing between signals; required for timing faults. Over the logic analyzer: exact edge times (ns delays between two signals, no sampling), floating and X levels visible, live without arming.
 - **Logic analyzer** (key tool): many channels, triggers, pre-trigger history. E.g. probe A0–A15, D0–D7, R/W and a chip select, trigger on an address, inspect the bus activity leading up to it.
@@ -95,8 +95,8 @@ Computers, after the ladder:
 ## Presentation
 
 - Pure 2D, no 3D. Panels: board, manuals, instruments, inspector, inventory, machine output.
-- **See-through board** instead of flipping: one top-down view with every layer in the same frame (the back as seen through the board, i.e. mirrored compared with a physical flip), so a pin sits at the same spot on every layer. Per-layer colour and opacity; the selected net highlighted on all layers; actions (probe, cut, solder) prefer the active layer and fall through to another where it has nothing under the cursor. Scales beyond 2 layers. Real-world equivalent: holding the board up to a lamp.
-- **Schematic**: none on small machines; the board, net panel and Service Manual do its job. Reconsidered for big machines (BW-80 and up), then ours, generated from the netlist and hand-adjusted.
+- **See-through board** instead of flipping: one top-down view with every layer in the same frame (the back as seen through the board, i.e. mirrored compared with a physical flip), so a pin sits at the same spot on every layer. Per-layer colour and opacity; the hovered net highlighted on all layers; actions (probe, cut, solder) prefer the active layer and fall through to another where it has nothing under the cursor. Scales beyond 2 layers. Real-world equivalent: holding the board up to a lamp.
+- **Schematic**: none on small machines; the board, pinouts and datasheets do its job. Reconsidered for big machines (BW-80 and up), then ours, generated from the netlist and hand-adjusted.
 - **Probing** on the board only (realistic).
 - Look: dark green PCB, scope traces, amber highlights, vintage terminal typography.
 

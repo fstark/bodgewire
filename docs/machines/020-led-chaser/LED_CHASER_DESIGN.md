@@ -77,5 +77,5 @@ net LED_A8   R9.2 D8.A
 
 ## Manuals
 
-- User: What it does (one light running along eight LEDs), Connections (`J1`).
-- Service: How it works (clock, divider, shift register, feedback, LEDs), Components (every reference), Troubleshooting: check `STEP` at `U5` pin 8, then `SER` at `U5` pin 1 and `U6` pin 8, then each stage `S1`–`S8` against the next on the analyzer, then each LED's anode.
+- User: What it does (one paragraph: power `J1`, one light running along eight LEDs).
+- Service: Components (every reference).
