@@ -22,6 +22,7 @@
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
 #include "netlist/units.hpp"
+#include "parts/catalogue.hpp"
 #include "session/session.hpp"
 #include "ui/analyzer_window.hpp"
 #include "ui/board_view.hpp"
@@ -48,7 +49,7 @@ constexpr std::string_view kUsage =
     "unbridge:REF.PIN:REF.PIN] "
     "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--hook REF.PIN,...] [--timebase 1us] "
     "[--meter REF.PIN] "
-    "[--manual user|service] [--screenshot OUT.png [--after 1s]]";
+    "[--manual user] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
     std::filesystem::path file;
@@ -61,7 +62,7 @@ struct Options {
     std::optional<std::string> meter;  // REF.PIN: red Test Lead, V mode
     std::vector<std::string> hook;     // REF.PIN, at most 2
     std::optional<Time> timebase;      // Oscilloscope ps per division
-    bool userManual = false, serviceManual = false;
+    bool userManual = false;
 };
 
 std::vector<std::string> SplitCommas(std::string_view list) {
@@ -99,14 +100,10 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
         } else if (arg == "--probe") {
             options.probe = argv[++i];
         } else if (arg == "--manual") {
-            const std::string_view which = argv[++i];
-            if (which == "user") {
-                options.userManual = true;
-            } else if (which == "service") {
-                options.serviceManual = true;
-            } else {
+            if (std::string_view(argv[++i]) != "user") {
                 return std::nullopt;
             }
+            options.userManual = true;
         } else if (arg == "--repair") {
             options.repair = SplitCommas(argv[++i]);
         } else if (arg == "--clip") {
@@ -234,13 +231,12 @@ std::string_view StateName(RunState state) {
     return "";
 }
 
-// Board hover text plus the Component's role, or the pin's Datasheet line.
+// Board hover text plus the Part's description, or the pin's Datasheet line.
 std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manuals) {
     std::string text = scene.hoverText(hit);
-    if (hit.kind == HitKind::Component && manuals.service) {
-        if (const auto role = ComponentRole(*manuals.service,
-                                            scene.board().components[hit.component].reference)) {
-            text += " \u00b7 " + role->name;
+    if (hit.kind == HitKind::Component) {
+        if (const PartInfo* part = FindPart(scene.partName(hit.component))) {
+            text += " \u00b7 " + std::string(part->description);
         }
     }
     if (hit.kind == HitKind::Pad) {
@@ -287,15 +283,10 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         if (const auto component =
                 scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
             boardView.select(*component);
-            const std::string pin = options.probe->substr(options.probe->find('.') + 1);
-            if (const auto pad = scene->padIndex(*component, pin)) {
-                boardView.selectNet(scene->padNet(*component, *pad));
-            }
         }
     }
     Speed speed = Speed::RealTime;
     toolbar.userManualOpen = options.userManual;
-    toolbar.serviceManualOpen = options.serviceManual;
     toolbar.analyzerOpen = !options.clip.empty();
     toolbar.meterOpen = options.meter.has_value();
     toolbar.scopeOpen = !options.hook.empty();
@@ -357,11 +348,6 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             const auto& pick = click->pick;
             if (click->component) {
                 boardView.select(*click->component);
-            }
-            if (pick && boardView.scene()) {
-                if (const auto net = boardView.scene()->netOf(pick->hit)) {
-                    boardView.selectNet(*net);  // any tool
-                }
             }
             RepairResult result = RepairResult::Done;
             switch (boardView.tool()) {
@@ -535,8 +521,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         sidePanel.draw(session, view, boardView, loaded, stats, seed);
         ImGui::EndChild();
         ImGui::End();
-        manualWindows.draw(toolbar.userManualOpen, toolbar.serviceManualOpen,
-                           loaded.manuals.manuals, boardView, DesignOf(session));
+        manualWindows.draw(toolbar.userManualOpen, loaded.manuals.manuals, boardView,
+                           DesignOf(session));
         if (session.machine()) {
             analyzerWindow.draw(toolbar.analyzerOpen, session, boardView);
             meterWindow.draw(toolbar.meterOpen, session, boardView);

@@ -20,7 +20,7 @@ public:
     // A click the tool could not act on: flash amber; a reason replaces the action text for 2 s.
     void refused(std::string reason = {});
 
-    bool userManualOpen = false, serviceManualOpen = false;
+    bool userManualOpen = false;
     bool analyzerOpen = false, scopeOpen = false, meterOpen = false;
     bool wireStarted = false;  // Wire tool: first pin clicked
 

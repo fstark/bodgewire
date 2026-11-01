@@ -14,7 +14,6 @@ constexpr ImU32 kBold = IM_COL32(255, 255, 255, 255);
 constexpr ImU32 kCode = IM_COL32(235, 200, 120, 255);
 constexpr ImU32 kLink = IM_COL32(110, 185, 255, 255);
 constexpr float kTitleScale = 1.3f;
-constexpr std::string_view kTroubleshooting = "Troubleshooting";
 
 // Lays out words left to right, wrapping at the right edge of the content region.
 class Flow {
@@ -148,10 +147,7 @@ TargetHits ManualView::draw(std::span<const Block> blocks, const BoardScene* sce
         }
         case BlockKind::Heading: {
             const std::string text = PlainText(block.spans);
-            const bool trouble = text == kTroubleshooting;
-            const std::string label = trouble ? text + " (easy mode)" : text;
-            open = ImGui::CollapsingHeader(label.c_str(),
-                                           trouble ? 0 : ImGuiTreeNodeFlags_DefaultOpen);
+            open = ImGui::CollapsingHeader(text.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
             continue;
         }
         case BlockKind::Paragraph:
@@ -174,28 +170,23 @@ TargetHits ManualView::draw(std::span<const Block> blocks, const BoardScene* sce
     return hits;
 }
 
-void ManualWindows::draw(bool& userOpen, bool& serviceOpen, const Manuals& manuals,
-                         BoardView& board, const LoadedCircuit& design) {
+void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
+                         const LoadedCircuit& design) {
+    if (!open) {
+        return;
+    }
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const auto window = [&](const char* name, bool& open, const std::optional<Markdown>& doc,
-                            const char* missing, ManualView& view, float x) {
-        if (!open) {
-            return;
+    ImGui::SetNextWindowSize({480, 180}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos({viewport->WorkPos.x + 40, viewport->WorkPos.y + 120},
+                            ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("User Manual", &open, ImGuiWindowFlags_NoSavedSettings)) {
+        if (manuals.user) {
+            board.route(user_.draw(manuals.user->blocks, board.scene(), design));
+        } else {
+            ImGui::TextDisabled("no user manual");
         }
-        ImGui::SetNextWindowSize({480, 600}, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos({viewport->WorkPos.x + x, viewport->WorkPos.y + 120},
-                                ImGuiCond_FirstUseEver);
-        if (ImGui::Begin(name, &open, ImGuiWindowFlags_NoSavedSettings)) {
-            if (doc) {
-                board.route(view.draw(doc->blocks, board.scene(), design));
-            } else {
-                ImGui::TextDisabled("%s", missing);
-            }
-        }
-        ImGui::End();
-    };
-    window("User Manual", userOpen, manuals.user, "no user manual", user_, 40);
-    window("Service Manual", serviceOpen, manuals.service, "no service manual", service_, 540);
+    }
+    ImGui::End();
 }
 
 }  // namespace bw

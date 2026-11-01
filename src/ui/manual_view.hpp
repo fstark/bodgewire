@@ -20,14 +20,13 @@ public:
                     const LoadedCircuit& design);
 };
 
-// The floating User Manual and Service Manual windows.
+// The floating User Manual window.
 class ManualWindows {
 public:
-    void draw(bool& userOpen, bool& serviceOpen, const Manuals& manuals, BoardView& board,
-              const LoadedCircuit& design);
+    void draw(bool& open, const Manuals& manuals, BoardView& board, const LoadedCircuit& design);
 
 private:
-    ManualView user_, service_;
+    ManualView user_;
 };
 
 }  // namespace bw

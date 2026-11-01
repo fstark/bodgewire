@@ -25,6 +25,8 @@ constexpr ImU32 kCourtyard = IM_COL32(190, 190, 190, 150);
 constexpr ImU32 kReference = IM_COL32(230, 230, 230, 200);
 constexpr ImU32 kPinOne = IM_COL32(230, 230, 230, 230);
 constexpr ImU32 kHighlight = IM_COL32(255, 190, 0, 255);
+constexpr ImU32 kDriverMark = IM_COL32(255, 255, 255, 255);
+constexpr float kDriverMarkGap = 5.0f;  // px outside the pad, outside the hover ring
 constexpr ImU32 kProbeRed = IM_COL32(220, 30, 30, 255);
 constexpr ImU32 kSolder = IM_COL32(205, 205, 210, 255);
 constexpr ImU32 kCutMark = IM_COL32(20, 20, 20, 255);
@@ -368,7 +370,7 @@ void BoardView::draw(ImVec2 size) {
     }
     list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), kBoardGreen);
 
-    const std::optional<NetId> lit = highlight_ ? highlight_ : net_;
+    const std::optional<NetId> lit = highlight_;
     const auto drawTraces = [&](Layer layer, float alpha, float litAlpha) {
         const ImU32 colour = WithAlpha(layer == Layer::Front ? kFrontCopper : kBackCopper, alpha);
         const ImU32 litColour = WithAlpha(kHighlight, litAlpha);
@@ -440,6 +442,14 @@ void BoardView::draw(ImVec2 size) {
         const Pad& pad = board.components[hoverTarget_->component].pads[*hoverTarget_->pad];
         const ImVec2 half = PadHalf(map, pad);
         list.AddCircle(map(pad.position), std::max(half.x, half.y) + 3, kHighlight, 0, 2.0f);
+    }
+    if (highlight_) {
+        for (const ScenePad& driver : scene_->drivers(*highlight_)) {
+            const Pad& pad = board.components[driver.component].pads[driver.pad];
+            const ImVec2 half = PadHalf(map, pad);
+            list.AddCircle(map(pad.position), std::max(half.x, half.y) + kDriverMarkGap,
+                           kDriverMark, 0, 2.0f);
+        }
     }
     if (flash_ && std::chrono::steady_clock::now() < flash_->until) {
         const double left =
@@ -700,11 +710,6 @@ void BoardView::route(const TargetHits& hits) {
     if (hits.clicked) {
         focus(*hits.clicked);
         select(hits.clicked->component);
-        if (hits.clicked->pad && scene_) {
-            if (const auto net = scene_->padNet(hits.clicked->component, *hits.clicked->pad)) {
-                net_ = net;
-            }
-        }
     }
 }
 

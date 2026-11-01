@@ -61,11 +61,6 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
         if (!loaded.brief.empty()) {
             ImGui::TextWrapped("%s", loaded.brief.c_str());
         }
-        if (const auto& user = loaded.manuals.manuals.user;
-            user && ImGui::TreeNode("When it works")) {
-            board.route(puzzle_.draw(Section(*user, "What it does"), scene, design));
-            ImGui::TreePop();
-        }
     }
 
     if (ImGui::CollapsingHeader("TV", open)) {
@@ -86,18 +81,6 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
             text = picked ? scene->hoverText(picked->hit) : std::string("bare board");
         }
         ImGui::TextUnformatted(text.c_str());
-    }
-
-    if (scene && ImGui::CollapsingHeader("Net", open)) {
-        if (const auto net = board.net()) {
-            const NetPanelHits hits = net_.draw(*scene, *net, design, loaded.manuals.manuals);
-            board.route(hits.targets);
-            if (hits.clear) {
-                board.selectNet(std::nullopt);
-            }
-        } else {
-            ImGui::TextDisabled("click a pin or trace");
-        }
     }
 
     if (scene && ImGui::CollapsingHeader("Chip", open)) {

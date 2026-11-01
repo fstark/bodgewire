@@ -214,17 +214,8 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
     if (ToolButton("User Manual (U)", userManualOpen)) {
         userManualOpen = !userManualOpen;
     }
-    ImGui::SameLine(0, 2);
-    if (ToolButton("Service Manual (H)", serviceManualOpen)) {
-        serviceManualOpen = !serviceManualOpen;
-    }
-    if (!ImGui::GetIO().WantTextInput) {
-        if (ImGui::IsKeyPressed(ImGuiKey_U, false)) {
-            userManualOpen = !userManualOpen;
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_H, false)) {
-            serviceManualOpen = !serviceManualOpen;
-        }
+    if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_U, false)) {
+        userManualOpen = !userManualOpen;
     }
 }
 
