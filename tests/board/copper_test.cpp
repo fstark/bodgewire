@@ -188,3 +188,36 @@ TEST_CASE("copper: arc polyline ends", "[board]") {
     }
     CHECK(nearMid);
 }
+
+TEST_CASE("copper: graph of two pads and a Trace", "[board]") {
+    Board board = TwoPads();
+    board.traces.push_back(Line(Layer::Front, Mm(0, 0), Mm(10, 0)));
+    const CopperGraph graph = BuildCopperGraph(board);
+    CHECK(graph.pads == 2);
+    CHECK(graph.vias == 0);
+    REQUIRE(graph.touching.size() == 3);
+    CHECK(graph.touching[0] == std::vector<std::uint32_t>{2});
+    CHECK(graph.touching[1] == std::vector<std::uint32_t>{2});
+    CHECK(graph.touching[2] == std::vector<std::uint32_t>{0, 1});
+}
+
+TEST_CASE("copper: a Bodge Wire joins its pads in the graph", "[board]") {
+    Board board = TwoPads();
+    board.bodgeWires = {{Mm(0, 0), Mm(10, 0)}};
+    const CopperGraph graph = BuildCopperGraph(board);
+    CHECK(graph.touching[0] == std::vector<std::uint32_t>{1});
+    CHECK(graph.touching[1] == std::vector<std::uint32_t>{0});
+    CHECK(PadItemAt(board, Mm(10, 0)) == 1u);
+    CHECK_FALSE(PadItemAt(board, Mm(5, 0)));
+}
+
+TEST_CASE("copper: Touches", "[board]") {
+    Board board = TwoPads();
+    board.traces.push_back(Line(Layer::Front, Mm(0, 0), Mm(10, 0)));
+    const Trace middle = Line(Layer::Front, Mm(4, 0), Mm(6, 0));
+    CHECK(Touches(board, 2, middle));
+    CHECK_FALSE(Touches(board, 0, middle));
+    CHECK_FALSE(Touches(board, 1, middle));
+    CHECK(Touches(board, 0, Line(Layer::Front, Mm(0.5, 0), Mm(1.5, 0))));
+    CHECK_FALSE(Touches(board, 2, Line(Layer::Back, Mm(4, 0), Mm(6, 0))));
+}

@@ -225,7 +225,34 @@ std::uint32_t Root(std::vector<std::uint32_t>& parent, std::uint32_t i) {
     return i;
 }
 
-// Item index of the first pad covering `at`.
+ShapeBuilder BoardShapes(const Board& board) {
+    ShapeBuilder builder;
+    std::uint32_t item = 0;
+    for (const BoardComponent& component : board.components) {
+        for (const Pad& pad : component.pads) {
+            builder.addPad(item++, pad);
+        }
+    }
+    for (const Via& via : board.vias) {
+        builder.add(item++, kBothLayers, {ToVec(via.position)},
+                    static_cast<double>(via.diameter) / 2);
+    }
+    for (const Trace& trace : board.traces) {
+        builder.addTrace(item++, trace);
+    }
+    return builder;
+}
+
+bool ShapesTouch(const CopperShape& a, const CopperShape& b) {
+    if ((a.layers & b.layers) == 0 || a.max.x < b.min.x || b.max.x < a.min.x || a.max.y < b.min.y ||
+        b.max.y < a.min.y) {
+        return false;
+    }
+    return HullDistance(a, b) <= a.radius + b.radius;
+}
+
+}  // namespace
+
 std::optional<std::uint32_t> PadItemAt(const Board& board, Point at) {
     std::uint32_t item = 0;
     for (const BoardComponent& component : board.components) {
@@ -241,37 +268,25 @@ std::optional<std::uint32_t> PadItemAt(const Board& board, Point at) {
     return std::nullopt;
 }
 
-}  // namespace
-
-Islands FindIslands(const Board& board) {
-    ShapeBuilder builder;
-    std::uint32_t item = 0;
+CopperGraph BuildCopperGraph(const Board& board) {
+    const ShapeBuilder builder = BoardShapes(board);
+    CopperGraph graph;
     for (const BoardComponent& component : board.components) {
-        for (const Pad& pad : component.pads) {
-            builder.addPad(item++, pad);
+        graph.pads += static_cast<std::uint32_t>(component.pads.size());
+    }
+    graph.vias = static_cast<std::uint32_t>(board.vias.size());
+    graph.touching.resize(graph.pads + graph.vias + board.traces.size());
+    const auto join = [&](std::uint32_t a, std::uint32_t b) {
+        if (a != b) {
+            graph.touching[a].push_back(b);
+            graph.touching[b].push_back(a);
         }
-    }
-    for (const Via& via : board.vias) {
-        builder.add(item++, kBothLayers, {ToVec(via.position)},
-                    static_cast<double>(via.diameter) / 2);
-    }
-    for (const Trace& trace : board.traces) {
-        builder.addTrace(item++, trace);
-    }
-
-    std::vector<std::uint32_t> parent(item);
-    std::iota(parent.begin(), parent.end(), 0);
+    };
     const auto& shapes = builder.shapes;
     for (std::size_t i = 0; i < shapes.size(); ++i) {
-        const CopperShape& a = shapes[i];
         for (std::size_t j = i + 1; j < shapes.size(); ++j) {
-            const CopperShape& b = shapes[j];
-            if ((a.layers & b.layers) == 0 || a.max.x < b.min.x || b.max.x < a.min.x ||
-                a.max.y < b.min.y || b.max.y < a.min.y) {
-                continue;
-            }
-            if (HullDistance(a, b) <= a.radius + b.radius) {
-                parent[Root(parent, a.item)] = Root(parent, b.item);
+            if (ShapesTouch(shapes[i], shapes[j])) {
+                join(shapes[i].item, shapes[j].item);
             }
         }
     }
@@ -279,7 +294,60 @@ Islands FindIslands(const Board& board) {
         const auto a = PadItemAt(board, wire.a);
         const auto b = PadItemAt(board, wire.b);
         Check(a && b, "copper: Bodge Wire end off a pad");
-        parent[Root(parent, *a)] = Root(parent, *b);
+        join(*a, *b);
+    }
+    for (auto& list : graph.touching) {
+        std::ranges::sort(list);
+        list.erase(std::ranges::unique(list).begin(), list.end());
+    }
+    return graph;
+}
+
+bool Touches(const Board& board, std::uint32_t item, const Trace& piece) {
+    ShapeBuilder target;
+    std::uint32_t next = 0;
+    for (const BoardComponent& component : board.components) {
+        for (const Pad& pad : component.pads) {
+            if (next++ == item) {
+                target.addPad(item, pad);
+            }
+        }
+    }
+    for (const Via& via : board.vias) {
+        if (next++ == item) {
+            target.add(item, kBothLayers, {ToVec(via.position)},
+                       static_cast<double>(via.diameter) / 2);
+        }
+    }
+    for (const Trace& trace : board.traces) {
+        if (next++ == item) {
+            target.addTrace(item, trace);
+        }
+    }
+    Check(!target.shapes.empty(), "copper: no such item");
+    ShapeBuilder other;
+    other.addTrace(0, piece);
+    for (const CopperShape& a : target.shapes) {
+        for (const CopperShape& b : other.shapes) {
+            if (ShapesTouch(a, b)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+Islands FindIslands(const Board& board) {
+    const CopperGraph graph = BuildCopperGraph(board);
+    const auto item = static_cast<std::uint32_t>(graph.touching.size());
+    std::vector<std::uint32_t> parent(item);
+    std::iota(parent.begin(), parent.end(), 0);
+    for (std::uint32_t i = 0; i < item; ++i) {
+        for (const std::uint32_t j : graph.touching[i]) {
+            if (j > i) {
+                parent[Root(parent, i)] = Root(parent, j);
+            }
+        }
     }
 
     Islands islands;
