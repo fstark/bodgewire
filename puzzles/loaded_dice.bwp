@@ -1,0 +1,6 @@
+# Loaded dice: the N2 Trace between U2 pin 3 and U4 pin 6 is cracked; U2 and U3 read N2 high,
+# so SIX_N follows N1, U1 loads 1 again at 2, and FOUR_N stays low.
+machine dice
+title "Loaded dice"
+brief "The dice only ever shows 3 or 6."
+fault crack B.Cu 58.86 71.17

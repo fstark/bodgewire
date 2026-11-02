@@ -23,4 +23,15 @@ inline constexpr Point kLedA5Crack{73'460'000, 101'050'000};
 // puzzles/dark_chaser.bwp.
 inline constexpr Point kSerCrack{70'170'000, 73'690'000};
 
+// Midpoint of the F.Cu BTN_N Trace from SW1 pad 1 to R9 pad 2 of boards/dice; also in
+// puzzles/dead_button.bwp.
+inline constexpr Point kBtnNCrack{100'030'000, 87'000'000};
+
+// Midpoint of the B.Cu N2 Trace between U2 pin 3 and U4 pin 6 of boards/dice (U2 and U3 lose
+// N2); also in puzzles/loaded_dice.bwp.
+inline constexpr Point kN2Crack{58'860'000, 71'170'000};
+
+// Midpoint of the F.Cu GND Trace at SW1 pad 2 of boards/dice: SW1's rail end cut off.
+inline constexpr CrackDecl kSw1GndCracks[] = {{1, Layer::Front, {109'230'000, 89'770'000}}};
+
 }  // namespace bw

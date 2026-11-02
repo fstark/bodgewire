@@ -10,7 +10,7 @@ Machine name `dice`:
 netlists/dice.bwn                    design netlist
 boards/dice/dice.kicad_pcb           Board (KiCad 10, laid out by hand)
 manuals/dice/user.md, service.md     User and Service Manuals
-puzzles/dead_button.bwp, corners.bwp, seven.bwp, odd_dice.bwp
+puzzles/dead_button.bwp, loaded_dice.bwp, seven.bwp, odd_dice.bwp
 ```
 
 ## Netlist
@@ -65,25 +65,26 @@ net LED_A7   R8.2 D7.A
 - `D1`–`D7` as a die face: `D1` top left, `D2` top right, `D3` `D4` `D5` across the middle, `D6` bottom left, `D7` bottom right; `R2`–`R8` around them.
 - `SW1` at the front edge, below the face, with `R9` next to it; `U1`–`U4`, `X1`, `J1`, `R1` behind the face.
 - `bw check-board` clean; `drc_dice` passes (picked up by the `boards/*/*.kicad_pcb` glob).
-- Crack points need a straight segment long enough to crack, both pieces clear of the pads:
-  - `BTN_N`: a segment between `SW1` pad 1 and the rest of the Net (`R9`, `U4` pin 3).
-  - `N2`: a segment on the branch to `U2` pin 3 only, so `U3` and `U4` still get `N2`.
+- Crack points (user layout, 167 segments, 2 vias):
+  - `BTN_N`: F.Cu 100.03 87.00, the 9.4 mm segment from `SW1` pad 1 to `R9` pad 2.
+  - `N2`: B.Cu 58.86 71.17, the 6.4 mm segment between `U2` pin 3 and `U4` pin 6. `N2` runs `U3` pin 2 → `U2` pin 3 → `U4` pin 6 → `U1` pin 12 in one chain, so no crack isolates `U2` alone: this one cuts `U2` and `U3` off `U1`.
+  - Test only: GND F.Cu 109.23 89.77 cuts `SW1` pad 2 off the rail.
 
 ## Puzzles
 
-`machine dice` in each file (DICE.md, Puzzles). Crack coordinates are picked on the finished layout:
+`machine dice` in each file (DICE.md, Puzzles):
 
 | File | Fault line | Where |
 |---|---|---|
-| `dead_button.bwp` | `fault crack <layer> <x> <y>` | midpoint of the `BTN_N` segment from `SW1` pad 1 |
-| `corners.bwp` | `fault crack <layer> <x> <y>` | midpoint of the `N2` segment to `U2` pin 3 |
+| `dead_button.bwp` | `fault crack F.Cu 100.03 87.00` | `BTN_N` from `SW1` pad 1 |
+| `loaded_dice.bwp` | `fault crack B.Cu 58.86 71.17` | `N2` between `U2` and `U4` |
 | `seven.bwp` | `fault stuck U3.1Y 1` | `SIX_N` |
 | `odd_dice.bwp` | `fault stuck U1.QA 1` | `N0` |
 
 Briefs:
 
 - Dead button: "Pressing the button does nothing: the dice always shows the same face."
-- Corners: "The dice never rolls a 1 or a 2, and two corners are always lit."
+- Loaded dice: "The dice only ever shows 3 or 6."
 - Seven: "The dice never rolls a 6, and sometimes shows no spots at all."
 - Odd dice: "The dice only rolls odd numbers, or lights every LED."
 
@@ -91,7 +92,7 @@ Briefs:
 
 With the `dead_button` crack, `SW1` pad 1 is alone on its island. That island is named `BTN_N` (SW1's Connection comes before U4's), and the rest of the Net becomes `BTN_N~2`. `SW1` is still between a rail and a signal, so it stays in the build: pressing it pulls its own island low, which the probe shows, while `U4` pin 3 stays high through `R9` ([PUSH_BUTTON_DESIGN.md](../../p4d-push-button/PUSH_BUTTON_DESIGN.md) §5.2).
 
-With the `corners` crack, `U2` pin 3 is alone: a floating TTL input reads high, so `FOUR_N` is low for good.
+With the `loaded_dice` crack, `U2` pin 3 and `U3` pin 2 share an island without a Driver: floating TTL inputs read high. `FOUR_N` is low for good and `SIX_N` follows `NOT N1`, so `U1` loads 1 whenever it reaches 2: the count alternates 1, 2, shown as a 3 (`D2` `D4` `D6`) and a 6.
 
 ## Manuals
 

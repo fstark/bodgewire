@@ -37,7 +37,7 @@ A counter's value is turned into something readable by decoding: each LED group 
 | Puzzle | Fault | Symptom | Path to the fix |
 |---|---|---|---|
 | Dead button | Broken Trace on `BTN_N` between `SW1` and `R9` | rolling does nothing: the face never changes | `BTN_N` goes low at `SW1` when pressed, stays high at `U4` pin 3: mend the Trace |
-| Corners | Broken Trace on `N2` between `U1` and the `U2` inverter input | `D2` and `D6` always lit: 1 shows as 3 (on the other diagonal), 2 as 4, 3 as 5; never a 1 or a 2 | `N2` toggles at `U1` pin 12, floats at `U2`, `FOUR_N` stays low: mend the Trace |
+| Loaded dice | Broken Trace on `N2` between `U2` pin 3 and `U4` pin 6 (`U2` and `U3` lose `N2`) | only 3 and 6: a 1 shows as the other diagonal's 3, and `U1` loads 1 again at 2, which lights six LEDs | `N2` is low at `U4` pin 6 but floats at `U2` pin 3 and `U3` pin 2: mend the Trace |
 | Seven | `U3` output (`SIX_N`) stuck at 1 | never a 6; some rolls show no LED; 4 and 5 come up twice as often (the counter runs 0–15 without the load) | `N1` and `N2` are both high at times, but `SIX_N` never goes low: swap `U3` |
 | Odd dice | `U1.QA` (`N0`) stuck at 1 | only 1, 3 and 5, or all seven LEDs | `N0` never goes low while `N1` and `N2` count: swap `U1` |
 

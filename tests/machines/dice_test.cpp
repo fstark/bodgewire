@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../machine/test_points.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
@@ -102,4 +103,119 @@ TEST_CASE("dice: the Board build rolls six faces", "[machines]") {
         faces.insert(Roll(**built, 100_us + k * 1_us).count);
     }
     CHECK(faces == std::set<int>{1, 2, 3, 4, 5, 6});
+}
+
+namespace {
+
+Machine LoadPuzzle(const std::string& name) {
+    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
+// Rolls of 100 + k µs, k = 0 .. count - 1, each from a fresh power-on of one build.
+std::vector<Face> Rolls(const Machine& machine, int count) {
+    auto built = machine.build();
+    REQUIRE(built.has_value());
+    std::vector<Face> faces;
+    for (int k = 0; k < count; ++k) {
+        faces.push_back(Roll(**built, 100_us + k * 1_us));
+    }
+    return faces;
+}
+
+void CheckSixFaces(const Machine& machine) {
+    std::set<int> counts;
+    for (const Face& face : Rolls(machine, 6)) {
+        INFO("count " << face.count << " leds " << face.leds);
+        CHECK(face.leds == Pattern(face.count));
+        counts.insert(face.count);
+    }
+    CHECK(counts == std::set<int>{1, 2, 3, 4, 5, 6});
+}
+
+}  // namespace
+
+TEST_CASE("dice: Puzzles have a title and a brief", "[machines]") {
+    for (const char* name : {"dead_button", "loaded_dice", "seven", "odd_dice"}) {
+        INFO(name);
+        const auto puzzle =
+            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        REQUIRE(puzzle.has_value());
+        CHECK(puzzle->machine == "dice");
+        CHECK_FALSE(puzzle->title.empty());
+        CHECK_FALSE(puzzle->brief.empty());
+    }
+}
+
+TEST_CASE("dice: dead_button", "[machines]") {
+    Machine machine = LoadPuzzle("dead_button");
+    {
+        auto built = machine.build();
+        REQUIRE(built.has_value());
+        LoadedCircuit& loaded = **built;
+        const NetId atSwitch = *PinNet(loaded, "SW1", "1");
+        const NetId atGate = *PinNet(loaded, "U4", "3");
+        REQUIRE(atSwitch != atGate);
+        Button* button = ButtonOf(loaded, "SW1");
+        REQUIRE(button != nullptr);
+        Simulator sim(loaded.circuit);
+        sim.powerOn(1);
+        sim.runUntil(1_ms);
+        const Face before = Read(loaded, sim);
+        button->setPressed(true);
+        sim.wake(button->id());
+        sim.runUntil(1_ms + 100_us);
+        CHECK(sim.value(atSwitch) == Zero);
+        CHECK(sim.value(atGate) == One);
+        button->setPressed(false);
+        sim.wake(button->id());
+        sim.runUntil(1_ms + 200_us);
+        CHECK(sim.isFloating(atSwitch));
+        CHECK(Read(loaded, sim).count == before.count);
+    }
+    REQUIRE(machine.mend(Layer::Front, kBtnNCrack));
+    CheckSixFaces(machine);
+}
+
+TEST_CASE("dice: loaded_dice", "[machines]") {
+    Machine machine = LoadPuzzle("loaded_dice");
+    std::set<std::string> shown;
+    for (const Face& face : Rolls(machine, 6)) {
+        INFO("count " << face.count << " leds " << face.leds);
+        CHECK((face.count == 1 || face.count == 2));
+        shown.insert(face.leds);
+    }
+    CHECK(shown == std::set<std::string>{"0101010", "1110111"});  // a 3 and a 6
+
+    REQUIRE(machine.mend(Layer::Back, kN2Crack));
+    CheckSixFaces(machine);
+}
+
+TEST_CASE("dice: seven", "[machines]") {
+    Machine machine = LoadPuzzle("seven");
+    std::set<int> counts;
+    for (const Face& face : Rolls(machine, 8)) {
+        INFO("count " << face.count << " leds " << face.leds);
+        CHECK(face.leds != Pattern(6));
+        CHECK(face.leds[2] == '0');  // SIX_N never low
+        counts.insert(face.count);
+    }
+    CHECK(counts.contains(0));
+    CHECK(counts.contains(7));
+
+    REQUIRE(machine.swap("U3"));
+    CheckSixFaces(machine);
+}
+
+TEST_CASE("dice: odd_dice", "[machines]") {
+    Machine machine = LoadPuzzle("odd_dice");
+    for (const Face& face : Rolls(machine, 6)) {
+        INFO("count " << face.count << " leds " << face.leds);
+        CHECK(face.count % 2 == 1);
+        CHECK(face.leds == (face.count == 7 ? std::string("1111111") : Pattern(face.count)));
+    }
+
+    REQUIRE(machine.swap("U1"));
+    CheckSixFaces(machine);
 }

@@ -126,6 +126,32 @@ TEST_CASE("electrical: pull-up cut from VCC is left out", "[machine]") {
     CHECK(BuildCircuit(netlist).has_value());
 }
 
+TEST_CASE("electrical: button cut from GND is left out", "[machine]") {
+    const Design design = LoadDesign("dice");
+    const Netlist netlist =
+        ElectricalNetlist(design.netlist, *design.circuit, CrackBoard(design.board, kSw1GndCracks));
+    for (const PartDecl& part : netlist.parts) {
+        CHECK(part.reference != "SW1");
+    }
+    CHECK(NetOf(netlist, "SW1.1").empty());
+    const auto built = BuildCircuit(netlist);
+    REQUIRE(built.has_value());
+    CHECK(ButtonOf(**built, "SW1") == nullptr);
+}
+
+TEST_CASE("electrical: button alone on its signal island stays in", "[machine]") {
+    const Design design = LoadDesign("dice");
+    const CrackDecl crack{1, Layer::Front, kBtnNCrack};
+    const Netlist netlist =
+        ElectricalNetlist(design.netlist, *design.circuit, CrackBoard(design.board, {&crack, 1}));
+    CHECK(NetOf(netlist, "SW1.1") == "BTN_N");
+    CHECK(NetOf(netlist, "U4.3") == "BTN_N~2");
+    CHECK(NetOf(netlist, "SW1.2") == "GND");
+    const auto built = BuildCircuit(netlist);
+    REQUIRE(built.has_value());
+    CHECK(ButtonOf(**built, "SW1") != nullptr);
+}
+
 namespace {
 
 Machine PowerMachine(std::vector<CrackDecl> cracks, std::vector<BridgeDecl> bridges) {

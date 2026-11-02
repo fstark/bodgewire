@@ -1,0 +1,5 @@
+# Odd dice: U1.QA (N0) stuck high; every count reads odd, and 6 reads as 7.
+machine dice
+title "Odd dice"
+brief "The dice only rolls odd numbers, or lights every LED."
+fault stuck U1.QA 1

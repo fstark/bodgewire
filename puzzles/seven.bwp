@@ -1,0 +1,5 @@
+# Seven: U3.1Y (SIX_N) stuck high; U1 never loads 1 and counts 0-15.
+machine dice
+title "Seven"
+brief "The dice never rolls a 6, and sometimes shows no spots at all."
+fault stuck U3.1Y 1
