@@ -65,10 +65,10 @@ net LED_A7   R8.2 D7.A
 - `D1`–`D7` as a die face: `D1` top left, `D2` top right, `D3` `D4` `D5` across the middle, `D6` bottom left, `D7` bottom right; `R2`–`R8` around them.
 - `SW1` at the front edge, below the face, with `R9` next to it; `U1`–`U4`, `X1`, `J1`, `R1` behind the face.
 - `bw check-board` clean; `drc_dice` passes (picked up by the `boards/*/*.kicad_pcb` glob).
-- Crack points (user layout, 167 segments, 2 vias):
-  - `BTN_N`: F.Cu 100.03 87.00, the 9.4 mm segment from `SW1` pad 1 to `R9` pad 2.
-  - `N2`: B.Cu 58.86 71.17, the 6.4 mm segment between `U2` pin 3 and `U4` pin 6. `N2` runs `U3` pin 2 → `U2` pin 3 → `U4` pin 6 → `U1` pin 12 in one chain, so no crack isolates `U2` alone: this one cuts `U2` and `U3` off `U1`.
-  - Test only: GND F.Cu 109.23 89.77 cuts `SW1` pad 2 off the rail.
+- Cracks (user layout, 167 segments, 2 vias; placed by pads and position since P4e):
+  - `BTN_N`: `SW1.1 R9.2 48%`, on the 9.4 mm F.Cu segment from `SW1` pad 1 to `R9` pad 2.
+  - `N2`: `U2.3 U4.6 52%`, on the 6.4 mm B.Cu segment between `U2` pin 3 and `U4` pin 6. `N2` runs `U3` pin 2 → `U2` pin 3 → `U4` pin 6 → `U1` pin 12 in one chain, so no crack isolates `U2` alone: this one cuts `U2` and `U3` off `U1`.
+  - Test only: GND `SW1.2 J1.2 7%` cuts `SW1` pad 2 off the rail.
 
 ## Puzzles
 
@@ -76,8 +76,8 @@ net LED_A7   R8.2 D7.A
 
 | File | Fault line | Where |
 |---|---|---|
-| `dead_button.bwp` | `fault crack F.Cu 100.03 87.00` | `BTN_N` from `SW1` pad 1 |
-| `loaded_dice.bwp` | `fault crack B.Cu 58.86 71.17` | `N2` between `U2` and `U4` |
+| `dead_button.bwp` | `fault crack SW1.1 R9.2 48%` | `BTN_N` from `SW1` pad 1 |
+| `loaded_dice.bwp` | `fault crack U2.3 U4.6 52%` | `N2` between `U2` and `U4` |
 | `seven.bwp` | `fault stuck U3.1Y 1` | `SIX_N` |
 | `odd_dice.bwp` | `fault stuck U1.QA 1` | `N0` |
 

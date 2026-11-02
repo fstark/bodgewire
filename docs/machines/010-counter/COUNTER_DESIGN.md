@@ -44,11 +44,11 @@ net LED_A    R2.2 D1.A
 
 | File | Fault line | Where |
 |---|---|---|
-| `dark_led.bwp` | `fault crack F.Cu 192.52 122` | midpoint of the straight `C19` segment into `D1` pad 1 |
+| `dark_led.bwp` | `fault crack U5.QD D1.1 51%` | the straight `C19` segment into `D1` pad 1 |
 | `frozen_led.bwp` | `fault stuck U3.RCO 0` | `CARRY3` |
 | `too_fast.bwp` | `fault stuck U1.RCO 1` | `CARRY1` |
 
-A crack must sit on a segment long enough that both pieces leave the pads: a 1.2 mm stub at a 1.6 mm pad can't be cracked.
+Crack placement (P4e) skips copper too close to a pad, via, corner or junction: a 1.2 mm stub at a 1.6 mm pad is never cracked.
 
 ## Manuals
 

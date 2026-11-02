@@ -62,7 +62,7 @@ net LED_A8   R9.2 D8.A
 
 - `D1`–`D8` in one row, left to right, with `R2`–`R9` beside them; `U5` and `U6` next to the row; `U1`–`U4`, `X1`, `J1`, `R1` as on the counter.
 - `bw check-board` clean; `drc_chaser` passes (picked up by the `boards/*/*.kicad_pcb` glob).
-- The `LED_A5` and `SER` Traces each need one straight segment long enough to crack (both pieces clear of the pads).
+- The `LED_A5` and `SER` Traces each need one straight segment long enough to crack; crack placement (P4e) skips short stubs at the pads.
 
 ## Puzzles
 
@@ -70,9 +70,9 @@ net LED_A8   R9.2 D8.A
 
 | File | Fault line | Where |
 |---|---|---|
-| `gap.bwp` | `fault crack F.Cu 73.46 101.05` | midpoint of the straight `LED_A5` segment between `R6` and `D5` |
+| `gap.bwp` | `fault crack R6.2 D5.2 51%` | the straight `LED_A5` segment between `R6` and `D5` |
 | `stuck_light.bwp` | `fault stuck U5.QD 0` | `S4` |
-| `dark_chaser.bwp` | `fault crack B.Cu 70.17 73.69` | midpoint of the long straight `SER` segment between `U6` pin 8 and `U5` pin 1 |
+| `dark_chaser.bwp` | `fault crack U6.8 U5.1 50%` | the long straight `SER` segment between `U6` pin 8 and `U5` pin 1 |
 | `twins.bwp` | `fault bridge U5.3 U5.4` | `S1`–`S2`, solder side |
 
 ## Manuals
