@@ -52,8 +52,9 @@ public:
     void
     pauseAt(Time time);     // one-shot: pause at the first slice end >= time (queue before powerOn)
     void watch(NetId net);  // counted: the Net's ring is written while any watch is held
-    void unwatch(NetId net);           // undoes one watch(); the slot is freed when none remain
-    void wake(ComponentId component);  // Simulator::wake at the next slice boundary, unless Off
+    void unwatch(NetId net);  // undoes one watch(); the slot is freed when none remain
+    // Simulator::wake(component, delay) at the next slice boundary, unless Off.
+    void wake(ComponentId component, Time delay = 0);
 
     void waitIdle();  // blocks until all commands applied, not Running, devices caught up
     RunnerStatus status() const;

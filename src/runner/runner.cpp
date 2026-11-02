@@ -68,7 +68,9 @@ void Runner::setSpeed(Speed speed) {
 void Runner::pauseAt(Time time) { queue({CommandKind::PauseAt, time}); }
 void Runner::watch(NetId net) { queue({CommandKind::Watch, 0, net}); }
 void Runner::unwatch(NetId net) { queue({CommandKind::Unwatch, 0, net}); }
-void Runner::wake(ComponentId component) { queue({CommandKind::Wake, 0, NetId{}, component}); }
+void Runner::wake(ComponentId component, Time delay) {
+    queue({CommandKind::Wake, delay, NetId{}, component});
+}
 
 void Runner::waitIdle() {
     while (true) {
@@ -215,7 +217,7 @@ void Runner::apply(const Command& command, std::stop_token stop) {
         break;
     case CommandKind::Wake:
         if (state_.load() != RunState::Off) {
-            sim_.wake(command.component);
+            sim_.wake(command.component, command.value);
         }
         break;
     }

@@ -1,6 +1,7 @@
 #include "session/session.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <format>
 #include <iterator>
 #include <string>
@@ -17,6 +18,13 @@ template <class... Ts>
 struct Overloaded : Ts... {
     using Ts::operator()...;
 };
+
+// A hand's timing is not tied to the 1 ms slices: without this, every hold lasts whole
+// milliseconds and a 1 MHz counter cycling every 6 µs keeps its parity (the dice only rolls even).
+Time PressJitter() {
+    const auto ns = std::chrono::steady_clock::now().time_since_epoch().count();
+    return static_cast<Time>(ns % 1'000'000) * 1000;  // ps, within 1 ms
+}
 
 }  // namespace
 
@@ -367,7 +375,7 @@ void Session::setPressed(std::string_view reference, bool pressed) {
     }
     if (Button* button = ButtonOf(*live_->circuit, reference)) {
         button->setPressed(pressed);
-        live_->runner->wake(button->id());
+        live_->runner->wake(button->id(), PressJitter());
     }
 }
 

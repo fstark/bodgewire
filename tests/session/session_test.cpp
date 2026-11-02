@@ -451,3 +451,36 @@ TEST_CASE("session: rolling the dice", "[session]") {
     }
     session.powerOff();
 }
+
+TEST_CASE("session: dice rolls both odd and even faces", "[session]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "dice.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    const auto runTo = [&](Time time) {
+        session.runner().pauseAt(time);
+        session.runner().resume();
+        session.runner().waitIdle();
+    };
+    session.powerOn(1, 1_ms);
+    session.runner().waitIdle();
+    bool odd = false;
+    bool even = false;
+    Time t = 1_ms;
+    for (int roll = 0; roll < 16 && !(odd && even); ++roll) {
+        session.setPressed("SW1", true);
+        runTo(t += 3_ms);
+        session.setPressed("SW1", false);
+        runTo(t += 45_ms);  // two closed 20 ms LED windows after the release
+        for (const LedLight& led : session.leds()) {
+            if (led.reference == "D4") {
+                (led.brightness > 0.5f ? odd : even) = true;
+            }
+        }
+    }
+    CHECK(odd);
+    CHECK(even);
+    session.powerOff();
+}

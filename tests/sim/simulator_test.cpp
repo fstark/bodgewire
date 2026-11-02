@@ -365,6 +365,10 @@ TEST_CASE("simulator: wake evaluates at now in the next runUntil", "[sim]") {
     CHECK(counter.count == 2);
     CHECK(counter.at == 5_ns);
     CHECK(sim.stats().wakes == 1);
+    sim.wake(counter.id(), 3_ns);
+    sim.runUntil(20_ns);
+    CHECK(counter.count == 3);
+    CHECK(counter.at == 13_ns);
 }
 
 namespace {

@@ -26,7 +26,7 @@ public:
     explicit Simulator(Circuit& circuit);  // Check()s the Circuit is finalized
     void powerOn(std::uint64_t seed);      // S4
     void runUntil(Time end);
-    void wake(ComponentId component);  // evaluate at now(), in the next runUntil
+    void wake(ComponentId component, Time delay = 0);  // evaluate at now() + delay
     void runFor(Time duration) { runUntil(now_ + duration); }
     Time now() const { return now_; }
     LogicValue value(NetId net) const { return nets_[ToIndex(net)].value; }

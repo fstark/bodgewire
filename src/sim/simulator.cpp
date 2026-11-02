@@ -101,9 +101,10 @@ void Simulator::scheduleWake(ComponentId component, Time delay) {
     queue_.push({now_ + delay, ToIndex(component), MakeStamp(0, true, LogicValue::Zero)});
 }
 
-void Simulator::wake(ComponentId component) {
+void Simulator::wake(ComponentId component, Time delay) {
     Check(ToIndex(component) < componentDirty_.size(), "simulator: unknown component");
-    queue_.push({now_, ToIndex(component), MakeStamp(0, true, LogicValue::Zero)});
+    Check(delay >= 0, "simulator: wake into the past");
+    queue_.push({now_ + delay, ToIndex(component), MakeStamp(0, true, LogicValue::Zero)});
 }
 
 void Simulator::record(NetId net) {
