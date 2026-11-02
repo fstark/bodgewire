@@ -413,3 +413,41 @@ TEST_CASE("session: buttons only press while powered", "[session]") {
     CHECK_FALSE(session.pressed("SW1"));
     CHECK_FALSE(button->pressed());
 }
+
+TEST_CASE("session: rolling the dice", "[session]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "dice.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    const auto brightness = [&](std::string_view reference) {
+        for (const LedLight& led : session.leds()) {
+            if (led.reference == reference) {
+                return led.brightness;
+            }
+        }
+        FAIL("no LED " << reference);
+        return 0.0f;
+    };
+
+    session.powerOn(1, 10_ms);
+    session.runner().waitIdle();
+    session.setPressed("SW1", true);
+    session.runner().pauseAt(70_ms);
+    session.runner().resume();
+    session.runner().waitIdle();
+    CHECK(std::abs(brightness("D4") - 0.5f) < 0.02f);      // ODD_N: 1, 3, 5
+    CHECK(std::abs(brightness("D3") - 1.0f / 6) < 0.02f);  // SIX_N: 6
+    CHECK(std::abs(brightness("D1") - 5.0f / 6) < 0.02f);  // TWO_N: 2-6
+
+    session.setPressed("SW1", false);
+    session.runner().pauseAt(130_ms);
+    session.runner().resume();
+    session.runner().waitIdle();
+    for (const LedLight& led : session.leds()) {
+        INFO(led.reference);
+        CHECK((led.brightness == 0 || led.brightness == 1));
+    }
+    session.powerOff();
+}
