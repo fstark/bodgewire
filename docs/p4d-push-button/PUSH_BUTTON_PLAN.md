@@ -19,6 +19,7 @@ Spec: [PUSH_BUTTON.md](PUSH_BUTTON.md); Machine: [DICE.md](../machines/030-dice/
 - Crack points (`test_points.hpp`): `kBtnNCrack` F.Cu 100.03 87.00, `kN2Crack` B.Cu 58.86 71.17, `kSw1GndCracks` F.Cu 109.23 89.77.
 - All Puzzle tests passed as first written; debug dice tests take under 1 s each (the counter cycles every 6 µs).
 - `bw_ui --press` applies only with a Board (the frame loop drives presses through the Board view's Button list).
+- User check 1: the dice only rolled even. UI presses were applied at 1 ms slice boundaries, so every hold lasted whole milliseconds (1000 clocks ≡ 4 mod 6) and the face kept its parity. Fix 836dd59: `Session::setPressed` wakes the Button at a wall-clock-derived offset within 1 ms (`Simulator::wake`/`Runner::wake` take a delay); headless `--press` stays exact.
 
 ## Phase 9 — User check, docs
 
