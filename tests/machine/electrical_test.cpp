@@ -83,7 +83,7 @@ TEST_CASE("electrical: uncracked board gives the design Nets", "[machine]") {
 
 TEST_CASE("electrical: crack on H0 splits it", "[machine]") {
     const Design design = LoadDesign("test_pattern");
-    const CrackDecl crack{1, Layer::Front, kH0Crack};
+    const Crack crack{Layer::Front, kH0Crack};
     const Netlist netlist =
         ElectricalNetlist(design.netlist, *design.circuit, CrackBoard(design.board, {&crack, 1}));
     CHECK(NetOf(netlist, "U1.14") == "H0");    // QA
@@ -92,7 +92,7 @@ TEST_CASE("electrical: crack on H0 splits it", "[machine]") {
 
 TEST_CASE("electrical: island names match the electrical netlist", "[machine]") {
     const Design design = LoadDesign("test_pattern");
-    const CrackDecl crack{1, Layer::Front, kH0Crack};
+    const Crack crack{Layer::Front, kH0Crack};
     const Board board = CrackBoard(design.board, {&crack, 1});
     const Islands islands = FindIslands(board);
     const auto names = IslandNetNames(*design.circuit, board, islands);
@@ -141,7 +141,7 @@ TEST_CASE("electrical: button cut from GND is left out", "[machine]") {
 
 TEST_CASE("electrical: button alone on its signal island stays in", "[machine]") {
     const Design design = LoadDesign("dice");
-    const CrackDecl crack{1, Layer::Front, kBtnNCrack};
+    const Crack crack{Layer::Front, kBtnNCrack};
     const Netlist netlist =
         ElectricalNetlist(design.netlist, *design.circuit, CrackBoard(design.board, {&crack, 1}));
     CHECK(NetOf(netlist, "SW1.1") == "BTN_N");

@@ -33,7 +33,7 @@ Fixture Load(const std::string& name) {
     return {std::move(*design), std::move(*board)};
 }
 
-BoardScene Scene(const Fixture& f, std::span<const CrackDecl> cracks = {}) {
+BoardScene Scene(const Fixture& f, std::span<const Crack> cracks = {}) {
     return BoardScene(CrackBoard(f.pristine, cracks), f.pristine, *f.design);
 }
 
@@ -410,7 +410,7 @@ TEST_CASE("board scene: componentAt", "[view]") {
 
 TEST_CASE("view: highlight crosses the broken_trace crack", "[view]") {
     const Fixture f = Load("test_pattern");
-    const CrackDecl crack{1, Layer::Front, kH0Crack};
+    const Crack crack{Layer::Front, kH0Crack};
     const BoardScene scene = Scene(f, {&crack, 1});
     const Board& board = scene.board();
     REQUIRE(board.traces.size() == f.pristine.traces.size() + 1);

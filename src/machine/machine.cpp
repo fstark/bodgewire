@@ -112,13 +112,14 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
     }
 
     const std::size_t islands = FindIslands(machine.pristine_).islandSize.size();
-    for (const CrackDecl& crack : puzzle.cracks) {
+    for (const CrackDecl& decl : puzzle.cracks) {
+        const Crack crack{decl.layer, decl.at};
         if (const auto trace = FindCrackTrace(machine.pristine_, crack.layer, crack.at); !trace) {
-            error(crack.line, trace.error());
+            error(decl.line, trace.error());
             continue;
         }
         if (FindIslands(CrackBoard(machine.pristine_, {&crack, 1})).islandSize.size() <= islands) {
-            error(crack.line,
+            error(decl.line,
                   "crack at " + FormatPoint(crack.layer, crack.at) + " does not cut the copper");
             continue;
         }
@@ -186,7 +187,7 @@ bool Machine::swap(std::string_view reference) {
 }
 
 bool Machine::mend(Layer layer, Point at) {
-    const auto near = [&](const CrackDecl& crack) {
+    const auto near = [&](const Crack& crack) {
         return crack.layer == layer &&
                std::hypot(static_cast<double>(crack.at.x - at.x),
                           static_cast<double>(crack.at.y - at.y)) <= kMendReach;
@@ -203,7 +204,7 @@ bool Machine::cut(Layer layer, Point at) {
     if (!FindCrackTrace(board_, layer, at)) {
         return false;
     }
-    cuts_.push_back({0, layer, at});
+    cuts_.push_back({layer, at});
     rebuildBoard();
     return true;
 }
@@ -252,7 +253,7 @@ bool Machine::removeBridge(const PinRef& a, const PinRef& b) {
 }
 
 void Machine::rebuildBoard() {
-    std::vector<CrackDecl> all = cracks_;
+    std::vector<Crack> all = cracks_;
     all.insert(all.end(), cuts_.begin(), cuts_.end());
     board_ = CrackBoard(pristine_, all);
     for (const WireEnds& w : wires_) {

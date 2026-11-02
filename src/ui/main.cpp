@@ -525,7 +525,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         }
         if (machine) {
             std::vector<CutMark> cuts;
-            for (const CrackDecl& cut : machine->cuts()) {
+            for (const Crack& cut : machine->cuts()) {
                 cuts.push_back({cut.layer, cut.at});
             }
             boardView.setCuts(cuts);

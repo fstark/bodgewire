@@ -41,7 +41,7 @@ std::size_t IslandCount(const Board& board) { return FindIslands(board).islandSi
 TEST_CASE("crack: splits the Trace into two islands", "[machine]") {
     const Board board = Joined();
     REQUIRE(IslandCount(board) == 1);
-    const CrackDecl crack{1, Layer::Front, Mm(5, 0.1)};
+    const Crack crack{Layer::Front, Mm(5, 0.1)};
     REQUIRE(FindCrackTrace(board, Layer::Front, crack.at) == 0u);
     const Board cracked = CrackBoard(board, {&crack, 1});
     CHECK(cracked.traces.size() == 2);
@@ -49,7 +49,7 @@ TEST_CASE("crack: splits the Trace into two islands", "[machine]") {
 }
 
 TEST_CASE("crack: two cracks on one Trace", "[machine]") {
-    const CrackDecl cracks[] = {{1, Layer::Front, Mm(3, 0)}, {2, Layer::Front, Mm(7, 0)}};
+    const Crack cracks[] = {{Layer::Front, Mm(3, 0)}, {Layer::Front, Mm(7, 0)}};
     const Board cracked = CrackBoard(Joined(), cracks);
     CHECK(cracked.traces.size() == 3);
     CHECK(IslandCount(cracked) == 3);
@@ -69,7 +69,7 @@ TEST_CASE("crack: arc Traces are refused", "[machine]") {
 }
 
 TEST_CASE("crack: next to a pad does not cut", "[machine]") {
-    const CrackDecl crack{1, Layer::Front, Mm(0.3, 0)};
+    const Crack crack{Layer::Front, Mm(0.3, 0)};
     CHECK(IslandCount(CrackBoard(Joined(), {&crack, 1})) == 1);
 }
 

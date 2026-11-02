@@ -1,5 +1,6 @@
 #pragma once
 
+#include "machine/crack.hpp"
 #include "machine/puzzle.hpp"
 
 namespace bw {
@@ -10,7 +11,7 @@ inline constexpr Point kH0Crack{137'590'000, 99'170'000};
 
 // Midpoint of the long segment of the only VCC Trace at R1.1 of boards/counter (the stub at the
 // pad is too short to crack): R1's rail side cut off.
-inline constexpr CrackDecl kR1VccCracks[] = {{1, Layer::Back, {128'310'000, 106'300'000}}};
+inline constexpr Crack kR1VccCracks[] = {{Layer::Back, {128'310'000, 106'300'000}}};
 
 // Midpoint of the straight C19 Trace (U5.QD → D1.K) of boards/counter; also in
 // puzzles/dark_led.bwp.
@@ -32,6 +33,6 @@ inline constexpr Point kBtnNCrack{100'030'000, 87'000'000};
 inline constexpr Point kN2Crack{58'860'000, 71'170'000};
 
 // Midpoint of the F.Cu GND Trace at SW1 pad 2 of boards/dice: SW1's rail end cut off.
-inline constexpr CrackDecl kSw1GndCracks[] = {{1, Layer::Front, {109'230'000, 89'770'000}}};
+inline constexpr Crack kSw1GndCracks[] = {{Layer::Front, {109'230'000, 89'770'000}}};
 
 }  // namespace bw

@@ -5,6 +5,7 @@
 #include <format>
 #include <optional>
 
+#include "machine/puzzle.hpp"
 #include "sim/check.hpp"
 
 namespace bw {
@@ -65,9 +66,9 @@ std::expected<std::size_t, std::string> FindCrackTrace(const Board& board, Layer
     return *best;
 }
 
-Board CrackBoard(const Board& board, std::span<const CrackDecl> cracks) {
+Board CrackBoard(const Board& board, std::span<const Crack> cracks) {
     Board result = board;
-    for (const CrackDecl& crack : cracks) {
+    for (const Crack& crack : cracks) {
         const auto index = FindCrackTrace(result, crack.layer, crack.at);
         Check(index.has_value(), "crack: not on a straight Trace");
         const Trace t = result.traces[*index];

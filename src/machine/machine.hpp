@@ -11,6 +11,7 @@
 
 #include "board/board.hpp"
 #include "board/copper.hpp"
+#include "machine/crack.hpp"
 #include "machine/electrical.hpp"
 #include "machine/puzzle.hpp"
 #include "netlist/builder.hpp"
@@ -42,7 +43,7 @@ public:
     bool addWire(const PinRef& a, const PinRef& b);       // false: unknown pad, or the same pad
     bool removeWire(const PinRef& a, const PinRef& b);    // either order; false: no such wire
     bool removeBridge(const PinRef& a, const PinRef& b);  // either order; false: no such bridge
-    std::span<const CrackDecl> cuts() const { return cuts_; }
+    std::span<const Crack> cuts() const { return cuts_; }
     std::span<const WireEnds> wires() const { return wires_; }
     std::span<const WireEnds> bridges() const { return bridges_; }
     LoadResult build() const;                      // electrical Circuit with the current Faults
@@ -73,8 +74,8 @@ private:
     std::unique_ptr<LoadedCircuit> designCircuit_;  // design Nets: pin lookup, check-board
     Board pristine_, board_;                        // see rebuildBoard()
     std::vector<StuckPin> stuck_;
-    std::vector<CrackDecl> cracks_;
-    std::vector<CrackDecl> cuts_;  // line 0
+    std::vector<Crack> cracks_;
+    std::vector<Crack> cuts_;
     std::vector<WireEnds> wires_;
     std::vector<WireEnds> bridges_;  // Solder Bridges: same shape as a Bodge Wire
     BoardPower power_;               // of board_, see rebuildBoard()
