@@ -143,7 +143,7 @@ PickReach Reach(double pixelsPerMm) {
 }  // namespace
 
 TEST_CASE("view: outline of every Board is a rectangle", "[view]") {
-    for (const std::string name : {"counter", "test_pattern", "chaser"}) {
+    for (const std::string name : {"counter", "test_pattern", "chaser", "dice"}) {
         const Fixture f = Load(name);
         const BoardScene scene = Scene(f);
         REQUIRE(scene.outline().size() == 4);
@@ -422,7 +422,7 @@ TEST_CASE("view: highlight crosses the broken_trace crack", "[view]") {
 }
 
 TEST_CASE("view: every Trace and via has a design Net", "[view]") {
-    for (const std::string name : {"counter", "test_pattern", "chaser"}) {
+    for (const std::string name : {"counter", "test_pattern", "chaser", "dice"}) {
         const Fixture f = Load(name);
         const BoardScene scene = Scene(f);
         for (std::size_t t = 0; t < scene.board().traces.size(); ++t) {
@@ -493,4 +493,21 @@ TEST_CASE("leads: labels", "[view]") {
     const BoardScene counterScene = Scene(counter);
     const std::size_t r1 = ComponentIndex(counterScene.board(), "R1");
     CHECK(LeadLabel(counterScene, {HitKind::Pad, r1, 0}) == "R1.1");
+}
+
+TEST_CASE("view: bodyAt is a courtyard away from the pads", "[view]") {
+    const Fixture f = Load("dice");
+    const BoardScene scene = Scene(f);
+    const Board& board = scene.board();
+    const std::size_t sw1 = ComponentIndex(board, "SW1");
+    REQUIRE(board.components[sw1].pads.size() == 2);
+    const Point a = board.components[sw1].pads[0].position;
+    const Point b = board.components[sw1].pads[1].position;
+    CHECK(scene.bodyAt({(a.x + b.x) / 2, (a.y + b.y) / 2}) == sw1);
+    CHECK_FALSE(scene.bodyAt(a).has_value());
+    CHECK_FALSE(scene.bodyAt({scene.bounds().min.x - 1'000'000, a.y}).has_value());
+    // SW1's courtyard comes from its F.CrtYd lines: taller than the pads.
+    const auto courtyard = scene.courtyard(sw1);
+    const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
+    CHECK(maxY.y - minY.y >= 3'500'000);
 }

@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
 
@@ -87,6 +88,18 @@ TEST_CASE("dice: six roll lengths give six faces", "[machines]") {
         REQUIRE(face.count <= 6);
         CHECK(face.leds == Pattern(face.count));
         faces.insert(face.count);
+    }
+    CHECK(faces == std::set<int>{1, 2, 3, 4, 5, 6});
+}
+
+TEST_CASE("dice: the Board build rolls six faces", "[machines]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "dice.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    std::set<int> faces;
+    for (int k = 0; k < 6; ++k) {
+        faces.insert(Roll(**built, 100_us + k * 1_us).count);
     }
     CHECK(faces == std::set<int>{1, 2, 3, 4, 5, 6});
 }

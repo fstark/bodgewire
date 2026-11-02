@@ -182,11 +182,28 @@ private:
             return Point{origin.x + std::llround(x * cos + y * sin),
                          origin.y + std::llround(-x * sin + y * cos)};
         };
-        std::optional<std::pair<Point, Point>> lineBox;  // local min, max of .CrtYd fp_lines
+        // Local boxes: .CrtYd fp_lines, and the pads (some library line outlines cut through one).
+        std::optional<std::pair<Point, Point>> lineBox, padBox;
+        const auto grow = [](std::optional<std::pair<Point, Point>>& box, Point p) {
+            if (!box) {
+                box = {p, p};
+            }
+            auto& [min, max] = *box;
+            min = {std::min(min.x, p.x), std::min(min.y, p.y)};
+            max = {std::max(max.x, p.x), std::max(max.y, p.y)};
+        };
         for (const SExpr& child : node.list) {
             const std::string_view head = child.head();
             if (head == "pad") {
                 readPad(child, component, place);
+                const SExpr* at = child.find("at");
+                if (at != nullptr && child.find("size") != nullptr) {
+                    const Point size = point(child, "size");
+                    const std::int64_t half = std::max(size.x, size.y) / 2;
+                    const Point c{length(*at, 1), length(*at, 2)};
+                    grow(padBox, {c.x - half, c.y - half});
+                    grow(padBox, {c.x + half, c.y + half});
+                }
             } else if (head == "zone") {
                 error(child, "copper zones are not supported");
             } else if (head.starts_with("fp_") && IsCopper(LayerOf(child))) {
@@ -196,16 +213,15 @@ private:
                 component.courtyard = readCourtyard(child, place);
             } else if (head == "fp_line" && LayerOf(child).ends_with(".CrtYd")) {
                 for (const Point p : {point(child, "start"), point(child, "end")}) {
-                    if (!lineBox) {
-                        lineBox = {p, p};
-                    }
-                    auto& [min, max] = *lineBox;
-                    min = {std::min(min.x, p.x), std::min(min.y, p.y)};
-                    max = {std::max(max.x, p.x), std::max(max.y, p.y)};
+                    grow(lineBox, p);
                 }
             }
         }
         if (component.courtyard.empty() && lineBox) {
+            if (padBox) {
+                grow(lineBox, padBox->first);
+                grow(lineBox, padBox->second);
+            }
             const auto [a, c] = *lineBox;
             for (const Point p : {a, Point{c.x, a.y}, c, Point{a.x, c.y}}) {
                 component.courtyard.push_back(

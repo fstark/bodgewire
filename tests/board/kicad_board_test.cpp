@@ -184,15 +184,24 @@ TEST_CASE("kicad board: courtyard poly", "[board]") {
 }
 
 TEST_CASE("kicad board: courtyard from lines is their placed bounding box", "[board]") {
-    const std::string lines = "    (fp_line (start -1 -2) (end 3 -2) (layer \"F.CrtYd\"))\n"
-                              "    (fp_line (start 3 -2) (end 3 4) (layer \"F.CrtYd\"))\n"
-                              "    (fp_line (start 3 4) (end -1 4) (layer \"F.CrtYd\"))\n"
+    const std::string lines = "    (fp_line (start -1 -2) (end 4 -2) (layer \"F.CrtYd\"))\n"
+                              "    (fp_line (start 4 -2) (end 4 4) (layer \"F.CrtYd\"))\n"
+                              "    (fp_line (start 4 4) (end -1 4) (layer \"F.CrtYd\"))\n"
                               "    (fp_line (start 0 0) (end 9 9) (layer \"F.SilkS\"))\n";
     const Board board = Read(Footprint("10 20 90", lines + std::string(kTwoPads)));
     CHECK(board.components[0].courtyard == std::vector<Point>{{8 * kMm, 21 * kMm},
-                                                              {8 * kMm, 17 * kMm},
-                                                              {14 * kMm, 17 * kMm},
+                                                              {8 * kMm, 16 * kMm},
+                                                              {14 * kMm, 16 * kMm},
                                                               {14 * kMm, 21 * kMm}});
+    // Lines stopping short of a pad: the box grows to cover it.
+    const Board short_ =
+        Read(Footprint("10 20", "    (fp_line (start 0 0) (end 1 1) (layer \"F.CrtYd\"))\n" +
+                                    std::string(kTwoPads)));
+    CHECK(short_.components[0].courtyard ==
+          std::vector<Point>{{10 * kMm - 800'000, 20 * kMm - 800'000},
+                             {12'540'000 + 800'000, 20 * kMm - 800'000},
+                             {12'540'000 + 800'000, 21 * kMm + 800'000},
+                             {10 * kMm - 800'000, 21 * kMm + 800'000}});
     const Board withRect = Read(
         Footprint("10 20", lines + "    (fp_rect (start 0 0) (end 1 1) (layer \"F.CrtYd\"))\n" +
                                std::string(kTwoPads)));
