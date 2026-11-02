@@ -18,6 +18,11 @@ struct Crack {
     bool operator==(const Crack&) const = default;
 };
 
+// Crack `percent` (0–100) along the crackable Copper from the pad under `a` to the pad under `b`
+// (pad centres). Errors: "pads not joined by Copper", "no crackable Trace between the pads",
+// "does not separate the pads".
+std::expected<Crack, std::string> PlaceCrack(const Board& board, Point a, Point b, double percent);
+
 // Straight Trace on `layer` whose centre line is nearest to `at`, within half its width.
 std::expected<std::size_t, std::string> FindCrackTrace(const Board& board, Layer layer, Point at);
 

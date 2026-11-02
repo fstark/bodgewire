@@ -252,6 +252,26 @@ bool Machine::removeBridge(const PinRef& a, const PinRef& b) {
     return true;
 }
 
+std::expected<Crack, std::string> Machine::placeCrack(const PinRef& a, const PinRef& b,
+                                                      double percent) const {
+    const std::string prefix =
+        "crack " + a.reference + "." + a.pin + " " + b.reference + "." + b.pin + ": ";
+    const auto pa = padOf(a);
+    const auto pb = padOf(b);
+    if (!pa || !pb) {
+        return std::unexpected(prefix + "unknown pad");
+    }
+    if (pa->reference == pb->reference && pa->pin == pb->pin) {
+        return std::unexpected(prefix + "two different pads");
+    }
+    auto crack = PlaceCrack(pristine_, *padPosition(pa->reference, pa->pin),
+                            *padPosition(pb->reference, pb->pin), percent);
+    if (!crack) {
+        return std::unexpected(prefix + crack.error());
+    }
+    return *crack;
+}
+
 void Machine::rebuildBoard() {
     std::vector<Crack> all = cracks_;
     all.insert(all.end(), cuts_.begin(), cuts_.end());

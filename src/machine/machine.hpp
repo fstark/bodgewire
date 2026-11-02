@@ -43,6 +43,10 @@ public:
     bool addWire(const PinRef& a, const PinRef& b);       // false: unknown pad, or the same pad
     bool removeWire(const PinRef& a, const PinRef& b);    // either order; false: no such wire
     bool removeBridge(const PinRef& a, const PinRef& b);  // either order; false: no such bridge
+    std::span<const Crack> cracks() const { return cracks_; }  // the Puzzle's Broken Traces
+    // A crack on the fault-free Board; errors say "crack A B: …" with the pins as given.
+    std::expected<Crack, std::string> placeCrack(const PinRef& a, const PinRef& b,
+                                                 double percent) const;
     std::span<const Crack> cuts() const { return cuts_; }
     std::span<const WireEnds> wires() const { return wires_; }
     std::span<const WireEnds> bridges() const { return bridges_; }

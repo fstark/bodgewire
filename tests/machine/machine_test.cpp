@@ -364,3 +364,22 @@ TEST_CASE("machine: bridge joins two pads until removed", "[machine]") {
     CHECK_FALSE(PadsConnected(*machine, "U1", "7", "U1", "8"));
     CHECK_FALSE(machine->removeBridge({"U1", "7"}, {"U1", "8"}));
 }
+
+TEST_CASE("machine: placeCrack", "[machine]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    REQUIRE(machine.has_value());
+    CHECK(machine->cracks().empty());
+    const auto crack = machine->placeCrack({"U1", "QA"}, {"U13", "2B"}, 50);
+    REQUIRE(crack.has_value());
+    const Point qa = *machine->padPosition("U1", "14");
+    const Point b2 = *machine->padPosition("U13", "6");
+    REQUIRE(machine->connected(Layer::Front, qa, Layer::Front, b2));
+    REQUIRE(machine->cut(crack->layer, crack->at));
+    CHECK_FALSE(machine->connected(Layer::Front, qa, Layer::Front, b2));
+    CHECK(machine->placeCrack({"U1", "QA"}, {"U1", "14"}, 50).error() ==
+          "crack U1.QA U1.14: two different pads");
+    CHECK(machine->placeCrack({"U1", "QA"}, {"U5", "A"}, 50).error() ==
+          "crack U1.QA U5.A: pads not joined by Copper");
+    CHECK(machine->placeCrack({"U1", "QA"}, {"U99", "1"}, 50).error() ==
+          "crack U1.QA U99.1: unknown pad");
+}

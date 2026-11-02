@@ -2,9 +2,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <deque>
 #include <format>
 #include <optional>
+#include <vector>
 
+#include "board/copper.hpp"
 #include "machine/puzzle.hpp"
 #include "sim/check.hpp"
 
@@ -37,7 +41,135 @@ double Distance(Vec p, Vec a, Vec b) {
     return std::hypot(p.x - (a.x + (b.x - a.x) * t), p.y - (a.y + (b.y - a.y) * t));
 }
 
+constexpr double kCrackStep = 10'000;  // nm between tried crack positions
+
+// A crackable run along one Trace.
+struct Stretch {
+    std::size_t trace;  // index into board.traces
+    bool reversed;      // the path enters at Trace::end
+    double from, to;    // nm along the Trace from its entry end; from <= to
+};
+
+// Fewest-items path from `from` to `to`; BFS with neighbours in ascending order.
+std::optional<std::vector<std::uint32_t>> Path(const CopperGraph& graph, std::uint32_t from,
+                                               std::uint32_t to) {
+    constexpr std::uint32_t kNone = UINT32_MAX;
+    std::vector<std::uint32_t> previous(graph.touching.size(), kNone);
+    std::deque<std::uint32_t> queue{from};
+    previous[from] = from;
+    while (!queue.empty() && previous[to] == kNone) {
+        const std::uint32_t item = queue.front();
+        queue.pop_front();
+        for (const std::uint32_t next : graph.touching[item]) {
+            if (previous[next] == kNone) {
+                previous[next] = item;
+                queue.push_back(next);
+            }
+        }
+    }
+    if (previous[to] == kNone) {
+        return std::nullopt;
+    }
+    std::vector<std::uint32_t> path{to};
+    while (path.back() != from) {
+        path.push_back(previous[path.back()]);
+    }
+    std::ranges::reverse(path);
+    return path;
+}
+
+Vec Along(Vec entry, Vec exit, double length, double s) {
+    return {entry.x + (exit.x - entry.x) * s / length, entry.y + (exit.y - entry.y) * s / length};
+}
+
+std::vector<Stretch> Stretches(const Board& board, const CopperGraph& graph,
+                               std::span<const std::uint32_t> path, Point a) {
+    std::vector<Stretch> stretches;
+    Vec cursor = ToVec(a);
+    const std::uint32_t firstTrace = graph.pads + graph.vias;
+    for (const std::uint32_t item : path) {
+        if (item < firstTrace) {
+            continue;
+        }
+        const std::size_t index = item - firstTrace;
+        const Trace& t = board.traces[index];
+        const Vec start = ToVec(t.start);
+        const Vec end = ToVec(t.end);
+        const bool reversed = std::hypot(end.x - cursor.x, end.y - cursor.y) <
+                              std::hypot(start.x - cursor.x, start.y - cursor.y);
+        const Vec entry = reversed ? end : start;
+        const Vec exit = reversed ? start : end;
+        cursor = exit;
+        if (t.mid) {
+            continue;
+        }
+        const double length = std::hypot(exit.x - entry.x, exit.y - entry.y);
+        const double gap = static_cast<double>(t.width) / 2 + kCrackMargin;
+        std::optional<Stretch> run;
+        for (double s = gap; s <= length - gap; s += kCrackStep) {
+            const Trace piece{t.layer, ToPoint(Along(entry, exit, length, s - gap)),
+                              ToPoint(Along(entry, exit, length, s + gap)), std::nullopt, t.width};
+            const bool clear = std::ranges::none_of(graph.touching[item], [&](std::uint32_t other) {
+                return Touches(board, other, piece);
+            });
+            if (clear) {
+                if (!run) {
+                    run = Stretch{index, reversed, s, s};
+                }
+                run->to = s;
+            } else if (run) {
+                stretches.push_back(*run);
+                run.reset();
+            }
+        }
+        if (run) {
+            stretches.push_back(*run);
+        }
+    }
+    return stretches;
+}
+
 }  // namespace
+
+std::expected<Crack, std::string> PlaceCrack(const Board& board, Point a, Point b, double percent) {
+    const auto ia = PadItemAt(board, a);
+    const auto ib = PadItemAt(board, b);
+    Check(ia && ib, "PlaceCrack: not a pad centre");
+    const CopperGraph graph = BuildCopperGraph(board);
+    const auto path = Path(graph, *ia, *ib);
+    if (!path) {
+        return std::unexpected(std::string("pads not joined by Copper"));
+    }
+    const std::vector<Stretch> stretches = Stretches(board, graph, *path, a);
+    if (stretches.empty()) {
+        return std::unexpected(std::string("no crackable Trace between the pads"));
+    }
+    double total = 0;
+    for (const Stretch& stretch : stretches) {
+        total += stretch.to - stretch.from;
+    }
+    double target = percent / 100 * total;
+    const Stretch* chosen = nullptr;
+    double s = 0;
+    for (const Stretch& stretch : stretches) {
+        const double length = stretch.to - stretch.from;
+        if (target <= length || &stretch == &stretches.back()) {
+            chosen = &stretch;
+            s = stretch.from + std::min(target, length);
+            break;
+        }
+        target -= length;
+    }
+    const Trace& t = board.traces[chosen->trace];
+    const Vec entry = ToVec(chosen->reversed ? t.end : t.start);
+    const Vec exit = ToVec(chosen->reversed ? t.start : t.end);
+    const double length = std::hypot(exit.x - entry.x, exit.y - entry.y);
+    const Crack crack{t.layer, ToPoint(Along(entry, exit, length, s))};
+    if (Path(BuildCopperGraph(CrackBoard(board, {&crack, 1})), *ia, *ib)) {
+        return std::unexpected(std::string("does not separate the pads"));
+    }
+    return crack;
+}
 
 std::expected<std::size_t, std::string> FindCrackTrace(const Board& board, Layer layer, Point at) {
     const Vec p = ToVec(at);
