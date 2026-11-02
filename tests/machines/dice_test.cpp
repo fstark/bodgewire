@@ -174,7 +174,7 @@ TEST_CASE("dice: dead_button", "[machines]") {
         CHECK(sim.isFloating(atSwitch));
         CHECK(Read(loaded, sim).count == before.count);
     }
-    REQUIRE(machine.mend(Layer::Front, kBtnNCrack));
+    REQUIRE(machine.mend(BtnNCrack().layer, BtnNCrack().at));
     CheckSixFaces(machine);
 }
 
@@ -188,7 +188,7 @@ TEST_CASE("dice: loaded_dice", "[machines]") {
     }
     CHECK(shown == std::set<std::string>{"0101010", "1110111"});  // a 3 and a 6
 
-    REQUIRE(machine.mend(Layer::Back, kN2Crack));
+    REQUIRE(machine.mend(N2Crack().layer, N2Crack().at));
     CheckSixFaces(machine);
 }
 

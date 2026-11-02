@@ -70,8 +70,8 @@ TEST_CASE("board repair: stuck gate", "[machines]") {
 }
 
 TEST_CASE("board repair: broken trace", "[machines]") {
-    CHECK(Repaired("broken_trace", MendRepair{Layer::Front, kH0Crack}) == FaultFree());
-    const Point away{kH0Crack.x + 5'000'000, kH0Crack.y};
+    CHECK(Repaired("broken_trace", MendRepair{H0Crack().layer, H0Crack().at}) == FaultFree());
+    const Point away{H0Crack().at.x + 5'000'000, H0Crack().at.y};
     CHECK(Repaired("broken_trace", MendRepair{Layer::Front, away}) != FaultFree());
 }
 
@@ -83,8 +83,8 @@ TEST_CASE("board repair: rebuild time", "[.perf]") {
     std::chrono::duration<double, std::milli> total{0};
     for (int i = 0; i < kRebuilds; ++i) {
         session.powerOff();
-        REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
-        REQUIRE(session.repair(CutRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+        REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
+        REQUIRE(session.repair(CutRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
         const auto start = std::chrono::steady_clock::now();
         session.powerOn(1, 1_ms);
         total += std::chrono::steady_clock::now() - start;

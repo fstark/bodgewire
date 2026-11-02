@@ -33,14 +33,14 @@ void RunTo(Session& session, Time t) {
 
 // Point `nm` along the H0 Trace from the broken_trace crack.
 Point Along(const Machine& machine, double nm) {
-    const auto index = FindCrackTrace(machine.pristineBoard(), Layer::Front, kH0Crack);
+    const auto index = FindCrackTrace(machine.pristineBoard(), H0Crack().layer, H0Crack().at);
     REQUIRE(index.has_value());
     const Trace& h0 = machine.pristineBoard().traces[*index];
     const double dx = static_cast<double>(h0.end.x - h0.start.x);
     const double dy = static_cast<double>(h0.end.y - h0.start.y);
     const double length = std::hypot(dx, dy);
-    return Point{kH0Crack.x + static_cast<std::int64_t>(dx / length * nm),
-                 kH0Crack.y + static_cast<std::int64_t>(dy / length * nm)};
+    return Point{H0Crack().at.x + static_cast<std::int64_t>(dx / length * nm),
+                 H0Crack().at.y + static_cast<std::int64_t>(dy / length * nm)};
 }
 
 }  // namespace
@@ -64,7 +64,7 @@ TEST_CASE("session: drawn Board unchanged by a mend", "[session]") {
     Session session = PuzzleSession("broken_trace");
     const std::vector<Trace> before = session.drawnBoard()->traces;
     const std::size_t machineTraces = session.machine()->board().traces.size();
-    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     const std::vector<Trace>& after = session.drawnBoard()->traces;
     REQUIRE(after.size() == before.size());
     for (std::size_t t = 0; t < before.size(); ++t) {
@@ -89,7 +89,7 @@ TEST_CASE("session: probe across a mend", "[session]") {
     session.powerOn(1);
     RunTo(session, 1_ms);
     session.powerOff();
-    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     session.powerOn(1);
     REQUIRE(session.probeTip().has_value());
     CHECK(session.probeTip()->at == right);
@@ -126,7 +126,7 @@ TEST_CASE("session: clips survive a repair", "[session]") {
     session.powerOn(1);
     RunTo(session, 1_ms);
     session.powerOff();
-    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     session.powerOn(1);
     CHECK(session.clipNet(0) == session.clipNet(1));
     session.powerOff();
@@ -159,7 +159,7 @@ TEST_CASE("session: a capture is not re-armed by a repair", "[session]") {
     RunTo(session, 5_ms);
     REQUIRE(session.analyzerPhase() == AnalyzerPhase::Captured);
     session.powerOff();
-    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     session.powerOn(1);
     RunTo(session, 6_ms);
     CHECK(session.analyzerPhase() == AnalyzerPhase::Idle);
@@ -228,7 +228,7 @@ TEST_CASE("session: continuity follows a mend", "[session]") {
     CHECK_FALSE(session.continuity().has_value());
     REQUIRE(session.placeLead({far->at, Layer::Front, far->label}));
     CHECK(session.continuity() == false);
-    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     CHECK(session.continuity() == true);
     session.setMeterMode(MeterMode::Volts);
     CHECK_FALSE(session.continuity().has_value());
@@ -244,7 +244,7 @@ TEST_CASE("session: hooks and leads survive a repair", "[session]") {
     RunTo(session, 1_ms);
     CHECK(session.hookNet(0) != PinNet(session.circuit(), "U1", "14"));
     session.powerOff();
-    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     session.powerOn(1);
     const auto qa = PinNet(session.circuit(), "U1", "14");
     CHECK(session.hookNet(0) == PinNet(session.circuit(), "U13", "6"));
@@ -298,11 +298,11 @@ const WireRepair kH0Wire{{"U1", "14"}, {"U13", "6"}};
 TEST_CASE("session: cut and wire only with the power off", "[session]") {
     Session session = PuzzleSession("broken_trace");
     session.powerOn(1);
-    CHECK(session.repair(CutRepair{Layer::Front, kH0Crack}) == RepairResult::Refused);
+    CHECK(session.repair(CutRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Refused);
     CHECK(session.repair(kH0Wire) == RepairResult::Refused);
     CHECK(session.repair(UnwireRepair{kH0Wire.a, kH0Wire.b}) == RepairResult::Refused);
     session.powerOff();
-    CHECK(session.repair(CutRepair{Layer::Front, kH0Crack}) == RepairResult::Unknown);
+    CHECK(session.repair(CutRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Unknown);
     CHECK(session.repair(kH0Wire) == RepairResult::Done);
     REQUIRE_FALSE(session.log().empty());
     CHECK(session.log().back() == "wire U1.14 U13.6");
@@ -326,10 +326,10 @@ TEST_CASE("session: continuity across a cut", "[session]") {
     const std::size_t traces = session.drawnBoard()->traces.size();
     LeadsAcrossH0(session);
     CHECK(session.continuity() == true);
-    REQUIRE(session.repair(CutRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(CutRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     CHECK(session.continuity() == false);
     CHECK(session.drawnBoard()->traces.size() == traces);
-    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     CHECK(session.continuity() == true);
 }
 

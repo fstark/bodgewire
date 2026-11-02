@@ -22,8 +22,8 @@ struct StuckAtDecl {
 
 struct CrackDecl {
     std::uint32_t line;
-    Layer layer;
-    Point at;  // nm, KiCad coordinates
+    PinRef a, b;     // pin by number or name: U1.QA, R6.2
+    double percent;  // 0–100 along the crackable Copper from a to b
 };
 
 struct BridgeDecl {

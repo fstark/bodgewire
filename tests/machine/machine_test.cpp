@@ -60,16 +60,20 @@ TEST_CASE("machine: load errors", "[machine]") {
                     {3, "U3", "XX", LogicValue::Zero},
                     {4, "U3", "A", LogicValue::One},
                     {5, "J1", "1", LogicValue::One}};
-    puzzle.cracks = {{6, Layer::Front, {0, 0}}};
+    puzzle.cracks = {{6, {"U99", "1"}, {"U1", "QA"}, 50}};
     CHECK(Errors(puzzle) == Lines{"2: unknown reference 'U99'", "3: U3 (74LS161) has no pin XX",
                                   "4: U3.A (A) is not an output", "5: J1.1 (VCC) is not an output",
-                                  "6: no Trace at F.Cu 0.00 0.00"});
+                                  "6: unknown reference 'U99'"});
 }
 
-TEST_CASE("machine: a crack must cut the copper", "[machine]") {
+TEST_CASE("machine: crack errors", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.cracks = {{2, Layer::Front, {151'695'000, 100'080'000}}};  // H0 Trace end, on a pad
-    CHECK(Errors(puzzle) == Lines{"2: crack at F.Cu 151.69 100.08 does not cut the copper"});
+    puzzle.cracks = {{2, {"U1", "QA"}, {"U1", "14"}, 50},
+                     {3, {"U1", "QA"}, {"U5", "A"}, 50},
+                     {4, {"U1", "XX"}, {"U5", "A"}, 50}};
+    CHECK(Errors(puzzle) == Lines{"2: crack U1.QA U1.14: two different pads",
+                                  "3: crack U1.QA U5.A: pads not joined by Copper",
+                                  "4: U1 (74LS161) has no pin XX"});
 }
 
 TEST_CASE("machine: no faults builds the design", "[machine]") {
@@ -103,15 +107,15 @@ TEST_CASE("machine: swap removes only that chip's Stuck-at", "[machine]") {
 
 TEST_CASE("machine: mend near and far", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.cracks = {{2, Layer::Front, kH0Crack}};
+    puzzle.cracks = {{2, {"U1", "QA"}, {"U13", "2B"}, 79}};
     auto machine = LoadMachine(puzzle, Root());
     REQUIRE(machine.has_value());
     CHECK(machine->build().value()->nets.contains("H0~2"));
-    CHECK_FALSE(machine->mend(Layer::Front, {kH0Crack.x + 5'000'000, kH0Crack.y}));
-    CHECK_FALSE(machine->mend(Layer::Back, kH0Crack));
-    CHECK(machine->mend(Layer::Front, {kH0Crack.x + 900'000, kH0Crack.y}));
+    CHECK_FALSE(machine->mend(Layer::Front, {H0Crack().at.x + 5'000'000, H0Crack().at.y}));
+    CHECK_FALSE(machine->mend(Layer::Back, H0Crack().at));
+    CHECK(machine->mend(Layer::Front, {H0Crack().at.x + 900'000, H0Crack().at.y}));
     CHECK_FALSE(machine->build().value()->nets.contains("H0~2"));
-    CHECK_FALSE(machine->mend(Layer::Front, kH0Crack));
+    CHECK_FALSE(machine->mend(H0Crack().layer, H0Crack().at));
 }
 
 TEST_CASE("machine: HasBoard", "[machine]") {
@@ -183,15 +187,15 @@ TEST_CASE("machine: probeNet across a crack", "[machine]") {
     const LoadedCircuit& loaded = **built;
     const Board& board = machine->board();
 
-    const auto index = FindCrackTrace(machine->pristineBoard(), Layer::Front, kH0Crack);
+    const auto index = FindCrackTrace(machine->pristineBoard(), H0Crack().layer, H0Crack().at);
     REQUIRE(index.has_value());
     const Trace& h0 = machine->pristineBoard().traces[*index];
     const double dx = static_cast<double>(h0.end.x - h0.start.x);
     const double dy = static_cast<double>(h0.end.y - h0.start.y);
     const double length = std::hypot(dx, dy);
     const auto along = [&](double nm) {
-        return Point{kH0Crack.x + static_cast<std::int64_t>(dx / length * nm),
-                     kH0Crack.y + static_cast<std::int64_t>(dy / length * nm)};
+        return Point{H0Crack().at.x + static_cast<std::int64_t>(dx / length * nm),
+                     H0Crack().at.y + static_cast<std::int64_t>(dy / length * nm)};
     };
     const auto before = machine->probeNet(loaded, Layer::Front, along(-1'000'000));
     const auto after = machine->probeNet(loaded, Layer::Front, along(1'000'000));
@@ -318,12 +322,12 @@ TEST_CASE("machine: cut and mend", "[machine]") {
     REQUIRE(loaded.has_value());
     Machine& machine = *loaded;
     CHECK(PadsConnected(machine, "U1", "14", "U13", "6"));
-    CHECK(machine.cut(Layer::Front, kH0Crack));
+    CHECK(machine.cut(H0Crack().layer, H0Crack().at));
     CHECK_FALSE(PadsConnected(machine, "U1", "14", "U13", "6"));
     CHECK(machine.cuts().size() == 1);
-    CHECK_FALSE(machine.cut(Layer::Front, kH0Crack));
+    CHECK_FALSE(machine.cut(H0Crack().layer, H0Crack().at));
     CHECK_FALSE(machine.cut(Layer::Front, {0, 0}));
-    CHECK(machine.mend(Layer::Front, kH0Crack));
+    CHECK(machine.mend(H0Crack().layer, H0Crack().at));
     CHECK(PadsConnected(machine, "U1", "14", "U13", "6"));
     CHECK(machine.cuts().empty());
 }

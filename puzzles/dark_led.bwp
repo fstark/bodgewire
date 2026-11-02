@@ -2,4 +2,4 @@
 machine counter
 title "Dark LED"
 brief "The LED never lights."
-fault crack F.Cu 192.52 122
+fault crack U5.QD D1.1 51%

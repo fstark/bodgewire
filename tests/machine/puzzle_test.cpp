@@ -31,8 +31,8 @@ TEST_CASE("puzzle: valid file", "[machine]") {
                                     "machine test_pattern   # the board\n"
                                     "fault stuck U1.QC 0\n"
                                     "fault stuck U12.11 1\n"
-                                    "fault crack F.Cu 52.30 41.00\n"
-                                    "fault crack B.Cu -1 0.000001\n",
+                                    "fault crack U1.QA U13.14 30%\n"
+                                    "fault crack R6.2 D5.A 37.25%\n",
                                     "t.bwp");
     REQUIRE(result.has_value());
     const Puzzle& p = *result;
@@ -48,10 +48,16 @@ TEST_CASE("puzzle: valid file", "[machine]") {
     CHECK(p.stuck[1].value == LogicValue::One);
     REQUIRE(p.cracks.size() == 2);
     CHECK(p.cracks[0].line == 6);
-    CHECK(p.cracks[0].layer == Layer::Front);
-    CHECK(p.cracks[0].at == Point{52'300'000, 41'000'000});
-    CHECK(p.cracks[1].layer == Layer::Back);
-    CHECK(p.cracks[1].at == Point{-1'000'000, 1});
+    CHECK(p.cracks[0].a.reference == "U1");
+    CHECK(p.cracks[0].a.pin == "QA");
+    CHECK(p.cracks[0].b.reference == "U13");
+    CHECK(p.cracks[0].b.pin == "14");
+    CHECK(p.cracks[0].percent == 30);
+    CHECK(p.cracks[1].a.reference == "R6");
+    CHECK(p.cracks[1].a.pin == "2");
+    CHECK(p.cracks[1].b.reference == "D5");
+    CHECK(p.cracks[1].b.pin == "A");
+    CHECK(p.cracks[1].percent == 37.25);
 }
 
 TEST_CASE("puzzle: errors", "[machine]") {
@@ -66,10 +72,15 @@ TEST_CASE("puzzle: errors", "[machine]") {
     CHECK(Errors("machine m\nfault stuck U1.QA\nfault stuck U1 0\nfault stuck U1.QA 2\n") ==
           Lines{"2: expected: fault stuck REF.PIN 0|1", "3: expected: fault stuck REF.PIN 0|1",
                 "4: expected: fault stuck REF.PIN 0|1"});
-    CHECK(
-        Errors("machine m\nfault crack In1.Cu 1 2\nfault crack F.Cu 1\n") ==
-        Lines{"2: expected: fault crack F.Cu|B.Cu X Y", "3: expected: fault crack F.Cu|B.Cu X Y"});
-    CHECK(Errors("machine m\nfault crack F.Cu 1 2mm\n") == Lines{"2: bad coordinate '2mm'"});
+    const std::string expected = "expected: fault crack REF.PIN REF.PIN N%";
+    CHECK(Errors("machine m\nfault crack F.Cu 52.30 41.00\nfault crack U1.QA U2.1 50\n"
+                 "fault crack U1.QA U2 50%\nfault crack U1.QA 50%\n") ==
+          Lines{"2: " + expected, "3: " + expected, "4: " + expected, "5: " + expected});
+    CHECK(Errors("machine m\nfault crack U1.QA U2.1 101%\nfault crack U1.QA U2.1 1.234%\n"
+                 "fault crack U1.QA U2.1 %\nfault crack U1.QA U2.1 5.%\n"
+                 "fault crack U1.QA U2.1 -5%\n") ==
+          Lines{"2: bad position '101%'", "3: bad position '1.234%'", "4: bad position '%'",
+                "5: bad position '5.%'", "6: bad position '-5%'"});
     CHECK(Errors("machine m\nfault frob\n") == Lines{"2: expected: fault stuck|crack|bridge ..."});
     CHECK(Errors("machine m\nfault bridge U1.7\nfault bridge U17 U1.8\nfault bridge U1. U1.8\n") ==
           Lines{"2: expected: fault bridge REF.PIN REF.PIN",

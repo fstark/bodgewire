@@ -3,8 +3,6 @@
 #include <optional>
 #include <utility>
 
-#include "board/kicad_board.hpp"
-
 namespace bw {
 
 namespace {
@@ -41,14 +39,47 @@ bool IsMachineName(std::string_view text) {
     return true;
 }
 
-std::optional<Layer> ParseLayer(std::string_view text) {
-    if (text == "F.Cu") {
-        return Layer::Front;
+std::optional<PinRef> ParsePin(std::string_view token) {
+    const std::size_t dot = token.find('.');
+    if (dot == std::string_view::npos || dot == 0 || dot + 1 == token.size()) {
+        return std::nullopt;
     }
-    if (text == "B.Cu") {
-        return Layer::Back;
+    return PinRef{std::string(token.substr(0, dot)), std::string(token.substr(dot + 1))};
+}
+
+// "N%", "N.D%" or "N.DD%", at most 100.
+std::optional<double> ParsePercent(std::string_view text) {
+    if (text.size() < 2 || text.back() != '%') {
+        return std::nullopt;
     }
-    return std::nullopt;
+    text.remove_suffix(1);
+    const std::size_t dot = text.find('.');
+    const std::string_view whole = text.substr(0, dot);
+    const std::string_view decimals =
+        dot == std::string_view::npos ? std::string_view() : text.substr(dot + 1);
+    if (whole.empty() || whole.size() > 3 || decimals.size() > 2 ||
+        (dot != std::string_view::npos && decimals.empty())) {
+        return std::nullopt;
+    }
+    double value = 0;
+    for (const char c : whole) {
+        if (c < '0' || c > '9') {
+            return std::nullopt;
+        }
+        value = value * 10 + (c - '0');
+    }
+    double scale = 1;
+    for (const char c : decimals) {
+        if (c < '0' || c > '9') {
+            return std::nullopt;
+        }
+        scale /= 10;
+        value += (c - '0') * scale;
+    }
+    if (value > 100) {
+        return std::nullopt;
+    }
+    return value;
 }
 
 // `"TEXT"` then only spaces or a # comment; nullopt otherwise.
@@ -174,30 +205,23 @@ private:
     }
 
     void crack(std::uint32_t line, const std::vector<std::string_view>& tokens) {
-        const auto layer = tokens.size() == 5 ? ParseLayer(tokens[2]) : std::nullopt;
-        if (!layer) {
-            error(line, "expected: fault crack F.Cu|B.Cu X Y");
+        const auto a = tokens.size() == 5 ? ParsePin(tokens[2]) : std::nullopt;
+        const auto b = tokens.size() == 5 ? ParsePin(tokens[3]) : std::nullopt;
+        if (!a || !b || !tokens[4].ends_with('%')) {
+            error(line, "expected: fault crack REF.PIN REF.PIN N%");
             return;
         }
-        const auto x = ParseMillimetres(tokens[3]);
-        const auto y = ParseMillimetres(tokens[4]);
-        if (!x || !y) {
-            error(line, "bad coordinate '" + std::string(!x ? tokens[3] : tokens[4]) + "'");
+        const auto percent = ParsePercent(tokens[4]);
+        if (!percent) {
+            error(line, "bad position '" + std::string(tokens[4]) + "'");
             return;
         }
-        puzzle_.cracks.push_back({line, *layer, {*x, *y}});
+        puzzle_.cracks.push_back({line, *a, *b, *percent});
     }
 
     void bridge(std::uint32_t line, const std::vector<std::string_view>& tokens) {
-        const auto pin = [](std::string_view token) -> std::optional<PinRef> {
-            const std::size_t dot = token.find('.');
-            if (dot == std::string_view::npos || dot == 0 || dot + 1 == token.size()) {
-                return std::nullopt;
-            }
-            return PinRef{std::string(token.substr(0, dot)), std::string(token.substr(dot + 1))};
-        };
-        const auto a = tokens.size() == 4 ? pin(tokens[2]) : std::nullopt;
-        const auto b = tokens.size() == 4 ? pin(tokens[3]) : std::nullopt;
+        const auto a = tokens.size() == 4 ? ParsePin(tokens[2]) : std::nullopt;
+        const auto b = tokens.size() == 4 ? ParsePin(tokens[3]) : std::nullopt;
         if (!a || !b) {
             error(line, "expected: fault bridge REF.PIN REF.PIN");
             return;

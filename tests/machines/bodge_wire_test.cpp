@@ -59,9 +59,9 @@ TEST_CASE("bodge wire: broken trace repaired by a wire", "[machines]") {
 
 TEST_CASE("bodge wire: cut and mend on the test pattern", "[machines]") {
     Session session = TestPatternSession();
-    REQUIRE(session.repair(CutRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(CutRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     CHECK(Frame(session, 1) != FaultFree());
-    REQUIRE(session.repair(MendRepair{Layer::Front, kH0Crack}) == RepairResult::Done);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     CHECK(Frame(session, 1) == FaultFree());
 }
 

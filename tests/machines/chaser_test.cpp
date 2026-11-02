@@ -170,7 +170,7 @@ TEST_CASE("chaser: gap", "[machines][slow]") {
     const std::vector<std::string> stages = Stages(recorded);
     CHECK(std::ranges::count_if(stages, [](const std::string& e) { return e[4] == '0'; }) == 1);
 
-    REQUIRE(machine.mend(Layer::Front, kLedA5Crack));
+    REQUIRE(machine.mend(LedA5Crack().layer, LedA5Crack().at));
     for (const Sample& s : Record(machine, 1_ms, {"D5.A"}).at("D5.A")) {
         CHECK_FALSE(s.floating);
     }
@@ -197,7 +197,7 @@ TEST_CASE("chaser: dark_chaser", "[machines][slow]") {
         CHECK(entry == "11111111");
     }
 
-    REQUIRE(machine.mend(Layer::Back, kSerCrack));
+    REQUIRE(machine.mend(SerCrack().layer, SerCrack().at));
     CheckRunning(Stages(Record(machine, 18 * kStep, ChaserNames())));
 }
 

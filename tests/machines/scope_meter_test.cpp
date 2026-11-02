@@ -30,7 +30,7 @@ TEST_CASE("continuity: crack", "[machines]") {
     REQUIRE(far.has_value());
     CHECK_FALSE(machine.connected(Layer::Front, *qa, Layer::Front, *far));
     CHECK(machine.connected(Layer::Front, *qa, Layer::Back, *qa));
-    REQUIRE(machine.mend(Layer::Front, kH0Crack));
+    REQUIRE(machine.mend(H0Crack().layer, H0Crack().at));
     CHECK(machine.connected(Layer::Front, *qa, Layer::Front, *far));
 }
 

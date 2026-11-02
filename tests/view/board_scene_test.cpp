@@ -410,15 +410,16 @@ TEST_CASE("board scene: componentAt", "[view]") {
 
 TEST_CASE("view: highlight crosses the broken_trace crack", "[view]") {
     const Fixture f = Load("test_pattern");
-    const Crack crack{Layer::Front, kH0Crack};
+    const Crack crack = H0Crack();
     const BoardScene scene = Scene(f, {&crack, 1});
     const Board& board = scene.board();
     REQUIRE(board.traces.size() == f.pristine.traces.size() + 1);
     const NetId h0 = f.design->nets.at("H0");
     CHECK(scene.traceNet(board.traces.size() - 2) == h0);
     CHECK(scene.traceNet(board.traces.size() - 1) == h0);
-    const auto hit = scene.pick(kH0Crack, Layer::Front, {});
-    CHECK((!hit || hit->hit.kind != HitKind::Trace));
+    const auto hit = scene.pick(H0Crack().at, Layer::Front, {});
+    // A B.Cu Trace crosses under the crack: only the Front copper is cut.
+    CHECK((!hit || hit->hit.kind != HitKind::Trace || hit->layer != Layer::Front));
 }
 
 TEST_CASE("view: every Trace and via has a design Net", "[view]") {

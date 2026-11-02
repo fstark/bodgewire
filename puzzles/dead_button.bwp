@@ -2,4 +2,4 @@
 machine dice
 title "Dead button"
 brief "Pressing the button does nothing: the dice always shows the same face."
-fault crack F.Cu 100.03 87.00
+fault crack SW1.1 R9.2 48%

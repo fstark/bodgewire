@@ -179,7 +179,7 @@ TEST_CASE("counter: dark_led", "[machines]") {
     }
     CHECK(Glow(led.at("D1.A"), led.at("D1.K"), 40_ms) == std::vector<float>{0, 0});
 
-    REQUIRE(machine.mend(Layer::Front, kC19Crack));
+    REQUIRE(machine.mend(C19Crack().layer, C19Crack().at));
     auto loaded = machine.build();
     REQUIRE(loaded.has_value());
     CHECK(PinNet(**loaded, "D1", "K") == PinNet(**loaded, "U5", "QD"));

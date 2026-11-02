@@ -111,41 +111,38 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
         machine.stuck_.push_back({decl.reference, *pin, decl.value});
     }
 
-    const std::size_t islands = FindIslands(machine.pristine_).islandSize.size();
+    const auto known = [&](std::uint32_t line, const PinRef& pin) {
+        const auto part = std::ranges::find(loaded.parts, pin.reference, &LoadedPart::reference);
+        if (part == loaded.parts.end()) {
+            error(line, "unknown reference '" + pin.reference + "'");
+            return false;
+        }
+        if (!machine.padPosition(pin.reference, pin.pin)) {
+            error(line,
+                  pin.reference + " (" + std::string(part->info->name) + ") has no pin " + pin.pin);
+            return false;
+        }
+        return true;
+    };
     for (const CrackDecl& decl : puzzle.cracks) {
-        const Crack crack{decl.layer, decl.at};
-        if (const auto trace = FindCrackTrace(machine.pristine_, crack.layer, crack.at); !trace) {
-            error(decl.line, trace.error());
+        if (!known(decl.line, decl.a) || !known(decl.line, decl.b)) {
             continue;
         }
-        if (FindIslands(CrackBoard(machine.pristine_, {&crack, 1})).islandSize.size() <= islands) {
-            error(decl.line,
-                  "crack at " + FormatPoint(crack.layer, crack.at) + " does not cut the copper");
+        const auto crack = machine.placeCrack(decl.a, decl.b, decl.percent);
+        if (!crack) {
+            error(decl.line, crack.error());
             continue;
         }
-        machine.cracks_.push_back(crack);
+        machine.cracks_.push_back(*crack);
     }
     for (const BridgeDecl& decl : puzzle.bridges) {
         const std::string written = "bridge " + decl.a.reference + "." + decl.a.pin + " " +
                                     decl.b.reference + "." + decl.b.pin;
-        const auto known = [&](const PinRef& pin) {
-            if (!loaded.components.contains(pin.reference)) {
-                error(decl.line, "unknown reference '" + pin.reference + "'");
-                return false;
-            }
-            if (!machine.padOf(pin)) {
-                std::string part;
-                for (const LoadedPart& p : loaded.parts) {
-                    if (p.reference == pin.reference) {
-                        part = p.info->name;
-                    }
-                }
-                error(decl.line, pin.reference + " (" + part + ") has no pin " + pin.pin);
-                return false;
-            }
-            return true;
-        };
-        if (!known(decl.a) || !known(decl.b)) {
+        if (!known(decl.line, decl.a) || !known(decl.line, decl.b)) {
+            continue;
+        }
+        if (!machine.padOf(decl.a) || !machine.padOf(decl.b)) {
+            error(decl.line, written + ": pins of one chip only");
             continue;
         }
         const PinRef a = *machine.padOf(decl.a);
@@ -256,16 +253,15 @@ std::expected<Crack, std::string> Machine::placeCrack(const PinRef& a, const Pin
                                                       double percent) const {
     const std::string prefix =
         "crack " + a.reference + "." + a.pin + " " + b.reference + "." + b.pin + ": ";
-    const auto pa = padOf(a);
-    const auto pb = padOf(b);
-    if (!pa || !pb) {
+    const auto atA = padPosition(a.reference, a.pin);
+    const auto atB = padPosition(b.reference, b.pin);
+    if (!atA || !atB) {
         return std::unexpected(prefix + "unknown pad");
     }
-    if (pa->reference == pb->reference && pa->pin == pb->pin) {
+    if (*atA == *atB) {
         return std::unexpected(prefix + "two different pads");
     }
-    auto crack = PlaceCrack(pristine_, *padPosition(pa->reference, pa->pin),
-                            *padPosition(pb->reference, pb->pin), percent);
+    auto crack = PlaceCrack(pristine_, *atA, *atB, percent);
     if (!crack) {
         return std::unexpected(prefix + crack.error());
     }

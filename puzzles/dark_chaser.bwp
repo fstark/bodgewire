@@ -2,4 +2,4 @@
 machine chaser
 title "Dark chaser"
 brief "At power-on the light runs off the end of the row and never comes back."
-fault crack B.Cu 70.17 73.69
+fault crack U6.8 U5.1 50%

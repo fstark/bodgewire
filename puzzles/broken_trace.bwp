@@ -2,4 +2,4 @@
 machine test_pattern
 title "Missing grid lines"
 brief "The vertical lines of the test grid are gone; the horizontal ones are fine."
-fault crack F.Cu 137.59 99.17
+fault crack U1.QA U13.2B 79%

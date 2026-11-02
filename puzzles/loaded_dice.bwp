@@ -3,4 +3,4 @@
 machine dice
 title "Loaded dice"
 brief "The dice only ever shows 3 or 6."
-fault crack B.Cu 58.86 71.17
+fault crack U2.3 U4.6 52%

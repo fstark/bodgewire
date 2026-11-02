@@ -139,8 +139,8 @@ TEST_CASE("faults: broken trace", "[machines]") {
     CHECK(seen.lamps[1].ends_with("PULSE"));
 
     Machine wrong = LoadPuzzle("broken_trace");
-    CHECK_FALSE(wrong.mend(Layer::Front, {kH0Crack.x + 5'000'000, kH0Crack.y}));
+    CHECK_FALSE(wrong.mend(Layer::Front, {H0Crack().at.x + 5'000'000, H0Crack().at.y}));
     CHECK(Frame(wrong, seed) != good);
-    REQUIRE(machine.mend(Layer::Front, kH0Crack));
+    REQUIRE(machine.mend(H0Crack().layer, H0Crack().at));
     CHECK(Frame(machine, seed) == good);
 }

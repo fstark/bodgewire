@@ -83,7 +83,7 @@ TEST_CASE("electrical: uncracked board gives the design Nets", "[machine]") {
 
 TEST_CASE("electrical: crack on H0 splits it", "[machine]") {
     const Design design = LoadDesign("test_pattern");
-    const Crack crack{Layer::Front, kH0Crack};
+    const Crack crack = H0Crack();
     const Netlist netlist =
         ElectricalNetlist(design.netlist, *design.circuit, CrackBoard(design.board, {&crack, 1}));
     CHECK(NetOf(netlist, "U1.14") == "H0");    // QA
@@ -92,7 +92,7 @@ TEST_CASE("electrical: crack on H0 splits it", "[machine]") {
 
 TEST_CASE("electrical: island names match the electrical netlist", "[machine]") {
     const Design design = LoadDesign("test_pattern");
-    const Crack crack{Layer::Front, kH0Crack};
+    const Crack crack = H0Crack();
     const Board board = CrackBoard(design.board, {&crack, 1});
     const Islands islands = FindIslands(board);
     const auto names = IslandNetNames(*design.circuit, board, islands);
@@ -117,8 +117,8 @@ TEST_CASE("electrical: island names match the electrical netlist", "[machine]") 
 
 TEST_CASE("electrical: pull-up cut from VCC is left out", "[machine]") {
     const Design design = LoadDesign("counter");
-    const Netlist netlist =
-        ElectricalNetlist(design.netlist, *design.circuit, CrackBoard(design.board, kR1VccCracks));
+    const Netlist netlist = ElectricalNetlist(design.netlist, *design.circuit,
+                                              CrackBoard(design.board, {&R1VccCrack(), 1}));
     for (const PartDecl& part : netlist.parts) {
         CHECK(part.reference != "R1");
     }
@@ -128,8 +128,8 @@ TEST_CASE("electrical: pull-up cut from VCC is left out", "[machine]") {
 
 TEST_CASE("electrical: button cut from GND is left out", "[machine]") {
     const Design design = LoadDesign("dice");
-    const Netlist netlist =
-        ElectricalNetlist(design.netlist, *design.circuit, CrackBoard(design.board, kSw1GndCracks));
+    const Netlist netlist = ElectricalNetlist(design.netlist, *design.circuit,
+                                              CrackBoard(design.board, {&Sw1GndCrack(), 1}));
     for (const PartDecl& part : netlist.parts) {
         CHECK(part.reference != "SW1");
     }
@@ -141,7 +141,7 @@ TEST_CASE("electrical: button cut from GND is left out", "[machine]") {
 
 TEST_CASE("electrical: button alone on its signal island stays in", "[machine]") {
     const Design design = LoadDesign("dice");
-    const Crack crack{Layer::Front, kBtnNCrack};
+    const Crack crack = BtnNCrack();
     const Netlist netlist =
         ElectricalNetlist(design.netlist, *design.circuit, CrackBoard(design.board, {&crack, 1}));
     CHECK(NetOf(netlist, "SW1.1") == "BTN_N");
@@ -178,7 +178,7 @@ TEST_CASE("power: fault-free board powers every chip", "[machine]") {
 }
 
 TEST_CASE("power: cracked VCC stub leaves one chip Unpowered", "[machine]") {
-    const Machine machine = PowerMachine({{2, Layer::Front, {164'850'000, 51'050'000}}}, {});
+    const Machine machine = PowerMachine({{2, {"U6", "VCC"}, {"U10", "VCC"}, 24}}, {});
     CHECK(machine.power().unpowered == std::vector<std::string>{"U6"});
     CHECK_FALSE(machine.power().deadRail);
 }

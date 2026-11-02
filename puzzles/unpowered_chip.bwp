@@ -2,4 +2,4 @@
 machine test_pattern
 title "Picture breaks up"
 brief "The grid breaks into short slanted dashes all over the screen and will not hold still."
-fault crack F.Cu 164.85 51.05
+fault crack U6.VCC U10.VCC 24%

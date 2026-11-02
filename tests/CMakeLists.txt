@@ -23,6 +23,7 @@ add_executable(bw_tests
   machine/crack_test.cpp
   machine/electrical_test.cpp
   machine/machine_test.cpp
+  machine/test_points.cpp
   machine/press_test.cpp
   machine/puzzle_test.cpp
   machine/repair_test.cpp
