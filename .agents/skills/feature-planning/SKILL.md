@@ -56,8 +56,10 @@ numbered phases, build/test gates, and status tracking.
 
 1. Read the entire `XXX_DESIGN.md`.
 2. Read the matching `XXX.md` spec.
-3. Read any referenced project files (STYLE.md, NAMING.md, existing
-   source files at integration points).
+3. Read any referenced project files (STYLE.md, NAMING.md, recipes
+   in `docs/recipes/`, existing source files at integration points).
+   A phase may say "per ADD_PART.md" for the routine steps, but still
+   names the new files, classes and test cases.
 4. Note if anything in the design is stale (file moved, API changed).
    If so, flag it to the user before proceeding.
 

@@ -60,6 +60,10 @@ output is `XXX_DESIGN.md` (how it is built).
 
 ### Step 2 — Explore the Codebase
 
+First read the recipes listed in `AGENTS.md` that apply.  In the
+design, cite a recipe step ("74LS90: per ADD_PART.md") instead of
+re-deriving it, and explore only what no recipe covers.
+
 Before writing a single line of design, answer these questions by
 reading actual source files:
 

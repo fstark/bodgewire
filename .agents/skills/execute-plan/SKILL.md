@@ -21,7 +21,7 @@ round.
 ### Step 0 — Read and Clarify
 
 1. Read the entire `*_PLAN.md` file.
-2. Read any companion doc it references (e.g., `NAMING.md` for a naming plan).
+2. Read any companion doc it references (e.g., `NAMING.md` for a naming plan, a recipe in `docs/recipes/`).
 3. Identify phases and their tasks.
 4. If necessary, **Ask the user ONE round of questions**, for instance if the plan has ambiguities, references files that don't exist, or depends on external information. Or if the plan is too large and you suggest implementing some phases.
 5. After the implemenation starts, **do not ask further questions**. Run to
