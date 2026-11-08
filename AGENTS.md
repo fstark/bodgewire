@@ -7,6 +7,23 @@ There is a venv environment in venv.
 - The agent can't see the screen: `build/release/src/ui/bw_ui puzzles/X.bwp --screenshot /tmp/x.png --after 1s`, then view the PNG (it also prints the speed ratio and UI ms).
 - `clang-format` on C++ files only, never on `CMakeLists.txt`.
 
+## Implementing a roadmap step
+
+"Implement P4g" (a row of the `docs/ARCHITECTURE.md` roadmap) means the whole of this, without being asked for each part:
+
+1. **Ask first.** Read the row, the recipes it touches and the code it builds on, then ask the user the choices that are theirs (which chip, how many digits, which buttons…), each with a recommended option. Settle them before writing.
+2. **Spec, design, plan** in `docs/pXy-name/`, named after the step (`SEVEN_SEGMENT.md`, `SEVEN_SEGMENT_DESIGN.md`, `SEVEN_SEGMENT_PLAN.md`; copy the shape of the last finished step):
+   - spec: what is new and why, the user's decisions with the date, what the tests show;
+   - design: how, file by file, citing recipe steps instead of repeating them;
+   - plan: phases, each ending with a fence (checks plus one commit message), and a status table.
+
+   A step that brings a Machine also writes `docs/machines/NNN-name/NAME.md` (lesson, circuit, when it works, Puzzles) and `NAME_DESIGN.md` (netlist, Board, Puzzle files, manuals).
+3. **Independent review.** A fresh sub-agent gets only the paths of the three docs (and the Machine docs), not your conclusions. It checks the plan against the design and spec, and both against the code: APIs that exist, rules the builder enforces, recipe steps, test timings. Fix every must-fix in the docs, then commit the docs.
+4. **Implement in one go.** Run every phase in order without stopping, one commit per phase, and update the plan's status table and implementation notes as you go. Stop only for what only the user can do. The main one is the KiCad Board layout: export the `.net`, give the layout constraints from the Machine design, and wait.
+5. **Finish.** Release check with screenshots viewed, recipes fixed, ARCHITECTURE row set to done with the date and links, plan cut down to the phase table and notes ("user check pending").
+
+A row that says "no new code" (a Machine spec only) skips the plan and the review.
+
 ## Recipes
 
 Before designing, planning or coding one of these, read its recipe instead of rediscovering it from the code:
