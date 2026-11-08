@@ -9,10 +9,10 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | 74LS27 gate package, Datasheet, tests | |
-| 2 | 74LS93 Part, Datasheet, tests | |
-| 3 | 74LS107 Part, Datasheet, tests | |
-| 4 | Ball netlist, manuals, headless fault-free tests, speed measured | |
+| 1 | 74LS27 gate package, Datasheet, tests | 09fbb1a |
+| 2 | 74LS93 Part, Datasheet, tests | 079601f |
+| 3 | 74LS107 Part, Datasheet, tests | 4b7cf99 |
+| 4 | Ball netlist, manuals, headless fault-free tests, speed measured | this commit |
 | 5 | Ball Board (user layout), per-Machine loops | |
 | 6 | Ball Puzzles + Symptom/Repair tests | |
 | 7 | Session test, release check, recipes, docs | |
@@ -101,4 +101,8 @@ Commit: `docs: P4g implemented, user check pending`
 
 ## Implementation notes
 
-(filled in as the phases run)
+- Docs review (before phase 1): `VRCO` glitched 23 ns at the start of lines 255 and 511 (`LINE_END` on `ENT` reaches `RCO` combinationally), toggling `BV8` early; `LINE_END` moved to `ENP` of `U20`/`U21`, loads became 195/203, and ADD_MACHINE gained the gotcha.
+- Phase 3: Catch2 `SECTION`s inside a `for` loop replaced by `GENERATE` (sections in loops are unreliable).
+- Phase 4: the netlist worked as first written: box, dashed net and ball on the first `bw run --tv`, no warnings. Release headless: 2.12× real time (78 M evaluations per simulated 2 s, 3.2× the 050 test pattern's); gate 1.5× passed.
+- Phase 4: the TV draws line 0 32 columns early (the line after vertical sync free-runs until the next horizontal sync), on 050 too: the top wall's first row is shifted. `Read()` counts it as a wall row and ignores its stray cells.
+- Phase 4: a seed's ball can stay out of sight for ~0.4 s and turn before the first clear step, so the bounce case runs 2 s. One case per seed (about 60 s each in debug, run in parallel): the debug suite went from 40 s to 104 s.

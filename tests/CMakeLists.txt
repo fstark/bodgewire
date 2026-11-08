@@ -32,6 +32,7 @@ add_executable(bw_tests
   machines/board_probe_test.cpp
   machines/board_repair_test.cpp
   machines/bodge_wire_test.cpp
+  machines/ball_test.cpp
   machines/chaser_test.cpp
   machines/counter_test.cpp
   machines/dice_test.cpp
