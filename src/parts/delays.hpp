@@ -13,9 +13,10 @@ inline constexpr Delays kLs20{9'000, 10'000};
 inline constexpr Delays kLs27{10'000, 10'000};
 inline constexpr Delays kLs30{8'000, 13'000};
 inline constexpr Delays kLs32{14'000, 14'000};
-inline constexpr Delays kLs86{12'000, 10'000};  // other input low
-inline constexpr Delays kLs47{50'000, 50'000};  // data → output; TI gives only 100 ns max
-inline constexpr Delays kLs74{13'000, 25'000};  // CLK, PRE_N, CLR_N → Q, Q_N
+inline constexpr Delays kLs86{12'000, 10'000};   // other input low
+inline constexpr Delays kLs47{50'000, 50'000};   // data → output; TI gives only 100 ns max
+inline constexpr Delays kLs74{13'000, 25'000};   // CLK, PRE_N, CLR_N → Q, Q_N
+inline constexpr Delays kLs107{15'000, 15'000};  // CLK, CLR_N → Q, Q_N
 inline constexpr Delays kLs161ClockToQ{13'000, 15'000};
 inline constexpr Delays kLs161Clear{20'000, 20'000};  // only fall is used
 inline constexpr Delays kLs161ClockToRco{20'000, 18'000};

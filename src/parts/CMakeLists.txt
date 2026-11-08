@@ -5,6 +5,7 @@ add_library(bw_parts STATIC
   digit.cpp
   gate_package.cpp
   led.cpp
+  ls107.cpp
   ls161.cpp
   ls164.cpp
   ls47.cpp
