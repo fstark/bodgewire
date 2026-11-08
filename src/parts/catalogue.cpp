@@ -15,6 +15,7 @@
 #include "parts/ls47.hpp"
 #include "parts/ls74.hpp"
 #include "parts/ls90.hpp"
+#include "parts/ls93.hpp"
 #include "parts/oscillator.hpp"
 
 namespace bw {
@@ -132,6 +133,7 @@ constexpr std::array s_parts{
              &CreateChip<Ls74, "74LS74">},
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},
     PartInfo{"74LS90", "decade counter", "DIP-14", Chip, &CreateChip<Ls90, "74LS90">},
+    PartInfo{"74LS93", "4-bit binary counter", "DIP-14", Chip, &CreateChip<Ls93, "74LS93">},
     PartInfo{"BUTTON", "push button", "TACT-6x3.5", Button, &CreateButton},
     PartInfo{"DIGIT", "red 0.56-inch 7-segment digit, common anode", "DIGIT-0.56", Led,
              &CreateDigit, kDigitLamps},

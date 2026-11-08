@@ -26,6 +26,11 @@ inline constexpr Delays kLs90CkbToQC{21'000, 23'000};
 inline constexpr Delays kLs90CkbToQD{21'000, 23'000};
 inline constexpr Delays kLs90Clear{26'000, 26'000};    // only fall is used
 inline constexpr Delays kLs90SetNine{20'000, 26'000};  // QA, QD rise; QB, QC fall
+inline constexpr Delays kLs93CkaToQA{10'000, 12'000};
+inline constexpr Delays kLs93CkbToQB{10'000, 14'000};
+inline constexpr Delays kLs93CkbToQC{21'000, 23'000};
+inline constexpr Delays kLs93CkbToQD{34'000, 34'000};
+inline constexpr Delays kLs93Clear{26'000, 26'000};  // only fall is used
 inline constexpr Delays kLs164ClockToQ{17'000, 21'000};
 inline constexpr Delays kLs164Clear{24'000, 24'000};  // only fall is used
 
