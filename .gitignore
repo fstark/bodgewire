@@ -11,3 +11,5 @@ boards/**/*-backups/
 boards/**/.history/
 boards/**/fp-info-cache
 boards/**/~*.lck
+boards/**/_autosave-*
+boards/**/#auto_saved_files#
