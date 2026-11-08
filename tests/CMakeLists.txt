@@ -40,6 +40,7 @@ add_executable(bw_tests
   machines/net_drivers_test.cpp
   machines/scope_meter_test.cpp
   machines/shorts_power_test.cpp
+  machines/stopwatch_test.cpp
   machines/test_pattern_faults_test.cpp
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp
