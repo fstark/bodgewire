@@ -1,11 +1,15 @@
 #include "ui/chip_panel.hpp"
 
+#include <algorithm>
+#include <array>
 #include <format>
 #include <string>
+#include <vector>
 
 #include <imgui.h>
 
 #include "parts/catalogue.hpp"
+#include "view/digit_shape.hpp"
 
 namespace bw {
 
@@ -16,6 +20,11 @@ constexpr ImU32 kBody = IM_COL32(60, 60, 66, 255);
 constexpr ImU32 kNotch = IM_COL32(25, 25, 28, 255);
 constexpr ImU32 kPinOne = IM_COL32(220, 220, 220, 255);
 constexpr ImVec4 kPowerText{0.55f, 0.55f, 0.55f, 1.0f};
+constexpr ImU32 kDigitBody = IM_COL32(28, 28, 30, 255);
+constexpr ImU32 kSegmentDim = IM_COL32(70, 22, 22, 255);
+constexpr ImU32 kSegmentLit = IM_COL32(255, 40, 30, 255);
+constexpr ImU32 kPad = IM_COL32(200, 200, 190, 255);
+constexpr float kDigitLines = 7;  // body height in text lines
 
 struct PinRow {
     std::optional<std::size_t> pad;
@@ -38,22 +47,11 @@ PinRow Row(const BoardScene& scene, std::size_t component, std::size_t number) {
     return row;
 }
 
-// One pin as a selectable row; fills `hits` and shows the Datasheet line as a tooltip.
-void PinCell(const PinRow& row, std::string_view label, bool alignRight, std::size_t component,
-             const Markdown* datasheet, TargetHits& hits) {
-    if (row.power) {
-        ImGui::PushStyleColor(ImGuiCol_Text, kPowerText);
-    }
-    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, {alignRight ? 1.0f : 0.0f, 0.5f});
-    ImGui::PushID(row.number.c_str());
-    const std::string text(label);
-    if (ImGui::Selectable(text.c_str()) && row.pad) {
+// After a pin's Selectable: fills `hits` and shows the Datasheet line as a tooltip.
+void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markdown* datasheet,
+             TargetHits& hits) {
+    if (clicked && row.pad) {
         hits.clicked = BoardTarget{component, row.pad};
-    }
-    ImGui::PopID();
-    ImGui::PopStyleVar();
-    if (row.power) {
-        ImGui::PopStyleColor();
     }
     if (ImGui::IsItemHovered() && row.pad) {
         hits.hovered = BoardTarget{component, row.pad};
@@ -63,6 +61,129 @@ void PinCell(const PinRow& row, std::string_view label, bool alignRight, std::si
                 ImGui::SetTooltip("%s", line.c_str());
             }
         }
+    }
+}
+
+// One pin as a selectable row.
+void PinCell(const PinRow& row, std::string_view label, bool alignRight, std::size_t component,
+             const Markdown* datasheet, TargetHits& hits) {
+    if (row.power) {
+        ImGui::PushStyleColor(ImGuiCol_Text, kPowerText);
+    }
+    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, {alignRight ? 1.0f : 0.0f, 0.5f});
+    ImGui::PushID(row.number.c_str());
+    const std::string text(label);
+    const bool clicked = ImGui::Selectable(text.c_str());
+    ImGui::PopID();
+    ImGui::PopStyleVar();
+    if (row.power) {
+        ImGui::PopStyleColor();
+    }
+    PinHits(clicked, row, component, datasheet, hits);
+}
+
+// One pin as a selectable block of centred lines, `width` wide; true while hovered.
+bool PinBlock(const PinRow& row, std::span<const std::string> lines, float width,
+              std::size_t component, const Markdown* datasheet, TargetHits& hits) {
+    const ImVec2 at = ImGui::GetCursorScreenPos();
+    const float line = ImGui::GetTextLineHeight();
+    ImGui::PushID(row.number.c_str());
+    const bool clicked =
+        ImGui::Selectable("##pin", false, 0, {width, line * static_cast<float>(lines.size())});
+    ImGui::PopID();
+    const bool hovered = ImGui::IsItemHovered();
+    PinHits(clicked, row, component, datasheet, hits);
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    const ImU32 colour =
+        ImGui::GetColorU32(row.power ? kPowerText : ImGui::GetStyleColorVec4(ImGuiCol_Text));
+    float y = at.y;
+    for (const std::string& text : lines) {
+        const float w = ImGui::CalcTextSize(text.c_str()).x;
+        list.AddText({at.x + (width - w) / 2, y}, colour, text.c_str());
+        y += line;
+    }
+    return hovered;
+}
+
+// Packages with one row of pins along the top and one along the bottom (7-segment digits):
+// pin 1 bottom left, counting left to right along the bottom, then right to left along the top.
+bool TopBottomRows(const PartInfo* info) { return info && info->package.starts_with("DIGIT"); }
+
+// Pins above and below the digit body, the digit in between; the hovered pin's segment lit
+// (an anode pin lights them all).
+void DigitPinout(const BoardScene& scene, std::size_t component, const PartInfo& info,
+                 const Markdown* datasheet, TargetHits& hits) {
+    const std::size_t pins = scene.board().components[component].pads.size();
+    const std::size_t columns = pins / 2;
+    const float width = ImGui::GetContentRegionAvail().x;
+    const float cell = width / static_cast<float>(columns);
+    const float line = ImGui::GetTextLineHeight();
+    const float x0 = ImGui::GetCursorPosX();
+    std::optional<std::string> hoveredPin;
+
+    // Top row, left to right: pins `pins` .. columns + 1; number next to the body.
+    for (std::size_t c = 0; c < columns; ++c) {
+        const PinRow row = Row(scene, component, pins - c);
+        if (c > 0) {
+            ImGui::SameLine(x0 + cell * static_cast<float>(c), 0);
+        }
+        const std::array<std::string, 3> lines{row.net, row.name, row.number};
+        if (PinBlock(row, lines, cell, component, datasheet, hits)) {
+            hoveredPin = row.name;
+        }
+    }
+    const ImVec2 body = ImGui::GetCursorScreenPos();
+    const float height = line * kDigitLines;
+    ImGui::Dummy({width, height});
+    // Bottom row, left to right: pins 1 .. columns; number next to the body.
+    for (std::size_t c = 0; c < columns; ++c) {
+        const PinRow row = Row(scene, component, c + 1);
+        if (c > 0) {
+            ImGui::SameLine(x0 + cell * static_cast<float>(c), 0);
+        }
+        const std::array<std::string, 3> lines{row.number, row.name, row.net};
+        if (PinBlock(row, lines, cell, component, datasheet, hits)) {
+            hoveredPin = row.name;
+        }
+    }
+
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    list.AddRectFilled(body, {body.x + width, body.y + height}, kDigitBody);
+    const float pad = line * 0.3f;
+    for (std::size_t c = 0; c < columns; ++c) {
+        const float x = body.x + cell * (static_cast<float>(c) + 0.5f);
+        list.AddCircleFilled({x, body.y + pad * 1.6f}, pad, kPad);
+        if (c == 0) {
+            list.AddRectFilled({x - pad, body.y + height - pad * 2.6f},
+                               {x + pad, body.y + height - pad * 0.6f}, kPad);
+        } else {
+            list.AddCircleFilled({x, body.y + height - pad * 1.6f}, pad, kPad);
+        }
+    }
+
+    // The digit in screen pixels scaled to nm (y grows downwards on both).
+    constexpr double kScale = 1000;
+    const double length = height * 1.1 * kScale;  // the glyph is ~0.6 of its frame
+    const DigitFrame frame{(body.x + width / 2) * kScale,
+                           (body.y + height / 2) * kScale,
+                           0,
+                           -1,
+                           1,
+                           0,
+                           length,
+                           length * 0.66};
+    std::vector<ImVec2> points;
+    for (const Lamp& lamp : info.lamps) {
+        const bool lit =
+            hoveredPin && (*hoveredPin == lamp.cathode ||
+                           std::ranges::find(lamp.anodes, *hoveredPin) != lamp.anodes.end());
+        points.clear();
+        for (const Point p : LampOutline(frame, lamp.shape)) {
+            points.push_back({static_cast<float>(static_cast<double>(p.x) / kScale),
+                              static_cast<float>(static_cast<double>(p.y) / kScale)});
+        }
+        list.AddConvexPolyFilled(points.data(), static_cast<int>(points.size()),
+                                 lit ? kSegmentLit : kSegmentDim);
     }
 }
 
@@ -119,6 +240,8 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
                     component, datasheet, hits);
         }
         ImGui::EndTable();
+    } else if (TopBottomRows(info) && pins % 2 == 0 && !info->lamps.empty()) {
+        DigitPinout(scene, component, *info, datasheet, hits);
     } else if (!dip) {
         for (std::size_t n = 1; n <= pins; ++n) {
             const PinRow row = Row(scene, component, n);

@@ -18,6 +18,7 @@ A Part that lights is a list of lamps in its catalogue row (`Lamp`: shape, up to
 | Session | `src/session/session.{hpp,cpp}` | `makeLive()` walks `part.info->lamps`, skipping unconnected Pins (`ConnectedNet`); `leds()` returns one `LedLight` (reference, shape, brightness) per lamp, dark when not powered |
 | UI | `src/ui/board_view.{hpp,cpp}`, `src/ui/main.cpp` | `setLeds(std::span<const LedTag>)` each frame from `session.leds()` + `scene->componentIndex(ref)`; drawn under the pads. Round lamps on the body; digit segments from `src/view/digit_shape.{hpp,cpp}` (`DigitFrameOf(courtyard, pad 1)`: upright along the long side, standing on the pad 1 row; `LampOutline` per shape) over a dark body |
 | Datasheet | `datasheets/<PART>.md` | required for every catalogue Part |
+| Chip panel | `src/ui/chip_panel.cpp` | the pinout as the part is built: DIP pins left and right; packages with pins along the top and bottom (`TopBottomRows`: `DIGIT-…`) drawn by `DigitPinout`, the hovered pin's segment lit; a new package shape needs its layout here |
 
 Tests: `tests/parts/<part>_test.cpp`, `tests/devices/<x>_test.cpp`, `tests/runner/<x>_consumer_test.cpp`, a `[session]` case in `tests/session/session_test.cpp` (cf. `session: counter LED`).
 
