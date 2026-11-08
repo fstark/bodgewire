@@ -48,16 +48,23 @@ constexpr std::array<std::string_view, 14> s_ls20Names{
 constexpr std::array<GateUnit, 2> s_ls20Units{
     {{GateKind::Nand, 6, {1, 2, 4, 5}, 4}, {GateKind::Nand, 8, {9, 10, 12, 13}, 4}}};
 
+constexpr std::array<std::string_view, 14> s_ls27Names{"1A", "1B", "2A", "2B", "2C", "2Y", "GND",
+                                                       "3Y", "3A", "3B", "3C", "1Y", "1C", "VCC"};
+constexpr std::array<GateUnit, 3> s_ls27Units{{{GateKind::Nor, 12, {1, 2, 13}, 3},
+                                               {GateKind::Nor, 6, {3, 4, 5}, 3},
+                                               {GateKind::Nor, 8, {9, 10, 11}, 3}}};
+
 constexpr std::array<std::string_view, 14> s_ls30Names{"A", "B",   "C",    "D", "E", "F",    "GND",
                                                        "Y", "NC9", "NC10", "G", "H", "NC13", "VCC"};
 constexpr std::array<GateUnit, 1> s_ls30Units{{{GateKind::Nand, 8, {1, 2, 3, 4, 5, 6, 11, 12}, 8}}};
 
-constexpr std::array<GatePackageSpec, 8> s_specs{{
+constexpr std::array<GatePackageSpec, 9> s_specs{{
     {"74LS00", 14, s_quadNames, s_ls00Units, delays::kLs00},
     {"74LS02", 14, s_ls02Names, s_ls02Units, delays::kLs02},
     {"74LS04", 14, s_ls04Names, s_ls04Units, delays::kLs04},
     {"74LS08", 14, s_quadNames, s_ls08Units, delays::kLs08},
     {"74LS20", 14, s_ls20Names, s_ls20Units, delays::kLs20},
+    {"74LS27", 14, s_ls27Names, s_ls27Units, delays::kLs27},
     {"74LS30", 14, s_ls30Names, s_ls30Units, delays::kLs30},
     {"74LS32", 14, s_quadNames, s_ls32Units, delays::kLs32},
     {"74LS86", 14, s_quadNames, s_ls86Units, delays::kLs86},

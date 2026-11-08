@@ -32,6 +32,7 @@ constexpr GatePart kLs02{"74LS02", GateKind::Nor, 4, "AB", delays::kLs02};
 constexpr GatePart kLs04{"74LS04", GateKind::Not, 6, "A", delays::kLs04};
 constexpr GatePart kLs08{"74LS08", GateKind::And, 4, "AB", delays::kLs08};
 constexpr GatePart kLs20{"74LS20", GateKind::Nand, 2, "ABCD", delays::kLs20};
+constexpr GatePart kLs27{"74LS27", GateKind::Nor, 3, "ABC", delays::kLs27};
 constexpr GatePart kLs30{"74LS30", GateKind::Nand, 1, "ABCDEFGH", delays::kLs30};
 constexpr GatePart kLs32{"74LS32", GateKind::Or, 4, "AB", delays::kLs32};
 constexpr GatePart kLs86{"74LS86", GateKind::Xor, 4, "AB", delays::kLs86};
@@ -161,6 +162,7 @@ TEST_CASE("gate package: 74LS02 truth table", "[parts]") { CheckTruthTable(kLs02
 TEST_CASE("gate package: 74LS04 truth table", "[parts]") { CheckTruthTable(kLs04); }
 TEST_CASE("gate package: 74LS08 truth table", "[parts]") { CheckTruthTable(kLs08); }
 TEST_CASE("gate package: 74LS20 truth table", "[parts]") { CheckTruthTable(kLs20); }
+TEST_CASE("gate package: 74LS27 truth table", "[parts]") { CheckTruthTable(kLs27); }
 TEST_CASE("gate package: 74LS30 truth table", "[parts]") { CheckTruthTable(kLs30); }
 TEST_CASE("gate package: 74LS32 truth table", "[parts]") { CheckTruthTable(kLs32); }
 TEST_CASE("gate package: 74LS86 truth table", "[parts]") { CheckTruthTable(kLs86); }
@@ -170,9 +172,23 @@ TEST_CASE("gate package: 74LS02 delays", "[parts]") { CheckDelays(kLs02); }
 TEST_CASE("gate package: 74LS04 delays", "[parts]") { CheckDelays(kLs04); }
 TEST_CASE("gate package: 74LS08 delays", "[parts]") { CheckDelays(kLs08); }
 TEST_CASE("gate package: 74LS20 delays", "[parts]") { CheckDelays(kLs20); }
+TEST_CASE("gate package: 74LS27 delays", "[parts]") { CheckDelays(kLs27); }
 TEST_CASE("gate package: 74LS30 delays", "[parts]") { CheckDelays(kLs30); }
 TEST_CASE("gate package: 74LS32 delays", "[parts]") { CheckDelays(kLs32); }
 TEST_CASE("gate package: 74LS86 delays", "[parts]") { CheckDelays(kLs86); }
+
+TEST_CASE("gate package: 74LS27 pinout", "[parts]") {
+    Circuit circuit;
+    const Component& chip = *FindPart("74LS27")->create(circuit, "U1", {}).value();
+    const std::vector<std::string_view> expected{"1A", "1B", "2A", "2B", "2C", "2Y", "GND",
+                                                 "3Y", "3A", "3B", "3C", "1Y", "1C", "VCC"};
+    REQUIRE(chip.pins().size() == expected.size());
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        CHECK(chip.pins()[i].name == expected[i]);
+    }
+    CHECK(chip.pins()[11].kind == PinKind::Output);  // 1Y on pin 12
+    CHECK(chip.pins()[12].kind == PinKind::Input);   // 1C on pin 13
+}
 
 TEST_CASE("gate package: X input propagates", "[parts]") {
     Circuit circuit;

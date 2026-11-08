@@ -28,7 +28,7 @@ struct GatePackageSpec {
 
 const GatePackageSpec& GatePackageSpecOf(std::string_view part);  // Check()s
 
-// One chip of independent gates (74LS00, 02, 04, 08, 20, 30, 32, 86).
+// One chip of independent gates (74LS00, 02, 04, 08, 20, 27, 30, 32, 86).
 class GatePackage final : public Component {
 public:
     GatePackage(std::string reference, const GatePackageSpec& spec);

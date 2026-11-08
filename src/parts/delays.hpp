@@ -10,6 +10,7 @@ inline constexpr Delays kLs02{10'000, 10'000};
 inline constexpr Delays kLs04{9'000, 10'000};
 inline constexpr Delays kLs08{8'000, 10'000};
 inline constexpr Delays kLs20{9'000, 10'000};
+inline constexpr Delays kLs27{10'000, 10'000};
 inline constexpr Delays kLs30{8'000, 13'000};
 inline constexpr Delays kLs32{14'000, 14'000};
 inline constexpr Delays kLs86{12'000, 10'000};  // other input low
