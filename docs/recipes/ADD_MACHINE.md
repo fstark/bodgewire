@@ -46,4 +46,5 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 
 - Seeded random power-on: the fault-free test must not depend on the seed (settle first, or check every phase).
 - Debug is about 0.07× real time: keep simulated time short, and use the release build for screenshots that show readings.
+- A 74LS161's `RCO` follows `ENT` combinationally: with a decoded signal on `ENT` (a line end), `RCO` pulses for ~20 ns when the count reaches 15 before that signal falls. Never clock or clear anything from such an `RCO`; put the decoded enable on `ENP` and keep `ENT` for the carry chain (060 `VRCO`).
 - Board re-layouts move cracks: Puzzles use `fault crack A B N%`, so only which far pads lose the signal may change.
