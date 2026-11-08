@@ -56,6 +56,7 @@ add_executable(bw_tests
   parts/ls161_test.cpp
   parts/ls164_test.cpp
   parts/ls74_test.cpp
+  parts/ls90_test.cpp
   parts/oscillator_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp

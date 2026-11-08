@@ -27,7 +27,9 @@ Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate packa
 ## Rules and gotchas
 
 - Pin names: datasheet names, active-low suffix `_N` (`CLR_N`, `LOAD_N`); gates `1A`, `1Y`; unused pins `NCn` with `PinKind::NoConnect`.
-- Open-collector outputs: `PinKind::OpenCollector` (needs a pull-up on the Board).
+- Open-collector outputs: `PinKind::OpenCollector` (needs a pull-up on the Board); drive 1 to release (`DriveOf` maps 1 to no drive).
+- Falling-edge clocks (74LS90): `ctx.fell(pin)`; leave the pin's `risingEdgeOnly` false, so it is evaluated on both edges.
+- Power Pins not at the DIP corners (74LS90: `VCC` pin 5, `GND` pin 10): add the Part to `kOffCornerPower` in `tests/parts/catalogue_test.cpp`.
 - X on a control input makes the affected state X; never invent a 0/1.
 - No zero delays, no delta cycles: every `drive` has a datasheet delay.
 - Hot path: `evaluate` must not allocate (use `std::array`, no `std::vector`/`std::string`).

@@ -92,6 +92,11 @@ inline bool EvalContext::rose(PinIndex pin) const {
     return s.changedAt == sim_.now_ && s.previous == LogicValue::Zero && s.value == LogicValue::One;
 }
 
+inline bool EvalContext::fell(PinIndex pin) const {
+    const auto& s = sim_.netOfPin(pinId(pin));
+    return s.changedAt == sim_.now_ && s.previous == LogicValue::One && s.value == LogicValue::Zero;
+}
+
 inline void EvalContext::drive(PinIndex pin, LogicValue value, Time delay) {
     const PinId id = pinId(pin);
     const auto& o = sim_.outputs_[ToIndex(id)];

@@ -27,6 +27,7 @@ public:
     inline LogicValue read(PinIndex pin) const;        // Net value now
     inline LogicValue readBefore(PinIndex pin) const;  // Net value before this timestamp (S3)
     inline bool rose(PinIndex pin) const;              // Net went 0 → 1 at this timestamp
+    inline bool fell(PinIndex pin) const;              // Net went 1 → 0 at this timestamp
     bool readBit(PinIndex pin);                        // X → seeded random bit (MOS inputs, S4)
     inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
     void wakeAfter(Time delay);  // evaluate this Component again at now + delay

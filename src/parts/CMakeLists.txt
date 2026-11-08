@@ -7,6 +7,7 @@ add_library(bw_parts STATIC
   ls161.cpp
   ls164.cpp
   ls74.cpp
+  ls90.cpp
   oscillator.cpp
 )
 target_link_libraries(bw_parts PUBLIC bw_sim PRIVATE bw_warnings)

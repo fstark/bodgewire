@@ -12,6 +12,7 @@
 #include "parts/ls161.hpp"
 #include "parts/ls164.hpp"
 #include "parts/ls74.hpp"
+#include "parts/ls90.hpp"
 #include "parts/oscillator.hpp"
 
 namespace bw {
@@ -105,6 +106,7 @@ constexpr std::array s_parts{
     PartInfo{"74LS74", "dual D flip-flop, preset and clear", "DIP-14", Chip,
              &CreateChip<Ls74, "74LS74">},
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},
+    PartInfo{"74LS90", "decade counter", "DIP-14", Chip, &CreateChip<Ls90, "74LS90">},
     PartInfo{"BUTTON", "push button", "TACT-6x3.5", Button, &CreateButton},
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},

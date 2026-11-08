@@ -1,7 +1,9 @@
 #include "parts/catalogue.hpp"
 
+#include <algorithm>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -47,8 +49,14 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
             }
         }
         CHECK(names.size() == count);
-        CHECK(pins[count / 2 - 1].name == "GND");
-        CHECK(pins[count - 1].name == "VCC");
+        CHECK(names.contains("GND"));
+        CHECK(names.contains("VCC"));
+        // The 74LS90's datasheet puts VCC on pin 5 and GND on pin 10.
+        constexpr std::string_view kOffCornerPower[] = {"74LS90"};
+        if (std::ranges::find(kOffCornerPower, part.name) == std::end(kOffCornerPower)) {
+            CHECK(pins[count / 2 - 1].name == "GND");
+            CHECK(pins[count - 1].name == "VCC");
+        }
     }
 }
 

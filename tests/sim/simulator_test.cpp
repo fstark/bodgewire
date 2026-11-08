@@ -480,3 +480,36 @@ TEST_CASE("simulator: floating TTL input reads 1", "[sim]") {
     CHECK(sim.value(out) == One);
     CHECK_FALSE(sim.isFloating(out));
 }
+
+namespace {
+
+// Records, at each evaluation, whether Pin A fell at that timestamp.
+class FallProbe final : public Component {
+public:
+    explicit FallProbe(std::string name)
+        : Component(std::move(name), {{"A", PinKind::Input, Family::Ttl}}) {}
+    void evaluate(EvalContext& ctx) override {
+        if (ctx.fell(0)) {
+            falls.push_back(ctx.now());
+        }
+    }
+    std::vector<Time> falls;
+};
+
+}  // namespace
+
+TEST_CASE("simulator: fell only at a 1 to 0 change", "[sim]") {
+    Circuit circuit;
+    const NetId net = circuit.addNet("A");
+    auto& source = circuit.add<Stimulus>(
+        "S", Zero,
+        std::vector<Stimulus::Step>{{10_ns, One}, {20_ns, Zero}, {30_ns, X}, {40_ns, Zero}});
+    auto& probe = circuit.add<FallProbe>("P");
+    circuit.connect(source, Stimulus::kOut, net);
+    circuit.connect(probe, "A", net);
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runUntil(50_ns);
+    CHECK(probe.falls == std::vector<Time>{20_ns});
+}
