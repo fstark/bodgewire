@@ -143,7 +143,7 @@ PickReach Reach(double pixelsPerMm) {
 }  // namespace
 
 TEST_CASE("view: outline of every Board is a rectangle", "[view]") {
-    for (const std::string name : {"counter", "test_pattern", "chaser", "dice"}) {
+    for (const std::string name : {"counter", "test_pattern", "chaser", "dice", "stopwatch"}) {
         const Fixture f = Load(name);
         const BoardScene scene = Scene(f);
         REQUIRE(scene.outline().size() == 4);
@@ -423,7 +423,7 @@ TEST_CASE("view: highlight crosses the broken_trace crack", "[view]") {
 }
 
 TEST_CASE("view: every Trace and via has a design Net", "[view]") {
-    for (const std::string name : {"counter", "test_pattern", "chaser", "dice"}) {
+    for (const std::string name : {"counter", "test_pattern", "chaser", "dice", "stopwatch"}) {
         const Fixture f = Load(name);
         const BoardScene scene = Scene(f);
         for (std::size_t t = 0; t < scene.board().traces.size(); ++t) {

@@ -7,6 +7,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/ls47.hpp"
 #include "sim/simulator.hpp"
@@ -22,6 +23,15 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
     auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "stopwatch.bwn");
     REQUIRE(result.has_value());
     return std::move(*result);
+}
+
+// The Circuit built from the Board's Copper, with no Faults.
+std::unique_ptr<LoadedCircuit> BoardCircuit() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "stopwatch.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
 }
 
 // One digit's shape as text: '0'..'9' as the 74LS47 draws them, ' ' dark, '?' anything else.
@@ -100,7 +110,7 @@ TEST_CASE("stopwatch: netlist loads without warnings", "[machines]") {
 }
 
 TEST_CASE("stopwatch: fault-free start, stop, start again", "[machines]") {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Watch watch(*loaded, seed);
@@ -120,7 +130,7 @@ TEST_CASE("stopwatch: fault-free start, stop, start again", "[machines]") {
 }
 
 TEST_CASE("stopwatch: the seconds count", "[machines][slow]") {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     Watch watch(*loaded, 1);
     Clear(watch);
     watch.start();  // 2 ms
