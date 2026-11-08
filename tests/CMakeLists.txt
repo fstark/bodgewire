@@ -81,6 +81,7 @@ add_executable(bw_tests
   sim/time_test.cpp
   sim/vcd_test.cpp
   view/board_scene_test.cpp
+  view/digit_shape_test.cpp
   view/viewport_test.cpp
 )
 target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_machine bw_manual

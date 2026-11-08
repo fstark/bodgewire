@@ -4,11 +4,13 @@
 #include <cfloat>
 #include <cmath>
 #include <numbers>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "board/copper.hpp"
+#include "view/digit_shape.hpp"
 
 namespace bw {
 
@@ -57,6 +59,8 @@ constexpr ImU32 kLedLit = IM_COL32(255, 40, 30, 255);
 constexpr float kLedRadiusShare = 0.39f;  // of the courtyard's smaller side: 2.5 mm on LED_D5.0mm
 constexpr float kLedHalo = 1.6f;
 constexpr float kLedHaloAlpha = 0.35f;
+constexpr ImU32 kDigitBody = IM_COL32(28, 28, 30, 255);
+constexpr ImU32 kSegmentDim = IM_COL32(70, 22, 22, 255);
 constexpr ImU32 kButtonBody = IM_COL32(40, 40, 45, 255);
 constexpr ImU32 kButtonCap = IM_COL32(170, 170, 175, 255);
 constexpr ImU32 kButtonCapDown = IM_COL32(95, 95, 100, 255);
@@ -394,7 +398,7 @@ void BoardView::draw(ImVec2 size) {
 
     for (const LedTag& led : leds_) {
         if (led.shape != LampShape::Round) {
-            continue;  // digits: below
+            continue;  // digit segments: below
         }
         const auto courtyard = scene_->courtyard(led.component);
         if (courtyard.empty()) {
@@ -411,6 +415,38 @@ void BoardView::draw(ImVec2 size) {
                                  WithAlpha(kLedLit, kLedHaloAlpha * glow));
         }
         list.AddCircleFilled(centre, radius, Lerp(kLedDark, kLedLit, glow));
+    }
+
+    std::optional<std::size_t> bodyDrawn;
+    for (const LedTag& led : leds_) {
+        if (led.shape == LampShape::Round) {
+            continue;
+        }
+        const auto courtyard = scene_->courtyard(led.component);
+        const auto& pads = board.components[led.component].pads;
+        const auto pad1 = std::ranges::find(pads, "1", &Pad::number);
+        if (pad1 == pads.end()) {
+            continue;
+        }
+        const auto frame = DigitFrameOf(courtyard, pad1->position);
+        if (!frame) {
+            continue;
+        }
+        std::vector<ImVec2> points;
+        if (bodyDrawn != led.component) {
+            for (const Point p : courtyard) {
+                points.push_back(map(p));
+            }
+            list.AddConvexPolyFilled(points.data(), static_cast<int>(points.size()), kDigitBody);
+            bodyDrawn = led.component;
+        }
+        points.clear();
+        for (const Point p : LampOutline(*frame, led.shape)) {
+            points.push_back(map(p));
+        }
+        const float glow = std::clamp(led.brightness, 0.0f, 1.0f);
+        list.AddConvexPolyFilled(points.data(), static_cast<int>(points.size()),
+                                 Lerp(kSegmentDim, kLedLit, glow));
     }
 
     for (const ButtonTag& button : buttons_) {
