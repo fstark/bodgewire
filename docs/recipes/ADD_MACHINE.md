@@ -2,7 +2,7 @@
 
 A new board on the tutorial ladder (`docs/machines/NNN-name/`). New Parts first ([ADD_PART.md](ADD_PART.md), [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md)); Puzzles last ([ADD_PUZZLE.md](ADD_PUZZLE.md)).
 
-Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`.
+Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`. Stopwatch (040, digits): `8a18984`, `8d3644a`, `ae506f8`.
 
 ## Order
 
@@ -18,7 +18,7 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
   - header comment: Machine number, spec path, one-paragraph circuit summary;
   - `part REF TYPE [param=value]` (types from `src/parts/catalogue.cpp`; `OSC freq=1MHz`, `R value=330`); `part J1 POWER` always (joins `VCC`/`GND`); `part J2 VIDEO` for TV Machines (the Session adds the TV by itself);
   - `net NAME REF.PIN …` with pin names from the datasheet; the same `net` name may repeat on several lines; rails are `VCC` and `GND`; short comments above groups;
-  - references: `U` chips, `R` resistors, `D` LEDs, `SW` buttons, `X` oscillator, `J` connectors.
+  - references: `U` chips, `R` resistors, `D` LEDs, `DS` digits, `SW` buttons, `X` oscillator, `J` connectors.
 - `manuals/<m>/user.md`: `# Name` then `## What it does`: one short paragraph, seen from outside only (power hookup, what the player sees). Backticked references must exist.
 - `manuals/<m>/service.md`: `# Name — Service Manual` then `## Components`: one bullet per reference, every Part, netlist order: `` - `U1` short role: detail with `NET` names ``.
 - `tests/machines/<m>_test.cpp` (add to `tests/CMakeLists.txt`): `FaultFree()` = `LoadNetlistMachine(BW_NETLIST_DIR / "<m>.bwn")`; `Record(machine, end, names)` = `machine.build()` + `Simulator` + `powerOn(1)`; check the visible behaviour after settling. Tag `[machines][slow]` if it simulates more than ~1 s. Copy `tests/machines/chaser_test.cpp`.

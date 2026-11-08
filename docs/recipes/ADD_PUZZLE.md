@@ -30,6 +30,7 @@ fault crack R6.2 D5.2 51%
   - `fault bridge U5.3 U5.4`: solder bridge between neighbouring pins; repaired by the Cut tool.
 - Check it loads and shows the symptom: `./build/debug/src/cli/bw run puzzles/<name>.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`).
 - A short Trace stub at a large pad may have no crackable point: pick other pads or another `%`.
+- A crack only cuts one pad off alone if that pad is at an end of the routed Trace. Read the routing order first (the `segment`s of the Net in the `.kicad_pcb`); with the pad in the middle, crack on the other side and write the Symptom for the pads that float together (stopwatch `nineteen`).
 
 ## Tests (in `tests/machines/<machine>_test.cpp`)
 

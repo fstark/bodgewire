@@ -387,6 +387,44 @@ TEST_CASE("session: chaser with every instrument", "[session][slow]") {
     session.powerOff();
 }
 
+TEST_CASE("session: stopwatch with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "stopwatch.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    std::vector<std::string> lamps;
+    for (const LedLight& led : session.leds()) {
+        lamps.push_back(led.reference);
+    }
+    REQUIRE(lamps.size() == 24);  // DS1 A..G and DP, then DS2, DS3
+    CHECK(lamps[0] == "DS1");
+    CHECK(lamps[8] == "DS2");
+    CHECK(lamps[16] == "DS3");
+    CHECK(session.leds()[7].shape == LampShape::DecimalPoint);
+
+    for (const char* chip : {"U1", "U2", "U3", "U4"}) {
+        REQUIRE(session.clip(chip, "QD").has_value());
+    }
+    for (const char* pin : {"QA", "QB", "QC", "QD"}) {
+        REQUIRE(session.clip("U7", pin).has_value());
+    }
+    REQUIRE(session.hook("U11", "1Q").has_value());
+    REQUIRE(session.hook("U12", "1Y").has_value());
+    const auto clock = session.padLead("U12", "1A");
+    const auto segment = session.padLead("DS3", "A");
+    REQUIRE(clock.has_value());
+    REQUIRE(segment.has_value());
+    session.touch(ProbeTip{clock->at, Layer::Front});
+    REQUIRE(session.placeLead({segment->at, Layer::Front, segment->label}));
+
+    session.powerOn(1, 1_s);
+    session.runner().waitIdle();
+    CHECK(session.leds()[7].brightness > 0.95f);  // DS1's point, on GND
+    session.powerOff();
+}
+
 TEST_CASE("session: no LEDs on the test pattern", "[session]") {
     CHECK(PuzzleSession("broken_trace").leds().empty());
 }

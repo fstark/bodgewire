@@ -19,7 +19,7 @@ Reference commits (P3d, multimeter + scope): `ecb3915` placement + volts, `53327
 
 ## Gotchas
 
-- `kMaxWatched` = 32 watched Nets for devices + every instrument together.
+- `kMaxWatched` = 48 watched Nets for devices + every instrument together.
 - A Net watched again gets no new Sample until it changes: implement `Consumer::seed` or it reads X.
 - `configure()` while Off must set the UI-side phase directly (no slices arrive).
 - `Runner::powerOff` is queued: `waitIdle()` before checking; `waitIdle` hangs if Running without `pauseAt`.
