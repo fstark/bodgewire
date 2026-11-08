@@ -2,6 +2,7 @@ add_library(bw_parts STATIC
   button.cpp
   catalogue.cpp
   connector.cpp
+  digit.cpp
   gate_package.cpp
   led.cpp
   ls161.cpp

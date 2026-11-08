@@ -7,6 +7,7 @@
 
 #include "parts/button.hpp"
 #include "parts/connector.hpp"
+#include "parts/digit.hpp"
 #include "parts/gate_package.hpp"
 #include "parts/led.hpp"
 #include "parts/ls161.hpp"
@@ -89,6 +90,26 @@ std::expected<Component*, std::string> CreateButton(Circuit& circuit, std::strin
     return &circuit.add<Button>(std::move(reference));
 }
 
+std::expected<Component*, std::string> CreateDigit(Circuit& circuit, std::string reference,
+                                                   std::span<const PartParam> params) {
+    if (!params.empty()) {
+        return std::unexpected("DIGIT takes no parameters");
+    }
+    return &circuit.add<Digit>(std::move(reference));
+}
+
+constexpr std::array<Lamp, 1> kLedLamps{{{LampShape::Round, {"A", ""}, "K"}}};
+constexpr std::array<Lamp, 8> kDigitLamps{{
+    {LampShape::SegmentA, {"CA1", "CA2"}, "A"},
+    {LampShape::SegmentB, {"CA1", "CA2"}, "B"},
+    {LampShape::SegmentC, {"CA1", "CA2"}, "C"},
+    {LampShape::SegmentD, {"CA1", "CA2"}, "D"},
+    {LampShape::SegmentE, {"CA1", "CA2"}, "E"},
+    {LampShape::SegmentF, {"CA1", "CA2"}, "F"},
+    {LampShape::SegmentG, {"CA1", "CA2"}, "G"},
+    {LampShape::DecimalPoint, {"CA1", "CA2"}, "DP"},
+}};
+
 using enum PartKind;
 
 // Sorted by name.
@@ -111,7 +132,9 @@ constexpr std::array s_parts{
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},
     PartInfo{"74LS90", "decade counter", "DIP-14", Chip, &CreateChip<Ls90, "74LS90">},
     PartInfo{"BUTTON", "push button", "TACT-6x3.5", Button, &CreateButton},
-    PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed},
+    PartInfo{"DIGIT", "red 0.56-inch 7-segment digit, common anode", "DIGIT-0.56", Led,
+             &CreateDigit, kDigitLamps},
+    PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
     PartInfo{"POWER", "5 V power connector", "KK-2", Connector, &CreateConnector<"POWER">},
     PartInfo{"R", "resistor", "axial", Resistor, nullptr},

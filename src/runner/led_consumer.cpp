@@ -7,12 +7,18 @@ namespace bw {
 
 LedConsumer::LedConsumer(std::vector<LedNets> leds)
     : leds_(std::move(leds)), glows_(leds_.size()), published_(leds_.size()) {
+    const auto add = [this](NetId net) {
+        if (std::ranges::find(nets_, net) == nets_.end()) {
+            nets_.push_back(net);
+        }
+    };
     for (const LedNets& led : leds_) {
-        for (const NetId net : {led.anode, led.cathode}) {
-            if (std::ranges::find(nets_, net) == nets_.end()) {
-                nets_.push_back(net);
+        for (const std::optional<NetId>& anode : led.anodes) {
+            if (anode) {
+                add(*anode);
             }
         }
+        add(led.cathode);
     }
 }
 
@@ -29,8 +35,10 @@ void LedConsumer::powerOn() {
 
 void LedConsumer::sample(NetId net, Sample sample) {
     for (std::size_t i = 0; i < leds_.size(); ++i) {
-        if (leds_[i].anode == net) {
-            glows_[i].setAnode(sample);
+        for (std::size_t a = 0; a < leds_[i].anodes.size(); ++a) {
+            if (leds_[i].anodes[a] == net) {
+                glows_[i].setAnode(sample, a);
+            }
         }
         if (leds_[i].cathode == net) {
             glows_[i].setCathode(sample);

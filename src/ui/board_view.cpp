@@ -393,6 +393,9 @@ void BoardView::draw(ImVec2 size) {
     drawTraces(active_, 1.0f, 1.0f);
 
     for (const LedTag& led : leds_) {
+        if (led.shape != LampShape::Round) {
+            continue;  // digits: below
+        }
         const auto courtyard = scene_->courtyard(led.component);
         if (courtyard.empty()) {
             continue;

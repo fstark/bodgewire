@@ -209,6 +209,16 @@ TEST_CASE("builder: unconnected input warning", "[netlist]") {
     CHECK((*result)->circuit.isFinalized());
 }
 
+TEST_CASE("builder: an unconnected digit pin gives no warning", "[netlist]") {
+    // DP left unconnected: a MOS-family load is dark, not "floating high".
+    const auto result = LoadNetlist("part J1 POWER\npart R1 R value=330\npart DS1 DIGIT\n"
+                                    "net VCC R1.1\nnet CA R1.2 DS1.CA1 DS1.CA2\n"
+                                    "net GND DS1.A\n",
+                                    "t.bwn");
+    REQUIRE(result.has_value());
+    CHECK((*result)->warnings.empty());
+}
+
 TEST_CASE("builder: LoadNetlistFile missing file", "[netlist]") {
     const auto result = LoadNetlistFile("/nonexistent/dir/missing.bwn");
     REQUIRE_FALSE(result.has_value());

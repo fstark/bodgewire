@@ -296,7 +296,8 @@ private:
             }
             const auto pins = part.component->pins();
             for (PinIndex i = 0; i < pins.size(); ++i) {
-                if (pins[i].kind == PinKind::Input && !pinNet_.contains({reference, i})) {
+                if (pins[i].kind == PinKind::Input && pins[i].family == Family::Ttl &&
+                    !pinNet_.contains({reference, i})) {
                     loaded_->warnings.push_back({netlist_.file, part.decl->line, Severity::Warning,
                                                  reference + "." + std::to_string(i + 1) + " (" +
                                                      pins[i].name +

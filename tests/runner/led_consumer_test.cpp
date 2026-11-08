@@ -1,5 +1,6 @@
 #include "runner/led_consumer.hpp"
 
+#include <optional>
 #include <vector>
 
 #include <catch2/catch_approx.hpp>
@@ -50,9 +51,11 @@ struct Blinker {
 
 TEST_CASE("led consumer: watches its Nets", "[runner]") {
     const NetId a{1}, k{2}, gnd{3};
-    const LedConsumer one({{"D1", a, k}});
+    const LedConsumer one({{"D1", 0, {a, std::nullopt}, k}});
     CHECK(std::vector(one.nets().begin(), one.nets().end()) == std::vector{a, k});
-    const LedConsumer two({{"D1", a, k}, {"D2", k, gnd}, {"D3", a, k}});
+    const LedConsumer two({{"D1", 0, {a, std::nullopt}, k},
+                           {"D2", 0, {k, std::nullopt}, gnd},
+                           {"D3", 0, {a, std::nullopt}, k}});
     CHECK(std::vector(two.nets().begin(), two.nets().end()) == std::vector{a, k, gnd});
     CHECK(two.leds().size() == 3);
     CHECK(two.brightness(2) == 0.0f);
@@ -60,7 +63,7 @@ TEST_CASE("led consumer: watches its Nets", "[runner]") {
 
 TEST_CASE("led consumer: square wave glows half", "[runner]") {
     Blinker blinker;
-    LedConsumer leds({{"D1", blinker.a, blinker.k}});
+    LedConsumer leds({{"D1", 0, {blinker.a, std::nullopt}, blinker.k}});
     Runner runner(blinker.circuit, {&leds});
     runner.setSpeed(Speed::Max);
     runner.pauseAt(100_ms);
@@ -71,7 +74,7 @@ TEST_CASE("led consumer: square wave glows half", "[runner]") {
 
 TEST_CASE("led consumer: dark after power off", "[runner]") {
     Blinker blinker;
-    LedConsumer leds({{"D1", blinker.a, blinker.k}});
+    LedConsumer leds({{"D1", 0, {blinker.a, std::nullopt}, blinker.k}});
     Runner runner(blinker.circuit, {&leds});
     runner.setSpeed(Speed::Max);
     runner.pauseAt(50_ms);
@@ -85,7 +88,8 @@ TEST_CASE("led consumer: dark after power off", "[runner]") {
 
 TEST_CASE("led consumer: one Net feeds two LEDs", "[runner]") {
     Blinker blinker(true);
-    LedConsumer leds({{"D1", blinker.a, blinker.k}, {"D2", blinker.k, blinker.gnd}});
+    LedConsumer leds({{"D1", 0, {blinker.a, std::nullopt}, blinker.k},
+                      {"D2", 0, {blinker.k, std::nullopt}, blinker.gnd}});
     CHECK(leds.nets().size() == 3);
     Runner runner(blinker.circuit, {&leds});
     runner.setSpeed(Speed::Max);
@@ -94,4 +98,17 @@ TEST_CASE("led consumer: one Net feeds two LEDs", "[runner]") {
     runner.waitIdle();
     CHECK(leds.brightness(0) == Approx(0.5).margin(0.01));
     CHECK(leds.brightness(1) == Approx(0.5).margin(0.01));
+}
+
+TEST_CASE("led consumer: digit lamps share their anode Nets", "[runner]") {
+    const NetId ca{1}, a{2}, b{3};
+    LedConsumer digit({{"DS1", 0, {ca, ca}, a}, {"DS1", 1, {ca, ca}, b}});
+    CHECK(std::vector(digit.nets().begin(), digit.nets().end()) == std::vector{ca, a, b});
+    digit.powerOn();
+    digit.sample(ca, {0, One});
+    digit.sample(a, {0, Zero});
+    digit.sample(b, {0, One});
+    digit.advanceTo(kLedWindow);
+    CHECK(digit.brightness(0) == Approx(1.0f));
+    CHECK(digit.brightness(1) == 0.0f);
 }

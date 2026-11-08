@@ -495,7 +495,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             std::vector<LedTag> ledTags;
             for (const LedLight& led : session.leds()) {
                 if (const auto component = scene->componentIndex(led.reference)) {
-                    ledTags.push_back({*component, led.brightness});
+                    ledTags.push_back({*component, led.shape, led.brightness});
                 }
             }
             boardView.setLeds(ledTags);

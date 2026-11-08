@@ -13,6 +13,7 @@
 
 #include "instruments/logic_analyzer.hpp"
 #include "instruments/oscilloscope.hpp"
+#include "parts/catalogue.hpp"
 #include "session/session.hpp"
 #include "view/board_scene.hpp"
 #include "view/viewport.hpp"
@@ -53,6 +54,7 @@ struct LeadTag {
 
 struct LedTag {
     std::size_t component;
+    LampShape shape;
     float brightness;  // 0 dark .. 1 fully lit
 };
 

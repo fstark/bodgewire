@@ -115,11 +115,13 @@ TEST_CASE("probe consumer: touching many Nets in turn", "[runner]") {
     runner.waitIdle();
     std::size_t touched = 0;
     Time t = 1_ms;
-    for (const auto& [name, net] : loaded->nets) {
-        probe.touch(runner, net);
-        t += 1_ms;
-        RunTo(runner, t);
-        ++touched;
+    while (touched <= kMaxWatched) {  // round the Nets again if there are fewer than slots
+        for (const auto& [name, net] : loaded->nets) {
+            probe.touch(runner, net);
+            t += 1_ms;
+            RunTo(runner, t);
+            ++touched;
+        }
     }
     CHECK(touched > kMaxWatched);
     CHECK(runner.status().simTime == t);

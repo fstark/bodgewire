@@ -12,6 +12,7 @@
 
 #include "machine/machine.hpp"
 #include "machine/repair.hpp"
+#include "parts/catalogue.hpp"
 #include "runner/analyzer_consumer.hpp"
 #include "runner/led_consumer.hpp"
 #include "runner/meter_consumer.hpp"
@@ -49,7 +50,8 @@ struct TestLead {
 };
 
 struct LedLight {
-    std::string reference;  // "D1"
+    std::string reference;  // "D1", "DS1"
+    LampShape shape;        // which lamp of the Part
     float brightness;       // 0 dark .. 1 fully lit
 };
 
@@ -123,7 +125,8 @@ public:
     std::optional<double> volts() const;     // Volts mode; nullopt: no red Lead or no reading yet
     std::optional<bool> continuity() const;  // nullopt: a Lead missing or powered
 
-    // Every LED Part of the Machine, in netlist order; 0 when not powered or not in live_->leds.
+    // Every lamp of every lit Part (LED, digit segments), netlist then lamp order; 0 when not
+    // powered or not watched (an unconnected lamp).
     std::vector<LedLight> leds() const;
 
     // Every Button Part of the circuit, in netlist order.

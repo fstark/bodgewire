@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstddef>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -11,12 +13,15 @@
 
 namespace bw {
 
+// One lamp of a Part (the LED itself, or a segment of a digit).
 struct LedNets {
-    std::string reference;  // "D1"
-    NetId anode, cathode;
+    std::string reference;                       // "D1", "DS1"
+    std::size_t lamp;                            // index into the Part's catalogue lamps
+    std::array<std::optional<NetId>, 2> anodes;  // at least one
+    NetId cathode;
 };
 
-// One LedGlow per LED. brightness(): UI thread; overrides: devices thread.
+// One LedGlow per lamp. brightness(): UI thread; overrides: devices thread.
 class LedConsumer final : public Consumer {
 public:
     explicit LedConsumer(std::vector<LedNets> leds);

@@ -67,3 +67,24 @@ TEST_CASE("catalogue: parameters rejected", "[parts]") {
     REQUIRE_FALSE(created.has_value());
     CHECK(created.error() == "74LS04 takes no parameters");
 }
+
+TEST_CASE("catalogue: every lamp names Pins of its Part", "[parts]") {
+    for (const PartInfo& part : AllParts()) {
+        if (part.lamps.empty()) {
+            continue;
+        }
+        INFO(part.name);
+        Circuit circuit;
+        const auto created = part.create(circuit, "D1", {});
+        REQUIRE(created.has_value());
+        std::set<std::string, std::less<>> names;
+        for (const PinSpec& pin : (*created)->pins()) {
+            names.insert(pin.name);
+        }
+        for (const Lamp& lamp : part.lamps) {
+            CHECK(names.contains(lamp.cathode));
+            CHECK(names.contains(lamp.anodes[0]));
+            CHECK((lamp.anodes[1].empty() || names.contains(lamp.anodes[1])));
+        }
+    }
+}

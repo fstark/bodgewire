@@ -4,9 +4,9 @@
 
 namespace bw {
 
-void LedGlow::setAnode(Sample sample) {
+void LedGlow::setAnode(Sample sample, std::size_t which) {
     advanceTo(sample.time);
-    anode_ = sample;
+    anodes_[which] = sample;
 }
 
 void LedGlow::setCathode(Sample sample) {
@@ -27,8 +27,9 @@ void LedGlow::advanceTo(Time time) {
 void LedGlow::reset() { *this = LedGlow{}; }
 
 bool LedGlow::lit() const {
-    return anode_.value == LogicValue::One && !anode_.floating &&
-           cathode_.value == LogicValue::Zero && !cathode_.floating;
+    const bool anode = std::ranges::any_of(
+        anodes_, [](const Sample& a) { return a.value == LogicValue::One && !a.floating; });
+    return anode && cathode_.value == LogicValue::Zero && !cathode_.floating;
 }
 
 void LedGlow::integrateTo(Time time) {

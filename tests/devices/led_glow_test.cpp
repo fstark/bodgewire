@@ -88,3 +88,14 @@ TEST_CASE("led glow: reset goes dark", "[devices]") {
     glow.advanceTo(40_ms);
     CHECK(glow.brightness() == 0.0f);
 }
+
+TEST_CASE("led glow: either anode lights", "[devices]") {
+    LedGlow glow;
+    glow.setAnode({0, One}, 1);
+    glow.setCathode({0, Zero});
+    glow.advanceTo(kLedWindow);
+    CHECK(glow.brightness() == 1.0f);
+    glow.setAnode({kLedWindow, One, true}, 1);  // both anodes floating now
+    glow.advanceTo(2 * kLedWindow);
+    CHECK(glow.brightness() == 0.0f);
+}

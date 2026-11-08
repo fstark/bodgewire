@@ -1,9 +1,11 @@
 #include "session/session.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <format>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -24,6 +26,26 @@ struct Overloaded : Ts... {
 Time PressJitter() {
     const auto ns = std::chrono::steady_clock::now().time_since_epoch().count();
     return static_cast<Time>(ns % 1'000'000) * 1000;  // ps, within 1 ms
+}
+
+// The Net of a Pin the netlist connects; nullopt for an unconnected Pin (PinNet would give its
+// private Net) or an empty name.
+std::optional<NetId> ConnectedNet(const LoadedCircuit& loaded, std::string_view reference,
+                                  std::string_view pin) {
+    const auto component = loaded.components.find(reference);
+    if (pin.empty() || component == loaded.components.end()) {
+        return std::nullopt;
+    }
+    const auto pins = component->second->pins();
+    const auto spec = std::ranges::find(pins, pin, &PinSpec::name);
+    if (spec == pins.end()) {
+        return std::nullopt;
+    }
+    const auto index = static_cast<PinIndex>(std::distance(pins.begin(), spec));
+    const bool connected = std::ranges::any_of(loaded.connections, [&](const Connection& c) {
+        return c.reference == reference && c.pin == index;
+    });
+    return connected ? PinNet(loaded, reference, pin) : std::nullopt;
 }
 
 }  // namespace
@@ -56,13 +78,15 @@ std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> 
         consumers.push_back(&live->scope);
         std::vector<LedNets> nets;
         for (const LoadedPart& part : live->circuit->parts) {
-            if (part.info->kind != PartKind::Led) {
-                continue;
-            }
-            const auto a = PinNet(*live->circuit, part.reference, "A");
-            const auto k = PinNet(*live->circuit, part.reference, "K");
-            if (a && k) {  // an unconnected Pin: never lit
-                nets.push_back({part.reference, *a, *k});
+            for (std::size_t i = 0; i < part.info->lamps.size(); ++i) {
+                const Lamp& lamp = part.info->lamps[i];
+                const auto cathode = ConnectedNet(*live->circuit, part.reference, lamp.cathode);
+                const std::array anodes{
+                    ConnectedNet(*live->circuit, part.reference, lamp.anodes[0]),
+                    ConnectedNet(*live->circuit, part.reference, lamp.anodes[1])};
+                if (cathode && (anodes[0] || anodes[1])) {  // an unconnected lamp: never lit
+                    nets.push_back({part.reference, i, anodes, *cathode});
+                }
             }
         }
         if (!nets.empty()) {
@@ -336,19 +360,20 @@ std::vector<LedLight> Session::leds() const {
         return lights;
     }
     for (const LoadedPart& part : machine_->designCircuit().parts) {
-        if (part.info->kind != PartKind::Led) {
-            continue;
-        }
-        float brightness = 0;
-        if (powered_ && live_->leds) {
-            const auto leds = live_->leds->leds();
-            const auto it = std::ranges::find(leds, part.reference, &LedNets::reference);
-            if (it != leds.end()) {
-                brightness = live_->leds->brightness(
-                    static_cast<std::size_t>(std::distance(leds.begin(), it)));
+        for (std::size_t i = 0; i < part.info->lamps.size(); ++i) {
+            float brightness = 0;
+            if (powered_ && live_->leds) {
+                const auto leds = live_->leds->leds();
+                const auto it = std::ranges::find_if(leds, [&](const LedNets& led) {
+                    return led.reference == part.reference && led.lamp == i;
+                });
+                if (it != leds.end()) {
+                    brightness = live_->leds->brightness(
+                        static_cast<std::size_t>(std::distance(leds.begin(), it)));
+                }
             }
+            lights.push_back({part.reference, part.info->lamps[i].shape, brightness});
         }
-        lights.push_back({part.reference, brightness});
     }
     return lights;
 }

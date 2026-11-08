@@ -13,7 +13,7 @@
 
 namespace bw {
 
-inline constexpr std::size_t kMaxWatched = 32;  // ring slots
+inline constexpr std::size_t kMaxWatched = 48;  // ring slots
 
 enum class MarkerKind : std::uint8_t { PowerOn, SliceEnd, Watch, Rewatch, Unwatch, PowerOff };
 
