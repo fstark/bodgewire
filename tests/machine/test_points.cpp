@@ -56,6 +56,11 @@ const Crack& N2Crack() {
     return crack;
 }
 
+const Crack& ZipsCrack() {
+    static const Crack crack = PuzzleCrack("zips");
+    return crack;
+}
+
 const Crack& NineteenCrack() {
     static const Crack crack = PuzzleCrack("nineteen");
     return crack;

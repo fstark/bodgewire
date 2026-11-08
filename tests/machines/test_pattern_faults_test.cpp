@@ -76,10 +76,13 @@ std::vector<float> FaultFree(std::uint64_t seed) {
 }  // namespace
 
 TEST_CASE("faults: Puzzles have a title and a brief", "[machines]") {
-    for (const char* name : {"broken_trace", "dead_counter", "stuck_gate"}) {
+    for (const char* name : {"broken_trace", "dead_counter", "stuck_gate", "dead_rail",
+                             "line_bridge", "unpowered_chip", "sync_bridge", "zips"}) {
+        INFO(name);
         const auto puzzle =
             ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
         REQUIRE(puzzle.has_value());
+        CHECK(puzzle->machine == "test_pattern");
         CHECK_FALSE(puzzle->title.empty());
         CHECK_FALSE(puzzle->brief.empty());
     }
@@ -142,5 +145,24 @@ TEST_CASE("faults: broken trace", "[machines]") {
     CHECK_FALSE(wrong.mend(Layer::Front, {H0Crack().at.x + 5'000'000, H0Crack().at.y}));
     CHECK(Frame(wrong, seed) != good);
     REQUIRE(machine.mend(H0Crack().layer, H0Crack().at));
+    CHECK(Frame(machine, seed) == good);
+}
+
+TEST_CASE("faults: zips", "[machines]") {
+    const std::uint64_t seed = GENERATE(1, 2);
+    const auto good = FaultFree(seed);
+    Machine machine = LoadPuzzle("zips");
+    auto loaded = machine.build();
+    REQUIRE(loaded.has_value());
+    const NetId enable = *PinNet(**loaded, "U3", "ENT");
+    CHECK(enable == *PinNet(**loaded, "U3", "ENP"));
+    CHECK(enable != *PinNet(**loaded, "U9", "3Y"));
+    const Seen seen = Watch(**loaded, seed, {"U3.ENT", "U9.3Y"});
+    CHECK(seen.frame != good);
+    REQUIRE(seen.lamps.size() == 2);
+    CHECK(seen.lamps[0] == "-");
+    CHECK(seen.lamps[1].ends_with("PULSE"));
+
+    REQUIRE(machine.mend(ZipsCrack().layer, ZipsCrack().at));
     CHECK(Frame(machine, seed) == good);
 }

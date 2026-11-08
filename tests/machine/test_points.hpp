@@ -19,6 +19,7 @@ const Crack& LedA5Crack();        // chaser LED_A5, R6.2 → D5 pad 2: puzzles/g
 const Crack& SerCrack();          // chaser SER, U6 pin 8 → U5 pin 1: puzzles/dark_chaser.bwp
 const Crack& BtnNCrack();         // dice BTN_N, SW1 pad 1 → R9 pad 2: puzzles/dead_button.bwp
 const Crack& N2Crack();           // dice N2, U2 pin 3 → U4 pin 6: puzzles/loaded_dice.bwp
+const Crack& ZipsCrack();         // test_pattern LINE_END, U9 pin 6 → U3 pin 7: puzzles/zips.bwp
 const Crack& NineteenCrack();     // stopwatch T0, U6 pin 1 → U6 pin 12: puzzles/nineteen.bwp
 const Crack& BrokenBarCrack();    // stopwatch DS1_E, U8 pin 9 → DS1 pad 1: puzzles/broken_bar.bwp
 const Crack& NonStopCrack();      // stopwatch RUN, U11 pin 5 → U12 pin 2: puzzles/non_stop.bwp

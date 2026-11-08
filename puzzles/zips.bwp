@@ -1,0 +1,6 @@
+# Zips: the LINE_END Trace between U9 pin 6 and U3 pin 7 is cracked. U3's ENP and ENT (and the ENP
+# of U4 and U5) float high, so the line counter counts on every dot instead of once per line.
+machine test_pattern
+title "Zips"
+brief "The grid has turned into ragged stripes, like zips, running down the whole screen; there are no horizontal lines."
+fault crack U9.6 U3.7 50%

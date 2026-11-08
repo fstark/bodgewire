@@ -1,4 +1,4 @@
-# Test-pattern generator (TEST_PATTERN.md): 1 MHz dot clock, 64 pixels x 312 lines,
+# Machine 050, test-pattern generator (docs/machines/050-test-pattern/TEST_PATTERN.md): 1 MHz dot clock, 64 pixels x 312 lines,
 # PAL-like progressive. Outputs: SYNC_N (composite sync) and VIDEO (grid), registered.
 
 part X1  OSC freq=1MHz
