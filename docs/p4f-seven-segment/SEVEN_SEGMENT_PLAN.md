@@ -5,12 +5,12 @@ Spec: [SEVEN_SEGMENT.md](SEVEN_SEGMENT.md); Machine: [STOPWATCH.md](../machines/
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | `EvalContext::fell`; 74LS90 Part, Datasheet, tests | |
-| 2 | 74LS47 Part, Datasheet, tests | |
-| 3 | Lamps in the catalogue, DIGIT Part; `LedGlow` anodes, `LedConsumer`, Session lamps; TTL-only warning; `kMaxWatched` 48 | |
-| 4 | Digit geometry (`digit_shape`) and drawing in the Board view | |
-| 5 | Stopwatch netlist, manuals, headless fault-free test | |
-| 6 | Stopwatch Board (**user layout**), per-Machine loops | |
+| 1 | `EvalContext::fell`; 74LS90 Part, Datasheet, tests | done 5b5d52e |
+| 2 | 74LS47 Part, Datasheet, tests | done f8a69d7 |
+| 3 | Lamps in the catalogue, DIGIT Part; `LedGlow` anodes, `LedConsumer`, Session lamps; TTL-only warning; `kMaxWatched` 48 | done 1419047 |
+| 4 | Digit geometry (`digit_shape`) and drawing in the Board view | done a2deab7 |
+| 5 | Stopwatch netlist, manuals, headless fault-free test | done 8a18984 |
+| 6 | Stopwatch Board (**user layout**), per-Machine loops | waiting for the user |
 | 7 | Stopwatch Puzzles + Symptom/Repair tests | |
 | 8 | Session test, release check, screenshots, recipes, docs | |
 
@@ -18,6 +18,13 @@ Build gate: `cmake --preset debug && cmake --build --preset debug`
 Test gate: `ctest --preset debug -j 12`
 
 All C++ clang-formatted (repo `.clang-format`; never format CMakeLists.txt). Each phase ends with its fence and one commit; commit only this milestone's paths.
+
+---
+
+## Implementation notes
+
+- Phase 3: `probe consumer: touching many Nets in turn` went round the test pattern's Nets once, which is fewer than 48: it now loops until it passes `kMaxWatched`.
+- Phase 5: every test passed as first written; the stopwatch tests take ~14 s in debug (the `[slow]` seconds case most of it).
 
 ---
 
