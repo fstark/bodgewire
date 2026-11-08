@@ -102,15 +102,15 @@ net DS1_G    U8.SG_N DS1.G
 - `SW1` Start, `SW2` Stop, `SW3` Reset along the front edge below the digits, with `R1`–`R3`.
 - Behind each digit its decoder (`U8`, `U9`, `U10`) and anode resistor, then its counter (`U5`, `U6`, `U7`); prescaler `U1`–`U4`, `X1`, `U11`, `U12` and `J1` at the back.
 - Wanted for the Puzzles (each needs a straight segment away from pads and corners):
-  - `T0`: `U6` pin 1 (`CKB`) at an end of the Trace, so one crack cuts it off alone (e.g. route `U9` pin 7 → `U6` pin 12 → `U6` pin 1).
+  - `T0`: a straight stretch between `U6` pin 12 (`QA`) and `U6` pin 1 (`CKB`). As routed, `U6` pin 1 sits between `U9` pin 7 and `U6` pin 12, so the crack leaves `U6` `QA` alone and `U6` `CKB` and `U9` `A` floating together.
   - `RUN` and `DS1_E`: any route (two pads each).
   - `VCC` at `U5` pin 5: a branch that feeds only that pad, so a crack there unpowers `U5` alone.
 - `bw check-board` clean; `drc_stopwatch` passes (picked up by the `boards/*/*.kicad_pcb` glob).
-- Cracks (pads and positions filled in after the layout, P4e syntax):
-  - `T0`: `U6.1 <neighbour pad> N%`.
-  - `DS1_E`: `U8.9 DS1.1 N%`.
-  - `RUN`: `U11.5 U12.2 N%`.
-  - `VCC`: `U5.5 <neighbour pad> N%`.
+- Cracks (P4e syntax, on the routed Board):
+  - `T0`: `U6.1 U6.12 60%` (the diagonal on B.Cu).
+  - `DS1_E`: `U8.9 DS1.1 50%` (the long vertical on F.Cu).
+  - `RUN`: `U11.5 U12.2 50%` (B.Cu).
+  - `VCC`: `U5.5 U6.5 50%` (the 20 mm stretch on B.Cu from `U5` pin 5, a leaf of `VCC`, to `U6` pin 5).
 
 ## Puzzles
 
@@ -119,16 +119,16 @@ net DS1_G    U8.SG_N DS1.G
 | File | Fault line | Where |
 |---|---|---|
 | `stuck_at_zero.bwp` | `fault stuck U12.2Y 1` | `RESET` |
-| `nineteen.bwp` | `fault crack U6.1 … N%` | `T0` at `U6` `CKB` |
+| `nineteen.bwp` | `fault crack U6.1 U6.12 60%` | `T0` between `U6` `QA` and `CKB` |
 | `eights.bwp` | `fault stuck U9.SG_N 0` | `DS2_G` |
-| `broken_bar.bwp` | `fault crack U8.9 DS1.1 N%` | `DS1_E` |
-| `non_stop.bwp` | `fault crack U11.5 U12.2 N%` | `RUN` |
-| `dark_seconds.bwp` | `fault crack U5.5 … N%` | `VCC` at `U5` |
+| `broken_bar.bwp` | `fault crack U8.9 DS1.1 50%` | `DS1_E` |
+| `non_stop.bwp` | `fault crack U11.5 U12.2 50%` | `RUN` |
+| `dark_seconds.bwp` | `fault crack U5.5 U6.5 50%` | `VCC` at `U5` |
 
 Briefs:
 
 - Stuck at zero: "The stopwatch shows 0.00 and none of the buttons makes it count."
-- Nineteen: "The stopwatch never gets past 0.19: it starts again from 0.00."
+- Nineteen: "The stopwatch never gets past 0.19: after Reset it reads 0.10, and it goes back to 0.10 after 0.19."
 - Eights: "After Reset the stopwatch reads 0.80, and some numbers look wrong."
 - Broken bar: "The seconds digit draws some numbers wrongly: its 0 has a gap."
 - Non-stop: "Stop does nothing: the stopwatch keeps counting."
@@ -136,7 +136,7 @@ Briefs:
 
 ## Electrical Nets on a damaged Board
 
-- Nineteen: `U6` pin 1 alone on its island, named `T0` from `U6`'s own Connection or `T0~2`, depending on Connection order; it has no Driver: floating, reads high, so `U6`'s ÷5 section never clocks. After Reset it holds 0: tenths show only `T0`.
+- Nineteen: `U6` pin 1 and `U9` pin 7 on one island with no Driver: floating, read high. `U6`'s ÷5 section never clocks, so after Reset it holds 0, and `U9` reads `A` high: the tenths show 1 for good. `U6` pin 12 (`QA`) toggles alone on the other island.
 - Broken bar: `DS1` pin 1 alone on its island, no Driver: floating, so segment `E` stays dark (a floating cathode never lights).
 - Non-stop: `U12` pin 2 alone, floating: gate 1 is an inverter of `CLK`, whatever `RUN` says.
 - Dark seconds: `U5` pin 5 on a `VCC~2` island with no supply pin: `U5` is not Powered, its Pins get private Nets. `S0`–`S3` hold only TTL inputs of `U8`: floating, read high, `U8` decodes 15 (blank). `DS1`'s decimal point does not involve `U5` and stays lit.

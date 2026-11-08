@@ -36,7 +36,7 @@ A number on a display goes through three stages: a counter holds it in binary, a
 | Puzzle | Fault | Symptom | Path to the fix |
 |---|---|---|---|
 | Stuck at zero | `U12` gate 2 output (`RESET`) stuck at 1 | the display shows 0.00 whatever the buttons do | `RUN` follows Start and Stop, `GCLK` pulses, but `RESET` is high at every counter's `R01`/`R02` with `SW3` released: swap `U12` |
-| Nineteen | Broken Trace on `T0` that cuts `U6` pin 1 (`CKB`) off | the tenths only show 0 and 1: the watch counts 0.00 to 0.19, then starts again; the seconds never move | `T0` toggles at `U6` pin 12 and `U9` pin 7, but `U6` pin 1 floats: mend the Trace |
+| Nineteen | Broken Trace on `T0` between `U6` pin 12 (`QA`) and `U6` pin 1 (`CKB`) | after Reset the watch reads 0.10; it counts 0.10 to 0.19, then starts again from 0.10; the seconds never move | `T0` toggles at `U6` pin 12, but floats (reads high) at `U6` pin 1 and `U9` pin 7: mend the Trace |
 | Eights | `U9` output `SG_N` (`DS2_G`) stuck at 0 | after Reset the watch reads 0.80; the tenths show 8 for 0, and odd shapes for 1 and 7 | `DS2`'s middle bar is lit whatever `T0`–`T3` say; `DS2_G` is low for 0, which the datasheet draws without `g`: swap `U9` |
 | Broken bar | Broken Trace on `DS1_E` between `U8` pin 9 and `DS1` pin 1 | the seconds draw wrong shapes: 0 with a gap at the bottom left, 6 like a 5, 8 like a 9 | `DS1_E` goes low at `U8` pin 9 for 0, but floats at `DS1` pin 1: mend the Trace |
 | Non-stop | Broken Trace on `RUN` between `U11` pin 5 and `U12` pin 2 | Stop does nothing: the watch always counts; Reset brings it back to 0.00, and it counts on | `RUN` goes low at `U11` pin 5 after Stop, but floats (reads high) at `U12` pin 2: mend the Trace |

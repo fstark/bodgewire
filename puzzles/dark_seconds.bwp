@@ -1,0 +1,6 @@
+# Dark seconds: the VCC Trace between U5 pin 5 and U6 pin 5 is cracked; U5 is unpowered, S0-S3 float high,
+# U8 decodes 15 (blank). DS1's decimal point does not need U5 and stays lit.
+machine stopwatch
+title "Dark seconds"
+brief "The left digit shows only its decimal point; the other two count normally."
+fault crack U5.5 U6.5 50%

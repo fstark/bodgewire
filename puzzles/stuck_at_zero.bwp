@@ -1,0 +1,5 @@
+# Stuck at zero: U12's gate 2 output (RESET) is stuck high, so the six counters are held at 0.
+machine stopwatch
+title "Stuck at zero"
+brief "The stopwatch shows 0.00 and none of the buttons makes it count."
+fault stuck U12.2Y 1

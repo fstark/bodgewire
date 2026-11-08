@@ -1,0 +1,6 @@
+# Non-stop: the RUN Trace between U11 pin 5 and U12 pin 2 is cracked; U12 pin 2 floats high,
+# so gate 1 passes the clock whatever RUN says.
+machine stopwatch
+title "Non-stop"
+brief "Stop does nothing: the stopwatch keeps counting."
+fault crack U11.5 U12.2 50%

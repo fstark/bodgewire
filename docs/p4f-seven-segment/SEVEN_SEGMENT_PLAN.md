@@ -10,8 +10,8 @@ Spec: [SEVEN_SEGMENT.md](SEVEN_SEGMENT.md); Machine: [STOPWATCH.md](../machines/
 | 3 | Lamps in the catalogue, DIGIT Part; `LedGlow` anodes, `LedConsumer`, Session lamps; TTL-only warning; `kMaxWatched` 48 | done 1419047 |
 | 4 | Digit geometry (`digit_shape`) and drawing in the Board view | done a2deab7 |
 | 5 | Stopwatch netlist, manuals, headless fault-free test | done 8a18984 |
-| 6 | Stopwatch Board (**user layout**), per-Machine loops | waiting for the user |
-| 7 | Stopwatch Puzzles + Symptom/Repair tests | |
+| 6 | Stopwatch Board (**user layout**), per-Machine loops | done 8d3644a |
+| 7 | Stopwatch Puzzles + Symptom/Repair tests | done |
 | 8 | Session test, release check, screenshots, recipes, docs | |
 
 Build gate: `cmake --preset debug && cmake --build --preset debug`
@@ -25,6 +25,8 @@ All C++ clang-formatted (repo `.clang-format`; never format CMakeLists.txt). Eac
 
 - Phase 3: `probe consumer: touching many Nets in turn` went round the test pattern's Nets once, which is fewer than 48: it now loops until it passes `kMaxWatched`.
 - Phase 5: every test passed as first written; the stopwatch tests take ~14 s in debug (the `[slow]` seconds case most of it).
+- Phase 6: the first screenshot read 0.7x with every digit upright and `DS1`'s point lit; no geometry change.
+- Phase 7: the routed `T0` runs `U9` pin 7 → `U6` pin 1 → `U6` pin 12, so no crack cuts `U6` pin 1 off alone. Instead of a reroute, Nineteen cracks `U6.1 U6.12`: `U6` `CKB` and `U9` `A` float together, the watch reads 0.10 after Reset and runs 0.10–0.19 round again (STOPWATCH.md updated). The four cracks are on long straight stretches; every Puzzle test passed as first written.
 
 ---
 

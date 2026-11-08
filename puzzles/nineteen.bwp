@@ -1,0 +1,6 @@
+# Nineteen: the T0 Trace between U6 pin 1 and U6 pin 12 is cracked; U6's CKB and U9's A float high,
+# so the tenths' ÷5 section never counts and U9 always sees an odd tenth: 0.10 to 0.19, round again.
+machine stopwatch
+title "Nineteen"
+brief "The stopwatch never gets past 0.19: after Reset it reads 0.10, and it goes back to 0.10 after 0.19."
+fault crack U6.1 U6.12 60%

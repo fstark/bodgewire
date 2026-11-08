@@ -1,0 +1,5 @@
+# Broken bar: the DS1_E Trace between U8 pin 9 and DS1 pin 1 is cracked; DS1's segment e floats and stays dark.
+machine stopwatch
+title "Broken bar"
+brief "The seconds digit draws some numbers wrongly: its 0 has a gap."
+fault crack U8.9 DS1.1 50%

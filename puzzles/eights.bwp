@@ -1,0 +1,5 @@
+# Eights: U9's segment g output is stuck low, so DS2's middle bar is always lit: 0 shows as 8.
+machine stopwatch
+title "Eights"
+brief "After Reset the stopwatch reads 0.80, and some numbers look wrong."
+fault stuck U9.SG_N 0

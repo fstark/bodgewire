@@ -56,6 +56,26 @@ const Crack& N2Crack() {
     return crack;
 }
 
+const Crack& NineteenCrack() {
+    static const Crack crack = PuzzleCrack("nineteen");
+    return crack;
+}
+
+const Crack& BrokenBarCrack() {
+    static const Crack crack = PuzzleCrack("broken_bar");
+    return crack;
+}
+
+const Crack& NonStopCrack() {
+    static const Crack crack = PuzzleCrack("non_stop");
+    return crack;
+}
+
+const Crack& DarkSecondsCrack() {
+    static const Crack crack = PuzzleCrack("dark_seconds");
+    return crack;
+}
+
 const Crack& R1VccCrack() {
     static const Crack crack = BoardCrack("counter", {"R1", "1"}, {"U1", "16"}, 58);
     return crack;
