@@ -11,6 +11,7 @@
 #include "parts/led.hpp"
 #include "parts/ls161.hpp"
 #include "parts/ls164.hpp"
+#include "parts/ls47.hpp"
 #include "parts/ls74.hpp"
 #include "parts/ls90.hpp"
 #include "parts/oscillator.hpp"
@@ -103,6 +104,8 @@ constexpr std::array s_parts{
     PartInfo{"74LS20", "dual 4-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS20">},
     PartInfo{"74LS30", "8-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS30">},
     PartInfo{"74LS32", "quad 2-input OR", "DIP-14", Chip, &CreateGatePackage<"74LS32">},
+    PartInfo{"74LS47", "BCD to 7-segment decoder, open collector", "DIP-16", Chip,
+             &CreateChip<Ls47, "74LS47">},
     PartInfo{"74LS74", "dual D flip-flop, preset and clear", "DIP-14", Chip,
              &CreateChip<Ls74, "74LS74">},
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},

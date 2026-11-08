@@ -6,6 +6,7 @@ add_library(bw_parts STATIC
   led.cpp
   ls161.cpp
   ls164.cpp
+  ls47.cpp
   ls74.cpp
   ls90.cpp
   oscillator.cpp
