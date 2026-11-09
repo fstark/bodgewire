@@ -9,7 +9,7 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Stuck inputs: loader and builder | |
+| 1 | Stuck inputs: loader and builder | done |
 | 2 | Dry Joints: syntax, loader, electrical netlist, leg/pad, `resolder` | |
 | 3 | Resolder Repair: parse, Session, `bw run`, `bw_ui --repair` | |
 | 4 | UI: Resolder tool, leg/pad words, Probe hint | |

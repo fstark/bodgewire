@@ -85,6 +85,10 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
     }
 
     const LoadedCircuit& loaded = *machine.designCircuit_;
+    const auto kindOf = [&](std::string_view reference) {
+        const auto part = std::ranges::find(loaded.parts, reference, &LoadedPart::reference);
+        return part == loaded.parts.end() ? PartKind::Resistor : part->info->kind;
+    };
     for (const StuckAtDecl& decl : puzzle.stuck) {
         const auto component = loaded.components.find(decl.reference);
         if (component == loaded.components.end()) {
@@ -103,9 +107,11 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
             continue;
         }
         const PinSpec& spec = component->second->pins()[*pin];
-        if (!IsDriver(spec.kind)) {
-            error(decl.line,
-                  decl.reference + "." + decl.pin + " (" + spec.name + ") is not an output");
+        const bool chipInput =
+            kindOf(decl.reference) == PartKind::Chip && spec.kind == PinKind::Input;
+        if (!IsDriver(spec.kind) && !chipInput) {
+            error(decl.line, decl.reference + "." + decl.pin + " (" + spec.name +
+                                 ") is not an output or a chip input");
             continue;
         }
         machine.stuck_.push_back({decl.reference, *pin, decl.value});
@@ -147,15 +153,7 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
         }
         const PinRef a = *machine.padOf(decl.a);
         const PinRef b = *machine.padOf(decl.b);
-        const auto kind = [&] {
-            for (const LoadedPart& p : loaded.parts) {
-                if (p.reference == a.reference) {
-                    return p.info->kind;
-                }
-            }
-            return PartKind::Resistor;
-        }();
-        if (a.reference != b.reference || a.pin == b.pin || kind != PartKind::Chip) {
+        if (a.reference != b.reference || a.pin == b.pin || kindOf(a.reference) != PartKind::Chip) {
             error(decl.line, written + ": pins of one chip only");
             continue;
         }

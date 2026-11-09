@@ -274,6 +274,28 @@ TEST_CASE("builder: stuck pin ties its net", "[netlist]") {
     CHECK(sim.value(loaded.circuit.netOf(pin2)) == One);
 }
 
+TEST_CASE("builder: stuck input reads its value, its Net unchanged", "[netlist]") {
+    // 74LS00: 1A and 2A on net A, held 1 by a pull-up; 1B and 2B on VCC. 1A stuck at 0.
+    const auto netlist = ParseNetlist("part U1 74LS00\npart R1 R value=4k7\n"
+                                      "net A R1.2 U1.1 U1.4\nnet VCC R1.1 U1.2 U1.5\n"
+                                      "net Y1 U1.3\nnet Y2 U1.6\n",
+                                      "t.bwn");
+    REQUIRE(netlist.has_value());
+    const StuckPin stuck[] = {{"U1", 0, Zero}};  // 1A
+    const auto result = BuildCircuit(*netlist, stuck);
+    REQUIRE(result.has_value());
+    LoadedCircuit& loaded = **result;
+    const NetId a = loaded.nets.at("A");
+    CHECK(PinNet(loaded, "U1", "1A") == a);
+    CHECK(loaded.circuit.tieOf(a).strength == DriveStrength::Weak);
+    Simulator sim(loaded.circuit);
+    sim.powerOn(1);
+    sim.runUntil(100_ns);
+    CHECK(sim.value(a) == One);
+    CHECK(sim.value(loaded.nets.at("Y1")) == One);   // NAND(0, 1): the stuck input
+    CHECK(sim.value(loaded.nets.at("Y2")) == Zero);  // NAND(1, 1): a good input on A
+}
+
 TEST_CASE("builder: unpowered chip drives nothing", "[netlist]") {
     std::ifstream in(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
     const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};

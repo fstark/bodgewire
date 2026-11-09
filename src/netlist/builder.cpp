@@ -65,22 +65,36 @@ public:
         for (const StuckPin& s : stuck_) {
             const auto it = loaded_->components.find(s.reference);
             Check(it != loaded_->components.end() && s.pin < it->second->pins().size() &&
-                      IsDriver(it->second->pins()[s.pin].kind) &&
+                      (IsDriver(it->second->pins()[s.pin].kind) ||
+                       it->second->pins()[s.pin].kind == PinKind::Input) &&
                       (s.value == LogicValue::Zero || s.value == LogicValue::One),
-                  "builder: stuck pin must be an output of a placed Component");
+                  "builder: stuck pin must be an output or input of a placed Component");
         }
         for (const auto& [pin, net] : pinNet_) {
             const PlacedPart& part = placed_.find(pin.first)->second;
             if (isUnpowered(pin.first)) {
                 // no Driver, no Load: the chip's Pins get private Nets at finalize()
             } else if (const StuckPin* s = stuckAt(pin.first, pin.second)) {
-                circuit.tie(net.net, s->value, DriveStrength::Strong);
+                if (IsDriver(part.component->pins()[pin.second].kind)) {
+                    circuit.tie(net.net, s->value, DriveStrength::Strong);
+                }  // a stuck input: on its own Net below
             } else if (notConnected_.contains(pin)) {
                 // a Button's rail end: the Button drives the signal end only
             } else if (part.component != nullptr) {
                 circuit.connect(*part.component, pin.second, net.net);
             }
             loaded_->connections.push_back({pin.first, pin.second, std::string(net.name)});
+        }
+        // A stuck input reads its value through a Net of its own, listed or not (a dry Joint).
+        for (const StuckPin& s : stuck_) {
+            const Component& component = *loaded_->components.at(s.reference);
+            if (component.pins()[s.pin].kind != PinKind::Input || isUnpowered(s.reference)) {
+                continue;
+            }
+            const NetId own =
+                circuit.addNet(s.reference + "." + component.pins()[s.pin].name + " stuck");
+            circuit.tie(own, s.value, DriveStrength::Strong);
+            circuit.connect(component, s.pin, own);
         }
         for (const PartDecl& decl : netlist_.parts) {
             const PlacedPart& part = placed_.find(decl.reference)->second;

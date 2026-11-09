@@ -42,7 +42,8 @@ struct LoadedCircuit {
 // unique_ptr: a Simulator keeps a Circuit&, so the circuit must not move after loading.
 using LoadResult = std::expected<std::unique_ptr<LoadedCircuit>, std::vector<Diagnostic>>;
 
-// Stuck-at Fault: the Pin's Net is held at `value` (Zero or One) at full strength.
+// Stuck-at Fault: an output holds its Net at `value` (Zero or One, Strong); an input reads
+// `value`, its Net unchanged.
 struct StuckPin {
     std::string reference;
     PinIndex pin;

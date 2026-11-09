@@ -58,12 +58,28 @@ TEST_CASE("machine: load errors", "[machine]") {
     Puzzle puzzle = TestPattern();
     puzzle.stuck = {{2, "U99", "QA", LogicValue::Zero},
                     {3, "U3", "XX", LogicValue::Zero},
-                    {4, "U3", "A", LogicValue::One},
+                    {4, "J2", "VIDEO", LogicValue::One},
                     {5, "J1", "1", LogicValue::One}};
     puzzle.cracks = {{6, {"U99", "1"}, {"U1", "QA"}, 50}};
     CHECK(Errors(puzzle) == Lines{"2: unknown reference 'U99'", "3: U3 (74LS161) has no pin XX",
-                                  "4: U3.A (A) is not an output", "5: J1.1 (VCC) is not an output",
+                                  "4: J2.VIDEO (VIDEO) is not an output or a chip input",
+                                  "5: J1.1 (VCC) is not an output or a chip input",
                                   "6: unknown reference 'U99'"});
+}
+
+TEST_CASE("machine: a chip input can be stuck, and a swap removes it", "[machine]") {
+    Puzzle puzzle = TestPattern();
+    puzzle.stuck = {{2, "U3", "A", LogicValue::One}};
+    auto machine = LoadMachine(puzzle, Root());
+    REQUIRE(machine.has_value());
+    const auto ownNets = [&] {
+        const auto built = machine->build();
+        REQUIRE(built.has_value());
+        return (*built)->circuit.netCount() - (*built)->nets.size();
+    };
+    const auto withStuck = ownNets();
+    CHECK(machine->swap("U3"));
+    CHECK(ownNets() == withStuck - 1);
 }
 
 TEST_CASE("machine: crack errors", "[machine]") {
