@@ -110,3 +110,4 @@ Commit: `docs: P4i implemented, user check pending`
 ## Implementation notes
 
 - Docs review (before phase 1): the circuit and every predicted reading held. Fixed: the Datasheet check builds Parts without parameters (`PartPinNames` gives `PADDLE` its own); `--knob` checked in `bw_ui`'s `main()` with the other options; debug runs at 0.12× here, the long cases are `[slow]` and step the knob within one power-on; comments and docs saying only chips are Powered; the count formula's 0.2 µs (half way sits on a boundary); Dead knob compares segment masks; instrument Clips on pads.
+- Phase 4: the netlist worked as first written, no warnings; every reading exact (00, 20, 50, 79, 99; 30 → 59 after a turn). Release headless: 14× real time. `knob: reads the knob` (three seeds, one case) takes 19 s in debug.

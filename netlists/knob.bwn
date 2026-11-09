@@ -1,0 +1,90 @@
+# 045 knob meter (docs/machines/045-knob-meter/KNOB_METER.md): a 1 MHz clock divided by five
+# 74LS90 into a 10 kHz count clock and a 100 ms measuring cycle. Each cycle U5 triggers the paddle
+# controller on J2, whose pulse lasts as long as the knob is turned; U6 lets the count clock
+# through to the units and tens counters U8, U7 while it lasts, and latches the count into the
+# 74LS175 U10, U9 when it ends; U12, U11 show it on DS2, DS1. U5 clears the counters each cycle.
+
+part X1 OSC freq=1MHz
+part J1 POWER
+part J2 PADDLE min=30us max=9.93ms
+part R1 R value=330
+part R2 R value=330
+part U1 74LS90
+part U2 74LS90
+part U3 74LS90
+part U4 74LS90
+part U5 74LS90
+part U6 74LS00
+part U7 74LS90
+part U8 74LS90
+part U9 74LS175
+part U10 74LS175
+part U11 74LS47
+part U12 74LS47
+part DS1 DIGIT
+part DS2 DIGIT
+
+# Timebase: 1 MHz to the 10 kHz count clock and 100 Hz; U5 steps every 10 ms
+net CLK      X1.OUT U1.CKA
+net F500K    U1.QA U1.CKB
+net F100K    U1.QD U2.CKA
+net F50K     U2.QA U2.CKB
+net F10K     U2.QD U3.CKA U6.1A
+net F5K      U3.QA U3.CKB
+net F1K      U3.QD U4.CKA
+net F500     U4.QA U4.CKB
+net F100     U4.QD U5.CKA
+net F50      U5.QA U5.CKB
+net TB1      U5.QB U7.R01 U8.R01
+net TB2      U5.QC U7.R02 U8.R02
+net TRIG_N   U5.QD J2.TRIG_N
+
+# Controller pulse: gates the count clock, latches the count when it ends
+net PULSE    J2.OUT U6.1B U6.2A U6.2B
+net GCLK     U6.1Y U8.CKA
+net LATCH    U6.2Y U9.CLK U10.CLK
+
+# Counters: units U8, tens U7; QD carries to the next
+net C0       U8.QA U8.CKB U10.1D
+net C1       U8.QB U10.2D
+net C2       U8.QC U10.3D
+net C3       U8.QD U10.4D U7.CKA
+net C4       U7.QA U7.CKB U9.1D
+net C5       U7.QB U9.2D
+net C6       U7.QC U9.3D
+net C7       U7.QD U9.4D
+
+# Latches to decoders
+net L0       U10.1Q U12.A
+net L1       U10.2Q U12.B
+net L2       U10.3Q U12.C
+net L3       U10.4Q U12.D
+net L4       U9.1Q U11.A
+net L5       U9.2Q U11.B
+net L6       U9.3Q U11.C
+net L7       U9.4Q U11.D
+
+net VCC      R1.1 R2.1 U9.CLR_N U10.CLR_N
+net VCC      U11.LT_N U11.RBI_N U11.BI_N U12.LT_N U12.RBI_N U12.BI_N
+net GND      U1.R01 U1.R02 U1.R91 U1.R92 U2.R01 U2.R02 U2.R91 U2.R92
+net GND      U3.R01 U3.R02 U3.R91 U3.R92 U4.R01 U4.R02 U4.R91 U4.R92
+net GND      U5.R01 U5.R02 U5.R91 U5.R92 U7.R91 U7.R92 U8.R91 U8.R92
+net GND      U6.3A U6.3B U6.4A U6.4B
+
+# Digits: common anode through one resistor, segments straight on the decoder outputs
+net DS1_CA   R1.2 DS1.CA1 DS1.CA2
+net DS1_A    U11.SA_N DS1.A
+net DS1_B    U11.SB_N DS1.B
+net DS1_C    U11.SC_N DS1.C
+net DS1_D    U11.SD_N DS1.D
+net DS1_E    U11.SE_N DS1.E
+net DS1_F    U11.SF_N DS1.F
+net DS1_G    U11.SG_N DS1.G
+net DS2_CA   R2.2 DS2.CA1 DS2.CA2
+net DS2_A    U12.SA_N DS2.A
+net DS2_B    U12.SB_N DS2.B
+net DS2_C    U12.SC_N DS2.C
+net DS2_D    U12.SD_N DS2.D
+net DS2_E    U12.SE_N DS2.E
+net DS2_F    U12.SF_N DS2.F
+net DS2_G    U12.SG_N DS2.G
