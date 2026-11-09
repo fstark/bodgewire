@@ -1,6 +1,7 @@
 add_library(bw_machine STATIC
   crack.cpp
   electrical.cpp
+  knob_setting.cpp
   machine.cpp
   press.cpp
   puzzle.cpp

@@ -20,6 +20,7 @@
 #include "devices/tv_input.hpp"
 #include "instruments/logic_probe.hpp"
 #include "machine/crack.hpp"
+#include "machine/knob_setting.hpp"
 #include "machine/machine.hpp"
 #include "machine/press.hpp"
 #include "machine/repair.hpp"
@@ -41,7 +42,7 @@ constexpr std::string_view kUsage =
     "[--record NET,NET... | --record-all] [--vcd FILE] "
     "[--tv FILE.bmp] [--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,"
     "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
-    "[--probe REF.PIN,...] [--press REF:DOWN:UP,...]\n"
+    "[--probe REF.PIN,...] [--press REF:DOWN:UP,...] [--knob REF:N%,...]\n"
     "       bw export-kicad <file.bwn> -o <file.net>\n"
     "       bw check-board <file.bwn> <file.kicad_pcb>";
 
@@ -56,6 +57,7 @@ struct Options {
     std::vector<std::string> repair;
     std::vector<std::string> probe;
     std::vector<ButtonPress> press;
+    std::vector<KnobSetting> knob;
 };
 
 int UsageError(std::string_view message) {
@@ -95,7 +97,8 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
             continue;
         }
         if (arg != "--time" && arg != "--seed" && arg != "--record" && arg != "--vcd" &&
-            arg != "--tv" && arg != "--repair" && arg != "--probe" && arg != "--press") {
+            arg != "--tv" && arg != "--repair" && arg != "--probe" && arg != "--press" &&
+            arg != "--knob") {
             return "unknown option " + std::string(arg);
         }
         if (i + 1 >= args.size()) {
@@ -129,6 +132,14 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
                     return press.error();
                 }
                 options.press.push_back(std::move(*press));
+            }
+        } else if (arg == "--knob") {
+            for (const std::string& text : SplitCommas(value)) {
+                auto knob = ParseKnob(text);
+                if (!knob) {
+                    return knob.error();
+                }
+                options.knob.push_back(std::move(*knob));
             }
         } else {
             options.vcd = value;
@@ -318,6 +329,14 @@ int Run(std::span<char*> args) {
         edges.push_back({press.up, button, false});
     }
     std::ranges::stable_sort(edges, {}, &PressEdge::at);
+
+    for (const KnobSetting& knob : options.knob) {
+        Paddle* paddle = PaddleOf(loaded, knob.reference);
+        if (paddle == nullptr) {
+            return UsageError("'" + knob.reference + "' is not a paddle controller");
+        }
+        paddle->setKnob(knob.turn);
+    }
 
     std::vector<NetId> recorded;
     if (options.recordAll) {

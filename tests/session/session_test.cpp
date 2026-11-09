@@ -555,3 +555,32 @@ TEST_CASE("session: dice rolls both odd and even faces", "[session]") {
     CHECK(even);
     session.powerOff();
 }
+
+TEST_CASE("session: knob kept across power", "[session]") {
+    auto loaded = LoadNetlist("part X1 OSC freq=1kHz\npart J1 POWER\n"
+                              "part J2 PADDLE min=30us max=9.93ms\npart U1 74LS04\n"
+                              "net TRIG_N X1.OUT J2.TRIG_N\nnet PULSE J2.OUT U1.1A\n"
+                              "net GND U1.2A U1.3A U1.4A U1.5A U1.6A\n",
+                              "knob.bwn");
+    REQUIRE(loaded.has_value());
+    const Paddle* paddle = PaddleOf(**loaded, "J2");
+    REQUIRE(paddle != nullptr);
+    Session session(std::nullopt, std::move(*loaded));
+    session.setSpeed(Speed::Max);
+    CHECK(session.knobs() == std::vector<std::string>{"J2"});
+    CHECK_FALSE(session.setKnob("J9", 0.5));
+    CHECK_FALSE(session.setKnob("U1", 0.5));
+    CHECK(session.knob("J2") == 0.0);
+    CHECK(session.setKnob("J2", 1.5));
+    CHECK(session.knob("J2") == 1.0);
+    CHECK(session.setKnob("J2", 0.25));  // with the power off
+    CHECK(paddle->knob() == 0.25);
+    session.powerOn(1, 1_ms);
+    session.runner().waitIdle();
+    CHECK(paddle->knob() == 0.25);
+    session.powerOff();
+    session.powerOn(2, 1_ms);
+    session.runner().waitIdle();
+    CHECK(session.knob("J2") == 0.25);
+    CHECK(paddle->knob() == 0.25);
+}

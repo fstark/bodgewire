@@ -2,6 +2,7 @@
 
 #include <format>
 #include <string>
+#include <vector>
 
 #include <imgui.h>
 
@@ -14,6 +15,8 @@ constexpr ImU32 kLampHigh = IM_COL32(230, 40, 40, 255);
 constexpr ImU32 kLampLow = IM_COL32(40, 200, 60, 255);
 constexpr ImU32 kLampPulse = IM_COL32(255, 170, 0, 255);
 constexpr float kTitleScale = 1.3f;
+constexpr double kKnobKeyRate = 0.5;     // turn per second while an arrow key is held
+constexpr double kKnobWheelStep = 0.01;  // turn per wheel notch
 
 // "● HIGH  ● LOW  ● PULSE", one row.
 void DrawLamps(ProbeLamps lamps) {
@@ -46,6 +49,45 @@ void DrawNoVideo(ImVec2 size) {
     ImGui::Dummy(size);
 }
 
+// Up and Down turn the first knob while held, also with the section collapsed; a slider per
+// controller, dragged or turned by the mouse wheel.
+void DrawKnobs(Session& session) {
+    const std::vector<std::string> knobs = session.knobs();
+    if (knobs.empty()) {
+        return;
+    }
+    const ImGuiIO& io = ImGui::GetIO();
+    if (!io.WantTextInput) {
+        const int direction = static_cast<int>(ImGui::IsKeyDown(ImGuiKey_UpArrow)) -
+                              static_cast<int>(ImGui::IsKeyDown(ImGuiKey_DownArrow));
+        if (direction != 0) {
+            session.setKnob(knobs.front(),
+                            session.knob(knobs.front()) + direction * kKnobKeyRate * io.DeltaTime);
+        }
+    }
+    if (!ImGui::CollapsingHeader("Knob", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+    for (std::size_t i = 0; i < knobs.size(); ++i) {
+        const std::string& reference = knobs[i];
+        float percent = static_cast<float>(session.knob(reference) * 100.0);
+        ImGui::SetNextItemWidth(-ImGui::CalcTextSize(reference.c_str()).x -
+                                ImGui::GetStyle().ItemInnerSpacing.x);
+        if (ImGui::SliderFloat(reference.c_str(), &percent, 0.0f, 100.0f, "%.0f %%")) {
+            session.setKnob(reference, percent / 100.0);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
+            if (io.MouseWheel != 0.0f) {
+                session.setKnob(reference,
+                                session.knob(reference) + io.MouseWheel * kKnobWheelStep);
+            }
+            ImGui::SetTooltip(i == 0 ? "Turn the knob: drag, mouse wheel, or the Up and Down keys"
+                                     : "Turn the knob: drag or mouse wheel");
+        }
+    }
+}
+
 }  // namespace
 
 void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loaded& loaded,
@@ -72,6 +114,8 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
             DrawNoVideo(size);
         }
     }
+
+    DrawKnobs(session);
 
     if (session.machine() && ImGui::CollapsingHeader("Probe", open)) {
         DrawLamps(session.lamps());

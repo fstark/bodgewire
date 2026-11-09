@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -135,6 +136,13 @@ public:
     void setPressed(std::string_view reference, bool pressed);
     bool pressed(std::string_view reference) const { return pressed_.contains(reference); }
 
+    // Every PADDLE Part of the circuit, in netlist order.
+    std::vector<std::string> knobs() const;
+    // Clamped to 0..1; any time, powered or not; kept across power-off, power-on and rebuilds.
+    // False (and nothing set) for a reference that is not a PADDLE.
+    bool setKnob(std::string_view reference, double turn);
+    double knob(std::string_view reference) const;  // 0 until set
+
 private:
     // What one build of the Machine runs on. Members in this order: the Runner is destroyed first.
     struct Live {
@@ -171,7 +179,8 @@ private:
     bool blackNext_ = false;
     std::optional<bool> connected_;    // red_ and black_ on one island of the current Copper
     std::optional<double> meterRail_;  // RailVolts of the meter's Net
-    std::set<std::string, std::less<>> pressed_;  // Buttons held down
+    std::set<std::string, std::less<>> pressed_;        // Buttons held down
+    std::map<std::string, double, std::less<>> knobs_;  // PADDLE turns, 0..1
 };
 
 }  // namespace bw

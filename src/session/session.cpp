@@ -120,6 +120,11 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
         auto built = machine_->build();
         Check(built.has_value(), "session: a repaired Machine does not build");
         live_ = makeLive(std::move(*built));
+        for (const auto& [reference, turn] : knobs_) {
+            if (Paddle* paddle = PaddleOf(*live_->circuit, reference)) {
+                paddle->setKnob(turn);
+            }
+        }
         touchLive();
         configureLive();
         dirty_ = false;
@@ -403,6 +408,35 @@ void Session::setPressed(std::string_view reference, bool pressed) {
         button->setPressed(pressed);
         live_->runner->wake(button->id(), PressJitter());
     }
+}
+
+std::vector<std::string> Session::knobs() const {
+    std::vector<std::string> references;
+    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
+    for (const LoadedPart& part : circuit.parts) {
+        if (part.info->name == "PADDLE") {
+            references.push_back(part.reference);
+        }
+    }
+    return references;
+}
+
+bool Session::setKnob(std::string_view reference, double turn) {
+    const std::vector<std::string> all = knobs();
+    if (std::ranges::find(all, reference) == all.end()) {
+        return false;
+    }
+    turn = std::clamp(turn, 0.0, 1.0);
+    knobs_.insert_or_assign(std::string(reference), turn);
+    if (Paddle* paddle = PaddleOf(*live_->circuit, reference)) {
+        paddle->setKnob(turn);
+    }
+    return true;
+}
+
+double Session::knob(std::string_view reference) const {
+    const auto it = knobs_.find(reference);
+    return it == knobs_.end() ? 0.0 : it->second;
 }
 
 void Session::recomputeContinuity() {

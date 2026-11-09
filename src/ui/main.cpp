@@ -19,6 +19,7 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 
+#include "machine/knob_setting.hpp"
 #include "machine/machine.hpp"
 #include "machine/press.hpp"
 #include "netlist/builder.hpp"
@@ -50,7 +51,7 @@ constexpr std::string_view kUsage =
     "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,"
     "unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
     "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--hook REF.PIN,...] [--timebase 1us] "
-    "[--meter REF.PIN] [--press REF:DOWN:UP,...] "
+    "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
     "[--manual user] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -65,6 +66,7 @@ struct Options {
     std::vector<std::string> hook;     // REF.PIN, at most 2
     std::optional<Time> timebase;      // Oscilloscope ps per division
     std::vector<ButtonPress> press;
+    std::vector<KnobSetting> knob;
     bool userManual = false;
 };
 
@@ -137,6 +139,14 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                     return std::nullopt;
                 }
                 options.press.push_back(std::move(*press));
+            }
+        } else if (arg == "--knob") {
+            for (const std::string& text : SplitCommas(argv[++i])) {
+                auto knob = ParseKnob(text);
+                if (!knob) {
+                    return std::nullopt;
+                }
+                options.knob.push_back(std::move(*knob));
             }
         } else {
             return std::nullopt;
@@ -703,6 +713,13 @@ int main(int argc, char** argv) {
         }
         if (error) {
             std::println(stderr, "bw_ui: {}", *error);
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+    }
+    for (const KnobSetting& knob : options->knob) {
+        if (!session.setKnob(knob.reference, knob.turn)) {
+            std::println(stderr, "bw_ui: '{}' is not a paddle controller", knob.reference);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
