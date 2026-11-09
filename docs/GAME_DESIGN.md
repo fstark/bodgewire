@@ -75,7 +75,7 @@ Tutorial ladder, by difficulty, each spec in `docs/machines/NNN-name/`:
 | 045 | Knob meter | 7-segment digits, paddle controller | a knob's pulse length counted and latched into two digits; introduces the paddle controller (a pot + 555 one-shot, off the Board) |
 | 050 | Test-pattern generator | TV | crystal + TTL counters → sync + bars/grid. First playable |
 | 060 | Bouncing ball | TV | Pong's ball circuit on its own |
-| 070 | Pong | TV, paddle controllers | TTL only, like the 1972 arcade game: the 060 ball plus paddles, score digits on the TV and the game's rules |
+| 070 | Paddle tennis | TV, paddle controllers, Start button | TTL only, the game of the 1972 arcade Pong: the 060 ball plus paddles, score digits on the TV and the game's rules |
 | 080 | Message display | TV | fixed text: sync counters → message ROM → character ROM → shift register; the BW-2001 video chain with ROM instead of RAM |
 | 090 | TV typewriter | TV, ASCII keyboard | inspired by the 1973 TV Typewriter (half of the Apple 1): video RAM written at a cursor from an ASCII keyboard; RAM and a shared bus before any CPU |
 
