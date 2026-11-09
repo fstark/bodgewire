@@ -229,6 +229,10 @@ std::vector<std::string> PartPinNames(const PartInfo& part) {
     if (part.name == "OSC") {
         params.push_back({"freq", "1MHz"});
     }
+    if (part.name == "PADDLE") {
+        params.push_back({"min", "30us"});
+        params.push_back({"max", "9.93ms"});
+    }
     const auto component = part.create(circuit, "X", params);
     std::vector<std::string> names;
     if (component) {

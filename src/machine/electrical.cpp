@@ -210,7 +210,9 @@ BoardPower FindPower(const LoadedCircuit& designCircuit, const Board& board,
     BoardPower power;
     power.deadRail = std::ranges::any_of(rails, [](const auto& r) { return r.second.size() > 1; });
     for (const LoadedPart& part : designCircuit.parts) {
-        if (part.info->kind != PartKind::Chip) {
+        const bool device =
+            part.info->kind == PartKind::Connector && ConnectorPowersDevice(part.info->name);
+        if (part.info->kind != PartKind::Chip && !device) {
             continue;
         }
         const auto pins = designCircuit.components.at(part.reference)->pins();

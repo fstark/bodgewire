@@ -15,11 +15,19 @@ std::vector<PinSpec> ConnectorPins(std::string_view part) {
     if (part == "POWER") {
         return {{"VCC", PinKind::Power, Family::Ttl}, {"GND", PinKind::Power, Family::Ttl}};
     }
+    if (part == "PADDLE") {
+        return {{"TRIG_N", PinKind::Input, Family::Ttl},
+                {"OUT", PinKind::Output, Family::Ttl},
+                {"VCC", PinKind::Power, Family::Ttl},
+                {"GND", PinKind::Power, Family::Ttl}};
+    }
     Check(part == "VIDEO", "unknown connector");
     return {{"VIDEO", PinKind::Input, Family::Ttl},
             {"SYNC_N", PinKind::Input, Family::Ttl},
             {"GND", PinKind::Power, Family::Ttl}};
 }
+
+bool ConnectorPowersDevice(std::string_view part) { return part == "PADDLE"; }
 
 std::optional<double> ConnectorVolts(std::string_view part, std::string_view pin) {
     if (part == "POWER") {

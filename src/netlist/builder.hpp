@@ -14,6 +14,7 @@
 #include "netlist/diagnostic.hpp"
 #include "netlist/parser.hpp"
 #include "parts/button.hpp"
+#include "parts/paddle.hpp"
 #include "sim/circuit.hpp"
 
 namespace bw {
@@ -50,7 +51,8 @@ struct StuckPin {
     LogicValue value;
 };
 
-// `unpowered`: References of chips left out of the Circuit's Nets (outputs Z, inputs ignored).
+// `unpowered`: References of chips (and PADDLE controllers) left out of the Circuit's Nets (outputs
+// Z, inputs ignored).
 LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck = {},
                         std::span<const std::string> unpowered = {});  // all errors, by line
 LoadResult LoadNetlist(std::string_view text, std::string file);
@@ -76,5 +78,8 @@ bool IsRail(std::string_view net);  // "GND" or "VCC"
 // The Button Part `reference` of this build; nullptr if none (unknown, not a Button, or left out
 // of an electrical build).
 Button* ButtonOf(const LoadedCircuit& loaded, std::string_view reference);
+
+// The PADDLE Part `reference` of this build; nullptr if none (unknown or not a PADDLE).
+Paddle* PaddleOf(const LoadedCircuit& loaded, std::string_view reference);
 
 }  // namespace bw

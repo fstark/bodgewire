@@ -106,6 +106,7 @@ TEST_CASE("manual: part pin names", "[manual]") {
     CHECK(ls161.size() == 16);
     CHECK(std::ranges::find(ls161, "CLR_N") != ls161.end());
     CHECK(PartPinNames(*FindPart("OSC")).size() == 14);
+    CHECK(PartPinNames(*FindPart("PADDLE")).size() == 4);
     CHECK(PartPinNames(*FindPart("R")).empty());
 }
 

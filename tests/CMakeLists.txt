@@ -66,6 +66,7 @@ add_executable(bw_tests
   parts/ls90_test.cpp
   parts/ls93_test.cpp
   parts/oscillator_test.cpp
+  parts/paddle_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
   runner/led_consumer_test.cpp

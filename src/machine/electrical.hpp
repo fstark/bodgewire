@@ -23,11 +23,12 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
                           const Board& board, std::span<const PinRef> dry = {});
 
 struct BoardPower {
-    std::vector<std::string> unpowered;  // chip References, design order
+    std::vector<std::string> unpowered;  // chip and PADDLE References, design order
     bool deadRail = false;               // an island holds supply pins of different voltages
 };
 
-// Powered check of every chip on `board`'s islands. Connectors are always Powered.
+// Powered check of every chip and PADDLE controller on `board`'s islands. The POWER and VIDEO
+// connectors are always Powered.
 BoardPower FindPower(const LoadedCircuit& designCircuit, const Board& board,
                      const Islands& islands);
 

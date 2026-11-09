@@ -19,6 +19,7 @@
 #include "parts/ls90.hpp"
 #include "parts/ls93.hpp"
 #include "parts/oscillator.hpp"
+#include "parts/paddle.hpp"
 
 namespace bw {
 
@@ -75,6 +76,39 @@ std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::s
         return std::unexpected(period.error());
     }
     return &circuit.add<Oscillator>(std::move(reference), *period);
+}
+
+std::expected<Component*, std::string> CreatePaddle(Circuit& circuit, std::string reference,
+                                                    std::span<const PartParam> params) {
+    const PartParam* shortest = nullptr;
+    const PartParam* longest = nullptr;
+    for (const PartParam& param : params) {
+        if (param.name == "min") {
+            shortest = &param;
+        } else if (param.name == "max") {
+            longest = &param;
+        } else {
+            return std::unexpected("PADDLE: unknown parameter '" + param.name + "'");
+        }
+    }
+    if (shortest == nullptr || longest == nullptr) {
+        return std::unexpected("PADDLE needs min=<duration> and max=<duration>");
+    }
+    const auto low = DurationFromText(shortest->value);
+    if (!low) {
+        return std::unexpected(low.error());
+    }
+    const auto high = DurationFromText(longest->value);
+    if (!high) {
+        return std::unexpected(high.error());
+    }
+    if (*low < 1'000'000) {
+        return std::unexpected("PADDLE: min must be at least 1us");
+    }
+    if (*high <= *low) {
+        return std::unexpected("PADDLE: max must be longer than min");
+    }
+    return &circuit.add<Paddle>(std::move(reference), *low, *high);
 }
 
 std::expected<Component*, std::string> CreateLed(Circuit& circuit, std::string reference,
@@ -143,6 +177,7 @@ constexpr std::array s_parts{
              &CreateDigit, kDigitLamps},
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
+    PartInfo{"PADDLE", "paddle controller connector", "KK-4", Connector, &CreatePaddle},
     PartInfo{"POWER", "5 V power connector", "KK-2", Connector, &CreateConnector<"POWER">},
     PartInfo{"R", "resistor", "axial", Resistor, nullptr},
     PartInfo{"VIDEO", "TTL monitor connector", "KK-3", Connector, &CreateConnector<"VIDEO">},
