@@ -2,7 +2,7 @@
 
 A new IC in the catalogue (e.g. 74LS90, 74LS47). For an on-board LED, digit or button, see [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md) instead.
 
-Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate package: `74LS30` in `src/parts/gate_package.cpp`.
+Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate package: `74LS30` in `src/parts/gate_package.cpp` (a new one: `09fbb1a`, 74LS27). Falling-edge JK flip-flop with `J`/`K` sampled before the edge (`readBefore`) and X cases: `4b7cf99` (74LS107).
 
 ## Which kind
 
@@ -28,10 +28,11 @@ Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate packa
 
 - Pin names: datasheet names, active-low suffix `_N` (`CLR_N`, `LOAD_N`); gates `1A`, `1Y`; unused pins `NCn` with `PinKind::NoConnect`.
 - Open-collector outputs: `PinKind::OpenCollector` (needs a pull-up on the Board); drive 1 to release (`DriveOf` maps 1 to no drive).
-- Falling-edge clocks (74LS90): `ctx.fell(pin)`; leave the pin's `risingEdgeOnly` false, so it is evaluated on both edges.
-- Power Pins not at the DIP corners (74LS90: `VCC` pin 5, `GND` pin 10): add the Part to `kOffCornerPower` in `tests/parts/catalogue_test.cpp`.
+- Falling-edge clocks (74LS90, 74LS93, 74LS107): `ctx.fell(pin)`; leave the pin's `risingEdgeOnly` false, so it is evaluated on both edges.
+- Power Pins not at the DIP corners (74LS90, 74LS93: `VCC` pin 5, `GND` pin 10): add the Part to `kOffCornerPower` in `tests/parts/catalogue_test.cpp`.
 - X on a control input makes the affected state X; never invent a 0/1.
 - No zero delays, no delta cycles: every `drive` has a datasheet delay.
 - Hot path: `evaluate` must not allocate (use `std::array`, no `std::vector`/`std::string`).
+- Several units in one Part (74LS107): test them with `GENERATE`, not `SECTION`s inside a loop (Catch2 sections in loops are unreliable).
 - `-Werror` includes unused private fields. Run `clang-format` on C++ files only, never on `CMakeLists.txt`.
 - TI datasheet PDFs can't be fetched: use known typical values and say so in the commit.

@@ -425,6 +425,39 @@ TEST_CASE("session: stopwatch with every instrument", "[session][slow]") {
     session.powerOff();
 }
 
+TEST_CASE("session: ball with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    CHECK(session.leds().empty());
+    REQUIRE(session.tv() != nullptr);
+
+    for (const char* pin : {"QA", "QB", "QC", "QD"}) {
+        REQUIRE(session.clip("U23", pin).has_value());
+    }
+    REQUIRE(session.clip("U26", "1Q").has_value());
+    REQUIRE(session.clip("U26", "2Q_N").has_value());
+    REQUIRE(session.clip("U25", "1Y").has_value());
+    REQUIRE(session.clip("U25", "2Y").has_value());
+    REQUIRE(session.hook("U19", "RCO").has_value());
+    REQUIRE(session.hook("U24", "3Y").has_value());
+    const auto ball = session.padLead("U24", "3Y");
+    const auto vcc = session.padLead("U16", "VCC");
+    REQUIRE(ball.has_value());
+    REQUIRE(vcc.has_value());
+    session.touch(ProbeTip{ball->at, Layer::Front});
+    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+
+    session.powerOn(1, 1_s);
+    session.runner().waitIdle();
+    CHECK(session.tv()->tv().isLocked());
+    CHECK(session.tv()->tv().completedFrames() > 40);
+    session.powerOff();
+}
+
 TEST_CASE("session: no LEDs on the test pattern", "[session]") {
     CHECK(PuzzleSession("broken_trace").leds().empty());
 }

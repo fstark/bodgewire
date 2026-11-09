@@ -2,7 +2,7 @@
 
 A new board on the tutorial ladder (`docs/machines/NNN-name/`). New Parts first ([ADD_PART.md](ADD_PART.md), [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md)); Puzzles last ([ADD_PUZZLE.md](ADD_PUZZLE.md)).
 
-Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`. Stopwatch (040, digits): `8a18984`, `8d3644a`, `ae506f8`.
+Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`. Stopwatch (040, digits): `8a18984`, `8d3644a`, `ae506f8`. Bouncing ball (060, TV, picture-reading tests): `174aa85`, `c89e3f0`, `58b1aec`.
 
 ## Order
 
@@ -28,6 +28,7 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 
 - Agent: `./build/debug/src/cli/bw export-kicad netlists/<m>.bwn -o boards/<m>/<m>.net`.
 - User: lays out the Board following [KICAD_GUIDE.md](../p2a-board-layout/KICAD_GUIDE.md) (F.Cu/B.Cu only, no zones, DRC 0 errors).
+- Agent, once it is saved: read the routing order of every Net a crack Puzzle needs (ADD_PUZZLE.md) before writing Puzzles. A "pad at an end of the route" constraint is easy to miss in KiCad (060 `V2`); a crack on a two-pad Net needs no constraint at all.
 - Agent: `./build/debug/src/cli/bw check-board netlists/<m>.bwn boards/<m>/<m>.kicad_pcb` must print `ok`. Commit only `<m>.kicad_pro` and `<m>.kicad_pcb`.
 - The `drc_<m>` ctest appears by itself (glob in `tests/CMakeLists.txt`; reconfigure).
 - Add `"<m>"` to the per-Machine loops:
@@ -45,6 +46,7 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 ## Gotchas
 
 - Seeded random power-on: the fault-free test must not depend on the seed (settle first, or check every phase).
-- Debug is about 0.07× real time: keep simulated time short, and use the release build for screenshots that show readings.
+- Measure speed on an idle machine: a debug `ctest -j 12` running alongside makes a release `bw_ui` read 0.8× for a 1.00× Machine.
+- Debug is about 0.07× real time (a TV Machine at 2 MHz, 0.03×): keep simulated time short, and use the release build for screenshots that show readings.
 - A 74LS161's `RCO` follows `ENT` combinationally: with a decoded signal on `ENT` (a line end), `RCO` pulses for ~20 ns when the count reaches 15 before that signal falls. Never clock or clear anything from such an `RCO`; put the decoded enable on `ENP` and keep `ENT` for the carry chain (060 `VRCO`).
 - Board re-layouts move cracks: Puzzles use `fault crack A B N%`, so only which far pads lose the signal may change.
