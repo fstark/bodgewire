@@ -34,5 +34,7 @@ inline constexpr Delays kLs93CkbToQD{34'000, 34'000};
 inline constexpr Delays kLs93Clear{26'000, 26'000};  // only fall is used
 inline constexpr Delays kLs164ClockToQ{17'000, 21'000};
 inline constexpr Delays kLs164Clear{24'000, 24'000};  // only fall is used
+inline constexpr Delays kLs175ClockToQ{20'000, 21'000};
+inline constexpr Delays kLs175Clear{16'000, 20'000};  // Q_N rises, Q falls
 
 }  // namespace bw::delays
