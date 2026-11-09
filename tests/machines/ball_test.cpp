@@ -14,6 +14,7 @@
 
 #include "devices/tv_input.hpp"
 #include "instruments/logic_probe.hpp"
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
 
@@ -198,6 +199,15 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
     return std::move(*result);
 }
 
+// The Circuit built from the Board's Copper, with no Faults.
+std::unique_ptr<LoadedCircuit> BoardCircuit() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
 // The ball's path: one entry per frame, nullopt when no ball is seen.
 struct Track {
     std::vector<Picture> pictures;
@@ -251,7 +261,7 @@ TEST_CASE("ball: netlist loads without warnings", "[machines]") {
 
 TEST_CASE("ball: box and dashed net", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2);
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     std::optional<Picture> picture;
     bool locked = false;
     Watch(*loaded, seed, 400_ms, 445_ms, [&](const TvFrame& frame, bool isLocked) {
@@ -284,7 +294,7 @@ namespace {
 
 // One 2 × 8 ball moving 2 dots and 4 lines a frame, turning at each wall it meets.
 void CheckBouncing(std::uint64_t seed) {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     const Track track = Follow(*loaded, seed, 100_ms, 2'000_ms);
 
     int clear = 0;

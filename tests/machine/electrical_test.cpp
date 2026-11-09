@@ -70,7 +70,8 @@ std::string NetOf(const Netlist& netlist, const std::string& pin) {
 }  // namespace
 
 TEST_CASE("electrical: uncracked board gives the design Nets", "[machine]") {
-    for (const std::string name : {"test_pattern", "counter", "chaser", "dice", "stopwatch"}) {
+    for (const std::string name :
+         {"test_pattern", "counter", "chaser", "dice", "stopwatch", "ball"}) {
         INFO(name);
         const Design design = LoadDesign(name);
         const auto electrical =

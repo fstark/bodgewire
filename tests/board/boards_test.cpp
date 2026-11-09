@@ -59,6 +59,11 @@ TEST_CASE("boards: stopwatch matches its netlist", "[board]") {
     CHECK(CheckBoard(*stopwatch.circuit, stopwatch.board).empty());
 }
 
+TEST_CASE("boards: ball matches its netlist", "[board]") {
+    const Loaded ball = Load("ball");
+    CHECK(CheckBoard(*ball.circuit, ball.board).empty());
+}
+
 TEST_CASE("boards: counter with a track removed has one open", "[board]") {
     Loaded counter = Load("counter");
     REQUIRE_FALSE(counter.board.traces.empty());
@@ -88,7 +93,8 @@ bool InPolygon(const std::vector<Point>& polygon, Point p) {
 }  // namespace
 
 TEST_CASE("boards: every Component has a courtyard around its pads", "[board]") {
-    for (const std::string name : {"counter", "test_pattern", "chaser", "dice", "stopwatch"}) {
+    for (const std::string name :
+         {"counter", "test_pattern", "chaser", "dice", "stopwatch", "ball"}) {
         const Loaded loaded = Load(name);
         for (const BoardComponent& component : loaded.board.components) {
             INFO(name << " " << component.reference);
