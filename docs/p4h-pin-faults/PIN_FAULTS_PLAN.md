@@ -13,7 +13,7 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | 2 | Dry Joints: syntax, loader, electrical netlist, leg/pad, `resolder` | done |
 | 3 | Resolder Repair: parse, Session, `bw run`, `bw_ui --repair` | done |
 | 4 | UI: Resolder tool, leg/pad words, Probe hint | done |
-| 5 | Puzzles: Solid net, Missing eight; Machine docs | |
+| 5 | Puzzles: Solid net, Missing eight; Machine docs | done |
 | 6 | Release check, recipes, glossary, roadmap | |
 
 ## Phase 1 — Stuck inputs

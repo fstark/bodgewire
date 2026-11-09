@@ -1,0 +1,5 @@
+# Missing eight: U8's input D (S3) is stuck at 0 inside the chip; the seconds digit shows 0 for 8 and 1 for 9.
+machine stopwatch
+title "Missing eight"
+brief "The seconds never show 8 or 9: after 7 the digit shows 0 and 1, and then 0 again."
+fault stuck U8.D 0

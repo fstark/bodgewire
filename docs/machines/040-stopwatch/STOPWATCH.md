@@ -41,5 +41,6 @@ A number on a display goes through three stages: a counter holds it in binary, a
 | Broken bar | Broken Trace on `DS1_E` between `U8` pin 9 and `DS1` pin 1 | the seconds draw wrong shapes: 0 with a gap at the bottom left, 6 like a 5, 8 like a 9 | `DS1_E` goes low at `U8` pin 9 for 0, but floats at `DS1` pin 1: mend the Trace |
 | Non-stop | Broken Trace on `RUN` between `U11` pin 5 and `U12` pin 2 | Stop does nothing: the watch always counts; Reset brings it back to 0.00, and it counts on | `RUN` goes low at `U11` pin 5 after Stop, but floats (reads high) at `U12` pin 2: mend the Trace |
 | Dark seconds | Broken Trace on `VCC` that cuts `U5` pin 5 off | the seconds digit stays dark but for its decimal point; tenths and hundredths count normally | `S0`–`S3` float at `U5` and `U8` reads 15 (blank); `U5` has no +5 V on pin 5, its VCC pin by the datasheet: mend the Trace |
+| Missing eight | `U8` input `D` (`S3`) stuck at 0 inside the chip | the seconds never show 8 or 9: after 7 the digit shows 0 and 1, then 0 again | `S3` goes high on `U8` pin 6, leg and pad, at 8 s, but `DS1` shows 0: the decoder ignores a good input: swap `U8` |
 
 Netlist, Board, Puzzle files and manuals: [STOPWATCH_DESIGN.md](STOPWATCH_DESIGN.md).

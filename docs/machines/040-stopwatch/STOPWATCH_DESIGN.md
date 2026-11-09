@@ -10,7 +10,7 @@ Machine name `stopwatch`:
 netlists/stopwatch.bwn               design netlist
 boards/stopwatch/stopwatch.kicad_pcb Board (KiCad 10, laid out by hand)
 manuals/stopwatch/user.md, service.md
-puzzles/stuck_at_zero.bwp, nineteen.bwp, eights.bwp, broken_bar.bwp, non_stop.bwp, dark_seconds.bwp
+puzzles/stuck_at_zero.bwp, nineteen.bwp, eights.bwp, broken_bar.bwp, non_stop.bwp, dark_seconds.bwp, missing_eight.bwp
 ```
 
 ## Netlist
@@ -124,6 +124,7 @@ net DS1_G    U8.SG_N DS1.G
 | `broken_bar.bwp` | `fault crack U8.9 DS1.1 50%` | `DS1_E` |
 | `non_stop.bwp` | `fault crack U11.5 U12.2 50%` | `RUN` |
 | `dark_seconds.bwp` | `fault crack U5.5 U6.5 50%` | `VCC` at `U5` |
+| `missing_eight.bwp` | `fault stuck U8.D 0` | `S3` inside `U8` |
 
 Briefs:
 
@@ -133,6 +134,7 @@ Briefs:
 - Broken bar: "The seconds digit draws some numbers wrongly: its 0 has a gap."
 - Non-stop: "Stop does nothing: the stopwatch keeps counting."
 - Dark seconds: "The left digit shows only its decimal point; the other two count normally."
+- Missing eight: "The seconds never show 8 or 9: after 7 the digit shows 0 and 1, and then 0 again."
 
 ## Electrical Nets on a damaged Board
 
@@ -140,6 +142,7 @@ Briefs:
 - Broken bar: `DS1` pin 1 alone on its island, no Driver: floating, so segment `E` stays dark (a floating cathode never lights).
 - Non-stop: `U12` pin 2 alone, floating: gate 1 is an inverter of `CLK`, whatever `RUN` says.
 - Dark seconds: `U5` pin 5 on a `VCC~2` island with no supply pin: `U5` is not Powered, its Pins get private Nets. `S0`–`S3` hold only TTL inputs of `U8`: floating, read high, `U8` decodes 15 (blank). `DS1`'s decimal point does not involve `U5` and stays lit.
+- Missing eight: `U8`'s `D` input reads 0 through a Net of its own; `S3` keeps `U5.QD` as Driver and `U8.D` as Load, so the probe and a Clip on `U8` pin 6 see it. 8 (`DCBA` 1000) decodes as 0 and 9 (1001) as 1; 0–7 are unchanged. Resoldering pin 6 does not fix it.
 
 ## Manuals
 

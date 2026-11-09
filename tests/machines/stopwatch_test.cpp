@@ -175,8 +175,8 @@ std::string AfterReset(LoadedCircuit& loaded, std::uint64_t seed) {
 }  // namespace
 
 TEST_CASE("stopwatch: Puzzles have a title and a brief", "[machines]") {
-    for (const char* name :
-         {"stuck_at_zero", "nineteen", "eights", "broken_bar", "non_stop", "dark_seconds"}) {
+    for (const char* name : {"stuck_at_zero", "nineteen", "eights", "broken_bar", "non_stop",
+                             "dark_seconds", "missing_eight"}) {
         INFO(name);
         const auto puzzle =
             ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
@@ -312,4 +312,50 @@ TEST_CASE("stopwatch: dark_seconds", "[machines]") {
     CHECK(machine.power().unpowered.empty());
     auto loaded = Build(machine);
     CHECK(StartStop(*loaded, 1) == "0.12");
+}
+
+namespace {
+
+// The power-on seconds count (S0–S3) and DS1 after 10 µs, for `seed`.
+std::pair<unsigned, char> PowerOnSeconds(LoadedCircuit& loaded, std::uint64_t seed) {
+    Watch watch(loaded, seed);
+    watch.runFor(10_us);
+    unsigned count = 0;
+    for (int bit = 0; bit < 4; ++bit) {
+        const NetId net = *PinNet(loaded, "U5", std::string("Q") + static_cast<char>('A' + bit));
+        if (watch.sim().value(net) == One) {
+            count |= 1u << bit;
+        }
+    }
+    return {count, DigitAt(loaded, watch.sim(), "DS1")};
+}
+
+}  // namespace
+
+TEST_CASE("stopwatch: missing_eight", "[machines]") {
+    Machine machine = LoadPuzzle("missing_eight");
+    std::uint64_t seed = 0;
+    {
+        auto loaded = Build(machine);
+        CHECK(PinNet(*loaded, "U8", "D") == loaded->nets.at("S3"));  // the leg reads S3
+        // Power-on counts are random: find one at 8 or 9 instead of counting for 8 s.
+        for (std::uint64_t s = 1; s <= 64 && seed == 0; ++s) {
+            const auto [count, digit] = PowerOnSeconds(*loaded, s);
+            if (count == 8 || count == 9) {
+                seed = s;
+                CHECK(digit == static_cast<char>('0' + count - 8));
+            }
+        }
+        REQUIRE(seed != 0);
+    }
+    REQUIRE(machine.resolder({"U8", "6"}));
+    {
+        auto loaded = Build(machine);
+        const auto [count, digit] = PowerOnSeconds(*loaded, seed);
+        CHECK(digit == static_cast<char>('0' + count - 8));
+    }
+    REQUIRE(machine.swap("U8"));
+    auto loaded = Build(machine);
+    const auto [count, digit] = PowerOnSeconds(*loaded, seed);
+    CHECK(digit == static_cast<char>('0' + count));
 }

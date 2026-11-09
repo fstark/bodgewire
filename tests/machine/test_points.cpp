@@ -81,11 +81,6 @@ const Crack& DarkSecondsCrack() {
     return crack;
 }
 
-const Crack& WideNetCrack() {
-    static const Crack crack = PuzzleCrack("wide_net");
-    return crack;
-}
-
 const Crack& JumpingBallCrack() {
     static const Crack crack = PuzzleCrack("jumping_ball");
     return crack;

@@ -59,14 +59,12 @@ The TV shows a white box with a dashed line down the middle and a small square b
 
 | Puzzle | Fault | Symptom | Path to the fix |
 |---|---|---|---|
-| Wide net | Broken Trace on `NET_A` between `U12` pin 8 and `U15` pin 9 | the net is a wide striped band (16 dots) instead of a thin dashed line; the ball is fine | `NET_A` pulses at `U12` pin 8, but the probe shows nothing at `U15` pin 9 (floating; the gate reads it high, so the net is decoded from `H4` and `H5` alone): mend the Trace |
+| Solid net | Dry Joint at `U15` pin 13 (`V2`) | the net is a solid line instead of dashes; the ball is fine | `V2` pulses at `U3` pin 12 and on `U15` pin 13's pad (B.Cu), but the leg (F.Cu) shows nothing (floating; the gate reads it high, so the net is decoded on every line): resolder `U15` pin 13 |
 | Wraparound | `U26` output `1Q` (`HDIR`) stuck at 1 | the ball always goes right: it flies through the right wall and comes back in through the left one; it still bounces off the top and bottom | `HIT_RIGHT` pulses at `U26` pin 4 when the ball reaches the right wall, but `HDIR` stays high: swap `U26` |
 | Stripe | `U23` output `QA` (`BALL_OFF`) stuck at 0 | instead of a ball, a thin bar from the top to the bottom of the box, bouncing left and right | `BALL_CK` pulses and `QD` falls every 8 lines, but `QA` stays low: swap `U23` |
 | Jumping ball | Broken Trace on `VLOAD_N` from `U24` pin 6, cutting `U20` and `U21` `LOAD_N` off | the ball flickers and jumps up and down the screen at random heights, while it moves smoothly left and right | `VLOAD_N` pulses once a frame at `U24` pin 6, but the probe shows nothing at `U20` pin 9 and `U21` pin 9 (floating, read high): the ball counter is never reloaded and runs 512 lines: mend the Trace |
 | Net bounce | Solder Bridge between `U16` pin 4 (`RIGHT_N`) and pin 5 (`NET_N`) | the ball bounces off the net as if it were a wall, and never goes into the right half; the picture looks right | `HIT_RIGHT` pulses when the ball touches the net; `RIGHT_N` and `NET_N` are identical (0 wins), so the right-wall bounce also sees the net. The bridge is on the solder side of `U16`: cut it |
 
-Wide net stands in for the Puzzle first designed, Solid net (`V2` cut off at `U15` pin 13): the Board's `V2` route has no crack that cuts that pin off alone, and pin Faults do not exist yet. Roadmap P4h adds them and restores Solid net as a dry Joint at `U15` pin 13 (`V2` pulses on the pad, the gate does not see it: resolder).
-
-Each teaches something different: a cracked input that only changes the picture, a stuck flip-flop that only changes the motion, a ripple counter's stop flag, the reload that makes motion (a counter's period against the frame's), and a bridge between two sources that look the same on the screen.
+Each teaches something different: a dry Joint that only changes the picture, a stuck flip-flop that only changes the motion, a ripple counter's stop flag, the reload that makes motion (a counter's period against the frame's), and a bridge between two sources that look the same on the screen.
 
 Netlist, Board, Puzzle files and manuals: [BOUNCING_BALL_DESIGN.md](BOUNCING_BALL_DESIGN.md).

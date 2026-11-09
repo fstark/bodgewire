@@ -406,12 +406,27 @@ int NetWidth(LoadedCircuit& loaded, std::vector<std::string>& lamps,
     return widths[widths.size() / 2];
 }
 
+// Rows the net is drawn on, in one frame at 445 ms.
+std::size_t NetRows(LoadedCircuit& loaded, std::vector<std::string>& lamps,
+                    const std::vector<std::string>& probes) {
+    std::size_t rows = 0;
+    lamps = Watch(
+        loaded, 1, 400_ms, 445_ms,
+        [&](const TvFrame& frame, bool) {
+            const Picture picture = Read(frame);
+            REQUIRE(picture.box.has_value());
+            rows = picture.netRows.size();
+        },
+        probes);
+    return rows;
+}
+
 bool Pulses(const std::string& lamps) { return lamps.find("PULSE") != std::string::npos; }
 
 }  // namespace
 
 TEST_CASE("ball: Puzzles have a title and a brief", "[machines]") {
-    for (const char* name : {"wide_net", "wraparound", "stripe", "jumping_ball", "net_bounce"}) {
+    for (const char* name : {"solid_net", "wraparound", "stripe", "jumping_ball", "net_bounce"}) {
         INFO(name);
         const auto puzzle =
             ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
@@ -422,21 +437,30 @@ TEST_CASE("ball: Puzzles have a title and a brief", "[machines]") {
     }
 }
 
-TEST_CASE("ball: wide_net", "[machines]") {
-    Machine machine = LoadPuzzle("wide_net");
+TEST_CASE("ball: solid_net", "[machines]") {
+    Machine machine = LoadPuzzle("solid_net");
     std::vector<std::string> lamps;
+    const Point pin13 = *machine.padPosition("U15", "13");
     {
         auto loaded = Build(machine);
-        REQUIRE(*PinNet(*loaded, "U15", "2A") != *PinNet(*loaded, "U12", "3Y"));
-        // NET_N follows H4 and H5 alone: dots 48–63, 16 dots wide.
-        CHECK(NetWidth(*loaded, lamps, {"U12.3Y", "U15.2A"}) == 16 * kDot);
-        CHECK(Pulses(lamps[0]));
-        CHECK(lamps[1] == "-");
+        const NetId v2 = *PinNet(*loaded, "U3", "QC");
+        CHECK(machine.probeNet(*loaded, Layer::Back, pin13) == v2);  // the pad
+        CHECK(machine.probeNet(*loaded, Layer::Front, pin13) == PinNet(*loaded, "U15", "2D"));
+        CHECK(*PinNet(*loaded, "U15", "2D") != v2);  // the leg
+        // V2 floats high at the gate: the net is drawn on every line of the box.
+        CHECK(NetRows(*loaded, lamps, {"U15.13", "U3.QC"}) == 224);
+        CHECK(lamps[0] == "-");
+        CHECK(Pulses(lamps[1]));
     }
-    REQUIRE(machine.mend(WideNetCrack().layer, WideNetCrack().at));
+    REQUIRE(machine.swap("U15"));
+    {
+        auto swapped = Build(machine);  // a swap keeps the Joint
+        CHECK(*PinNet(*swapped, "U15", "2D") != *PinNet(*swapped, "U3", "QC"));
+    }
+    REQUIRE(machine.resolder({"U15", "13"}));
     auto loaded = Build(machine);
-    CHECK(NetWidth(*loaded, lamps, {"U15.2A"}) == 2 * kDot);
-    CHECK(Pulses(lamps[0]));
+    CHECK(NetRows(*loaded, lamps, {}) == 112);
+    CHECK(NetWidth(*loaded, lamps, {}) == 2 * kDot);
 }
 
 namespace {

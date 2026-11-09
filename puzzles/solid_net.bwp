@@ -1,0 +1,5 @@
+# Solid net: U15 pin 13 (2D, V2) is a dry Joint; the gate's input floats high, so NET_N is decoded on every line.
+machine ball
+title "Solid net"
+brief "The net down the middle is a solid line; it used to be dashed."
+fault joint U15.13
