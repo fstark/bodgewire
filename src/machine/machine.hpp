@@ -43,7 +43,11 @@ public:
     bool addWire(const PinRef& a, const PinRef& b);       // false: unknown pad, or the same pad
     bool removeWire(const PinRef& a, const PinRef& b);    // either order; false: no such wire
     bool removeBridge(const PinRef& a, const PinRef& b);  // either order; false: no such bridge
-    std::span<const Crack> cracks() const { return cracks_; }  // the Puzzle's Broken Traces
+    // Resolders a chip pin's Joint (number or name): removes its dry Joint if any. True also on a
+    // good Joint (the tool must not tell); false: unknown, or not a chip signal pin.
+    bool resolder(const PinRef& pin);
+    std::span<const PinRef> dryJoints() const { return dry_; }  // pin numbers
+    std::span<const Crack> cracks() const { return cracks_; }   // the Puzzle's Broken Traces
     // A crack on the fault-free Board; errors say "crack A B: …" with the pins as given.
     std::expected<Crack, std::string> placeCrack(const PinRef& a, const PinRef& b,
                                                  double percent) const;
@@ -58,10 +62,12 @@ public:
 
     // Electrical Net under `at` in `built` (this Machine's build()), in the current Copper: a pad
     // or via on either Layer, else a Trace on `layer`. nullopt off Copper or on an unnamed island.
+    // A dry Joint's pad with F.Cu active reads the leg: the pin's own Net.
     std::optional<NetId> probeNet(const LoadedCircuit& built, Layer layer, Point at) const;
     // Position of a Pin's pad: "U1", "QA" or "14"; nullopt if unknown.
     std::optional<Point> padPosition(std::string_view reference, std::string_view pin) const;
-    // Same copper island under both points, in the current Copper (continuity).
+    // Same copper island under both points, in the current Copper (continuity). A dry leg (F.Cu
+    // on its pad) is joined to nothing but itself.
     bool connected(Layer layerA, Point a, Layer layerB, Point b) const;
 
 private:
@@ -70,6 +76,10 @@ private:
     std::optional<std::uint32_t> islandAt(const Islands& islands, Layer layer, Point at) const;
     void rebuildBoard();  // board_ = pristine_ + cracks_ + cuts_ + wires_ + bridges_
     std::optional<PinRef> padOf(const PinRef& pin) const;  // pin as a number; nullopt unknown
+    // padOf of a chip's signal pin (not Power, not NoConnect); nullopt otherwise.
+    std::optional<PinRef> chipSignalPin(const PinRef& pin) const;
+    // The dry pin whose pad covers `at`, read as its leg: only with F.Cu active.
+    std::optional<PinRef> dryLegAt(Layer layer, Point at) const;
     friend std::expected<Machine, std::vector<Diagnostic>>
     LoadMachine(const Puzzle&, const std::filesystem::path&);
 
@@ -82,6 +92,7 @@ private:
     std::vector<Crack> cuts_;
     std::vector<WireEnds> wires_;
     std::vector<WireEnds> bridges_;  // Solder Bridges: same shape as a Bodge Wire
+    std::vector<PinRef> dry_;        // dry Joints, pin numbers
     BoardPower power_;               // of board_, see rebuildBoard()
 };
 

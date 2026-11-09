@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include <string>
 #include <vector>
 
@@ -17,8 +18,9 @@ std::vector<std::string> IslandNetNames(const LoadedCircuit& designCircuit, cons
 
 // The Nets the Board's Copper actually makes (S1): one per island, named after the design Net
 // of its Pins (NAME, NAME~2, ...). `designCircuit` is `design` built, `board` matches it.
+// `dry`: chip pins (by number) whose Joint does not connect: on no Net, they float.
 Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCircuit,
-                          const Board& board);
+                          const Board& board, std::span<const PinRef> dry = {});
 
 struct BoardPower {
     std::vector<std::string> unpowered;  // chip References, design order

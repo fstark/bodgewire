@@ -118,7 +118,7 @@ std::vector<std::string> IslandNetNames(const LoadedCircuit& designCircuit, cons
 }
 
 Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCircuit,
-                          const Board& board) {
+                          const Board& board, std::span<const PinRef> dry) {
     const Islands islands = FindIslands(board);
     const Namer namer = NameIslands(designCircuit, board, islands);
 
@@ -134,8 +134,14 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
         if (designCircuit.components.at(c.reference)->pins()[c.pin].kind == PinKind::Power) {
             continue;
         }
+        PinRef pin{c.reference, std::to_string(c.pin + 1)};
+        if (std::ranges::any_of(dry, [&](const PinRef& d) {
+                return d.reference == pin.reference && d.pin == pin.pin;
+            })) {
+            continue;
+        }
         const std::string name = *namer.nameOf(namer.island(c.reference, c.pin));
-        pins[name].push_back({c.reference, std::to_string(c.pin + 1)});
+        pins[name].push_back(std::move(pin));
     }
 
     std::set<std::string, std::less<>> leftOut;
@@ -159,7 +165,8 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
             result.parts.push_back({0, part.reference, part.part, part.params});
         }
     }
-    // Design declaration order, each split right after its parent: NetIds match the design's.
+    // Design declaration order, each split right after its parent: NetIds match the design's
+    // (without dry Joints: a Net of one dry pin is left out).
     std::map<std::string, std::vector<std::pair<int, std::string>>> splits;
     for (const auto& [name, refs] : pins) {
         auto [base, n] = SplitName(name);

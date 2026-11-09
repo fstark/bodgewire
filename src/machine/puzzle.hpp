@@ -31,6 +31,11 @@ struct BridgeDecl {
     PinRef a, b;  // pin by number or name: U1.7, U1.ENP
 };
 
+struct JointDecl {
+    std::uint32_t line;
+    PinRef pin;  // by number or name: U15.13, U15.2D
+};
+
 struct Puzzle {
     std::string file;
     std::uint32_t machineLine = 0;
@@ -40,6 +45,7 @@ struct Puzzle {
     std::vector<StuckAtDecl> stuck;
     std::vector<CrackDecl> cracks;
     std::vector<BridgeDecl> bridges;
+    std::vector<JointDecl> joints;  // dry Joints
 };
 
 // All syntax errors, in line order.

@@ -82,6 +82,33 @@ TEST_CASE("machine: a chip input can be stuck, and a swap removes it", "[machine
     CHECK(ownNets() == withStuck - 1);
 }
 
+TEST_CASE("machine: joint errors", "[machine]") {
+    Puzzle puzzle = TestPattern();
+    puzzle.joints = {{2, {"U99", "1"}}, {3, {"U3", "XX"}}, {4, {"J1", "1"}}, {5, {"U3", "16"}}};
+    CHECK(Errors(puzzle) == Lines{"2: unknown reference 'U99'", "3: U3 (74LS161) has no pin XX",
+                                  "4: joint J1.1: chip signal pins only",
+                                  "5: joint U3.16: chip signal pins only"});
+}
+
+TEST_CASE("machine: resolder removes a dry Joint, a swap does not", "[machine]") {
+    Puzzle puzzle = TestPattern();
+    puzzle.joints = {{2, {"U13", "2B"}}, {3, {"U13", "6"}}};
+    auto machine = LoadMachine(puzzle, Root());
+    REQUIRE(machine.has_value());
+    REQUIRE(machine->dryJoints().size() == 1);
+    CHECK(machine->dryJoints()[0].reference == "U13");
+    CHECK(machine->dryJoints()[0].pin == "6");
+    CHECK(machine->swap("U13"));
+    CHECK(machine->dryJoints().size() == 1);
+    CHECK_FALSE(machine->resolder({"U99", "1"}));
+    CHECK_FALSE(machine->resolder({"J1", "1"}));
+    CHECK_FALSE(machine->resolder({"U13", "VCC"}));
+    CHECK(machine->resolder({"U13", "5"}));  // a good Joint
+    CHECK(machine->dryJoints().size() == 1);
+    CHECK(machine->resolder({"U13", "2B"}));
+    CHECK(machine->dryJoints().empty());
+}
+
 TEST_CASE("machine: crack errors", "[machine]") {
     Puzzle puzzle = TestPattern();
     puzzle.cracks = {{2, {"U1", "QA"}, {"U1", "14"}, 50},

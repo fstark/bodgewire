@@ -166,6 +166,20 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
         }
         machine.bridges_.push_back({a, b, {atA, atB}});
     }
+    for (const JointDecl& decl : puzzle.joints) {
+        if (!known(decl.line, decl.pin)) {
+            continue;
+        }
+        const auto pin = machine.chipSignalPin(decl.pin);
+        if (!pin) {
+            error(decl.line,
+                  "joint " + decl.pin.reference + "." + decl.pin.pin + ": chip signal pins only");
+            continue;
+        }
+        if (std::ranges::none_of(machine.dry_, [&](const PinRef& d) { return SamePin(d, *pin); })) {
+            machine.dry_.push_back(*pin);
+        }
+    }
     if (!errors.empty()) {
         return std::unexpected(std::move(errors));
     }
@@ -247,6 +261,15 @@ bool Machine::removeBridge(const PinRef& a, const PinRef& b) {
     return true;
 }
 
+bool Machine::resolder(const PinRef& pin) {
+    const auto number = chipSignalPin(pin);
+    if (!number) {
+        return false;
+    }
+    std::erase_if(dry_, [&](const PinRef& d) { return SamePin(d, *number); });
+    return true;
+}
+
 std::expected<Crack, std::string> Machine::placeCrack(const PinRef& a, const PinRef& b,
                                                       double percent) const {
     const std::string prefix =
@@ -295,8 +318,45 @@ std::optional<PinRef> Machine::padOf(const PinRef& pin) const {
     return number;
 }
 
+std::optional<PinRef> Machine::chipSignalPin(const PinRef& pin) const {
+    const auto number = padOf(pin);
+    if (!number) {
+        return std::nullopt;
+    }
+    const auto part =
+        std::ranges::find(designCircuit_->parts, number->reference, &LoadedPart::reference);
+    if (part == designCircuit_->parts.end() || part->info->kind != PartKind::Chip) {
+        return std::nullopt;
+    }
+    const PinKind kind =
+        designCircuit_->components.at(number->reference)->pins()[std::stoul(number->pin) - 1].kind;
+    if (kind == PinKind::Power || kind == PinKind::NoConnect) {
+        return std::nullopt;
+    }
+    return number;
+}
+
+std::optional<PinRef> Machine::dryLegAt(Layer layer, Point at) const {
+    if (layer != Layer::Front) {
+        return std::nullopt;
+    }
+    for (const PinRef& dry : dry_) {
+        for (const BoardComponent& component : board_.components) {
+            if (component.reference != dry.reference) {
+                continue;
+            }
+            for (const Pad& pad : component.pads) {
+                if (pad.number == dry.pin && Covers(pad, at)) {
+                    return dry;
+                }
+            }
+        }
+    }
+    return std::nullopt;
+}
+
 LoadResult Machine::build() const {
-    return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_), stuck_,
+    return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_, dry_), stuck_,
                         power_.unpowered);
 }
 
@@ -325,12 +385,20 @@ std::optional<std::uint32_t> Machine::islandAt(const Islands& islands, Layer lay
 }
 
 bool Machine::connected(Layer layerA, Point a, Layer layerB, Point b) const {
+    const auto legA = dryLegAt(layerA, a);
+    const auto legB = dryLegAt(layerB, b);
+    if (legA || legB) {
+        return legA && legB && SamePin(*legA, *legB);
+    }
     const Islands islands = FindIslands(board_);
     const auto first = islandAt(islands, layerA, a);
     return first && first == islandAt(islands, layerB, b);
 }
 
 std::optional<NetId> Machine::probeNet(const LoadedCircuit& built, Layer layer, Point at) const {
+    if (const auto leg = dryLegAt(layer, at)) {
+        return PinNet(built, leg->reference, leg->pin);
+    }
     const Islands islands = FindIslands(board_);
     const auto island = islandAt(islands, layer, at);
     if (!island) {

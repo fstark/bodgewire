@@ -91,6 +91,18 @@ TEST_CASE("electrical: crack on H0 splits it", "[machine]") {
     CHECK(NetOf(netlist, "U13.6") == "H0~2");  // 2B
 }
 
+TEST_CASE("electrical: a dry pin is on no Net", "[machine]") {
+    const Design design = LoadDesign("test_pattern");
+    const PinRef dry[] = {{"U13", "6"}};  // 2B on H0
+    const auto electrical =
+        BuildCircuit(ElectricalNetlist(design.netlist, *design.circuit, design.board, dry));
+    REQUIRE(electrical.has_value());
+    auto expected = NetPins(*design.circuit);
+    expected["H0"].erase("U13.6");
+    CHECK(NetPins(**electrical) == expected);
+    CHECK(PinNet(**electrical, "U13", "2B") != (*electrical)->nets.at("H0"));
+}
+
 TEST_CASE("electrical: island names match the electrical netlist", "[machine]") {
     const Design design = LoadDesign("test_pattern");
     const Crack crack = H0Crack();

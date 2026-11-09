@@ -67,8 +67,8 @@ TEST_CASE("puzzle: errors", "[machine]") {
     CHECK(Errors("machine ../x\n") == Lines{"0: no machine line", "1: bad machine name '../x'"});
     CHECK(Errors("machine m\nfoo\n") == Lines{"2: unknown directive 'foo'"});
     CHECK(Errors("machine m\nfault\nfault short U1.1\n") ==
-          Lines{"2: expected: fault stuck|crack|bridge ...",
-                "3: expected: fault stuck|crack|bridge ..."});
+          Lines{"2: expected: fault stuck|crack|bridge|joint ...",
+                "3: expected: fault stuck|crack|bridge|joint ..."});
     CHECK(Errors("machine m\nfault stuck U1.QA\nfault stuck U1 0\nfault stuck U1.QA 2\n") ==
           Lines{"2: expected: fault stuck REF.PIN 0|1", "3: expected: fault stuck REF.PIN 0|1",
                 "4: expected: fault stuck REF.PIN 0|1"});
@@ -81,11 +81,26 @@ TEST_CASE("puzzle: errors", "[machine]") {
                  "fault crack U1.QA U2.1 -5%\n") ==
           Lines{"2: bad position '101%'", "3: bad position '1.234%'", "4: bad position '%'",
                 "5: bad position '5.%'", "6: bad position '-5%'"});
-    CHECK(Errors("machine m\nfault frob\n") == Lines{"2: expected: fault stuck|crack|bridge ..."});
+    CHECK(Errors("machine m\nfault frob\n") ==
+          Lines{"2: expected: fault stuck|crack|bridge|joint ..."});
     CHECK(Errors("machine m\nfault bridge U1.7\nfault bridge U17 U1.8\nfault bridge U1. U1.8\n") ==
           Lines{"2: expected: fault bridge REF.PIN REF.PIN",
                 "3: expected: fault bridge REF.PIN REF.PIN",
                 "4: expected: fault bridge REF.PIN REF.PIN"});
+}
+
+TEST_CASE("puzzle: joint", "[machine]") {
+    const auto result =
+        ParsePuzzle("machine m\nfault joint U15.13\nfault joint U15.2D  # name\n", "t.bwp");
+    REQUIRE(result.has_value());
+    REQUIRE(result->joints.size() == 2);
+    CHECK(result->joints[0].line == 2);
+    CHECK(result->joints[0].pin.reference == "U15");
+    CHECK(result->joints[0].pin.pin == "13");
+    CHECK(result->joints[1].pin.pin == "2D");
+    CHECK(Errors("machine m\nfault joint\nfault joint U15\nfault joint U15.13 U15.12\n") ==
+          Lines{"2: expected: fault joint REF.PIN", "3: expected: fault joint REF.PIN",
+                "4: expected: fault joint REF.PIN"});
 }
 
 TEST_CASE("puzzle: bridge", "[machine]") {

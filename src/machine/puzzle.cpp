@@ -132,8 +132,10 @@ public:
             crack(number, tokens);
         } else if (tokens[0] == "fault" && tokens.size() >= 2 && tokens[1] == "bridge") {
             bridge(number, tokens);
+        } else if (tokens[0] == "fault" && tokens.size() >= 2 && tokens[1] == "joint") {
+            joint(number, tokens);
         } else if (tokens[0] == "fault") {
-            error(number, "expected: fault stuck|crack|bridge ...");
+            error(number, "expected: fault stuck|crack|bridge|joint ...");
         } else {
             error(number, "unknown directive '" + std::string(tokens[0]) + "'");
         }
@@ -227,6 +229,15 @@ private:
             return;
         }
         puzzle_.bridges.push_back({line, *a, *b});
+    }
+
+    void joint(std::uint32_t line, const std::vector<std::string_view>& tokens) {
+        const auto pin = tokens.size() == 3 ? ParsePin(tokens[2]) : std::nullopt;
+        if (!pin) {
+            error(line, "expected: fault joint REF.PIN");
+            return;
+        }
+        puzzle_.joints.push_back({line, *pin});
     }
 
     Puzzle puzzle_;
