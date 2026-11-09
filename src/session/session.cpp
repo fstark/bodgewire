@@ -164,7 +164,8 @@ RepairResult Session::repair(const RepairAction& repair) {
                    [&](const CutRepair& r) { return machine_->cut(r.layer, r.at); },
                    [&](const WireRepair& r) { return machine_->addWire(r.a, r.b); },
                    [&](const UnwireRepair& r) { return machine_->removeWire(r.a, r.b); },
-                   [&](const UnbridgeRepair& r) { return machine_->removeBridge(r.a, r.b); }},
+                   [&](const UnbridgeRepair& r) { return machine_->removeBridge(r.a, r.b); },
+                   [&](const ResolderRepair& r) { return machine_->resolder(r.pin); }},
         repair);
     if (!done) {
         return RepairResult::Unknown;

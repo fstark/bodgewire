@@ -110,3 +110,18 @@ TEST_CASE("pin faults: a dry Joint is fixed by resoldering, not by a swap", "[ma
     REQUIRE(session.repair(SwapRepair{"U13"}) == RepairResult::Done);
     CHECK(Frame(session) != FaultFree());
 }
+
+TEST_CASE("pin faults: resolder through the Session", "[machines]") {
+    Puzzle puzzle = TestPattern();
+    puzzle.joints = {{2, {"U13", "2B"}}};
+    Session session = MakeSession(Load(puzzle));
+    const ResolderRepair resolder{{"U13", "2B"}};
+    session.powerOn(1);
+    CHECK(session.repair(resolder) == RepairResult::Refused);
+    session.powerOff();
+    CHECK(session.repair(ResolderRepair{{"J1", "1"}}) == RepairResult::Unknown);
+    REQUIRE(session.repair(resolder) == RepairResult::Done);
+    REQUIRE(session.log().size() == 1);
+    CHECK(session.log()[0] == "resolder U13.2B");
+    CHECK(Frame(session) == FaultFree());
+}

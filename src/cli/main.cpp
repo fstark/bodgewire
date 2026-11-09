@@ -40,7 +40,7 @@ constexpr std::string_view kUsage =
     "usage: bw run <file.bwn|file.bwp> [--time 1ms] [--seed 1] "
     "[--record NET,NET... | --record-all] [--vcd FILE] "
     "[--tv FILE.bmp] [--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,"
-    "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN] "
+    "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
     "[--probe REF.PIN,...] [--press REF:DOWN:UP,...]\n"
     "       bw export-kicad <file.bwn> -o <file.net>\n"
     "       bw check-board <file.bwn> <file.kicad_pcb>";
@@ -162,7 +162,7 @@ std::unique_ptr<LoadedCircuit> Load(const std::string& file) {
 }
 
 // Applies `repair` ("swap:U3", "mend:F.Cu:52.30:41.00", "cut:...", "wire:U1.14:U13.6",
-// "unwire:...", "unbridge:..."); error message, or nullopt.
+// "unwire:...", "unbridge:...", "resolder:U15.13"); error message, or nullopt.
 std::optional<std::string> Repair(Machine& machine, std::string_view repair) {
     const auto parsed = ParseRepair(repair);
     if (!parsed) {
@@ -187,6 +187,8 @@ std::optional<std::string> Repair(Machine& machine, std::string_view repair) {
         done = machine.addWire(wire->a, wire->b);
     } else if (const auto* unwire = std::get_if<UnwireRepair>(&*parsed)) {
         done = machine.removeWire(unwire->a, unwire->b);
+    } else if (const auto* resolder = std::get_if<ResolderRepair>(&*parsed)) {
+        done = machine.resolder(resolder->pin);
     } else {
         const auto& unbridge = std::get<UnbridgeRepair>(*parsed);
         done = machine.removeBridge(unbridge.a, unbridge.b);

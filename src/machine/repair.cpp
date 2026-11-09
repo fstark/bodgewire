@@ -63,6 +63,13 @@ std::expected<RepairAction, std::string> ParseRepair(std::string_view text) {
         }
         return SwapRepair{std::string(reference)};
     }
+    if (text.starts_with("resolder:")) {
+        const auto pin = ParsePinRef(text.substr(9));
+        if (!pin || pin->pin.find(':') != std::string::npos) {
+            return bad;
+        }
+        return ResolderRepair{*pin};
+    }
     for (const std::string_view prefix : {"mend:", "cut:"}) {
         if (!text.starts_with(prefix)) {
             continue;
@@ -110,7 +117,8 @@ std::string FormatRepair(const RepairAction& repair) {
             [](const UnwireRepair& r) { return "unwire " + FormatPin(r.a) + " " + FormatPin(r.b); },
             [](const UnbridgeRepair& r) {
                 return "unbridge " + FormatPin(r.a) + " " + FormatPin(r.b);
-            }},
+            },
+            [](const ResolderRepair& r) { return "resolder " + FormatPin(r.pin); }},
         repair);
 }
 
