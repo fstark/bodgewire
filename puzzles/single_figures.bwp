@@ -1,0 +1,6 @@
+# Single figures: the C3 Trace between U8 pin 11 and U7 pin 14 is cracked; U7's CKA floats high, so the
+# tens never count and are cleared to 0 every cycle. U10 pin 13 stays on C3 and the units are right.
+machine knob
+title "Single figures"
+brief "The left digit always shows 0, and the right digit goes round from 0 to 9 as the knob turns up."
+fault crack U8.11 U7.14 50%

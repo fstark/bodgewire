@@ -1,0 +1,6 @@
+# Dead knob: the VCC Trace between J2 pin 3 and U6 pin 14 is cracked; the paddle controller has no +5 V,
+# so PULSE floats high, GCLK follows F10K and LATCH stays low: the latches keep their power-on values.
+machine knob
+title "Dead knob"
+brief "The meter shows the same thing from power-on, whatever the knob does."
+fault crack J2.3 U6.14 50%

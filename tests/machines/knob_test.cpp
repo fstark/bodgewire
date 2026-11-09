@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../machine/test_points.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/ls47.hpp"
@@ -198,4 +199,151 @@ TEST_CASE("knob: one measuring cycle", "[machines]") {
         CHECK(level(tb1, at) == One);
         CHECK(level(tb2, at) == One);
     }
+}
+
+namespace {
+
+Machine LoadPuzzle(const std::string& name) {
+    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
+std::unique_ptr<LoadedCircuit> Build(const Machine& machine) {
+    auto built = machine.build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
+// The reading at 250 ms (two full cycles) with the knob at `knob` from power-on.
+std::string ReadingAt(LoadedCircuit& loaded, double knob, std::uint64_t seed = 1) {
+    Meter meter(loaded, seed, knob);
+    meter.runUntil(250_ms);
+    return meter.display();
+}
+
+}  // namespace
+
+TEST_CASE("knob: Puzzles have a title and a brief", "[machines]") {
+    for (const char* name :
+         {"dead_knob", "runaway", "single_figures", "odd_tens", "four_to_seven"}) {
+        INFO(name);
+        const auto puzzle =
+            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        REQUIRE(puzzle.has_value());
+        CHECK(puzzle->machine == "knob");
+        CHECK_FALSE(puzzle->title.empty());
+        CHECK_FALSE(puzzle->brief.empty());
+    }
+}
+
+TEST_CASE("knob: dead_knob", "[machines][slow]") {
+    Machine machine = LoadPuzzle("dead_knob");
+    CHECK(machine.power().unpowered == std::vector<std::string>{"J2"});
+    {
+        auto loaded = Build(machine);
+        const NetId pulse = loaded->nets.at("PULSE");
+        for (const std::uint64_t seed : {1, 2, 3}) {
+            INFO("seed " << seed);
+            Meter meter(*loaded, seed, 0.2);
+            meter.runUntil(250_ms);
+            const unsigned first = meter.segments();
+            CHECK(meter.sim().isFloating(pulse));
+            meter.turn(0.8);
+            meter.runUntil(450_ms);
+            CHECK(meter.segments() == first);
+        }
+    }
+    REQUIRE(machine.mend(DeadKnobCrack().layer, DeadKnobCrack().at));
+    CHECK(machine.power().unpowered.empty());
+    auto loaded = Build(machine);
+    Meter meter(*loaded, 1, 0.2);
+    meter.runUntil(250_ms);
+    CHECK(meter.display() == "20");
+    meter.turn(0.8);
+    meter.runUntil(450_ms);
+    CHECK(meter.display() == "79");
+}
+
+namespace {
+
+int Number(const std::string& display) {
+    REQUIRE(display.size() == 2);
+    REQUIRE(display[0] >= '0');
+    REQUIRE(display[0] <= '9');
+    REQUIRE(display[1] >= '0');
+    REQUIRE(display[1] <= '9');
+    return (display[0] - '0') * 10 + (display[1] - '0');
+}
+
+}  // namespace
+
+TEST_CASE("knob: runaway", "[machines][slow]") {
+    Machine machine = LoadPuzzle("runaway");
+    {
+        auto loaded = Build(machine);
+        for (const std::uint64_t seed : {1, 2, 3}) {
+            INFO("seed " << seed);
+            Meter meter(*loaded, seed, 0.3);
+            meter.runUntil(250_ms);
+            const int first = Number(meter.display());
+            meter.runUntil(350_ms);
+            CHECK(Number(meter.display()) == (first + 30) % 100);
+        }
+    }
+    REQUIRE(machine.swap("U5"));
+    auto loaded = Build(machine);
+    Meter meter(*loaded, 1, 0.3);
+    meter.runUntil(250_ms);
+    CHECK(meter.display() == "30");
+    meter.runUntil(350_ms);
+    CHECK(meter.display() == "30");
+}
+
+TEST_CASE("knob: single_figures", "[machines]") {
+    Machine machine = LoadPuzzle("single_figures");
+    {
+        auto loaded = Build(machine);
+        const NetId cka = *PinNet(*loaded, "U7", "CKA");
+        REQUIRE(cka != *PinNet(*loaded, "U8", "QD"));
+        REQUIRE(*PinNet(*loaded, "U10", "4D") == *PinNet(*loaded, "U8", "QD"));
+        Meter meter(*loaded, 1, 0.47);
+        meter.runUntil(250_ms);
+        CHECK(meter.display() == "07");
+        CHECK(meter.sim().isFloating(cka));
+    }
+    REQUIRE(machine.mend(SingleFiguresCrack().layer, SingleFiguresCrack().at));
+    auto loaded = Build(machine);
+    CHECK(ReadingAt(*loaded, 0.47) == "47");
+}
+
+TEST_CASE("knob: odd_tens", "[machines]") {
+    Machine machine = LoadPuzzle("odd_tens");
+    {
+        auto loaded = Build(machine);
+        CHECK(PinNet(*loaded, "U11", "A") != loaded->nets.at("L4"));  // the leg is off its pad
+        CHECK(ReadingAt(*loaded, 0.0) == "10");
+        CHECK(ReadingAt(*loaded, 0.25) == "35");
+    }
+    REQUIRE(machine.resolder({"U11", "7"}));
+    auto loaded = Build(machine);
+    CHECK(ReadingAt(*loaded, 0.0) == "00");
+    CHECK(ReadingAt(*loaded, 0.25) == "25");
+}
+
+TEST_CASE("knob: four_to_seven", "[machines]") {
+    Machine machine = LoadPuzzle("four_to_seven");
+    {
+        auto loaded = Build(machine);
+        CHECK(*PinNet(*loaded, "U12", "C") == *PinNet(*loaded, "U12", "LT_N"));
+        CHECK(ReadingAt(*loaded, 0.0) == "04");
+        Meter meter(*loaded, 1, 0.09);
+        meter.runUntil(250_ms);
+        CHECK(DigitAt(*loaded, meter.sim(), "DS1") == '0');
+        CHECK(Segments(*loaded, meter.sim(), "DS2") == Ls47Segments(13, true, true, true));
+    }
+    REQUIRE(machine.removeBridge({"U12", "2"}, {"U12", "3"}));
+    auto loaded = Build(machine);
+    CHECK(ReadingAt(*loaded, 0.0) == "00");
+    CHECK(ReadingAt(*loaded, 0.09) == "09");
 }

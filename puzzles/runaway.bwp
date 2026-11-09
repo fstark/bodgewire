@@ -1,0 +1,6 @@
+# Runaway: U5's QC (TB2) is stuck at 0, so R02 of U7 and U8 never goes high and the counters are never
+# cleared: each cycle adds the knob's count to the last, mod 100.
+machine knob
+title "Runaway"
+brief "The number keeps going up by itself, faster the further the knob is turned."
+fault stuck U5.QC 0

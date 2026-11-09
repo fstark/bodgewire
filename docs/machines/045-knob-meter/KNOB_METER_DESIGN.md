@@ -110,7 +110,7 @@ net DS2_G    U12.SG_N DS2.G
   - `C3`: `U7` pin 14 (`CKA`) at an end of the routed Trace, e.g. `U8` pin 11 → `U10` pin 13 → `U7` pin 14, with a straight stretch on the last leg, so a crack there leaves `U7` `CKA` alone.
   - `U11` pin 7 and `U12` pins 2–3: no constraint (a dry Joint and a Solder Bridge need no Copper).
 - `bw check-board` clean; `drc_knob` passes (picked up by the `boards/*/*.kicad_pcb` glob).
-- Cracks (P4e syntax), written once the Board is routed: `VCC` `J2.3 <next pad> N%`, `C3` `<previous pad> U7.14 N%`.
+- Cracks (P4e syntax), on the routed Board: `VCC` `J2.3 U6.14 50%` (`J2` pin 3 is a leaf: a straight B.Cu run to `U6` pin 14, then on to the rest of `VCC`); `C3` `U8.11 U7.14 50%` (routed `U10` pin 13 → `U8` pin 11 → `U7` pin 14 on F.Cu).
 
 ## Puzzles
 
@@ -118,9 +118,9 @@ net DS2_G    U12.SG_N DS2.G
 
 | File | Fault line | Where |
 |---|---|---|
-| `dead_knob.bwp` | `fault crack J2.3 <pad> N%` | `VCC` to `J2` |
+| `dead_knob.bwp` | `fault crack J2.3 U6.14 50%` | `VCC` to `J2` |
 | `runaway.bwp` | `fault stuck U5.QC 0` | `TB2` |
-| `single_figures.bwp` | `fault crack <pad> U7.14 N%` | `C3` at `U7` `CKA` |
+| `single_figures.bwp` | `fault crack U8.11 U7.14 50%` | `C3` at `U7` `CKA` |
 | `odd_tens.bwp` | `fault joint U11.7` | `L4` at `U11` `A` |
 | `four_to_seven.bwp` | `fault bridge U12.2 U12.3` | `L2` to `LT_N` (+5 V) |
 

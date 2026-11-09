@@ -1,0 +1,6 @@
+# Four to seven: Solder Bridge between U12 pins 2 (C, L2) and 3 (LT_N, +5 V); L2 is always high, so the
+# units decoder sees bit 2 set: 4-7 for 0-3 and 4-7, the shapes of 12-15 for 8 and 9.
+machine knob
+title "Four to seven"
+brief "The right digit only ever shows 4, 5, 6 or 7, or an odd shape."
+fault bridge U12.2 U12.3

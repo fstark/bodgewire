@@ -86,6 +86,16 @@ const Crack& JumpingBallCrack() {
     return crack;
 }
 
+const Crack& DeadKnobCrack() {
+    static const Crack crack = PuzzleCrack("dead_knob");
+    return crack;
+}
+
+const Crack& SingleFiguresCrack() {
+    static const Crack crack = PuzzleCrack("single_figures");
+    return crack;
+}
+
 const Crack& R1VccCrack() {
     static const Crack crack = BoardCrack("counter", {"R1", "1"}, {"U1", "16"}, 58);
     return crack;

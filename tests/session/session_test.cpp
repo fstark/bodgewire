@@ -584,3 +584,20 @@ TEST_CASE("session: knob kept across power", "[session]") {
     CHECK(session.knob("J2") == 0.25);
     CHECK(paddle->knob() == 0.25);
 }
+
+TEST_CASE("session: knob kept across a Repair", "[session]") {
+    Session session = PuzzleSession("dead_knob");
+    CHECK(session.setKnob("J2", 0.3));
+    session.powerOn(1, 1_ms);
+    session.runner().waitIdle();
+    session.powerOff();
+    REQUIRE(session.repair(MendRepair{DeadKnobCrack().layer, DeadKnobCrack().at}) ==
+            RepairResult::Done);
+    session.powerOn(2, 1_ms);  // rebuilt from the mended Board
+    session.runner().waitIdle();
+    const Paddle* paddle = PaddleOf(session.circuit(), "J2");
+    REQUIRE(paddle != nullptr);
+    CHECK(paddle->knob() == 0.3);
+    CHECK(session.knob("J2") == 0.3);
+    session.powerOff();
+}

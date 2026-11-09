@@ -1,0 +1,6 @@
+# Odd tens: dry Joint on U11 pin 7 (A, L4); the leg floats and U11 reads A high, so the tens digit
+# shows the true tens with bit 0 set.
+machine knob
+title "Odd tens"
+brief "The left digit never shows an even number: at the left stop the meter reads 10."
+fault joint U11.7
