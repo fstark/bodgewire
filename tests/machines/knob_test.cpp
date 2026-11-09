@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/ls47.hpp"
 #include "parts/paddle.hpp"
@@ -27,8 +28,14 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
     return std::move(*result);
 }
 
-// The fault-free circuit the Machine tests run on (the design netlist until the Board exists).
-std::unique_ptr<LoadedCircuit> FaultFree() { return DesignCircuit(); }
+// The Circuit built from the Board's Copper, with no Faults.
+std::unique_ptr<LoadedCircuit> FaultFree() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "knob.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
 
 // Lit segments of one digit, bit k for segment 'A' + k.
 unsigned Segments(const LoadedCircuit& loaded, const Simulator& sim, std::string_view digit) {
