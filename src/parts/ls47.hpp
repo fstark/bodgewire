@@ -23,4 +23,12 @@ public:
 // BI_N low blanks and wins, then LT_N low lights all, then RBI_N low blanks a 0.
 std::uint8_t Ls47Segments(unsigned value, bool lampTestN, bool rippleBlankingInN, bool blankingInN);
 
+// Segments certainly lit and certainly dark (bit 0 = a … bit 6 = g) for the inputs `ctx` reads
+// at A, B, C, D, LT_N, RBI_N, BI_N (the 74LS47 and 74LS48 pin indices): every value an X input
+// could have is tried.
+struct SegmentCertainty {
+    std::uint8_t lit, dark;
+};
+SegmentCertainty ReadSegments(EvalContext& ctx);
+
 }  // namespace bw

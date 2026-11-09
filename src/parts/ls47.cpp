@@ -57,7 +57,7 @@ std::uint8_t Ls47Segments(unsigned value, bool lampTestN, bool rippleBlankingInN
 
 Ls47::Ls47(std::string reference) : Component(std::move(reference), Ls47Pins()) {}
 
-void Ls47::evaluate(EvalContext& ctx) {
+SegmentCertainty ReadSegments(EvalContext& ctx) {
     unsigned known = 0;    // input bits read as 1
     unsigned unknown = 0;  // input bits at X
     for (std::size_t i = 0; i < kInputs.size(); ++i) {
@@ -78,8 +78,14 @@ void Ls47::evaluate(EvalContext& ctx) {
             break;
         }
     }
+    return {on, off};
+}
+
+void Ls47::evaluate(EvalContext& ctx) {
+    const SegmentCertainty segments = ReadSegments(ctx);
     for (std::size_t k = 0; k < kSegments.size(); ++k) {
-        const LogicValue value = (on >> k) & 1u ? Zero : ((off >> k) & 1u ? One : X);
+        const LogicValue value =
+            (segments.lit >> k) & 1u ? Zero : ((segments.dark >> k) & 1u ? One : X);
         ctx.drive(kSegments[k], value, DelayFor(delays::kLs47, value));
     }
 }

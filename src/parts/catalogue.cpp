@@ -16,6 +16,7 @@
 #include "parts/ls164.hpp"
 #include "parts/ls175.hpp"
 #include "parts/ls47.hpp"
+#include "parts/ls48.hpp"
 #include "parts/ls74.hpp"
 #include "parts/ls90.hpp"
 #include "parts/ls93.hpp"
@@ -169,6 +170,8 @@ constexpr std::array s_parts{
     PartInfo{"74LS32", "quad 2-input OR", "DIP-14", Chip, &CreateGatePackage<"74LS32">},
     PartInfo{"74LS47", "BCD to 7-segment decoder, open collector", "DIP-16", Chip,
              &CreateChip<Ls47, "74LS47">},
+    PartInfo{"74LS48", "BCD to 7-segment decoder, active-high outputs", "DIP-16", Chip,
+             &CreateChip<Ls48, "74LS48">},
     PartInfo{"74LS74", "dual D flip-flop, preset and clear", "DIP-14", Chip,
              &CreateChip<Ls74, "74LS74">},
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},
