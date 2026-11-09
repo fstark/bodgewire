@@ -73,9 +73,9 @@ std::expected<Time, std::string> DurationFromText(std::string_view text) {
     return bad();
 }
 
-Paddle::Paddle(std::string reference, Time shortest, Time longest)
+Paddle::Paddle(std::string reference, Time shortest, Time longest, bool reversed)
     : Component(std::move(reference), ConnectorPins("PADDLE")), shortest_(shortest),
-      longest_(longest) {
+      longest_(longest), reversed_(reversed) {
     Check(shortest >= 1 && shortest < longest, "paddle: need 1 ps <= shortest < longest");
 }
 
@@ -84,7 +84,8 @@ void Paddle::setKnob(double turn) {
 }
 
 Time Paddle::pulseLength() const {
-    return shortest_ + std::llround(knob() * static_cast<double>(longest_ - shortest_));
+    const Time turn = std::llround(knob() * static_cast<double>(longest_ - shortest_));
+    return reversed_ ? longest_ - turn : shortest_ + turn;
 }
 
 void Paddle::powerOn(PowerOnContext& ctx) {

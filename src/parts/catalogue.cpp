@@ -84,11 +84,17 @@ std::expected<Component*, std::string> CreatePaddle(Circuit& circuit, std::strin
                                                     std::span<const PartParam> params) {
     const PartParam* shortest = nullptr;
     const PartParam* longest = nullptr;
+    bool reversed = false;
     for (const PartParam& param : params) {
         if (param.name == "min") {
             shortest = &param;
         } else if (param.name == "max") {
             longest = &param;
+        } else if (param.name == "reversed") {
+            if (param.value != "yes" && param.value != "no") {
+                return std::unexpected("PADDLE: reversed must be yes or no");
+            }
+            reversed = param.value == "yes";
         } else {
             return std::unexpected("PADDLE: unknown parameter '" + param.name + "'");
         }
@@ -110,7 +116,7 @@ std::expected<Component*, std::string> CreatePaddle(Circuit& circuit, std::strin
     if (*high <= *low) {
         return std::unexpected("PADDLE: max must be longer than min");
     }
-    return &circuit.add<Paddle>(std::move(reference), *low, *high);
+    return &circuit.add<Paddle>(std::move(reference), *low, *high, reversed);
 }
 
 std::expected<Component*, std::string> CreateLed(Circuit& circuit, std::string reference,

@@ -9,7 +9,7 @@ Reference commits (paddle controller): `8bfbcc6` Part, connector pins, footprint
 | Layer | File | What |
 |---|---|---|
 | Part | `src/parts/<device>.{hpp,cpp}` | a `Component` with the connector's pins in pad order (pin index = pad − 1); signal pins TTL `Input`/`Output`, power pins `Power`. The device's behaviour in `evaluate` (`fell`, `wakeAfter`, `drive` with a delay of at least 1 ps). The player's setting is a `std::atomic` written by the UI thread (`Paddle::setKnob`, clamped); a setting read only at the next event needs no wake, unlike a button press |
-| Parameters | `src/parts/catalogue.cpp` | `CreateXxx(reference, parameters)` refuses unknown or missing names with a message; durations by `DurationFromText` (`src/parts/paddle.hpp`: `bw_parts` cannot reach `bw_netlist`'s `ParseDuration`) |
+| Parameters | `src/parts/catalogue.cpp` | `CreateXxx(reference, parameters)` refuses unknown or missing names with a message; an optional one has a default (`reversed=yes\|no`, default `no`); durations by `DurationFromText` (`src/parts/paddle.hpp`: `bw_parts` cannot reach `bw_netlist`'s `ParseDuration`) |
 | Catalogue | `src/parts/catalogue.cpp` | `PartInfo` row sorted by name, `PartKind::Connector`, package e.g. `KK-4` |
 | Pins | `src/parts/connector.{hpp,cpp}` | `ConnectorPins("<NAME>")`: names and kinds for the electrical netlist |
 | Power | `connector.cpp` `ConnectorPowersDevice`, `src/machine/electrical.cpp` `FindPower` | a device fed by the Board is Powered like a chip: unpowered, its pins go on private Nets (`BoardPower::unpowered`). `POWER` and `VIDEO` stay unpowered Connectors |

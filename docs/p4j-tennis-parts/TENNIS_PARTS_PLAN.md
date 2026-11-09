@@ -10,8 +10,8 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | Phase | Description | Commit |
 |-------|-------------|--------|
 | 1 | 74LS157 Part, Datasheet, tests | `422d284` |
-| 2 | 74LS48 Part, shared segment fold, Datasheet, tests | this commit |
-| 3 | Reversed controller, two players' keys | |
+| 2 | 74LS48 Part, shared segment fold, Datasheet, tests | `e3b596b` |
+| 3 | Reversed controller, two players' keys | this commit |
 | 4 | Netlist stage 1: ball and box, no side walls | |
 | 5 | Stage 2: paddles | |
 | 6 | Stage 3: hits, angles, speed-up | |

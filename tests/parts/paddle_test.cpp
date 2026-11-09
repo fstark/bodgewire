@@ -83,6 +83,22 @@ TEST_CASE("paddle: parameters", "[parts]") {
     CHECK(error({{"min", "30"}, {"max", "9ms"}}).starts_with("bad duration '30'"));
     CHECK(error({{"min", "500ns"}, {"max", "9ms"}}) == "PADDLE: min must be at least 1us");
     CHECK(error({{"min", "9ms"}, {"max", "9ms"}}) == "PADDLE: max must be longer than min");
+    CHECK(error({{"min", "30us"}, {"max", "9ms"}, {"reversed", "maybe"}}) ==
+          "PADDLE: reversed must be yes or no");
+    CHECK(Create({{"min", "30us"}, {"max", "9ms"}, {"reversed", "no"}}).has_value());
+}
+
+TEST_CASE("paddle: reversed, the longest pulse at the left stop", "[parts]") {
+    const auto created = Create({{"min", "30us"}, {"max", "9930us"}, {"reversed", "yes"}});
+    REQUIRE(created.has_value());
+    auto* paddle = dynamic_cast<Paddle*>(*created);
+    REQUIRE(paddle != nullptr);
+    paddle->setKnob(0.0);
+    CHECK(paddle->pulseLength() == kLongest);
+    paddle->setKnob(1.0);
+    CHECK(paddle->pulseLength() == kShortest);
+    paddle->setKnob(0.5);
+    CHECK(paddle->pulseLength() == kLongest - (kLongest - kShortest) / 2);
 }
 
 TEST_CASE("paddle: idle low, one pulse per fall, as long as the knob says", "[parts]") {

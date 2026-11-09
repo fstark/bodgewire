@@ -15,7 +15,7 @@ constexpr ImU32 kLampHigh = IM_COL32(230, 40, 40, 255);
 constexpr ImU32 kLampLow = IM_COL32(40, 200, 60, 255);
 constexpr ImU32 kLampPulse = IM_COL32(255, 170, 0, 255);
 constexpr float kTitleScale = 1.3f;
-constexpr double kKnobKeyRate = 0.5;     // turn per second while an arrow key is held
+constexpr double kKnobKeyRate = 1.0;     // turn per second while a knob key is held
 constexpr double kKnobWheelStep = 0.01;  // turn per wheel notch
 
 // "● HIGH  ● LOW  ● PULSE", one row.
@@ -57,12 +57,22 @@ void DrawKnobs(Session& session) {
         return;
     }
     const ImGuiIO& io = ImGui::GetIO();
-    if (!io.WantTextInput) {
-        const int direction = static_cast<int>(ImGui::IsKeyDown(ImGuiKey_UpArrow)) -
-                              static_cast<int>(ImGui::IsKeyDown(ImGuiKey_DownArrow));
+    // One knob: Up and Down. Two or more: Q and A turn the first, Up and Down the second.
+    const bool players = knobs.size() >= 2;
+    const auto turn = [&](const std::string& reference, ImGuiKey up, ImGuiKey down) {
+        const int direction =
+            static_cast<int>(ImGui::IsKeyDown(up)) - static_cast<int>(ImGui::IsKeyDown(down));
         if (direction != 0) {
-            session.setKnob(knobs.front(),
-                            session.knob(knobs.front()) + direction * kKnobKeyRate * io.DeltaTime);
+            session.setKnob(reference,
+                            session.knob(reference) + direction * kKnobKeyRate * io.DeltaTime);
+        }
+    };
+    if (!io.WantTextInput) {
+        if (players) {
+            turn(knobs[0], ImGuiKey_Q, ImGuiKey_A);
+            turn(knobs[1], ImGuiKey_UpArrow, ImGuiKey_DownArrow);
+        } else {
+            turn(knobs[0], ImGuiKey_UpArrow, ImGuiKey_DownArrow);
         }
     }
     if (!ImGui::CollapsingHeader("Knob", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -82,8 +92,11 @@ void DrawKnobs(Session& session) {
                 session.setKnob(reference,
                                 session.knob(reference) + io.MouseWheel * kKnobWheelStep);
             }
-            ImGui::SetTooltip(i == 0 ? "Turn the knob: drag, mouse wheel, or the Up and Down keys"
-                                     : "Turn the knob: drag or mouse wheel");
+            const std::size_t upDown = players ? 1 : 0;  // the knob Up and Down turn
+            const char* keys = players && i == 0 ? "Turn the knob: drag, mouse wheel, or Q and A"
+                               : i == upDown ? "Turn the knob: drag, mouse wheel, or Up and Down"
+                                             : "Turn the knob: drag or mouse wheel";
+            ImGui::SetTooltip("%s", keys);
         }
     }
 }
