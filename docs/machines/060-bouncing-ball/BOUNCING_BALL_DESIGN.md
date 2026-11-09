@@ -10,7 +10,7 @@ Machine name `ball`:
 netlists/ball.bwn                    design netlist
 boards/ball/ball.kicad_pcb           Board (KiCad 10, laid out by hand)
 manuals/ball/user.md, service.md
-puzzles/solid_net.bwp, wraparound.bwp, stripe.bwp, jumping_ball.bwp, net_bounce.bwp
+puzzles/wide_net.bwp, wraparound.bwp, stripe.bwp, jumping_ball.bwp, net_bounce.bwp
 ```
 
 ## Netlist
@@ -197,13 +197,13 @@ Timing notes (all well inside a 500 ns dot):
 
 - Three rows of DIP-14/16, grouped by job so the Service Manual reads on the Board: the beam counters and sync (`X1`, `U1`–`U11`) at the back with `J1` at the left and `J2` at the back edge; the playfield decoders and mixer (`U12`–`U17`) in the middle; the ball counters and bounce logic (`U18`–`U26`) along the front.
 - Wanted for the Puzzles (each a straight stretch away from pads, vias and corners):
-  - `V2`: the pad `U15` pin 13 at an end of `V2`'s route, with a straight stretch next to it, so a crack cuts off that pad alone.
+  - `V2`: the pad `U15` pin 13 at an end of `V2`'s route, with a straight stretch next to it, so a crack cuts off that pad alone. (As laid out, `V2` runs `U3` pin 12 → `U15` pin 13 → `U7` pin 4 → `U8` pin 5; the user kept the layout and the Puzzle became Wide net, on the two-pad `NET_A`, 2026-11-09.)
   - `VLOAD_N`: routed `U24` pin 6 → `U20` pin 9 → `U21` pin 9 (or `U24` pin 6 → `U21` → `U20`): `U24` pin 6 at an end, a straight stretch next to it.
   - `U16` pins 4 and 5: neighbouring pins, nothing else needed (the bridge is drawn on the solder side).
 - `bw check-board` clean; `drc_ball` passes (picked up by the `boards/*/*.kicad_pcb` glob).
-- Cracks (P4e syntax), filled in once routed:
-  - `V2`: `U15.13 <next pad> N%`.
-  - `VLOAD_N`: `U24.6 <next pad> N%`.
+- Cracks (P4e syntax), from the routed Board:
+  - `NET_A`: `U12.8 U15.9 50%` (a two-pad Net: `U15` pin 9 is cut off whatever the order).
+  - `VLOAD_N`: `U24.6 U21.9 50%` (routed `U24` pin 6 → `U21` pin 9 → `U20` pin 9: the 49 mm straight run on F.Cu).
 
 ## Puzzles
 
@@ -211,15 +211,15 @@ Timing notes (all well inside a 500 ns dot):
 
 | File | Fault line | Where |
 |---|---|---|
-| `solid_net.bwp` | `fault crack U15.13 … N%` | `V2` at `U15` |
+| `wide_net.bwp` | `fault crack U12.8 U15.9 50%` | `NET_A` at `U15` |
 | `wraparound.bwp` | `fault stuck U26.1Q 1` | `HDIR` |
 | `stripe.bwp` | `fault stuck U23.QA 0` | `BALL_OFF` |
-| `jumping_ball.bwp` | `fault crack U24.6 … N%` | `VLOAD_N` |
+| `jumping_ball.bwp` | `fault crack U24.6 U21.9 50%` | `VLOAD_N` |
 | `net_bounce.bwp` | `fault bridge U16.4 U16.5` | `RIGHT_N` to `NET_N` |
 
 Titles and briefs:
 
-- Solid net: "The net down the middle is a solid line; it used to be dashed."
+- Wide net: "The net down the middle has grown into a wide striped band."
 - Wraparound: "The ball only ever goes right: it flies out through the right wall and comes back in through the left one."
 - Stripe: "Instead of a ball there is a thin bar from top to bottom, bouncing from side to side."
 - Jumping ball: "The ball flickers and jumps up and down the screen; side to side it moves as it should."
@@ -227,8 +227,8 @@ Titles and briefs:
 
 ## Electrical Nets on a damaged Board
 
-- Solid net: `U15` pin 13 alone on its island, no Driver: floating, reads high. `NET_N` is low on dots 48–49 of every line, so the net is solid; `V2` still reaches `U7` and `U8`, sync is unchanged.
-- Solid net and Jumping ball: a floating Net lights no probe lamp (the probe shows nothing), while TTL inputs on it read high.
+- Wide net: `U15` pin 9 alone on its island, no Driver: floating, reads high. `NET_N` = NAND(`H4`, `H5`, `V2`): low on dots 48–63 of the lines with `V2` high, a dashed band 16 dots wide. `NET_N` only feeds the mixer: the ball moves and bounces as before.
+- Wide net and Jumping ball: a floating Net lights no probe lamp (the probe shows nothing), while TTL inputs on it read high.
 - Wraparound: `HDIR` stuck at 1 (Strong). `MR_N` = NOT `MOVE`, so the ball H counter loads 191 on every `MOVE` line: right by 2 dots each frame. Through `HBLANK` it wraps round to dot 0 and comes in through the left wall (`HIT_LEFT`, already right). `U26`'s internal state still follows `J`/`K` (`1Q_N` toggles, unconnected).
 - Stripe: `BALL_OFF` stuck at 0: `VBALL` is high on every line, so `BALL_N` is low at `HBALL` on every line: a 2-dot column across the whole active height. It overlaps the top and bottom walls every frame (`VDIR` flips back and forth, unseen) and bounces off the side walls.
 - Jumping ball: `U20` and `U21` `LOAD_N` on an island without a Driver: floating, read high: never loaded. The ball V counter runs 0–511 (512 lines); the ball is drawn at each 511, every 1.64 frames, 200 lines later (mod 312) each time: 112 lines higher.

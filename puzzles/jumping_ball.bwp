@@ -1,0 +1,5 @@
+# Jumping ball: the VLOAD_N Trace from U24 pin 6 to U21 pin 9 is cracked; U21 and U20 LOAD_N float and the ball V counter is never reloaded.
+machine ball
+title "Jumping ball"
+brief "The ball flickers and jumps up and down the screen; side to side it moves as it should."
+fault crack U24.6 U21.9 50%

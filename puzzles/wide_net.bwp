@@ -1,0 +1,5 @@
+# Wide net: the NET_A Trace between U12 pin 8 and U15 pin 9 is cracked; U15's input floats high and NET_N lights 16 dots wherever V2 is high.
+machine ball
+title "Wide net"
+brief "The net down the middle has grown into a wide striped band."
+fault crack U12.8 U15.9 50%

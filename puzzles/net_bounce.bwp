@@ -1,0 +1,5 @@
+# Net bounce: Solder Bridge between U16 pin 4 (RIGHT_N) and pin 5 (NET_N); the right-wall bounce also fires at the net.
+machine ball
+title "Net bounce"
+brief "The ball bounces off the net as if it were a wall, and never goes into the right half."
+fault bridge U16.4 U16.5

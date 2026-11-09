@@ -12,9 +12,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../machine/test_points.hpp"
 #include "devices/tv_input.hpp"
 #include "instruments/logic_probe.hpp"
 #include "machine/machine.hpp"
+#include "machine/puzzle.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
 
@@ -357,4 +359,234 @@ TEST_CASE("ball: one ball bouncing inside the box, seed 1", "[machines][slow]") 
 }
 TEST_CASE("ball: one ball bouncing inside the box, seed 2", "[machines][slow]") {
     CheckBouncing(2);
+}
+
+namespace {
+
+Machine LoadPuzzle(const std::string& name) {
+    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
+std::unique_ptr<LoadedCircuit> Build(const Machine& machine) {
+    auto built = machine.build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
+// Lit columns from the net's first column rightwards, on each row the net is drawn.
+std::vector<int> NetWidths(const TvFrame& frame, const Picture& picture) {
+    std::vector<int> widths;
+    const int net = picture.box->netColumn();
+    for (const int row : picture.netRows) {
+        int column = net;
+        while (column <= picture.box->right && Lit(frame, row, column)) {
+            ++column;
+        }
+        widths.push_back(column - net);
+    }
+    return widths;
+}
+
+// The widest the net is drawn on most of its rows, in one frame at 445 ms.
+int NetWidth(LoadedCircuit& loaded, std::vector<std::string>& lamps,
+             const std::vector<std::string>& probes) {
+    std::vector<int> widths;
+    lamps = Watch(
+        loaded, 1, 400_ms, 445_ms,
+        [&](const TvFrame& frame, bool) {
+            const Picture picture = Read(frame);
+            REQUIRE(picture.box.has_value());
+            widths = NetWidths(frame, picture);
+        },
+        probes);
+    REQUIRE(widths.size() >= 100);
+    std::sort(widths.begin(), widths.end());
+    return widths[widths.size() / 2];
+}
+
+bool Pulses(const std::string& lamps) { return lamps.find("PULSE") != std::string::npos; }
+
+}  // namespace
+
+TEST_CASE("ball: Puzzles have a title and a brief", "[machines]") {
+    for (const char* name : {"wide_net", "wraparound", "stripe", "jumping_ball", "net_bounce"}) {
+        INFO(name);
+        const auto puzzle =
+            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        REQUIRE(puzzle.has_value());
+        CHECK(puzzle->machine == "ball");
+        CHECK_FALSE(puzzle->title.empty());
+        CHECK_FALSE(puzzle->brief.empty());
+    }
+}
+
+TEST_CASE("ball: wide_net", "[machines]") {
+    Machine machine = LoadPuzzle("wide_net");
+    std::vector<std::string> lamps;
+    {
+        auto loaded = Build(machine);
+        REQUIRE(*PinNet(*loaded, "U15", "2A") != *PinNet(*loaded, "U12", "3Y"));
+        // NET_N follows H4 and H5 alone: dots 48–63, 16 dots wide.
+        CHECK(NetWidth(*loaded, lamps, {"U12.3Y", "U15.2A"}) == 16 * kDot);
+        CHECK(Pulses(lamps[0]));
+        CHECK(lamps[1] == "-");
+    }
+    REQUIRE(machine.mend(WideNetCrack().layer, WideNetCrack().at));
+    auto loaded = Build(machine);
+    CHECK(NetWidth(*loaded, lamps, {"U15.2A"}) == 2 * kDot);
+    CHECK(Pulses(lamps[0]));
+}
+
+namespace {
+
+// The tallest ball seen between 400 and 600 ms.
+int TallestBall(LoadedCircuit& loaded, std::vector<std::string>& lamps,
+                const std::vector<std::string>& probes) {
+    int tallest = 0;
+    lamps = Watch(
+        loaded, 1, 400_ms, 600_ms,
+        [&](const TvFrame& frame, bool) {
+            const Picture picture = Read(frame);
+            if (picture.ball) {
+                tallest = std::max(tallest, picture.ball->height);
+            }
+        },
+        probes);
+    return tallest;
+}
+
+}  // namespace
+
+TEST_CASE("ball: stripe", "[machines]") {
+    Machine machine = LoadPuzzle("stripe");
+    std::vector<std::string> lamps;
+    {
+        auto loaded = Build(machine);
+        // A bar the whole height of the box (lines 16–239).
+        CHECK(TallestBall(*loaded, lamps, {"U23.QA", "U23.CKB"}) == 224);
+        CHECK(lamps[0] == "LOW");
+        CHECK(Pulses(lamps[1]));
+    }
+    REQUIRE(machine.swap("U23"));
+    auto loaded = Build(machine);
+    CHECK(TallestBall(*loaded, lamps, {}) == kBall);
+}
+
+TEST_CASE("ball: jumping_ball", "[machines]") {
+    Machine machine = LoadPuzzle("jumping_ball");
+    {
+        auto loaded = Build(machine);
+        REQUIRE(*PinNet(*loaded, "U20", "LOAD_N") != *PinNet(*loaded, "U24", "2Y"));
+        Track track;
+        const auto lamps =
+            Watch(*loaded, 1, 400_ms, 700_ms,
+                  [&](const TvFrame& frame, bool) { track.pictures.push_back(Read(frame)); },
+                  {"U24.2Y", "U20.LOAD_N", "U21.LOAD_N"});
+        // Drawn once every 512 lines: in one frame of two or three, 88 lines lower or 112 higher
+        // than where it last showed.
+        int jumps = 0, missing = 0;
+        std::optional<Ball> last;
+        for (const Picture& picture : track.pictures) {
+            if (!picture.ball) {
+                ++missing;
+                continue;
+            }
+            if (last && std::abs(picture.ball->top - last->top) > 8) {
+                ++jumps;
+            }
+            last = picture.ball;
+        }
+        CHECK(jumps >= 3);
+        CHECK(missing >= 3);
+        CHECK(Pulses(lamps[0]));
+        CHECK(lamps[1] == "-");
+        CHECK(lamps[2] == "-");
+    }
+    REQUIRE(machine.mend(JumpingBallCrack().layer, JumpingBallCrack().at));
+    auto loaded = Build(machine);
+    const Track track = Follow(*loaded, 1, 400_ms, 700_ms);
+    const auto steps = track.steps();
+    CHECK(steps.size() >= 3);
+    for (const Track::Step& step : steps) {
+        CHECK(std::abs(step.dy) == 4);
+    }
+}
+
+TEST_CASE("ball: wraparound", "[machines][slow]") {
+    auto loaded = Build(LoadPuzzle("wraparound"));
+    Track track;
+    const auto lamps = Watch(
+        *loaded, 1, 100_ms, 2'000_ms,
+        [&](const TvFrame& frame, bool) { track.pictures.push_back(Read(frame)); }, {"U26.1Q"});
+    CHECK(lamps[0] == "HIGH");
+    const auto steps = track.steps();
+    REQUIRE(steps.size() >= 10);
+    for (const Track::Step& step : steps) {
+        CHECK(step.dx == 2 * kDot);
+    }
+    // It reaches the right wall and later comes back in at the left one.
+    std::optional<std::size_t> right;
+    bool backLeft = false;
+    for (std::size_t k = 0; k < track.pictures.size(); ++k) {
+        const Picture& picture = track.pictures[k];
+        if (!picture.ball || !picture.box) {
+            continue;
+        }
+        if (picture.ball->left + picture.ball->width - 1 == picture.box->right && !right) {
+            right = k;
+        }
+        if (right && picture.ball->left == picture.box->left) {
+            backLeft = true;
+        }
+    }
+    CHECK(right.has_value());
+    CHECK(backLeft);
+}
+
+TEST_CASE("ball: wraparound, U26 swapped", "[machines][slow]") {
+    Machine machine = LoadPuzzle("wraparound");
+    REQUIRE(machine.swap("U26"));
+    auto loaded = Build(machine);
+    const auto steps = Follow(*loaded, 1, 100_ms, 2'000_ms).steps();
+    CHECK(std::ranges::any_of(steps, [](const Track::Step& step) { return step.dx < 0; }));
+    CHECK(std::ranges::any_of(steps, [](const Track::Step& step) { return step.dx > 0; }));
+}
+
+namespace {
+
+// Frames, from the first with the ball left of the net, in which the ball is right of it.
+int RightOfNetAfterLeft(LoadedCircuit& loaded) {
+    const Track track = Follow(loaded, 1, 100_ms, 2'000_ms);
+    bool seenLeft = false;
+    int right = 0;
+    for (const Picture& picture : track.pictures) {
+        if (!picture.ball || !picture.box) {
+            continue;
+        }
+        const int net = picture.box->netColumn();
+        if (picture.ball->left + picture.ball->width <= net) {
+            seenLeft = true;
+        } else if (seenLeft && picture.ball->left >= net + 2 * kDot) {
+            ++right;
+        }
+    }
+    CHECK(seenLeft);
+    return right;
+}
+
+}  // namespace
+
+TEST_CASE("ball: net_bounce", "[machines][slow]") {
+    auto loaded = Build(LoadPuzzle("net_bounce"));
+    REQUIRE(*PinNet(*loaded, "U16", "D") == *PinNet(*loaded, "U16", "E"));
+    CHECK(RightOfNetAfterLeft(*loaded) == 0);
+}
+
+TEST_CASE("ball: net_bounce, bridge cut", "[machines][slow]") {
+    Machine machine = LoadPuzzle("net_bounce");
+    REQUIRE(machine.removeBridge({"U16", "4"}, {"U16", "5"}));
+    auto loaded = Build(machine);
+    CHECK(RightOfNetAfterLeft(*loaded) > 0);
 }

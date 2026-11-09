@@ -1,0 +1,5 @@
+# Stripe: U23 output QA (BALL_OFF) stuck at 0; the ball is drawn on every line, a thin bar from top to bottom.
+machine ball
+title "Stripe"
+brief "Instead of a ball there is a thin bar from top to bottom, bouncing from side to side."
+fault stuck U23.QA 0

@@ -6,7 +6,7 @@ Sixth rung of the tutorial ladder. A board that drives a TV: a white box with a 
 
 A moving picture is made by counters that run almost, but not quite, in step with the beam. The ball has its own horizontal and vertical counters; the ball is drawn wherever they overflow. Each counter's period matches the line (or the frame) exactly, except once per frame, when it is a little shorter or longer: the ball then moves by that difference. A bounce is a coincidence: the ball's video and a wall's video are high at the same dot, and a JK flip-flop turns round. The 74LS30 that mixes six video sources is the logic-only equivalent of Pong's summing resistors.
 
-Faults show as motion going wrong (through a wall, stuck to one half, jumping about) or as shapes going wrong (a stripe instead of a ball, a solid net), and the player learns to tell the picture logic from the motion logic.
+Faults show as motion going wrong (through a wall, stuck to one half, jumping about) or as shapes going wrong (a stripe instead of a ball, a net grown wide), and the player learns to tell the picture logic from the motion logic.
 
 ## Circuit
 
@@ -59,7 +59,7 @@ The TV shows a white box with a dashed line down the middle and a small square b
 
 | Puzzle | Fault | Symptom | Path to the fix |
 |---|---|---|---|
-| Solid net | Broken Trace on `V2` at `U15` pin 13 | the net is a solid line instead of dashes; the ball is fine | `V2` pulses at `U3` pin 12 and at the sync decoders, but the probe shows nothing at `U15` pin 13 (floating; the gate reads it high): mend the Trace |
+| Wide net | Broken Trace on `NET_A` between `U12` pin 8 and `U15` pin 9 | the net is a wide striped band (16 dots) instead of a thin dashed line; the ball is fine | `NET_A` pulses at `U12` pin 8, but the probe shows nothing at `U15` pin 9 (floating; the gate reads it high, so the net is decoded from `H4` and `H5` alone): mend the Trace |
 | Wraparound | `U26` output `1Q` (`HDIR`) stuck at 1 | the ball always goes right: it flies through the right wall and comes back in through the left one; it still bounces off the top and bottom | `HIT_RIGHT` pulses at `U26` pin 4 when the ball reaches the right wall, but `HDIR` stays high: swap `U26` |
 | Stripe | `U23` output `QA` (`BALL_OFF`) stuck at 0 | instead of a ball, a thin bar from the top to the bottom of the box, bouncing left and right | `BALL_CK` pulses and `QD` falls every 8 lines, but `QA` stays low: swap `U23` |
 | Jumping ball | Broken Trace on `VLOAD_N` from `U24` pin 6, cutting `U20` and `U21` `LOAD_N` off | the ball flickers and jumps up and down the screen at random heights, while it moves smoothly left and right | `VLOAD_N` pulses once a frame at `U24` pin 6, but the probe shows nothing at `U20` pin 9 and `U21` pin 9 (floating, read high): the ball counter is never reloaded and runs 512 lines: mend the Trace |

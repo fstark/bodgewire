@@ -1,0 +1,5 @@
+# Wraparound: U26 output 1Q (HDIR) stuck at 1; the ball always moves right and wraps round through the side walls.
+machine ball
+title "Wraparound"
+brief "The ball only ever goes right: it flies out through the right wall and comes back in through the left one."
+fault stuck U26.1Q 1
