@@ -11,6 +11,7 @@
 #include "parts/gate_package.hpp"
 #include "parts/led.hpp"
 #include "parts/ls107.hpp"
+#include "parts/ls157.hpp"
 #include "parts/ls161.hpp"
 #include "parts/ls164.hpp"
 #include "parts/ls175.hpp"
@@ -156,6 +157,7 @@ constexpr std::array s_parts{
     PartInfo{"74LS04", "hex inverter", "DIP-14", Chip, &CreateGatePackage<"74LS04">},
     PartInfo{"74LS08", "quad 2-input AND", "DIP-14", Chip, &CreateGatePackage<"74LS08">},
     PartInfo{"74LS107", "dual JK flip-flop, clear", "DIP-14", Chip, &CreateChip<Ls107, "74LS107">},
+    PartInfo{"74LS157", "quad 2-to-1 multiplexer", "DIP-16", Chip, &CreateChip<Ls157, "74LS157">},
     PartInfo{"74LS161", "synchronous 4-bit binary counter", "DIP-16", Chip,
              &CreateChip<Ls161, "74LS161">},
     PartInfo{"74LS164", "8-bit serial-in shift register", "DIP-14", Chip,
