@@ -75,6 +75,8 @@ Tutorial ladder, by difficulty, each spec in `docs/machines/NNN-name/`:
 | 050 | Test-pattern generator | TV | crystal + TTL counters → sync + bars/grid. First playable |
 | 060 | Bouncing ball | TV | Pong's ball circuit on its own |
 | 070 | Pong | TV | TTL only, like the 1972 arcade game |
+| 080 | Message display | TV | fixed text: sync counters → message ROM → character ROM → shift register; the BW-2001 video chain with ROM instead of RAM |
+| 090 | TV typewriter | TV, ASCII keyboard | inspired by the 1973 TV Typewriter (half of the Apple 1): video RAM written at a cursor from an ASCII keyboard; RAM and a shared bus before any CPU |
 
 - LEDs, digits and buttons whose arrangement belongs to the Board are Components on it (clicked or watched in the board view, faulty like any other); standard devices (TV, keyboard) sit off the Board behind a Connector.
 
