@@ -32,6 +32,7 @@ Before designing, planning or coding one of these, read its recipe instead of re
 - [docs/recipes/ADD_BOARD_DEVICE.md](docs/recipes/ADD_BOARD_DEVICE.md): an LED, digit or button on the Board
 - [docs/recipes/ADD_MACHINE.md](docs/recipes/ADD_MACHINE.md): netlist, manuals, Board, tests
 - [docs/recipes/ADD_PUZZLE.md](docs/recipes/ADD_PUZZLE.md): a hand-placed fault
+- [docs/recipes/ADD_CONNECTOR_DEVICE.md](docs/recipes/ADD_CONNECTOR_DEVICE.md): a device off the Board behind a Connector (paddle controller)
 - [docs/recipes/ADD_INSTRUMENT.md](docs/recipes/ADD_INSTRUMENT.md): a measuring tool and its window
 
 Designs and plans cite recipe steps instead of repeating them. When a milestone finds a recipe wrong or incomplete, fix the recipe in the same commit.

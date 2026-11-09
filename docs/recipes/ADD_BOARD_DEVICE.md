@@ -1,6 +1,6 @@
 # Recipe — Add an on-board device Part
 
-A Part the player watches or presses on the Board itself: LED (P4a), push button (P4d), 7-segment digit (P4f). Off-board devices (TV, keyboard) go behind a Connector instead.
+A Part the player watches or presses on the Board itself: LED (P4a), push button (P4d), 7-segment digit (P4f). Off-board devices (TV, keyboard, paddle controller) go behind a Connector instead: [ADD_CONNECTOR_DEVICE.md](ADD_CONNECTOR_DEVICE.md).
 
 Reference commits: LED output `ab92f30` → `22f5a90` → `b8eb2c2` → `8049a68`; button input `28ecaea` → `e5983f3` → `c2958a2` → `469ce1d` → `e86fa8c` → `175929e`; digit (lamps, drawing) `1419047` → `a2deab7`.
 

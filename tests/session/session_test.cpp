@@ -3,12 +3,14 @@
 #include <cmath>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
 #include "machine/crack.hpp"
+#include "parts/ls47.hpp"
 
 using namespace bw;
 using namespace bw::literals;
@@ -455,6 +457,59 @@ TEST_CASE("session: ball with every instrument", "[session][slow]") {
     session.runner().waitIdle();
     CHECK(session.tv()->tv().isLocked());
     CHECK(session.tv()->tv().completedFrames() > 40);
+    session.powerOff();
+}
+
+namespace {
+
+// The lit segments of `digit` (A..G, bit k for 'A' + k) from the Session's lamps.
+unsigned LitSegments(const Session& session, std::string_view digit) {
+    unsigned lit = 0;
+    int k = 0;
+    for (const LedLight& led : session.leds()) {
+        if (led.reference == digit && led.shape != LampShape::DecimalPoint) {
+            if (led.brightness > 0.5f) {
+                lit |= 1u << k;
+            }
+            ++k;
+        }
+    }
+    return lit;
+}
+
+}  // namespace
+
+TEST_CASE("session: knob meter with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "knob.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    REQUIRE(session.leds().size() == 16);  // DS1 A..G and DP, then DS2
+    CHECK(session.knobs() == std::vector<std::string>{"J2"});
+
+    for (const char* pin : {"A", "B", "C", "D"}) {
+        REQUIRE(session.clip("U12", pin).has_value());
+    }
+    REQUIRE(session.clip("J2", "1").has_value());
+    REQUIRE(session.clip("J2", "2").has_value());
+    REQUIRE(session.clip("U6", "2Y").has_value());
+    REQUIRE(session.clip("U6", "1Y").has_value());
+    REQUIRE(session.hook("U8", "QA").has_value());
+    REQUIRE(session.hook("U5", "QB").has_value());
+    const auto pulse = session.padLead("J2", "2");
+    const auto vcc = session.padLead("J2", "3");
+    REQUIRE(pulse.has_value());
+    REQUIRE(vcc.has_value());
+    session.touch(ProbeTip{pulse->at, Layer::Front});
+    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+
+    CHECK(session.setKnob("J2", 0.42));
+    session.powerOn(1, 300_ms);
+    session.runner().waitIdle();
+    CHECK(LitSegments(session, "DS1") == Ls47Segments(4, true, true, true));
+    CHECK(LitSegments(session, "DS2") == Ls47Segments(2, true, true, true));
     session.powerOff();
 }
 

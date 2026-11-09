@@ -68,8 +68,12 @@ The part of a Machine the player watches it through. Standard devices (a TV) sit
 _Avoid_: Display, screen (when meaning the device in general)
 
 **Input Device**:
-The part of a Machine the player operates it through. Standard devices (an ASCII keyboard) sit off the Board behind a Connector; buttons whose arrangement belongs to the Board are Components on it, and can be faulty like any other.
+The part of a Machine the player operates it through. Standard devices (an ASCII keyboard, a paddle controller) sit off the Board behind a Connector; buttons whose arrangement belongs to the Board are Components on it, and can be faulty like any other.
 _Avoid_: Control, input (when meaning the device)
+
+**Knob**:
+What the player turns on a paddle controller, from 0 at the left stop to 1 at the right; the controller answers each trigger with a pulse whose length follows it.
+_Avoid_: Paddle, pot (when meaning the setting)
 
 **Monitor**:
 The small ROM program that runs on a Machine with a CPU; there is no BASIC.
@@ -129,7 +133,7 @@ A Net that carries a supply voltage from the power connector, such as VCC (5 V) 
 _Avoid_: Power line, supply net
 
 **Powered**:
-A chip whose every power Pin sits on a Rail of the voltage it expects; an Unpowered chip drives nothing.
+A chip, or a device fed through its Connector (a paddle controller), whose every power Pin sits on a Rail of the voltage it expects; an Unpowered one drives nothing.
 
 **Dead Rail**:
 A Net joining supply pins of different voltages, such as VCC shorted to GND; it reads 0 V and powers nothing.

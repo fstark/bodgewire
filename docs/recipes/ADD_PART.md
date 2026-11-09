@@ -2,7 +2,7 @@
 
 A new IC in the catalogue (e.g. 74LS90, 74LS47). For an on-board LED, digit or button, see [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md) instead.
 
-Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate package: `74LS30` in `src/parts/gate_package.cpp` (a new one: `09fbb1a`, 74LS27). Falling-edge JK flip-flop with `J`/`K` sampled before the edge (`readBefore`) and X cases: `4b7cf99` (74LS107).
+Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate package: `74LS30` in `src/parts/gate_package.cpp` (a new one: `09fbb1a`, 74LS27). Falling-edge JK flip-flop with `J`/`K` sampled before the edge (`readBefore`) and X cases: `4b7cf99` (74LS107). Register of flip-flops on one shared clock and clear: `2bb1a10` (74LS175).
 
 ## Which kind
 
