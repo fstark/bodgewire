@@ -34,6 +34,13 @@ _Avoid_: Port, jack, header
 A solder connection between a Pin (or Socket contact) and the Copper.
 _Avoid_: Solder point
 
+**Dry Joint**:
+A Joint that does not connect: the Pin is off its pad's Net, while the pad and its Trace still carry the signal. Nothing shows on the Board. Repaired by resoldering.
+_Avoid_: Cold joint, bad solder
+
+**Leg**:
+A chip Pin's lead above the Board. A probe or meter touch on a chip pad reads the leg with F.Cu active and the pad with B.Cu active; only a Dry Joint makes them differ.
+
 **Copper**:
 The conductive parts of a Board: pads, Traces and vias, on one or more Layers.
 
