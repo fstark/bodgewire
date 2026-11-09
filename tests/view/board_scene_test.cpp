@@ -487,15 +487,30 @@ TEST_CASE("leads: labels", "[view]") {
     const BoardScene scene = Scene(f);
     const Board& board = scene.board();
     const std::size_t u1 = ComponentIndex(board, "U1");
-    CHECK(LeadLabel(scene, {HitKind::Pad, u1, PadIndex(board.components[u1], "14")}) == "U1.14 QA");
-    CHECK(LeadLabel(scene, {HitKind::Trace, 0, 0}) == "Trace");
+    const Hit qa{HitKind::Pad, u1, PadIndex(board.components[u1], "14")};
+    CHECK(LeadLabel(scene, qa, Layer::Front) == "U1.14 QA leg");
+    CHECK(LeadLabel(scene, qa, Layer::Back) == "U1.14 QA pad");
+    CHECK(LeadLabel(scene, {HitKind::Trace, 0, 0}, Layer::Front) == "Trace");
     REQUIRE_FALSE(board.vias.empty());
-    CHECK(LeadLabel(scene, {HitKind::Via, 0, 0}) == "via");
+    CHECK(LeadLabel(scene, {HitKind::Via, 0, 0}, Layer::Front) == "via");
 
     const Fixture counter = Load("counter");
     const BoardScene counterScene = Scene(counter);
     const std::size_t r1 = ComponentIndex(counterScene.board(), "R1");
-    CHECK(LeadLabel(counterScene, {HitKind::Pad, r1, 0}) == "R1.1");
+    CHECK(LeadLabel(counterScene, {HitKind::Pad, r1, 0}, Layer::Front) == "R1.1");
+}
+
+TEST_CASE("leads: contact side on chip pads only", "[view]") {
+    const Fixture f = Load("counter");
+    const BoardScene scene = Scene(f);
+    const std::size_t u1 = ComponentIndex(scene.board(), "U1");
+    const std::size_t r1 = ComponentIndex(scene.board(), "R1");
+    CHECK(ContactSide(scene, {HitKind::Pad, u1, 0}, Layer::Front) == "leg");
+    CHECK(ContactSide(scene, {HitKind::Pad, u1, 0}, Layer::Back) == "pad");
+    CHECK(ContactSide(scene, {HitKind::Pad, r1, 0}, Layer::Front).empty());
+    CHECK(ContactSide(scene, {HitKind::Trace, 0, 0}, Layer::Front).empty());
+    CHECK(scene.chip(u1));
+    CHECK_FALSE(scene.chip(r1));
 }
 
 TEST_CASE("view: bodyAt is a courtyard away from the pads", "[view]") {

@@ -626,6 +626,9 @@ void BoardView::keys() {
     if (ImGui::IsKeyPressed(ImGuiKey_W, false)) {
         setTool(Tool::Wire);
     }
+    if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
+        setTool(Tool::Resolder);
+    }
     if (ImGui::IsKeyPressed(ImGuiKey_C, false)) {
         setTool(Tool::Clip);
     }

@@ -20,7 +20,7 @@
 
 namespace bw {
 
-enum class Tool : std::uint8_t { Probe, Swap, Mend, Cut, Wire, Clip, Hook, Meter };
+enum class Tool : std::uint8_t { Probe, Swap, Mend, Cut, Wire, Resolder, Clip, Hook, Meter };
 
 struct CutMark {
     Layer layer;

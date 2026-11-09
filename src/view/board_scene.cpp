@@ -411,6 +411,11 @@ std::string_view BoardScene::pinName(std::size_t component, std::size_t pad) con
     return info_[component].pinNames[pad];
 }
 
+bool BoardScene::chip(std::size_t component) const {
+    const PartInfo* part = info_[component].part;
+    return part != nullptr && part->kind == PartKind::Chip;
+}
+
 bool BoardScene::powerPin(std::size_t component, std::size_t pad) const {
     return info_[component].powerPins[pad];
 }
@@ -452,13 +457,23 @@ bool AcceptsLead(LeadKind kind, HitKind hit) {
     return false;
 }
 
-std::string LeadLabel(const BoardScene& scene, const Hit& hit) {
+std::string_view ContactSide(const BoardScene& scene, const Hit& hit, Layer layer) {
+    if (hit.kind != HitKind::Pad || !scene.chip(hit.component)) {
+        return "";
+    }
+    return layer == Layer::Front ? "leg" : "pad";
+}
+
+std::string LeadLabel(const BoardScene& scene, const Hit& hit, Layer layer) {
     switch (hit.kind) {
     case HitKind::Pad: {
         const BoardComponent& component = scene.board().components[hit.component];
         std::string label = component.reference + "." + component.pads[hit.index].number;
         if (const auto name = scene.pinName(hit.component, hit.index); !name.empty()) {
             label += " " + std::string(name);
+        }
+        if (const auto side = ContactSide(scene, hit, layer); !side.empty()) {
+            label += " " + std::string(side);
         }
         return label;
     }

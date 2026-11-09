@@ -79,6 +79,11 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
         if (const auto tip = session.probeTip(); tip && scene) {
             const auto picked = scene->pick(tip->at, tip->layer, {});
             text = picked ? scene->hoverText(picked->hit) : std::string("bare board");
+            if (const auto side =
+                    picked ? ContactSide(*scene, picked->hit, tip->layer) : std::string_view();
+                !side.empty()) {
+                text += " \u00b7 " + std::string(side);
+            }
         }
         ImGui::TextUnformatted(text.c_str());
     }

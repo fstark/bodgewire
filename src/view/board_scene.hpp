@@ -79,6 +79,7 @@ public:
     std::string_view partName(std::size_t component) const;  // "74LS20", "R", "" if unknown
     std::string_view pinName(std::size_t component, std::size_t pad) const;  // "" if unknown
     bool powerPin(std::size_t component, std::size_t pad) const;             // PinKind::Power
+    bool chip(std::size_t component) const;  // a PartKind::Chip of the design
     std::optional<std::size_t> componentIndex(std::string_view reference) const;
     // Pad by number, else by pin name.
     std::optional<std::size_t> padIndex(std::size_t component, std::string_view pin) const;
@@ -103,6 +104,9 @@ private:
     std::vector<ComponentInfo> info_;                // [component]
 };
 
-std::string LeadLabel(const BoardScene& scene, const Hit& hit);  // "U1.14 QA", "Trace", "via"
+// "leg" (F.Cu) or "pad" (B.Cu) for a chip pad: what a touch there reads; "" for any other Hit.
+std::string_view ContactSide(const BoardScene& scene, const Hit& hit, Layer layer);
+// "U1.14 QA leg", "R1.1", "Trace", "via"; `layer` the Active Layer when placed.
+std::string LeadLabel(const BoardScene& scene, const Hit& hit, Layer layer);
 
 }  // namespace bw

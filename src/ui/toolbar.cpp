@@ -73,7 +73,7 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
         };
         switch (board.tool()) {
         case Tool::Probe:
-            action = "Probe: click a pin or trace";
+            action = "Probe: click a pin (F.Cu: leg, B.Cu: pad) or trace";
             break;
         case Tool::Swap:
             blocked = powered;
@@ -92,6 +92,10 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
             action = powered       ? "Wire: power off first"
                      : wireStarted ? "Wire: click the second pin"
                                    : "Wire: click the first pin";
+            break;
+        case Tool::Resolder:
+            blocked = powered;
+            action = powered ? "Resolder: power off first" : "Resolder: click a chip pin";
             break;
         case Tool::Clip:
             blocked = full(session.clips());
@@ -187,6 +191,10 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
         ImGui::SameLine(0, 2);
         if (ToolButton("Wire (W)", board.tool() == Tool::Wire)) {
             board.setTool(Tool::Wire);
+        }
+        ImGui::SameLine(0, 2);
+        if (ToolButton("Resolder (R)", board.tool() == Tool::Resolder)) {
+            board.setTool(Tool::Resolder);
         }
         ImGui::SameLine(0, 2);
         if (ToolButton("Clip (C)", board.tool() == Tool::Clip)) {

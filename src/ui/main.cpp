@@ -426,6 +426,23 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 wireStart.reset();
                 break;
             }
+            case Tool::Resolder: {
+                if (session.powered()) {
+                    result = RepairResult::Refused;
+                    break;
+                }
+                if (!pick || pick->hit.kind != HitKind::Pad) {
+                    toolbar.refused("Resolder: chip pins only");
+                    break;
+                }
+                const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
+                result = session.repair(
+                    ResolderRepair{{part.reference, part.pads[pick->hit.index].number}});
+                if (result == RepairResult::Unknown) {
+                    toolbar.refused("Resolder: chip pins only");
+                }
+                break;
+            }
             case Tool::Clip:
             case Tool::Hook: {
                 const bool isClip = boardView.tool() == Tool::Clip;
@@ -456,8 +473,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             }
             case Tool::Meter:
                 if (pick && AcceptsLead(LeadKind::Held, pick->hit.kind) &&
-                    !session.placeLead(
-                        {pick->contact, pick->layer, LeadLabel(*boardView.scene(), pick->hit)})) {
+                    !session.placeLead({pick->contact, pick->layer,
+                                        LeadLabel(*boardView.scene(), pick->hit, pick->layer)})) {
                     toolbar.refused("Meter: power off for continuity");
                 }
                 break;
@@ -669,7 +686,11 @@ int main(int argc, char** argv) {
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
-        session.placeLead({lead->at, Layer::Front, lead->label});
+        const bool chip = std::ranges::any_of(
+            session.machine()->designCircuit().parts, [&](const LoadedPart& part) {
+                return part.reference == lead->reference && part.info->kind == PartKind::Chip;
+            });
+        session.placeLead({lead->at, Layer::Front, lead->label + (chip ? " leg" : "")});
     }
     for (const std::string& text : options->repair) {
         const auto repair = ParseRepair(text);
