@@ -18,8 +18,8 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | 7 | Stage 4: misses, serve, scores, Start | `2390dd3` |
 | 8 | Stage 5: score digits | `c07c1a0` |
 | 9 | Stage 6: game over and attract | `fc268da` |
-| 10 | Manuals | this commit |
-| 11 | Board (user layout), per-Machine loops | |
+| 10 | Manuals | `892e7e6` |
+| 11 | Board (user layout), per-Machine loops | this commit |
 | 12 | Session test, release check, recipes, docs | |
 
 ## Phases
@@ -105,3 +105,4 @@ Fence: full debug suite green. Commit `docs: P4j implemented, user check pending
 - Phase 7: the circuit worked as first written: the serve lasts 579 ms (29 frames), the scorer's count goes 0 → 1, the ball leaves the loser's edge slow; Start clears the scores; slow until two turns to the left, then fast. Release headless 1.77×. With serves in the netlist a power-on can clear `FAST`, so the stage 3 cases take a seed (searched) with the ball fast and no serve, and count slow contacts too (two frames on the column; the second decides). Debug: the speed-up case 373 s (10 s simulated), the others about 200–225 s; the suite about 10 minutes.
 - Phase 8: the digits drew right first time, but release headless fell from 1.77× to 1.25×: the glyph terms took `H0` and `H1` directly and switched on every dot across the screen. `H0` and `H1` now reach them only through two gates opened by `REGION` (`QH0_N`, `QH1_N`, `COL3`, `UNITS` on spare gates), and speed is back to 1.51×. `bw_ui` dropped `--press` without a Board (buttons were handled inside the Board block): fixed, so Start can be scripted on a netlist. The new chips change every seed's power-on draws: a seed with `FAST` at power-on may still start with the ball in a goal and a serve, so the rally cases run 6 s; the court case no longer asks for the ball at both edges (the miss case shows it at the edge). The digit checks went into `a miss scores`; `score digits` reads a left-at-10 seed. Debug: 6 s cases about 320 s, the speed-up case 483 s.
 - Phase 9: game over worked as first written: 11 ends the game, paddles go, the ball bounces off the goals, the scores stay; Start brings back 0 to 0 and the paddles. Release headless 1.52× (gate 1.3×). Every case presses Start first; the TV may take half a second to lock, so early-frame checks start at 550 ms, and `Read` refuses a rolling picture (ASan caught a read past the frame that release did not). The serve is 28–32 frames, not 29–32 (the first `FRAME1` fall may come at once): docs fixed. The test reads the right score at game over, since a ball starting in a goal may score at power-on. Debug: game over about 330 s, the speed-up case 450–500 s; the suite about 9 minutes.
+- Phase 11: the user's layout passed `check-board` (`ok`) on the first try. The game-play cases now run on the Board's Circuit (`BoardCircuit`, as in `ball_test`); the netlist-warnings case keeps the netlist. All 13 pass with new searched seeds. Release headless 1.46× on the Board (1.52× on the netlist); `bw_ui` 1.00×, UI time 1.3–1.5 ms. In `bw_ui`, a `--press` held for 20 ms from 5 ms is missed (the first UI frame covers it): script Start at 300 ms.

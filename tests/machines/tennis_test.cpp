@@ -12,6 +12,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "devices/tv_input.hpp"
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/ls47.hpp"
 #include "parts/paddle.hpp"
@@ -227,6 +228,15 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
     return std::move(*result);
 }
 
+// The Circuit built from the Board's Copper, with no Faults.
+std::unique_ptr<LoadedCircuit> BoardCircuit() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "tennis.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
 // Presses Start for 2 ms at `at`.
 StepHook PressStart(LoadedCircuit& loaded, Time at) {
     Button* button = ButtonOf(loaded, "SW1");
@@ -249,7 +259,7 @@ TEST_CASE("tennis: netlist loads without warnings", "[machines]") {
 }
 
 TEST_CASE("tennis: court", "[machines][slow]") {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     int frames = 0, unlocked = 0, wallsMissing = 0;
     int edgeDots = 0;  // lit cells on dots 0–1 and 94–95 inside the court
     bool inside = false;
@@ -290,7 +300,7 @@ double KnobForTop(int line) { return std::clamp((224.0 - line) / 208.0, 0.0, 1.0
 }  // namespace
 
 TEST_CASE("tennis: paddles follow the knobs", "[machines]") {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     Paddle* left = PaddleOf(*loaded, "J3");
     Paddle* right = PaddleOf(*loaded, "J4");
     REQUIRE(left != nullptr);
@@ -539,7 +549,7 @@ std::uint64_t FindSeed(LoadedCircuit& loaded, const std::function<bool(const Sim
 // Both players aim at paddle line `aim` for 6 s, from a power-on with the ball fast and no serve
 // under way (a ball starting in a goal may still be served at once, and leave slow).
 Player Rally(int aim) {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     const auto net = [&](const Simulator& sim, const char* name) {
         return sim.value(loaded->nets.at(name));
     };
@@ -607,7 +617,7 @@ int Score(const Simulator& sim, const LoadedCircuit& loaded, char side) {
 
 TEST_CASE("tennis: Start clears the scores", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2, 3);
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     Simulator sim(loaded->circuit);
     sim.powerOn(seed);
     const StepHook start = PressStart(*loaded, 1_ms);
@@ -673,7 +683,7 @@ constexpr Time kFrame = 19'968_us;  // 312 lines of 64 µs
 }  // namespace
 
 TEST_CASE("tennis: a miss scores", "[machines][slow]") {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     Player player(*PaddleOf(*loaded, "J3"), *PaddleOf(*loaded, "J4"), 8, +1);
     const Serve serve = PlayToServe(*loaded, player, 6'000_ms);
     REQUIRE(serve.on > 0);
@@ -733,7 +743,7 @@ TEST_CASE("tennis: a miss scores", "[machines][slow]") {
 }
 
 TEST_CASE("tennis: rally speeds up", "[machines][slow]") {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     Player player(*PaddleOf(*loaded, "J3"), *PaddleOf(*loaded, "J4"), 8, -1);
     const Serve serve = PlayToServe(*loaded, player, 10'000_ms);
     REQUIRE(serve.off > 0);
@@ -785,7 +795,7 @@ TEST_CASE("tennis: rally speeds up", "[machines][slow]") {
 }
 
 TEST_CASE("tennis: score digits", "[machines]") {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     const auto bit = [&](const Simulator& sim, const char* name) {
         return sim.value(loaded->nets.at(name)) == LogicValue::One ? 1 : 0;
     };
@@ -817,7 +827,7 @@ TEST_CASE("tennis: score digits", "[machines]") {
 }
 
 TEST_CASE("tennis: game over", "[machines][slow]") {
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     const auto bit = [&](const Simulator& sim, const char* name) {
         return sim.value(loaded->nets.at(name)) == LogicValue::One ? 1 : 0;
     };
