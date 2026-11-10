@@ -17,8 +17,8 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | 6 | Stage 3: hits, angles, speed-up | `4a50392` |
 | 7 | Stage 4: misses, serve, scores, Start | `2390dd3` |
 | 8 | Stage 5: score digits | `c07c1a0` |
-| 9 | Stage 6: game over and attract | this commit |
-| 10 | Manuals | |
+| 9 | Stage 6: game over and attract | `fc268da` |
+| 10 | Manuals | this commit |
 | 11 | Board (user layout), per-Machine loops | |
 | 12 | Session test, release check, recipes, docs | |
 
