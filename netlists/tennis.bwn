@@ -44,7 +44,15 @@ part U31 74LS157    # this half's paddle: SP2, SP3, PADV, TENS
 part U32 74LS02     # LPAD_CK, RPAD_CK, LPADV, RPADV
 part U33 74LS20     # COL_L_N, COL_R_N
 part U34 74LS20     # PAD_N, REGION_N
+part U35 74LS27     # GO_RIGHT, GO_LEFT, PAD_HIT
+part U36 74LS08     # SIDES_N, TURN_N, HIT_LOW, SET_SHALLOW
+part U37 74LS02     # HIT_HIGH, SET_STEEP, VLOAD_C, MID_A
+part U38 74LS32     # GO_DOWN, GO_UP, BALLV_N
+part U39 74LS107    # SHALLOW, GAME_OVER
+part U40 74LS107    # TURN_ODD, FAST
+part U41 74LS04     # H6_N, PAD_HIT_N, MOVE_N, SERVING, START, REGION
 part U42 74LS00     # PCOL, MID_N, SCORE_N, H3_N
+part U43 74LS27     # MISS_LEFT, MISS_RIGHT, HMOVE
 part U47 74LS02     # SKIP, SERVING_N, H34_LOW
 
 net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U4.CLK U5.CLK U11.1CLK U11.2CLK
@@ -94,14 +102,15 @@ net TOP_N       U14.1Y U16.B U25.3B
 net BOTTOM_N    U8.2Y U16.C U25.4B
 net LEFT_A      U12.2Y U14.2A
 net H56_LOW     U13.1Y U14.2B
-net LEFT_N      U14.2Y U25.1B
-net RIGHT_N     U15.1Y U25.2B
+net LEFT_N      U14.2Y U36.1A
+net RIGHT_N     U15.1Y U36.1B
 net NET_A       U12.3Y U15.2A
 net NET_N       U15.2Y U16.E
 
-# Ball horizontal: steps every other dot, reloaded at 255 with 192 (191 or 193 on the MOVE line).
+# Ball horizontal: steps every other dot, reloaded at 255 with 192 (191 or 193 on the HMOVE line).
 net VCC         U18.CLR_N U18.ENT U19.CLR_N U19.D
-net MOVE        U17.1Y U18.A U24.4A
+net MOVE        U17.1Y U41.3A
+net HMOVE       U43.3Y U18.A U24.4A
 net MR          U9.4Y U18.B U18.C U18.D U19.A U19.B
 net MR_N        U24.4Y U9.4A U19.C
 net BHC         U18.RCO U19.ENT
@@ -110,8 +119,8 @@ net HLOAD_N     U24.1Y U18.LOAD_N U19.LOAD_N
 
 # Ball vertical: 9 bits, steps each line, reloaded on the line of 511 with 195 (down) or 203 (up).
 # LINE_END on ENP, not ENT: RCO follows ENT combinationally and would glitch (VRCO clocks U22).
-net VCC         U20.CLR_N U20.ENT U20.A U20.B U21.CLR_N U21.C U21.D
-net GND         U20.C U21.A U21.B
+net VCC         U20.CLR_N U20.ENT U20.A U21.CLR_N U21.C U21.D
+net GND         U21.A U21.B
 net BVC         U20.RCO U21.ENT
 net VRCO        U21.RCO U22.1CLK U24.2A U23.R01
 net VCC         U22.1J U22.1K U22.1CLR_N
@@ -129,13 +138,11 @@ net BALL_CK     U13.3Y U23.CKB
 net BALL_QD     U23.QD U23.CKA
 net BALL_OFF    U23.QA U13.3B U9.3A
 net VBALL       U9.3Y U24.3B
-net BALL_N      U24.3Y U16.A U25.1A U25.2A U25.3A U25.4A
+net BALL_N      U24.3Y U16.A U25.3A U25.4A
 
 # Bounces and directions.
-net HIT_LEFT    U25.1Y U26.1J
-net HIT_RIGHT   U25.2Y U26.1K
-net HIT_TOP     U25.3Y U26.2J
-net HIT_BOTTOM  U25.4Y U26.2K
+net HIT_TOP     U25.3Y U38.1A
+net HIT_BOTTOM  U25.4Y U38.2A
 net VCC         U26.1CLR_N U26.2CLR_N
 net HDIR        U26.1Q U24.4B
 net VDIR_N      U26.2Q_N U20.D
@@ -152,7 +159,7 @@ net VIDEO       U11.2Q J2.VIDEO
 net VCC         U11.1PRE_N U11.1CLR_N U11.2PRE_N U11.2CLR_N
 
 # Unused gate inputs.
-net GND         U10.3A U10.3B U10.4A U10.4B U14.4A U14.4B U17.3A U17.3B U17.3C
+net GND         U10.4A U10.4B U25.1A U25.1B U25.2A U25.2B U14.4A U14.4B U17.3A U17.3B U17.3C
 
 # Paddles. Each controller is triggered at line 308; LWAIT is its pulse taken at line starts.
 # The paddle counter is cleared while LWAIT is high, then counts lines (at dot 127) until LP3
@@ -208,4 +215,57 @@ net PAD_N       U34.1Y U16.D
 
 # Later stages: tens (stage 5), PLAY (stage 6, tied high above in U34.1D), unused gates.
 net GND         U31.4A U31.4B U34.2A U34.2B U34.2C U34.2D
-net GND         U42.2A U42.2B U42.3A U42.3B U42.4A U42.4B U47.1A U47.1B U47.2A U47.2B U47.3A U47.3B
+net GND         U42.3A U42.3B U42.4A U42.4B U47.1A U47.1B U47.3A U47.3B
+
+# Hits: the ball turns right on the left goal or a paddle in the left half (H6 low), left on
+# the right goal or a paddle in the right half.
+net H6_N        U41.1Y U35.2C
+net H6          U41.1A U35.1C
+net SIDES_N     U36.1Y U36.2A
+net PAD_N       U36.2B U35.3B
+net TURN_N      U36.2Y U35.1B U35.2B
+net BALL_N      U35.1A U35.2A U35.3A
+net GO_RIGHT    U35.1Y U26.1J
+net GO_LEFT     U35.2Y U26.1K
+
+# Angles: the ball's line 4 (U23 QD high, QB and QC low) on a paddle sets VDIR from the paddle
+# line's bit 3 and SHALLOW from bits 2 xor 3.
+net BALL_QB     U23.QB U37.4A
+net BALL_QC     U23.QC U37.4B
+net MID_A       U37.4Y U42.2B
+net BALL_QD     U42.2A
+net MID_N       U42.2Y U35.3C
+net PAD_HIT     U35.3Y U41.2A U36.3A U36.4A
+net PAD_HIT_N   U41.2Y U37.1A U37.2A
+net SP3         U36.3B U37.1B U10.3B
+net SP2         U10.3A
+net SP_MID      U10.3Y U36.4B U37.2B
+net HIT_LOW     U36.3Y U38.1B
+net HIT_HIGH    U37.1Y U38.2B
+net GO_DOWN     U38.1Y U26.2J
+net GO_UP       U38.2Y U26.2K
+net SET_SHALLOW U36.4Y U39.1J
+net SET_STEEP   U37.2Y U39.1K
+net CLK         U39.1CLK
+net VCC         U39.1CLR_N
+net SHALLOW     U39.1Q
+net STEEP       U39.1Q_N U20.B U37.3B
+net VDIR_N      U37.3A
+net VLOAD_C     U37.3Y U20.C
+
+# Speed: TURN_ODD toggles each time the ball turns left; FAST is set at its second fall. Slow,
+# the ball steps sideways only on frames with FRAME0 low (SKIP).
+net HDIR        U40.1CLK
+net VCC         U40.1J U40.1K U40.2J
+net GND         U40.2K
+net TURN_ODD    U40.1Q U40.2CLK
+net FAST        U40.2Q U47.2A
+net FRAME0_N    U47.2B
+net SKIP        U47.2Y U43.3C
+net MOVE_N      U41.3Y U43.3A
+
+# Later stages: SERVING (stage 4) and unused gates.
+net GND         U43.3B
+net VCC         U40.1CLR_N U40.2CLR_N
+net GND         U38.3A U38.3B U38.4A U38.4B U39.2J U39.2K U39.2CLK U39.2CLR_N
+net GND         U41.4A U41.5A U41.6A U43.1A U43.1B U43.1C U43.2A U43.2B U43.2C

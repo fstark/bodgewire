@@ -130,10 +130,11 @@ Cases (stage of the plan in brackets), each `[machines]`, `[slow]` when over ~1 
 
 | Case | Checks |
 |---|---|
-| `tennis: court` (4) | locked; top wall lines 0–15, bottom 240–255, dashed net at dots 48–49; nothing lit on dots 0–1 and 94–95 inside the court; over 2 s the ball turns at dots 2–3 and 92–93 (it is seen there: the goals are not drawn) |
-| `tennis: paddles follow the knobs` (5) | knobs at 0, 0.5, 1 in turn (`J3` and `J4` set opposite): each paddle's top line is 224, 120, 16, height 16, at its dots; a knob turned while running moves its paddle within two frames |
-| `tennis: the paddle returns the ball` (6) | the test player on both sides; from the first paddle hit on, at each hit the ball turns at the paddle (in the next frame where it moves, its column is further from the edge) and never reaches a goal |
-| `tennis: angles` (6) | one case per quarter (`GENERATE`): aimed at paddle line 2, 6, 9 or 13, the knob held while the ball is on the paddle's column (two frames when slow: the last contact decides); the vertical speed between the 2nd and 3rd frames after the last contact is −4, −2, +2 or +4 lines a frame for the quarter the picture shows at that contact |
+| `tennis: netlist loads without warnings` (4) | every stage |
+| `tennis: court` (4) | locked; top wall lines 0–15, bottom 240–255, dashed net at dots 48–49; once the ball has been inside the court, nothing lit on dots 0–1 and 94–95; over 4 s the ball is seen at dots 2–3 and 92–93 (the goals are not drawn) |
+| `tennis: paddles follow the knobs` (5) | knobs at 0, 0.5, 1 in turn every 200 ms (`J3` and `J4` set opposite): from 45 ms after each turn, each paddle seen 16 lines tall has its top on line 224, 120, 16 |
+| `tennis: the paddles return the ball` (6) | the test player on both sides, aiming at the paddles' middle for 4 s: at least three turns at a paddle, and after the first, the ball never seen behind a paddle |
+| `tennis: angle, …` (6) | one case per quarter (separate cases, so ctest runs them in parallel): aimed at paddle line 2, 6, 9 or 13 for 4 s; at each fast contact away from the walls (one frame on the paddle's column), the ball's line 4 at the contact is worked out from the frame before, and the vertical speed from the 1st to the 2nd frame after the contact is −4, −2, +2 or +4 lines a frame for its quarter (unchanged if line 4 was off the paddle); at least two contacts in the aimed quarter |
 | `tennis: a miss scores` (7) | Start; left player follows, right paddle kept away from the ball: the ball reaches the right goal (dots 92–93), is unseen for 29–32 frames, reappears there moving left at 1 dot a frame; the left score goes 0 → 1, the right stays 0 (Nets) |
 | `tennis: rally speeds up` (7) | after a miss and its serve (which clears `FAST`), both players follow: horizontal speed 1 dot a frame (2 dots every other frame) until the ball has turned left twice, then 2 dots every frame (`FAST` and `TURN_ODD` start random, and are only cleared by a serve) |
 | `tennis: Start clears the scores` (7) | any seed: after Start, `SL0`–`SL3`, `SR0`–`SR3`, `TENS_L`, `TENS_R` are 0 (and `GAME_OVER` from stage 6) |
