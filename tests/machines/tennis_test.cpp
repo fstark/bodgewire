@@ -148,6 +148,9 @@ Picture Read(const TvFrame& frame) {
     }
     picture.lineZeroRow = end - 15;  // the top wall ends on line 15
     const int z = picture.lineZeroRow;
+    if (z < 0 || z + 255 >= kTvRows) {  // a rolling picture (the TV not locked yet)
+        return picture;
+    }
     bool walls = start <= z + 1;
     for (int line = 240; line <= 255 && walls; ++line) {
         walls = full[z + line];
@@ -224,6 +227,17 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
     return std::move(*result);
 }
 
+// Presses Start for 2 ms at `at`.
+StepHook PressStart(LoadedCircuit& loaded, Time at) {
+    Button* button = ButtonOf(loaded, "SW1");
+    REQUIRE(button != nullptr);
+    return [button, at](Simulator& sim) {
+        if (sim.now() == at || sim.now() == at + 2_ms) {
+            button->setPressed(sim.now() == at);
+            sim.wake(button->id());
+        }
+    };
+}
 }  // namespace
 
 TEST_CASE("tennis: netlist loads without warnings", "[machines]") {
@@ -286,22 +300,24 @@ TEST_CASE("tennis: paddles follow the knobs", "[machines]") {
         double knob;
         int top;  // left paddle; the right one is set to 1 − knob
     };
-    const std::vector<Step> steps{{0, 0.0, 224}, {200_ms, 0.5, 120}, {400_ms, 1.0, 16}};
+    // The TV may take half a second to lock.
+    const std::vector<Step> steps{{0, 0.0, 224}, {700_ms, 0.5, 120}, {900_ms, 1.0, 16}};
     for (const Step& step : steps) {
         CHECK(KnobForTop(step.top) == step.knob);
     }
     std::vector<int> checked(steps.size(), 0);
     Watch(
-        *loaded, 1, 40_ms, 600_ms,
+        *loaded, 1, 40_ms, 1'100_ms,
         [&](const TvFrame& frame, bool, Simulator& sim) {
             // Frames that started at least two frames after a turn show it.
             const Time start = sim.now() - 1_ms;
             for (std::size_t i = 0; i < steps.size(); ++i) {
-                const Time end = i + 1 < steps.size() ? steps[i + 1].at : 600_ms;
-                if (start < steps[i].at + 45_ms || start >= end) {
+                const Time end = i + 1 < steps.size() ? steps[i + 1].at : 1'100_ms;
+                if (start < std::max(steps[i].at + 45_ms, 550_ms) || start >= end) {
                     continue;
                 }
                 const Picture picture = Read(frame);
+                INFO("frame ending " << sim.now() / 1'000'000'000 << " ms");
                 REQUIRE(picture.walls);
                 INFO("knob " << steps[i].knob);
                 // A paddle seen 16 lines tall (not lengthened by the ball on its column).
@@ -316,7 +332,8 @@ TEST_CASE("tennis: paddles follow the knobs", "[machines]") {
                 }
             }
         },
-        [&](Simulator& sim) {
+        [&, start = PressStart(*loaded, 1_ms)](Simulator& sim) {
+            start(sim);  // a power-on may be game over, with the paddles hidden
             for (const Step& step : steps) {
                 if (sim.now() == step.at) {
                     left->setKnob(step.knob);
@@ -530,8 +547,10 @@ Player Rally(int aim) {
         return net(sim, "FAST") == LogicValue::One && net(sim, "SERVING") == LogicValue::Zero;
     });
     Player player(*PaddleOf(*loaded, "J3"), *PaddleOf(*loaded, "J4"), aim);
-    Watch(*loaded, seed, 40_ms, 6'000_ms,
-          [&](const TvFrame& frame, bool, Simulator&) { player.onFrame(Read(frame)); });
+    Watch(
+        *loaded, seed, 40_ms, 6'000_ms,
+        [&](const TvFrame& frame, bool, Simulator&) { player.onFrame(Read(frame)); },
+        PressStart(*loaded, 1_ms));  // a power-on may be game over
     return player;
 }
 
@@ -584,18 +603,6 @@ int Score(const Simulator& sim, const LoadedCircuit& loaded, char side) {
            10 * Bit(sim, loaded, std::string("TENS_") + side);
 }
 
-// Presses Start for 2 ms at `at`.
-StepHook PressStart(LoadedCircuit& loaded, Time at) {
-    Button* button = ButtonOf(loaded, "SW1");
-    REQUIRE(button != nullptr);
-    return [button, at](Simulator& sim) {
-        if (sim.now() == at || sim.now() == at + 2_ms) {
-            button->setPressed(sim.now() == at);
-            sim.wake(button->id());
-        }
-    };
-}
-
 }  // namespace
 
 TEST_CASE("tennis: Start clears the scores", "[machines]") {
@@ -626,7 +633,7 @@ struct Serve {
 Serve PlayToServe(LoadedCircuit& loaded, Player& player, Time to) {
     Serve serve;
     const StepHook start = PressStart(loaded, 1_ms);
-    bool serving = false;
+    std::optional<bool> serving;  // unknown until the first poll: a power-on may be serving
     Watch(
         loaded, 1, 40_ms, to,
         [&](const TvFrame& frame, bool, Simulator& sim) {
@@ -640,12 +647,15 @@ Serve PlayToServe(LoadedCircuit& loaded, Player& player, Time to) {
                 return;
             }
             const bool now = Bit(sim, loaded, "SERVING") == 1;
-            if (now && !serving && serve.on == 0) {
+            if (!serving) {
+                serving = now;
+            }
+            if (now && !*serving && serve.on == 0) {
                 serve.on = sim.now();
                 serve.leftAfter = Score(sim, loaded, 'L');
                 serve.rightAfter = Score(sim, loaded, 'R');
             }
-            if (!now && serving && serve.off == 0) {
+            if (!now && *serving && serve.on > 0 && serve.off == 0) {
                 serve.off = sim.now();
                 player.stopMissing();
             }
@@ -673,9 +683,10 @@ TEST_CASE("tennis: a miss scores", "[machines][slow]") {
     CHECK(serve.rightBefore == 0);
     CHECK(serve.leftAfter == 1);
     CHECK(serve.rightAfter == 0);
-    // 29–32 frames, polled to the millisecond.
+    // 28–32 frames (8 falls of FRAME1, every 4 frames, the first at most 4 frames in), polled to
+    // the millisecond.
     const Time length = serve.off - serve.on;
-    CHECK(length >= 29 * kFrame - 1_ms);
+    CHECK(length >= 28 * kFrame - 1_ms);
     CHECK(length <= 32 * kFrame + 1_ms);
     // No ball drawn in a frame wholly inside the serve; then it leaves the right edge, slow.
     std::vector<int> lefts;  // after the serve, each frame: the ball's column, -1 unseen
@@ -711,7 +722,9 @@ TEST_CASE("tennis: a miss scores", "[machines][slow]") {
         seen += std::to_string(left) + " ";
     }
     INFO("after the serve: " << seen);
-    CHECK(lefts[0] >= 90);
+    const auto first = std::ranges::find_if(lefts, [](int left) { return left >= 0; });
+    REQUIRE(first != lefts.end());
+    CHECK(*first >= 88);  // it may come back inside a wall, unread
     const auto at90 = std::ranges::find(lefts, 90);
     const auto at86 = std::ranges::find(lefts, 86);
     REQUIRE(at90 != lefts.end());
@@ -792,7 +805,7 @@ TEST_CASE("tennis: score digits", "[machines]") {
         right = bit(sim, "SR0") + 2 * bit(sim, "SR1") + 4 * bit(sim, "SR2") + 8 * bit(sim, "SR3");
     }
     int read = 0;
-    Watch(*loaded, seed, 40_ms, 200_ms, [&](const TvFrame& frame, bool, Simulator&) {
+    Watch(*loaded, seed, 40_ms, 700_ms, [&](const TvFrame& frame, bool, Simulator&) {
         const Picture picture = Read(frame);
         if (picture.leftScore >= 0 && picture.rightScore >= 0) {
             CHECK(picture.leftScore == 10);
@@ -801,4 +814,76 @@ TEST_CASE("tennis: score digits", "[machines]") {
         }
     });
     CHECK(read >= 3);
+}
+
+TEST_CASE("tennis: game over", "[machines][slow]") {
+    auto loaded = DesignCircuit();
+    const auto bit = [&](const Simulator& sim, const char* name) {
+        return sim.value(loaded->nets.at(name)) == LogicValue::One ? 1 : 0;
+    };
+    // A power-on with the game on, the left score at 10, the right one a digit, no serve.
+    const std::uint64_t seed = FindSeed(*loaded, [&](const Simulator& sim) {
+        return bit(sim, "GAME_OVER") == 0 && bit(sim, "TENS_L") == 1 &&
+               bit(sim, "SL0") + bit(sim, "SL1") + bit(sim, "SL2") + bit(sim, "SL3") == 0 &&
+               bit(sim, "TENS_R") == 0 &&
+               !(bit(sim, "SR3") && (bit(sim, "SR1") || bit(sim, "SR2"))) &&
+               bit(sim, "SERVING") == 0;
+    });
+    Player player(*PaddleOf(*loaded, "J3"), *PaddleOf(*loaded, "J4"), 8, +1);
+    Button* button = ButtonOf(*loaded, "SW1");
+    REQUIRE(button != nullptr);
+    Time over = 0;  // GAME_OVER rose
+    int right = -1;
+    std::vector<std::pair<Time, Picture>> pictures;
+    Watch(
+        *loaded, seed, 40_ms, 7'000_ms,
+        [&](const TvFrame& frame, bool, Simulator& sim) {
+            const Picture picture = Read(frame);
+            player.onFrame(picture);
+            pictures.emplace_back(sim.now(), picture);
+        },
+        [&](Simulator& sim) {
+            if (over == 0 && Bit(sim, *loaded, "GAME_OVER") == 1) {
+                over = sim.now();
+                CHECK(Score(sim, *loaded, 'L') == 11);
+                right = Score(sim, *loaded, 'R');  // a ball starting in a goal may have scored
+                CHECK(right < 10);
+            }
+            // Start 3 s into the game over.
+            if (over > 0 && (sim.now() == over + 3'000_ms || sim.now() == over + 3'002_ms)) {
+                button->setPressed(sim.now() == over + 3'000_ms);
+                player.stopMissing();
+                sim.wake(button->id());
+            }
+        });
+    REQUIRE(over > 0);
+    // During the game over: no paddles, the scores 11 and the right one, the ball turning at an
+    // edge it is seen at (no miss); after Start: 0 and 0, the paddles back.
+    int during = 0, after = 0;
+    bool edge = false;
+    for (const auto& [end, picture] : pictures) {
+        if (end > over + 2 * kFrame && end < over + 3'000_ms) {
+            // A paddle is 16 lines; the ball crossing a paddle's column is 8.
+            CHECK((!picture.left || picture.left->height != 16));
+            CHECK((!picture.right || picture.right->height != 16));
+            if (picture.leftScore >= 0 && picture.rightScore >= 0) {
+                CHECK(picture.leftScore == 11);
+                CHECK(picture.rightScore == right);
+                ++during;
+            }
+            edge = edge || (picture.ball && (picture.ball->left == 2 || picture.ball->left == 92));
+        }
+        if (end > over + 3'000_ms + 2 * kFrame && end < over + 3'300_ms) {
+            CHECK(picture.left.has_value());
+            CHECK(picture.right.has_value());
+            if (picture.leftScore >= 0 && picture.rightScore >= 0) {
+                CHECK(picture.leftScore == 0);
+                CHECK(picture.rightScore == 0);
+                ++after;
+            }
+        }
+    }
+    CHECK(during >= 5);
+    CHECK(edge);
+    CHECK(after >= 3);
 }

@@ -20,7 +20,7 @@ Decided while designing (2026-11-10), for the user to overrule:
 - The Machine is called Paddle Tennis (`tennis`), not Pong: the circuit is our own and the game's name belongs to someone else. The docs cite Pong as the inspiration, as 060 does.
 - The controllers are wired the other way round, so the knob's right stop (and the Up key) puts the paddle at the top.
 - Knob keys turn at 100 % a second (was 50 %), for every Machine: at 50 % a paddle needs 2 s to cross the court, longer than the fast ball takes.
-- The serve waits 29–32 frames, about 0.6 s; the ball crosses in about 1.6 s slow and 0.8 s fast; it speeds up after turning left twice.
+- The serve waits 28–32 frames, about 0.6 s; the ball crosses in about 1.6 s slow and 0.8 s fast; it speeds up after turning left twice.
 - 58 chips (060 had 26).
 
 ## New code

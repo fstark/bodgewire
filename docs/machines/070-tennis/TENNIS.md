@@ -20,7 +20,7 @@ The beam counters, sync, net and ball of the 060 bouncing ball ([BOUNCING_BALL.m
 | Controllers | `J3` (left), `J4` (right), triggered by `VSYNC_N`; the knob's right stop puts the paddle at the top |
 | Ball | 2 dots × 8 lines, as on 060; 1 dot a frame across after a serve, 2 dots a frame after the ball has turned left twice; 2 or 4 lines a frame up or down |
 | Angles | the ball's 5th line (line 4 of 0–7) on paddle lines 0–3: steep up; 4–7: shallow up; 8–11: shallow down; 12–15: steep down |
-| Serve | a miss hides the ball at that edge for 29–32 frames (about 0.6 s), then it leaves that edge towards the scorer, slow |
+| Serve | a miss hides the ball at that edge for 28–32 frames (about 0.6 s), then it leaves that edge towards the scorer, slow |
 | Scores | 0 to 11 each, drawn on lines 32–63: left tens at dots 16–19 and units at 24–27, right tens at 64–67 and units at 72–75 |
 | Game over | at 11: paddles hidden, the ball bounces off all four edges, scores kept, until Start (`SW1`) |
 
@@ -48,7 +48,7 @@ Each controller is a `PADDLE` behind a 4-pin Connector ([PADDLE.md](../../../dat
 - `U40` counts the ball's turns to the left (`HDIR` falls): flip-flop 1 toggles, flip-flop 2 (`FAST`) is set at its second fall. Both are cleared while serving.
 - The 060 `MOVE` (line 308) becomes `HMOVE` = `MOVE` and not `SERVING` and not (`FRAME0` and not `FAST`): the ball's horizontal counter steps on every frame when fast, every other frame when slow, never while serving. The vertical motion is unchanged.
 - A miss is the ball meeting a goal while moving into it: `MISS_LEFT` = ball, left goal, `HDIR` low. `U44` flip-flops `LOST_LEFT` and `LOST_RIGHT` are set by it (sampled mid-dot like `HDIR`, which turns at the same edge), cleared by `SERVE_END`, and held clear while the game is over. `SERVING` is either.
-- While serving the ball is hidden from the picture only (`BALLV_N` = OR(`BALL_N`, `SERVING`) into the mixer) and does not move sideways; it keeps moving and bouncing off the top and bottom walls, unseen. At its goal `GO_*` only repeats the turn already taken, and `MISS_*` stays 0. `U46` 74LS93, cleared while not serving, counts `FRAME1` falls; its `QD` (`SERVE_END`) rises after 8, 29 to 32 frames into the serve, and ends it. The ball reappears at the goal it went into (dots 2–3 or 92–93), already turned, and leaves slow. On the way out it passes the loser's own paddle from behind, which may set its angle.
+- While serving the ball is hidden from the picture only (`BALLV_N` = OR(`BALL_N`, `SERVING`) into the mixer) and does not move sideways; it keeps moving and bouncing off the top and bottom walls, unseen. At its goal `GO_*` only repeats the turn already taken, and `MISS_*` stays 0. `U46` 74LS93, cleared while not serving, counts `FRAME1` falls; its `QD` (`SERVE_END`) rises after 8, 28 to 32 frames into the serve, and ends it. The ball reappears at the goal it went into (dots 2–3 or 92–93), already turned, and leaves slow. On the way out it passes the loser's own paddle from behind, which may set its angle.
 
 ### Scores, game over and Start
 

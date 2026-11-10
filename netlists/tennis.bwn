@@ -60,6 +60,7 @@ part U47 74LS02     # SKIP, SERVING_N, H34_LOW
 part U48 74LS90     # left score units SL0-SL3
 part U49 74LS90     # right score units SR0-SR3
 part U50 74LS107    # TENS_L, TENS_R
+part U51 74LS00     # WIN_L_N, WIN_R_N, WIN
 part U52 74LS157    # this half's units SC0-SC3
 part U53 74LS48     # SEG_A-SEG_G
 part U54 74LS157    # this half of the cell: FE, BC, GD, A_TOP
@@ -224,10 +225,10 @@ net H56_LOW     U33.1D
 net COL_L_N     U33.1Y U42.1A
 net COL_R_N     U33.2Y U42.1B
 net PCOL        U42.1Y U34.1B
-net VCC         U34.1C U34.1D
+net VCC         U34.1C
 net PAD_N       U34.1Y U16.D
 
-# Later stages: tens (stage 5), PLAY (stage 6, tied high above in U34.1D), unused gates.
+# Unused gates.
 
 # Hits: the ball turns right on the left goal or a paddle in the left half (H6 low), left on
 # the right goal or a paddle in the right half.
@@ -277,7 +278,7 @@ net SKIP        U47.2Y U43.3C
 net MOVE_N      U41.3Y U43.3A
 
 # Later stages and unused gates.
-net GND         U38.4A U38.4B U39.2J U39.2K U39.2CLK U39.2CLR_N
+net GND         U38.4A U38.4B
 
 # Misses: the ball meeting a goal while moving into it. LOST_LEFT and LOST_RIGHT are set with the
 # turn (same edge as HDIR), cleared by SERVE_END; while serving the ball is hidden from the
@@ -328,8 +329,20 @@ net START_N     SW1.1 R1.2 U41.5A U50.1CLR_N U50.2CLR_N
 net GND         SW1.2
 net VCC         R1.1
 
-# PLAY (stage 6).
-net VCC         U44.1CLR_N U44.2CLR_N
+# Game over at 11 (the first odd score past 10): paddles hidden, no misses (the ball bounces off
+# the goals), scores kept, until Start.
+net TENS_L      U51.1A
+net SL0         U51.1B
+net TENS_R      U51.2A
+net SR0         U51.2B
+net WIN_L_N     U51.1Y U51.3A
+net WIN_R_N     U51.2Y U51.3B
+net WIN         U51.3Y U39.2J
+net GND         U39.2K U51.4A U51.4B
+net CLK         U39.2CLK
+net START_N     U39.2CLR_N
+net GAME_OVER   U39.2Q
+net PLAY        U39.2Q_N U34.1D U44.1CLR_N U44.2CLR_N
 
 # Score digits on lines 32-63, each cell 4 dots x 32 lines: left tens at dots 16-19, units 24-27,
 # right tens 64-67, units 72-75 (H5 and H2 low, H4 != H6; H3 low: tens, high: units). U52 picks
