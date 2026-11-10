@@ -12,6 +12,7 @@ add_executable(bw_tests
   board/footprint_test.cpp
   board/kicad_board_test.cpp
   board/kicad_netlist_test.cpp
+  board/place_rules_test.cpp
   board/sexpr_test.cpp
   devices/bmp_test.cpp
   devices/led_glow_test.cpp

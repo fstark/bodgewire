@@ -9,8 +9,8 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Vendored footprints, `LoadFootprints` | this commit |
-| 2 | Rules file parser | |
+| 1 | Vendored footprints, `LoadFootprints` | `61cd611` |
+| 2 | Rules file parser | this commit |
 | 3 | Placer: panel rules, grid, annealing | |
 | 4 | Writer, `bw place`, 070 rules, DRC ctest | |
 | 5 | 070 Board regenerated (user routing), Puzzles checked | |
