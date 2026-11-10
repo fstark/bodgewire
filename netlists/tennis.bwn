@@ -53,7 +53,15 @@ part U40 74LS107    # TURN_ODD, FAST
 part U41 74LS04     # H6_N, PAD_HIT_N, MOVE_N, SERVING, START, REGION
 part U42 74LS00     # PCOL, MID_N, SCORE_N, H3_N
 part U43 74LS27     # MISS_LEFT, MISS_RIGHT, HMOVE
+part U44 74LS107    # LOST_LEFT, LOST_RIGHT
+part U45 74LS107    # FRAME1
+part U46 74LS93     # serve timer, SERVE_END
 part U47 74LS02     # SKIP, SERVING_N, H34_LOW
+part U48 74LS90     # left score units SL0-SL3
+part U49 74LS90     # right score units SR0-SR3
+part U50 74LS107    # TENS_L, TENS_R
+part SW1 BUTTON     # Start
+part R1  R value=1k # START_N pull-up
 
 net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U4.CLK U5.CLK U11.1CLK U11.2CLK
 net CLK         U18.CLK U19.CLK U20.CLK U21.CLK U26.1CLK U26.2CLK
@@ -138,7 +146,7 @@ net BALL_CK     U13.3Y U23.CKB
 net BALL_QD     U23.QD U23.CKA
 net BALL_OFF    U23.QA U13.3B U9.3A
 net VBALL       U9.3Y U24.3B
-net BALL_N      U24.3Y U16.A U25.3A U25.4A
+net BALL_N      U24.3Y U25.3A U25.4A
 
 # Bounces and directions.
 net HIT_TOP     U25.3Y U38.1A
@@ -215,7 +223,7 @@ net PAD_N       U34.1Y U16.D
 
 # Later stages: tens (stage 5), PLAY (stage 6, tied high above in U34.1D), unused gates.
 net GND         U31.4A U31.4B U34.2A U34.2B U34.2C U34.2D
-net GND         U42.3A U42.3B U42.4A U42.4B U47.1A U47.1B U47.3A U47.3B
+net GND         U42.3A U42.3B U42.4A U42.4B U47.1A U47.1B
 
 # Hits: the ball turns right on the left goal or a paddle in the left half (H6 low), left on
 # the right goal or a paddle in the right half.
@@ -264,8 +272,57 @@ net FRAME0_N    U47.2B
 net SKIP        U47.2Y U43.3C
 net MOVE_N      U41.3Y U43.3A
 
-# Later stages: SERVING (stage 4) and unused gates.
-net GND         U43.3B
-net VCC         U40.1CLR_N U40.2CLR_N
-net GND         U38.3A U38.3B U38.4A U38.4B U39.2J U39.2K U39.2CLK U39.2CLR_N
-net GND         U41.4A U41.5A U41.6A U43.1A U43.1B U43.1C U43.2A U43.2B U43.2C
+# Later stages and unused gates.
+net GND         U38.4A U38.4B U39.2J U39.2K U39.2CLK U39.2CLR_N U41.6A
+
+# Misses: the ball meeting a goal while moving into it. LOST_LEFT and LOST_RIGHT are set with the
+# turn (same edge as HDIR), cleared by SERVE_END; while serving the ball is hidden from the
+# picture and does not move sideways.
+net BALL_N      U43.1A U43.2A U38.3A
+net LEFT_N      U43.1B
+net RIGHT_N     U43.2B
+net HDIR        U43.1C
+net HDIR_N      U26.1Q_N U43.2C
+net MISS_LEFT   U43.1Y U44.1J
+net MISS_RIGHT  U43.2Y U44.2J
+net CLK         U44.1CLK U44.2CLK
+net SERVE_END   U46.QD U44.1K U44.2K
+net LOST_LEFT   U44.1Q U47.3A
+net LOST_RIGHT  U44.2Q U47.3B
+net SERVING_N   U47.3Y U41.4A U40.1CLR_N U40.2CLR_N U46.R01 U46.R02
+net SERVING     U41.4Y U38.3B U43.3B
+net BALLV_N     U38.3Y U16.A
+
+# Serve timer: FRAME1 falls every 4 frames; SERVE_END rises after 8 of them.
+net VCC         U45.1J U45.1K U45.1CLR_N
+net FRAME0      U45.1CLK
+net FRAME1      U45.1Q U46.CKA
+net ST0         U46.QA U46.CKB
+net ST1         U46.QB
+net ST2         U46.QC
+net GND         U45.2J U45.2K U45.2CLK U45.2CLR_N
+
+# Scores: the left player scores when the ball is lost on the right, and the other way round.
+# TENS is set when the units go from 9 to 0. Start clears them.
+net LOST_RIGHT_N U44.2Q_N U48.CKA
+net LOST_LEFT_N U44.1Q_N U49.CKA
+net SL0         U48.QA U48.CKB
+net SL1         U48.QB
+net SL2         U48.QC
+net SL3         U48.QD U50.1CLK
+net SR0         U49.QA U49.CKB
+net SR1         U49.QB
+net SR2         U49.QC
+net SR3         U49.QD U50.2CLK
+net GND         U48.R91 U48.R92 U49.R91 U49.R92
+net START       U41.5Y U48.R01 U48.R02 U49.R01 U49.R02
+net VCC         U50.1J U50.2J
+net GND         U50.1K U50.2K
+net TENS_L      U50.1Q
+net TENS_R      U50.2Q
+net START_N     SW1.1 R1.2 U41.5A U50.1CLR_N U50.2CLR_N
+net GND         SW1.2
+net VCC         R1.1
+
+# PLAY (stage 6).
+net VCC         U44.1CLR_N U44.2CLR_N

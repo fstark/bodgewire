@@ -14,8 +14,8 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | 3 | Reversed controller, two players' keys | `2a72692` |
 | 4 | Netlist stage 1: ball and box, no side walls | `624fe37` |
 | 5 | Stage 2: paddles | `024fdcd` |
-| 6 | Stage 3: hits, angles, speed-up | this commit |
-| 7 | Stage 4: misses, serve, scores, Start | |
+| 6 | Stage 3: hits, angles, speed-up | `4a50392` |
+| 7 | Stage 4: misses, serve, scores, Start | this commit |
 | 8 | Stage 5: score digits | |
 | 9 | Stage 6: game over and attract | |
 | 10 | Manuals | |
@@ -102,3 +102,4 @@ Fence: full debug suite green. Commit `docs: P4j implemented, user check pending
 - Phase 4: stage 1 loads without warnings; release headless 2.12× (as 060). `tennis: court` simulates 2.3 s in 67 s of debug time (0.034×). At power-on the ball may come in across the edge dots from outside the picture (as on 060), so the edge-dot check starts once the ball has been inside the court.
 - Phase 5: paddles where TENNIS.md puts them on the first run (one wiring slip, `H34_LOW` fed from `H1`, caught by the picture before the test). Release headless 1.89×; `bw_ui` 1.00×, UI 0.3 ms. `paddles follow the knobs` 12 s debug.
 - Phase 6: the circuit worked as first written (`PAD_HIT` one 2-dot pulse on the ball's line 4, `SHALLOW` and `VDIR` set from the quarter); release headless 1.81×. The test player needed two fixes: aim for the frame the ball reaches the paddle, not two frames ahead, and read the new speed one frame later (the ball's reload is on its first line, before line 4). Aiming at the paddle's top line can miss near a wall, so the no-miss check is its own case aiming at the middle; the four angles are four cases. Debug: each 4 s case about 160 s, the court 195 s; the suite 4 min 40 s.
+- Phase 7: the circuit worked as first written: the serve lasts 579 ms (29 frames), the scorer's count goes 0 → 1, the ball leaves the loser's edge slow; Start clears the scores; slow until two turns to the left, then fast. Release headless 1.77×. With serves in the netlist a power-on can clear `FAST`, so the stage 3 cases take a seed (searched) with the ball fast and no serve, and count slow contacts too (two frames on the column; the second decides). Debug: the speed-up case 373 s (10 s simulated), the others about 200–225 s; the suite about 10 minutes.

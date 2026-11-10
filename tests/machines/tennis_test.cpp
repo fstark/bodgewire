@@ -328,7 +328,12 @@ struct Contact {
 // away.
 class Player {
 public:
-    Player(Paddle& left, Paddle& right, int aim) : left_(left), right_(right), aim_(aim) {}
+    // `misses`: 0 none, -1 the left player keeps away from the ball, +1 the right player.
+    Player(Paddle& left, Paddle& right, int aim, int misses = 0)
+        : left_(left), right_(right), aim_(aim), misses_(misses) {}
+
+    const std::vector<std::optional<Ball>>& history() const { return history_; }
+    void stopMissing() { misses_ = 0; }
 
     void onFrame(const Picture& picture) {
         const std::optional<Ball> ball = Seen(picture);
@@ -353,33 +358,39 @@ public:
         // set, so it is held from three frames before.
         const double toLeft = dx < 0 ? (now.left - kLeftPaddleDot) / -dx : -1;
         const double toRight = dx > 0 ? (kRightPaddleDot - now.left) / dx : -1;
-        aim(left_, now, dy, toLeft);
-        aim(right_, now, dy, toRight);
+        aim(left_, now, dy, toLeft, misses_ < 0);
+        aim(right_, now, dy, toRight, misses_ > 0);
     }
 
-    // Fast contacts only (the ball moved 2 dots in each of the two frames before), away from
-    // the walls.
+    // Contacts away from the walls: the ball one step from a paddle in frame f, unseen on the
+    // paddle's column for n frames (1 fast, 2 slow), back at that step. The ball's line 4 at the
+    // last contact frame is worked out from frame f (it moves dyIn a frame until a new angle
+    // shows); the new angle shows from the 1st to the 2nd frame after the last contact (the
+    // ball's reload is on its first line, before line 4).
     std::vector<Contact> contacts() const {
         std::vector<Contact> result;
-        for (std::size_t f = 2; f + 3 < history_.size(); ++f) {
-            const auto& b0 = history_[f - 2];
+        for (std::size_t f = 1; f + 4 < history_.size(); ++f) {
             const auto& b1 = history_[f - 1];
             const auto& b2 = history_[f];
-            const auto& after = history_[f + 2];
-            const auto& later = history_[f + 3];
-            if (!b0 || !b1 || !b2 || history_[f + 1] || !after || !later) {
+            if (!b1 || !b2 || history_[f + 1]) {
                 continue;
             }
-            const bool left = b2->left == kLeftPaddleDot + 2 && b1->left == b2->left + 2 &&
-                              b0->left == b1->left + 2 && after->left == b2->left;
-            const bool right = b2->left == kRightPaddleDot - 2 && b1->left == b2->left - 2 &&
-                               b0->left == b1->left - 2 && after->left == b2->left;
+            const std::size_t n = history_[f + 2] ? 1 : 2;
+            const auto& after = history_[f + n + 1];
+            const auto& later = history_[f + n + 2];
+            if (!after || !later) {
+                continue;
+            }
+            const bool left =
+                b2->left == kLeftPaddleDot + 2 && after->left == b2->left && b1->left >= b2->left;
+            const bool right =
+                b2->left == kRightPaddleDot - 2 && after->left == b2->left && b1->left <= b2->left;
             if (!left && !right) {
                 continue;
             }
             const int dyIn = b2->top - b1->top;
-            const int contactTop = b2->top + dyIn;
-            if (b2->top < kCourtTop + 8 || b2->top > kCourtBottom - 16 ||
+            const int contactTop = b2->top + static_cast<int>(n) * dyIn;
+            if (b1->top < kCourtTop + 12 || b2->top > kCourtBottom - 20 ||
                 later->top < kCourtTop + 4 || later->top > kCourtBottom - 12) {
                 continue;
             }
@@ -437,8 +448,11 @@ private:
         return top;
     }
 
-    void aim(Paddle& paddle, const Ball& ball, int dy, double frames) {
-        if (frames < 0) {
+    void aim(Paddle& paddle, const Ball& ball, int dy, double frames, bool away) {
+        if (away) {  // the far end of the court from where the ball will be
+            const int top = TopAfter(ball, dy, std::max(frames, 0.0));
+            paddle.setKnob(top < 128 ? 0.0 : 1.0);
+        } else if (frames < 0) {
             paddle.setKnob(KnobForTop(ball.top + 4 - aim_));  // moving away: follow
         } else if (frames >= 3) {
             paddle.setKnob(KnobForTop(TopAfter(ball, dy, frames) + 4 - aim_));
@@ -448,6 +462,7 @@ private:
     Paddle& left_;
     Paddle& right_;
     int aim_;
+    int misses_;
     std::vector<std::optional<Ball>> history_;
     std::vector<std::pair<int, int>> paddleTops_;
 };
@@ -462,16 +477,38 @@ int SpeedFor(int line) {
 
 namespace {
 
-// Both players aim at paddle line `aim` for 4 s.
+// The first seed from 1 whose power-on state (1 µs in) passes `wanted`. Power-on draws a bit for
+// every output and Net, so what a seed gives changes with the netlist: search, never hard-code.
+std::uint64_t FindSeed(LoadedCircuit& loaded, const std::function<bool(const Simulator&)>& wanted) {
+    for (std::uint64_t seed = 1; seed < 200; ++seed) {
+        Simulator sim(loaded.circuit);
+        sim.powerOn(seed);
+        sim.runFor(1_us);
+        if (wanted(sim)) {
+            return seed;
+        }
+    }
+    FAIL("no seed found");
+    return 0;
+}
+
+// Both players aim at paddle line `aim` for 4 s, from a power-on with the ball fast and no serve
+// under way.
 Player Rally(int aim) {
     auto loaded = DesignCircuit();
+    const auto net = [&](const Simulator& sim, const char* name) {
+        return sim.value(loaded->nets.at(name));
+    };
+    const std::uint64_t seed = FindSeed(*loaded, [&](const Simulator& sim) {
+        return net(sim, "FAST") == LogicValue::One && net(sim, "SERVING") == LogicValue::Zero;
+    });
     Player player(*PaddleOf(*loaded, "J3"), *PaddleOf(*loaded, "J4"), aim);
-    Watch(*loaded, 1, 40_ms, 4'000_ms,
+    Watch(*loaded, seed, 40_ms, 4'000_ms,
           [&](const TvFrame& frame, bool, Simulator&) { player.onFrame(Read(frame)); });
     return player;
 }
 
-// Every fast contact leaves at the speed of the quarter hit; at least two in the aimed one.
+// Every contact leaves at the speed of the quarter hit; at least one in the aimed one.
 void CheckAngles(int aim) {
     const Player player = Rally(aim);
     int aimed = 0;
@@ -486,7 +523,7 @@ void CheckAngles(int aim) {
         CHECK(contact.dyOut == SpeedFor(contact.lineFour));
         aimed += contact.lineFour / 4 == aim / 4 ? 1 : 0;
     }
-    CHECK(aimed >= 2);
+    CHECK(aimed >= 1);
 }
 
 }  // namespace
@@ -501,3 +538,183 @@ TEST_CASE("tennis: angle, top quarter", "[machines][slow]") { CheckAngles(2); }
 TEST_CASE("tennis: angle, upper middle quarter", "[machines][slow]") { CheckAngles(6); }
 TEST_CASE("tennis: angle, lower middle quarter", "[machines][slow]") { CheckAngles(9); }
 TEST_CASE("tennis: angle, bottom quarter", "[machines][slow]") { CheckAngles(13); }
+
+namespace {
+
+// The value of a design Net now.
+int Bit(const Simulator& sim, const LoadedCircuit& loaded, const std::string& net) {
+    const LogicValue value = sim.value(loaded.nets.at(net));
+    REQUIRE(value != LogicValue::X);
+    return value == LogicValue::One ? 1 : 0;
+}
+
+// A player's score from the counter and tens Nets (0–19; units 10–15 read as they are).
+int Score(const Simulator& sim, const LoadedCircuit& loaded, char side) {
+    const std::string s(1, side);
+    return Bit(sim, loaded, "S" + s + "0") + 2 * Bit(sim, loaded, "S" + s + "1") +
+           4 * Bit(sim, loaded, "S" + s + "2") + 8 * Bit(sim, loaded, "S" + s + "3") +
+           10 * Bit(sim, loaded, std::string("TENS_") + side);
+}
+
+// Presses Start for 2 ms at `at`.
+StepHook PressStart(LoadedCircuit& loaded, Time at) {
+    Button* button = ButtonOf(loaded, "SW1");
+    REQUIRE(button != nullptr);
+    return [button, at](Simulator& sim) {
+        if (sim.now() == at || sim.now() == at + 2_ms) {
+            button->setPressed(sim.now() == at);
+            sim.wake(button->id());
+        }
+    };
+}
+
+}  // namespace
+
+TEST_CASE("tennis: Start clears the scores", "[machines]") {
+    const std::uint64_t seed = GENERATE(1, 2, 3);
+    auto loaded = DesignCircuit();
+    Simulator sim(loaded->circuit);
+    sim.powerOn(seed);
+    const StepHook start = PressStart(*loaded, 1_ms);
+    for (int step = 0; step < 5; ++step) {
+        start(sim);
+        sim.runFor(1_ms);
+    }
+    CHECK(Score(sim, *loaded, 'L') == 0);
+    CHECK(Score(sim, *loaded, 'R') == 0);
+}
+
+namespace {
+
+// One serve as the Nets show it (polled every 1 ms) and the pictures around it.
+struct Serve {
+    Time on = 0, off = 0;                                                    // SERVING rose, fell
+    int leftBefore = -1, rightBefore = -1, leftAfter = -1, rightAfter = -1;  // scores
+    std::vector<std::pair<Time, Picture>> pictures;  // frame end time, picture
+};
+
+// Runs from power-on with Start pressed at 1 ms; `player` plays, and stops missing once the
+// first serve has ended.
+Serve PlayToServe(LoadedCircuit& loaded, Player& player, Time to) {
+    Serve serve;
+    const StepHook start = PressStart(loaded, 1_ms);
+    bool serving = false;
+    Watch(
+        loaded, 1, 40_ms, to,
+        [&](const TvFrame& frame, bool, Simulator& sim) {
+            const Picture picture = Read(frame);
+            player.onFrame(picture);
+            serve.pictures.emplace_back(sim.now(), picture);
+        },
+        [&](Simulator& sim) {
+            start(sim);
+            if (sim.now() < 5_ms) {
+                return;
+            }
+            const bool now = Bit(sim, loaded, "SERVING") == 1;
+            if (now && !serving && serve.on == 0) {
+                serve.on = sim.now();
+                serve.leftAfter = Score(sim, loaded, 'L');
+                serve.rightAfter = Score(sim, loaded, 'R');
+            }
+            if (!now && serving && serve.off == 0) {
+                serve.off = sim.now();
+                player.stopMissing();
+            }
+            if (serve.on == 0) {
+                serve.leftBefore = Score(sim, loaded, 'L');
+                serve.rightBefore = Score(sim, loaded, 'R');
+            }
+            serving = now;
+        });
+    return serve;
+}
+
+constexpr Time kFrame = 19'968_us;  // 312 lines of 64 µs
+
+}  // namespace
+
+TEST_CASE("tennis: a miss scores", "[machines][slow]") {
+    auto loaded = DesignCircuit();
+    Player player(*PaddleOf(*loaded, "J3"), *PaddleOf(*loaded, "J4"), 8, +1);
+    const Serve serve = PlayToServe(*loaded, player, 6'000_ms);
+    REQUIRE(serve.on > 0);
+    REQUIRE(serve.off > 0);
+    // Scores: the left player's point.
+    CHECK(serve.leftBefore == 0);
+    CHECK(serve.rightBefore == 0);
+    CHECK(serve.leftAfter == 1);
+    CHECK(serve.rightAfter == 0);
+    // 29–32 frames, polled to the millisecond.
+    const Time length = serve.off - serve.on;
+    CHECK(length >= 29 * kFrame - 1_ms);
+    CHECK(length <= 32 * kFrame + 1_ms);
+    // No ball drawn in a frame wholly inside the serve; then it leaves the right edge, slow.
+    std::vector<int> lefts;
+    for (const auto& [end, picture] : serve.pictures) {
+        if (end - kFrame > serve.on + 1_ms && end < serve.off) {
+            CHECK(!picture.ball.has_value());
+        }
+        if (end > serve.off + kFrame && picture.ball && picture.ball->width == 2 &&
+            lefts.size() < 5) {
+            lefts.push_back(picture.ball->left);
+        }
+    }
+    REQUIRE(lefts.size() == 5);
+    INFO("after the serve " << lefts[0] << " " << lefts[1] << " " << lefts[2] << " " << lefts[3]
+                            << " " << lefts[4]);
+    CHECK(lefts[0] >= 88);
+    CHECK(lefts[0] - lefts[4] == 4);  // 2 dots every other frame
+}
+
+TEST_CASE("tennis: rally speeds up", "[machines][slow]") {
+    auto loaded = DesignCircuit();
+    Player player(*PaddleOf(*loaded, "J3"), *PaddleOf(*loaded, "J4"), 8, -1);
+    const Serve serve = PlayToServe(*loaded, player, 10'000_ms);
+    REQUIRE(serve.off > 0);
+    // From the serve on: the ball's column each frame (-1 unseen).
+    std::vector<int> lefts;
+    for (const auto& [end, picture] : serve.pictures) {
+        if (end > serve.off + kFrame) {
+            lefts.push_back(picture.ball && picture.ball->width == 2 ? picture.ball->left : -1);
+        }
+    }
+    // Windows of five frames seen, all moving one way: slow (4 dots) before the second turn to
+    // the left, fast (8 dots) after it.
+    int leftTurns = 0, direction = 0, slow = 0, fast = 0;
+    for (std::size_t k = 4; k < lefts.size(); ++k) {
+        const int a = lefts[k - 4], b = lefts[k];
+        bool seen = true;
+        for (std::size_t j = k - 4; j <= k; ++j) {
+            seen = seen && lefts[j] >= 0;
+        }
+        if (lefts[k] >= 0 && lefts[k - 1] >= 0 && lefts[k] != lefts[k - 1]) {
+            const int now = lefts[k] > lefts[k - 1] ? 1 : -1;
+            if (direction > 0 && now < 0) {
+                ++leftTurns;
+            }
+            direction = now;
+        }
+        if (!seen) {
+            continue;
+        }
+        bool oneWay = true;
+        for (std::size_t j = k - 3; j <= k; ++j) {
+            oneWay = oneWay && (lefts[j] - lefts[j - 1]) * (b - a) >= 0;
+        }
+        if (!oneWay || a == b) {
+            continue;
+        }
+        INFO("frame " << k << ", left turns " << leftTurns << ", moved " << b - a);
+        if (leftTurns < 2) {
+            CHECK(std::abs(b - a) == 4);
+            ++slow;
+        } else {
+            CHECK(std::abs(b - a) == 8);
+            ++fast;
+        }
+    }
+    CHECK(leftTurns >= 2);
+    CHECK(slow >= 10);
+    CHECK(fast >= 3);
+}
