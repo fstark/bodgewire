@@ -1,0 +1,143 @@
+# Machine 070, paddle tennis (docs/machines/070-tennis/TENNIS.md): the 060 bouncing ball's
+# beam counters, sync, net and ball (U1-U26), grown in stages (TENNIS_DESIGN.md, Stages).
+# Two paddles from two controllers (J3, J4) triggered by VSYNC_N; the ball turns at a paddle or
+# a goal, and leaves a paddle at an angle set by the quarter it hits; a miss hides the ball for a
+# serve and scores for the other player; the scores are drawn at the top from one decoder; at 11
+# the game is over until Start (SW1). No side walls are drawn: the 060 side walls are the goals.
+
+part X1  OSC freq=2MHz
+part U1  74LS161    # H0-H3
+part U2  74LS161    # H4-H6
+part U3  74LS161    # V0-V3
+part U4  74LS161    # V4-V7
+part U5  74LS161    # V8
+part U6  74LS20     # LINE_END_N, HSYNC_N
+part U7  74LS30     # FRAME_END_N
+part U8  74LS20     # VSYNC_N, BOTTOM_N
+part U9  74LS04     # H4_N, LINE_END, VBALL, MR, MIX_N, HBLANK
+part U10 74LS86     # composite sync
+part U11 74LS74     # output registers
+part U12 74LS27     # wall and net decodes
+part U13 74LS02     # wall decodes, ball height clock
+part U14 74LS00     # TOP_N, LEFT_N, HBLANK_N
+part U15 74LS20     # RIGHT_N, NET_N
+part U16 74LS30     # video mixer
+part U17 74LS27     # MOVE, VIDEO_D
+part U18 74LS161    # ball horizontal, low
+part U19 74LS161    # ball horizontal, high
+part U20 74LS161    # ball vertical, low
+part U21 74LS161    # ball vertical, high
+part U22 74LS107    # ball vertical, bit 8
+part U23 74LS93     # ball height
+part U24 74LS00     # ball loads, BALL_N, MR_N
+part U25 74LS02     # bounce detectors
+part U26 74LS107    # directions
+part J1  POWER
+part J2  VIDEO
+
+net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U4.CLK U5.CLK U11.1CLK U11.2CLK
+net CLK         U18.CLK U19.CLK U20.CLK U21.CLK U26.1CLK U26.2CLK
+
+# Horizontal counter 0..127, free-running.
+net VCC         U1.CLR_N U1.ENP U1.ENT U1.LOAD_N U2.CLR_N U2.ENP U2.LOAD_N
+net GND         U1.A U1.B U1.C U1.D U2.A U2.B U2.C U2.D
+net H0          U1.QA U18.ENP U19.ENP U24.1B
+net H1          U1.QB U12.3A
+net H2          U1.QC U12.2A U12.3B U15.1D
+net H3          U1.QD U6.2D U12.2B U12.3C U15.1C
+net HC          U1.RCO U2.ENT U6.1A
+net H4          U2.QA U6.1B U9.1A U12.2C U15.1B U15.2C
+net H5          U2.QB U6.1C U6.2B U13.1A U14.3B U15.2B
+net H6          U2.QC U6.1D U6.2A U13.1B U14.3A U15.1A
+net H4_N        U9.1Y U6.2C
+net LINE_END_N  U6.1Y U9.2A
+net LINE_END    U9.2Y U3.ENP U3.ENT U4.ENP U5.ENP U7.G U20.ENP U21.ENP U13.3A
+net HSYNC_N     U6.2Y U10.1A
+
+# Vertical counter 0..311: counts at each line end, loaded with 0 at the frame end.
+net VCC         U3.CLR_N U4.CLR_N U5.CLR_N U7.H
+net GND         U3.A U3.B U3.C U3.D U4.A U4.B U4.C U4.D U5.A U5.B U5.C U5.D
+net V0          U3.QA U7.F U17.1C
+net V1          U3.QB U7.E U17.1B
+net V2          U3.QC U7.D U8.1D U15.2D
+net VC1         U3.RCO U4.ENT
+net V4          U4.QA U7.C U8.1C U8.2D U12.1A
+net V5          U4.QB U7.B U8.1B U8.2C U12.1B
+net V6          U4.QC U8.2B U12.1C
+net V7          U4.QD U8.2A U13.2A
+net VC2         U4.RCO U5.ENT
+net V8          U5.QA U7.A U8.1A U13.2B U17.2C
+net FRAME_END_N U7.Y U3.LOAD_N U4.LOAD_N U5.LOAD_N
+net VSYNC_N     U8.1Y U10.1B U17.1A
+
+# Composite sync: HSYNC XOR VSYNC, then inverted.
+net SYNC        U10.1Y U10.2A
+net VCC         U10.2B
+net SYNC_N_D    U10.2Y U11.1D
+
+# Playfield: walls and net, active low.
+net TOP_A       U12.1Y U14.1A
+net TOP_B       U13.2Y U14.1B
+net TOP_N       U14.1Y U16.B U25.3B
+net BOTTOM_N    U8.2Y U16.C U25.4B
+net LEFT_A      U12.2Y U14.2A
+net H56_LOW     U13.1Y U14.2B
+net LEFT_N      U14.2Y U25.1B
+net RIGHT_N     U15.1Y U25.2B
+net NET_A       U12.3Y U15.2A
+net NET_N       U15.2Y U16.E
+
+# Ball horizontal: steps every other dot, reloaded at 255 with 192 (191 or 193 on the MOVE line).
+net VCC         U18.CLR_N U18.ENT U19.CLR_N U19.D
+net MOVE        U17.1Y U18.A U24.4A
+net MR          U9.4Y U18.B U18.C U18.D U19.A U19.B
+net MR_N        U24.4Y U9.4A U19.C
+net BHC         U18.RCO U19.ENT
+net HBALL       U19.RCO U24.1A U24.3A
+net HLOAD_N     U24.1Y U18.LOAD_N U19.LOAD_N
+
+# Ball vertical: 9 bits, steps each line, reloaded on the line of 511 with 195 (down) or 203 (up).
+# LINE_END on ENP, not ENT: RCO follows ENT combinationally and would glitch (VRCO clocks U22).
+net VCC         U20.CLR_N U20.ENT U20.A U20.B U21.CLR_N U21.C U21.D
+net GND         U20.C U21.A U21.B
+net BVC         U20.RCO U21.ENT
+net VRCO        U21.RCO U22.1CLK U24.2A U23.R01
+net VCC         U22.1J U22.1K U22.1CLR_N
+net BV8         U22.1Q U24.2B U23.R02
+net VLOAD_N     U24.2Y U20.LOAD_N U21.LOAD_N
+
+# Frame bit: FRAME0 toggles at each frame start (V8 falls).
+net VCC         U22.2J U22.2K U22.2CLR_N
+net V8          U22.2CLK
+net FRAME0      U22.2Q
+net FRAME0_N    U22.2Q_N
+
+# Ball height: cleared on the line of 511, counts 8 lines, then QA stops it.
+net BALL_CK     U13.3Y U23.CKB
+net BALL_QD     U23.QD U23.CKA
+net BALL_OFF    U23.QA U13.3B U9.3A
+net VBALL       U9.3Y U24.3B
+net BALL_N      U24.3Y U16.A U25.1A U25.2A U25.3A U25.4A
+
+# Bounces and directions.
+net HIT_LEFT    U25.1Y U26.1J
+net HIT_RIGHT   U25.2Y U26.1K
+net HIT_TOP     U25.3Y U26.2J
+net HIT_BOTTOM  U25.4Y U26.2K
+net VCC         U26.1CLR_N U26.2CLR_N
+net HDIR        U26.1Q U24.4B
+net VDIR_N      U26.2Q_N U20.D
+
+# Video: the mixer (Pong's summing resistors), blanking, output registers.
+net VCC         U16.D U16.F U16.G U16.H
+net MIX         U16.Y U9.5A
+net MIX_N       U9.5Y U17.2A
+net HBLANK_N    U14.3Y U9.6A
+net HBLANK      U9.6Y U17.2B
+net VIDEO_D     U17.2Y U11.2D
+net SYNC_N      U11.1Q J2.SYNC_N
+net VIDEO       U11.2Q J2.VIDEO
+net VCC         U11.1PRE_N U11.1CLR_N U11.2PRE_N U11.2CLR_N
+
+# Unused gate inputs.
+net GND         U10.3A U10.3B U10.4A U10.4B U13.4A U13.4B U14.4A U14.4B U17.3A U17.3B U17.3C
