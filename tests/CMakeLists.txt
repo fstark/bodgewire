@@ -12,6 +12,7 @@ add_executable(bw_tests
   board/footprint_test.cpp
   board/kicad_board_test.cpp
   board/kicad_netlist_test.cpp
+  board/kicad_pcb_writer_test.cpp
   board/place_rules_test.cpp
   board/placer_test.cpp
   board/sexpr_test.cpp
@@ -120,5 +121,16 @@ if(BW_KICAD_CLI)
     add_test(NAME drc_${name}
              COMMAND ${BW_KICAD_CLI} pcb drc --severity-error --exit-code-violations
                      -o ${CMAKE_CURRENT_BINARY_DIR}/${name}_drc.rpt ${board})
+  endforeach()
+  # A generated, unrouted Board: no DRC violation, only unconnected pads.
+  file(GLOB rules CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/boards/*/*.place)
+  foreach(rule ${rules})
+    get_filename_component(name ${rule} NAME_WE)
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/place_${name})
+    add_test(NAME place_drc_${name}
+             COMMAND ${CMAKE_COMMAND} -DBW=$<TARGET_FILE:bw> -DKICAD_CLI=${BW_KICAD_CLI}
+                     -DNETLIST=${PROJECT_SOURCE_DIR}/netlists/${name}.bwn -DRULES=${rule}
+                     -DOUT=${CMAKE_CURRENT_BINARY_DIR}/place_${name}/${name}.kicad_pcb
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/place_drc.cmake)
   endforeach()
 endif()

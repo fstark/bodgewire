@@ -8,14 +8,19 @@
 #include <optional>
 #include <print>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
 #include "board/board_check.hpp"
+#include "board/footprint.hpp"
 #include "board/kicad_board.hpp"
 #include "board/kicad_netlist.hpp"
+#include "board/kicad_pcb_writer.hpp"
+#include "board/place_rules.hpp"
+#include "board/placer.hpp"
 #include "devices/bmp.hpp"
 #include "devices/tv_input.hpp"
 #include "instruments/logic_probe.hpp"
@@ -44,7 +49,9 @@ constexpr std::string_view kUsage =
     "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
     "[--probe REF.PIN,...] [--press REF:DOWN:UP,...] [--knob REF:N%,...]\n"
     "       bw export-kicad <file.bwn> -o <file.net>\n"
-    "       bw check-board <file.bwn> <file.kicad_pcb>";
+    "       bw check-board <file.bwn> <file.kicad_pcb>\n"
+    "       bw place <file.bwn> <file.place> -o <file.kicad_pcb> [--seed 1] [--tries 4] "
+    "[--footprints DIR] [--force]";
 
 struct Options {
     std::string file;
@@ -257,6 +264,137 @@ int ExportKicad(std::span<char*> args) {
     return 0;
 }
 
+void PrintDiagnostics(const std::vector<Diagnostic>& diagnostics) {
+    for (const Diagnostic& d : diagnostics) {
+        std::println(stderr, "{}", Format(d));
+    }
+}
+
+std::optional<std::string> ReadText(const std::filesystem::path& path) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        return std::nullopt;
+    }
+    std::ostringstream text;
+    text << in.rdbuf();
+    return text.str();
+}
+
+int PlaceCommand(std::span<char*> args) {
+    std::vector<std::string_view> files;
+    std::string out;
+    std::filesystem::path footprints = BW_FOOTPRINT_DIR;
+    PlaceOptions options;
+    bool force = false;
+    for (std::size_t i = 2; i < args.size(); ++i) {
+        const std::string_view arg = args[i];
+        if (arg == "--force") {
+            force = true;
+            continue;
+        }
+        if (!arg.starts_with("-")) {
+            files.push_back(arg);
+            continue;
+        }
+        if (i + 1 >= args.size()) {
+            return UsageError(std::string(arg) + " needs a value");
+        }
+        const std::string_view value = args[++i];
+        if (arg == "-o") {
+            out = value;
+        } else if (arg == "--footprints") {
+            footprints = value;
+        } else if (arg == "--seed" || arg == "--tries") {
+            std::uint64_t number = 0;
+            const auto [end, ec] =
+                std::from_chars(value.data(), value.data() + value.size(), number);
+            if (ec != std::errc{} || end != value.data() + value.size() ||
+                (arg == "--tries" && (number < 1 || number > 1000))) {
+                return UsageError("bad " + std::string(arg.substr(2)) + " '" + std::string(value) +
+                                  "'");
+            }
+            if (arg == "--seed") {
+                options.seed = number;
+            } else {
+                options.tries = static_cast<std::int32_t>(number);
+            }
+        } else {
+            return UsageError("unknown option " + std::string(arg));
+        }
+    }
+    if (files.size() != 2 || out.empty()) {
+        return UsageError("expected: place <file.bwn> <file.place> -o <file.kicad_pcb>");
+    }
+    const auto loaded = Load(std::string(files[0]));
+    if (loaded == nullptr) {
+        return kExitNetlistErrors;
+    }
+    if (const auto problems = BoardNetlistProblems(*loaded); !problems.empty()) {
+        for (const std::string& problem : problems) {
+            std::println(stderr, "bw: {}", problem);
+        }
+        return kExitNetlistErrors;
+    }
+    const std::string rulesFile(files[1]);
+    const auto rulesText = ReadText(rulesFile);
+    if (!rulesText) {
+        return UsageError("cannot read " + rulesFile);
+    }
+    const auto rules = ParsePlaceRules(*rulesText, rulesFile);
+    if (!rules) {
+        PrintDiagnostics(rules.error());
+        return kExitNetlistErrors;
+    }
+    std::vector<std::string_view> packages;
+    for (const LoadedPart& part : loaded->parts) {
+        packages.push_back(part.info->package);
+    }
+    const auto library = LoadFootprints(footprints, packages);
+    if (!library) {
+        PrintDiagnostics(library.error());
+        return kExitNetlistErrors;
+    }
+    if (const auto existing = ReadText(out);
+        existing && !force &&
+        (existing->contains("(segment") || existing->contains("(arc") ||
+         existing->contains("(via"))) {
+        std::println(stderr, "bw: {} has tracks; --force replaces it", out);
+        return kExitUsage;
+    }
+    const auto placement = PlaceBoard(*loaded, *rules, rulesFile, *library, options);
+    if (!placement) {
+        PrintDiagnostics(placement.error());
+        return kExitNetlistErrors;
+    }
+    std::ostringstream board;
+    WriteKicadPcb(board, *loaded, *placement);
+    std::ofstream file(out, std::ios::binary);
+    if (!(file << board.str())) {
+        return UsageError("cannot write " + out);
+    }
+    std::filesystem::path project(out);
+    project.replace_extension(".kicad_pro");
+    if (!std::filesystem::exists(project)) {
+        std::ofstream projectFile(project, std::ios::binary);
+        WriteKicadProject(projectFile, project.stem().string());
+        if (!projectFile) {
+            return UsageError("cannot write " + project.string());
+        }
+    }
+    std::println("wire_length_m {:.2f}", static_cast<double>(placement->wireLength) / 1e9);
+    for (std::int32_t r = 0; r < placement->rows; ++r) {
+        std::string line;
+        for (std::int32_t c = 0; c < placement->columns; ++c) {
+            const std::string& reference =
+                placement->grid[static_cast<std::size_t>(r * placement->columns + c)];
+            line += std::format("{:>4} ", reference.empty() ? "--" : reference);
+        }
+        line.pop_back();
+        std::println("{}", line);
+    }
+    return 0;
+}
+
 int CheckBoardFile(std::span<char*> args) {
     if (args.size() != 4) {
         return UsageError("expected: check-board <file.bwn> <file.kicad_pcb>");
@@ -455,5 +593,8 @@ int main(int argc, char** argv) {
     if (command == "check-board") {
         return CheckBoardFile(args);
     }
-    return UsageError("expected 'run', 'export-kicad' or 'check-board'");
+    if (command == "place") {
+        return PlaceCommand(args);
+    }
+    return UsageError("expected 'run', 'export-kicad', 'check-board' or 'place'");
 }

@@ -4,6 +4,7 @@ add_library(bw_board STATIC
   footprint.cpp
   kicad_board.cpp
   kicad_netlist.cpp
+  kicad_pcb_writer.cpp
   place_rules.cpp
   placer.cpp
   sexpr.cpp

@@ -24,7 +24,16 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 9> kFootprin
     {"TACT-6x3.5", "Button_Switch_THT:SW_PUSH_1P1T_6x3.5mm_H5.0_APEM_MJTP1250"},
 }};
 
-std::string Quote(std::string_view text) {
+std::uint64_t Fnv1a(std::string_view text, std::uint64_t hash) {
+    for (const char c : text) {
+        hash = (hash ^ static_cast<std::uint8_t>(c)) * 0x100000001b3;
+    }
+    return hash;
+}
+
+}  // namespace
+
+std::string KicadQuote(std::string_view text) {
     std::string quoted = "\"";
     for (const char c : text) {
         if (c == '"' || c == '\\') {
@@ -35,22 +44,12 @@ std::string Quote(std::string_view text) {
     return quoted + '"';
 }
 
-std::uint64_t Fnv1a(std::string_view text, std::uint64_t hash) {
-    for (const char c : text) {
-        hash = (hash ^ static_cast<std::uint8_t>(c)) * 0x100000001b3;
-    }
-    return hash;
-}
-
-// Stable per reference, so re-importing keeps KiCad's links.
-std::string Uuid(std::string_view reference) {
+std::string KicadUuid(std::string_view reference) {
     const std::uint64_t high = Fnv1a(reference, 0xcbf29ce484222325);
     const std::uint64_t low = Fnv1a(reference, 0x84222325cbf29ce4);
     return std::format("{:08x}-{:04x}-{:04x}-{:04x}-{:012x}", high >> 32, (high >> 16) & 0xffff,
                        high & 0xffff, low >> 48, low & 0xffffffffffff);
 }
-
-}  // namespace
 
 std::string_view KicadFootprint(std::string_view package) {
     for (const auto& [name, footprint] : kFootprints) {
@@ -63,15 +62,16 @@ std::string_view KicadFootprint(std::string_view package) {
 
 void WriteKicadNetlist(std::ostream& out, const LoadedCircuit& loaded, std::string_view source) {
     out << "(export (version \"E\")\n";
-    out << "  (design (source " << Quote(source) << ") (tool \"bodgewire\"))\n";
+    out << "  (design (source " << KicadQuote(source) << ") (tool \"bodgewire\"))\n";
     out << "  (components";
     for (const LoadedPart& part : loaded.parts) {
-        out << "\n    (comp (ref " << Quote(part.reference) << ") (value " << Quote(part.value)
-            << ") (footprint " << Quote(KicadFootprint(part.info->package)) << ")\n";
-        out << "      (libsource (lib \"bodgewire\") (part " << Quote(part.info->name)
-            << ") (description " << Quote(part.info->description) << "))\n";
+        out << "\n    (comp (ref " << KicadQuote(part.reference) << ") (value "
+            << KicadQuote(part.value) << ") (footprint "
+            << KicadQuote(KicadFootprint(part.info->package)) << ")\n";
+        out << "      (libsource (lib \"bodgewire\") (part " << KicadQuote(part.info->name)
+            << ") (description " << KicadQuote(part.info->description) << "))\n";
         out << "      (sheetpath (names \"/\") (tstamps \"/\"))\n";
-        out << "      (tstamps " << Quote(Uuid(part.reference)) << "))";
+        out << "      (tstamps " << KicadQuote(KicadUuid(part.reference)) << "))";
     }
     out << ")\n";
 
@@ -82,13 +82,13 @@ void WriteKicadNetlist(std::ostream& out, const LoadedCircuit& loaded, std::stri
     out << "  (nets";
     int code = 1;
     for (const auto& [name, pins] : nets) {
-        out << "\n    (net (code \"" << code++ << "\") (name " << Quote(name) << ")";
+        out << "\n    (net (code \"" << code++ << "\") (name " << KicadQuote(name) << ")";
         for (const Connection* c : pins) {
-            out << "\n      (node (ref " << Quote(c->reference) << ") (pin \"" << c->pin + 1
+            out << "\n      (node (ref " << KicadQuote(c->reference) << ") (pin \"" << c->pin + 1
                 << "\")";
             if (const auto it = loaded.components.find(c->reference);
                 it != loaded.components.end()) {
-                out << " (pinfunction " << Quote(it->second->pins()[c->pin].name) << ")";
+                out << " (pinfunction " << KicadQuote(it->second->pins()[c->pin].name) << ")";
             }
             out << ")";
         }
