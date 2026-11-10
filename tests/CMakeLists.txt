@@ -9,6 +9,7 @@ add_executable(bw_tests
   board/board_check_test.cpp
   board/boards_test.cpp
   board/copper_test.cpp
+  board/footprint_test.cpp
   board/kicad_board_test.cpp
   board/kicad_netlist_test.cpp
   board/sexpr_test.cpp
@@ -101,6 +102,7 @@ target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_mac
                                        Catch2::Catch2WithMain)
 target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR}/netlists"
                                            BW_BOARD_DIR="${PROJECT_SOURCE_DIR}/boards"
+                                           BW_FOOTPRINT_DIR="${PROJECT_SOURCE_DIR}/boards/footprints"
                                            BW_PUZZLE_DIR="${PROJECT_SOURCE_DIR}/puzzles"
                                            BW_ROOT_DIR="${PROJECT_SOURCE_DIR}")
 

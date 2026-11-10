@@ -9,7 +9,7 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Vendored footprints, `LoadFootprints` | |
+| 1 | Vendored footprints, `LoadFootprints` | this commit |
 | 2 | Rules file parser | |
 | 3 | Placer: panel rules, grid, annealing | |
 | 4 | Writer, `bw place`, 070 rules, DRC ctest | |
@@ -56,3 +56,5 @@ Fence: release check done; full debug suite green. Commit `docs: P4k implemented
 
 ## Implementation notes
 
+- Docs review (before phase 1): fixed the 070 pad-net check (a writer test on 070), the uuids in the button and digit footprints (dropped by the writer), an empty grid and over-long groups defined, `Side` renamed `Edge` (GLOSSARY: a Side is a Layer), origins snapped to 1.27 mm, `at` defined on the courtyard-box centre, the DRC script without `--exit-code-violations` (it exits 5 on unrouted pads).
+- Phase 1: the nine footprints from KiCad 10.0.7; `ReadFootprint` is public so the error cases need no files.
