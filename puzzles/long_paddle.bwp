@@ -1,0 +1,7 @@
+# Long paddle: Broken Trace on LPAD_CK from U32 pin 1 to U28 CKA; CKA floats high, the left paddle
+# counter stays at 0, LDONE is never set: the paddle runs down to the next trigger, and every
+# hit reads paddle line 0 (steep up).
+machine tennis
+title "Long paddle"
+brief "The left paddle reaches all the way down to the bottom wall, and every ball it returns flies off steeply upwards."
+fault crack U32.1Y U28.CKA 50%

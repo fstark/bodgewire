@@ -27,7 +27,10 @@ const Crack& DarkSecondsCrack();    // stopwatch VCC, U5 pin 5 → U6 pin 5: puz
 const Crack& JumpingBallCrack();    // ball VLOAD_N, U24 pin 6 → U21 pin 9: puzzles/jumping_ball.bwp
 const Crack& DeadKnobCrack();       // knob VCC, J2 pin 3 → U6 pin 14: puzzles/dead_knob.bwp
 const Crack& SingleFiguresCrack();  // knob C3, U8 pin 11 → U7 pin 14: puzzles/single_figures.bwp
-const Crack& R1VccCrack();          // counter VCC, R1.1 → U1.16: R1's rail side cut off
-const Crack& Sw1GndCrack();         // dice GND, SW1 pad 2 → J1.2: SW1's rail end cut off
+const Crack& LongPaddleCrack();  // tennis LPAD_CK, U32 pin 1 → U28 pin 14: puzzles/long_paddle.bwp
+const Crack&
+InvisibleBallCrack();        // tennis SERVING, U43 pin 10 → U38 pin 10: puzzles/invisible_ball.bwp
+const Crack& R1VccCrack();   // counter VCC, R1.1 → U1.16: R1's rail side cut off
+const Crack& Sw1GndCrack();  // dice GND, SW1 pad 2 → J1.2: SW1's rail end cut off
 
 }  // namespace bw

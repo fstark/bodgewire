@@ -1,0 +1,6 @@
+# Double scores: U10 output 4Y (HX) stuck at 1; REGION no longer needs H4 to differ from H6, so
+# each score is drawn a second time 16 dots to its left (left) or right (right).
+machine tennis
+title "Double scores"
+brief "Each player's score is shown twice across the top of the court."
+fault stuck U10.4Y 1

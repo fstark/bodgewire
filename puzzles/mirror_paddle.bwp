@@ -1,0 +1,6 @@
+# Mirror paddle: U31 input S (H6) stuck at 0; the multiplexer always picks the left paddle, so
+# the right paddle is drawn at the left one's height and the right tens digit is the left one.
+machine tennis
+title "Mirror paddle"
+brief "The right paddle copies the left one: it follows the left knob, and the right knob does nothing."
+fault stuck U31.S 0

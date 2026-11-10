@@ -77,6 +77,20 @@ Mixer (`U16`): `BALLV_N`, `TOP_N`, `BOTTOM_N`, `PAD_N`, `NET_N`, `SCORE_N`; two 
 
 ## Puzzles
 
-None in this step: the 070 Puzzles are a later roadmap row, written once the user has played the Machine.
+Faults that change the picture or what is on it, each seen within a few seconds of Start (none needs a game played to 11):
+
+| Puzzle | Fault | Symptom | Path to the fix |
+|---|---|---|---|
+| Mirror paddle | `U31` input `S` (`H6`) stuck at 0 | the right paddle follows the left knob; the right knob does nothing (the right tens digit is the left one's) | `H6` pulses on `U31` pin 1, leg and pad, yet `PADV` (pin 9) follows `LPADV` only: the chip reads its select wrong: swap `U31` |
+| Shy paddles | Solder Bridge between `U31` pin 10 (`RPADV`) and pin 11 (`LPADV`) | each paddle shows only on the lines it shares with the other; knobs apart, both vanish and the ball goes through | `LPADV` and `RPADV`, two `U32` outputs, read the same on both pins: cut the bridge on the solder side of `U31` |
+| Paddle fence | Dry Joint at `U33` pin 4 (`H34_LOW`) | four left paddles at dots 6, 14, 22 and 30, moving together; the ball turns at whichever it meets first | `COL_L_N` pulses four times a line; `H34_LOW` pulses on pin 4's pad (B.Cu) but not on the leg (F.Cu): resolder `U33` pin 4 |
+| Long paddle | Broken Trace on `LPAD_CK` from `U32` pin 1 to `U28` pin 14 | the left paddle runs from the knob's height down to the bottom wall; every return off it leaves steeply up | `LPAD_CK` pulses at `U32` pin 1, nothing at `U28` `CKA`: the counter stays at line 0 and `LDONE` is never set: mend the Trace |
+| Invisible ball | Broken Trace on `SERVING` between `U43` pin 10 and `U38` pin 10 | no ball, yet the game goes on: the scores go up | `BALL_N` pulses at `U38` pin 9; `SERVING` is driven at `U41` and `U43` but nothing at `U38` pin 10 (floating, read high, hides the ball): mend the Trace |
+| Double scores | `U10` output `4Y` (`HX`) stuck at 1 | each score drawn twice, 8 dots further out (left: dots 0–11 and 16–27; right: 64–75 and 80–91) | `HX` stays high at `U10` pin 11 while `H4` and `H6` pulse on its inputs: swap `U10` |
+| Folded digits | `U54` input `S` (`V4`) stuck at 1 | the digits are drawn as their bottom halves twice: no top bar, odd shapes that change with the score | `V4` pulses at `U54` pin 1, yet `A_TOP` (pin 12) never lights: swap `U54` |
+| Rolling picture | Dry Joint at `U10` pin 2 (`VSYNC_N`) | the picture rolls up the screen without stopping; the paddles and the game work | the paddles prove `VSYNC_N` is good (it triggers `J3` and `J4`): it pulses on `U10` pin 2's pad but not on the leg, so `SYNC_N` carries only the line syncs: resolder `U10` pin 2 |
+| Lost paddles | Dry Joint at `U7` pin 4 (`V2`) | the picture rolls, the paddles are gone, the ball never crosses the court | `FRAME_END_N` comes at line 307: the frame is 308 lines and line 308 never comes, so no `VSYNC_N` (no sync, no trigger) and no `MOVE`; `V2` pulses on pin 4's pad, not on the leg: resolder `U7` pin 4 |
+
+Each teaches something different: a select input stuck (a multiplexer shows the wrong source), a bridge between two outputs (wired-AND of two pictures), a decoder input left open (one column becomes four), a counter clock cut (a stop flag never comes), a hidden signal that is still there, a decoder output stuck (a picture region repeated), a stroke selector stuck (a glyph folded), sync lost on the way out while the Machine is fine, and a frame counter cut short (everything timed by the frame's end goes at once).
 
 Netlist, Board and manuals: [TENNIS_DESIGN.md](TENNIS_DESIGN.md).

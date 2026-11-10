@@ -1,0 +1,6 @@
+# Shy paddles: Solder Bridge between U31 pin 10 (3B, RPADV) and pin 11 (3A, LPADV); 0 wins, so a
+# paddle is lit only on the lines both paddles share.
+machine tennis
+title "Shy paddles"
+brief "The paddles only show where they are level with each other. Turn the knobs apart and they shrink, then vanish."
+fault bridge U31.10 U31.11

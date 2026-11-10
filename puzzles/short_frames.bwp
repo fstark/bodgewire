@@ -1,0 +1,7 @@
+# Short frames: dry Joint at U7 pin 4 (D, V2); it floats high, so line 307 decodes as the frame end
+# and the frame is 308 lines: line 308 never comes, so no VSYNC (rolling, no paddle triggers) and no
+# MOVE (the ball stays on its power-on column, often off the picture).
+machine tennis
+title "Lost paddles"
+brief "The picture rolls and the paddles are gone; the ball never comes across the court."
+fault joint U7.4

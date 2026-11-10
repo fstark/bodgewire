@@ -1,0 +1,6 @@
+# Folded digits: U54 input S (V4) stuck at 1; the top half of each digit cell gets the bottom
+# half's strokes (e for f, c for b, d for g, nothing for a).
+machine tennis
+title "Folded digits"
+brief "The scores are drawn in strange shapes: no digit has its top bar, and they change as the score goes up."
+fault stuck U54.S 1

@@ -1,6 +1,6 @@
 # 070 — Paddle Tennis — Machine Design
 
-How the Machine in [TENNIS.md](TENNIS.md) is built: netlist, Board, manuals. The code it needs (74LS157, 74LS48, the reversed controller, two players' keys) comes with P4j ([TENNIS_PARTS.md](../../p4j-tennis-parts/TENNIS_PARTS.md)). Puzzles come in a later roadmap row.
+How the Machine in [TENNIS.md](TENNIS.md) is built: netlist, Board, Puzzle files, manuals. The code it needs (74LS157, 74LS48, the reversed controller, two players' keys) comes with P4j ([TENNIS_PARTS.md](../../p4j-tennis-parts/TENNIS_PARTS.md)).
 
 ## Files
 
@@ -212,8 +212,48 @@ Each stage loads without warnings and is tested before the next (plan phases 4�
 
 - Grouped by job so the Service Manual reads on the Board, as on 060: beam counters and sync (`X1`, `U1`–`U11`), with `J1` at the left and `J2` at the back edge; court and mixer (`U12`–`U17`); ball (`U18`–`U26`); paddles (`U27`–`U34`); hits, angles and speed (`U35`–`U43`); serve and score (`U44`–`U51`); score digits (`U52`–`U58`).
 - `J3` near the left end of the front edge, `J4` near the right end (each player's side); `SW1` on the front edge between them, `R1` next to it.
-- No Puzzle constraints yet: the Puzzles row reads the routing when it is written ([ADD_PUZZLE.md](../../recipes/ADD_PUZZLE.md)).
+- Puzzle constraints: `SERVING` is routed `U41` → `U43` → `U38`, so the Invisible ball crack (between `U43` and `U38`) cuts `U38` alone; a new layout must keep `U38` at an end of that Trace, or the Puzzle moves its crack (§ Puzzles).
 - `bw check-board` clean; `drc_tennis` passes (picked up by the `boards/*/*.kicad_pcb` glob).
+
+## Puzzles
+
+`machine tennis` in each file (TENNIS.md, Puzzles):
+
+| File | Fault line | Where |
+|---|---|---|
+| `mirror_paddle.bwp` | `fault stuck U31.S 0` | `H6` into the paddle multiplexer |
+| `shy_paddles.bwp` | `fault bridge U31.10 U31.11` | `RPADV` to `LPADV` |
+| `paddle_fence.bwp` | `fault joint U33.4` | `H34_LOW` at `U33` |
+| `long_paddle.bwp` | `fault crack U32.1Y U28.CKA 50%` | `LPAD_CK` |
+| `invisible_ball.bwp` | `fault crack U43.3B U38.3B 50%` | `SERVING`, its last stretch to `U38` |
+| `double_scores.bwp` | `fault stuck U10.4Y 1` | `HX` |
+| `folded_digits.bwp` | `fault stuck U54.S 1` | `V4` into the stroke multiplexer |
+| `rolling_picture.bwp` | `fault joint U10.2` | `VSYNC_N` at the sync mixer |
+| `short_frames.bwp` | `fault joint U7.4` | `V2` at the frame-end decoder |
+
+Titles and briefs:
+
+- Mirror paddle: "The right paddle copies the left one: it follows the left knob, and the right knob does nothing."
+- Shy paddles: "The paddles only show where they are level with each other. Turn the knobs apart and they shrink, then vanish."
+- Paddle fence: "Four left paddles stand across the left half of the court, all moving together. The ball bounces off whichever it meets first."
+- Long paddle: "The left paddle reaches all the way down to the bottom wall, and every ball it returns flies off steeply upwards."
+- Invisible ball: "There is no ball, yet the scores keep going up."
+- Double scores: "Each player's score is shown twice across the top of the court."
+- Folded digits: "The scores are drawn in strange shapes: no digit has its top bar, and they change as the score goes up."
+- Rolling picture: "The picture rolls up the screen and never holds still, though the game seems to play."
+- Lost paddles: "The picture rolls and the paddles are gone; the ball never comes across the court."
+
+### Electrical Nets on a damaged Board
+
+- Mirror paddle: `U31` reads `S` as 0, so it passes the A inputs on both halves of the line: `PADV` = `LPADV`, `SP2`/`SP3` from the left counter, `TENS` = `TENS_L`. `PCOL` still opens both columns: the right paddle is drawn and hit at the left one's lines. The `H6` Net is unchanged (the leg reads it).
+- Shy paddles: `LPADV` and `RPADV`, two `U32` NOR outputs, are one Net: a Contention, 0 wins, so `PADV` is their AND on both halves.
+- Paddle fence: `U33` pin 4 floats (reads high): `COL_L_N` = NAND(`H1`, `H2`, 1, `H56_LOW`), low at dots 6–7, 14–15, 22–23, 30–31. Each is drawn with `LPADV` and turns the ball (`GO_RIGHT`); a hit there reads `LP2`/`LP3` as on the real paddle.
+- Long paddle: `U28` `CKA` floats (reads high, never falls): `LP0`–`LP3` stay 0 after the clear, `LDONE` is never clocked (and is cleared while `LWAIT` is high), so `LPADV` = NOT `LWAIT`: lit from the paddle's top line to the next trigger at line 308. Every left hit reads paddle line 0: steep up.
+- Invisible ball: `U38` pin 10 floats (reads high): `BALLV_N` = OR(`BALL_N`, 1) is always high. `BALL_N` itself, and so every hit, miss and score, is unchanged; `U43` (`HMOVE`) still gets `SERVING`.
+- Double scores: `HX` stuck at 1 (Strong): `REGION` no longer needs `H4` ≠ `H6`, so it also covers dots 0–3, 8–11 (left) and 80–83, 88–91 (right). `UNITS` (with `H3`) and the column bits work there as in the real cells.
+- Folded digits: `U54` reads `S` as 1, so it passes the B inputs on every row: `FE` = `SEG_E`, `BC` = `SEG_C`, `GD` = `SEG_D`, `A_TOP` = 0. Rows 0–3 draw e, c and d (on row 3); row 0 has no a. The `V4` Net is unchanged.
+- Rolling picture: `U10` pin 2 floats (reads high): `SYNC` = XOR(`HSYNC_N`, 1) = `HSYNC`, `SYNC_N_D` = `HSYNC_N`: line syncs only. The TV free-runs its frame at 21 ms against the Machine's 19.968 ms. `VSYNC_N` still triggers `J3`, `J4` and makes `MOVE` (`U17`).
+- Lost paddles: `U7` pin 4 floats (reads high): `FRAME_END_N` decodes line 307 (V8 V5 V4 V1 V0), reloading the line counter to 0: 308 lines a frame. `VSYNC_N` (lines 308–311) and `MOVE` (line 308) never come: no vertical sync, no controller triggers (`LWAIT` stays low, `LDONE` set: no paddles), no sideways step (the ball stays on its power-on column; its vertical counter, 308–316 lines, still drifts and bounces). `V8` still rises at line 256 and falls at the reload: the blanking and the serve timer work.
 
 ## Manuals
 

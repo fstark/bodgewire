@@ -1,0 +1,7 @@
+# Invisible ball: Broken Trace on SERVING between U43 pin 10 and U38 pin 10 (3B), the last stretch of
+# its route from U41; the OR input floats high, so BALLV_N is always high and the ball is never drawn.
+# The game goes on unseen (U43 still gets SERVING).
+machine tennis
+title "Invisible ball"
+brief "There is no ball, yet the scores keep going up."
+fault crack U43.3B U38.3B 50%

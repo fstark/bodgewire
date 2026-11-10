@@ -32,6 +32,7 @@ fault crack R6.2 D5.2 51%
   - `fault crack A B N%`: Broken Trace on the Copper between pads A and B, `N%` along its crackable straight stretches; repaired by mending;
   - `fault bridge U5.3 U5.4`: solder bridge between neighbouring pins; repaired by the Cut tool.
 - Check it loads and shows the symptom: `./build/debug/src/cli/bw run puzzles/<name>.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`). `--probe` reads the leg (the pin's own Net).
+- `bw_ui --press` is read once per UI frame: hold a scripted press at least 100 ms (`--press SW1:50ms:200ms`), or it may be missed. `bw run --tv x.bmp` writes the last TV frame alone, quicker to read than a cropped screenshot.
 - A short Trace stub at a large pad may have no crackable point: pick other pads or another `%`.
 - A crack only cuts one pad off alone if that pad is at an end of the routed Trace. Read the routing order first (the `segment`s of the Net in the `.kicad_pcb`); with the pad in the middle, crack on the other side and write the Symptom for the pads that float together (stopwatch `nineteen`).
 

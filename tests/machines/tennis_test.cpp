@@ -11,8 +11,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../machine/test_points.hpp"
 #include "devices/tv_input.hpp"
+#include "instruments/logic_probe.hpp"
 #include "machine/machine.hpp"
+#include "machine/puzzle.hpp"
 #include "netlist/builder.hpp"
 #include "parts/ls47.hpp"
 #include "parts/paddle.hpp"
@@ -198,13 +201,22 @@ using StepHook = std::function<void(Simulator&)>;
 // Called for each completed frame that started at or after `from`.
 using FrameHook = std::function<void(const TvFrame&, bool locked, Simulator&)>;
 
-// Runs the TV from power-on in 1 ms steps (Tv keeps only the last completed frame).
-void Watch(LoadedCircuit& loaded, std::uint64_t seed, Time from, Time to, const FrameHook& onFrame,
-           const StepHook& onStep = {}) {
+// Runs the TV from power-on in 1 ms steps (Tv keeps only the last completed frame). Returns the
+// lamps of a logic probe on each of `probes` (REF.PIN, the pin's own Net) over the whole run.
+std::vector<std::string> Watch(LoadedCircuit& loaded, std::uint64_t seed, Time from, Time to,
+                               const FrameHook& onFrame, const StepHook& onStep = {},
+                               const std::vector<std::string>& probes = {}) {
     Simulator sim(loaded.circuit);
     sim.powerOn(seed);
     TvInput tv(sim, *ConnectorNet(loaded, "VIDEO", "VIDEO"),
                *ConnectorNet(loaded, "VIDEO", "SYNC_N"));
+    std::vector<LogicProbe> lamps;
+    for (const std::string& probe : probes) {
+        const std::size_t dot = probe.find('.');
+        const auto net = PinNet(loaded, probe.substr(0, dot), probe.substr(dot + 1));
+        REQUIRE(net.has_value());
+        lamps.emplace_back(sim, *net);
+    }
     std::uint64_t frames = 0;
     while (sim.now() < to) {
         if (onStep) {
@@ -212,6 +224,9 @@ void Watch(LoadedCircuit& loaded, std::uint64_t seed, Time from, Time to, const 
         }
         sim.runFor(1_ms);
         tv.update();
+        for (LogicProbe& probe : lamps) {
+            probe.update();
+        }
         sim.trimRecordings();
         if (tv.tv().completedFrames() != frames) {
             frames = tv.tv().completedFrames();
@@ -220,6 +235,11 @@ void Watch(LoadedCircuit& loaded, std::uint64_t seed, Time from, Time to, const 
             }
         }
     }
+    std::vector<std::string> seen;
+    for (const LogicProbe& probe : lamps) {
+        seen.push_back(FormatLamps(probe.lamps()));
+    }
+    return seen;
 }
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
@@ -896,4 +916,287 @@ TEST_CASE("tennis: game over", "[machines][slow]") {
     CHECK(during >= 5);
     CHECK(edge);
     CHECK(after >= 3);
+}
+
+// Puzzles (TENNIS.md, Puzzles): each run from power-on with Start pressed, faulty then repaired.
+
+namespace {
+
+Machine LoadPuzzle(const std::string& name) {
+    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
+std::unique_ptr<LoadedCircuit> Build(const Machine& machine) {
+    auto built = machine.build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
+struct Shot {
+    TvFrame frame;
+    Picture picture;
+    bool locked;
+};
+
+struct Run {
+    std::vector<Shot> shots;         // frames that started at or after `from`
+    std::vector<std::string> lamps;  // one per probe
+    int count(const std::function<bool(const Shot&)>& wanted) const {
+        return static_cast<int>(std::ranges::count_if(shots, wanted));
+    }
+};
+
+// From power-on (seed 1) with the knobs set and Start pressed at 1 ms (a power-on may be game
+// over).
+Run Play(LoadedCircuit& loaded, double left, double right, Time from, Time to,
+         const std::vector<std::string>& probes = {}) {
+    Paddle* j3 = PaddleOf(loaded, "J3");
+    Paddle* j4 = PaddleOf(loaded, "J4");
+    REQUIRE(j3 != nullptr);
+    REQUIRE(j4 != nullptr);
+    Run run;
+    run.lamps = Watch(
+        loaded, 1, from, to,
+        [&](const TvFrame& frame, bool locked, Simulator&) {
+            run.shots.push_back({frame, Read(frame), locked});
+        },
+        [&, start = PressStart(loaded, 1_ms)](Simulator& sim) {
+            if (sim.now() == 0) {
+                j3->setKnob(left);
+                j4->setKnob(right);
+            }
+            start(sim);
+        },
+        probes);
+    return run;
+}
+
+bool Pulses(const std::string& lamps) { return lamps.find("PULSE") != std::string::npos; }
+
+bool PaddleIs(const std::optional<PaddleSeen>& paddle, int top, int height) {
+    return paddle && paddle->top == top && paddle->height == height;
+}
+
+}  // namespace
+
+TEST_CASE("tennis: Puzzles have a title and a brief", "[machines]") {
+    for (const char* name :
+         {"mirror_paddle", "shy_paddles", "paddle_fence", "long_paddle", "invisible_ball",
+          "double_scores", "folded_digits", "rolling_picture", "short_frames"}) {
+        INFO(name);
+        const auto puzzle =
+            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        REQUIRE(puzzle.has_value());
+        CHECK(puzzle->machine == "tennis");
+        CHECK_FALSE(puzzle->title.empty());
+        CHECK_FALSE(puzzle->brief.empty());
+    }
+}
+
+TEST_CASE("tennis: mirror_paddle", "[machines]") {
+    // Left knob at its left stop (top 224), right knob at its right stop (top 16).
+    Machine machine = LoadPuzzle("mirror_paddle");
+    {
+        auto loaded = Build(machine);
+        const Run run = Play(*loaded, 0.0, 1.0, 550_ms, 800_ms);
+        CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.right, 224, 16); }) >= 5);
+        CHECK(run.count([](const Shot& s) {
+            return PaddleIs(s.picture.right, 16, 16);  // where the right knob would put it
+        }) == 0);
+    }
+    REQUIRE(machine.swap("U31"));
+    auto loaded = Build(machine);
+    const Run run = Play(*loaded, 0.0, 1.0, 550_ms, 800_ms);
+    CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.right, 16, 16); }) >= 5);
+}
+
+TEST_CASE("tennis: shy_paddles", "[machines]") {
+    // Left paddle lines 120–135, right 128–143: they share lines 128–135.
+    Machine machine = LoadPuzzle("shy_paddles");
+    const double right = KnobForTop(128);
+    {
+        auto loaded = Build(machine);
+        CHECK(*PinNet(*loaded, "U31", "3A") == *PinNet(*loaded, "U31", "3B"));
+        const Run run = Play(*loaded, 0.5, right, 550_ms, 800_ms);
+        CHECK(run.count([](const Shot& s) {
+            return PaddleIs(s.picture.left, 128, 8) && PaddleIs(s.picture.right, 128, 8);
+        }) >= 5);
+        CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.left, 120, 16); }) == 0);
+    }
+    REQUIRE(machine.removeBridge({"U31", "10"}, {"U31", "11"}));
+    auto loaded = Build(machine);
+    const Run run = Play(*loaded, 0.5, right, 550_ms, 800_ms);
+    CHECK(run.count([](const Shot& s) {
+        return PaddleIs(s.picture.left, 120, 16) && PaddleIs(s.picture.right, 128, 16);
+    }) >= 5);
+}
+
+TEST_CASE("tennis: paddle_fence", "[machines]") {
+    Machine machine = LoadPuzzle("paddle_fence");
+    // Copies of the left paddle (lines 120–135) at dots 14, 22 and 30.
+    const auto fence = [](const Shot& s) {
+        if (!s.picture.walls) {
+            return false;
+        }
+        for (const int dot : {14, 22, 30}) {
+            if (!PaddleIs(ReadPaddle(s.frame, s.picture.lineZeroRow, dot), 120, 16)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    const Point pin4 = *machine.padPosition("U33", "4");
+    {
+        auto loaded = Build(machine);
+        CHECK(machine.probeNet(*loaded, Layer::Back, pin4) == PinNet(*loaded, "U47", "4Y"));
+        CHECK(*PinNet(*loaded, "U33", "1C") != *PinNet(*loaded, "U47", "4Y"));  // the leg
+        const Run run = Play(*loaded, 0.5, 0.0, 550_ms, 800_ms);
+        CHECK(run.count(fence) >= 5);
+        CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.left, 120, 16); }) >= 5);
+    }
+    REQUIRE(machine.resolder({"U33", "4"}));
+    auto loaded = Build(machine);
+    const Run run = Play(*loaded, 0.5, 0.0, 550_ms, 800_ms);
+    CHECK(run.count(fence) == 0);
+    CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.left, 120, 16); }) >= 5);
+}
+
+TEST_CASE("tennis: long_paddle", "[machines]") {
+    // Left knob at its right stop: the paddle's top on line 16.
+    Machine machine = LoadPuzzle("long_paddle");
+    {
+        auto loaded = Build(machine);
+        const Run run = Play(*loaded, 1.0, 0.0, 550_ms, 800_ms, {"U32.1Y", "U28.CKA"});
+        // Down to the court's last line (and on, unseen, to the next trigger).
+        CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.left, 16, 224); }) >= 5);
+        CHECK(Pulses(run.lamps[0]));
+        CHECK(run.lamps[1] == "-");
+    }
+    REQUIRE(machine.mend(LongPaddleCrack().layer, LongPaddleCrack().at));
+    auto loaded = Build(machine);
+    const Run run = Play(*loaded, 1.0, 0.0, 550_ms, 800_ms);
+    CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.left, 16, 16); }) >= 5);
+}
+
+TEST_CASE("tennis: invisible_ball", "[machines][slow]") {
+    // The paddles at opposite corners: the unseen ball is missed again and again.
+    Machine machine = LoadPuzzle("invisible_ball");
+    {
+        auto loaded = Build(machine);
+        const Run run = Play(*loaded, 0.0, 1.0, 550_ms, 8'000_ms, {"U43.3B", "U38.3B"});
+        CHECK(run.count([](const Shot& s) { return s.picture.walls; }) >= 300);
+        CHECK(run.count([](const Shot& s) { return s.picture.ball.has_value(); }) == 0);
+        int left = 0, right = 0;
+        for (const Shot& shot : run.shots) {
+            left = std::max(left, shot.picture.leftScore);
+            right = std::max(right, shot.picture.rightScore);
+        }
+        CHECK(left + right >= 2);
+        CHECK(run.lamps[0] != "-");  // SERVING, driven at U43
+        CHECK(run.lamps[1] == "-");
+    }
+    REQUIRE(machine.mend(InvisibleBallCrack().layer, InvisibleBallCrack().at));
+    auto loaded = Build(machine);
+    const Run run = Play(*loaded, 0.0, 1.0, 550_ms, 1'500_ms);
+    CHECK(run.count([](const Shot& s) { return s.picture.ball.has_value(); }) >= 10);
+}
+
+TEST_CASE("tennis: double_scores", "[machines]") {
+    // Both paddles low, away from the digits.
+    Machine machine = LoadPuzzle("double_scores");
+    const auto copied = [](const Shot& s) {
+        const int z = s.picture.lineZeroRow;
+        const int left = ReadDigit(s.frame, z, 8), right = ReadDigit(s.frame, z, 88);
+        return s.picture.walls && left >= 0 && left == ReadDigit(s.frame, z, 24) && right >= 0 &&
+               right == ReadDigit(s.frame, z, 72);
+    };
+    const auto dark = [](const Shot& s) {
+        if (!s.picture.walls) {
+            return false;
+        }
+        for (int line = 32; line < 64; ++line) {
+            for (const int dot : {8, 9, 10, 11, 88, 89, 90, 91}) {
+                if (LitCell(s.frame, s.picture.lineZeroRow + line, dot)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+    {
+        auto loaded = Build(machine);
+        const Run run = Play(*loaded, 0.0, 0.0, 550_ms, 800_ms);
+        CHECK(run.count(copied) >= 5);
+        CHECK(run.count(dark) == 0);
+    }
+    REQUIRE(machine.swap("U10"));
+    auto loaded = Build(machine);
+    const Run run = Play(*loaded, 0.0, 0.0, 550_ms, 800_ms);
+    CHECK(run.count(copied) == 0);
+    CHECK(run.count(dark) >= 5);
+}
+
+TEST_CASE("tennis: folded_digits", "[machines]") {
+    Machine machine = LoadPuzzle("folded_digits");
+    {
+        auto loaded = Build(machine);
+        const Run run = Play(*loaded, 0.0, 0.0, 550_ms, 800_ms);
+        // 0 and 0 drawn as their bottom halves twice: no digit, and never a top bar.
+        CHECK(run.count([](const Shot& s) {
+            return s.picture.walls && s.picture.leftScore == -1 && s.picture.rightScore == -1;
+        }) >= 5);
+        CHECK(run.count([](const Shot& s) {
+            const int z = s.picture.lineZeroRow;
+            return s.picture.walls &&
+                   (LitCell(s.frame, z + 33, 25) || LitCell(s.frame, z + 33, 73));
+        }) == 0);
+    }
+    REQUIRE(machine.swap("U54"));
+    auto loaded = Build(machine);
+    const Run run = Play(*loaded, 0.0, 0.0, 550_ms, 800_ms);
+    CHECK(run.count([](const Shot& s) {
+        return s.picture.leftScore >= 0 && s.picture.rightScore >= 0;
+    }) >= 5);
+}
+
+TEST_CASE("tennis: rolling_picture", "[machines]") {
+    Machine machine = LoadPuzzle("rolling_picture");
+    const Point pin2 = *machine.padPosition("U10", "2");
+    {
+        auto loaded = Build(machine);
+        CHECK(machine.probeNet(*loaded, Layer::Back, pin2) == PinNet(*loaded, "U8", "1Y"));
+        CHECK(*PinNet(*loaded, "U10", "1B") != *PinNet(*loaded, "U8", "1Y"));  // the leg
+        // VSYNC_N pulses at U8 and still triggers the controllers; the leg floats.
+        const Run run = Play(*loaded, 0.5, 0.5, 550_ms, 1'200_ms, {"U8.1Y", "J3.TRIG_N", "U10.1B"});
+        CHECK(run.shots.size() >= 25);
+        CHECK(run.count([](const Shot& s) { return s.locked; }) == 0);
+        CHECK(Pulses(run.lamps[0]));
+        CHECK(Pulses(run.lamps[1]));
+        CHECK(run.lamps[2] == "-");
+    }
+    REQUIRE(machine.resolder({"U10", "2"}));
+    auto loaded = Build(machine);
+    const Run run = Play(*loaded, 0.5, 0.5, 550_ms, 1'200_ms);
+    CHECK(run.count([](const Shot& s) { return !s.locked || !s.picture.walls; }) == 0);
+}
+
+TEST_CASE("tennis: short_frames", "[machines]") {
+    Machine machine = LoadPuzzle("short_frames");
+    {
+        auto loaded = Build(machine);
+        CHECK(*PinNet(*loaded, "U7", "D") != *PinNet(*loaded, "U3", "QC"));  // the leg
+        const Run run = Play(*loaded, 0.5, 0.5, 550_ms, 1'200_ms, {"U7.D", "U3.QC", "U8.1Y"});
+        CHECK(run.shots.size() >= 25);
+        CHECK(run.count([](const Shot& s) { return s.locked; }) == 0);
+        CHECK(run.lamps[0] == "-");
+        CHECK(Pulses(run.lamps[1]));
+        CHECK(run.lamps[2].find("LOW") == std::string::npos);  // no VSYNC_N
+    }
+    REQUIRE(machine.resolder({"U7", "4"}));
+    auto loaded = Build(machine);
+    const Run run = Play(*loaded, 0.5, 0.5, 550_ms, 1'200_ms);
+    CHECK(run.count([](const Shot& s) { return !s.locked || !s.picture.walls; }) == 0);
+    CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.left, 120, 16); }) >= 5);
 }

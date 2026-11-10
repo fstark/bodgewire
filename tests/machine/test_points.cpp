@@ -96,6 +96,16 @@ const Crack& SingleFiguresCrack() {
     return crack;
 }
 
+const Crack& LongPaddleCrack() {
+    static const Crack crack = PuzzleCrack("long_paddle");
+    return crack;
+}
+
+const Crack& InvisibleBallCrack() {
+    static const Crack crack = PuzzleCrack("invisible_ball");
+    return crack;
+}
+
 const Crack& R1VccCrack() {
     static const Crack crack = BoardCrack("counter", {"R1", "1"}, {"U1", "16"}, 58);
     return crack;

@@ -1,0 +1,6 @@
+# Paddle fence: dry Joint at U33 pin 4 (1C, H34_LOW); it floats high, so COL_L_N decodes dots 6-7,
+# 14-15, 22-23 and 30-31: four left paddles, each one a place for the ball to turn.
+machine tennis
+title "Paddle fence"
+brief "Four left paddles stand across the left half of the court, all moving together. The ball bounces off whichever it meets first."
+fault joint U33.4
