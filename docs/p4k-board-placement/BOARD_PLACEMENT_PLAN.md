@@ -10,8 +10,8 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | Phase | Description | Commit |
 |-------|-------------|--------|
 | 1 | Vendored footprints, `LoadFootprints` | `61cd611` |
-| 2 | Rules file parser | this commit |
-| 3 | Placer: panel rules, grid, annealing | |
+| 2 | Rules file parser | `f232392` |
+| 3 | Placer: panel rules, grid, annealing | this commit |
 | 4 | Writer, `bw place`, 070 rules, DRC ctest | |
 | 5 | 070 Board regenerated (user routing), Puzzles checked | |
 | 6 | Release check, recipe, docs | |
@@ -58,3 +58,4 @@ Fence: release check done; full debug suite green. Commit `docs: P4k implemented
 
 - Docs review (before phase 1): fixed the 070 pad-net check (a writer test on 070), the uuids in the button and digit footprints (dropped by the writer), an empty grid and over-long groups defined, `Side` renamed `Edge` (GLOSSARY: a Side is a Layer), origins snapped to 1.27 mm, `at` defined on the courtyard-box centre, the DRC script without `--exit-code-violations` (it exits 5 on unrouted pads).
 - Phase 1: the nine footprints from KiCad 10.0.7; `ReadFootprint` is public so the error cases need no files.
+- Phase 3: 070 with the front-edge rules, seed 1, one try: 12 × 5 grid, 11.32 m (prototype 10.5–11.4 m with the controllers elsewhere); `placer: tennis` takes 5 s in debug. Two gaps found by the tests and closed in the design: a front row wider than a narrow grid widens the Board (grid centred) instead of being refused, and a snapped origin could leave the margin by up to 0.6 mm (now stepped back).
