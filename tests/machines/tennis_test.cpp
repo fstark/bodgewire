@@ -13,6 +13,7 @@
 
 #include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
+#include "parts/paddle.hpp"
 #include "sim/simulator.hpp"
 
 using namespace bw;
@@ -35,7 +36,7 @@ struct Ball {
     int left, top, width, height;  // dots and lines
 };
 
-struct Paddle {
+struct PaddleSeen {
     int top, height;  // lines
 };
 
@@ -45,7 +46,7 @@ struct Picture {
     std::vector<int> netLines;  // court lines with the net lit
     std::vector<int> litDots;   // per dot 0–95: court lines lit at that dot
     std::optional<Ball> ball;   // lit cells in the court that are not net, paddle or digit
-    std::optional<Paddle> left, right;
+    std::optional<PaddleSeen> left, right;
 };
 
 bool LitCell(const TvFrame& frame, int row, int dot) {
@@ -71,7 +72,7 @@ bool IsDigitCell(int line, int dot) {
     return false;
 }
 
-std::optional<Paddle> ReadPaddle(const TvFrame& frame, int lineZeroRow, int dot) {
+std::optional<PaddleSeen> ReadPaddle(const TvFrame& frame, int lineZeroRow, int dot) {
     int top = -1, bottom = -1;
     for (int line = kCourtTop; line <= kCourtBottom; ++line) {
         if (LitCell(frame, lineZeroRow + line, dot) &&
@@ -85,7 +86,7 @@ std::optional<Paddle> ReadPaddle(const TvFrame& frame, int lineZeroRow, int dot)
     if (top < 0) {
         return std::nullopt;
     }
-    return Paddle{top, bottom - top + 1};
+    return PaddleSeen{top, bottom - top + 1};
 }
 
 Picture Read(const TvFrame& frame) {
@@ -246,4 +247,70 @@ TEST_CASE("tennis: court", "[machines][slow]") {
     }
     CHECK(leftTurn);
     CHECK(rightTurn);
+}
+
+namespace {
+
+// The knob that puts a paddle's top on `line` (TENNIS.md: top = ⌊224.5 − 208 k⌋).
+double KnobForTop(int line) { return std::clamp((224.0 - line) / 208.0, 0.0, 1.0); }
+
+bool ClearOf(const Picture& picture, int paddleDot) {
+    return picture.ball && std::abs(picture.ball->left - paddleDot) > 2;
+}
+
+}  // namespace
+
+TEST_CASE("tennis: paddles follow the knobs", "[machines]") {
+    auto loaded = DesignCircuit();
+    Paddle* left = PaddleOf(*loaded, "J3");
+    Paddle* right = PaddleOf(*loaded, "J4");
+    REQUIRE(left != nullptr);
+    REQUIRE(right != nullptr);
+    struct Step {
+        Time at;
+        double knob;
+        int top;  // left paddle; the right one is set to 1 − knob
+    };
+    const std::vector<Step> steps{{0, 0.0, 224}, {120_ms, 0.5, 120}, {240_ms, 1.0, 16}};
+    for (const Step& step : steps) {
+        CHECK(KnobForTop(step.top) == step.knob);
+    }
+    std::vector<int> checked(steps.size(), 0);
+    Watch(
+        *loaded, 1, 40_ms, 360_ms,
+        [&](const TvFrame& frame, bool, Simulator& sim) {
+            // Frames that started at least two frames after a turn show it.
+            const Time start = sim.now() - 1_ms;
+            for (std::size_t i = 0; i < steps.size(); ++i) {
+                const Time end = i + 1 < steps.size() ? steps[i + 1].at : 360_ms;
+                if (start < steps[i].at + 45_ms || start >= end) {
+                    continue;
+                }
+                const Picture picture = Read(frame);
+                REQUIRE(picture.walls);
+                INFO("knob " << steps[i].knob);
+                if (ClearOf(picture, kLeftPaddleDot)) {
+                    REQUIRE(picture.left.has_value());
+                    CHECK(picture.left->top == steps[i].top);
+                    CHECK(picture.left->height == 16);
+                    ++checked[i];
+                }
+                if (ClearOf(picture, kRightPaddleDot)) {
+                    REQUIRE(picture.right.has_value());
+                    CHECK(picture.right->top == 224 + 16 - steps[i].top);
+                    CHECK(picture.right->height == 16);
+                }
+            }
+        },
+        [&](Simulator& sim) {
+            for (const Step& step : steps) {
+                if (sim.now() == step.at) {
+                    left->setKnob(step.knob);
+                    right->setKnob(1.0 - step.knob);
+                }
+            }
+        });
+    for (const int count : checked) {
+        CHECK(count >= 2);
+    }
 }

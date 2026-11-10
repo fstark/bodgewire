@@ -34,6 +34,18 @@ part U25 74LS02     # bounce detectors
 part U26 74LS107    # directions
 part J1  POWER
 part J2  VIDEO
+part J3  PADDLE min=1.248ms max=14.56ms reversed=yes  # left controller
+part J4  PADDLE min=1.248ms max=14.56ms reversed=yes  # right controller
+part U27 74LS74     # LWAIT, RWAIT: pulses moved to line starts
+part U28 74LS93     # left paddle lines LP0-LP3
+part U29 74LS93     # right paddle lines RP0-RP3
+part U30 74LS107    # LDONE, RDONE
+part U31 74LS157    # this half's paddle: SP2, SP3, PADV, TENS
+part U32 74LS02     # LPAD_CK, RPAD_CK, LPADV, RPADV
+part U33 74LS20     # COL_L_N, COL_R_N
+part U34 74LS20     # PAD_N, REGION_N
+part U42 74LS00     # PCOL, MID_N, SCORE_N, H3_N
+part U47 74LS02     # SKIP, SERVING_N, H34_LOW
 
 net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U4.CLK U5.CLK U11.1CLK U11.2CLK
 net CLK         U18.CLK U19.CLK U20.CLK U21.CLK U26.1CLK U26.2CLK
@@ -129,7 +141,7 @@ net HDIR        U26.1Q U24.4B
 net VDIR_N      U26.2Q_N U20.D
 
 # Video: the mixer (Pong's summing resistors), blanking, output registers.
-net VCC         U16.D U16.F U16.G U16.H
+net VCC         U16.F U16.G U16.H
 net MIX         U16.Y U9.5A
 net MIX_N       U9.5Y U17.2A
 net HBLANK_N    U14.3Y U9.6A
@@ -140,4 +152,60 @@ net VIDEO       U11.2Q J2.VIDEO
 net VCC         U11.1PRE_N U11.1CLR_N U11.2PRE_N U11.2CLR_N
 
 # Unused gate inputs.
-net GND         U10.3A U10.3B U10.4A U10.4B U13.4A U13.4B U14.4A U14.4B U17.3A U17.3B U17.3C
+net GND         U10.3A U10.3B U10.4A U10.4B U14.4A U14.4B U17.3A U17.3B U17.3C
+
+# Paddles. Each controller is triggered at line 308; LWAIT is its pulse taken at line starts.
+# The paddle counter is cleared while LWAIT is high, then counts lines (at dot 127) until LP3
+# falls after line 15 and sets LDONE. A paddle is lit on its lines at its column.
+net VSYNC_N     J3.TRIG_N J4.TRIG_N
+net LPULSE      J3.OUT U27.1D
+net RPULSE      J4.OUT U27.2D
+net LINE_END_N  U27.1CLK U27.2CLK
+net VCC         U27.1PRE_N U27.1CLR_N U27.2PRE_N U27.2CLR_N
+net LWAIT       U27.1Q U28.R01 U28.R02 U32.3A
+net LWAIT_N     U27.1Q_N U30.1CLR_N
+net RWAIT       U27.2Q U29.R01 U29.R02 U32.4A
+net RWAIT_N     U27.2Q_N U30.2CLR_N
+net LINE_END    U32.1A U32.2A
+net LPAD_CK     U32.1Y U28.CKA
+net RPAD_CK     U32.2Y U29.CKA
+net LP0         U28.QA U28.CKB
+net LP1         U28.QB
+net LP2         U28.QC U31.1A
+net LP3         U28.QD U30.1CLK U31.2A
+net RP0         U29.QA U29.CKB
+net RP1         U29.QB
+net RP2         U29.QC U31.1B
+net RP3         U29.QD U30.2CLK U31.2B
+net VCC         U30.1J U30.2J
+net GND         U30.1K U30.2K
+net LDONE       U30.1Q U32.1B U32.3B
+net RDONE       U30.2Q U32.2B U32.4B
+net LPADV       U32.3Y U31.3A
+net RPADV       U32.4Y U31.3B
+
+# This half of the line's paddle (H6 low: left, high: right).
+net H6          U31.S
+net GND         U31.G_N
+net SP2         U31.1Y
+net SP3         U31.2Y
+net PADV        U31.3Y U34.1A
+
+# Paddle columns: dots 6-7 (left), 88-89 (right).
+net H34_LOW     U47.4Y U33.1C
+net H12_LOW     U13.4Y U33.2D
+net H1          U13.4A U33.1A
+net H2          U13.4B U33.1B
+net H3          U33.2A U47.4B
+net H4          U33.2B U47.4A
+net H6          U33.2C
+net H56_LOW     U33.1D
+net COL_L_N     U33.1Y U42.1A
+net COL_R_N     U33.2Y U42.1B
+net PCOL        U42.1Y U34.1B
+net VCC         U34.1C U34.1D
+net PAD_N       U34.1Y U16.D
+
+# Later stages: tens (stage 5), PLAY (stage 6, tied high above in U34.1D), unused gates.
+net GND         U31.4A U31.4B U34.2A U34.2B U34.2C U34.2D
+net GND         U42.2A U42.2B U42.3A U42.3B U42.4A U42.4B U47.1A U47.1B U47.2A U47.2B U47.3A U47.3B

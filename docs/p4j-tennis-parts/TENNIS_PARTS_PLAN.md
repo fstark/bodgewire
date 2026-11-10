@@ -12,8 +12,8 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | 1 | 74LS157 Part, Datasheet, tests | `422d284` |
 | 2 | 74LS48 Part, shared segment fold, Datasheet, tests | `e3b596b` |
 | 3 | Reversed controller, two players' keys | `2a72692` |
-| 4 | Netlist stage 1: ball and box, no side walls | this commit |
-| 5 | Stage 2: paddles | |
+| 4 | Netlist stage 1: ball and box, no side walls | `624fe37` |
+| 5 | Stage 2: paddles | this commit |
 | 6 | Stage 3: hits, angles, speed-up | |
 | 7 | Stage 4: misses, serve, scores, Start | |
 | 8 | Stage 5: score digits | |
@@ -100,3 +100,4 @@ Fence: full debug suite green. Commit `docs: P4j implemented, user check pending
 
 - Docs review (before phase 1): the circuit held gate by gate. Fixed: hiding the ball through `VBALL` would have stopped its top and bottom bounces during the serve (it could come back in the blanking or a wall): the ball is now hidden only in the mixer (`BALLV_N`), `H3_N` moved to `U42`; the court test expects the ball seen at dots 2–3 and 92–93; the 74LS157 folds X like the 74LS47 (Kleene OR gives X for `S` at X with both data 1); no case reads `GAME_OVER` before stage 6, seeds are searched each time (power-on bits depend on the parts), every case presses Start from stage 6; the speed-up case moved to stage 4 (only a serve clears `FAST`); slow-ball cases count from the last contact; unused gates of a stage's chips tied; `Watch` gets a step hook, `sim.wake(id)`; `LoadNetlistFile` until the Board; simulated times per case.
 - Phase 4: stage 1 loads without warnings; release headless 2.12× (as 060). `tennis: court` simulates 2.3 s in 67 s of debug time (0.034×). At power-on the ball may come in across the edge dots from outside the picture (as on 060), so the edge-dot check starts once the ball has been inside the court.
+- Phase 5: paddles where TENNIS.md puts them on the first run (one wiring slip, `H34_LOW` fed from `H1`, caught by the picture before the test). Release headless 1.89×; `bw_ui` 1.00×, UI 0.3 ms. `paddles follow the knobs` 12 s debug.
