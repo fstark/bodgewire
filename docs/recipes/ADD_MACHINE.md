@@ -2,7 +2,7 @@
 
 A new board on the tutorial ladder (`docs/machines/NNN-name/`). New Parts first ([ADD_PART.md](ADD_PART.md), [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md)); Puzzles last ([ADD_PUZZLE.md](ADD_PUZZLE.md)).
 
-Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`. Stopwatch (040, digits): `8a18984`, `8d3644a`, `ae506f8`. Bouncing ball (060, TV, picture-reading tests): `174aa85`, `c89e3f0`, `58b1aec`. Knob meter (045, a device behind a Connector): `d24f490`, `73063c0`, `e1468a0`.
+Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`. Stopwatch (040, digits): `8a18984`, `8d3644a`, `ae506f8`. Bouncing ball (060, TV, picture-reading tests): `174aa85`, `c89e3f0`, `58b1aec`. Knob meter (045, a device behind a Connector): `d24f490`, `73063c0`, `e1468a0`. Paddle tennis (070, 58 chips, netlist grown in six stages, no Puzzles yet): stages `624fe37` to `fc268da`, manuals `892e7e6`, Board `741d2f7`.
 
 ## Order
 
@@ -22,6 +22,7 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 - `manuals/<m>/user.md`: `# Name` then `## What it does`: one short paragraph, seen from outside only (power hookup, what the player sees). Backticked references must exist.
 - `manuals/<m>/service.md`: `# Name — Service Manual` then `## Components`: one bullet per reference, every Part, netlist order: `` - `U1` short role: detail with `NET` names ``.
 - `tests/machines/<m>_test.cpp` (add to `tests/CMakeLists.txt`): `FaultFree()` = `LoadNetlistMachine(BW_NETLIST_DIR / "<m>.bwn")`; `Record(machine, end, names)` = `machine.build()` + `Simulator` + `powerOn(1)`; check the visible behaviour after settling. Tag `[machines][slow]` if it simulates more than ~1 s. Copy `tests/machines/chaser_test.cpp`.
+- A big Machine (070): grow the netlist in stages, each one a commit with its own picture cases, earlier cases kept green. Tie the unused gates of each stage's chips. Measure release headless speed (`bw run … --time 2s`) at every stage. A slow drop points at a signal switching every dot across the screen; gate it to where it is needed.
 - Add the Machine to the list in `tests/machines/manuals_test.cpp` (`every Machine's manuals pass their checks`).
 
 ## 3. Board (user + agent)
@@ -35,12 +36,12 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
   - `tests/board/boards_test.cpp`: a `<m> matches its netlist` case + the courtyard loop;
   - `tests/machine/electrical_test.cpp`: `uncracked board gives the design Nets`;
   - `tests/view/board_scene_test.cpp`: `outline of every Board is a rectangle`, `every Trace and via has a design Net`.
-- Switch `<m>_test.cpp` to `LoadNetlistMachine` if it was using `LoadNetlistFile`.
+- Switch `<m>_test.cpp` to `LoadNetlistMachine` if it was using `LoadNetlistFile`. Keep the netlist (`LoadNetlistFile`) for the `loads without warnings` case and build the others from the Board (`BoardCircuit`, as in `ball_test.cpp`); seeds that a case searches still hold, hard-coded ones do not.
 
 ## 5. Session test and release check
 
 - `tests/session/session_test.cpp`: a `[session]` case running the Machine through `Session` (cf. `session: chaser with every instrument`); this checks the `kMaxWatched` budget.
-- Release: `cmake --build --preset release && build/release/src/ui/bw_ui puzzles/<one>.bwp --screenshot /tmp/<m>.png --after 1s`, attach every instrument (`--probe`, `--clip`, `--hook`, `--meter`), and check the ratio stays 1.00× and the UI time stays under ~1 ms. View the PNG.
+- Release: `cmake --build --preset release && build/release/src/ui/bw_ui puzzles/<one>.bwp --screenshot /tmp/<m>.png --after 1s`, attach every instrument (`--probe`, `--clip`, `--hook`, `--meter`), and check the ratio stays 1.00× and the UI time stays under ~1 ms (about 1.5 ms on the 58-chip 070 Board). View the PNG. A Machine without Puzzles runs from its netlist (`bw_ui netlists/<m>.bwn`, the Board is found by itself). `--press` held for less than a UI frame at the very start is missed: press after 300 ms.
 - Docs: roadmap row in `docs/ARCHITECTURE.md` (done + date + one-line summary), user check pending until the user plays it.
 
 ## Gotchas
@@ -49,4 +50,6 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 - Measure speed on an idle machine: a debug `ctest -j 12` running alongside makes a release `bw_ui` read 0.8× for a 1.00× Machine.
 - Debug is about 0.07× real time (a TV Machine at 2 MHz, 0.03×): keep simulated time short, and use the release build for screenshots that show readings.
 - A 74LS161's `RCO` follows `ENT` combinationally: with a decoded signal on `ENT` (a line end), `RCO` pulses for ~20 ns when the count reaches 15 before that signal falls. Never clock or clear anything from such an `RCO`; put the decoded enable on `ENP` and keep `ENT` for the carry chain (060 `VRCO`).
+- Power-on draws a random bit per output and Net, and every new chip changes every seed's draws: search seeds in the test (a `FindSeed` over the state the case needs), never hard-code them.
+- Picture-reading cases that simulate several seconds cost minutes in debug (070: 4–10 s each, the debug suite about 9 minutes); keep each case to what it shows.
 - Board re-layouts move cracks: Puzzles use `fault crack A B N%`, so only which far pads lose the signal may change.

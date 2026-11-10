@@ -460,6 +460,41 @@ TEST_CASE("session: ball with every instrument", "[session][slow]") {
     session.powerOff();
 }
 
+TEST_CASE("session: tennis with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "tennis.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    CHECK(session.leds().empty());
+    REQUIRE(session.tv() != nullptr);
+    CHECK(session.knobs() == std::vector<std::string>{"J3", "J4"});
+    CHECK(session.buttons() == std::vector<std::string>{"SW1"});
+
+    for (const char* chip : {"U48", "U49"}) {
+        for (const char* pin : {"QA", "QB", "QC", "QD"}) {
+            REQUIRE(session.clip(chip, pin).has_value());
+        }
+    }
+    REQUIRE(session.hook("U53", "SA").has_value());
+    REQUIRE(session.hook("U58", "Y").has_value());
+    const auto start = session.padLead("SW1", "1");
+    const auto vcc = session.padLead("U48", "VCC");
+    REQUIRE(start.has_value());
+    REQUIRE(vcc.has_value());
+    session.touch(ProbeTip{start->at, Layer::Front});
+    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+
+    CHECK(session.setKnob("J3", 0.25));
+    CHECK(session.setKnob("J4", 0.75));
+    session.powerOn(1, 1_s);
+    session.runner().waitIdle();
+    CHECK(session.tv()->tv().isLocked());
+    CHECK(session.tv()->tv().completedFrames() > 40);
+    session.powerOff();
+}
+
 namespace {
 
 // The lit segments of `digit` (A..G, bit k for 'A' + k) from the Session's lamps.
