@@ -15,8 +15,8 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | 4 | Netlist stage 1: ball and box, no side walls | `624fe37` |
 | 5 | Stage 2: paddles | `024fdcd` |
 | 6 | Stage 3: hits, angles, speed-up | `4a50392` |
-| 7 | Stage 4: misses, serve, scores, Start | this commit |
-| 8 | Stage 5: score digits | |
+| 7 | Stage 4: misses, serve, scores, Start | `2390dd3` |
+| 8 | Stage 5: score digits | this commit |
 | 9 | Stage 6: game over and attract | |
 | 10 | Manuals | |
 | 11 | Board (user layout), per-Machine loops | |
@@ -103,3 +103,4 @@ Fence: full debug suite green. Commit `docs: P4j implemented, user check pending
 - Phase 5: paddles where TENNIS.md puts them on the first run (one wiring slip, `H34_LOW` fed from `H1`, caught by the picture before the test). Release headless 1.89×; `bw_ui` 1.00×, UI 0.3 ms. `paddles follow the knobs` 12 s debug.
 - Phase 6: the circuit worked as first written (`PAD_HIT` one 2-dot pulse on the ball's line 4, `SHALLOW` and `VDIR` set from the quarter); release headless 1.81×. The test player needed two fixes: aim for the frame the ball reaches the paddle, not two frames ahead, and read the new speed one frame later (the ball's reload is on its first line, before line 4). Aiming at the paddle's top line can miss near a wall, so the no-miss check is its own case aiming at the middle; the four angles are four cases. Debug: each 4 s case about 160 s, the court 195 s; the suite 4 min 40 s.
 - Phase 7: the circuit worked as first written: the serve lasts 579 ms (29 frames), the scorer's count goes 0 → 1, the ball leaves the loser's edge slow; Start clears the scores; slow until two turns to the left, then fast. Release headless 1.77×. With serves in the netlist a power-on can clear `FAST`, so the stage 3 cases take a seed (searched) with the ball fast and no serve, and count slow contacts too (two frames on the column; the second decides). Debug: the speed-up case 373 s (10 s simulated), the others about 200–225 s; the suite about 10 minutes.
+- Phase 8: the digits drew right first time, but release headless fell from 1.77× to 1.25×: the glyph terms took `H0` and `H1` directly and switched on every dot across the screen. `H0` and `H1` now reach them only through two gates opened by `REGION` (`QH0_N`, `QH1_N`, `COL3`, `UNITS` on spare gates), and speed is back to 1.51×. `bw_ui` dropped `--press` without a Board (buttons were handled inside the Board block): fixed, so Start can be scripted on a netlist. The new chips change every seed's power-on draws: a seed with `FAST` at power-on may still start with the ball in a goal and a serve, so the rally cases run 6 s; the court case no longer asks for the ball at both edges (the miss case shows it at the edge). The digit checks went into `a miss scores`; `score digits` reads a left-at-10 seed. Debug: 6 s cases about 320 s, the speed-up case 483 s.

@@ -526,14 +526,19 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 }
             }
             boardView.setLeds(ledTags);
-
+        }
+        {
+            // Buttons: held or latched on the Board, or scripted by --press (also without a
+            // Board).
+            const BoardScene* scene = boardView.scene();
             if (!session.powered()) {
                 latched.clear();
             }
             const auto toggled = boardView.takeLatchToggle();
             std::vector<ButtonTag> buttonTags;
             for (const std::string& reference : session.buttons()) {
-                const auto component = scene->componentIndex(reference);
+                const auto component =
+                    scene ? scene->componentIndex(reference) : std::optional<std::size_t>();
                 if (component && toggled == component && session.powered() &&
                     !latched.erase(reference)) {
                     latched.insert(reference);
@@ -548,7 +553,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     buttonTags.push_back({*component, session.pressed(reference)});
                 }
             }
-            boardView.setButtons(buttonTags);
+            if (scene) {
+                boardView.setButtons(buttonTags);
+            }
         }
         if (machine) {
             std::vector<CutMark> cuts;

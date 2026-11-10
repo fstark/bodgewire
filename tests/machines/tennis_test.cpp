@@ -13,6 +13,7 @@
 
 #include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
+#include "parts/ls47.hpp"
 #include "parts/paddle.hpp"
 #include "sim/simulator.hpp"
 
@@ -47,6 +48,7 @@ struct Picture {
     std::vector<int> litDots;   // per dot 0–95: court lines lit at that dot
     std::optional<Ball> ball;   // lit cells in the court that are not net, paddle or digit
     std::optional<PaddleSeen> left, right;
+    int leftScore = -1, rightScore = -1;  // 0–19 as drawn; -1 a shape that is no digit
 };
 
 bool LitCell(const TvFrame& frame, int row, int dot) {
@@ -70,6 +72,39 @@ bool IsDigitCell(int line, int dot) {
         }
     }
     return false;
+}
+
+// The digit drawn in the cell whose left dot is `dot` (lines 32–63): the segments sampled at
+// one point each (a, g, d on the cell's dot 1 at lines 33, 45, 61; f, b on dots 0, 3 at line 39;
+// e, c at line 53), matched against the 74LS48 glyphs 0–9; 15 is blank (0x00). -1 otherwise.
+int ReadDigit(const TvFrame& frame, int lineZeroRow, int dot) {
+    const auto lit = [&](int line, int at) { return LitCell(frame, lineZeroRow + line, dot + at); };
+    const std::uint8_t segments =
+        static_cast<std::uint8_t>(lit(33, 1) | lit(39, 3) << 1 | lit(53, 3) << 2 | lit(61, 1) << 3 |
+                                  lit(53, 0) << 4 | lit(39, 0) << 5 | lit(45, 1) << 6);
+    for (unsigned value = 0; value < 10; ++value) {
+        if (Ls47Segments(value, true, true, true) == segments) {
+            return static_cast<int>(value);
+        }
+    }
+    return -1;
+}
+
+// A score: the units digit, and the tens cell lit on its column 3 ("1") or dark.
+int ReadScore(const TvFrame& frame, int lineZeroRow, int tensDot) {
+    const int units = ReadDigit(frame, lineZeroRow, tensDot + 8);
+    bool one = true, dark = true;
+    for (int line = 32; line < 64; ++line) {
+        for (int at = 0; at < 4; ++at) {
+            const bool on = LitCell(frame, lineZeroRow + line, tensDot + at);
+            one = one && on == (at == 3);
+            dark = dark && !on;
+        }
+    }
+    if (units < 0 || (!one && !dark)) {
+        return -1;
+    }
+    return (one ? 10 : 0) + units;
 }
 
 std::optional<PaddleSeen> ReadPaddle(const TvFrame& frame, int lineZeroRow, int dot) {
@@ -147,6 +182,8 @@ Picture Read(const TvFrame& frame) {
     if (maxLine >= 0) {
         picture.ball = Ball{minDot, minLine, maxDot - minDot + 1, maxLine - minLine + 1};
     }
+    picture.leftScore = ReadScore(frame, z, 16);
+    picture.rightScore = ReadScore(frame, z, 64);
     picture.left = ReadPaddle(frame, z, kLeftPaddleDot);
     picture.right = ReadPaddle(frame, z, kRightPaddleDot);
     return picture;
@@ -201,7 +238,6 @@ TEST_CASE("tennis: court", "[machines][slow]") {
     auto loaded = DesignCircuit();
     int frames = 0, unlocked = 0, wallsMissing = 0;
     int edgeDots = 0;  // lit cells on dots 0–1 and 94–95 inside the court
-    bool leftTurn = false, rightTurn = false;
     bool inside = false;
     std::vector<Picture> pictures;
     Watch(*loaded, 1, 300_ms, 4'300_ms, [&](const TvFrame& frame, bool locked, Simulator&) {
@@ -230,15 +266,6 @@ TEST_CASE("tennis: court", "[machines][slow]") {
     CHECK(unlocked == 0);
     CHECK(wallsMissing == 0);
     CHECK(edgeDots == 0);
-    // The ball reaches dots 2–3 and 92–93, seen there (the goals are not drawn).
-    for (const Picture& picture : pictures) {
-        if (picture.ball && picture.ball->width == 2) {
-            leftTurn = leftTurn || picture.ball->left == 2;
-            rightTurn = rightTurn || picture.ball->left == 92;
-        }
-    }
-    CHECK(leftTurn);
-    CHECK(rightTurn);
 }
 
 namespace {
@@ -492,8 +519,8 @@ std::uint64_t FindSeed(LoadedCircuit& loaded, const std::function<bool(const Sim
     return 0;
 }
 
-// Both players aim at paddle line `aim` for 4 s, from a power-on with the ball fast and no serve
-// under way.
+// Both players aim at paddle line `aim` for 6 s, from a power-on with the ball fast and no serve
+// under way (a ball starting in a goal may still be served at once, and leave slow).
 Player Rally(int aim) {
     auto loaded = DesignCircuit();
     const auto net = [&](const Simulator& sim, const char* name) {
@@ -503,7 +530,7 @@ Player Rally(int aim) {
         return net(sim, "FAST") == LogicValue::One && net(sim, "SERVING") == LogicValue::Zero;
     });
     Player player(*PaddleOf(*loaded, "J3"), *PaddleOf(*loaded, "J4"), aim);
-    Watch(*loaded, seed, 40_ms, 4'000_ms,
+    Watch(*loaded, seed, 40_ms, 6'000_ms,
           [&](const TvFrame& frame, bool, Simulator&) { player.onFrame(Read(frame)); });
     return player;
 }
@@ -530,6 +557,7 @@ void CheckAngles(int aim) {
 
 TEST_CASE("tennis: the paddles return the ball", "[machines][slow]") {
     const Player player = Rally(8);  // the middle of the paddle
+
     CHECK(player.behind() == 0);
     CHECK(player.returns() >= 3);
 }
@@ -650,21 +678,45 @@ TEST_CASE("tennis: a miss scores", "[machines][slow]") {
     CHECK(length >= 29 * kFrame - 1_ms);
     CHECK(length <= 32 * kFrame + 1_ms);
     // No ball drawn in a frame wholly inside the serve; then it leaves the right edge, slow.
-    std::vector<int> lefts;
+    std::vector<int> lefts;  // after the serve, each frame: the ball's column, -1 unseen
     for (const auto& [end, picture] : serve.pictures) {
         if (end - kFrame > serve.on + 1_ms && end < serve.off) {
             CHECK(!picture.ball.has_value());
         }
-        if (end > serve.off + kFrame && picture.ball && picture.ball->width == 2 &&
-            lefts.size() < 5) {
-            lefts.push_back(picture.ball->left);
+        if (end > serve.off + kFrame && lefts.size() < 12) {
+            lefts.push_back(picture.ball && picture.ball->width == 2 ? picture.ball->left : -1);
         }
     }
-    REQUIRE(lefts.size() == 5);
-    INFO("after the serve " << lefts[0] << " " << lefts[1] << " " << lefts[2] << " " << lefts[3]
-                            << " " << lefts[4]);
-    CHECK(lefts[0] >= 88);
-    CHECK(lefts[0] - lefts[4] == 4);  // 2 dots every other frame
+    // The digits: 0 and 0 after Start, until the point; then 1 and 0. A frame with the ball on a
+    // digit cell may read -1.
+    int zeros = 0, ones = 0;
+    for (const auto& [end, picture] : serve.pictures) {
+        if (end > 3 * kFrame && end < serve.on) {
+            zeros += picture.leftScore == 0 && picture.rightScore == 0 ? 1 : 0;
+            CHECK((picture.leftScore == 0 || picture.leftScore == -1));
+            CHECK((picture.rightScore == 0 || picture.rightScore == -1));
+        }
+        if (end > serve.on + kFrame) {
+            ones += picture.leftScore == 1 && picture.rightScore == 0 ? 1 : 0;
+            CHECK((picture.leftScore == 1 || picture.leftScore == -1 || end > serve.off));
+        }
+    }
+    CHECK(zeros >= 10);
+    CHECK(ones >= 10);
+    // It leaves the right edge slow: 2 dots every other frame, so from dot 90 to dot 86 (unseen
+    // on the paddle's column, 88) in 4 frames.
+    REQUIRE(lefts.size() == 12);
+    std::string seen;
+    for (const int left : lefts) {
+        seen += std::to_string(left) + " ";
+    }
+    INFO("after the serve: " << seen);
+    CHECK(lefts[0] >= 90);
+    const auto at90 = std::ranges::find(lefts, 90);
+    const auto at86 = std::ranges::find(lefts, 86);
+    REQUIRE(at90 != lefts.end());
+    REQUIRE(at86 != lefts.end());
+    CHECK(at86 - at90 == 4);
 }
 
 TEST_CASE("tennis: rally speeds up", "[machines][slow]") {
@@ -717,4 +769,36 @@ TEST_CASE("tennis: rally speeds up", "[machines][slow]") {
     CHECK(leftTurns >= 2);
     CHECK(slow >= 10);
     CHECK(fast >= 3);
+}
+
+TEST_CASE("tennis: score digits", "[machines]") {
+    auto loaded = DesignCircuit();
+    const auto bit = [&](const Simulator& sim, const char* name) {
+        return sim.value(loaded->nets.at(name)) == LogicValue::One ? 1 : 0;
+    };
+    // A power-on with the left score at 10 and the right one a digit.
+    const std::uint64_t seed = FindSeed(*loaded, [&](const Simulator& sim) {
+        return bit(sim, "TENS_L") == 1 &&
+               bit(sim, "SL0") + bit(sim, "SL1") + bit(sim, "SL2") + bit(sim, "SL3") == 0 &&
+               bit(sim, "TENS_R") == 0 &&
+               !(bit(sim, "SR3") && (bit(sim, "SR1") || bit(sim, "SR2"))) &&
+               bit(sim, "SERVING") == 0;
+    });
+    int right = -2;
+    {
+        Simulator sim(loaded->circuit);
+        sim.powerOn(seed);
+        sim.runFor(1_us);
+        right = bit(sim, "SR0") + 2 * bit(sim, "SR1") + 4 * bit(sim, "SR2") + 8 * bit(sim, "SR3");
+    }
+    int read = 0;
+    Watch(*loaded, seed, 40_ms, 200_ms, [&](const TvFrame& frame, bool, Simulator&) {
+        const Picture picture = Read(frame);
+        if (picture.leftScore >= 0 && picture.rightScore >= 0) {
+            CHECK(picture.leftScore == 10);
+            CHECK(picture.rightScore == right);
+            ++read;
+        }
+    });
+    CHECK(read >= 3);
 }

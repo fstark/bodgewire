@@ -60,6 +60,13 @@ part U47 74LS02     # SKIP, SERVING_N, H34_LOW
 part U48 74LS90     # left score units SL0-SL3
 part U49 74LS90     # right score units SR0-SR3
 part U50 74LS107    # TENS_L, TENS_R
+part U52 74LS157    # this half's units SC0-SC3
+part U53 74LS48     # SEG_A-SEG_G
+part U54 74LS157    # this half of the cell: FE, BC, GD, A_TOP
+part U55 74LS20     # T2_N, T4_N
+part U56 74LS20     # T1_N, T5_N
+part U57 74LS20     # T3_N
+part U58 74LS30     # GLYPH
 part SW1 BUTTON     # Start
 part R1  R value=1k # START_N pull-up
 
@@ -156,7 +163,7 @@ net HDIR        U26.1Q U24.4B
 net VDIR_N      U26.2Q_N U20.D
 
 # Video: the mixer (Pong's summing resistors), blanking, output registers.
-net VCC         U16.F U16.G U16.H
+net VCC         U16.G U16.H
 net MIX         U16.Y U9.5A
 net MIX_N       U9.5Y U17.2A
 net HBLANK_N    U14.3Y U9.6A
@@ -167,7 +174,6 @@ net VIDEO       U11.2Q J2.VIDEO
 net VCC         U11.1PRE_N U11.1CLR_N U11.2PRE_N U11.2CLR_N
 
 # Unused gate inputs.
-net GND         U10.4A U10.4B U25.1A U25.1B U25.2A U25.2B U14.4A U14.4B U17.3A U17.3B U17.3C
 
 # Paddles. Each controller is triggered at line 308; LWAIT is its pulse taken at line starts.
 # The paddle counter is cleared while LWAIT is high, then counts lines (at dot 127) until LP3
@@ -222,8 +228,6 @@ net VCC         U34.1C U34.1D
 net PAD_N       U34.1Y U16.D
 
 # Later stages: tens (stage 5), PLAY (stage 6, tied high above in U34.1D), unused gates.
-net GND         U31.4A U31.4B U34.2A U34.2B U34.2C U34.2D
-net GND         U42.3A U42.3B U42.4A U42.4B U47.1A U47.1B
 
 # Hits: the ball turns right on the left goal or a paddle in the left half (H6 low), left on
 # the right goal or a paddle in the right half.
@@ -273,7 +277,7 @@ net SKIP        U47.2Y U43.3C
 net MOVE_N      U41.3Y U43.3A
 
 # Later stages and unused gates.
-net GND         U38.4A U38.4B U39.2J U39.2K U39.2CLK U39.2CLR_N U41.6A
+net GND         U38.4A U38.4B U39.2J U39.2K U39.2CLK U39.2CLR_N
 
 # Misses: the ball meeting a goal while moving into it. LOST_LEFT and LOST_RIGHT are set with the
 # turn (same edge as HDIR), cleared by SERVE_END; while serving the ball is hidden from the
@@ -326,3 +330,76 @@ net VCC         R1.1
 
 # PLAY (stage 6).
 net VCC         U44.1CLR_N U44.2CLR_N
+
+# Score digits on lines 32-63, each cell 4 dots x 32 lines: left tens at dots 16-19, units 24-27,
+# right tens 64-67, units 72-75 (H5 and H2 low, H4 != H6; H3 low: tens, high: units). U52 picks
+# this half's units count into U53; U54 picks the strokes of the cell's top or bottom half (V4);
+# five NAND terms draw a and g (rows 0, 3), d (row 7), f/e (column 0), b/c (column 3) and the
+# tens "1" (column 3 of the tens cell).
+net H6          U52.S
+net GND         U52.G_N U54.G_N U54.4B
+net SL0         U52.1A
+net SR0         U52.1B
+net SL1         U52.2A
+net SR1         U52.2B
+net SL2         U52.3A
+net SR2         U52.3B
+net SL3         U52.4A
+net SR3         U52.4B
+net SC0         U52.1Y U53.A
+net SC1         U52.2Y U53.B
+net SC2         U52.3Y U53.C
+net SC3         U52.4Y U53.D
+net VCC         U53.LT_N U53.RBI_N U53.BI_N
+net SEG_A       U53.SA U54.4A
+net SEG_B       U53.SB U54.2A
+net SEG_C       U53.SC U54.2B
+net SEG_D       U53.SD U54.3B
+net SEG_E       U53.SE U54.1B
+net SEG_F       U53.SF U54.1A
+net SEG_G       U53.SG U54.3A
+net V4          U54.S
+net FE          U54.1Y U57.1B
+net BC          U54.2Y U55.2B
+net GD          U54.3Y U55.1B
+net A_TOP       U54.4Y U56.1B
+net TENS_L      U31.4A
+net TENS_R      U31.4B
+net TENS        U31.4Y U56.2B
+net V3          U3.QD U25.1B U55.1C
+net V2          U25.1A U55.1D
+net V23_LOW     U25.1Y U56.1C
+# H0 and H1 only within REGION (QH0_N, QH1_N, COL3), and UNITS (the units cell), keep the terms
+# quiet outside the digits.
+net H0          U14.4A
+net H1          U57.2A
+net REGION      U14.4B U57.2B
+net VCC         U57.2C U57.2D
+net QH0_N       U14.4Y U47.1A U57.1C
+net QH1_N       U57.2Y U47.1B U57.1D
+net COL3        U47.1Y U55.2C U56.2A
+net VCC         U55.2D U56.1D
+net H3          U42.4A U42.4B
+net H3_N        U42.4Y U25.2B U56.2C
+net REGION_N    U25.2A
+net UNITS       U25.2Y U55.1A U55.2A U56.1A U57.1A
+net VCC         U56.2D
+net T1_N        U56.1Y U58.A
+net T2_N        U55.1Y U58.B
+net T3_N        U57.1Y U58.C
+net T4_N        U55.2Y U58.D
+net T5_N        U56.2Y U58.E
+net VCC         U58.F U58.G U58.H
+net GLYPH       U58.Y U42.3A
+net H2          U17.3A
+net H5          U17.3B
+net V6          U17.3C
+net SCORE_A     U17.3Y U34.2C
+net H4          U10.4A
+net H6          U10.4B
+net HX          U10.4Y U34.2D
+net V5          U34.2A
+net TOP_B       U34.2B
+net REGION_N    U34.2Y U41.6A
+net REGION      U41.6Y U42.3B
+net SCORE_N     U42.3Y U16.F

@@ -61,7 +61,7 @@ Each controller is a `PADDLE` behind a 4-pin Connector ([PADDLE.md](../../../dat
 
 - `U52` 74LS157 picks the left (`H6` low) or right units count into `U53` 74LS48, whose active-high segments `SEG_A`–`SEG_G` light the units digit of whichever half the beam is in. The tens digit is a "1" drawn from `TENS` (picked by `U31`), or nothing.
 - A digit cell is 4 dots × 32 lines on lines 32–63; its rows are `V4`–`V2` (eight 4-line rows), its columns `H1`–`H0`. `U54` 74LS157 picks by `V4` (top half, bottom half): `FE` (f, then e), `BC` (b, then c), `GD` (g, then d), `A_TOP` (a, then nothing).
-- The glyph is five terms, each a NAND into `U58` 74LS30: a on row 0; g on row 3 and d on row 7 (`GD` on rows with `V3` and `V2` high); f and e on column 0 (`FE`); b and c on column 3 (`BC`), in the units cell (`H3` high); the tens "1" on column 3 of the tens cell (`H3` low). `REGION` (lines 32–63, dots with `H5` and `H2` low and `H4` ≠ `H6`) lets it into the mixer as `SCORE_N`.
+- `REGION` is lines 32–63 at dots with `H5` and `H2` low and `H4` ≠ `H6`. The glyph is five terms, each a NAND into `U58` 74LS30: a on row 0; g on row 3 and d on row 7 (`GD` on rows with `V3` and `V2` high); f and e on column 0 (`FE`); b and c on column 3 (`BC`), in the units cell (`UNITS`: `REGION` and `H3` high); the tens "1" on column 3 of the tens cell (`H3` low). The column bits `H0` and `H1` reach the terms only through gates opened by `REGION`, so the terms stay still outside the digits (otherwise the simulation slows to 1.25× real time).
 
 Mixer (`U16`): `BALLV_N`, `TOP_N`, `BOTTOM_N`, `PAD_N`, `NET_N`, `SCORE_N`; two inputs at +5 V.
 

@@ -43,7 +43,7 @@ part U43 74LS27     # MISS_LEFT, MISS_RIGHT, HMOVE
 part U44 74LS107    # LOST_LEFT, LOST_RIGHT
 part U45 74LS107    # FRAME1
 part U46 74LS93     # serve timer, SERVE_END
-part U47 74LS02     # SKIP, SERVING_N, H34_LOW
+part U47 74LS02     # COL3, SKIP, SERVING_N, H34_LOW
 part U48 74LS90     # left score units SL0-SL3
 part U49 74LS90     # right score units SR0-SR3
 part U50 74LS107    # TENS_L, TENS_R
@@ -53,7 +53,7 @@ part U53 74LS48     # SEG_A-SEG_G
 part U54 74LS157    # this half of the cell: FE, BC, GD, A_TOP
 part U55 74LS20     # T2_N, T4_N
 part U56 74LS20     # T1_N, T5_N
-part U57 74LS20     # T3_N
+part U57 74LS20     # T3_N, QH1_N
 part U58 74LS30     # GLYPH
 part SW1 BUTTON     # Start
 part R1  R value=1k # START_N pull-up
@@ -74,7 +74,8 @@ The netlist lists `J3` before `J4`: the Session lists knobs in netlist order, an
 | `U20` `D C B A` | `VDIR_N`, 0 V, +5 V, +5 V | `VDIR_N`, `VLOAD_C`, `STEEP`, +5 V |
 | `U22` flip-flop 2 | unused | `FRAME0`: `J`, `K`, `CLR_N` +5 V, `CLK` = `V8` |
 | `U23` `QB`, `QC` | unused | `BALL_QB`, `BALL_QC` |
-| `U25` gates 1, 2 | `HIT_LEFT`, `HIT_RIGHT` | `V23_LOW` = NOR(`V2`, `V3`); `H01_LOW` = NOR(`H0`, `H1`) |
+| `U14` gate 4 | spare | `QH0_N` = NAND(`H0`, `REGION`) |
+| `U25` gates 1, 2 | `HIT_LEFT`, `HIT_RIGHT` | `V23_LOW` = NOR(`V2`, `V3`); `UNITS` = NOR(`REGION_N`, `H3_N`) |
 | `U26` flip-flop 1 | `J` `HIT_LEFT`, `K` `HIT_RIGHT` | `J` `GO_RIGHT`, `K` `GO_LEFT`; `1Q_N` = `HDIR_N` |
 | `U26` flip-flop 2 | `J` `HIT_TOP`, `K` `HIT_BOTTOM` | `J` `GO_DOWN`, `K` `GO_UP` |
 
@@ -154,17 +155,20 @@ Score digits:
 | `SC0`–`SC3` | `U52` (`S` = `H6`, `G_N` 0 V): `SL0`/`SR0` … `SL3`/`SR3` |
 | `SEG_A`–`SEG_G` | `U53`: `A`–`D` = `SC0`–`SC3`, `LT_N`, `RBI_N`, `BI_N` +5 V |
 | `FE`, `BC`, `GD`, `A_TOP` | `U54` (`S` = `V4`, `G_N` 0 V): `SEG_F`/`SEG_E`, `SEG_B`/`SEG_C`, `SEG_G`/`SEG_D`, `SEG_A`/0 V |
-| `T1_N` | `U56` gate 1: NAND(`H3`, `A_TOP`, `V23_LOW`, +5 V): a, row 0 |
-| `T2_N` | `U55` gate 1: NAND(`H3`, `GD`, `V3`, `V2`): g row 3, d row 7 |
-| `T3_N` | `U57` gate 1: NAND(`H3`, `FE`, `H01_LOW`, +5 V): f, e, column 0 (gate 2 unused, inputs 0 V) |
-| `T4_N` | `U55` gate 2: NAND(`H3`, `BC`, `H1`, `H0`): b, c, column 3 |
-| `T5_N` | `U56` gate 2: NAND(`H3_N`, `TENS`, `H1`, `H0`): the tens "1" |
+| `QH0_N`, `QH1_N` | `U14` gate 4: NAND(`H0`, `REGION`); `U57` gate 2: NAND(`H1`, `REGION`, +5 V, +5 V): the dot's column, only inside `REGION`, so nothing below them switches on every dot across the screen |
+| `COL3` | `U47` gate 1: NOR(`QH0_N`, `QH1_N`): column 3, inside `REGION` |
+| `UNITS` | `U25` gate 2: NOR(`REGION_N`, `H3_N`): the units cell |
+| `T1_N` | `U56` gate 1: NAND(`UNITS`, `A_TOP`, `V23_LOW`, +5 V): a, row 0 |
+| `T2_N` | `U55` gate 1: NAND(`UNITS`, `GD`, `V3`, `V2`): g row 3, d row 7 |
+| `T3_N` | `U57` gate 1: NAND(`UNITS`, `FE`, `QH0_N`, `QH1_N`): f, e, column 0 |
+| `T4_N` | `U55` gate 2: NAND(`UNITS`, `BC`, `COL3`, +5 V): b, c, column 3 |
+| `T5_N` | `U56` gate 2: NAND(`COL3`, `TENS`, `H3_N`, +5 V): the tens "1" |
 | `GLYPH` | `U58`: NAND(`T1_N`–`T5_N`, +5 V × 3) |
 | `REGION_N`, `REGION` | `U34` gate 2: NAND(`V5`, `TOP_B`, `SCORE_A`, `HX`); `U41` gate 6 |
 | `SCORE_N` | `U42` gate 3: NAND(`GLYPH`, `REGION`) |
 | `H3_N` | `U42` gate 4: NAND(`H3`, `H3`) |
 
-Spare gates, inputs at 0 V: `U14` gate 4 (as on 060), `U38` gate 4, `U47` gate 1, `U51` gate 4, `U57` gate 2, `U45` flip-flop 2.
+Spare gates, inputs at 0 V: `U38` gate 4, `U51` gate 4, `U45` flip-flop 2.
 
 ### Load values of the ball vertical counter
 
@@ -199,7 +203,7 @@ Each stage loads without warnings and is tested before the next (plan phases 4�
 | 2 Paddles | `J3`, `J4`, `U27`–`U33`, `U34` gate 1, `U42` gate 1, `U47` gate 4, `U13` gate 4; `PAD_N` on `U16.D` | `PLAY` +5 V; `U31` `4A`, `4B` (tens) 0 V |
 | 3 Hits, angles, speed | `U35`–`U38`, `U39` flip-flop 1, `U40`, `U41` gates 1–3, `U42` gate 2, `U43` gate 3, `U47` gate 2, `U10` gate 3; `U20`, `U23`, `U26`, `U18`, `U24` changes; `U25` gates 1, 2 freed (inputs 0 V) | `SERVING` 0 V, `SERVING_N` +5 V |
 | 4 Misses, serve, scores, Start | `U43` gates 1, 2, `U44`–`U46`, `U47` gate 3, `U41` gates 4, 5, `U38` gate 3, `U48`–`U50`, `SW1`, `R1`; `BALLV_N` on `U16.A` | `PLAY` +5 V |
-| 5 Score digits | `U52`–`U58`, `U34` gate 2, `U41` gate 6, `U42` gates 3, 4, `U10` gate 4, `U17` gate 3, `U25` gates 1, 2, `U3.QD`; `SCORE_N` on `U16.F`; `TENS_L`/`TENS_R` on `U31` | `PLAY` +5 V |
+| 5 Score digits | `U52`–`U58`, `U34` gate 2, `U41` gate 6, `U42` gates 3, 4, `U10` gate 4, `U17` gate 3, `U25` gates 1, 2, `U14` gate 4, `U47` gate 1, `U3.QD`; `SCORE_N` on `U16.F`; `TENS_L`/`TENS_R` on `U31` | `PLAY` +5 V |
 | 6 Game over | `U51`, `U39` flip-flop 2; `PLAY` to `U34` and `U44` | — |
 
 ## Board
