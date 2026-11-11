@@ -17,5 +17,6 @@ add_library(bw_parts STATIC
   ls93.cpp
   oscillator.cpp
   paddle.cpp
+  rom_contents.cpp
 )
 target_link_libraries(bw_parts PUBLIC bw_sim PRIVATE bw_warnings)
