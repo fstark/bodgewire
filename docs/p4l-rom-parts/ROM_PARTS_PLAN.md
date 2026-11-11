@@ -1,5 +1,7 @@
 # P4l ROM Parts — Implementation Plan
 
+Done 2026-11-11, user check pending.
+
 Design: [ROM_PARTS_DESIGN.md](ROM_PARTS_DESIGN.md)
 Spec: [ROM_PARTS.md](ROM_PARTS.md); Machine: [MESSAGE.md](../machines/080-message/MESSAGE.md), [MESSAGE_DESIGN.md](../machines/080-message/MESSAGE_DESIGN.md)
 
@@ -15,61 +17,8 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 | 4 | 74LS165 | `8b587d1` |
 | 5 | Netlist, ROM files, fault-free test | `babed7b` |
 | 6 | Manuals | `1635989` |
-| 7 | Board (user routing), per-Machine loops | |
-| 8 | Session test, release check, recipes, docs | |
-
-## Phase 1 — Contents format
-
-- `src/parts/rom_contents.{hpp,cpp}` (design §2), `src/parts/CMakeLists.txt`.
-- `tests/parts/rom_contents_test.cpp` (design §8), `tests/CMakeLists.txt`.
-- Fence: the new cases green. Commit `parts: ROM contents format`.
-
-## Phase 2 — DIP-24 package
-
-- Copy `DIP-24_W15.24mm.kicad_mod` from the installed KiCad 10 into `boards/footprints/` unchanged; `kFootprints` row (design §5).
-- Tests: `kicad_netlist_test` DIP-24; the footprint loads with 24 pads (`LoadFootprints` asked for `DIP-24`). Nothing in the catalogue uses it yet.
-- Fence as above. Commit `board: DIP-24 package`.
-
-## Phase 3 — ROM Parts, contents paths
-
-- `src/parts/rom.{hpp,cpp}` with the 2716 and 2513 specs (design §3), delays, `CreateRom` and the two catalogue rows; datasheets `2716.md`, `2513.md`.
-- `ResolveContentsPaths` in the builder, called from `LoadNetlistFile` and `LoadMachine` (design §6).
-- `PartPinNames` takes ROM names from `FindRomSpec` (design §3); `tests/data/empty.rom`.
-- Tests: `tests/parts/rom_test.cpp`; `catalogue_test` (pin count from the package, ROMs with `contents=`, `2513` in `kOffCornerPower`); the builder cases; `placer_test`: a 2716 with no rule refused ("needs a placement rule"), with a `row front middle` rule placed inside its band (design §7).
-- Fence: `manuals: every catalogue Part has a Datasheet` green with the new rows, their pins covered; `footprint: every catalogue package loads` green. Commit `parts: 2716 and 2513 ROMs with contents files` (the commit says the 2716 delays are Intel's maximums, from known values, and the 2513's come from the 1972 Signetics MOS data book).
-
-## Phase 4 — 74LS165
-
-- `src/parts/ls165.{hpp,cpp}` (design §4), delays, catalogue row, `datasheets/74LS165.md`, `tests/parts/ls165_test.cpp`.
-- Fence as above. Commit `parts: 74LS165` (TI typicals from known values, the PDF not fetched).
-
-## Phase 5 — Netlist, ROM files, fault-free test
-
-- `roms/2513.rom` and `roms/message.rom` (drafted while the docs were reviewed: check them against MESSAGE_DESIGN.md § ROM contents and commit them here), `netlists/message.bwn` (MESSAGE_DESIGN.md § Netlist, with the header comment).
-- `tests/machines/message_test.cpp` on the netlist (design §8).
-- Release speed: `build/release/src/cli/bw run netlists/message.bwn --time 2s` on an idle machine; record it. Gate: ≥ 1.5× headless (060: 2.12×, 070 at 1.46× still gave 1.00× in `bw_ui`); below that, stop and tell the user before the Board.
-- A first look: `build/release/src/ui/bw_ui netlists/message.bwn --screenshot /tmp/message.png --after 1s` (no Board yet: the TV alone), view the PNG.
-- Fence: the message cases green, release speed recorded. Commit `message: netlist, ROM contents, fault-free test`.
-
-## Phase 6 — Manuals
-
-- `manuals/message/user.md`, `service.md` (MESSAGE_DESIGN.md § Manuals); `message` in `tests/machines/manuals_test.cpp`.
-- Fence: manuals cases green. Commit `message: manuals`.
-
-## Phase 7 — Board
-
-- `boards/message/message.place` (MESSAGE_DESIGN.md § Board), then `build/release/src/cli/bw place netlists/message.bwn boards/message/message.place -o boards/message/message.kicad_pcb`; record the grid and wire length; reconfigure so `place_drc_message` appears and passes.
-- **Stop for the user**: route `boards/message/message.kicad_pro` in KiCad (KICAD_GUIDE.md steps 7–8, F.Cu/B.Cu, no zones, DRC 0 errors). Placement is not theirs to change.
-- After: `bw check-board netlists/message.bwn boards/message/message.kicad_pcb` prints `ok`; `drc_message` passes; `message` added to the per-Machine loops (ADD_MACHINE.md step 3), with `ResolveContentsPaths` in `electrical_test`'s `LoadDesign` (design §7); `message_test.cpp` builds the page cases from the Board (`BoardCircuit`).
-- Fence: everything green. Commit `message: Board` (only `message.place`, `.kicad_pro`, `.kicad_pcb` and the test changes).
-
-## Phase 8 — Session test, release check, docs
-
-- `session: message with every instrument` (8 clips, 2 hooks, probe, meter).
-- Release: `bw_ui netlists/message.bwn --screenshot /tmp/message.png --after 1s --probe … --clip … --hook … --meter …`: 1.00×, UI time under ~1 ms; view the PNG (the page, sharp, a border all round).
-- Recipes: ADD_PART (ROM family, file parameter, DIP-24), ADD_MACHINE (080 commits, `roms/`); GLOSSARY **ROM Contents**.
-- ARCHITECTURE row P4l done with the date and links; this plan cut to the status table and implementation notes, "user check pending".
-- Fence: everything green. Commit `docs: P4l implemented, user check pending`.
+| 7 | Board (user routing), per-Machine loops | `3dc540c` |
+| 8 | Session test, release check, recipes, docs | this commit |
 
 ## Implementation notes
 
@@ -78,4 +27,5 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 - Phases 1–4: the code worked as designed; the ROM, contents and 74LS165 tests passed on the first build.
 - Phase 5: the page drew right first time (`bw_ui` screenshot: the poem, a dark border). Release headless 2.19× with the machine under load (load average 7; 060 measured 2.12× idle); `bw_ui` 1.00×, UI 0.3 ms. `message: the TV shows the page` 11.6 s in debug for three seeds.
 - Phase 6: the design's Service Manual bullets grouped references (`U2`, `U3`; `U6`–`U8`), but the Chip panel finds a role by the bullet's first reference: one bullet each, design fixed.
-- Phase 7: `bw place` (seed 1): a 6 × 3 grid, 2.24 m of wire; the ROMs side by side on the front edge. `place_drc_message` passes. Waiting for the user's routing.
+- Phase 7: `bw place` (seed 1): a 6 × 3 grid, 2.24 m of wire; the ROMs side by side on the front edge. `place_drc_message` passes. The user routed it with Freerouting, which left one connection: `F1`, `U16.14` to `U15.4`, the font ROM's pad boxed in by `F2`–`F4` and `VCC` in the 3.8 mm channel between the ROMs and by B.Cu tracks across `U15`. The agent added it (F.Cu, a via, B.Cu under `VIDEO_D`, a via, F.Cu down inside `U15`), checked on a scratch copy with `kicad-cli pcb drc` (0 violations, 0 unconnected) and `check-board` (`ok`). Functional-group placement should keep the font ROM next to the 74LS165.
+- Phase 8: `session: message with every instrument` (8 clips on the ROM outputs and the shift register, hooks on `U1.RCO` and `U16.CLK`, probe on `U16.QH`, meter on `U15.VCC`) 31 s in debug. Release `bw_ui netlists/message.bwn` with the same instruments: 1.00×, UI 0.6 ms; the screenshot shows the poem, `RCO` once every six `CLK` periods, the meter at 5.00 V. ADD_PART.md gained the ROM kind, the file parameter and new packages; ADD_MACHINE.md the 080 commits, `roms/` and the connection Freerouting leaves; GLOSSARY **ROM Contents**.

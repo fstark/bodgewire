@@ -16,6 +16,10 @@ _Avoid_: PCB (except in visual descriptions), motherboard
 A type of chip in the catalogue, such as a 74LS161 or a Z80. Parts are what the inventory holds.
 _Avoid_: Chip type, model
 
+**ROM Contents**:
+The words a ROM Part holds, read from a `.rom` text file in `roms/` that the netlist names with `contents=`. Two ROMs of the same Part with other contents are the same Part.
+_Avoid_: Firmware, image, dump
+
 **Component**:
 One placed instance of a Part on a Board, identified by its reference (U12).
 _Avoid_: Chip, IC (when meaning a specific placed one)

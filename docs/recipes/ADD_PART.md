@@ -2,11 +2,12 @@
 
 A new IC in the catalogue (e.g. 74LS90, 74LS47). For an on-board LED, digit or button, see [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md) instead.
 
-Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate package: `74LS30` in `src/parts/gate_package.cpp` (a new one: `09fbb1a`, 74LS27). Falling-edge JK flip-flop with `J`/`K` sampled before the edge (`readBefore`) and X cases: `4b7cf99` (74LS107). Register of flip-flops on one shared clock and clear: `2bb1a10` (74LS175). Multiplexer whose select at X folds by trying both values, delay chosen by the input that changed: `422d284` (74LS157). Variant of an existing chip (same pinout and glyphs, other output stage), sharing its code: `e3b596b` (74LS48 beside the 74LS47).
+Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate package: `74LS30` in `src/parts/gate_package.cpp` (a new one: `09fbb1a`, 74LS27). Falling-edge JK flip-flop with `J`/`K` sampled before the edge (`readBefore`) and X cases: `4b7cf99` (74LS107). Register of flip-flops on one shared clock and clear: `2bb1a10` (74LS175). Multiplexer whose select at X folds by trying both values, delay chosen by the input that changed: `422d284` (74LS157). Variant of an existing chip (same pinout and glyphs, other output stage), sharing its code: `e3b596b` (74LS48 beside the 74LS47). Parallel-load shift register with an asynchronous load and a gated clock: `8b587d1` (74LS165). ROM family, one class behind a spec table, contents from a file, a new package (DIP-24): `9cd6bcb` (2716, 2513), `19a244f` (DIP-24).
 
 ## Which kind
 
 - **Gate package** (only independent gates, no state): add a pin-name array, a `GateUnit` array and a `GatePackageSpec` row in `src/parts/gate_package.cpp`, then `&CreateGatePackage<"74LSxx">` in the catalogue. No new class.
+- **ROM** (2716, 2513): a `RomSpec` row in `src/parts/rom.cpp` (pin names, address pins low bit first with their delays, data pins, enables with their delays, the float delay), then `&CreateRom<"NNNN">` in the catalogue. No new class. The contents come from `contents=<file>` ([ROM_PARTS.md](../p4l-rom-parts/ROM_PARTS.md) for the `.rom` format); `PartPinNames` reads the names from the spec.
 - **Chip with state or special logic**: a new `Component` subclass `LsNN` in `src/parts/lsNN.{hpp,cpp}`, registered with `&CreateChip<LsNN, "74LSNN">`.
 
 ## Files
@@ -35,4 +36,7 @@ Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate packa
 - Hot path: `evaluate` must not allocate (use `std::array`, no `std::vector`/`std::string`).
 - Several units in one Part (74LS107): test them with `GENERATE`, not `SECTION`s inside a loop (Catch2 sections in loops are unreliable).
 - `-Werror` includes unused private fields. Run `clang-format` on C++ files only, never on `CMakeLists.txt`.
+- A Part with a file parameter (ROM `contents=`): the catalogue test, the footprint test and any test that builds every Part must pass one (`tests/data/empty.rom`); paths resolve against the netlist's directory (`ResolveContentsPaths`), so a test that parses a netlist itself calls it too.
+- A new package: copy the footprint from the installed KiCad into `boards/footprints/` unchanged and add a `kFootprints` row before any catalogue row uses it (the footprint test loads every catalogue package). A package wider than DIP-16 (DIP-24) has no slot in the chip grid of `bw place`: the Machine's `.place` must place it with a rule (`row`, `edge`).
+- Old MOS datasheets (2513) are in the 1972 Signetics MOS data book on bitsavers; EPROMs (2716) publish only maximum delays: use them and say so.
 - TI datasheet PDFs can't be fetched: use known typical values and say so in the commit.

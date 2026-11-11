@@ -526,6 +526,38 @@ unsigned LitSegments(const Session& session, std::string_view digit) {
 
 }  // namespace
 
+TEST_CASE("session: message with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "message.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    CHECK(session.leds().empty());
+    REQUIRE(session.tv() != nullptr);
+
+    for (const char* pin : {"O1", "O2", "O3", "O4", "O5"}) {
+        REQUIRE(session.clip("U15", pin).has_value());
+    }
+    REQUIRE(session.clip("U14", "O0").has_value());
+    REQUIRE(session.clip("U16", "SH_LD_N").has_value());
+    REQUIRE(session.clip("U16", "QH").has_value());
+    REQUIRE(session.hook("U1", "RCO").has_value());
+    REQUIRE(session.hook("U16", "CLK").has_value());
+    const auto pixels = session.padLead("U16", "QH");
+    const auto vcc = session.padLead("U15", "VCC");
+    REQUIRE(pixels.has_value());
+    REQUIRE(vcc.has_value());
+    session.touch(ProbeTip{pixels->at, Layer::Front});
+    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+
+    session.powerOn(1, 1_s);
+    session.runner().waitIdle();
+    CHECK(session.tv()->tv().isLocked());
+    CHECK(session.tv()->tv().completedFrames() > 40);
+    session.powerOff();
+}
+
 TEST_CASE("session: knob meter with every instrument", "[session][slow]") {
     auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "knob.bwn");
     REQUIRE(machine.has_value());

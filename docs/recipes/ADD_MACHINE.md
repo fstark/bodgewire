@@ -2,7 +2,7 @@
 
 A new board on the tutorial ladder (`docs/machines/NNN-name/`). New Parts first ([ADD_PART.md](ADD_PART.md), [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md)); Puzzles last ([ADD_PUZZLE.md](ADD_PUZZLE.md)).
 
-Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`. Stopwatch (040, digits): `8a18984`, `8d3644a`, `ae506f8`. Bouncing ball (060, TV, picture-reading tests): `174aa85`, `c89e3f0`, `58b1aec`. Knob meter (045, a device behind a Connector): `d24f490`, `73063c0`, `e1468a0`. Paddle tennis (070, 58 chips, netlist grown in six stages, no Puzzles yet): stages `624fe37` to `fc268da`, manuals `892e7e6`, Board `741d2f7`.
+Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`. Stopwatch (040, digits): `8a18984`, `8d3644a`, `ae506f8`. Bouncing ball (060, TV, picture-reading tests): `174aa85`, `c89e3f0`, `58b1aec`. Knob meter (045, a device behind a Connector): `d24f490`, `73063c0`, `e1468a0`. Paddle tennis (070, 58 chips, netlist grown in six stages, no Puzzles yet): stages `624fe37` to `fc268da`, manuals `892e7e6`, Board `741d2f7`. Message display (080, ROMs, `roms/`): `babed7b` netlist + ROM contents + fault-free test, `1635989` manuals, `3dc540c` Board.
 
 ## Order
 
@@ -18,6 +18,7 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
   - header comment: Machine number, spec path, one-paragraph circuit summary;
   - `part REF TYPE [param=value]` (types from `src/parts/catalogue.cpp`; `OSC freq=1MHz`, `R value=330`); `part J1 POWER` always (joins `VCC`/`GND`); `part J2 VIDEO` for TV Machines (the Session adds the TV by itself);
   - `net NAME REF.PIN …` with pin names from the datasheet; the same `net` name may repeat on several lines; rails are `VCC` and `GND`; short comments above groups;
+  - ROMs: `part U14 2716 contents=../roms/<m>.rom`, the contents file in `roms/` (relative to the netlist's directory);
   - references: `U` chips, `R` resistors, `D` LEDs, `DS` digits, `SW` buttons, `X` oscillator, `J` connectors.
 - `manuals/<m>/user.md`: `# Name` then `## What it does`: one short paragraph, seen from outside only (power hookup, what the player sees). Backticked references must exist.
 - `manuals/<m>/service.md`: `# Name — Service Manual` then `## Components`: one bullet per reference, every Part, netlist order: `` - `U1` short role: detail with `NET` names ``.
@@ -29,6 +30,7 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 
 - Agent: write `boards/<m>/<m>.place` from the Machine design's panel parts (connectors, LEDs, digits, buttons and the resistors beside them; grammar in [BOARD_PLACEMENT.md](../p4k-board-placement/BOARD_PLACEMENT.md#what-is-new)), then `./build/release/src/cli/bw place netlists/<m>.bwn boards/<m>/<m>.place -o boards/<m>/<m>.kicad_pcb`. It writes the Board with every part placed (the chips annealed on wire length) and a `.kicad_pro` if there is none, and prints the wire length and the grid. The `place_drc_<m>` ctest appears by itself (reconfigure). Release takes under a second on 070; debug about 20 s.
 - User: opens `<m>.kicad_pro` and routes it ([KICAD_GUIDE.md](../p2a-board-layout/KICAD_GUIDE.md) steps 7–8: F.Cu/B.Cu only, no zones, DRC 0 errors), keeping any route order a crack Puzzle needs. Placement is not theirs to change; if it looks wrong, fix the `.place` and run `bw place` again. On a routed Board, `bw place` refuses without `--force`.
+- Freerouting may leave one connection (P2a, 080: a ROM pad boxed in by its neighbours' tracks). DRC says "1 unconnected items" and `check-board` prints `open NET: …`. The agent can add it: find a free path from the tracks around it, write the segments and vias into a scratch copy of the `.kicad_pcb` (KiCad closed), and check it with `kicad-cli pcb drc` and `check-board` before copying it back.
 - Agent, once it is saved: read the routing order of every Net a crack Puzzle needs (ADD_PUZZLE.md) before writing Puzzles. A "pad at an end of the route" constraint is easy to miss in KiCad (060 `V2`); a crack on a two-pad Net needs no constraint at all.
 - Agent: `./build/debug/src/cli/bw check-board netlists/<m>.bwn boards/<m>/<m>.kicad_pcb` must print `ok`. Commit only `<m>.place`, `<m>.kicad_pro` and `<m>.kicad_pcb`.
 - The `drc_<m>` ctest appears by itself (glob in `tests/CMakeLists.txt`; reconfigure).
