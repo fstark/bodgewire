@@ -4,6 +4,7 @@ add_library(bw_parts STATIC
   connector.cpp
   digit.cpp
   gate_package.cpp
+  keyboard.cpp
   led.cpp
   ls107.cpp
   ls157.cpp

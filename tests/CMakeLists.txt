@@ -64,6 +64,7 @@ add_executable(bw_tests
   parts/connector_test.cpp
   parts/digit_test.cpp
   parts/gate_package_test.cpp
+  parts/keyboard_test.cpp
   parts/led_test.cpp
   parts/ls107_test.cpp
   parts/ls157_test.cpp

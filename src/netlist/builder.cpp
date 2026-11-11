@@ -435,6 +435,16 @@ Paddle* PaddleOf(const LoadedCircuit& loaded, std::string_view reference) {
     return component == loaded.components.end() ? nullptr : static_cast<Paddle*>(component->second);
 }
 
+Keyboard* KeyboardOf(const LoadedCircuit& loaded, std::string_view reference) {
+    const auto part = std::ranges::find(loaded.parts, reference, &LoadedPart::reference);
+    if (part == loaded.parts.end() || part->info->name != "KEYBOARD") {
+        return nullptr;
+    }
+    const auto component = loaded.components.find(reference);
+    return component == loaded.components.end() ? nullptr
+                                                : static_cast<Keyboard*>(component->second);
+}
+
 std::optional<NetId> ConnectorNet(const LoadedCircuit& loaded, std::string_view part,
                                   std::string_view pin) {
     for (const LoadedPart& p : loaded.parts) {

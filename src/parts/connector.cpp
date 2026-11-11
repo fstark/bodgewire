@@ -1,5 +1,6 @@
 #include "parts/connector.hpp"
 
+#include <string>
 #include <utility>
 
 #include "sim/check.hpp"
@@ -21,13 +22,23 @@ std::vector<PinSpec> ConnectorPins(std::string_view part) {
                 {"VCC", PinKind::Power, Family::Ttl},
                 {"GND", PinKind::Power, Family::Ttl}};
     }
+    if (part == "KEYBOARD") {
+        std::vector<PinSpec> pins;
+        for (int bit = 0; bit < 7; ++bit) {
+            pins.push_back({"D" + std::to_string(bit), PinKind::Output, Family::Ttl});
+        }
+        pins.push_back({"STROBE", PinKind::Output, Family::Ttl});
+        pins.push_back({"VCC", PinKind::Power, Family::Ttl});
+        pins.push_back({"GND", PinKind::Power, Family::Ttl});
+        return pins;
+    }
     Check(part == "VIDEO", "unknown connector");
     return {{"VIDEO", PinKind::Input, Family::Ttl},
             {"SYNC_N", PinKind::Input, Family::Ttl},
             {"GND", PinKind::Power, Family::Ttl}};
 }
 
-bool ConnectorPowersDevice(std::string_view part) { return part == "PADDLE"; }
+bool ConnectorPowersDevice(std::string_view part) { return part == "PADDLE" || part == "KEYBOARD"; }
 
 std::optional<double> ConnectorVolts(std::string_view part, std::string_view pin) {
     if (part == "POWER") {

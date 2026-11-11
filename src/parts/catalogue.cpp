@@ -9,6 +9,7 @@
 #include "parts/connector.hpp"
 #include "parts/digit.hpp"
 #include "parts/gate_package.hpp"
+#include "parts/keyboard.hpp"
 #include "parts/led.hpp"
 #include "parts/ls107.hpp"
 #include "parts/ls157.hpp"
@@ -147,6 +148,25 @@ std::expected<Component*, std::string> CreatePaddle(Circuit& circuit, std::strin
     return &circuit.add<Paddle>(std::move(reference), *low, *high, reversed);
 }
 
+std::expected<Component*, std::string> CreateKeyboard(Circuit& circuit, std::string reference,
+                                                      std::span<const PartParam> params) {
+    Time strobe = kKeyboardStrobe;
+    for (const PartParam& param : params) {
+        if (param.name != "strobe") {
+            return std::unexpected("KEYBOARD: unknown parameter '" + param.name + "'");
+        }
+        const auto length = DurationFromText(param.value);
+        if (!length) {
+            return std::unexpected(length.error());
+        }
+        if (*length < 1'000'000) {
+            return std::unexpected("KEYBOARD: strobe must be at least 1us");
+        }
+        strobe = *length;
+    }
+    return &circuit.add<Keyboard>(std::move(reference), strobe);
+}
+
 std::expected<Component*, std::string> CreateLed(Circuit& circuit, std::string reference,
                                                  std::span<const PartParam> params) {
     if (!params.empty()) {
@@ -221,6 +241,7 @@ constexpr std::array s_parts{
     PartInfo{"BUTTON", "push button", "TACT-6x3.5", Button, &CreateButton},
     PartInfo{"DIGIT", "red 0.56-inch 7-segment digit, common anode", "DIGIT-0.56", Led,
              &CreateDigit, kDigitLamps},
+    PartInfo{"KEYBOARD", "ASCII keyboard connector", "KK-10", Connector, &CreateKeyboard},
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
     PartInfo{"PADDLE", "paddle controller connector", "KK-4", Connector, &CreatePaddle},
