@@ -263,5 +263,5 @@ Our own circuit diagram of a Machine, generated from its Nets and hand-adjusted.
 _Avoid_: Circuit diagram, original schematic
 
 **Typing**:
-The `bw_ui` mode in which every key the player presses goes to the Machine's keyboard instead of the tools; Escape ends it.
+The `bw_ui` mode in which every key the player presses goes to the Machine's keyboard instead of the tools: on while the keyboard window has focus, F2 toggles it. Escape is a key of the keyboard.
 _Avoid_: Keyboard capture (in player text)

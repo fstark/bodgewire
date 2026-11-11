@@ -2,7 +2,7 @@
 
 A standard device off the Board, plugged into a Connector Part: the paddle controller (P4i), the ASCII keyboard (P4n). The device's logic lives inside the Connector Part, so it is simulated like a chip; the Board holds only the header. Devices whose arrangement belongs to the Board (LEDs, digits, buttons) are on-board Parts instead: [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md).
 
-Reference commits (paddle controller): `8bfbcc6` Part, connector pins, footprint, power; `da76381` knob through the Session, `bw run`, `bw_ui`; `d24f490` → `e1468a0` the knob meter Machine (045). Keyboard: `e0feb33` Part (a setting that is an event), `53e109f` typing through the Session, `--type`, a bench netlist, `605db6c` the capture mode in `bw_ui`.
+Reference commits (paddle controller): `8bfbcc6` Part, connector pins, footprint, power; `da76381` knob through the Session, `bw run`, `bw_ui`; `d24f490` → `e1468a0` the knob meter Machine (045). Keyboard: `e0feb33` Part (a setting that is an event), `53e109f` typing through the Session, `--type`, a bench netlist, `605db6c` the capture mode in `bw_ui`; `23a4d87` control codes through the Session, `5ef5183` the drawn layout, `785e7a7` the keyboard window (P4o).
 
 ## The chain
 
@@ -19,14 +19,14 @@ Reference commits (paddle controller): `8bfbcc6` Part, connector pins, footprint
 | Setting | `src/machine/<x>_setting.{hpp,cpp}` | the CLI text form (`ParseKnob("J2:40%")`) |
 | Session | `src/session/session.{hpp,cpp}` | list (`knobs()`), set, get; kept in a map by reference and reapplied after every rebuild (power-on after a Repair) |
 | CLI | `src/cli/main.cpp`, `src/ui/main.cpp` | `--knob REF:N%`, applied before power-on; a reference that is not the device is a usage error |
-| UI | `src/ui/side_panel.cpp` | a section per kind of device (`DrawKnobs`: slider, mouse wheel, Up/Down keys unless text input has the keyboard) |
+| UI | `src/ui/side_panel.cpp` | a section per kind of device (`DrawKnobs`: slider, mouse wheel, Up/Down keys unless text input has the keyboard); a device with many controls gets its own floating window drawn like the real thing (`keyboard_window.cpp`: caps from a layout in `src/view`, tested headless), drawn also without a Board |
 | Datasheet | `datasheets/<NAME>.md` | the connector's pins and the device inside |
 
 Tests: `tests/parts/<device>_test.cpp` (row, pins, parameters refused with their messages, behaviour, setting clamped, `ConnectorPowersDevice`), `tests/machine/<x>_setting_test.cpp`, `[session]` cases (setting kept across power, and across a Repair once a Machine has a Puzzle), `manual_test.cpp` (pin names).
 
 ## Gotchas
 
-- A device that takes the whole PC keyboard (the ASCII keyboard) needs a capture mode in `bw_ui` (`src/ui/keyboard_capture.cpp`): SDL key and text events taken before ImGui sees them, key-ups passed on so no key stays held, `SDL_StartTextInput` kept on while capturing, a banner drawn with or without a Board.
+- A device that takes the whole PC keyboard (the ASCII keyboard) needs a capture mode in `bw_ui` (`src/ui/keyboard_capture.cpp`): on while its window is focused (`NoFocusOnAppearing`, else it captures at launch), F2 toggles; SDL key and text events taken before ImGui sees them, key-ups always seen and passed on so no key stays held; PC keys drawn by what they type, not where they sit (any PC layout); Ctrl codes from the shifted key (`SDL_GetKeyFromScancode` with Shift); `SDL_StartTextInput` kept on while capturing; a banner drawn with or without a Board.
 - In `bw_ui`, a scripted input (`--press`, `--type`) must not act in the first frame after a power-on: `status.simTime` is still the previous run's.
 
 - A Puzzle that unpowers the device cracks its supply Trace: ask for the device's `VCC` pad as a leaf of `VCC` in the layout (045 Dead knob).
