@@ -85,15 +85,20 @@ public:
             }
             loaded_->connections.push_back({pin.first, pin.second, std::string(net.name)});
         }
-        // A stuck input reads its value through a Net of its own, listed or not (a dry Joint).
+        // A stuck input reads its value through a Net of its own, listed or not (a dry Joint). A
+        // stuck bidirectional Pin forces its Net above and reads its value here; Supply, so the
+        // chip's own drive onto that Net never fights the tie into X.
         for (const StuckPin& s : stuck_) {
             const Component& component = *loaded_->components.at(s.reference);
-            if (component.pins()[s.pin].kind != PinKind::Input || isUnpowered(s.reference)) {
+            const PinKind kind = component.pins()[s.pin].kind;
+            if (!IsReader(kind) || isUnpowered(s.reference)) {
                 continue;
             }
             const NetId own =
                 circuit.addNet(s.reference + "." + component.pins()[s.pin].name + " stuck");
-            circuit.tie(own, s.value, DriveStrength::Strong);
+            circuit.tie(own, s.value,
+                        kind == PinKind::Bidirectional ? DriveStrength::Supply
+                                                       : DriveStrength::Strong);
             circuit.connect(component, s.pin, own);
         }
         for (const PartDecl& decl : netlist_.parts) {
@@ -310,7 +315,7 @@ private:
             }
             const auto pins = part.component->pins();
             for (PinIndex i = 0; i < pins.size(); ++i) {
-                if (pins[i].kind == PinKind::Input && pins[i].family == Family::Ttl &&
+                if (IsReader(pins[i].kind) && pins[i].family == Family::Ttl &&
                     !pinNet_.contains({reference, i})) {
                     loaded_->warnings.push_back({netlist_.file, part.decl->line, Severity::Warning,
                                                  reference + "." + std::to_string(i + 1) + " (" +

@@ -29,6 +29,7 @@ public:
     inline bool rose(PinIndex pin) const;              // Net went 0 → 1 at this timestamp
     inline bool fell(PinIndex pin) const;              // Net went 1 → 0 at this timestamp
     bool readBit(PinIndex pin);                        // X → seeded random bit (MOS inputs, S4)
+    bool readBitBefore(PinIndex pin);                  // readBefore, X → seeded random bit
     inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
     void wakeAfter(Time delay);  // evaluate this Component again at now + delay
 
@@ -70,7 +71,8 @@ public:
     PinId firstPin() const { return firstPin_; }        // global PinId of local Pin 0
     PinIndex pinIndex(std::string_view pinName) const;  // Check()s the name
 
-    // Outputs already hold random 0/1; override to seed state / make outputs consistent.
+    // Outputs already hold random 0/1, bidirectional Pins Z; override to seed state / make outputs
+    // consistent.
     virtual void powerOn(PowerOnContext& ctx);
     virtual void evaluate(EvalContext& ctx) = 0;
 

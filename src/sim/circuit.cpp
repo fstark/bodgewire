@@ -68,9 +68,8 @@ void Circuit::buildTables() {
         const std::uint32_t n = ToIndex(info.net);
         if (IsDriver(info.kind)) {
             drivers[n].push_back(PinId{p});
-            continue;
         }
-        if (info.kind != PinKind::Input) {
+        if (!IsReader(info.kind)) {
             continue;
         }
         if (info.family == Family::Ttl) {

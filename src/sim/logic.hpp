@@ -7,10 +7,17 @@ namespace bw {
 enum class LogicValue : std::uint8_t { Zero, One, Z, X };  // Z only as a drive (S1)
 enum class DriveStrength : std::uint8_t { None, Weak, Strong, Supply };
 enum class Family : std::uint8_t { Ttl, Mos };
-enum class PinKind : std::uint8_t { Input, Output, OpenCollector, Power, NoConnect };
+enum class PinKind : std::uint8_t { Input, Output, OpenCollector, Bidirectional, Power, NoConnect };
 
+// Drives its Net: an output of any kind, or a bidirectional Pin.
 constexpr bool IsDriver(PinKind kind) {
-    return kind == PinKind::Output || kind == PinKind::OpenCollector;
+    return kind == PinKind::Output || kind == PinKind::OpenCollector ||
+           kind == PinKind::Bidirectional;
+}
+
+// Reads its Net: an input or a bidirectional Pin.
+constexpr bool IsReader(PinKind kind) {
+    return kind == PinKind::Input || kind == PinKind::Bidirectional;
 }
 
 struct Drive {
@@ -47,6 +54,7 @@ constexpr char ToChar(LogicValue value) {
 constexpr Drive DriveOf(PinKind kind, Family family, LogicValue value) {
     switch (kind) {
     case PinKind::Output:
+    case PinKind::Bidirectional:
         return {value, value == LogicValue::Z ? DriveStrength::None : DriveStrength::Strong,
                 family};
     case PinKind::OpenCollector:

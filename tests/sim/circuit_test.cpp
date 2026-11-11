@@ -18,6 +18,14 @@ public:
     void evaluate(EvalContext& /*ctx*/) override {}
 };
 
+class BusPins : public Component {
+public:
+    explicit BusPins(std::string name)
+        : Component(std::move(name), {{"T", PinKind::Bidirectional, Family::Ttl},
+                                      {"M", PinKind::Bidirectional, Family::Mos}}) {}
+    void evaluate(EvalContext& /*ctx*/) override {}
+};
+
 PinId Pin(const Component& component, PinIndex index) {
     return PinId{ToIndex(component.firstPin()) + index};
 }
@@ -131,6 +139,26 @@ TEST_CASE("circuit: drivers and readers", "[sim]") {
     const auto fanOut = circuit.fanOut(n);
     REQUIRE(fanOut.size() == 1);
     CHECK(fanOut[0].component == u2.id());
+}
+
+TEST_CASE("circuit: a bidirectional pin is a driver and a reader", "[sim]") {
+    Circuit circuit;
+    BusPins& u1 = circuit.add<BusPins>("U1");
+    const NetId ttl = circuit.addNet("ttl");
+    const NetId mos = circuit.addNet("mos");
+    circuit.connect(u1, "T", ttl);
+    circuit.connect(u1, "M", mos);
+    circuit.finalize();
+
+    for (const NetId n : {ttl, mos}) {
+        REQUIRE(circuit.drivers(n).size() == 1);
+        REQUIRE(circuit.fanOut(n).size() == 1);
+        CHECK(circuit.fanOut(n)[0].component == u1.id());
+        CHECK(circuit.singleDriver(n) == Circuit::kNoPin);
+    }
+    CHECK(circuit.drivers(ttl)[0] == Pin(u1, 0));
+    CHECK(circuit.hasTtlInput(ttl));
+    CHECK_FALSE(circuit.hasTtlInput(mos));
 }
 
 TEST_CASE("circuit: fan-out merges pins of one component", "[sim]") {

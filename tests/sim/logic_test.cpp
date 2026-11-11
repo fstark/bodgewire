@@ -55,8 +55,26 @@ TEST_CASE("logic: IsDriver", "[sim]") {
     CHECK_FALSE(IsDriver(PinKind::Input));
     CHECK(IsDriver(PinKind::Output));
     CHECK(IsDriver(PinKind::OpenCollector));
+    CHECK(IsDriver(PinKind::Bidirectional));
     CHECK_FALSE(IsDriver(PinKind::Power));
     CHECK_FALSE(IsDriver(PinKind::NoConnect));
+}
+
+TEST_CASE("logic: IsReader", "[sim]") {
+    CHECK(IsReader(PinKind::Input));
+    CHECK(IsReader(PinKind::Bidirectional));
+    CHECK_FALSE(IsReader(PinKind::Output));
+    CHECK_FALSE(IsReader(PinKind::OpenCollector));
+    CHECK_FALSE(IsReader(PinKind::Power));
+    CHECK_FALSE(IsReader(PinKind::NoConnect));
+}
+
+TEST_CASE("logic: DriveOf bidirectional is a tri-state output", "[sim]") {
+    const Family f = Family::Mos;
+    CHECK(Same(DriveOf(PinKind::Bidirectional, f, Zero), Mos(Zero)));
+    CHECK(Same(DriveOf(PinKind::Bidirectional, f, One), Mos(One)));
+    CHECK(Same(DriveOf(PinKind::Bidirectional, f, X), Mos(X)));
+    CHECK(Same(DriveOf(PinKind::Bidirectional, f, Z), Mos(Z, None)));
 }
 
 TEST_CASE("logic: DriveOf power and no-connect is None", "[sim]") {

@@ -496,7 +496,122 @@ public:
     std::vector<Time> falls;
 };
 
+// One MOS bidirectional Pin D and a TTL input EN: while EN is 1 it drives `value` on D, else Z.
+// Records what it reads on D (and before) at each evaluation.
+class BusChip final : public Component {
+public:
+    explicit BusChip(std::string name, LogicValue value)
+        : Component(std::move(name), {{"D", PinKind::Bidirectional, Family::Mos},
+                                      {"EN", PinKind::Input, Family::Ttl}}),
+          value_(value) {}
+    void evaluate(EvalContext& ctx) override {
+        ++evaluations;
+        reads.push_back(ctx.read(0));
+        ctx.drive(0, ctx.read(1) == One ? value_ : Z, 5_ns);
+    }
+    std::vector<LogicValue> reads;
+    int evaluations = 0;
+
+private:
+    LogicValue value_;
+};
+
+// Copies readBitBefore() of its MOS input to its output on each evaluation.
+class BeforeReader final : public Component {
+public:
+    explicit BeforeReader(std::string name)
+        : Component(std::move(name),
+                    {{"IN", PinKind::Input, Family::Mos}, {"OUT", PinKind::Output, Family::Mos}}) {}
+    void evaluate(EvalContext& ctx) override {
+        bits.push_back(ctx.readBitBefore(0));
+        ctx.drive(1, bits.back() ? One : Zero, 1);
+    }
+    std::vector<bool> bits;
+};
+
 }  // namespace
+
+TEST_CASE("simulator: a bidirectional pin starts released", "[sim]") {
+    for (std::uint64_t seed = 1; seed <= 8; ++seed) {
+        Circuit circuit;
+        const NetId bus = circuit.addNet("BUS");
+        const NetId en = circuit.addNet("EN");
+        auto& chip = circuit.add<BusChip>("U1", One);
+        circuit.connect(chip, "D", bus);
+        circuit.connect(chip, "EN", en);
+        AddDrivers(circuit, en, {{Zero}});
+        AddDrivers(circuit, bus, {{Zero, {{10_ns, Z}}, Family::Ttl}});
+        circuit.finalize();
+        Simulator sim(circuit);
+        sim.powerOn(seed);
+        CHECK(sim.value(bus) == Zero);  // the Stimulus alone: the chip drives nothing yet
+        CHECK(chip.reads.front() == Zero);
+    }
+}
+
+TEST_CASE("simulator: a bidirectional pin drives and reads its net", "[sim]") {
+    Circuit circuit;
+    const NetId bus = circuit.addNet("BUS");
+    const NetId en = circuit.addNet("EN");
+    auto& chip = circuit.add<BusChip>("U1", One);
+    circuit.connect(chip, "D", bus);
+    circuit.connect(chip, "EN", en);
+    AddDrivers(circuit, en, {{Zero, {{100_ns, One}, {200_ns, Zero}}}});
+    // Another Driver on the bus: 0 until 50 ns, released, then 0 again from 150 ns (a fight).
+    AddDrivers(circuit, bus, {{Zero, {{50_ns, Z}, {150_ns, Zero}, {180_ns, Z}}, Family::Ttl}});
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.record(bus);
+    sim.powerOn(3);
+    sim.runUntil(60_ns);
+    CHECK(sim.value(bus) != Z);  // undriven MOS-only Net: its last driven value
+    CHECK(sim.isFloating(bus));
+    CHECK(chip.reads.back() == Zero);  // it read the other Driver's release
+    sim.runUntil(110_ns);
+    CHECK(sim.value(bus) == One);  // driven by the chip 5 ns after EN
+    const int before = chip.evaluations;
+    CHECK(chip.reads.back() == One);  // its own change woke it
+    CHECK(before >= 3);
+    sim.runUntil(160_ns);
+    CHECK(sim.value(bus) == X);  // MOS against TTL: X, not TTL's 0
+    sim.runUntil(190_ns);
+    CHECK(sim.value(bus) == One);
+    sim.runUntil(300_ns);
+    CHECK(sim.value(bus) == One);  // released at 205 ns: holds its charge
+    CHECK(sim.isFloating(bus));
+}
+
+TEST_CASE("simulator: readBitBefore", "[sim]") {
+    Circuit circuit;
+    const NetId in = circuit.addNet("IN");
+    auto& reader = circuit.add<BeforeReader>("U1");
+    circuit.connect(reader, "IN", in);
+    AddDrivers(circuit, in, {{Zero, {{10_ns, One}, {20_ns, Zero}}, Family::Mos}});
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runUntil(30_ns);
+    // Power-on (0), the rise at 10 ns (0 before it), the fall at 20 ns (1 before it).
+    CHECK(reader.bits == std::vector<bool>{false, false, true});
+}
+
+TEST_CASE("simulator: readBitBefore reads X as a random bit", "[sim]") {
+    std::set<bool> seen;
+    for (std::uint64_t seed = 1; seed <= 32; ++seed) {
+        Circuit circuit;
+        const NetId in = circuit.addNet("IN");
+        auto& reader = circuit.add<BeforeReader>("U1");
+        circuit.connect(reader, "IN", in);
+        AddDrivers(circuit, in, {{X, {{10_ns, One}}, Family::Mos}});
+        circuit.finalize();
+        Simulator sim(circuit);
+        sim.powerOn(seed);
+        sim.runUntil(20_ns);
+        REQUIRE(reader.bits.size() == 2);
+        seen.insert(reader.bits[1]);
+    }
+    CHECK(seen.size() == 2);
+}
 
 TEST_CASE("simulator: fell only at a 1 to 0 change", "[sim]") {
     Circuit circuit;

@@ -26,6 +26,14 @@ bool EvalContext::readBit(PinIndex pin) {
     return value == LogicValue::One;
 }
 
+bool EvalContext::readBitBefore(PinIndex pin) {
+    const LogicValue value = readBefore(pin);
+    if (value == LogicValue::X) {
+        return sim_.rng_.nextBit();
+    }
+    return value == LogicValue::One;
+}
+
 void EvalContext::driveChanged(PinId id, LogicValue value, Time delay) {
     assert(delay >= 1);
     assert(IsDriver(sim_.circuit_.pinInfo(id).kind));
@@ -125,7 +133,10 @@ void Simulator::powerOn(std::uint64_t seed) {
     for (std::uint32_t p = 0; p < outputs_.size(); ++p) {
         OutputState& o = outputs_[p];
         o = {0, LogicValue::Zero, LogicValue::Zero, false};
-        if (IsDriver(circuit_.pinInfo(PinId{p}).kind)) {
+        const PinKind kind = circuit_.pinInfo(PinId{p}).kind;
+        if (kind == PinKind::Bidirectional) {
+            o.current = LogicValue::Z;  // released until the chip's first evaluation
+        } else if (IsDriver(kind)) {
             o.current = rng_.nextBit() ? LogicValue::One : LogicValue::Zero;
         }
     }

@@ -9,7 +9,7 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Bidirectional pins | |
+| 1 | Bidirectional pins | done |
 | 2 | Packages: DIP-18, DIP-20, KK-10 | |
 | 3 | 2114 RAM | |
 | 4 | 74LS244, grid packages | |
@@ -70,5 +70,6 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 ## Implementation notes
 
 - Puzzle-file `stuck`/`joint` on a 2114 pin needs a Board with one: first exercised by the 090 Puzzles (P4p); P4n tests the electrical side through the builder.
+- Phase 1: 070 headless 1.57× before the change on a fresh machine; later 1.47–1.49× both with and without it (same session, alternated builds): no cost from the change.
 - User check: Type in the Keyboard section of `bw_ui tests/data/ram_bench.bwn`, a few keys show under Sent and the banner says Typing; `U` does not open the User Manual while typing; Escape stops it and `U` works again.
 - Docs review (before phase 1), fixed: the catalogue test's all-TTL rule exempts the 2114; the bench resets U4 before typing (random power-on count); the typing banner drawn without a Board; the user check uses `U` (no tool keys on a netlist-only Session); the placer check diffs two scratch placements; no test of a TTL bidirectional warning (no such Part); a stuck `IO` against a driving 74LS244 reads 0; a stuck bidirectional pin's own Net tied at Supply; waiting keys dropped at power-off by a producer-side marker, kept at power-on, no `--type` key in the first powered frame of `bw_ui`; the keyboard gap counted from the `STROBE` fall; control bytes of text events skipped; Z set explicitly at power-on; the release `bw run` records the bus.
