@@ -8,7 +8,7 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 
 1. **Docs**: `docs/machines/NNN-name/NAME.md` (what it does, circuit, Puzzles) and `NAME_DESIGN.md` (netlist, Board notes, Puzzles with exact faults, manuals). No code design needed unless new Parts.
 2. **Netlist + manuals + fault-free test** (headless, one commit).
-3. **Board**: the user lays it out in KiCad; the agent wires the tests (one commit).
+3. **Board**: the agent places it with `bw place`, the user routes it in KiCad, the agent wires the tests (one commit).
 4. **Puzzles** (needs the Board for cracks).
 5. **Session test + release check**, then the docs rows.
 
@@ -27,10 +27,10 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 
 ## 3. Board (user + agent)
 
-- Agent: `./build/debug/src/cli/bw export-kicad netlists/<m>.bwn -o boards/<m>/<m>.net`.
-- User: lays out the Board following [KICAD_GUIDE.md](../p2a-board-layout/KICAD_GUIDE.md) (F.Cu/B.Cu only, no zones, DRC 0 errors).
+- Agent: write `boards/<m>/<m>.place` from the Machine design's panel parts (connectors, LEDs, digits, buttons and the resistors beside them; grammar in [BOARD_PLACEMENT.md](../p4k-board-placement/BOARD_PLACEMENT.md#what-is-new)), then `./build/release/src/cli/bw place netlists/<m>.bwn boards/<m>/<m>.place -o boards/<m>/<m>.kicad_pcb`. It writes the Board with every part placed (the chips annealed on wire length) and a `.kicad_pro` if there is none, and prints the wire length and the grid. The `place_drc_<m>` ctest appears by itself (reconfigure). Release takes under a second on 070; debug about 20 s.
+- User: opens `<m>.kicad_pro` and routes it ([KICAD_GUIDE.md](../p2a-board-layout/KICAD_GUIDE.md) steps 7–8: F.Cu/B.Cu only, no zones, DRC 0 errors), keeping any route order a crack Puzzle needs. Placement is not theirs to change; if it looks wrong, fix the `.place` and run `bw place` again. On a routed Board, `bw place` refuses without `--force`.
 - Agent, once it is saved: read the routing order of every Net a crack Puzzle needs (ADD_PUZZLE.md) before writing Puzzles. A "pad at an end of the route" constraint is easy to miss in KiCad (060 `V2`); a crack on a two-pad Net needs no constraint at all.
-- Agent: `./build/debug/src/cli/bw check-board netlists/<m>.bwn boards/<m>/<m>.kicad_pcb` must print `ok`. Commit only `<m>.kicad_pro` and `<m>.kicad_pcb`.
+- Agent: `./build/debug/src/cli/bw check-board netlists/<m>.bwn boards/<m>/<m>.kicad_pcb` must print `ok`. Commit only `<m>.place`, `<m>.kicad_pro` and `<m>.kicad_pcb`.
 - The `drc_<m>` ctest appears by itself (glob in `tests/CMakeLists.txt`; reconfigure).
 - Add `"<m>"` to the per-Machine loops:
   - `tests/board/boards_test.cpp`: a `<m> matches its netlist` case + the courtyard loop;
