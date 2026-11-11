@@ -1,6 +1,6 @@
 # P4l ROM Parts — Implementation Plan
 
-Done 2026-11-11, user check pending.
+Done 2026-11-11, checked by the user.
 
 Design: [ROM_PARTS_DESIGN.md](ROM_PARTS_DESIGN.md)
 Spec: [ROM_PARTS.md](ROM_PARTS.md); Machine: [MESSAGE.md](../machines/080-message/MESSAGE.md), [MESSAGE_DESIGN.md](../machines/080-message/MESSAGE_DESIGN.md)
