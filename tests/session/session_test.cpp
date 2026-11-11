@@ -777,3 +777,38 @@ TEST_CASE("session: typing", "[session]") {
     session.powerOff();
     session.runner().waitIdle();
 }
+
+TEST_CASE("session: typing control codes", "[session]") {
+    auto loaded = LoadNetlistFile(std::filesystem::path(BW_ROOT_DIR) / "tests/data/ram_bench.bwn");
+    REQUIRE(loaded.has_value());
+    Session session(std::nullopt, std::move(*loaded));
+    session.setSpeed(Speed::Max);
+    CHECK_FALSE(session.typeCode("J1", 0x01));  // not powered
+
+    session.powerOn(1, 50_ms);
+    CHECK(session.typeCode("J1", 0x00));
+    CHECK(session.typeCode("J1", 0x01));
+    CHECK(session.typeCode("J1", 0x1B));
+    CHECK(session.typeCode("J1", 0x5F));
+    CHECK_FALSE(session.typeCode("J1", 0x60));
+    CHECK_FALSE(session.typeCode("J1", 0x7F));
+    CHECK_FALSE(session.typeCode("J9", 0x01));
+    CHECK(session.typed("J1") == std::string("\x00\x01\x1B\x5F", 4));
+    CHECK(session.typeCode("J1", 'A'));
+    CHECK(session.typeCode("J1", 0x07));
+    CHECK(session.typeCode("J1", 'B'));
+    session.runner().waitIdle();
+    // U4 starts at a random count: A, BEL, B are at three consecutive addresses of the 16.
+    const auto& low = static_cast<const Ram2114&>(*session.circuit().components.at("U2"));
+    const auto& high = static_cast<const Ram2114&>(*session.circuit().components.at("U3"));
+    const auto word = [&](std::size_t a) {
+        return low.word(a % 16) | (high.word(a % 16) & 0b111) << 4;
+    };
+    bool found = false;
+    for (std::size_t a = 0; a < 16; ++a) {
+        found |= word(a) == 'A' && word(a + 1) == 0x07 && word(a + 2) == 'B';
+    }
+    CHECK(found);
+    session.powerOff();
+    session.runner().waitIdle();
+}

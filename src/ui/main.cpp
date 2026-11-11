@@ -585,7 +585,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     const Typing& typing = options.type[t];
                     while (typedKeys[t] < typing.keys.size() &&
                            typing.at(typedKeys[t]) <= status.simTime) {
-                        session.type(typing.reference, typing.keys[typedKeys[t]++]);
+                        session.typeCode(typing.reference, typing.keys[typedKeys[t]++]);
                     }
                 }
             }

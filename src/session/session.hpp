@@ -145,9 +145,12 @@ public:
 
     // Every KEYBOARD Part of the circuit, in netlist order.
     std::vector<std::string> keyboards() const;
-    // Sends `key` (KeyboardCode) to KEYBOARD `reference`, which takes it at the next slice
-    // boundary. False, nothing sent: not powered, not a KEYBOARD, a key it does not send, or
+    // Sends `code` (0x00-kKeyboardLastCode: control codes from CTRL, ESC, RETURN, BACK SPACE,
+    // and the upper-case set) to KEYBOARD `reference`, which takes it at the next slice boundary.
+    // False, nothing sent: not powered, not a KEYBOARD, a code it does not send, or
     // kKeyboardWaiting keys already waiting. Keys still waiting at power-off are dropped.
+    bool typeCode(std::string_view reference, std::uint8_t code);
+    // typeCode with the character's KeyboardCode (text, --type).
     bool type(std::string_view reference, char32_t key);
     // The codes sent to `reference` since power-on, the last kTypedShown.
     std::string typed(std::string_view reference) const;

@@ -459,17 +459,21 @@ std::vector<std::string> Session::keyboards() const {
 
 bool Session::type(std::string_view reference, char32_t key) {
     const auto code = KeyboardCode(key);
+    return code && typeCode(reference, *code);
+}
+
+bool Session::typeCode(std::string_view reference, std::uint8_t code) {
     const std::vector<std::string> all = keyboards();
-    if (!powered_ || !code || std::ranges::find(all, reference) == all.end()) {
+    if (!powered_ || code > kKeyboardLastCode || std::ranges::find(all, reference) == all.end()) {
         return false;
     }
     Keyboard* keyboard = KeyboardOf(*live_->circuit, reference);
-    if (keyboard == nullptr || !keyboard->type(*code)) {
+    if (keyboard == nullptr || !keyboard->type(code)) {
         return false;
     }
     live_->runner->wake(keyboard->id(), PressJitter());
     std::string& sent = typed_[std::string(reference)];
-    sent.push_back(static_cast<char>(*code));
+    sent.push_back(static_cast<char>(code));
     if (sent.size() > kTypedShown) {
         sent.erase(0, sent.size() - kTypedShown);
     }

@@ -12,11 +12,12 @@
 
 namespace bw {
 
-inline constexpr Time kKeyboardDelay = 100'000;      // ps: encoder output delay
-inline constexpr Time kKeyboardSetup = 1'000'000;    // ps: D0-D6 steady before STROBE rises
-inline constexpr Time kKeyboardGap = 1'000'000;      // ps: STROBE low before the next key
-inline constexpr Time kKeyboardStrobe = 10'000'000;  // ps: default strobe=
-inline constexpr std::size_t kKeyboardWaiting = 32;  // keys waiting at most
+inline constexpr Time kKeyboardDelay = 100'000;          // ps: encoder output delay
+inline constexpr Time kKeyboardSetup = 1'000'000;        // ps: D0-D6 steady before STROBE rises
+inline constexpr Time kKeyboardGap = 1'000'000;          // ps: STROBE low before the next key
+inline constexpr Time kKeyboardStrobe = 10'000'000;      // ps: default strobe=
+inline constexpr std::size_t kKeyboardWaiting = 32;      // keys waiting at most
+inline constexpr std::uint8_t kKeyboardLastCode = 0x5F;  // the highest code a key sends
 
 // The 7-bit code the keyboard sends for a typed character: 0x20-0x5F as is, a-z as A-Z,
 // '\r' or '\n' 0x0D (Return), '\b' 0x08 (Backspace); nullopt for anything else.
