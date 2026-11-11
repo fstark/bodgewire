@@ -3,7 +3,7 @@
 Design: [KEYBOARD_WINDOW_DESIGN.md](KEYBOARD_WINDOW_DESIGN.md)
 Spec: [KEYBOARD_WINDOW.md](KEYBOARD_WINDOW.md)
 
-Done 2026-11-11, user check pending.
+Done 2026-11-11, checked by the user.
 
 ## Status
 
@@ -18,7 +18,7 @@ Done 2026-11-11, user check pending.
 
 - Phase 3 look, tuned from screenshots: the first version's pressed caps (sunk 10 %, darkened 15 %) were hard to see, and the case was flat. Now a pressed cap's top drops 12 % into its skirt and its face darkens to 72 %. The case has a vertical gradient (46 → 28 grey) and a near-black well behind the keys, with a shadowed top lip. The skirt is 28 grey, so the caps stand out from the well. The shifted symbol on `K`–`P` sits higher, because `_` over `O` read as a macron. The engraving is lighter (128 grey). The other values are as in the design.
 - Release check: `bw_ui tests/data/ram_bench.bwn --type 'J1:100ms:!!!!!!!!!!!!!!!'` at 1.00× shows `1` and both SHIFTs down, no amber edge, no Typing banner. `--type 'J1:100ms:THE QUICK BROWN FOX'` draws the window at the bottom of the Board area (at 1 s the key sent is the space). `puzzles/gibberish.bwp` has no keyboard window and the same UI font as before. On 070 (`long_paddle.bwp`, probe, 8 clips, 2 hooks, meter): 1.00×, UI 1.4 ms (1.2 ms in P4n). Debug tests: 763 passed.
-- User check (pending): `bw_ui tests/data/ram_bench.bwn`:
+- User check (done 2026-11-11, all passed): `bw_ui tests/data/ram_bench.bwn`:
   - F2 focuses the keyboard: the case glows amber and the banner says Typing.
   - Typing `HELLO` moves the caps down and up.
   - `!` typed on the PC draws SHIFT and `1` down.
