@@ -312,6 +312,10 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     std::set<std::string> latched;  // Buttons kept pressed by a right-click
     std::vector<std::size_t> typedKeys(options.type.size(), 0);  // --type: keys sent so far
     bool wasPowered = false;
+    KeyboardCapture capture;
+    if (const auto keyboards = session.keyboards(); !keyboards.empty()) {
+        capture.reference = keyboards.front();
+    }
     if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
         if (const auto component =
                 scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
@@ -341,6 +345,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         const auto frameStart = std::chrono::steady_clock::now();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+            if (capture.handle(event, session)) {
+                continue;
+            }
             ImGui_ImplSDL3_ProcessEvent(&event);
             if (event.type == SDL_EVENT_QUIT ||
                 (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
@@ -614,7 +621,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                                uiMilliseconds,
                                lock,
                                StateName(status.state)};
-        sidePanel.draw(session, view, boardView, loaded, stats, seed);
+        sidePanel.draw(session, view, boardView, loaded, capture, stats, seed);
+        capture.sync(window);
+        toolbar.typing = capture.on ? capture.reference : std::string();
         ImGui::EndChild();
         ImGui::End();
         manualWindows.draw(toolbar.userManualOpen, loaded.manuals.manuals, boardView,

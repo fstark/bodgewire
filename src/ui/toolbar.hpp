@@ -23,6 +23,7 @@ public:
     bool userManualOpen = false;
     bool analyzerOpen = false, scopeOpen = false, meterOpen = false;
     bool wireStarted = false;  // Wire tool: first pin clicked
+    std::string typing;        // the KEYBOARD being typed on; empty: not typing
 
 private:
     std::chrono::steady_clock::time_point flashUntil_{}, reasonUntil_{};

@@ -2,9 +2,12 @@
 
 #include <format>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <imgui.h>
+
+#include "ui/toolbar.hpp"
 
 namespace bw {
 
@@ -101,10 +104,42 @@ void DrawKnobs(Session& session) {
     }
 }
 
+// "HELLO[CR]": the keys sent, the two controls named.
+std::string SentText(std::string_view codes) {
+    std::string text;
+    for (const char c : codes) {
+        text += c == 0x0D   ? std::string("[CR]")
+                : c == 0x08 ? std::string("[BS]")
+                            : std::string(1, c);
+    }
+    return text;
+}
+
+// F2 starts typing, also with the section collapsed; a toggle and the keys sent.
+void DrawKeyboard(Session& session, KeyboardCapture& capture) {
+    if (capture.reference.empty()) {
+        return;
+    }
+    if (!capture.on && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
+        capture.on = true;
+    }
+    if (!ImGui::CollapsingHeader("Keyboard", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+    if (ToolButton(capture.on ? "Typing (Esc)" : "Type (F2)", capture.on)) {
+        capture.on = !capture.on;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Type on the Machine's keyboard (%s): every key goes to it until Esc",
+                          capture.reference.c_str());
+    }
+    ImGui::TextUnformatted(("Sent: " + SentText(session.typed(capture.reference))).c_str());
+}
+
 }  // namespace
 
 void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loaded& loaded,
-                     DebugStats stats, std::uint64_t& seed) {
+                     KeyboardCapture& capture, DebugStats stats, std::uint64_t& seed) {
     const BoardScene* scene = board.scene();
     const LoadedCircuit& design = DesignOf(session);
     const ImGuiTreeNodeFlags open = ImGuiTreeNodeFlags_DefaultOpen;
@@ -129,6 +164,7 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
     }
 
     DrawKnobs(session);
+    DrawKeyboard(session, capture);
 
     if (session.machine() && ImGui::CollapsingHeader("Probe", open)) {
         DrawLamps(session.lamps());
