@@ -144,3 +144,20 @@ TEST_CASE("analyzer consumer: second clip on a watched net", "[runner]") {
     REQUIRE(analyzer.captures().update());
     CHECK(AllHigh(analyzer.captures().front(), 1));
 }
+
+TEST_CASE("analyzer consumer: a late power-off does not undo an Arm", "[runner]") {
+    auto loaded = LoadTestPattern();
+    AnalyzerConsumer analyzer;
+    Runner runner(loaded->circuit, {&analyzer});
+    const AnalyzerConfig armed = Armed({loaded->nets.at("CLK")}, {.period = 100_ns});
+    analyzer.configure(runner, armed);
+    runner.waitIdle();
+    analyzer.powerOff();  // the devices thread, before it applied the Arm
+    CHECK(analyzer.phase() == AnalyzerPhase::Armed);
+
+    AnalyzerConfig stopped = armed;
+    stopped.armed = false;
+    analyzer.configure(runner, stopped);
+    analyzer.powerOff();
+    CHECK(analyzer.phase() == AnalyzerPhase::Idle);
+}

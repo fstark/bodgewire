@@ -120,6 +120,18 @@ TEST_CASE("session: clips", "[session]") {
     CHECK_FALSE(session.clip("U99", "1").has_value());
 }
 
+TEST_CASE("session: unclip frees the Channel's Trigger", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    REQUIRE(session.clip("U1", "14") == 0);
+    AnalyzerSettings settings = session.analyzerSettings();
+    settings.trigger[0] = TriggerCondition::Rise;
+    settings.trigger[1] = TriggerCondition::High;
+    session.setAnalyzer(settings);
+    session.unclip(0);
+    CHECK(session.analyzerSettings().trigger[0] == TriggerCondition::Any);
+    CHECK(session.analyzerSettings().trigger[1] == TriggerCondition::High);
+}
+
 TEST_CASE("session: clips survive a repair", "[session]") {
     Session session = PuzzleSession("broken_trace");
     REQUIRE(session.clip("U13", "6") == 0);

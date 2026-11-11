@@ -236,6 +236,7 @@ std::optional<std::size_t> Session::clip(std::string_view reference, std::string
 
 void Session::unclip(std::size_t channel) {
     clips_[channel].reset();
+    analyzer_.settings.trigger[channel] = TriggerCondition::Any;  // a free Channel reads X
     configureLive();
 }
 

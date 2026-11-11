@@ -15,18 +15,21 @@ bool Running(AnalyzerPhase phase) {
 
 }  // namespace
 
+// The devices thread applies a configure() only at its next Sample or slice; until then its phase
+// is stale (a power-off would show Idle right after Arm), so phase() shows what this one will do.
 void AnalyzerConsumer::configure(Runner& runner, AnalyzerConfig config) {
+    const AnalyzerPhase current = phase();
+    if (config.armed && (config.arms != sent_.arms || Running(current))) {
+        expected_ = AnalyzerPhase::Armed;
+    } else if (!config.armed && Running(current)) {
+        expected_ = AnalyzerPhase::Idle;
+    } else {
+        expected_ = current;
+    }
     {
         const std::scoped_lock lock(mutex_);
         pending_ = config;
-    }
-    generation_.fetch_add(1, std::memory_order_release);
-
-    const AnalyzerPhase current = phase();
-    if (config.armed && (config.arms != sent_.arms || Running(current))) {
-        phase_.store(AnalyzerPhase::Armed, std::memory_order_release);
-    } else if (!config.armed && Running(current)) {
-        phase_.store(AnalyzerPhase::Idle, std::memory_order_release);
+        sentGeneration_ = generation_.fetch_add(1, std::memory_order_release) + 1;
     }
 
     for (std::size_t c = 0; c < kChannels; ++c) {
@@ -43,6 +46,17 @@ void AnalyzerConsumer::configure(Runner& runner, AnalyzerConfig config) {
     sent_ = std::move(config);
 }
 
+AnalyzerPhase AnalyzerConsumer::phase() const {
+    const std::uint64_t published = phase_.load(std::memory_order_acquire);
+    return published >> 8 == sentGeneration_ ? static_cast<AnalyzerPhase>(published & 0xff)
+                                             : expected_;
+}
+
+void AnalyzerConsumer::publishPhase() {
+    phase_.store(configGeneration_ << 8 | static_cast<std::uint64_t>(state_.phase()),
+                 std::memory_order_release);
+}
+
 std::span<const NetId> AnalyzerConsumer::nets() const {
     if (generation_.load(std::memory_order_acquire) != netsGeneration_) {
         adoptNets();
@@ -51,8 +65,8 @@ std::span<const NetId> AnalyzerConsumer::nets() const {
 }
 
 void AnalyzerConsumer::adoptNets() const {
-    netsGeneration_ = generation_.load(std::memory_order_acquire);
     const std::scoped_lock lock(mutex_);
+    netsGeneration_ = generation_.load(std::memory_order_acquire);
     nets_.clear();
     masks_.clear();
     for (std::size_t c = 0; c < kChannels; ++c) {
@@ -72,10 +86,10 @@ void AnalyzerConsumer::adoptNets() const {
 }
 
 void AnalyzerConsumer::adopt() {
-    configGeneration_ = generation_.load(std::memory_order_acquire);
     const AnalyzerConfig previous = applied_;
     {
         const std::scoped_lock lock(mutex_);
+        configGeneration_ = generation_.load(std::memory_order_acquire);
         applied_ = pending_;
     }
     if (!applied_.armed) {
@@ -91,7 +105,7 @@ void AnalyzerConsumer::powerOn() {
         adopt();
     }
     state_.powerOn();
-    phase_.store(state_.phase(), std::memory_order_release);
+    publishPhase();
 }
 
 void AnalyzerConsumer::sample(NetId net, Sample sample) {
@@ -112,7 +126,7 @@ void AnalyzerConsumer::advanceTo(Time time) {
     }
     state_.advanceTo(time);
     now_ = time;
-    phase_.store(state_.phase(), std::memory_order_release);
+    publishPhase();
     if (state_.capture().serial != published_) {
         published_ = state_.capture().serial;
         captures_.back() = state_.capture();
@@ -122,7 +136,7 @@ void AnalyzerConsumer::advanceTo(Time time) {
 
 void AnalyzerConsumer::powerOff() {
     state_.powerOff();
-    phase_.store(state_.phase(), std::memory_order_release);
+    publishPhase();
 }
 
 }  // namespace bw

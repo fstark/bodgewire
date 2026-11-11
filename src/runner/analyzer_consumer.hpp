@@ -30,7 +30,7 @@ struct AnalyzerConfig {
 class AnalyzerConsumer final : public Consumer {
 public:
     void configure(Runner& runner, AnalyzerConfig config);  // watches new Nets, unwatches old
-    AnalyzerPhase phase() const { return phase_.load(std::memory_order_acquire); }
+    AnalyzerPhase phase() const;  // the devices' phase once they applied the last configure()
     TripleBuffer<Capture>& captures() { return captures_; }  // completed Captures
 
     std::span<const NetId> nets() const override;  // distinct clipped Nets
@@ -43,15 +43,18 @@ public:
 private:
     void adoptNets() const;  // devices: pending Nets → nets_, masks_
     void adopt();            // devices: pending config → state_, from now_
+    void publishPhase();     // devices: state_ phase with configGeneration_
 
     // UI thread
     std::array<std::optional<NetId>, kChannels> watched_;
     AnalyzerConfig sent_;  // last configure(), for the UI-side phase
+    std::uint64_t sentGeneration_ = 0;
+    AnalyzerPhase expected_ = AnalyzerPhase::Idle;  // phase() until sentGeneration_ is applied
     // shared
     mutable std::mutex mutex_;
     AnalyzerConfig pending_;                    // guarded by mutex_
-    std::atomic<std::uint64_t> generation_{0};  // bumped after pending_ changes
-    std::atomic<AnalyzerPhase> phase_{AnalyzerPhase::Idle};
+    std::atomic<std::uint64_t> generation_{0};  // bumped with pending_, under mutex_
+    std::atomic<std::uint64_t> phase_{0};       // applied generation << 8 | AnalyzerPhase
     TripleBuffer<Capture> captures_;
     // devices thread
     mutable std::uint64_t netsGeneration_ = 0;
