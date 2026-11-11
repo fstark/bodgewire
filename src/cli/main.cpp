@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <print>
@@ -29,6 +30,7 @@
 #include "machine/machine.hpp"
 #include "machine/press.hpp"
 #include "machine/repair.hpp"
+#include "machine/typing.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/units.hpp"
 #include "sim/simulator.hpp"
@@ -47,7 +49,8 @@ constexpr std::string_view kUsage =
     "[--record NET,NET... | --record-all] [--vcd FILE] "
     "[--tv FILE.bmp] [--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,"
     "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
-    "[--probe REF.PIN,...] [--press REF:DOWN:UP,...] [--knob REF:N%,...]\n"
+    "[--probe REF.PIN,...] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
+    "[--type REF:START:TEXT]\n"
     "       bw export-kicad <file.bwn> -o <file.net>\n"
     "       bw check-board <file.bwn> <file.kicad_pcb>\n"
     "       bw place <file.bwn> <file.place> -o <file.kicad_pcb> [--seed 1] [--tries 4] "
@@ -65,6 +68,7 @@ struct Options {
     std::vector<std::string> probe;
     std::vector<ButtonPress> press;
     std::vector<KnobSetting> knob;
+    std::vector<Typing> type;
 };
 
 int UsageError(std::string_view message) {
@@ -105,7 +109,7 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
         }
         if (arg != "--time" && arg != "--seed" && arg != "--record" && arg != "--vcd" &&
             arg != "--tv" && arg != "--repair" && arg != "--probe" && arg != "--press" &&
-            arg != "--knob") {
+            arg != "--knob" && arg != "--type") {
             return "unknown option " + std::string(arg);
         }
         if (i + 1 >= args.size()) {
@@ -148,6 +152,12 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
                 }
                 options.knob.push_back(std::move(*knob));
             }
+        } else if (arg == "--type") {
+            auto typing = ParseTyping(value);  // not split at commas: the text may hold them
+            if (!typing) {
+                return typing.error();
+            }
+            options.type.push_back(std::move(*typing));
         } else {
             options.vcd = value;
         }
@@ -452,21 +462,34 @@ int Run(std::span<char*> args) {
         probed.push_back(*net);
     }
 
-    struct PressEdge {
+    // Button presses and typed keys, applied at their simulated times.
+    struct InputEdge {
         Time at;
-        Button* button;
-        bool down;
+        ComponentId wake;
+        std::function<void()> apply;
     };
-    std::vector<PressEdge> edges;
+    std::vector<InputEdge> edges;
     for (const ButtonPress& press : options.press) {
         Button* button = ButtonOf(loaded, press.reference);
         if (button == nullptr) {
             return UsageError("'" + press.reference + "' is not a button");
         }
-        edges.push_back({press.down, button, true});
-        edges.push_back({press.up, button, false});
+        edges.push_back({press.down, button->id(), [button] { button->setPressed(true); }});
+        edges.push_back({press.up, button->id(), [button] { button->setPressed(false); }});
     }
-    std::ranges::stable_sort(edges, {}, &PressEdge::at);
+    for (const Typing& typing : options.type) {
+        Keyboard* keyboard = KeyboardOf(loaded, typing.reference);
+        if (keyboard == nullptr) {
+            return UsageError("'" + typing.reference + "' is not a keyboard");
+        }
+        for (std::size_t i = 0; i < typing.keys.size(); ++i) {
+            // 100 ms apart, a key waits only behind a strobe= near 100 ms: the refusal of a
+            // full queue is ignored.
+            edges.push_back({typing.at(i), keyboard->id(),
+                             [keyboard, code = typing.keys[i]] { (void)keyboard->type(code); }});
+        }
+    }
+    std::ranges::stable_sort(edges, {}, &InputEdge::at);
 
     for (const KnobSetting& knob : options.knob) {
         Paddle* paddle = PaddleOf(loaded, knob.reference);
@@ -539,8 +562,8 @@ int Run(std::span<char*> args) {
             }
             sim.runUntil(stop);
             for (; next < edges.size() && edges[next].at == sim.now(); ++next) {
-                edges[next].button->setPressed(edges[next].down);
-                sim.wake(edges[next].button->id());
+                edges[next].apply();
+                sim.wake(edges[next].wake);
             }
             if (tv) {
                 tv->update();

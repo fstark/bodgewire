@@ -8,6 +8,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "parts/ram2114.hpp"
+
 #include "../machine/test_points.hpp"
 #include "machine/crack.hpp"
 #include "parts/ls47.hpp"
@@ -734,4 +736,44 @@ TEST_CASE("session: knob kept across a Repair", "[session]") {
     CHECK(paddle->knob() == 0.3);
     CHECK(session.knob("J2") == 0.3);
     session.powerOff();
+}
+
+TEST_CASE("session: typing", "[session]") {
+    auto loaded = LoadNetlistFile(std::filesystem::path(BW_ROOT_DIR) / "tests/data/ram_bench.bwn");
+    REQUIRE(loaded.has_value());
+    Session session(std::nullopt, std::move(*loaded));
+    session.setSpeed(Speed::Max);
+    CHECK(session.keyboards() == std::vector<std::string>{"J1"});
+    CHECK_FALSE(session.type("J1", U'H'));  // not powered
+
+    session.powerOn(1, 50_ms);
+    CHECK_FALSE(session.type("J9", U'H'));
+    CHECK_FALSE(session.type("SW1", U'H'));
+    CHECK_FALSE(session.type("J1", U'{'));
+    CHECK(session.type("J1", U'h'));
+    CHECK(session.type("J1", U'I'));
+    CHECK(session.typed("J1") == "HI");
+    session.runner().waitIdle();
+    // U4 starts at a random count: HI is at two consecutive addresses of the 16.
+    const auto& low = static_cast<const Ram2114&>(*session.circuit().components.at("U2"));
+    const auto& high = static_cast<const Ram2114&>(*session.circuit().components.at("U3"));
+    const auto word = [&](std::size_t a) {
+        return low.word(a % 16) | (high.word(a % 16) & 0b111) << 4;
+    };
+    bool found = false;
+    for (std::size_t a = 0; a < 16; ++a) {
+        found |= word(a) == 'H' && word(a + 1) == 'I';
+    }
+    CHECK(found);
+
+    for (int i = 0; i < 20; ++i) {
+        CHECK(session.type("J1", U'A' + i));
+    }
+    CHECK(session.typed("J1") == "EFGHIJKLMNOPQRST");
+    session.powerOff();
+    CHECK_FALSE(session.type("J1", U'A'));
+    session.powerOn(2);
+    CHECK(session.typed("J1").empty());
+    session.powerOff();
+    session.runner().waitIdle();
 }

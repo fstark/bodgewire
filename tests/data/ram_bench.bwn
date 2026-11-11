@@ -1,0 +1,43 @@
+# Bench for P4n (docs/p4n-ram-bus/RAM_BUS.md), no Board. Each key typed on J1 is written into the
+# two 2114s (U2 bits 0-3, U3 bits 4-6) at the address held by U4: while STROBE is high, WE_N is
+# low and U1 drives the code onto the bus B0-B6; U4 steps when WE_N rises. The rest of the time
+# the RAMs drive the word at U4's address onto the bus. U4 powers on at a random count: press
+# SW1 (clears U4) before typing to start at address 0, and again to read address 0 back.
+# The bus fights for up to 100 ns at the start of each write (the RAMs let go 100 ns after WE_N
+# falls, U1 drives 15-20 ns after): a real bench's sloppiness, gone before the write ends.
+
+part J1  KEYBOARD strobe=10us
+part J2  POWER
+part U1  74LS244   # keyboard onto the bus
+part U2  2114      # bits 0-3
+part U3  2114      # bits 4-6
+part U4  74LS161   # address A0-A3
+part U5  74LS04    # WE_N
+part SW1 BUTTON
+part R1  R value=4k7
+
+net STROBE  J1.STROBE U5.1A
+net WE_N    U5.1Y U1.1OE_N U1.2OE_N U2.WE_N U3.WE_N U4.CLK
+net D0      J1.D0 U1.1A1
+net D1      J1.D1 U1.1A2
+net D2      J1.D2 U1.1A3
+net D3      J1.D3 U1.1A4
+net D4      J1.D4 U1.2A1
+net D5      J1.D5 U1.2A2
+net D6      J1.D6 U1.2A3
+net B0      U1.1Y1 U2.IO1
+net B1      U1.1Y2 U2.IO2
+net B2      U1.1Y3 U2.IO3
+net B3      U1.1Y4 U2.IO4
+net B4      U1.2Y1 U3.IO1
+net B5      U1.2Y2 U3.IO2
+net B6      U1.2Y3 U3.IO3
+net A0      U4.QA U2.A0 U3.A0
+net A1      U4.QB U2.A1 U3.A1
+net A2      U4.QC U2.A2 U3.A2
+net A3      U4.QD U2.A3 U3.A3
+net RESET_N R1.2 SW1.1 U4.CLR_N
+net VCC     R1.1 U4.ENP U4.ENT U4.LOAD_N
+net GND     SW1.2 U1.2A4 U2.CS_N U3.CS_N U4.A U4.B U4.C U4.D
+net GND     U2.A4 U2.A5 U2.A6 U2.A7 U2.A8 U2.A9 U3.A4 U3.A5 U3.A6 U3.A7 U3.A8 U3.A9
+net GND     U5.2A U5.3A U5.4A U5.5A U5.6A

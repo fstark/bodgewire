@@ -143,6 +143,16 @@ public:
     bool setKnob(std::string_view reference, double turn);
     double knob(std::string_view reference) const;  // 0 until set
 
+    // Every KEYBOARD Part of the circuit, in netlist order.
+    std::vector<std::string> keyboards() const;
+    // Sends `key` (KeyboardCode) to KEYBOARD `reference`, which takes it at the next slice
+    // boundary. False, nothing sent: not powered, not a KEYBOARD, a key it does not send, or
+    // kKeyboardWaiting keys already waiting. Keys still waiting at power-off are dropped.
+    bool type(std::string_view reference, char32_t key);
+    // The codes sent to `reference` since power-on, the last kTypedShown.
+    std::string typed(std::string_view reference) const;
+    static constexpr std::size_t kTypedShown = 16;
+
 private:
     // What one build of the Machine runs on. Members in this order: the Runner is destroyed first.
     struct Live {
@@ -179,8 +189,9 @@ private:
     bool blackNext_ = false;
     std::optional<bool> connected_;    // red_ and black_ on one island of the current Copper
     std::optional<double> meterRail_;  // RailVolts of the meter's Net
-    std::set<std::string, std::less<>> pressed_;        // Buttons held down
-    std::map<std::string, double, std::less<>> knobs_;  // PADDLE turns, 0..1
+    std::set<std::string, std::less<>> pressed_;             // Buttons held down
+    std::map<std::string, double, std::less<>> knobs_;       // PADDLE turns, 0..1
+    std::map<std::string, std::string, std::less<>> typed_;  // codes sent, per KEYBOARD
 };
 
 }  // namespace bw

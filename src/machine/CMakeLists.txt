@@ -6,5 +6,6 @@ add_library(bw_machine STATIC
   press.cpp
   puzzle.cpp
   repair.cpp
+  typing.cpp
 )
 target_link_libraries(bw_machine PUBLIC bw_board PRIVATE bw_warnings)

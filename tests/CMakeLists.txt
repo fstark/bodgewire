@@ -29,6 +29,7 @@ add_executable(bw_tests
   machine/knob_setting_test.cpp
   machine/machine_test.cpp
   machine/test_points.cpp
+  machine/typing_test.cpp
   machine/press_test.cpp
   machine/puzzle_test.cpp
   machine/repair_test.cpp
@@ -57,6 +58,7 @@ add_executable(bw_tests
   netlist/diagnostic_test.cpp
   netlist/net_pins_test.cpp
   netlist/parser_test.cpp
+  netlist/ram_bench_test.cpp
   netlist/sample_test.cpp
   netlist/units_test.cpp
   parts/button_test.cpp

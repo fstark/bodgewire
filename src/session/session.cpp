@@ -134,6 +134,7 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
     }
     live_->runner->powerOn(seed);
     powered_ = true;
+    typed_.clear();
 }
 
 void Session::powerOff() {
@@ -143,6 +144,11 @@ void Session::powerOff() {
         }
     }
     pressed_.clear();
+    for (const std::string& reference : keyboards()) {
+        if (Keyboard* keyboard = KeyboardOf(*live_->circuit, reference)) {
+            keyboard->dropWaiting();
+        }
+    }
     live_->runner->powerOff();
     powered_ = false;
 }
@@ -438,6 +444,41 @@ bool Session::setKnob(std::string_view reference, double turn) {
 double Session::knob(std::string_view reference) const {
     const auto it = knobs_.find(reference);
     return it == knobs_.end() ? 0.0 : it->second;
+}
+
+std::vector<std::string> Session::keyboards() const {
+    std::vector<std::string> references;
+    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
+    for (const LoadedPart& part : circuit.parts) {
+        if (part.info->name == "KEYBOARD") {
+            references.push_back(part.reference);
+        }
+    }
+    return references;
+}
+
+bool Session::type(std::string_view reference, char32_t key) {
+    const auto code = KeyboardCode(key);
+    const std::vector<std::string> all = keyboards();
+    if (!powered_ || !code || std::ranges::find(all, reference) == all.end()) {
+        return false;
+    }
+    Keyboard* keyboard = KeyboardOf(*live_->circuit, reference);
+    if (keyboard == nullptr || !keyboard->type(*code)) {
+        return false;
+    }
+    live_->runner->wake(keyboard->id(), PressJitter());
+    std::string& sent = typed_[std::string(reference)];
+    sent.push_back(static_cast<char>(*code));
+    if (sent.size() > kTypedShown) {
+        sent.erase(0, sent.size() - kTypedShown);
+    }
+    return true;
+}
+
+std::string Session::typed(std::string_view reference) const {
+    const auto it = typed_.find(reference);
+    return it == typed_.end() ? std::string() : it->second;
 }
 
 void Session::recomputeContinuity() {

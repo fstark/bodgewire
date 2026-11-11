@@ -22,6 +22,7 @@
 #include "machine/knob_setting.hpp"
 #include "machine/machine.hpp"
 #include "machine/press.hpp"
+#include "machine/typing.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
 #include "netlist/units.hpp"
@@ -52,7 +53,7 @@ constexpr std::string_view kUsage =
     "unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
     "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--hook REF.PIN,...] [--timebase 1us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
-    "[--manual user] [--screenshot OUT.png [--after 1s]]";
+    "[--type REF:START:TEXT] [--manual user] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
     std::filesystem::path file;
@@ -67,6 +68,7 @@ struct Options {
     std::optional<Time> timebase;      // Oscilloscope ps per division
     std::vector<ButtonPress> press;
     std::vector<KnobSetting> knob;
+    std::vector<Typing> type;
     bool userManual = false;
 };
 
@@ -148,6 +150,13 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 }
                 options.knob.push_back(std::move(*knob));
             }
+        } else if (arg == "--type") {
+            auto typing = ParseTyping(argv[++i]);  // not split at commas: the text may hold them
+            if (!typing) {
+                std::println(stderr, "bw_ui: {}", typing.error());
+                return std::nullopt;
+            }
+            options.type.push_back(std::move(*typing));
         } else {
             return std::nullopt;
         }
@@ -301,6 +310,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     std::optional<PinRef> wireStart;  // Wire tool: the first pin
     Point wireStartAt{};
     std::set<std::string> latched;  // Buttons kept pressed by a right-click
+    std::vector<std::size_t> typedKeys(options.type.size(), 0);  // --type: keys sent so far
+    bool wasPowered = false;
     if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
         if (const auto component =
                 scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
@@ -557,6 +568,22 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 boardView.setButtons(buttonTags);
             }
         }
+        {
+            // Keys scripted by --type. Not in the first frame powered: its status.simTime is the
+            // previous run's (the power-on is only queued).
+            if (!session.powered()) {
+                std::ranges::fill(typedKeys, 0);
+            } else if (wasPowered) {
+                for (std::size_t t = 0; t < options.type.size(); ++t) {
+                    const Typing& typing = options.type[t];
+                    while (typedKeys[t] < typing.keys.size() &&
+                           typing.at(typedKeys[t]) <= status.simTime) {
+                        session.type(typing.reference, typing.keys[typedKeys[t]++]);
+                    }
+                }
+            }
+            wasPowered = session.powered();
+        }
         if (machine) {
             std::vector<CutMark> cuts;
             for (const Crack& cut : machine->cuts()) {
@@ -727,6 +754,13 @@ int main(int argc, char** argv) {
     for (const KnobSetting& knob : options->knob) {
         if (!session.setKnob(knob.reference, knob.turn)) {
             std::println(stderr, "bw_ui: '{}' is not a paddle controller", knob.reference);
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+    }
+    for (const Typing& typing : options->type) {
+        if (!std::ranges::contains(session.keyboards(), typing.reference)) {
+            std::println(stderr, "bw_ui: '{}' is not a keyboard", typing.reference);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
