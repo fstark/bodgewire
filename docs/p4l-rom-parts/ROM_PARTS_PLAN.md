@@ -9,12 +9,12 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Contents format | |
-| 2 | DIP-24 package | |
-| 3 | ROM Parts (2716, 2513), contents paths | |
-| 4 | 74LS165 | |
-| 5 | Netlist, ROM files, fault-free test | |
-| 6 | Manuals | |
+| 1 | Contents format |`04293c0` |
+| 2 | DIP-24 package |`19a244f` |
+| 3 | ROM Parts (2716, 2513), contents paths |`9cd6bcb` |
+| 4 | 74LS165 |`8b587d1` |
+| 5 | Netlist, ROM files, fault-free test |`babed7b` |
+| 6 | Manuals |`1635989` |
 | 7 | Board (user routing), per-Machine loops | |
 | 8 | Session test, release check, recipes, docs | |
 
@@ -74,3 +74,8 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 ## Implementation notes
 
 - Docs review (before phase 1): the netlist loads without warnings and the circuit holds (six dots F5–F1, 0 a character; blanking in step). Fixed: the text starts at TV column ~44, not 48 (`U17` re-times sync one dot late, as on 060); the page search accepts a run of up to 4 horizontal offsets (a dot is 4 columns) and stops each offset at its first mismatch; DIP-24 before the ROM rows (the footprint test loads every catalogue package); the catalogue test derives the pin count from the package and gives ROMs `contents=` (`tests/data/empty.rom`); `PartPinNames` takes ROM names from the spec so the datasheets are checked; `electrical_test` resolves `contents=`; no X on the 74LS165's edge-only `CLK`; `;` inside a string is not a comment; the ROM delay simplification documented.
+- Fences: the full debug suite (`ctest`, about 9 minutes, no `[slow]` label to exclude) ran after phases 1 and 5; phases 2–4 were committed on a clean build and their own tests (footprint, kicad netlist, ROM, catalogue, builder, placer, manuals, 74LS165), which the phase 5 run then covered (711/711).
+- Phases 1–4: the code worked as designed; the ROM, contents and 74LS165 tests passed on the first build.
+- Phase 5: the page drew right first time (`bw_ui` screenshot: the poem, a dark border). Release headless 2.19× with the machine under load (load average 7; 060 measured 2.12× idle); `bw_ui` 1.00×, UI 0.3 ms. `message: the TV shows the page` 11.6 s in debug for three seeds.
+- Phase 6: the design's Service Manual bullets grouped references (`U2`, `U3`; `U6`–`U8`), but the Chip panel finds a role by the bullet's first reference: one bullet each, design fixed.
+- Phase 7: `bw place` (seed 1): a 6 × 3 grid, 2.24 m of wire; the ROMs side by side on the front edge. `place_drc_message` passes. Waiting for the user's routing.
