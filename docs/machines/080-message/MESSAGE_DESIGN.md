@@ -166,10 +166,13 @@ Placed by `bw place netlists/message.bwn boards/message/message.place -o boards/
 - Service: Components, one bullet per reference with its Nets, netlist order (`X1`, `U1`–`U17`, `J1`, `J2`):
   - `X1` dot clock: 2 MHz crystal oscillator, net `CLK`
   - `U1` dot counter: counts 10–15, `DOT_END` on a character's last dot; 6 dots a character
-  - `U2`, `U3` column counter: `C0`–`C3`, carry `CC`; `C4`; 21 characters a line, reloaded with 0 by `LINE_END_N`
+  - `U2` column counter, low bits: `C0`–`C3`, carry `CC`
+  - `U3` column counter, high bit: `C4`; with `U2`, 21 characters a line, reloaded with 0 by `LINE_END_N`
   - `U4` line decoders: `LINE_END_N` on the last dot of character 20, `HSYNC_N` for character 20
   - `U5` inverters: `DOT_LOAD_N`, `LINE_END`, `CLK_N`
-  - `U6`–`U8` line counter: `V0`–`V8`, counts at each line end, reloaded with 0 after line 311; `V0` doubles each glyph line, `V1`–`V3` glyph line, `V4`–`V7` text row
+  - `U6` line counter, bits 0–3: `V0` (each glyph line drawn twice), `V1`–`V3` (glyph line); counts at each line end
+  - `U7` line counter, bits 4–7: `V4`–`V7`, the text row
+  - `U8` line counter, bit 8: `V8`; with `U6` and `U7` reloaded with 0 after line 311
   - `U9` frame-end decoder: `FRAME_END_N` low at the end of line 311
   - `U10` vertical sync decoder: `VSYNC_N` for lines 308–311
   - `U11` sync mixer: composite sync from `HSYNC_N` and `VSYNC_N`, inverted into `SYNC_N_D`
