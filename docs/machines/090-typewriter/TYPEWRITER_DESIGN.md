@@ -285,8 +285,11 @@ Placed by `bw place netlists/typewriter.bwn boards/typewriter/typewriter.place -
   - `U11` sync mixer: composite sync from `HSYNC_N` and `VSYNC_N` into `SYNC_N_D`; two gates compare `V6`, `V7` with `Y2`, `Y3` (`NE7`, `NE8`)
   - `U12` text area `ACTIVE` (columns 0–31 of lines 0–255); `CTL`, high for control codes; `CUR_SHOW`, the blinking cursor
   - `U13` row gates: `R1`–`R3` = `V1`–`V3` while `ACTIVE`, else 0; `WE_N` = `WEK_N` AND `CLEAR_N`
-  - `U14`–`U16` address multiplexer: `RA0`–`RA8` from the beam (`C0`–`C4`, `V4`–`V7`) during the text, from the cursor (`X0`–`X4`, `Y0`–`Y3`) while `C5` is high
-  - `U17` page RAM (2114), bits 0–3 of each character on `B0`–`B3`; `U18` bits 4–5 on `B4`–`B5`; 512 cells, row × 32 + column
+  - `U14` address multiplexer, bits 0–3: `RA0`–`RA3` from the beam's `C0`–`C3` during the text, from the cursor's `X0`–`X3` while `C5` is high
+  - `U15` address multiplexer, bits 4–7: `RA4`–`RA7` from `C4`, `V4`–`V6` or from `X4`, `Y0`–`Y2`
+  - `U16` address multiplexer, bit 8: `RA8` from `V7` or from `Y3`
+  - `U17` page RAM (2114), bits 0–3 of each character on `B0`–`B3`; 512 cells, row × 32 + column, at `RA0`–`RA8`
+  - `U18` page RAM (2114), bits 4–5 of each character on `B4`–`B5`
   - `U19` character ROM (2513): address `R1`–`R3`, `B0`–`B5`; out the line's dots `F5` (left) to `F1`
   - `U20` dot shift register: loads `F5`–`F1` on `DOT_LOAD_N`, shifts them out on `CLK_N` as `VIDEO_D`
   - `U21` output register: re-times `SYNC_N`, `VIDEO`, the write strobe `WEK_N` and `LINE_END` (the first dot of each line) on the clock
@@ -299,7 +302,8 @@ Placed by `bw place netlists/typewriter.bwn boards/typewriter/typewriter.place -
   - `U28` cursor column, bits 0–3: `X0`–`X3`, carry `XRCO`; loaded with 0 by `CR_N`
   - `U29` cursor column, bit 4: `X4`
   - `U30` cursor row: `Y0`–`Y3`; all three cursor counters step at a line end while `WR` is high, cleared by `CLEAR_N`
-  - `U31`, `U32` cursor comparators: `NE0`–`NE6` high where the beam's and the cursor's address bits differ; `U32` gate 4 XORs `CUR_SHOW` into the video (`VIDEO_M`)
+  - `U31` cursor comparator: `NE0`–`NE3` high where `C0`–`C3` and `X0`–`X3` differ
+  - `U32` cursor comparator: `NE4`–`NE6` for `C4`, `V4`, `V5` against `X4`, `Y0`, `Y1`; gate 4 XORs `CUR_SHOW` into the video (`VIDEO_M`)
   - `U33` comparator: `EQ0`–`EQ2`, high where three bits agree
   - `U34` cursor match: `MATCH_N` low while the beam addresses the cursor's cell
   - `U35` cursor delay: `CURSOR_N`, `MATCH_N` one character late, clocked by `DOT_END`
