@@ -117,6 +117,21 @@ std::optional<Offset> FindPage(const TvFrame& frame, const Page& page) {
     return matches[matches.size() / 2];
 }
 
+// Where the page of `codes` is on the frame, with the cursor's cell either inverted or plain (it
+// blinks); nullopt unless exactly one of the two is found.
+std::optional<Offset> ShownAt(const TvFrame& frame, const Codes& codes, Cell cursor,
+                              bool* inverted = nullptr) {
+    const auto plain = FindPage(frame, ExpectedPage(codes));
+    const auto withCursor = FindPage(frame, ExpectedPage(codes, cursor));
+    if (plain.has_value() == withCursor.has_value()) {
+        return std::nullopt;
+    }
+    if (inverted != nullptr) {
+        *inverted = withCursor.has_value();
+    }
+    return plain ? plain : withCursor;
+}
+
 // Lit cells outside the text rectangle at `offset`, widened by one dot on the right (a cursor in
 // column 31 lights its sixth dot).
 int LitOutside(const TvFrame& frame, Offset offset) {
@@ -250,15 +265,16 @@ TEST_CASE("typewriter: the TV shows the RAMs", "[machines][slow]") {
     // The first locked frame may have started before the counters fell into step.
     const auto frames = t.lockedFrames(3);
     REQUIRE(frames.size() == 3);
-    const auto page = ExpectedPage(t.codes());
-    const auto offset = FindPage(frames[1], page);
+    const auto cursor = t.cursor();
+    REQUIRE(cursor.has_value());
+    const auto offset = ShownAt(frames[1], t.codes(), *cursor);
     REQUIRE(offset.has_value());
     INFO("left " << offset->left << ", top " << offset->top);
     CHECK(offset->left >= 30);
     CHECK(offset->left <= 38);
     CHECK(offset->top <= 8);
     CHECK(LitOutside(frames[1], *offset) == 0);
-    CHECK(frames[2].cells == frames[1].cells);
+    CHECK(ShownAt(frames[2], t.codes(), *cursor).has_value());
 }
 
 namespace {
@@ -327,4 +343,29 @@ TEST_CASE("typewriter: keys typed at once all land", "[machines]") {
     t.type(std::vector<std::uint8_t>(keys.begin(), keys.end()), true);
     CHECK(t.codes() == Typed(keys));
     CHECK(t.cursor() == Cell{0, 1});
+}
+
+TEST_CASE("typewriter: the typed page and a blinking cursor", "[machines][slow]") {
+    Typewriter t(1);
+    t.clear();
+    t.type("HELLO\rWORLD");
+    REQUIRE(t.cursor() == Cell{5, 1});
+    Codes expected = Typed("HELLO");
+    for (std::size_t i = 0; i < 5; ++i) {
+        expected[kColumns + i] = static_cast<unsigned char>("WORLD"[i]) & 0x3Fu;
+    }
+    REQUIRE(t.codes() == expected);
+    const auto frames = t.lockedFrames(20);
+    REQUIRE(frames.size() == 20);
+    int on = 0, off = 0;
+    for (std::size_t i = 1; i < frames.size(); ++i) {
+        INFO("frame " << i);
+        bool inverted = false;
+        const auto offset = ShownAt(frames[i], expected, Cell{5, 1}, &inverted);
+        REQUIRE(offset.has_value());
+        CHECK(LitOutside(frames[i], *offset) == 0);
+        (inverted ? on : off) += 1;
+    }
+    CHECK(on > 0);
+    CHECK(off > 0);
 }

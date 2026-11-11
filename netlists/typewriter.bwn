@@ -8,7 +8,8 @@
 # line writes it (WR) through U22 on characters 35 and 39 (WEK_N, re-timed by U21), and the cursor
 # steps at that line's end; Return (U26) starts the next line. SW1 (Clear) writes spaces from U23
 # into every cell and homes the cursor.
-# Stage 2: no cursor on the screen yet.
+# The cursor shows as its cell inverted, blinking: U31-U34 compare it with the beam's address,
+# U35 delays the match one character, U36 counts frames for the blink.
 
 part X1  OSC freq=4MHz
 part U1  74LS161    # dot counter 10-15
@@ -21,8 +22,8 @@ part U7  74LS161    # V4-V7
 part U8  74LS161    # V8
 part U9  74LS30     # FRAME_END_N
 part U10 74LS20     # VSYNC_N, KEY_CLR_N
-part U11 74LS86     # composite sync
-part U12 74LS02     # ACTIVE, CTL
+part U11 74LS86     # composite sync; cursor compare V6, V7
+part U12 74LS02     # ACTIVE, CTL, CUR_SHOW
 part U13 74LS08     # R1-R3, WE_N
 part U14 74LS157    # RAM address 0-3
 part U15 74LS157    # RAM address 4-7
@@ -41,6 +42,12 @@ part U27 74LS00     # PRINT, ADV, XC_N, YEN
 part U28 74LS161    # cursor X0-X3
 part U29 74LS161    # cursor X4
 part U30 74LS161    # cursor Y0-Y3
+part U31 74LS86     # cursor compare C0-C3
+part U32 74LS86     # cursor compare C4, V4, V5; cursor into the video
+part U33 74LS27     # cursor compare
+part U34 74LS20     # MATCH_N
+part U35 74LS74     # cursor, one character late
+part U36 74LS93     # blink
 part SW1 BUTTON     # Clear
 part R1  R value=4k7
 part J1  POWER
@@ -52,18 +59,18 @@ net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U21.CLK U5.3A
 # Dot counter 10..15: 6 dots a character.
 net VCC         U1.CLR_N U1.ENP U1.ENT U1.B U1.D
 net GND         U1.A U1.C
-net DOT_END     U1.RCO U5.1A U2.ENP U3.ENP U4.1A
+net DOT_END     U1.RCO U5.1A U2.ENP U3.ENP U4.1A U35.1CLK
 net DOT_LOAD_N  U5.1Y U1.LOAD_N U20.SH_LD_N
 
 # Column counter 0..41, reloaded with 0 after character 41.
 net VCC         U2.CLR_N U2.ENT U3.CLR_N
 net GND         U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
-net C0          U2.QA U4.1D U14.1A U25.C
-net C1          U2.QB U14.2A U25.D
-net C2          U2.QC U14.3A
-net C3          U2.QD U4.1C U4.2B U14.4A
+net C0          U2.QA U4.1D U14.1A U25.C U31.1A
+net C1          U2.QB U14.2A U25.D U31.2A
+net C2          U2.QC U14.3A U31.3A
+net C3          U2.QD U4.1C U4.2B U14.4A U31.4A
 net CC          U2.RCO U3.ENT
-net C4          U3.QA U15.1A
+net C4          U3.QA U15.1A U32.1A
 net C5          U3.QB U4.1B U4.2A U12.1A U14.S U15.S U16.S U25.B U24.2CLK
 net VCC         U4.2C U4.2D
 net LINE_END_N  U4.1Y U2.LOAD_N U3.LOAD_N U21.4D
@@ -78,12 +85,12 @@ net V1          U6.QB U9.E U13.1A
 net V2          U6.QC U9.D U10.1D U13.2A
 net V3          U6.QD U13.3A
 net VC1         U6.RCO U7.ENT
-net V4          U7.QA U9.C U10.1C U15.2A
-net V5          U7.QB U9.B U10.1B U15.3A
-net V6          U7.QC U15.4A
-net V7          U7.QD U16.1A
+net V4          U7.QA U9.C U10.1C U15.2A U32.2A
+net V5          U7.QB U9.B U10.1B U15.3A U32.3A
+net V6          U7.QC U15.4A U11.3A
+net V7          U7.QD U16.1A U11.4A
 net VC2         U7.RCO U8.ENT
-net V8          U8.QA U9.A U10.1A U12.1B
+net V8          U8.QA U9.A U10.1A U12.1B U36.CKA
 net FRAME_END_N U9.Y U6.LOAD_N U7.LOAD_N U8.LOAD_N
 net VSYNC_N     U10.1Y U11.1B
 
@@ -93,7 +100,7 @@ net VCC         U11.2B
 net SYNC_N_D    U11.2Y U21.1D
 
 # Blanking: outside columns 0-31 and lines 0-255 the character ROM is asked for its blank line 0.
-net ACTIVE      U12.1Y U13.1B U13.2B U13.3B
+net ACTIVE      U12.1Y U13.1B U13.2B U13.3B U34.1D
 net R1          U13.1Y U19.A1
 net R2          U13.2Y U19.A2
 net R3          U13.3Y U19.A3
@@ -131,11 +138,12 @@ net F5          U19.O5 U20.H
 # Shift register: loads on a character's last dot, shifts in the middle of each dot.
 net CLK_N       U5.3Y U20.CLK
 net GND         U20.CLK_INH U20.SER U20.A U20.B U20.C
-net VIDEO_D     U20.QH U21.2D
+net VIDEO_D     U20.QH U32.4A
 
-# Output registers: sync, video, the write strobe and the line end, re-timed on the clock.
+# Output registers: sync, video with the cursor, the write strobe and the line end, re-timed on the clock.
 net VCC         U21.CLR_N
 net SYNC_N      U21.1Q J2.SYNC_N
+net VIDEO_M     U32.4Y U21.2D
 net VIDEO       U21.2Q J2.VIDEO
 net WE_D        U25.Y U21.3D
 net WEK_N       U21.3Q U22.1OE_N U22.2OE_N U13.4A
@@ -168,18 +176,18 @@ net KEY_CLR_N   U10.2Y U24.1CLR_N
 # Cursor counter: X0-X4 the column, Y0-Y3 the row; steps at a line end after a write or Return.
 net GND         U28.A U28.B U28.C U28.D U29.A U29.B U29.C U29.D U30.A U30.B U30.C U30.D
 net VCC         U30.LOAD_N
-net X0          U28.QA U14.1B
-net X1          U28.QB U14.2B
-net X2          U28.QC U14.3B
-net X3          U28.QD U14.4B
+net X0          U28.QA U14.1B U31.1B
+net X1          U28.QB U14.2B U31.2B
+net X2          U28.QC U14.3B U31.3B
+net X3          U28.QD U14.4B U31.4B
 net XRCO        U28.RCO U29.ENT U27.3A
-net X4          U29.QA U15.1B U27.3B
+net X4          U29.QA U15.1B U32.1B U27.3B
 net XC_N        U27.3Y U27.4A
 net YEN         U27.4Y U30.ENT
-net Y0          U30.QA U15.2B
-net Y1          U30.QB U15.3B
-net Y2          U30.QC U15.4B
-net Y3          U30.QD U16.1B
+net Y0          U30.QA U15.2B U32.2B
+net Y1          U30.QB U15.3B U32.3B
+net Y2          U30.QC U15.4B U11.3B
+net Y3          U30.QD U16.1B U11.4B
 
 # Clear: spaces onto the bus, every cell written, the cursor home.
 net VCC         R1.1
@@ -188,5 +196,27 @@ net GND         SW1.2
 net GND         U23.1A1 U23.1A2 U23.1A3 U23.1A4 U23.2A1 U23.2A3 U23.2A4
 net VCC         U23.2A2
 
+# Cursor on the screen: beam address = cursor address, one character late, blinking.
+net NE0         U31.1Y U33.1A
+net NE1         U31.2Y U33.1B
+net NE2         U31.3Y U33.1C
+net NE3         U31.4Y U33.2A
+net NE4         U32.1Y U33.2B
+net NE5         U32.2Y U33.2C
+net NE6         U32.3Y U33.3A
+net NE7         U11.3Y U33.3B
+net NE8         U11.4Y U33.3C
+net EQ0         U33.1Y U34.1A
+net EQ1         U33.2Y U34.1B
+net EQ2         U33.3Y U34.1C
+net MATCH_N     U34.1Y U35.1D
+net VCC         U35.1PRE_N U35.1CLR_N
+net CURSOR_N    U35.1Q U12.3A
+net FRAME2      U36.QA U36.CKB
+net GND         U36.R01 U36.R02
+net BLINK       U36.QD U12.3B
+net CUR_SHOW    U12.3Y U32.4B
+
 # Spare gates.
-net GND         U5.2A U5.6A U11.3A U11.3B U11.4A U11.4B U12.3A U12.3B U12.4A U12.4B
+net GND         U5.2A U5.6A U12.4A U12.4B U34.2A U34.2B U34.2C U34.2D U35.2D U35.2CLK
+net VCC         U35.2PRE_N U35.2CLR_N
