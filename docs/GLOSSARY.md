@@ -25,7 +25,7 @@ One placed instance of a Part on a Board, identified by its reference (U12).
 _Avoid_: Chip, IC (when meaning a specific placed one)
 
 **Pin**:
-One electrical terminal of a Component.
+One electrical terminal of a Component. A bidirectional Pin, such as a RAM's data pin, both reads its Net and drives it (or lets go of it, so another chip can drive the same bus).
 
 **Socket**:
 A holder on the Board that a Component plugs into, making it removable without soldering.
@@ -89,7 +89,7 @@ One of `0`, `1`, `Z` (high impedance, nothing driving) or `X` (unknown or confli
 _Avoid_: Level, voltage
 
 **Driver**:
-A Pin's contribution to the value of its Net: what it drives and how strongly. Also, a Pin that drives its Net: an output, a pull-up/pull-down or a supply.
+A Pin's contribution to the value of its Net: what it drives and how strongly. Also, a Pin that drives its Net: an output, a bidirectional Pin, a pull-up/pull-down or a supply.
 
 **Load**:
 A Pin that only reads its Net, such as a gate input or a chip's power pin.
@@ -121,7 +121,7 @@ Observable misbehaviour that emerges from a Fault when the Machine runs. Symptom
 _Avoid_: Effect, glitch
 
 **Stuck-at Fault**:
-A Fault where a Component's output Pin always drives 0 or always drives 1.
+A Fault where a Component's output Pin always drives 0 or always drives 1. On a bidirectional Pin it forces the Net and the chip reads the stuck value too.
 _Avoid_: Dead output
 
 **Short**:
@@ -261,3 +261,7 @@ The Layer drawn on top and preferred by player actions such as probing, cutting 
 **Schematic**:
 Our own circuit diagram of a Machine, generated from its Nets and hand-adjusted. It is a view only, not a source of connectivity.
 _Avoid_: Circuit diagram, original schematic
+
+**Typing**:
+The `bw_ui` mode in which every key the player presses goes to the Machine's keyboard instead of the tools; Escape ends it.
+_Avoid_: Keyboard capture (in player text)
