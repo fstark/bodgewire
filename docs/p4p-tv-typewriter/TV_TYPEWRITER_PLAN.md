@@ -13,7 +13,7 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 | 2 | Netlist stage 2: keyboard, writes, cursor counter, Clear | `7ea2235` |
 | 3 | Netlist stage 3: the cursor on the screen | `6abe7d1` |
 | 4 | Manuals | `1d24ed2` |
-| 5 | Board (user routing), per-Machine loops | placed, waiting for routing |
+| 5 | Board (user routing), per-Machine loops | not routed: superseded by P4q |
 | 6 | Session test, release check, recipes, docs | |
 
 ## Phase 1 — Video from the RAMs

@@ -264,7 +264,7 @@ Placed by `bw place netlists/typewriter.bwn boards/typewriter/typewriter.place -
   ```
 
 - The 2513 is a 600-mil DIP-24, too big for the chip grid (as on 080). The 2114s (DIP-18) and 74LS244s (DIP-20) fit the grid (P4n). The 35 other chips and `X1` go in the annealed grid.
-- No routing constraints: there are no Puzzles yet. P4q reads the routing it needs from the finished Board.
+- No routing constraints: there are no Puzzles yet. P4r reads the routing it needs from the finished Board.
 - `bw check-board` prints `ok`; `drc_typewriter` and `place_drc_typewriter` pass (picked up by the globs).
 
 ## Manuals

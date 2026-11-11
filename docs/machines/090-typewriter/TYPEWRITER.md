@@ -67,6 +67,6 @@ The TV shows a page of random characters at power-on, locked within half a secon
 
 ## Puzzles
 
-None in this step: P4q writes the 090 Puzzles from the finished Board. Links worth a Fault: an address line between the multiplexer and the RAMs (keys land in pairs of cells, or a key typed shows in two places), a bus line (every key a different character, the cursor fine), the write strobe re-timing (`WEK_N` stuck: nothing typed shows, or each key smeared over the window's neighbours), the cursor counter's carry (lines never change), the comparator (the cursor shows on the wrong row), the space buffer (Clear leaves `@`s).
+None in this step: P4r writes the 090 Puzzles from the finished Board. Links worth a Fault: an address line between the multiplexer and the RAMs (keys land in pairs of cells, or a key typed shows in two places), a bus line (every key a different character, the cursor fine), the write strobe re-timing (`WEK_N` stuck: nothing typed shows, or each key smeared over the window's neighbours), the cursor counter's carry (lines never change), the comparator (the cursor shows on the wrong row), the space buffer (Clear leaves `@`s).
 
 Netlist, Board and manuals: [TYPEWRITER_DESIGN.md](TYPEWRITER_DESIGN.md).

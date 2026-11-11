@@ -2,7 +2,7 @@
 
 Implements [TV_TYPEWRITER.md](TV_TYPEWRITER.md): the 090 Machine of [TYPEWRITER.md](../machines/090-typewriter/TYPEWRITER.md), built as in [TYPEWRITER_DESIGN.md](../machines/090-typewriter/TYPEWRITER_DESIGN.md). No code in `src/`.
 
-Recipe followed: [ADD_MACHINE.md](../recipes/ADD_MACHINE.md), every step but 4 (Puzzles, P4q). This design gives only what the recipe leaves open. Tests follow [STYLE.md](../STYLE.md) and [NAMING.md](../NAMING.md).
+Recipe followed: [ADD_MACHINE.md](../recipes/ADD_MACHINE.md), every step but 4 (Puzzles, P4r). This design gives only what the recipe leaves open. Tests follow [STYLE.md](../STYLE.md) and [NAMING.md](../NAMING.md).
 
 ## 1. Files
 

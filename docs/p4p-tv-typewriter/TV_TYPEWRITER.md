@@ -1,6 +1,6 @@
 # P4p — TV Typewriter
 
-Roadmap step P4p ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): the 090 TV typewriter running, P4n's RAM, bus buffer and keyboard on a shared bus. The Machine is specified in [TYPEWRITER.md](../machines/090-typewriter/TYPEWRITER.md). No Puzzles: P4q.
+Roadmap step P4p ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): the 090 TV typewriter running, P4n's RAM, bus buffer and keyboard on a shared bus. The Machine is specified in [TYPEWRITER.md](../machines/090-typewriter/TYPEWRITER.md). No Puzzles: P4r. Superseded before the Board by P4q, the page in shift registers.
 
 Decided with the user (2026-11-11):
 
