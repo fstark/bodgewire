@@ -208,10 +208,10 @@ Each stage loads without warnings and is tested before the next (plan phases 4�
 
 ## Board
 
-`bw export-kicad netlists/tennis.bwn -o boards/tennis/tennis.net`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../p2a-board-layout/KICAD_GUIDE.md)), 2 layers, no zones. About twice the 060 Board: six rows of DIP-14/16.
+Placed by `bw place netlists/tennis.bwn boards/tennis/tennis.place -o boards/tennis/tennis.kicad_pcb` (P4k, seed 1, 4 tries: a 12 × 5 chip grid, 11.07 m of wire), then routed by hand in KiCad ([KICAD_GUIDE.md](../../p2a-board-layout/KICAD_GUIDE.md) steps 7–8), 2 layers, no zones. The first Board (chips grouped by job, placed by hand) had 15.1 m.
 
-- Grouped by job so the Service Manual reads on the Board, as on 060: beam counters and sync (`X1`, `U1`–`U11`), with `J1` at the left and `J2` at the back edge; court and mixer (`U12`–`U17`); ball (`U18`–`U26`); paddles (`U27`–`U34`); hits, angles and speed (`U35`–`U43`); serve and score (`U44`–`U51`); score digits (`U52`–`U58`).
-- `J3` near the left end of the front edge, `J4` near the right end (each player's side); `SW1` on the front edge between them, `R1` next to it.
+- [tennis.place](../../../boards/tennis/tennis.place): `J1` at the left, `J2` at the right end of the back edge; `J3` at the left end of the front edge, `J4` at the right end (each player's side); `SW1` in the middle of the front edge, `R1` beside it on its right.
+- The chips are where the annealing put them, not grouped by job: the Service Manual names chips by U-number, and the probe finds them by reference.
 - Puzzle constraints: `SERVING` is routed `U41` → `U43` → `U38`, so the Invisible ball crack (between `U43` and `U38`) cuts `U38` alone; a new layout must keep `U38` at an end of that Trace, or the Puzzle moves its crack (§ Puzzles).
 - `bw check-board` clean; `drc_tennis` passes (picked up by the `boards/*/*.kicad_pcb` glob).
 

@@ -12,8 +12,8 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | 1 | Vendored footprints, `LoadFootprints` | `61cd611` |
 | 2 | Rules file parser | `f232392` |
 | 3 | Placer: panel rules, grid, annealing | `df925e4` |
-| 4 | Writer, `bw place`, 070 rules, DRC ctest | this commit |
-| 5 | 070 Board regenerated (user routing), Puzzles checked | |
+| 4 | Writer, `bw place`, 070 rules, DRC ctest | `eb98630` |
+| 5 | 070 Board regenerated (user routing), Puzzles checked | this commit |
 | 6 | Release check, recipe, docs | |
 
 ## Phases
@@ -60,3 +60,4 @@ Fence: release check done; full debug suite green. Commit `docs: P4k implemented
 - Phase 1: the nine footprints from KiCad 10.0.7; `ReadFootprint` is public so the error cases need no files.
 - Phase 3: 070 with the front-edge rules, seed 1, one try: 12 × 5 grid, 11.32 m (prototype 10.5–11.4 m with the controllers elsewhere); `placer: tennis` takes 5 s in debug. Two gaps found by the tests and closed in the design: a front row wider than a narrow grid widens the Board (grid centred) instead of being refused, and a snapped origin could leave the margin by up to 0.6 mm (now stepped back).
 - Phase 4: `bw place` on 070 (seed 1, 4 tries): 11.07 m, 0.4 s release, 19 s debug; debug and release write the same bytes. KiCad 10.0.7's DRC on it with the written `.kicad_pro`: 0 violations, 0 footprint errors, 499 unconnected pads. Viewed as an SVG: `J1` left, `J2` back right, `J3`/`J4` at the front corners, `SW1` and `R1` front middle, one empty slot. The DRC ctest runs one `place_drc_<m>` per `boards/*/*.place`.
+- Phase 5: the user routed the generated Board (2,361 segments, 102 vias), keeping `SERVING` as `U41` → `U43` → `U38`; `bw check-board` `ok`. Both crack Puzzles hold without a change: `LPAD_CK` has two pads, and Invisible ball's test checks `SERVING` driven at `U43` and floating at `U38`. The 23 070 cases pass, the nine Puzzles included. TENNIS_DESIGN.md § Board now points at `tennis.place`.
