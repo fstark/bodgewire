@@ -68,6 +68,7 @@ add_executable(bw_tests
   parts/ls157_test.cpp
   parts/ls161_test.cpp
   parts/ls164_test.cpp
+  parts/ls165_test.cpp
   parts/ls175_test.cpp
   parts/ls47_test.cpp
   parts/ls48_test.cpp

@@ -9,6 +9,7 @@ add_library(bw_parts STATIC
   ls157.cpp
   ls161.cpp
   ls164.cpp
+  ls165.cpp
   ls175.cpp
   ls47.cpp
   ls48.cpp

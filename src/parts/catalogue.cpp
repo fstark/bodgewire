@@ -14,6 +14,7 @@
 #include "parts/ls157.hpp"
 #include "parts/ls161.hpp"
 #include "parts/ls164.hpp"
+#include "parts/ls165.hpp"
 #include "parts/ls175.hpp"
 #include "parts/ls47.hpp"
 #include "parts/ls48.hpp"
@@ -197,6 +198,8 @@ constexpr std::array s_parts{
              &CreateChip<Ls161, "74LS161">},
     PartInfo{"74LS164", "8-bit serial-in shift register", "DIP-14", Chip,
              &CreateChip<Ls164, "74LS164">},
+    PartInfo{"74LS165", "8-bit parallel-in shift register", "DIP-16", Chip,
+             &CreateChip<Ls165, "74LS165">},
     PartInfo{"74LS175", "quad D flip-flop, clear", "DIP-16", Chip, &CreateChip<Ls175, "74LS175">},
     PartInfo{"74LS20", "dual 4-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS20">},
     PartInfo{"74LS27", "triple 3-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS27">},
