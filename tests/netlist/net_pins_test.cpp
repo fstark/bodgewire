@@ -128,3 +128,11 @@ TEST_CASE("net pins: FormatNetPin", "[netlist]") {
     CHECK(FormatNetPin({"J1", 0, "VCC", PinRole::Supply, ""}) == "J1 pin 1 VCC \u00b7 supply");
     CHECK(FormatNetPin({"U2", 8, "LOAD_N", PinRole::Load, ""}) == "U2 pin 9 LOAD_N");
 }
+
+TEST_CASE("net pins: a bidirectional pin is a Driver", "[netlist]") {
+    auto result = LoadNetlist("part U1 2114\npart U2 74LS244\nnet B0 U1.IO1 U2.1Y1\n", "t.bwn");
+    REQUIRE(result.has_value());
+    const NetPins pins = DescribeNet(**result, "B0");
+    CHECK(Texts(pins.drivers) == std::vector<std::string>{"U1 pin 14 IO1", "U2 pin 18 1Y1"});
+    CHECK(pins.loads.empty());
+}

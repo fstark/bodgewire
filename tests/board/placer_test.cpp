@@ -151,6 +151,18 @@ TEST_CASE("placer: a DIP-24 needs a rule, then sits in its band", "[board]") {
     CHECK_FALSE(Overlap(u2, Courtyard(p, "U1")));
 }
 
+TEST_CASE("placer: DIP-18 and DIP-20 sit in the chip grid", "[board]") {
+    const Placement p =
+        Placed("part U1 74LS04\npart U2 2114\npart U3 74LS244\npart U4 74LS161\n", "");
+    for (const char* reference : {"U1", "U2", "U3", "U4"}) {
+        INFO(reference);
+        CHECK(Inside(Courtyard(p, reference), p.outlineMin, p.outlineMax));
+    }
+    CHECK_FALSE(Overlap(Courtyard(p, "U2"), Courtyard(p, "U3")));
+    CHECK_FALSE(Overlap(Courtyard(p, "U1"), Courtyard(p, "U3")));
+    CHECK_FALSE(Overlap(Courtyard(p, "U3"), Courtyard(p, "U4")));
+}
+
 TEST_CASE("placer: a row keeps its order with gaps between", "[board]") {
     const Placement p = Placed(kLeds, "edge J1 left middle\nrow front middle D1 D2 D3\n");
     const Box d1 = Courtyard(p, "D1"), d2 = Courtyard(p, "D2"), d3 = Courtyard(p, "D3");

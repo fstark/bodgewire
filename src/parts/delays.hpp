@@ -49,6 +49,10 @@ inline constexpr Time k2716Access = 450'000;        // address → O
 inline constexpr Time k2716ChipEnable = 450'000;    // CE_N → O
 inline constexpr Time k2716OutputEnable = 120'000;  // OE_N → O
 inline constexpr Time k2716Float = 100'000;         // CE_N or OE_N high → O off
+// 74LS244 (rise = from/to 1, fall = from/to 0).
+inline constexpr Delays kLs244Data{12'000, 12'000};     // A → Y
+inline constexpr Delays kLs244Enable{15'000, 20'000};   // OE_N low → Y (tPZH, tPZL)
+inline constexpr Delays kLs244Disable{10'000, 15'000};  // OE_N high → Y off (tPHZ, tPLZ)
 // Intel 2114 (450 ns grade): maximums (no typicals published).
 inline constexpr Time k2114Address = 450'000;  // tAA, address → IO
 inline constexpr Time k2114Select = 120'000;   // tCO, CS_N low (or WE_N back high) → IO

@@ -52,7 +52,8 @@ std::int64_t SnapUp(std::int64_t v) { return -SnapDown(-v); }
 std::int64_t SnapNear(std::int64_t v) { return SnapDown(v + kSnap / 2); }
 
 bool IsGridPackage(std::string_view package) {
-    return package == "DIP-14" || package == "DIP-16" || package == "axial";
+    return package == "DIP-14" || package == "DIP-16" || package == "DIP-18" ||
+           package == "DIP-20" || package == "axial";
 }
 
 // A rule's parts, positioned relative to its edge: the outer line of the band at 0 across,
