@@ -46,6 +46,7 @@ add_executable(bw_tests
   machines/logic_analyzer_test.cpp
   machines/manuals_test.cpp
   machines/message_test.cpp
+  machines/typewriter_test.cpp
   machines/net_drivers_test.cpp
   machines/scope_meter_test.cpp
   machines/pin_faults_test.cpp

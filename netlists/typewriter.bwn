@@ -1,0 +1,130 @@
+# Machine 090, TV typewriter (docs/machines/090-typewriter/TYPEWRITER.md): what is typed on an ASCII
+# keyboard shows on the TV, 16 rows of 32 characters. 080's video chain at a 4 MHz dot clock: 6 dots
+# a character (U1 counts 10-15), 42 characters a line (U2, U3), 312 lines a frame (U6-U8, clocked
+# at each line end). During characters 0-31 the multiplexer (U14-U16) gives the page RAMs (U17, U18,
+# two 2114s) the beam's address; their 6-bit code and the glyph line address the character ROM
+# (U19, a 2513), whose dots the 74LS165 (U20) shifts out; U21 re-times video, sync and the line end.
+# Stage 1: the RAMs are only read (WE_N high); no keyboard, cursor or Clear yet.
+
+part X1  OSC freq=4MHz
+part U1  74LS161    # dot counter 10-15
+part U2  74LS161    # C0-C3
+part U3  74LS161    # C4, C5
+part U4  74LS20     # LINE_END_N, HSYNC_N
+part U5  74LS04     # DOT_LOAD_N, CLK_N
+part U6  74LS161    # V0-V3
+part U7  74LS161    # V4-V7
+part U8  74LS161    # V8
+part U9  74LS30     # FRAME_END_N
+part U10 74LS20     # VSYNC_N
+part U11 74LS86     # composite sync
+part U12 74LS02     # ACTIVE
+part U13 74LS08     # R1-R3, WE_N
+part U14 74LS157    # RAM address 0-3
+part U15 74LS157    # RAM address 4-7
+part U16 74LS157    # RAM address 8
+part U17 2114       # page RAM, bits 0-3
+part U18 2114       # page RAM, bits 4-5
+part U19 2513 contents=../roms/2513.rom
+part U20 74LS165    # dots out
+part U21 74LS175    # output registers, LINE_END
+part J1  POWER
+part J2  VIDEO
+
+net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U21.CLK U5.3A
+
+# Dot counter 10..15: 6 dots a character.
+net VCC         U1.CLR_N U1.ENP U1.ENT U1.B U1.D
+net GND         U1.A U1.C
+net DOT_END     U1.RCO U5.1A U2.ENP U3.ENP U4.1A
+net DOT_LOAD_N  U5.1Y U1.LOAD_N U20.SH_LD_N
+
+# Column counter 0..41, reloaded with 0 after character 41.
+net VCC         U2.CLR_N U2.ENT U3.CLR_N
+net GND         U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
+net C0          U2.QA U4.1D U14.1A
+net C1          U2.QB U14.2A
+net C2          U2.QC U14.3A
+net C3          U2.QD U4.1C U4.2B U14.4A
+net CC          U2.RCO U3.ENT
+net C4          U3.QA U15.1A
+net C5          U3.QB U4.1B U4.2A U12.1A U14.S U15.S U16.S
+net VCC         U4.2C U4.2D
+net LINE_END_N  U4.1Y U2.LOAD_N U3.LOAD_N U21.4D
+net LINE_END    U21.4Q_N U6.CLK U7.CLK U8.CLK
+net HSYNC_N     U4.2Y U11.1A
+
+# Line counter 0..311, clocked at each line end (LINE_END from U21 below).
+net VCC         U6.CLR_N U6.ENP U6.ENT U7.CLR_N U7.ENP U8.CLR_N U8.ENP U9.G U9.H
+net GND         U6.A U6.B U6.C U6.D U7.A U7.B U7.C U7.D U8.A U8.B U8.C U8.D
+net V0          U6.QA U9.F
+net V1          U6.QB U9.E U13.1A
+net V2          U6.QC U9.D U10.1D U13.2A
+net V3          U6.QD U13.3A
+net VC1         U6.RCO U7.ENT
+net V4          U7.QA U9.C U10.1C U15.2A
+net V5          U7.QB U9.B U10.1B U15.3A
+net V6          U7.QC U15.4A
+net V7          U7.QD U16.1A
+net VC2         U7.RCO U8.ENT
+net V8          U8.QA U9.A U10.1A U12.1B
+net FRAME_END_N U9.Y U6.LOAD_N U7.LOAD_N U8.LOAD_N
+net VSYNC_N     U10.1Y U11.1B
+
+# Composite sync: HSYNC XOR VSYNC, then inverted (as 060).
+net SYNC        U11.1Y U11.2A
+net VCC         U11.2B
+net SYNC_N_D    U11.2Y U21.1D
+
+# Blanking: outside columns 0-31 and lines 0-255 the character ROM is asked for its blank line 0.
+net ACTIVE      U12.1Y U13.1B U13.2B U13.3B
+net R1          U13.1Y U19.A1
+net R2          U13.2Y U19.A2
+net R3          U13.3Y U19.A3
+
+# RAM address: the beam during characters 0-31, the cursor (stage 2) during 32-41.
+net GND         U14.G_N U15.G_N U16.G_N U16.2A U16.2B U16.3A U16.3B U16.4A U16.4B
+net GND         U14.1B U14.2B U14.3B U14.4B U15.1B U15.2B U15.3B U15.4B U16.1B
+net RA0         U14.1Y U17.A0 U18.A0
+net RA1         U14.2Y U17.A1 U18.A1
+net RA2         U14.3Y U17.A2 U18.A2
+net RA3         U14.4Y U17.A3 U18.A3
+net RA4         U15.1Y U17.A4 U18.A4
+net RA5         U15.2Y U17.A5 U18.A5
+net RA6         U15.3Y U17.A6 U18.A6
+net RA7         U15.4Y U17.A7 U18.A7
+net RA8         U16.1Y U17.A8 U18.A8
+net GND         U17.A9 U18.A9 U17.CS_N U18.CS_N
+net VCC         U13.4A U13.4B
+net WE_N        U13.4Y U17.WE_N U18.WE_N
+
+# Data bus: the RAMs and the character ROM's character address.
+net B0          U17.IO1 U19.A4
+net B1          U17.IO2 U19.A5
+net B2          U17.IO3 U19.A6
+net B3          U17.IO4 U19.A7
+net B4          U18.IO1 U19.A8
+net B5          U18.IO2 U19.A9
+
+# Character ROM: the dots of one glyph line, F5 leftmost.
+net GND         U19.CE_N
+net F1          U19.O1 U20.D
+net F2          U19.O2 U20.E
+net F3          U19.O3 U20.F
+net F4          U19.O4 U20.G
+net F5          U19.O5 U20.H
+
+# Shift register: loads on a character's last dot, shifts in the middle of each dot.
+net CLK_N       U5.3Y U20.CLK
+net GND         U20.CLK_INH U20.SER U20.A U20.B U20.C
+net VIDEO_D     U20.QH U21.2D
+
+# Output registers: sync, video and the line end, re-timed on the clock.
+net VCC         U21.CLR_N
+net GND         U21.3D
+net SYNC_N      U21.1Q J2.SYNC_N
+net VIDEO       U21.2Q J2.VIDEO
+
+# Spare gates (stage 1).
+net GND         U5.2A U5.4A U5.5A U5.6A U10.2A U10.2B U10.2C U10.2D
+net GND         U11.3A U11.3B U11.4A U11.4B U12.2A U12.2B U12.3A U12.3B U12.4A U12.4B
