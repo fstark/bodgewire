@@ -58,6 +58,10 @@ LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck 
 LoadResult LoadNetlist(std::string_view text, std::string file);
 LoadResult LoadNetlistFile(const std::filesystem::path& path);  // diagnostics name the file only
 
+// Makes every relative `contents=` parameter (a ROM's contents file) relative to `directory`, the
+// netlist file's.
+void ResolveContentsPaths(Netlist& netlist, const std::filesystem::path& directory);
+
 // Pin by package number ("3") or datasheet name ("1Y"); nullopt if none.
 std::optional<PinIndex> FindPin(const Component& component, std::string_view pin);
 

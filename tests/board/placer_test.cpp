@@ -138,6 +138,19 @@ TEST_CASE("placer: an edge part lies against its edge at its position", "[board]
     CHECK(j1.min.x < p.outlineMin.x + kMm + kSnap);
 }
 
+TEST_CASE("placer: a DIP-24 needs a rule, then sits in its band", "[board]") {
+    const std::string netlist =
+        "part U1 74LS04\npart U2 2716 contents=" + std::string(BW_ROOT_DIR) +
+        "/tests/data/empty.rom\n";
+    CHECK(Errors(netlist, "") ==
+          std::vector<std::string>{"t.place: error: 'U2' (DIP-24) needs a placement rule"});
+    const Placement p = Placed(netlist, "row front middle U2\n");
+    const Box u2 = Courtyard(p, "U2");
+    CHECK(u2.max.y <= p.outlineMax.y - kMm);
+    CHECK(u2.max.y > p.outlineMax.y - kMm - kSnap);
+    CHECK_FALSE(Overlap(u2, Courtyard(p, "U1")));
+}
+
 TEST_CASE("placer: a row keeps its order with gaps between", "[board]") {
     const Placement p = Placed(kLeds, "edge J1 left middle\nrow front middle D1 D2 D3\n");
     const Box d1 = Courtyard(p, "D1"), d2 = Courtyard(p, "D2"), d3 = Courtyard(p, "D3");

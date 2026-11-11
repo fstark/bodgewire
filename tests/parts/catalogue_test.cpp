@@ -8,6 +8,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "parts/rom.hpp"
+
 using namespace bw;
 
 TEST_CASE("catalogue: FindPart known and unknown", "[parts]") {
@@ -31,11 +33,15 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         if (part.name == "OSC") {
             params.push_back({"freq", "1MHz"});
         }
+        if (FindRomSpec(part.name) != nullptr) {
+            params.push_back({"contents", std::string(BW_ROOT_DIR) + "/tests/data/empty.rom"});
+        }
         const auto created = part.create(circuit, "U1", params);
+        INFO((created ? std::string() : created.error()));
         REQUIRE(created.has_value());
         const auto pins = (*created)->pins();
-        const std::size_t count = part.package == "DIP-16" ? 16 : 14;
-        REQUIRE(part.package == (count == 16 ? "DIP-16" : "DIP-14"));
+        REQUIRE(part.package.starts_with("DIP-"));
+        const std::size_t count = std::stoul(std::string(part.package.substr(4)));
         REQUIRE(pins.size() == count);
 
         std::set<std::string> names;
@@ -51,8 +57,8 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         CHECK(names.size() == count);
         CHECK(names.contains("GND"));
         CHECK(names.contains("VCC"));
-        // The 74LS90's datasheet puts VCC on pin 5 and GND on pin 10.
-        constexpr std::string_view kOffCornerPower[] = {"74LS90", "74LS93"};
+        // The 74LS90's datasheet puts VCC on pin 5 and GND on pin 10; the 2513's GND is pin 10.
+        constexpr std::string_view kOffCornerPower[] = {"74LS90", "74LS93", "2513"};
         if (std::ranges::find(kOffCornerPower, part.name) == std::end(kOffCornerPower)) {
             CHECK(pins[count / 2 - 1].name == "GND");
             CHECK(pins[count - 1].name == "VCC");

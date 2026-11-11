@@ -38,7 +38,20 @@ inline constexpr Delays kLs93CkbToQD{34'000, 34'000};
 inline constexpr Delays kLs93Clear{26'000, 26'000};  // only fall is used
 inline constexpr Delays kLs164ClockToQ{17'000, 21'000};
 inline constexpr Delays kLs164Clear{24'000, 24'000};  // only fall is used
+inline constexpr Delays kLs165Clock{21'000, 24'000};  // CLK, CLK_INH → QH
+inline constexpr Delays kLs165Load{22'000, 27'000};   // SH_LD_N → QH
+inline constexpr Delays kLs165Data{14'000, 21'000};   // H → QH while loading
 inline constexpr Delays kLs175ClockToQ{20'000, 21'000};
 inline constexpr Delays kLs175Clear{16'000, 20'000};  // Q_N rises, Q falls
+
+// ROMs: one delay for both edges. Intel 2716: maximums (no typicals published).
+inline constexpr Time k2716Access = 450'000;        // address → O
+inline constexpr Time k2716ChipEnable = 450'000;    // CE_N → O
+inline constexpr Time k2716OutputEnable = 120'000;  // OE_N → O
+inline constexpr Time k2716Float = 100'000;         // CE_N or OE_N high → O off
+// Signetics 2513, 1972 MOS data book p. 67: typicals.
+inline constexpr Time k2513RowAccess = 450'000;        // A1-A3 → O
+inline constexpr Time k2513CharacterAccess = 500'000;  // A4-A9 → O
+inline constexpr Time k2513ChipEnable = 150'000;       // CE_N → O, on and off
 
 }  // namespace bw::delays

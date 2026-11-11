@@ -6,6 +6,7 @@
 #include <set>
 #include <utility>
 
+#include "parts/rom.hpp"
 #include "sim/circuit.hpp"
 
 namespace bw {
@@ -223,6 +224,9 @@ std::vector<Diagnostic> CheckDatasheet(const Markdown& doc, std::string_view fil
 std::vector<std::string> PartPinNames(const PartInfo& part) {
     if (!part.create) {
         return {};
+    }
+    if (const RomSpec* rom = FindRomSpec(part.name)) {  // a ROM needs a contents file to build
+        return {rom->names.begin(), rom->names.end()};
     }
     Circuit circuit;
     std::vector<PartParam> params;

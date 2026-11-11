@@ -22,6 +22,8 @@
 #include "parts/ls93.hpp"
 #include "parts/oscillator.hpp"
 #include "parts/paddle.hpp"
+#include "parts/rom.hpp"
+#include "parts/rom_contents.hpp"
 
 namespace bw {
 
@@ -59,6 +61,29 @@ std::expected<Component*, std::string> CreateConnector(Circuit& circuit, std::st
         return std::unexpected(std::string(Name.view()) + " takes no parameters");
     }
     return &circuit.add<Connector>(std::move(reference), ConnectorPins(Name.view()));
+}
+
+template <PartName Name>
+std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string reference,
+                                                 std::span<const PartParam> params) {
+    const std::string name(Name.view());
+    const PartParam* contents = nullptr;
+    for (const PartParam& param : params) {
+        if (param.name != "contents") {
+            return std::unexpected(name + ": unknown parameter '" + param.name + "'");
+        }
+        contents = &param;
+    }
+    if (contents == nullptr) {
+        return std::unexpected(name + " needs contents=<file>");
+    }
+    const RomSpec& spec = RomSpecOf(name);
+    auto words = ReadRomContents(contents->value, std::size_t{1} << spec.address.size(),
+                                 static_cast<int>(spec.data.size()));
+    if (!words) {
+        return std::unexpected(name + ": " + words.error());
+    }
+    return &circuit.add<Rom>(std::move(reference), spec, std::move(*words));
 }
 
 std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::string reference,
@@ -159,6 +184,9 @@ using enum PartKind;
 
 // Sorted by name.
 constexpr std::array s_parts{
+    PartInfo{"2513", "64-character 5 x 7 character generator ROM", "DIP-24", Chip,
+             &CreateRom<"2513">},
+    PartInfo{"2716", "2K x 8 EPROM", "DIP-24", Chip, &CreateRom<"2716">},
     PartInfo{"74LS00", "quad 2-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS00">},
     PartInfo{"74LS02", "quad 2-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS02">},
     PartInfo{"74LS04", "hex inverter", "DIP-14", Chip, &CreateGatePackage<"74LS04">},

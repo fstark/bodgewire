@@ -77,6 +77,7 @@ add_executable(bw_tests
   parts/oscillator_test.cpp
   parts/paddle_test.cpp
   parts/rom_contents_test.cpp
+  parts/rom_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
   runner/led_consumer_test.cpp

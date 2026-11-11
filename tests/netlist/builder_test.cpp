@@ -53,6 +53,29 @@ TEST_CASE("builder: factory error", "[netlist]") {
     CHECK(Errors("part U1 74LS00 speed=fast\n") == Lines{"1: U1: 74LS00 takes no parameters"});
 }
 
+TEST_CASE("builder: a ROM without contents", "[netlist]") {
+    CHECK(Errors("part U1 2716\n") == Lines{"1: U1: 2716 needs contents=<file>"});
+}
+
+TEST_CASE("builder: contents= is found beside the netlist file", "[netlist]") {
+    const auto dir = std::filesystem::temp_directory_path() / "bw_builder_contents";
+    std::filesystem::create_directories(dir / "netlists");
+    std::filesystem::create_directories(dir / "roms");
+    std::ofstream(dir / "roms" / "x.rom") << "\"A\"\n";
+    std::ofstream(dir / "netlists" / "x.bwn")
+        << "part U1 2716 contents=../roms/x.rom\nnet GND U1.A0 U1.A1 U1.A2 U1.A3 U1.A4 U1.A5\n"
+           "net GND U1.A6 U1.A7 U1.A8 U1.A9 U1.A10 U1.CE_N U1.OE_N\nnet VCC U1.VPP\n";
+    const auto loaded = LoadNetlistFile(dir / "netlists" / "x.bwn");
+    REQUIRE(loaded.has_value());
+    CHECK((*loaded)->warnings.empty());
+
+    std::ofstream(dir / "roms" / "x.rom") << "zz\n";
+    const auto bad = LoadNetlistFile(dir / "netlists" / "x.bwn");
+    REQUIRE_FALSE(bad.has_value());
+    CHECK(bad.error()[0].line == 1);
+    CHECK(bad.error()[0].message == "U1: 2716: x.rom line 1: unknown token 'zz'");
+}
+
 TEST_CASE("builder: unknown reference", "[netlist]") {
     CHECK(Errors("part U1 74LS00\nnet A U1.1 U9.1\n") == Lines{"2: unknown reference 'U9'"});
 }

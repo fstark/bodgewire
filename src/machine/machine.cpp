@@ -65,6 +65,7 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
     if (!design) {
         return std::unexpected(std::move(design.error()));
     }
+    ResolveContentsPaths(*design, netlistPath.parent_path());
     machine.design_ = std::move(*design);
     auto designCircuit = BuildCircuit(machine.design_);
     if (!designCircuit) {

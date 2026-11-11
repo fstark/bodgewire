@@ -357,7 +357,22 @@ LoadResult LoadNetlistFile(const std::filesystem::path& path) {
             std::vector<Diagnostic>{{std::move(file), 0, Severity::Error, "cannot read file"}});
     }
     const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
-    return LoadNetlist(text, std::move(file));
+    auto netlist = ParseNetlist(text, std::move(file));
+    if (!netlist) {
+        return std::unexpected(netlist.error());
+    }
+    ResolveContentsPaths(*netlist, path.parent_path());
+    return BuildCircuit(*netlist);
+}
+
+void ResolveContentsPaths(Netlist& netlist, const std::filesystem::path& directory) {
+    for (PartDecl& part : netlist.parts) {
+        for (PartParam& param : part.params) {
+            if (param.name == "contents" && std::filesystem::path(param.value).is_relative()) {
+                param.value = (directory / param.value).lexically_normal().string();
+            }
+        }
+    }
 }
 
 std::optional<PinIndex> FindPin(const Component& component, std::string_view pin) {
