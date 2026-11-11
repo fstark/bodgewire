@@ -1,0 +1,6 @@
+# Thin letters: Solder Bridge between U16 pin 13 (C, tied to GND) and pin 14 (D, F1); F1 is held at 0,
+# so the rightmost dot column of every letter is never lit. A U15 swap does not help.
+machine message
+title "Thin letters"
+brief "Every letter has lost its right-hand edge: an O looks like a C, and an H like a squashed F."
+fault bridge U16.13 U16.14

@@ -106,6 +106,16 @@ const Crack& InvisibleBallCrack() {
     return crack;
 }
 
+const Crack& GibberishCrack() {
+    static const Crack crack = PuzzleCrack("gibberish");
+    return crack;
+}
+
+const Crack& BlockLettersCrack() {
+    static const Crack crack = PuzzleCrack("block_letters");
+    return crack;
+}
+
 const Crack& R1VccCrack() {
     static const Crack crack = BoardCrack("counter", {"R1", "1"}, {"U1", "16"}, 58);
     return crack;

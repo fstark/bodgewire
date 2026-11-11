@@ -1,0 +1,6 @@
+# Block letters: Broken Trace on CLK_N between U5 pin 6 (3Y) and U16 pin 2 (CLK); the CLK input floats
+# high and the shift register never shifts: each character shows its leftmost dot (F5) six dots wide.
+machine message
+title "Block letters"
+brief "The letters have melted into solid bars and blocks; the poem can no longer be read."
+fault crack U5.3Y U16.CLK 50%

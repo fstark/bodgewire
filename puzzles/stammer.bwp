@@ -1,0 +1,6 @@
+# Stammer: dry Joint at U14 pin 8 (A0, C0); it floats high, so the message ROM reads the odd column of
+# each pair twice: every other character shown twice, the others gone.
+machine message
+title "Stammer"
+brief "Each letter is printed twice over and half of them are missing: the poem reads like a stammer."
+fault joint U14.8

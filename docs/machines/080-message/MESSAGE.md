@@ -6,7 +6,7 @@ Eighth rung of the tutorial ladder. A board that drives a TV and shows a page of
 
 Text on a screen is a lookup done again for every line of every character. The beam counters say where the beam is; part of that is an address in the message ROM, which holds one character code a cell; the code and the line inside the character are an address in the character ROM, which holds the dots of that line of that character; the shift register sends them out one dot a clock. Each lookup takes time, so the chain works one character ahead: what the counters address now is shown one character later. The character ROM's first line is blank in every character, and the board blanks the picture by asking the character ROM for that line outside the text area: one trick, and the borders and the pipeline stay in step.
 
-Faults show as text going wrong in ways that point to one place in the chain: the same letter everywhere (a code line stuck), every letter missing a column of dots (a font output), letters cut in half or repeated rows (a row address line), the page repeated in the borders (blanking), columns of text swapped or doubled (a column address line).
+Faults show as text going wrong in ways that point to one place in the chain: letters turned into other characters (a code line), letters cut in half (a row address line), letters doubled (a column address line), text in the border (blanking), every letter missing a column of dots (a dot line), letters smeared into bars (the shift clock).
 
 ## Circuit
 
@@ -67,6 +67,17 @@ EMILY DICKINSON
 
 ## Puzzles
 
-None yet: they come with their own roadmap row (P4m), from the finished Board.
+Six Puzzles (P4m, 2026-11-11), each a different Fault on a different link of the chain, each seen on the first locked frame:
+
+| Puzzle | Fault | Symptom | Path to the fix |
+|---|---|---|---|
+| Half letters | `U13` output `3Y` (`R3`) stuck at 0 | each line of the poem shows only the tops of its letters (glyph lines 1–3), twice, one above the other | `R3` stays low at `U13` pin 8 while `V3` pulses on pin 9: swap `U13` |
+| Echo | `U12` input `1B` (`V8`) stuck at 0 | the poem whole, and its first line again near the bottom of the screen | `V8` pulses on `U12` pin 3, leg and pad, yet `ACTIVE` (pin 1) goes on pulsing on lines 256–311: the chip reads its input wrong: swap `U12` |
+| Gibberish | Broken Trace on `CH5` from `U14` pin 15 to `U15` pin 22 | the letters are digits and punctuation (`"(/0%"` for `"HOPE"`); spaces and punctuation stay where they were | `CH5` pulses at `U14` pin 15, nothing at `U15` pin 22: mend the Trace |
+| Stammer | Dry Joint at `U14` pin 8 (`A0`, `C0`) | every other character shown twice, the others gone (`HHPP""II  HH`) | `C0` pulses on pin 8's pad (B.Cu) but not on the leg (F.Cu): resolder `U14` pin 8 |
+| Thin letters | Solder Bridge between `U16` pin 13 (`C`, tied to GND) and pin 14 (`D`, `F1`) | every letter without its right-hand column of dots | `F1` reads 0 at both ends, and a new `U15` changes nothing; with the power off the meter finds `F1` connected to GND: cut the bridge on the solder side of `U16` |
+| Block letters | Broken Trace on `CLK_N` from `U5` pin 6 to `U16` pin 2 | the text is solid bars and blocks: each letter's left column of dots drawn six dots wide | `CLK_N` pulses at `U5` pin 6, nothing at `U16` pin 2; `VIDEO_D` changes at most once a character: mend the Trace |
+
+Each teaches something different: an output stuck (half the address space never asked for), an input stuck (a border that is not blanked although its signal is right), a data line cut between two ROMs (every lookup shifted by the same amount), a dry Joint on an address input (two cells read as one), a bridge to a tie (the obvious chip swap fails), and a clock cut (a register that loads but never shifts).
 
 Netlist, Board and manuals: [MESSAGE_DESIGN.md](MESSAGE_DESIGN.md).

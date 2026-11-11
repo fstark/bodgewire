@@ -1,0 +1,6 @@
+# Gibberish: Broken Trace on CH5 between U14 pin 15 (O5) and U15 pin 22 (A9); A9 floats high, so
+# every letter (codes 0x01-0x1A) is read as 0x21-0x3A: punctuation and digits. Spaces are unchanged.
+machine message
+title "Gibberish"
+brief "The poem has turned into digits and punctuation marks, though the words keep their lengths and places."
+fault crack U14.O5 U15.A9 50%

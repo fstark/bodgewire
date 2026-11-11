@@ -1,0 +1,6 @@
+# Half letters: U13 output 3Y (R3) stuck at 0; the character ROM only ever gets glyph lines 0-3, so
+# each text row shows the blank line and the top three lines of its letters, twice.
+machine message
+title "Half letters"
+brief "Only the top of each letter shows, and it shows twice, one copy above the other."
+fault stuck U13.3Y 0

@@ -1,6 +1,6 @@
 # 080 — Message Display — Machine Design
 
-How the Machine in [MESSAGE.md](MESSAGE.md) is built: netlist, ROM contents, Board, manuals. The code it needs (the 2716 and 2513 ROM Parts with contents files, the 74LS165, the DIP-24 package) comes with P4l ([ROM_PARTS.md](../../p4l-rom-parts/ROM_PARTS.md)).
+How the Machine in [MESSAGE.md](MESSAGE.md) is built: netlist, ROM contents, Board, Puzzle files, manuals. The code it needs (the 2716 and 2513 ROM Parts with contents files, the 74LS165, the DIP-24 package) comes with P4l ([ROM_PARTS.md](../../p4l-rom-parts/ROM_PARTS.md)).
 
 ## Files
 
@@ -157,8 +157,41 @@ Placed by `bw place netlists/message.bwn boards/message/message.place -o boards/
   ```
 
 - The ROMs are 600-mil DIP-24s, too big for the chip grid's 16 × 27 mm slots, so a rule places them side by side on the front edge (ROM_PARTS.md, decided while designing). The 15 other chips and `X1` go in the annealed grid.
-- No Puzzle constraints yet: P4m reads the routing of whatever Nets its cracks need.
+- Puzzle constraints: none on the routing. Both cracks are on two-pin Nets (`CH5`, `CLK_N`), so any layout keeps their pads at the Trace's ends; Thin letters needs only `U16` pins 13 and 14 as wired (`C` tied to GND, `D` on `F1`).
 - `bw check-board` prints `ok`; `drc_message` and `place_drc_message` pass (picked up by the globs).
+
+## Puzzles
+
+`machine message` in each file (MESSAGE.md, Puzzles):
+
+| File | Fault line | Where |
+|---|---|---|
+| `half_letters.bwp` | `fault stuck U13.3Y 0` | `R3` into the character ROM |
+| `echo.bwp` | `fault stuck U12.1B 0` | `V8` into the text-area gate |
+| `gibberish.bwp` | `fault crack U14.O5 U15.A9 50%` | `CH5` |
+| `stammer.bwp` | `fault joint U14.8` | `C0` at the message ROM |
+| `thin_letters.bwp` | `fault bridge U16.13 U16.14` | `F1` to the GND tie on `C` |
+| `block_letters.bwp` | `fault crack U5.3Y U16.CLK 50%` | `CLK_N` |
+
+Titles and briefs:
+
+- Half letters: "Only the top of each letter shows, and it shows twice, one copy above the other."
+- Echo: "Near the bottom of the screen, under the poem, its first line shows a second time."
+- Gibberish: "The poem has turned into digits and punctuation marks, though the words keep their lengths and places."
+- Stammer: "Each letter is printed twice over and half of them are missing: the poem reads like a stammer."
+- Thin letters: "Every letter has lost its right-hand edge: an O looks like a C, and an H like a squashed F."
+- Block letters: "The letters have melted into solid bars and blocks; the poem can no longer be read."
+
+### Electrical Nets on a damaged Board
+
+- Half letters: `R3` stuck at 0 (Strong): the 2513 gets glyph lines 0–3 only, so a text row's 16 lines draw lines 0–3 twice (each line still twice); line 0 is blank, so each row shows the glyph's lines 1–3, a gap, and lines 1–3 again. The borders stay dark (line 0 there as before).
+- Echo: `U12` reads `1B` as 0, so `ACTIVE` = NOT `C4` on every line. Lines 256–307 draw text rows 0–3 again (`V4`–`V7` wrap with `V8` high): rows 0 and 1 blank, row 2 (the first line of the poem) on lines 288–303, the top of row 3 on lines 304–307; during the vertical sync (lines 308–311) row 3's glyph lines 2–3, which the TV shows along its top edge. The `V8` Net is unchanged (the leg reads it).
+- Gibberish: `U15` pin 22 floats (reads high): every code gets 0x20, so letters 0x01–0x1A read as `!` to `:`; space and the punctuation and digits (0x20–0x3F) are unchanged.
+- Stammer: `U14` pin 8 floats (reads high): the message ROM reads column 2k + 1 for columns 2k and 2k + 1. The blanking is unchanged (it does not go through `C0`).
+- Thin letters: `F1` and the `C` tie are one Net with GND (Strong) winning against `U15`'s output: `F1` is always 0, `U16` loads 0 into stage `D`. A new `U15` drives the same Contention.
+- Block letters: `U16` `CLK` floats (reads high, never rises): no shift ever. The asynchronous load on each character's last dot puts `F5` on `QH`, where it stays: `U17` samples `F5` on all six dots of the next character.
+
+The test (`tests/machines/message_test.cpp`) builds each faulty page from the two ROM files with the same change and finds it on the TV where the real page is, with nothing outside it (Echo: the real page and row 2 again 288 lines lower); after the repair the real page is back.
 
 ## Manuals
 

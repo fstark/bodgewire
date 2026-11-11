@@ -1,0 +1,6 @@
+# Echo: U12 input 1B (V8) stuck at 0; ACTIVE no longer ends at line 256, so lines 256-307 draw text
+# rows 0-3 again (V4-V7 wrap): the poem's first line under the page. The V8 Net is unchanged.
+machine message
+title "Echo"
+brief "Near the bottom of the screen, under the poem, its first line shows a second time."
+fault stuck U12.1B 0
