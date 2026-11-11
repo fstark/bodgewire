@@ -260,3 +260,71 @@ TEST_CASE("typewriter: the TV shows the RAMs", "[machines][slow]") {
     CHECK(LitOutside(frames[1], *offset) == 0);
     CHECK(frames[2].cells == frames[1].cells);
 }
+
+namespace {
+
+constexpr unsigned kSpace = 0x20;
+
+// The cleared page with `text` from cell `first` on, each character's code & 0x3F.
+Codes Typed(std::string_view text, std::size_t first = 0) {
+    Codes codes;
+    codes.fill(kSpace);
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        codes[first + i] = static_cast<unsigned char>(text[i]) & 0x3Fu;
+    }
+    return codes;
+}
+
+}  // namespace
+
+TEST_CASE("typewriter: Clear blanks the page and homes the cursor", "[machines]") {
+    const std::uint64_t seed = GENERATE(1, 2, 3);
+    INFO("seed " << seed);
+    Typewriter t(seed);
+    t.clear();
+    CHECK(t.codes() == Typed(""));
+    CHECK(t.cursor() == Cell{0, 0});
+}
+
+TEST_CASE("typewriter: keys land at the cursor", "[machines]") {
+    Typewriter t(1);
+    t.clear();
+    t.type("HELLO, WORLD");
+    CHECK(t.codes() == Typed("HELLO, WORLD"));
+    CHECK(t.cursor() == Cell{12, 0});
+}
+
+TEST_CASE("typewriter: Return starts a line, other control keys do nothing", "[machines]") {
+    Typewriter t(2);
+    t.clear();
+    t.type("AB\rC");
+    t.type(std::vector<std::uint8_t>{8, 27, 1});  // Backspace, Esc, CTRL-A
+    Codes expected = Typed("AB");
+    expected[kColumns] = 'C' & 0x3F;
+    CHECK(t.codes() == expected);
+    CHECK(t.cursor() == Cell{1, 1});
+}
+
+TEST_CASE("typewriter: lines and the page wrap", "[machines]") {
+    Typewriter t(3);
+    t.clear();
+    const std::string letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFG";  // 33
+    t.type(letters);
+    CHECK(t.codes() == Typed(letters));
+    CHECK(t.cursor() == Cell{1, 1});
+    t.clear();
+    t.type(std::string(16, '\r'));
+    CHECK(t.cursor() == Cell{0, 0});
+    t.type("Z");
+    CHECK(t.codes() == Typed("Z"));
+    CHECK(t.cursor() == Cell{1, 0});
+}
+
+TEST_CASE("typewriter: keys typed at once all land", "[machines]") {
+    Typewriter t(4);
+    t.clear();
+    const std::string keys = "THE QUICK BROWN FOX JUMPS OVER T";  // 32
+    t.type(std::vector<std::uint8_t>(keys.begin(), keys.end()), true);
+    CHECK(t.codes() == Typed(keys));
+    CHECK(t.cursor() == Cell{0, 1});
+}

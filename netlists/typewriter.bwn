@@ -4,21 +4,25 @@
 # at each line end). During characters 0-31 the multiplexer (U14-U16) gives the page RAMs (U17, U18,
 # two 2114s) the beam's address; their 6-bit code and the glyph line address the character ROM
 # (U19, a 2513), whose dots the 74LS165 (U20) shifts out; U21 re-times video, sync and the line end.
-# Stage 1: the RAMs are only read (WE_N high); no keyboard, cursor or Clear yet.
+# During characters 32-41 the RAMs see the cursor (U28-U30): a key from J3 sets KEY (U24), the next
+# line writes it (WR) through U22 on characters 35 and 39 (WEK_N, re-timed by U21), and the cursor
+# steps at that line's end; Return (U26) starts the next line. SW1 (Clear) writes spaces from U23
+# into every cell and homes the cursor.
+# Stage 2: no cursor on the screen yet.
 
 part X1  OSC freq=4MHz
 part U1  74LS161    # dot counter 10-15
 part U2  74LS161    # C0-C3
 part U3  74LS161    # C4, C5
 part U4  74LS20     # LINE_END_N, HSYNC_N
-part U5  74LS04     # DOT_LOAD_N, CLK_N
+part U5  74LS04     # DOT_LOAD_N, CLK_N, D1_N, D4_N
 part U6  74LS161    # V0-V3
 part U7  74LS161    # V4-V7
 part U8  74LS161    # V8
 part U9  74LS30     # FRAME_END_N
-part U10 74LS20     # VSYNC_N
+part U10 74LS20     # VSYNC_N, KEY_CLR_N
 part U11 74LS86     # composite sync
-part U12 74LS02     # ACTIVE
+part U12 74LS02     # ACTIVE, CTL
 part U13 74LS08     # R1-R3, WE_N
 part U14 74LS157    # RAM address 0-3
 part U15 74LS157    # RAM address 4-7
@@ -27,9 +31,21 @@ part U17 2114       # page RAM, bits 0-3
 part U18 2114       # page RAM, bits 4-5
 part U19 2513 contents=../roms/2513.rom
 part U20 74LS165    # dots out
-part U21 74LS175    # output registers, LINE_END
+part U21 74LS175    # output registers, write strobe, LINE_END
+part U22 74LS244    # keyboard onto the bus
+part U23 74LS244    # spaces onto the bus (Clear)
+part U24 74LS74     # KEY, WR
+part U25 74LS30     # write decoder
+part U26 74LS30     # Return decoder
+part U27 74LS00     # PRINT, ADV, XC_N, YEN
+part U28 74LS161    # cursor X0-X3
+part U29 74LS161    # cursor X4
+part U30 74LS161    # cursor Y0-Y3
+part SW1 BUTTON     # Clear
+part R1  R value=4k7
 part J1  POWER
 part J2  VIDEO
+part J3  KEYBOARD strobe=100us
 
 net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U21.CLK U5.3A
 
@@ -42,19 +58,19 @@ net DOT_LOAD_N  U5.1Y U1.LOAD_N U20.SH_LD_N
 # Column counter 0..41, reloaded with 0 after character 41.
 net VCC         U2.CLR_N U2.ENT U3.CLR_N
 net GND         U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
-net C0          U2.QA U4.1D U14.1A
-net C1          U2.QB U14.2A
+net C0          U2.QA U4.1D U14.1A U25.C
+net C1          U2.QB U14.2A U25.D
 net C2          U2.QC U14.3A
 net C3          U2.QD U4.1C U4.2B U14.4A
 net CC          U2.RCO U3.ENT
 net C4          U3.QA U15.1A
-net C5          U3.QB U4.1B U4.2A U12.1A U14.S U15.S U16.S
+net C5          U3.QB U4.1B U4.2A U12.1A U14.S U15.S U16.S U25.B U24.2CLK
 net VCC         U4.2C U4.2D
 net LINE_END_N  U4.1Y U2.LOAD_N U3.LOAD_N U21.4D
-net LINE_END    U21.4Q_N U6.CLK U7.CLK U8.CLK
+net LINE_END    U21.4Q_N U6.CLK U7.CLK U8.CLK U28.CLK U29.CLK U30.CLK U10.2B
 net HSYNC_N     U4.2Y U11.1A
 
-# Line counter 0..311, clocked at each line end (LINE_END from U21 below).
+# Line counter 0..311, clocked at each line end (LINE_END from U21 below), loaded with 0 at the end of line 311.
 net VCC         U6.CLR_N U6.ENP U6.ENT U7.CLR_N U7.ENP U8.CLR_N U8.ENP U9.G U9.H
 net GND         U6.A U6.B U6.C U6.D U7.A U7.B U7.C U7.D U8.A U8.B U8.C U8.D
 net V0          U6.QA U9.F
@@ -82,9 +98,8 @@ net R1          U13.1Y U19.A1
 net R2          U13.2Y U19.A2
 net R3          U13.3Y U19.A3
 
-# RAM address: the beam during characters 0-31, the cursor (stage 2) during 32-41.
+# RAM address: the beam during characters 0-31, the cursor during 32-41.
 net GND         U14.G_N U15.G_N U16.G_N U16.2A U16.2B U16.3A U16.3B U16.4A U16.4B
-net GND         U14.1B U14.2B U14.3B U14.4B U15.1B U15.2B U15.3B U15.4B U16.1B
 net RA0         U14.1Y U17.A0 U18.A0
 net RA1         U14.2Y U17.A1 U18.A1
 net RA2         U14.3Y U17.A2 U18.A2
@@ -95,16 +110,15 @@ net RA6         U15.3Y U17.A6 U18.A6
 net RA7         U15.4Y U17.A7 U18.A7
 net RA8         U16.1Y U17.A8 U18.A8
 net GND         U17.A9 U18.A9 U17.CS_N U18.CS_N
-net VCC         U13.4A U13.4B
 net WE_N        U13.4Y U17.WE_N U18.WE_N
 
-# Data bus: the RAMs and the character ROM's character address.
-net B0          U17.IO1 U19.A4
-net B1          U17.IO2 U19.A5
-net B2          U17.IO3 U19.A6
-net B3          U17.IO4 U19.A7
-net B4          U18.IO1 U19.A8
-net B5          U18.IO2 U19.A9
+# Data bus: the RAMs, the two buffers and the character ROM's character address.
+net B0          U17.IO1 U22.1Y1 U23.1Y1 U19.A4
+net B1          U17.IO2 U22.1Y2 U23.1Y2 U19.A5
+net B2          U17.IO3 U22.1Y3 U23.1Y3 U19.A6
+net B3          U17.IO4 U22.1Y4 U23.1Y4 U19.A7
+net B4          U18.IO1 U22.2Y1 U23.2Y1 U19.A8
+net B5          U18.IO2 U22.2Y2 U23.2Y2 U19.A9
 
 # Character ROM: the dots of one glyph line, F5 leftmost.
 net GND         U19.CE_N
@@ -119,12 +133,60 @@ net CLK_N       U5.3Y U20.CLK
 net GND         U20.CLK_INH U20.SER U20.A U20.B U20.C
 net VIDEO_D     U20.QH U21.2D
 
-# Output registers: sync, video and the line end, re-timed on the clock.
+# Output registers: sync, video, the write strobe and the line end, re-timed on the clock.
 net VCC         U21.CLR_N
-net GND         U21.3D
 net SYNC_N      U21.1Q J2.SYNC_N
 net VIDEO       U21.2Q J2.VIDEO
+net WE_D        U25.Y U21.3D
+net WEK_N       U21.3Q U22.1OE_N U22.2OE_N U13.4A
 
-# Spare gates (stage 1).
-net GND         U5.2A U5.4A U5.5A U5.6A U10.2A U10.2B U10.2C U10.2D
-net GND         U11.3A U11.3B U11.4A U11.4B U12.2A U12.2B U12.3A U12.3B U12.4A U12.4B
+# Keyboard: bits 0-5 onto the bus during a write; Return and printable codes decoded.
+net D0          J3.D0 U22.1A1 U26.F
+net D1          J3.D1 U22.1A2 U5.4A
+net D2          J3.D2 U22.1A3 U26.D
+net D3          J3.D3 U22.1A4 U26.C
+net D4          J3.D4 U22.2A1 U5.5A
+net D5          J3.D5 U22.2A2 U12.2B
+net D6          J3.D6 U12.2A
+net GND         U22.2A3 U22.2A4
+net D1_N        U5.4Y U26.E
+net D4_N        U5.5Y U26.B
+net CTL         U12.2Y U26.A U27.1A U27.1B U27.2A
+net VCC         U26.G U26.H
+net CR_N        U26.Y U27.2B U27.4B U28.LOAD_N U29.LOAD_N
+net PRINT       U27.1Y U25.E
+net ADV         U27.2Y U28.ENT
+
+# Write control: KEY set by the strobe, WR for one line from character 32, KEY cleared at the line end.
+net STROBE      J3.STROBE U24.1CLK
+net VCC         U24.1D U24.1PRE_N U24.2PRE_N U24.2CLR_N
+net KEY         U24.1Q U24.2D
+net WR          U24.2Q U10.2A U25.A U28.ENP U29.ENP U30.ENP
+net VCC         U10.2C U10.2D U25.F U25.G U25.H
+net KEY_CLR_N   U10.2Y U24.1CLR_N
+
+# Cursor counter: X0-X4 the column, Y0-Y3 the row; steps at a line end after a write or Return.
+net GND         U28.A U28.B U28.C U28.D U29.A U29.B U29.C U29.D U30.A U30.B U30.C U30.D
+net VCC         U30.LOAD_N
+net X0          U28.QA U14.1B
+net X1          U28.QB U14.2B
+net X2          U28.QC U14.3B
+net X3          U28.QD U14.4B
+net XRCO        U28.RCO U29.ENT U27.3A
+net X4          U29.QA U15.1B U27.3B
+net XC_N        U27.3Y U27.4A
+net YEN         U27.4Y U30.ENT
+net Y0          U30.QA U15.2B
+net Y1          U30.QB U15.3B
+net Y2          U30.QC U15.4B
+net Y3          U30.QD U16.1B
+
+# Clear: spaces onto the bus, every cell written, the cursor home.
+net VCC         R1.1
+net CLEAR_N     R1.2 SW1.1 U23.1OE_N U23.2OE_N U13.4B U28.CLR_N U29.CLR_N U30.CLR_N
+net GND         SW1.2
+net GND         U23.1A1 U23.1A2 U23.1A3 U23.1A4 U23.2A1 U23.2A3 U23.2A4
+net VCC         U23.2A2
+
+# Spare gates.
+net GND         U5.2A U5.6A U11.3A U11.3B U11.4A U11.4B U12.3A U12.3B U12.4A U12.4B
