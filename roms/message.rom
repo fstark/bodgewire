@@ -1,0 +1,20 @@
+; 080 message ROM contents (2716): the page, 16 rows of 16 character codes at row x 16 + column
+; (docs/machines/080-message/MESSAGE.md). Emily Dickinson, "Hope" is the thing with feathers (1891),
+; first stanza.
+
+20*16             ; row 0
+20*16             ; row 1
+"\"HOPE\" IS THE   " ; row 2
+"THING WITH      " ; row 3
+"FEATHERS -      " ; row 4
+"THAT PERCHES    " ; row 5
+"IN THE SOUL -   " ; row 6
+"AND SINGS THE   " ; row 7
+"TUNE WITHOUT    " ; row 8
+"THE WORDS -     " ; row 9
+"AND NEVER STOPS " ; row 10
+"- AT ALL -      " ; row 11
+20*16             ; row 12
+"EMILY DICKINSON " ; row 13
+20*16             ; row 14
+20*16             ; row 15
