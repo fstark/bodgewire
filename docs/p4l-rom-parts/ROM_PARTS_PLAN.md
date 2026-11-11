@@ -9,12 +9,12 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Contents format |`04293c0` |
-| 2 | DIP-24 package |`19a244f` |
-| 3 | ROM Parts (2716, 2513), contents paths |`9cd6bcb` |
-| 4 | 74LS165 |`8b587d1` |
-| 5 | Netlist, ROM files, fault-free test |`babed7b` |
-| 6 | Manuals |`1635989` |
+| 1 | Contents format | `04293c0` |
+| 2 | DIP-24 package | `19a244f` |
+| 3 | ROM Parts (2716, 2513), contents paths | `9cd6bcb` |
+| 4 | 74LS165 | `8b587d1` |
+| 5 | Netlist, ROM files, fault-free test | `babed7b` |
+| 6 | Manuals | `1635989` |
 | 7 | Board (user routing), per-Machine loops | |
 | 8 | Session test, release check, recipes, docs | |
 
