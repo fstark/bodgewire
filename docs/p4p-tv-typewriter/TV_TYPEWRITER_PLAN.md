@@ -9,11 +9,11 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Netlist stage 1: video from the RAMs | |
-| 2 | Netlist stage 2: keyboard, writes, cursor counter, Clear | |
-| 3 | Netlist stage 3: the cursor on the screen | |
-| 4 | Manuals | |
-| 5 | Board (user routing), per-Machine loops | |
+| 1 | Netlist stage 1: video from the RAMs | `f0fe29f` |
+| 2 | Netlist stage 2: keyboard, writes, cursor counter, Clear | `7ea2235` |
+| 3 | Netlist stage 3: the cursor on the screen | `6abe7d1` |
+| 4 | Manuals | `1d24ed2` |
+| 5 | Board (user routing), per-Machine loops | placed, waiting for routing |
 | 6 | Session test, release check, recipes, docs | |
 
 ## Phase 1 — Video from the RAMs
@@ -60,3 +60,8 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 ## Implementation notes
 
 - Docs review (before phase 1), on the design netlist run in a scratch copy: it loads without warnings, keys, Return, Backspace and the line wrap land as designed, the cursor block is one cell, the text starts at TV column 34. Fixed: the speed (1.0× headless on a full page; the 1.3× gate and the 1.00× target dropped with the user's agreement, spec); `U36` counts on `V8` and `LINE_END` is re-timed in `U21` (both were clean only through the simulator's inertial delays); `--vcd` in phase 2; `--after 4500ms`; `LitOutside` one dot wider for a cursor in column 31; `LockedFrames` on a running simulator; the Session test's key checked as accepted only; stage-1 ties named; debug times stated; the 2 ns write-end margin noted.
+- Release headless speed (`bw run netlists/typewriter.bwn --time 2s`, random power-on page / after `--press SW1:1ms:30ms`): stage 1 1.09×; stage 2 1.08× / 1.44×; stage 3 0.95× / 1.31× (the comparator's XORs follow the column every character). `bw_ui` without Board or instruments: 1.00×, UI 0.2–0.4 ms, on the random page at stage 1 and on a typed page at stage 3.
+- Phase 2: in the VCD of `--type 'J3:40ms:HI'`, `WEK_N` falls exactly twice a key, 6 µs apart, no glitch.
+- Phase 3: screenshots at 2.0 s and 2.16 s show `HELLO` with the block after it, on and off. In one, a stroke over the `E` comes from scaling the TV view on screen; the frames themselves match the page exactly (test, 19 frames).
+- Phase 4: the Service Manual lists one bullet per reference (`U14`–`U16`, `U17`/`U18`, `U31`/`U32` split; the Machine design updated to match).
+- Phase 5: `bw place` gives a 4 × 9 grid, 7.00 m of wire; KiCad DRC on the placed Board: 0 errors, 3 silkscreen warnings (the `U19` reference against the back edge, two labels overlapping), as `place_drc` allows.
