@@ -1,0 +1,12 @@
+// Generated from src/ui/keycap_font.cpp.in: Roboto Medium (Apache License 2.0), from Dear
+// ImGui's misc/fonts.
+#include <cstddef>
+
+namespace bw {
+
+extern const unsigned char kKeycapFont[];
+extern const std::size_t kKeycapFontSize;
+const unsigned char kKeycapFont[] = {@bytes@};
+const std::size_t kKeycapFontSize = sizeof(kKeycapFont);
+
+}  // namespace bw

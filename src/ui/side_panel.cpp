@@ -7,8 +7,6 @@
 
 #include <imgui.h>
 
-#include "ui/toolbar.hpp"
-
 namespace bw {
 
 namespace {
@@ -104,42 +102,24 @@ void DrawKnobs(Session& session) {
     }
 }
 
-// "HELLO[CR]": the keys sent, the two controls named.
+// "HELLO[CR]^G": the keys sent, control codes named.
 std::string SentText(std::string_view codes) {
     std::string text;
     for (const char c : codes) {
-        text += c == 0x0D   ? std::string("[CR]")
-                : c == 0x08 ? std::string("[BS]")
-                            : std::string(1, c);
+        const auto code = static_cast<unsigned char>(c);
+        text += code == 0x0D   ? std::string("[CR]")
+                : code == 0x08 ? std::string("[BS]")
+                : code == 0x1B ? std::string("[ESC]")
+                : code < 0x20  ? std::string{'^', static_cast<char>(code + 0x40)}
+                               : std::string(1, c);
     }
     return text;
-}
-
-// F2 starts typing, also with the section collapsed; a toggle and the keys sent.
-void DrawKeyboard(Session& session, KeyboardCapture& capture) {
-    if (capture.reference.empty()) {
-        return;
-    }
-    if (!capture.on && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
-        capture.on = true;
-    }
-    if (!ImGui::CollapsingHeader("Keyboard", ImGuiTreeNodeFlags_DefaultOpen)) {
-        return;
-    }
-    if (ToolButton(capture.on ? "Typing (Esc)" : "Type (F2)", capture.on)) {
-        capture.on = !capture.on;
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Type on the Machine's keyboard (%s): every key goes to it until Esc",
-                          capture.reference.c_str());
-    }
-    ImGui::TextUnformatted(("Sent: " + SentText(session.typed(capture.reference))).c_str());
 }
 
 }  // namespace
 
 void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loaded& loaded,
-                     KeyboardCapture& capture, DebugStats stats, std::uint64_t& seed) {
+                     DebugStats stats, std::uint64_t& seed) {
     const BoardScene* scene = board.scene();
     const LoadedCircuit& design = DesignOf(session);
     const ImGuiTreeNodeFlags open = ImGuiTreeNodeFlags_DefaultOpen;
@@ -164,7 +144,6 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
     }
 
     DrawKnobs(session);
-    DrawKeyboard(session, capture);
 
     if (session.machine() && ImGui::CollapsingHeader("Probe", open)) {
         DrawLamps(session.lamps());
@@ -208,6 +187,11 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
                         stats.simSeconds, stats.speedRatio, stats.lock, stats.state,
                         stats.ringWaitShare * 100.0, stats.uiMilliseconds);
         ImGui::TextWrapped("%s", line.c_str());
+        if (const auto keyboards = session.keyboards(); !keyboards.empty()) {
+            const std::string sent = std::format("Keys sent ({}): {}", keyboards.front(),
+                                                 SentText(session.typed(keyboards.front())));
+            ImGui::TextWrapped("%s", sent.c_str());
+        }
     }
 }
 

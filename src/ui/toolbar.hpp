@@ -10,6 +10,9 @@
 
 namespace bw {
 
+// The Board's share of the main window's width; the side panel has the rest.
+inline constexpr float kBoardShare = 2.0f / 3.0f;
+
 // A large toggle button; true when clicked.
 bool ToolButton(const char* label, bool selected);
 

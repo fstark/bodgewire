@@ -68,7 +68,7 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
     if (!typing.empty()) {
         // Drawn without a Board too (a netlist-only Session); the tool keys are off meanwhile.
         ImGui::SameLine(0, 40);
-        ImGui::TextColored(kPlain, "Typing on %s \u00b7 Esc to stop", typing.c_str());
+        ImGui::TextColored(kPlain, "Typing on %s \u00b7 F2 to stop", typing.c_str());
     } else if (hasBoard) {
         std::string action;
         bool blocked = false;

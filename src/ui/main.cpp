@@ -30,6 +30,7 @@
 #include "session/session.hpp"
 #include "ui/analyzer_window.hpp"
 #include "ui/board_view.hpp"
+#include "ui/keyboard_window.hpp"
 #include "ui/loaded.hpp"
 #include "ui/manual_view.hpp"
 #include "ui/meter_window.hpp"
@@ -46,7 +47,6 @@ constexpr int kExitErrors = 1;
 constexpr int kExitUsage = 2;
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 800;
-constexpr float kBoardShare = 2.0f / 3.0f;
 constexpr std::string_view kUsage =
     "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] "
     "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,"
@@ -297,7 +297,7 @@ bool SaveScreenshot(SDL_Renderer* renderer, const std::filesystem::path& path) {
 }
 
 int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, Session& session,
-              const Options& options) {
+              const Options& options, ImFont* legends) {
     TvView view(renderer);
     Toolbar toolbar;
     SidePanel sidePanel;
@@ -316,6 +316,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     if (const auto keyboards = session.keyboards(); !keyboards.empty()) {
         capture.reference = keyboards.front();
     }
+    KeyboardWindow keyboardWindow(legends);
+    bool keyboardOpen = !capture.reference.empty();
     if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
         if (const auto component =
                 scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
@@ -585,7 +587,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     const Typing& typing = options.type[t];
                     while (typedKeys[t] < typing.keys.size() &&
                            typing.at(typedKeys[t]) <= status.simTime) {
-                        session.typeCode(typing.reference, typing.keys[typedKeys[t]++]);
+                        const std::uint8_t code = typing.keys[typedKeys[t]++];
+                        if (session.typeCode(typing.reference, code) &&
+                            typing.reference == capture.reference) {
+                            keyboardWindow.flash(code);
+                        }
                     }
                 }
             }
@@ -621,9 +627,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                                uiMilliseconds,
                                lock,
                                StateName(status.state)};
-        sidePanel.draw(session, view, boardView, loaded, capture, stats, seed);
-        capture.sync(window);
-        toolbar.typing = capture.on ? capture.reference : std::string();
+        sidePanel.draw(session, view, boardView, loaded, stats, seed);
         ImGui::EndChild();
         ImGui::End();
         manualWindows.draw(toolbar.userManualOpen, loaded.manuals.manuals, boardView,
@@ -633,6 +637,10 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             meterWindow.draw(toolbar.meterOpen, session, boardView);
             scopeWindow.draw(toolbar.scopeOpen, session, boardView);
         }
+        // Also without a Board (a netlist-only Session, the bench).
+        keyboardWindow.draw(keyboardOpen, session, capture);
+        capture.sync(window);
+        toolbar.typing = capture.on ? capture.reference : std::string();
         if (const auto picked = boardView.takePicked()) {
             wireStart.reset();
             toolbar.analyzerOpen |= *picked == Tool::Clip;
@@ -795,8 +803,21 @@ int main(int argc, char** argv) {
     ImGui::GetIO().IniFilename = nullptr;
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
+    // The UI font first, as NewFrame would pick it lazily (13 px at the framebuffer scale: vector
+    // from 15 px); AddFontDefault() itself, before the first frame, assumes Retina on macOS.
+    ImFontAtlas& fonts = *ImGui::GetIO().Fonts;
+    if (SDL_GetWindowPixelDensity(window) * 13.0f >= 15.0f) {
+        fonts.AddFontDefaultVector();
+    } else {
+        fonts.AddFontDefaultBitmap();
+    }
+    ImFontConfig legendConfig;
+    legendConfig.FontDataOwnedByAtlas = false;  // static data, never written
+    ImFont* legends =
+        fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kKeycapFont),
+                                   static_cast<int>(kKeycapFontSize), 0.0f, &legendConfig);
 
-    const int exitCode = RunWindow(window, renderer, loaded, session, *options);
+    const int exitCode = RunWindow(window, renderer, loaded, session, *options, legends);
 
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
