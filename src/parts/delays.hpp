@@ -49,6 +49,10 @@ inline constexpr Time k2716Access = 450'000;        // address → O
 inline constexpr Time k2716ChipEnable = 450'000;    // CE_N → O
 inline constexpr Time k2716OutputEnable = 120'000;  // OE_N → O
 inline constexpr Time k2716Float = 100'000;         // CE_N or OE_N high → O off
+// Intel 2114 (450 ns grade): maximums (no typicals published).
+inline constexpr Time k2114Address = 450'000;  // tAA, address → IO
+inline constexpr Time k2114Select = 120'000;   // tCO, CS_N low (or WE_N back high) → IO
+inline constexpr Time k2114Off = 100'000;      // tOTD / tWZ, CS_N high or WE_N low → IO off
 // Signetics 2513, 1972 MOS data book p. 67: typicals.
 inline constexpr Time k2513RowAccess = 450'000;        // A1-A3 → O
 inline constexpr Time k2513CharacterAccess = 500'000;  // A4-A9 → O

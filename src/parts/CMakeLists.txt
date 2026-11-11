@@ -18,6 +18,7 @@ add_library(bw_parts STATIC
   ls93.cpp
   oscillator.cpp
   paddle.cpp
+  ram2114.cpp
   rom.cpp
   rom_contents.cpp
 )

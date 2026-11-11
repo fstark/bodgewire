@@ -78,6 +78,7 @@ add_executable(bw_tests
   parts/ls93_test.cpp
   parts/oscillator_test.cpp
   parts/paddle_test.cpp
+  parts/ram2114_test.cpp
   parts/rom_contents_test.cpp
   parts/rom_test.cpp
   runner/analyzer_consumer_test.cpp

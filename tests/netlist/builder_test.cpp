@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "parts/ram2114.hpp"
 #include "sim/simulator.hpp"
 
 using namespace bw;
@@ -317,6 +318,71 @@ TEST_CASE("builder: stuck input reads its value, its Net unchanged", "[netlist]"
     CHECK(sim.value(a) == One);
     CHECK(sim.value(loaded.nets.at("Y1")) == One);   // NAND(0, 1): the stuck input
     CHECK(sim.value(loaded.nets.at("Y2")) == Zero);  // NAND(1, 1): a good input on A
+}
+
+namespace {
+
+// A 2114 always writing address 0 (CS_N, WE_N and the address on GND), IO1 on net B0, which a
+// 74LS04 output may also drive; the other IO pins unconnected.
+constexpr std::string_view kRamWriting =
+    "part U1 2114\n"
+    "net GND U1.CS_N U1.WE_N U1.A0 U1.A1 U1.A2 U1.A3 U1.A4 U1.A5 U1.A6 U1.A7 U1.A8 U1.A9\n";
+
+}  // namespace
+
+TEST_CASE("builder: stuck bidirectional pin forces its net and is read by its chip", "[netlist]") {
+    const StuckPin stuck[] = {{"U1", Ram2114::kData[0], One}};
+    for (const bool fight : {false, true}) {
+        INFO(fight);
+        // With the fight, a 74LS04 drives 0 on B0 (its 1A on VCC).
+        const std::string text = std::string(kRamWriting) +
+                                 (fight ? "part U2 74LS04\nnet B0 U1.IO1 U2.1Y\nnet VCC U2.1A\n"
+                                          "net GND U2.3 U2.5 U2.9 U2.11 U2.13\n"
+                                        : "net B0 U1.IO1\n");
+        const auto netlist = ParseNetlist(text, "t.bwn");
+        REQUIRE(netlist.has_value());
+        const auto result = BuildCircuit(*netlist, stuck);
+        REQUIRE(result.has_value());
+        LoadedCircuit& loaded = **result;
+        CHECK(loaded.warnings.empty());
+        const NetId b0 = loaded.nets.at("B0");
+        CHECK(loaded.circuit.tieOf(b0).value == One);
+        Simulator sim(loaded.circuit);
+        sim.powerOn(1);
+        sim.runUntil(1_us);
+        // A Strong TTL tie against a TTL 0: 0 wins, as for a stuck output.
+        CHECK(sim.value(b0) == (fight ? Zero : One));
+        const auto& ram = static_cast<const Ram2114&>(*loaded.components.at("U1"));
+        CHECK((ram.word(0) & 1) == 1);  // the chip reads its stuck value, fight or not
+    }
+}
+
+TEST_CASE("builder: an unconnected MOS bidirectional pin gives no warning", "[netlist]") {
+    const auto result = LoadNetlist(std::string(kRamWriting), "t.bwn");
+    REQUIRE(result.has_value());
+    CHECK((*result)->warnings.empty());
+}
+
+TEST_CASE("builder: a bidirectional pin off its net drives nothing there", "[netlist]") {
+    // A dry Joint's electrical netlist: U1.IO1 left off B0, which a 74LS04 drives to 1. U1 reads
+    // (WE_N on VCC), so with IO1 on B0 it would fight the inverter on some seeds.
+    for (std::uint64_t seed = 1; seed <= 8; ++seed) {
+        INFO(seed);
+        const auto result = LoadNetlist(
+            "part U1 2114\npart U2 74LS04\nnet B0 U2.1Y\nnet VCC U1.WE_N\n"
+            "net GND U2.1A U2.3 U2.5 U2.9 U2.11 U2.13 U1.CS_N U1.A0 U1.A1 U1.A2 U1.A3 U1.A4 "
+            "U1.A5 U1.A6 U1.A7 U1.A8 U1.A9\n",
+            "t.bwn");
+        REQUIRE(result.has_value());
+        LoadedCircuit& loaded = **result;
+        const NetId b0 = loaded.nets.at("B0");
+        CHECK(PinNet(loaded, "U1", "IO1") != b0);
+        Simulator sim(loaded.circuit);
+        sim.powerOn(seed);
+        sim.runUntil(1_us);
+        CHECK(sim.value(b0) == One);
+        CHECK_FALSE(sim.isFloating(*PinNet(loaded, "U1", "IO1")));  // its own drive
+    }
 }
 
 TEST_CASE("builder: unpowered chip drives nothing", "[netlist]") {

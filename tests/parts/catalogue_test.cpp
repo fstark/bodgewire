@@ -47,7 +47,11 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         std::set<std::string> names;
         for (const PinSpec& pin : pins) {
             names.insert(pin.name);
-            CHECK(pin.family == Family::Ttl);
+            // The 2114's signal pins are MOS (bus charge, X read as a random bit).
+            constexpr std::string_view kMosSignals[] = {"2114"};
+            const bool mos = std::ranges::find(kMosSignals, part.name) != std::end(kMosSignals) &&
+                             pin.kind != PinKind::Power;
+            CHECK(pin.family == (mos ? Family::Mos : Family::Ttl));
             if (pin.name == "GND" || pin.name == "VCC") {
                 CHECK(pin.kind == PinKind::Power);
             } else {

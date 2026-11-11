@@ -23,6 +23,7 @@
 #include "parts/ls93.hpp"
 #include "parts/oscillator.hpp"
 #include "parts/paddle.hpp"
+#include "parts/ram2114.hpp"
 #include "parts/rom.hpp"
 #include "parts/rom_contents.hpp"
 
@@ -185,6 +186,7 @@ using enum PartKind;
 
 // Sorted by name.
 constexpr std::array s_parts{
+    PartInfo{"2114", "1K x 4 static RAM", "DIP-18", Chip, &CreateChip<Ram2114, "2114">},
     PartInfo{"2513", "64-character 5 x 7 character generator ROM", "DIP-24", Chip,
              &CreateRom<"2513">},
     PartInfo{"2716", "2K x 8 EPROM", "DIP-24", Chip, &CreateRom<"2716">},
