@@ -109,6 +109,15 @@ int LitOutside(const TvFrame& frame, Offset offset) {
     return lit;
 }
 
+// The Circuit built from the Board's Copper, with no Faults.
+std::unique_ptr<LoadedCircuit> BoardCircuit() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "message.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
     auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "message.bwn");
     if (!result) {
@@ -156,7 +165,7 @@ TEST_CASE("message: the TV shows the page", "[machines][slow]") {
     const std::uint64_t seed = GENERATE(1, 2, 3);
     INFO("seed " << seed);
     const auto page = ExpectedPage();
-    auto loaded = DesignCircuit();
+    auto loaded = BoardCircuit();
     // The first locked frame may have started before the counters fell into step.
     const auto frames = LockedFrames(*loaded, seed, 3);
     REQUIRE(frames.size() == 3);

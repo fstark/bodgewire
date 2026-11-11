@@ -14,6 +14,7 @@
 #include "board/kicad_board.hpp"
 #include "machine/crack.hpp"
 #include "machine/machine.hpp"
+#include "netlist/builder.hpp"
 #include "test_points.hpp"
 
 using namespace bw;
@@ -31,6 +32,7 @@ Design LoadDesign(const std::string& name) {
     const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
     auto netlist = ParseNetlist(text, name + ".bwn");
     REQUIRE(netlist.has_value());
+    ResolveContentsPaths(*netlist, BW_NETLIST_DIR);
     auto circuit = BuildCircuit(*netlist);
     REQUIRE(circuit.has_value());
     auto board =
@@ -70,8 +72,8 @@ std::string NetOf(const Netlist& netlist, const std::string& pin) {
 }  // namespace
 
 TEST_CASE("electrical: uncracked board gives the design Nets", "[machine]") {
-    for (const std::string name :
-         {"test_pattern", "counter", "chaser", "dice", "stopwatch", "ball", "knob", "tennis"}) {
+    for (const std::string name : {"test_pattern", "counter", "chaser", "dice", "stopwatch", "ball",
+                                   "knob", "tennis", "message"}) {
         INFO(name);
         const Design design = LoadDesign(name);
         const auto electrical =
