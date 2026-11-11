@@ -32,7 +32,11 @@ constexpr std::string_view kNetlist = "part X1 OSC freq=1MHz\n"
 TEST_CASE("kicad netlist: footprint table", "[board]") {
     CHECK(KicadFootprint("DIP-14") == "Package_DIP:DIP-14_W7.62mm");
     CHECK(KicadFootprint("DIP-16") == "Package_DIP:DIP-16_W7.62mm");
+    CHECK(KicadFootprint("DIP-18") == "Package_DIP:DIP-18_W7.62mm");
+    CHECK(KicadFootprint("DIP-20") == "Package_DIP:DIP-20_W7.62mm");
     CHECK(KicadFootprint("DIP-24") == "Package_DIP:DIP-24_W15.24mm");
+    CHECK(KicadFootprint("KK-10") ==
+          "Connector_Molex:Molex_KK-254_AE-6410-10A_1x10_P2.54mm_Vertical");
     CHECK(KicadFootprint("axial") ==
           "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal");
     CHECK(KicadFootprint("KK-2") ==

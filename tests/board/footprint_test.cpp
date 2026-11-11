@@ -72,6 +72,25 @@ TEST_CASE("footprint: DIP-24 pads and courtyard", "[board]") {
     CHECK(dip.courtyardMax == Point{Mm(16.29), Mm(29.46)});
 }
 
+TEST_CASE("footprint: DIP-18, DIP-20 and KK-10 pads", "[board]") {
+    const std::vector<std::string_view> packages{"DIP-18", "DIP-20", "KK-10"};
+    const auto library = LoadFootprints(BW_FOOTPRINT_DIR, packages);
+    REQUIRE(library.has_value());
+    const Footprint& dip18 = library->at("DIP-18");
+    CHECK(dip18.id == "Package_DIP:DIP-18_W7.62mm");
+    REQUIRE(dip18.pads.size() == 18);
+    CHECK(dip18.pads[9].number == "10");
+    CHECK(dip18.pads[9].position == Point{Mm(7.62), Mm(20.32)});
+    const Footprint& dip20 = library->at("DIP-20");
+    CHECK(dip20.id == "Package_DIP:DIP-20_W7.62mm");
+    REQUIRE(dip20.pads.size() == 20);
+    CHECK(dip20.courtyardMin == Point{Mm(-1.06), Mm(-1.52)});
+    CHECK(dip20.courtyardMax == Point{Mm(8.67), Mm(24.38)});
+    const Footprint& kk10 = library->at("KK-10");
+    REQUIRE(kk10.pads.size() == 10);
+    CHECK(kk10.pads[9].number == "10");
+}
+
 TEST_CASE("footprint: errors", "[board]") {
     const std::vector<std::string_view> unknown{"SOIC-8"};
     const auto none = LoadFootprints(BW_FOOTPRINT_DIR, unknown);
