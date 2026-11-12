@@ -23,6 +23,7 @@ add_library(bw_parts STATIC
   ram2114.cpp
   rom.cpp
   rom_contents.cpp
+  shift_register_2518.cpp
   shift_register_2524.cpp
 )
 target_link_libraries(bw_parts PUBLIC bw_sim PRIVATE bw_warnings)

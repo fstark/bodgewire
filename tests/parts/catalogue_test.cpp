@@ -48,7 +48,7 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         for (const PinSpec& pin : pins) {
             names.insert(pin.name);
             // MOS chips' signal pins (bus charge, X read as a random bit).
-            constexpr std::string_view kMosSignals[] = {"2114", "2524"};
+            constexpr std::string_view kMosSignals[] = {"2114", "2518", "2524"};
             const bool mos = std::ranges::find(kMosSignals, part.name) != std::end(kMosSignals) &&
                              pin.kind != PinKind::Power;
             CHECK(pin.family == (mos ? Family::Mos : Family::Ttl));
@@ -60,7 +60,7 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         }
         CHECK(names.size() == count);
         // P-MOS chips between VCC and a negative supply (not connected): no GND pin.
-        constexpr std::string_view kNoGround[] = {"2524"};
+        constexpr std::string_view kNoGround[] = {"2518", "2524"};
         const bool noGround = std::ranges::find(kNoGround, part.name) != std::end(kNoGround);
         CHECK(names.contains("GND") != noGround);
         CHECK(names.contains("VCC"));
