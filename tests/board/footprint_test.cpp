@@ -104,6 +104,19 @@ TEST_CASE("footprint: DIP-18, DIP-20 and KK-10 pads", "[board]") {
     CHECK(kk10.pads[9].number == "10");
 }
 
+TEST_CASE("footprint: DIP-40 pads and courtyard", "[board]") {
+    const std::vector<std::string_view> packages{"DIP-40"};
+    const auto library = LoadFootprints(BW_FOOTPRINT_DIR, packages);
+    REQUIRE(library.has_value());
+    const Footprint& dip = library->at("DIP-40");
+    CHECK(dip.id == "Package_DIP:DIP-40_W15.24mm");
+    REQUIRE(dip.pads.size() == 40);
+    CHECK(dip.pads[0].position == Point{0, 0});
+    CHECK(dip.pads[20].number == "21");
+    CHECK(dip.pads[20].position == Point{Mm(15.24), Mm(48.26)});
+    CHECK(dip.courtyardMax == Point{Mm(16.29), Mm(49.78)});
+}
+
 TEST_CASE("footprint: errors", "[board]") {
     const std::vector<std::string_view> unknown{"SOIC-8"};
     const auto none = LoadFootprints(BW_FOOTPRINT_DIR, unknown);

@@ -36,6 +36,7 @@ TEST_CASE("kicad netlist: footprint table", "[board]") {
     CHECK(KicadFootprint("DIP-18") == "Package_DIP:DIP-18_W7.62mm");
     CHECK(KicadFootprint("DIP-20") == "Package_DIP:DIP-20_W7.62mm");
     CHECK(KicadFootprint("DIP-24") == "Package_DIP:DIP-24_W15.24mm");
+    CHECK(KicadFootprint("DIP-40") == "Package_DIP:DIP-40_W15.24mm");
     CHECK(KicadFootprint("KK-10") ==
           "Connector_Molex:Molex_KK-254_AE-6410-10A_1x10_P2.54mm_Vertical");
     CHECK(KicadFootprint("axial") ==
@@ -45,7 +46,7 @@ TEST_CASE("kicad netlist: footprint table", "[board]") {
     CHECK(KicadFootprint("KK-3") ==
           "Connector_Molex:Molex_KK-254_AE-6410-03A_1x03_P2.54mm_Vertical");
     CHECK(KicadFootprint("LED-5mm") == "LED_THT:LED_D5.0mm");
-    CHECK(KicadFootprint("DIP-40").empty());
+    CHECK(KicadFootprint("PLCC-44").empty());
 }
 
 TEST_CASE("kicad netlist: components and nets", "[board]") {

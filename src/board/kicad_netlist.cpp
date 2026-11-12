@@ -12,13 +12,14 @@ namespace bw {
 
 namespace {
 
-constexpr std::array<std::pair<std::string_view, std::string_view>, 14> kFootprints{{
+constexpr std::array<std::pair<std::string_view, std::string_view>, 15> kFootprints{{
     {"DIP-8", "Package_DIP:DIP-8_W7.62mm"},
     {"DIP-14", "Package_DIP:DIP-14_W7.62mm"},
     {"DIP-16", "Package_DIP:DIP-16_W7.62mm"},
     {"DIP-18", "Package_DIP:DIP-18_W7.62mm"},
     {"DIP-20", "Package_DIP:DIP-20_W7.62mm"},
     {"DIP-24", "Package_DIP:DIP-24_W15.24mm"},
+    {"DIP-40", "Package_DIP:DIP-40_W15.24mm"},
     {"KK-2", "Connector_Molex:Molex_KK-254_AE-6410-02A_1x02_P2.54mm_Vertical"},
     {"KK-3", "Connector_Molex:Molex_KK-254_AE-6410-03A_1x03_P2.54mm_Vertical"},
     {"KK-4", "Connector_Molex:Molex_KK-254_AE-6410-04A_1x04_P2.54mm_Vertical"},
