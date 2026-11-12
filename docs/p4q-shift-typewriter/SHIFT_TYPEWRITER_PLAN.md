@@ -13,7 +13,7 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 | 2 | 2524 Part | `f9948c9` |
 | 3 | 2518 Part | `411c3b8` |
 | 4 | Netlist stage 1: video from the page | `d14e18c` |
-| 5 | Netlist stage 2: keyboard, writes, cursor, Clear | |
+| 5 | Netlist stage 2: keyboard, writes, cursor, Clear | `452af51` |
 | 6 | Manuals | |
 | 7 | Board (user routing), per-Machine loops | |
 | 8 | Session test, release check, recipes, docs | |

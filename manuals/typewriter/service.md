@@ -3,44 +3,48 @@
 ## Components
 
 - `X1` dot clock: 4 MHz crystal oscillator, net `CLK`
-- `U1` dot counter: counts 10–15, `DOT_END` on a character's last dot; 6 dots a character
+- `U1` dot counter: counts 10–15, `DOT_END` on a character's last dot; 6 dots a character; `QB`, `QC` time the page and row buffer clocks
 - `U2` column counter, low bits: `C0`–`C3`, carry `CC`
 - `U3` column counter, high bits: `C4`, `C5`; with `U2`, 42 characters a line, reloaded with 0 by `LINE_END_N`
 - `U4` line decoders: `LINE_END_N` on the last dot of character 41, `HSYNC_N` for characters 40–41
-- `U5` inverters: `DOT_LOAD_N`, `CLK_N`; `D1_N`, `D4_N` for the Return decoder
+- `U5` inverters: `DOT_LOAD_N`, `CLK_N`; `QB_N` for the page clocks; `D1_N`, `D4_N` for the Return decoder
 - `U6` line counter, bits 0–3: `V0` (each glyph line drawn twice), `V1`–`V3` (glyph line); clocked by `LINE_END`
 - `U7` line counter, bits 4–7: `V4`–`V7`, the text row
 - `U8` line counter, bit 8: `V8`; with `U6` and `U7` reloaded with 0 after line 311
 - `U9` frame-end decoder: `FRAME_END_N` low during line 311
-- `U10` vertical sync decoder `VSYNC_N` for lines 308–311; `KEY_CLR_N`, clearing `KEY` at the end of a writing line
+- `U10` vertical sync decoder `VSYNC_N` for lines 308–311; `ROW_CLK`, the row buffer's clock, once a character in the text
 - `U11` sync mixer: composite sync from `HSYNC_N` and `VSYNC_N` into `SYNC_N_D`; two gates compare `V6`, `V7` with `Y2`, `Y3` (`NE7`, `NE8`)
-- `U12` text area `ACTIVE` (columns 0–31 of lines 0–255); `CTL`, high for control codes; `CUR_SHOW`, the blinking cursor
-- `U13` row gates: `R1`–`R3` = `V1`–`V3` while `ACTIVE`, else 0; `WE_N` = `WEK_N` AND `CLEAR_N`
-- `U14` address multiplexer, bits 0–3: `RA0`–`RA3` from the beam's `C0`–`C3` during the text, from the cursor's `X0`–`X3` while `C5` is high
-- `U15` address multiplexer, bits 4–7: `RA4`–`RA7` from `C4`, `V4`–`V6` or from `X4`, `Y0`–`Y2`
-- `U16` address multiplexer, bit 8: `RA8` from `V7` or from `Y3`
-- `U17` page RAM (2114), bits 0–3 of each character on `B0`–`B3`; 512 cells, row × 32 + column, at `RA0`–`RA8`
-- `U18` page RAM (2114), bits 4–5 of each character on `B4`–`B5`
-- `U19` character ROM (2513): address `R1`–`R3`, `B0`–`B5`; out the line's dots `F5` (left) to `F1`
-- `U20` dot shift register: loads `F5`–`F1` on `DOT_LOAD_N`, shifts them out on `CLK_N` as `VIDEO_D`
-- `U21` output register: re-times `SYNC_N`, `VIDEO`, the write strobe `WEK_N` and `LINE_END` (the first dot of each line) on the clock
-- `U22` keyboard buffer: drives `D0`–`D5` onto the bus while `WEK_N` is low
-- `U23` space buffer: drives 0x20 onto the bus while `CLEAR_N` is low
-- `U24` key flip-flops: `KEY` set by `STROBE`; `WR` takes it at character 32, a line that writes
-- `U25` write decoder: `WE_D` low during characters 35 and 39 of a writing line, for printable codes
-- `U26` Return decoder: `CR_N` low while the last code is 13
-- `U27` key gates: `PRINT`, `ADV` (printable or Return), `XC_N` (column 31), `YEN` (step the row)
-- `U28` cursor column, bits 0–3: `X0`–`X3`, carry `XRCO`; loaded with 0 by `CR_N`
-- `U29` cursor column, bit 4: `X4`
-- `U30` cursor row: `Y0`–`Y3`; all three cursor counters step at a line end while `WR` is high, cleared by `CLEAR_N`
-- `U31` cursor comparator: `NE0`–`NE3` high where `C0`–`C3` and `X0`–`X3` differ
-- `U32` cursor comparator: `NE4`–`NE6` for `C4`, `V4`, `V5` against `X4`, `Y0`, `Y1`; gate 4 XORs `CUR_SHOW` into the video (`VIDEO_M`)
-- `U33` comparator: `EQ0`–`EQ2`, high where three bits agree
-- `U34` cursor match: `MATCH_N` low while the beam addresses the cursor's cell
-- `U35` cursor delay: `CURSOR_N`, `MATCH_N` one character late, clocked by `DOT_END`
-- `U36` blink counter: counts frames on `V8`; `BLINK` changes every 8 frames
+- `U12` text area `ACTIVE` (columns 0–31 of lines 0–255); `CTL`, high for control codes; `CUR_SHOW`, the blinking cursor; `MATCH`
+- `U13` row gates: `R1`–`R3` = `V1`–`V3` while `ACTIVE`, else 0; `ROW_TOP`, the first line of a text row
+- `U14` `V01_ZERO`, `V23_ZERO` (`V0`–`V3` low in pairs); `CLEAR`; `GO`
+- `U15` page clock gates: `PHI2_N` on dots 12–13, `PHI1_N` on dot 15 of characters 0–31 of a row's top line
+- `U16` page (2524), bit 0 of each character: 512 cells, round once a frame, out on `P0`, written from `W0` while `WRITE` is high
+- `U17` page (2524), bit 1: `P1`, `W1`
+- `U18` page (2524), bit 2: `P2`, `W2`
+- `U19` page (2524), bit 3: `P3`, `W3`
+- `U20` page (2524), bit 4: `P4`, `W4`
+- `U21` page (2524), bit 5: `P5`, `W5`
+- `U22` row buffer (2518): the 32 characters of the row being drawn on `B0`–`B5`, round once a line on `ROW_CLK`; takes them from `P0`–`P5` while `ROW_LOAD_N` is low
+- `U23` character ROM (2513): address `R1`–`R3`, `B0`–`B5`; out the line's dots `F5` (left) to `F1`
+- `U24` dot shift register: loads `F5`–`F1` on `DOT_LOAD_N`, shifts them out on `CLK_N` as `VIDEO_D`
+- `U25` output register: re-times `SYNC_N`, `VIDEO` and `LINE_END` (the first dot of each line) on the clock
+- `U26` keyboard buffer: drives `D0`–`D5` onto the write bus `W0`–`W5` except during Clear
+- `U27` space buffer: drives 0x20 onto `W0`–`W5` while `CLEAR_N` is low
+- `U28` key flip-flops: `KEY` set by `STROBE`; `WR` after the key's cell is written, clears `KEY`
+- `U29` write gates: `WRK_N`, `WRITE` (a printable key's cell, or Clear); `ROW_LOAD_N`, low on a row's top line
+- `U30` Return decoder: `CR_N` low while the last code is 13
+- `U31` key gates: `PRINT`, `ADV` (printable or Return), `XC_N` (column 31), `YEN` (step the row)
+- `U32` cursor column, bits 0–3: `X0`–`X3`, carry `XRCO`; loaded with 0 by `CR_N`
+- `U33` cursor column, bit 4: `X4`
+- `U34` cursor row: `Y0`–`Y3`; all three cursor counters step when `WR` rises, cleared by `CLEAR_N`
+- `U35` cursor comparator: `NE0`–`NE3` high where `C0`–`C3` and `X0`–`X3` differ
+- `U36` cursor comparator: `NE4`–`NE6` for `C4`, `V4`, `V5` against `X4`, `Y0`, `Y1`; gate 4 XORs `CUR_SHOW` into the video (`VIDEO_M`)
+- `U37` comparator: `EQ0`–`EQ2`, high where three bits agree
+- `U38` cursor match: `MATCH_N` low while the beam is on the cursor's cell; `GO_N` low while a key waits and its cell is at the page's output
+- `U39` cursor delay: `CURSOR_N`, `MATCH_N` one character late, clocked by `DOT_END`
+- `U40` blink counter: counts frames on `V8`; `BLINK` changes every 8 frames
 - `SW1` Clear button: pulls `CLEAR_N` low while pressed
 - `R1` 4.7 kΩ pull-up on `CLEAR_N`
 - `J1` power connector: +5 V and 0 V for the whole board
 - `J2` monitor connector: `VIDEO` and `SYNC_N` out
-- `J3` keyboard connector: the key's code on `D0`–`D6`, `STROBE` high for 100 µs after each key; the keyboard is powered from the board
+- `J3` keyboard connector: the key's code on `D0`–`D6`, `STROBE` high for 25 ms after each key; the keyboard is powered from the board
