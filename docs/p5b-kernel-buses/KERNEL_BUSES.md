@@ -11,7 +11,7 @@ P5a measured a ZX80-shaped load, `netlists/bus_load.bwn`, at **0.22×** real tim
 - **Aim:** as close to 2× on `bus_load` headless as the kernel allows *without bending its design*. The step may end short; it then ends with the measured ratio and the options left, for the user to choose.
 - **Guard 1, the trace check:** every Net of three runs (below), recorded over a fixed time and seed, byte-compared with the P5a kernel's. Every idea keeps them identical. A difference that comes only from reordered simultaneous events is shown to the user and explained before the idea is kept. The debug ASan/UBSan suite stays green.
 - **Guard 2, the design stays:** the Part API (`EvalContext`), Board, Faults, Puzzles and instruments unchanged; no Part-specific code in the kernel, no second kernel path, no undefined behaviour or unsafe shortcuts, no cuts to timing or to which Nets are simulated (OPTIMISATION_IDEAS ideas 2–4 are out). An idea that needs any of these stops and goes to the user.
-- **Guard 3, one idea at a time:** one commit each, kept only if it gains ≥ 5 % on `bus_load` (ratio and instructions retired) and its code reads as plainly as what it replaces; otherwise reverted and logged. Other Machines may get slower if they stay correct; measured and reported each time (every `netlists/*.bwn`). For specialised evaluation (S3.4) the unit is the conversion, not the Part: the ROM is kept on the user's OK as the pattern; further Parts are each committed and logged, and the 5 % bar applies to the summed conversion (ROM plus the Parts after it, against the last row before the ROM), measured before phase 6 closes; if it falls short, the whole conversion is reverted together.
+- **Guard 3, one idea at a time:** one commit each, kept only if it gains ≥ 5 % on `bus_load` (ratio and cycles elapsed, decided during phase 2; instructions logged) and its code reads as plainly as what it replaces; otherwise reverted and logged. Other Machines may get slower if they stay correct; measured and reported each time (every `netlists/*.bwn`). For specialised evaluation (S3.4) the unit is the conversion, not the Part: the ROM is kept on the user's OK as the pattern; further Parts are each committed and logged, and the 5 % bar applies to the summed conversion (ROM plus the Parts after it, against the last row before the ROM), measured before phase 6 closes; if it falls short, the whole conversion is reverted together.
 - **Progress:** before each idea the user is told what is tried, the gain expected and the files touched; after measuring, the result (ratio, instructions, other netlists) and kept or dropped. The plan's idea log has one row per idea.
 
 ## User decisions (2026-11-12)
@@ -21,6 +21,7 @@ P5a measured a ZX80-shaped load, `netlists/bus_load.bwn`, at **0.22×** real tim
 | How the P5a kernel's traces are kept | an on-demand script: it builds the P5a commit (`0757c02`) in a git worktree, records the reference VCDs once, and byte-compares fresh ones. Nothing checked in; the script stays in `bench/` after the step |
 | What the traces cover | `bus_load`, the test pattern and the typewriter (with typing). This narrows the row's "each Machine": other Machines are guarded by their own tests and the debug suite |
 | LTO | tried in the release build only; debug (ASan/UBSan) unchanged |
+| The bar of guard 3 (asked during phase 2) | ratio and **cycles elapsed** (`/usr/bin/time -l`), each ≥ 5 % on `bus_load`; instructions retired still logged. On `bus_load` the CPU retires ≈ 3.6 instructions a cycle (5.7 on the test pattern): time goes to stalls as well as instructions, so an idea that saves only stalls counts |
 | Specialised evaluation, first Part | the ROM (`Rom`, 2716 and 2513): the hottest single Part on `bus_load`, and the shape later memories and CPUs follow. Shown to the user, who OKs it before any other Part is converted |
 
 ## Behaviour
@@ -44,7 +45,7 @@ The reference side runs once per reference commit (cached under `build/trace-ref
 `bench/measure.sh`, release build, the machine otherwise idle:
 
 1. Ratio: `bw run X --time 2s`, best of 3, every `netlists/*.bwn` alternated (`bus_load`, the test pattern and the typewriter in the log's columns, the others in the notes).
-2. Instructions: `/usr/bin/time -l bw run netlists/bus_load.bwn --time 1s`, instructions retired, and per applied event.
+2. Instructions and cycles: `/usr/bin/time -l bw run netlists/bus_load.bwn --time 1s`, instructions retired and cycles elapsed, each per applied event. Nothing else runs meanwhile (a debug build or suite alongside makes every number 10–20 % worse).
 3. Where time goes (when an idea needs it): `build/profile` (`-O3 -g -fno-omit-frame-pointer`) sampled with `sample`, shares by function.
 
 Baseline taken in phase 1 on the same day as the ideas, since the machine's load moves the ratio (P5a: typewriter 0.99× at the start, 0.93× at the end).

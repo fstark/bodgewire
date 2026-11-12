@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # P5b measurement: best of 3 ratios of every netlist (2 s simulated, alternated), and
-# instructions retired per applied event on bus_load. Build release first.
+# instructions retired and cycles per applied event on bus_load. Build release first.
 set -euo pipefail
 
 root="$(git rev-parse --show-toplevel)"
@@ -31,10 +31,12 @@ best_of() {
 out="$( { /usr/bin/time -l "$bw" run netlists/bus_load.bwn --time 1s; } 2>&1)"
 instructions="$(awk '/instructions retired/{print $1}' <<<"$out")"
 events="$(sed -n 's/^applied_events //p' <<<"$out")"
+cycles="$(awk '/cycles elapsed/{print $1}' <<<"$out")"
 per_event="$(awk -v i="$instructions" -v e="$events" 'BEGIN{printf "%.0f", i/e}')"
+cycles_per_event="$(awk -v c="$cycles" -v e="$events" 'BEGIN{printf "%.0f", c/e}')"
 
 fmt() { awk -v r="$1" 'BEGIN{printf "%.3f×", r}'; }
-echo "| bus_load $(fmt "$(best_of bus_load)") | $per_event instr./event" \
+echo "| bus_load $(fmt "$(best_of bus_load)") | $per_event instr./event | $cycles_per_event cycles/event" \
     "($(awk -v i="$instructions" 'BEGIN{printf "%.2f G", i/1e9}') for $events events, 1 s)" \
     "| test pattern $(fmt "$(best_of test_pattern)") | typewriter $(fmt "$(best_of typewriter)") |"
 for i in "${!netlists[@]}"; do

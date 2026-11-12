@@ -1,5 +1,6 @@
 #include "sim/event_queue.hpp"
 
+#include <cstdint>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -81,4 +82,21 @@ TEST_CASE("event queue: stamp round-trips", "[sim]") {
             }
         }
     }
+}
+
+TEST_CASE("event queue: order holds across the whole range of each field", "[sim]") {
+    EventQueue queue;
+    const Time late = Time{1} << 50;
+    queue.push({late, 0, 0});
+    queue.push({late - 1, UINT32_MAX, UINT32_MAX});
+    queue.push({0, UINT32_MAX, 0});
+    queue.push({0, 0, UINT32_MAX});
+    queue.push({late, 0, 1});
+    const std::vector<Event> events = Drain(queue);
+    REQUIRE(events.size() == 5);
+    CHECK((events[0].time == 0 && events[0].target == 0));
+    CHECK((events[1].time == 0 && events[1].target == UINT32_MAX));
+    CHECK(events[2].time == late - 1);
+    CHECK((events[3].time == late && events[3].stamp == 0));
+    CHECK((events[4].time == late && events[4].stamp == 1));
 }

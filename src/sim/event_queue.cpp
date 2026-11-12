@@ -7,20 +7,19 @@ namespace bw {
 
 namespace {
 
-// std heaps are max-heaps: "later" compares less so the earliest event is on top.
-bool Later(const Event& a, const Event& b) {
-    if (a.time != b.time) {
-        return a.time > b.time;
-    }
-    if (a.target != b.target) {
-        return a.target > b.target;
-    }
-    return a.stamp > b.stamp;
+// (time, target, stamp) as one number: times are never negative, so its order is theirs.
+unsigned __int128 Key(const Event& e) {
+    return static_cast<unsigned __int128>(static_cast<std::uint64_t>(e.time)) << 64 |
+           static_cast<std::uint64_t>(e.target) << 32 | e.stamp;
 }
+
+// std heaps are max-heaps: "later" compares less so the earliest event is on top.
+bool Later(const Event& a, const Event& b) { return Key(a) > Key(b); }
 
 }  // namespace
 
 void EventQueue::push(Event event) {
+    assert(event.time >= 0);
     heap_.push_back(event);
     std::push_heap(heap_.begin(), heap_.end(), Later);
 }
