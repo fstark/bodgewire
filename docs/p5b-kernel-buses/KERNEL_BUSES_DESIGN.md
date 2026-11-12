@@ -97,3 +97,13 @@ Within today's `EvalContext` (guard 2), and with `class Rom`, its constructor, `
 - If the profile shows the cost is in `read`/`readBefore` themselves (a Net index fetch per Pin), the fix is an `EvalContext` addition such as reading a list of Pins in one call: a Part API change, described to the user with the ROM and not made without an OK. This is the likely outcome (spec, S3.4).
 
 The ROM's tests (`tests/parts/rom_test.cpp`, the machines that use a 2716 or 2513) are its behaviour check, unchanged.
+
+As built (the user's request when the ROM was shown): no dispatch on `&spec_`. `RomSpec` holds `evaluate`, a pointer to `EvaluateRom<its layout>`, and `Rom::evaluate` is that one call.
+
+## Idea 4.2: gate packages (added 2026-11-12)
+
+The ROM's pattern on `GatePackage` (74LS00, 02, 04, 08, 20, 27, 30, 32, 86), the hottest Part once the queue is cheaper (14 % of `bus_load`):
+
+- `template <const auto& Units, const Delays& PartDelays> void EvaluatePackage(EvalContext&)` in `gate_package.cpp`'s unnamed namespace: today's loop, word for word, over a `constexpr` `GateUnit` array and `Delays`. Unrolled, each gate's kind, input count, Pins and delays are constants: no `switch`, no span of run-time length.
+- `GatePackageSpec` gains `evaluate` and loses `delays` (now the template's argument, read nowhere else); each row of `s_specs` ends with `&EvaluatePackage<s_lsNNUnits, delays::kLsNN>`. `GatePackage::evaluate` is `spec_.evaluate(ctx)`. A new gate package is still its arrays and its row.
+- `tests/parts/gate_package_test.cpp` and every Machine are its behaviour check, unchanged.

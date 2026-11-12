@@ -6,8 +6,8 @@ Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate packa
 
 ## Which kind
 
-- **Gate package** (only independent gates, no state): add a pin-name array, a `GateUnit` array and a `GatePackageSpec` row in `src/parts/gate_package.cpp`, then `&CreateGatePackage<"74LSxx">` in the catalogue. No new class.
-- **ROM** (2716, 2513): a `RomSpec` row in `src/parts/rom.cpp` (pin names, address pins low bit first with their delays, data pins, enables with their delays, the float delay), then `&CreateRom<"NNNN">` in the catalogue. No new class. The contents come from `contents=<file>` ([ROM_PARTS.md](../p4l-rom-parts/ROM_PARTS.md) for the `.rom` format); `PartPinNames` reads the names from the spec.
+- **Gate package** (only independent gates, no state): add a pin-name array, a `GateUnit` array and a `GatePackageSpec` row in `src/parts/gate_package.cpp` (the row ends with `&EvaluatePackage<its units, its delays>`), then `&CreateGatePackage<"74LSxx">` in the catalogue. No new class.
+- **ROM** (2716, 2513): in `src/parts/rom.cpp`, the pin arrays (pin names, address pins low bit first with their delays, data pins, enables with their delays), a `RomLayout` built from them with the float delay, and a `RomSpec` row ending with `&EvaluateRom<its layout>`; then `&CreateRom<"NNNN">` in the catalogue. No new class. The contents come from `contents=<file>` ([ROM_PARTS.md](../p4l-rom-parts/ROM_PARTS.md) for the `.rom` format); `PartPinNames` reads the names from the spec.
 - **Chip with state or special logic**: a new `Component` subclass `LsNN` in `src/parts/lsNN.{hpp,cpp}`, registered with `&CreateChip<LsNN, "74LSNN">`.
 
 ## Files
@@ -36,6 +36,7 @@ Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate packa
 - X on a control input makes the affected state X; never invent a 0/1.
 - No zero delays, no delta cycles: every `drive` has a datasheet delay.
 - Hot path: `evaluate` must not allocate (use `std::array`, no `std::vector`/`std::string`).
+- Specialised evaluation (P5b): a Part family written once behind a spec table (gate packages, ROMs) pays for its generality at every evaluation: loops over spans of run-time length, a `switch` per gate, delays fetched from the row. The cure keeps one source: the evaluation is a function template whose parameter is the row's `constexpr` data (`template <const auto& Units, const Delays& PartDelays>`, `template <const auto& L>` for a ROM), each spec row holds a pointer to its instance, and the class's `evaluate` is that one call. The compiler unrolls the loops and folds the constants. `EvalContext` and the Part's tests stay as they are. Worth it only for a Part that a profile shows hot.
 - Several units in one Part (74LS107): test them with `GENERATE`, not `SECTION`s inside a loop (Catch2 sections in loops are unreliable).
 - `-Werror` includes unused private fields. Run `clang-format` on C++ files only, never on `CMakeLists.txt`.
 - A Part with a file parameter (ROM `contents=`): the catalogue test, the footprint test and any test that builds every Part must pass one (`tests/data/empty.rom`); paths resolve against the netlist's directory (`ResolveContentsPaths`), so a test that parses a netlist itself calls it too.

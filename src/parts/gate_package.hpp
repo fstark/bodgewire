@@ -23,7 +23,9 @@ struct GatePackageSpec {
     std::uint8_t pinCount;
     std::span<const std::string_view> names;  // index = pin - 1; "GND", "VCC", "NC<n>" included
     std::span<const GateUnit> units;
-    Delays delays;
+    // EvaluatePackage<its units, its delays>: evaluation specialised on them at compile time
+    // (gate_package.cpp)
+    void (*evaluate)(EvalContext& ctx);
 };
 
 const GatePackageSpec& GatePackageSpecOf(std::string_view part);  // Check()s

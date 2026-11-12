@@ -58,16 +58,30 @@ constexpr std::array<std::string_view, 14> s_ls30Names{"A", "B",   "C",    "D", 
                                                        "Y", "NC9", "NC10", "G", "H", "NC13", "VCC"};
 constexpr std::array<GateUnit, 1> s_ls30Units{{{GateKind::Nand, 8, {1, 2, 3, 4, 5, 6, 11, 12}, 8}}};
 
+// The units and delays of one Part, known at compile time: the loops unroll and each gate becomes
+// its own few instructions (its kind, its Pins and its delays are constants).
+template <const auto& Units, const Delays& PartDelays>
+void EvaluatePackage(EvalContext& ctx) {
+    for (const GateUnit& unit : Units) {
+        std::array<LogicValue, 8> inputs;
+        for (std::uint8_t i = 0; i < unit.inputCount; ++i) {
+            inputs[i] = ctx.read(unit.inputs[i] - 1u);
+        }
+        const LogicValue value = GateFunction(unit.kind, std::span(inputs.data(), unit.inputCount));
+        ctx.drive(unit.output - 1u, value, DelayFor(PartDelays, value));
+    }
+}
+
 constexpr std::array<GatePackageSpec, 9> s_specs{{
-    {"74LS00", 14, s_quadNames, s_ls00Units, delays::kLs00},
-    {"74LS02", 14, s_ls02Names, s_ls02Units, delays::kLs02},
-    {"74LS04", 14, s_ls04Names, s_ls04Units, delays::kLs04},
-    {"74LS08", 14, s_quadNames, s_ls08Units, delays::kLs08},
-    {"74LS20", 14, s_ls20Names, s_ls20Units, delays::kLs20},
-    {"74LS27", 14, s_ls27Names, s_ls27Units, delays::kLs27},
-    {"74LS30", 14, s_ls30Names, s_ls30Units, delays::kLs30},
-    {"74LS32", 14, s_quadNames, s_ls32Units, delays::kLs32},
-    {"74LS86", 14, s_quadNames, s_ls86Units, delays::kLs86},
+    {"74LS00", 14, s_quadNames, s_ls00Units, &EvaluatePackage<s_ls00Units, delays::kLs00>},
+    {"74LS02", 14, s_ls02Names, s_ls02Units, &EvaluatePackage<s_ls02Units, delays::kLs02>},
+    {"74LS04", 14, s_ls04Names, s_ls04Units, &EvaluatePackage<s_ls04Units, delays::kLs04>},
+    {"74LS08", 14, s_quadNames, s_ls08Units, &EvaluatePackage<s_ls08Units, delays::kLs08>},
+    {"74LS20", 14, s_ls20Names, s_ls20Units, &EvaluatePackage<s_ls20Units, delays::kLs20>},
+    {"74LS27", 14, s_ls27Names, s_ls27Units, &EvaluatePackage<s_ls27Units, delays::kLs27>},
+    {"74LS30", 14, s_ls30Names, s_ls30Units, &EvaluatePackage<s_ls30Units, delays::kLs30>},
+    {"74LS32", 14, s_quadNames, s_ls32Units, &EvaluatePackage<s_ls32Units, delays::kLs32>},
+    {"74LS86", 14, s_quadNames, s_ls86Units, &EvaluatePackage<s_ls86Units, delays::kLs86>},
 }};
 
 bool IsUnitOutput(const GatePackageSpec& spec, std::size_t pin) {
@@ -113,15 +127,6 @@ GatePackage::GatePackage(std::string reference, const GatePackageSpec& spec)
     Check(spec.names.size() == spec.pinCount, "gate package: pin names do not match pin count");
 }
 
-void GatePackage::evaluate(EvalContext& ctx) {
-    std::array<LogicValue, 8> inputs;
-    for (const GateUnit& unit : spec_.units) {
-        for (std::uint8_t i = 0; i < unit.inputCount; ++i) {
-            inputs[i] = ctx.read(unit.inputs[i] - 1u);
-        }
-        const LogicValue value = GateFunction(unit.kind, std::span(inputs.data(), unit.inputCount));
-        ctx.drive(unit.output - 1u, value, DelayFor(spec_.delays, value));
-    }
-}
+void GatePackage::evaluate(EvalContext& ctx) { spec_.evaluate(ctx); }
 
 }  // namespace bw
