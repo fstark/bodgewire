@@ -37,6 +37,7 @@ add_executable(bw_tests
   manual/markdown_test.cpp
   machines/board_probe_test.cpp
   machines/board_repair_test.cpp
+  machines/bus_load_test.cpp
   machines/bodge_wire_test.cpp
   machines/ball_test.cpp
   machines/chaser_test.cpp
