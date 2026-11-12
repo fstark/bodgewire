@@ -2,7 +2,7 @@
 
 A new board on the tutorial ladder (`docs/machines/NNN-name/`). New Parts first ([ADD_PART.md](ADD_PART.md), [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md)); Puzzles last ([ADD_PUZZLE.md](ADD_PUZZLE.md)).
 
-Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`. Stopwatch (040, digits): `8a18984`, `8d3644a`, `ae506f8`. Bouncing ball (060, TV, picture-reading tests): `174aa85`, `c89e3f0`, `58b1aec`. Knob meter (045, a device behind a Connector): `d24f490`, `73063c0`, `e1468a0`. Paddle tennis (070, 58 chips, netlist grown in six stages, no Puzzles yet): stages `624fe37` to `fc268da`, manuals `892e7e6`, Board `741d2f7`. Message display (080, ROMs, `roms/`): `babed7b` netlist + ROM contents + fault-free test, `1635989` manuals, `3dc540c` Board.
+Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, `be36d29` Board, `cf595a6` Puzzles, `9ba532d` Session test. Dice (030, with a button): `b23b235`, `360a787`, `fad45c7`. Stopwatch (040, digits): `8a18984`, `8d3644a`, `ae506f8`. Bouncing ball (060, TV, picture-reading tests): `174aa85`, `c89e3f0`, `58b1aec`. Knob meter (045, a device behind a Connector): `d24f490`, `73063c0`, `e1468a0`. Paddle tennis (070, 58 chips, netlist grown in six stages, no Puzzles yet): stages `624fe37` to `fc268da`, manuals `892e7e6`, Board `741d2f7`. Message display (080, ROMs, `roms/`): `babed7b` netlist + ROM contents + fault-free test, `1635989` manuals, `3dc540c` Board. TV typewriter (090, a shift-register page written from a keyboard, P4q): stages `d14e18c`, `452af51`, manuals `bc291a0`, Board `2eb59e7`.
 
 ## Order
 
@@ -48,6 +48,8 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 
 ## Gotchas
 
+- Clocks decoded from the dot counter (090 `PHI1_N`, `PHI2_N`, `ROW_CLK`): make each edge come from one signal, and check that the gating signals (`ACTIVE`, line decodes) change only while that signal holds the gate off; the delays are in `src/parts/delays.hpp`. Keep the counter's lowest bit, which changes every dot, off gates where a slower bit will do: at 4 MHz each gate on it costs several evaluations a character.
+- A keyboard key written when its cell comes round (090): the `KEYBOARD strobe=` must outlast the longest wait (a frame) plus the time to re-arm, or keys are lost.
 - Seeded random power-on: the fault-free test must not depend on the seed (settle first, or check every phase).
 - Measure speed on an idle machine: a debug `ctest -j 12` running alongside makes a release `bw_ui` read 0.8× for a 1.00× Machine.
 - Debug is about 0.07× real time (a TV Machine at 2 MHz, 0.03×): keep simulated time short, and use the release build for screenshots that show readings.

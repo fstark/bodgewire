@@ -528,6 +528,39 @@ unsigned LitSegments(const Session& session, std::string_view digit) {
 
 }  // namespace
 
+TEST_CASE("session: typewriter with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "typewriter.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    REQUIRE(session.tv() != nullptr);
+    CHECK(session.keyboards() == std::vector<std::string>{"J3"});
+
+    for (const char* pin : {"O1", "O2", "O3", "O4", "O5"}) {
+        REQUIRE(session.clip("U23", pin).has_value());
+    }
+    REQUIRE(session.clip("U16", "OUT").has_value());
+    REQUIRE(session.clip("U24", "SH_LD_N").has_value());
+    REQUIRE(session.clip("U24", "QH").has_value());
+    REQUIRE(session.hook("U1", "RCO").has_value());
+    REQUIRE(session.hook("U15", "2Y").has_value());  // PHI2_N
+    const auto pixels = session.padLead("U24", "QH");
+    const auto vcc = session.padLead("U23", "VCC");
+    REQUIRE(pixels.has_value());
+    REQUIRE(vcc.has_value());
+    session.touch(ProbeTip{pixels->at, Layer::Front});
+    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+
+    session.powerOn(1, 500_ms);
+    CHECK(session.type("J3", U'A'));
+    session.runner().waitIdle();
+    CHECK(session.tv()->tv().isLocked());
+    CHECK(session.tv()->tv().completedFrames() > 15);
+    session.powerOff();
+}
+
 TEST_CASE("session: message with every instrument", "[session][slow]") {
     auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "message.bwn");
     REQUIRE(machine.has_value());
