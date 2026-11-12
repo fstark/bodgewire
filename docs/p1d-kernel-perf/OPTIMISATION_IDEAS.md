@@ -105,12 +105,14 @@ Split the board (e.g. CPU side, video side) over threads with conservative synch
 
 ## Next steps
 
-Done: 1 (P5a). Next, in P5b, on `netlists/bus_load.bwn` (release, `bw run --time 2s`, plus instructions retired):
+Done: 1 (P5a). Next, P5b, on `netlists/bus_load.bwn` (release, `bw run --time 2s`, plus instructions retired), under the guards in its ARCHITECTURE row (trace check first, the design unchanged, one idea a commit, kept at ≥ 5 %):
 
-1. The event queue first: on this load it holds many pending events (address and data bits on 100–450 ns delays), so the timing wheel or a bucket queue rejected above is measured again here.
+1. The event queue: on this load it holds many pending events (address and data bits on 100–450 ns delays), so the timing wheel or a bucket queue rejected above is measured again here.
 2. The run loop's own code (25 %).
-3. Idea 1 on the hottest Parts (ROM, gate packages, 74LS157, 74LS74); generalise if it delivers.
-4. Ideas 2 and 3 only if 1–3 leave us short of 2×.
+3. LTO, rejected in P1d for build complexity, measured again.
+4. Idea 1 on the hottest Part (ROM, gate packages, 74LS157, 74LS74), shown to the user before it is generalised.
+
+Ideas 2–4 are out of P5b: they bend the design (generated code, lost Nets, coarser timing). If 1–4 leave us short, P5b ends with the ratio and the options for the user.
 
 The P1d plan, kept for history:
 

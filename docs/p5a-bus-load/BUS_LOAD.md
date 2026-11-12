@@ -83,7 +83,7 @@ Measured 2026-11-12, release, M5 Max ([BUS_LOAD_PLAN.md](BUS_LOAD_PLAN.md), note
 
 ## Decision (2026-11-12)
 
-0.22× is below 1×: **kernel work becomes its own step, P5b, before the 6502** (the user's threshold). Target: ≥ 2× on `netlists/bus_load.bwn` headless, about 10× from today. A real Z80 Part replacing the stub adds its own evaluation cost, so the target keeps its margin. First levers, from the profile: the event queue (a bucket queue or timing wheel, rejected in P1d for a small heap, to be measured again on this load), the run loop's own code, then specialised evaluation (OPTIMISATION_IDEAS idea 1). The stub and the netlist stay as the benchmark.
+0.22× is below 1×: **kernel work becomes its own step, P5b, before the 6502** (the user's threshold). Target: ≥ 2× on `netlists/bus_load.bwn` headless, about 10× from today. A real Z80 Part replacing the stub adds its own evaluation cost, so the target keeps its margin. First levers, from the profile: the event queue (a bucket queue or timing wheel, rejected in P1d for a small heap, to be measured again on this load), the run loop's own code, then specialised evaluation (OPTIMISATION_IDEAS idea 1). The stub and the netlist stay as the benchmark. P5b's terms were then set with the user (same day, ARCHITECTURE row P5b): the design must not bend for speed, so 2× is the aim, not a gate; ideas are tried one at a time under a trace check, and the user hears of each.
 
 ## Done when
 
