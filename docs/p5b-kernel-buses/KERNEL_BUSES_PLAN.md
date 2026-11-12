@@ -39,7 +39,7 @@ Only this step's paths are committed (the user edits docs in parallel).
 
 ### Phase 5 — Idea 4, the ROM, shown to the user
 
-- `RomOf` (design); ROM tests and the machines using ROMs green; measured.
+- `EvaluateRom` (design); ROM tests and the machines using ROMs green; measured.
 - **Stop:** show the user the ROM's new code, its numbers, and any `EvalContext` addition it would want. Wait for the OK before phase 6. Commit `parts: ROM with specialised evaluation` when the user OKs (or drop, logged).
 
 ### Phase 6 — Idea 4, further Parts (after the OK)
@@ -57,7 +57,7 @@ Only this step's paths are committed (the user edits docs in parallel).
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Guards and baseline | — |
+| 1 | Guards and baseline | done |
 | 2 | Event queue | — |
 | 3 | Run loop | — |
 | 4 | LTO | — |
@@ -69,6 +69,9 @@ Only this step's paths are committed (the user edits docs in parallel).
 
 | # | Idea | bus_load ratio | Instr./event | Test pattern | Typewriter | Kept | Commit |
 |---|------|----------------|--------------|--------------|------------|------|--------|
-| 0 | baseline (P5a kernel) | | | | | — | |
+| 0 | baseline (P5a kernel) | 0.225× | 643 | 5.46× | 0.997× | — | `0757c02` |
 
 ## Implementation notes
+
+- Phase 1 (2026-11-12): `bench/trace_check.sh` identical against `0757c02` (10 s once the reference is built); checked to fail and locate a changed VCD line (one value flipped in the reference test pattern: "line 5001", the `#time` and both values printed). macOS bash is 3.2: the scripts use no associative arrays or namerefs. Baseline, `bench/measure.sh` twice: bus_load 0.225 / 0.224×, 643 instructions per applied event (76.88 G for 119.5 M events, 1 s); test pattern 5.46 / 5.42×; typewriter 0.997 / 0.986×; others: ball 2.29×, chaser 12.8×, counter 11.6×, dice 21.7×, knob 15.4×, message 2.32×, stopwatch 9.28×, tennis 1.53×.
+- Queue on bus_load (100 ms, temporary counters): 13.7 M pops for 11.9 M applied events, 0.50 M stale, 1.30 M wakes. Size at pop: < 8 events 25 %, 8–15 43 %, 16–31 30 %, 32–63 2 %: **not the large queue P5a assumed**. Push delay from the last pop: < 16 ns 35 %, 16–33 ns 14 %, 66–131 ns 43 %, 131–262 ns 1 %, 262–524 ns 7 %; none beyond 0.53 µs. A heap of ≈ 16 is 4 levels deep: the cost per pop is in the comparison (three fields, branches) and sifting 16-byte events, not in depth.
