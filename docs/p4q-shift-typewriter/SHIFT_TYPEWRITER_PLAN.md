@@ -14,7 +14,7 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 | 3 | 2518 Part | `411c3b8` |
 | 4 | Netlist stage 1: video from the page | `d14e18c` |
 | 5 | Netlist stage 2: keyboard, writes, cursor, Clear | `452af51` |
-| 6 | Manuals | |
+| 6 | Manuals | `bc291a0` |
 | 7 | Board (user routing), per-Machine loops | |
 | 8 | Session test, release check, recipes, docs | |
 
@@ -78,3 +78,4 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 - Phases 1–3: full debug suite 775 then 790 tests green.
 - Phase 4: release speed 0.67× with the page clocks decoded from `QA` (dots 11 and 13), P4p's final netlist 0.63× back to back on the same (loaded) machine. Decoding `PHI2_N` from `QC`, `QB_N` (dots 12–13) and `PHI1_N` from `DOT_END` (dot 15) gave 7% fewer evaluations, 0.73×: adopted, docs updated (cell 0, not 511, at the page's output after a frame). The stage-1 `.place` held only `J1`, `J2`, `U23` (the others came with stage 2). The phase-4 commit left `manuals: every Machine's manuals pass their checks` red (P4p's Service Manual names stage-2 parts), green again from phase 5.
 - Phase 5: every case passed first time. VCD of `--press SW1:1ms:30ms --type 'J3:40ms:HI' --time 200ms`: shortest levels `PHI1_N` 247 ns, `PHI2_N` 498 ns, `ROW_CLK` 499 ns (no glitch); `WR` rises once a key, 1.06 ms after `H`'s strobe and 19 ms after `I`'s (waiting for its cell). Release headless, alternated with P4p's final netlist on a quieter machine: random page 0.97–0.98× (P4p 0.94–0.95×), after Clear 1.21× (P4p 1.25–1.29×: the row buffer clocks every character on a blank page too). `bw_ui` without Board or instruments 1.00×, UI 0.2 ms. Screenshots at 2 s and 2.157 s: `HELLO` with the block off and on.
+- Phase 7: `bw place` gives a 4 × 10 grid, 7.24 m of wire (P4p's RAM version: 4 × 9, 7.00 m); the six 2524s and the 2518 annealed into a group at the left, beside the 2513; `place_drc_typewriter` passes. `bw export-kicad` wrote `boards/typewriter/typewriter.net`. Waiting for the user's routing.
