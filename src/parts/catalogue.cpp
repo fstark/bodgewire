@@ -30,6 +30,7 @@
 #include "parts/rom_contents.hpp"
 #include "parts/shift_register_2518.hpp"
 #include "parts/shift_register_2524.hpp"
+#include "parts/z80_stub.hpp"
 
 namespace bw {
 
@@ -254,6 +255,8 @@ constexpr std::array s_parts{
     PartInfo{"POWER", "5 V power connector", "KK-2", Connector, &CreateConnector<"POWER">},
     PartInfo{"R", "resistor", "axial", Resistor, nullptr},
     PartInfo{"VIDEO", "TTL monitor connector", "KK-3", Connector, &CreateConnector<"VIDEO">},
+    PartInfo{"Z80STUB", "Z80 stub playing a ZX80 frame (benchmark)", "DIP-40", Chip,
+             &CreateChip<Z80Stub, "Z80STUB">},
 };
 
 }  // namespace

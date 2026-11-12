@@ -64,8 +64,9 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         const bool noGround = std::ranges::find(kNoGround, part.name) != std::end(kNoGround);
         CHECK(names.contains("GND") != noGround);
         CHECK(names.contains("VCC"));
-        // The 74LS90's datasheet puts VCC on pin 5 and GND on pin 10; the 2513's GND is pin 10.
-        constexpr std::string_view kOffCornerPower[] = {"74LS90", "74LS93", "2513"};
+        // The 74LS90's datasheet puts VCC on pin 5 and GND on pin 10; the 2513's GND is pin 10; the
+        // Z80's VCC is pin 11, GND pin 29.
+        constexpr std::string_view kOffCornerPower[] = {"74LS90", "74LS93", "2513", "Z80STUB"};
         if (std::ranges::find(kOffCornerPower, part.name) == std::end(kOffCornerPower)) {
             CHECK((noGround || pins[count / 2 - 1].name == "GND"));
             CHECK(pins[count - 1].name == "VCC");

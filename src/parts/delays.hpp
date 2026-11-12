@@ -69,4 +69,16 @@ inline constexpr Time k2524ClockToOutput = 100'000;  // tA+, PHI1 → OUT
 // about 1 ms at 25 °C, typically 100 times more).
 inline constexpr Time k2524Hold = 10'000'000'000;
 
+// Z80A (4 MHz), Zilog datasheet AC characteristics: maxima, the only figures given. Used by the
+// Z80STUB benchmark Part (P5a).
+inline constexpr Time kZ80Address = 110'000;  // tD(AD), CLK rise → A0-A15
+inline constexpr Time kZ80Mreq = 85'000;      // CLK → MREQ_N, both ways
+inline constexpr Time kZ80Rd = 85'000;        // CLK → RD_N, both ways
+inline constexpr Time kZ80Wr = 80'000;        // CLK → WR_N, both ways
+inline constexpr Time kZ80Iorq = 75'000;      // CLK → IORQ_N, both ways
+inline constexpr Time kZ80M1 = 100'000;       // CLK rise → M1_N, both ways
+inline constexpr Time kZ80Rfsh = 130'000;     // CLK rise → RFSH_N, both ways
+inline constexpr Time kZ80Halt = 300'000;     // CLK → HALT_N
+inline constexpr Time kZ80Data = 150'000;     // CLK → D0-D7 valid, or floating
+
 }  // namespace bw::delays

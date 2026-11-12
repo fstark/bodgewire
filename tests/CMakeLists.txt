@@ -88,6 +88,7 @@ add_executable(bw_tests
   parts/rom_test.cpp
   parts/shift_register_2518_test.cpp
   parts/shift_register_2524_test.cpp
+  parts/z80_stub_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
   runner/led_consumer_test.cpp
