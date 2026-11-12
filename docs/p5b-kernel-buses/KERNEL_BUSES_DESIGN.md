@@ -8,9 +8,9 @@ Spec: [KERNEL_BUSES.md](KERNEL_BUSES.md). Plan: [KERNEL_BUSES_PLAN.md](KERNEL_BU
 |---|---|
 | `bench/trace_check.sh` | S1 (below) |
 | `bench/measure.sh` | S2 (below) |
-| `src/sim/event_queue.{hpp,cpp}` | idea 1: the queue's inside; its interface (`push`, `top`, `pop`, `empty`, `size`, `clear`) and pop order unchanged |
+| `src/sim/event_queue.{hpp,cpp}` | idea 1: the queue's inside; its interface (`push`, `top`, `pop`, `empty`, `size`, `clear`) and pop order unchanged. Idea 1f: `top`, `pop` and `size` give way to `nextTime` and `takeNext` (a whole timestamp at once), the order unchanged |
 | `tests/sim/event_queue_test.cpp` | idea 1: cases for the new structure's edges |
-| `src/sim/simulator.{hpp,cpp}` | idea 2: `runUntil` and its helpers; `EvalContext`'s declared members unchanged |
+| `src/sim/simulator.{hpp,cpp}` | idea 2: `runUntil` and its helpers; `EvalContext`'s declared members unchanged. Idea 1f: the update phase loops over one `takeNext()` |
 | `CMakePresets.json` | idea 3: `CMAKE_INTERPROCEDURAL_OPTIMIZATION` `ON` in the `release` preset only |
 | `src/parts/rom.{hpp,cpp}` | idea 4: specialised evaluation (below) |
 | later Parts' `.cpp`/`.hpp` | idea 4, after the user's OK |
@@ -53,6 +53,18 @@ Measured first, before any code: the queue's size distribution on `bus_load` (te
 - Tests: push A at 1000, `top()`, push B at 10: B pops first; an overflow event that lands in the current slot; an event a whole turn ahead; the bitmap empty after `clear()`.
 
 P1d's wheel lost 9–12 % on a heap of 8–15 events; this one is kept only if `bus_load` gains ≥ 5 %. If it loses, a 4-ary heap (same interface, shallower) is the second try, one row of the log each.
+
+## Idea 1f: the queue as runs (added 2026-11-12)
+
+Measured on `bus_load` (100 ms, temporary counters): 13.7 M pops in 6.36 M timestamps, 2.16 a timestamp (one pop 55 % of timestamps, two 28 %, eight or more 7 %); 43 % of pushes carry the time of the push before (a Part driving its bus Pins in one evaluation); about 5 distinct times pending. The heap paid a sift for each event; what the load offers is events that arrive and leave in groups of one time.
+
+- **Run:** the events of consecutive pushes for one time, side by side in one flat array (`keys_`). An event is stored without its time, as `target << 32 | stamp` (`EventKey`), so integer order is `(target, stamp)`.
+- **Push:** the time of the open run (the last one pushed to): append the key. Another time: close the open run, open a new one, put at its place in `runs_`, which is kept in time order (a scan from the latest; a run of the same time stays before the new one). Opening is linear in the number of runs, about 5 here and never more than the Circuit's outputs and wakes pending.
+- **Take** (`takeNext()`): the first run, or the first few when they share a time (gathered into `batch_`), sorted by key (insertion sort: 1 or 2 events, 8 or 16 for a bus). The same `(time, target, stamp)` order as the heap: traces identical by construction. The span is valid until the next push or take; `runUntil`'s update phase reads it before any evaluation pushes.
+- **`nextTime()`:** the first run's time. `runs_[tail_].time` is `kNever` (`INT64_MAX`), so an empty queue answers `kNever` and scans forward need no bound.
+- **Room:** taken runs leave holes in `keys_`. When it is full, the pending runs move to the front of a second buffer (the two swap; no allocation once grown), the open run last so that it can still grow; the buffer doubles when pending events fill half of it. `runs_` moves its pending runs down when its end is reached, and doubles when all of it is pending. An empty queue starts again from the front.
+- **Push invariant** as for the wheel: a push may carry any time ≥ the last taken time, also earlier than `nextTime()` and equal to the time just taken (`Simulator::wake(…, 0)` between two `runUntil` calls); it opens a run at its place.
+- Tests: a take gives every event of the earliest time; one time pushed in separate runs is one sorted take; a far event behind near ones through many refills; a push earlier than the pending events and one for the time just taken; more pending times than the first buffer holds; the same takes as a sorted list over 60,000 random steps with bursts, repeated times and clears.
 
 ## Idea 2: the run loop
 

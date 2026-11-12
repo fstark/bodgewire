@@ -171,27 +171,27 @@ void Simulator::powerOn(std::uint64_t seed) {
 void Simulator::runUntil(Time end) {
     Check(end >= now_, "simulator: runUntil into the past");
     const auto components = circuit_.components();
-    while (!queue_.empty() && queue_.top().time <= end) {
-        now_ = queue_.top().time;
+    while (!queue_.empty() && queue_.nextTime() <= end) {
+        now_ = queue_.nextTime();
 
         // Update phase: apply due output changes, then resolve their Nets.
-        while (!queue_.empty() && queue_.top().time == now_) {
-            const Event event = queue_.top();
-            queue_.pop();
-            if (StampIsWake(event.stamp)) {
-                markComponentDirty(ComponentId{event.target});
+        for (const EventKey key : queue_.takeNext()) {
+            const std::uint32_t target = KeyTarget(key);
+            const std::uint32_t stamp = KeyStamp(key);
+            if (StampIsWake(stamp)) {
+                markComponentDirty(ComponentId{target});
                 ++stats_.wakes;
                 continue;
             }
-            OutputState& o = outputs_[event.target];
-            if (StampGeneration(event.stamp) != o.generation) {
+            OutputState& o = outputs_[target];
+            if (StampGeneration(stamp) != o.generation) {
                 ++stats_.staleEvents;
                 continue;
             }
-            o.current = StampValue(event.stamp);
+            o.current = StampValue(stamp);
             o.hasPending = false;
             ++stats_.appliedEvents;
-            markNetDirty(circuit_.netOf(PinId{event.target}));
+            markNetDirty(circuit_.netOf(PinId{target}));
         }
 
         for (const NetId net : dirtyNets_) {

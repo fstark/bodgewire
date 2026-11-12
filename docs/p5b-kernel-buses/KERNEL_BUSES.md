@@ -23,6 +23,7 @@ P5a measured a ZX80-shaped load, `netlists/bus_load.bwn`, at **0.22×** real tim
 | LTO | tried in the release build only; debug (ASan/UBSan) unchanged |
 | The bar of guard 3 (asked during phase 2) | ratio and **cycles elapsed** (`/usr/bin/time -l`), each ≥ 5 % on `bus_load`; instructions retired still logged. On `bus_load` the CPU retires ≈ 3.6 instructions a cycle (5.7 on the test pattern): time goes to stalls as well as instructions, so an idea that saves only stalls counts |
 | Specialised evaluation, first Part | the ROM (`Rom`, 2716 and 2513): the hottest single Part on `bus_load`, and the shape later memories and CPUs follow. Shown to the user, who OKs it before any other Part is converted |
+| The ROM, and four ideas from a second look at the code, each measured first on a scratch copy (asked after phase 5) | the ROM is kept. All four are applied, one commit each: the event queue as runs of same-time events (idea 1f), sampled inputs that never wake their Component (idea 5), gate packages specialised (idea 4.2), two small changes to the run loop (idea 2b). Idea 5 adds a `PinSpec` field: the exception to guard 2 this decision allows. Ideas 5 and 2b gain less than 5 % alone and are kept on this decision |
 
 ## Behaviour
 
@@ -52,7 +53,7 @@ Baseline taken in phase 1 on the same day as the ideas, since the machine's load
 
 ### S3 Ideas, in profile order
 
-1. **The event queue:** on `bus_load` it holds many pending events (address and data bits on 100–450 ns delays). A bucket queue or timing wheel, rejected in P1d on a heap of 8–15 events, is measured again; it pops in exactly the `(time, target, stamp)` order of today, so traces stay identical.
+1. **The event queue:** on `bus_load` it holds many pending events (address and data bits on 100–450 ns delays). A bucket queue or timing wheel, rejected in P1d on a heap of 8–15 events, is measured again; it pops in exactly the `(time, target, stamp)` order of today, so traces stay identical. What was kept in the end (idea 1f) uses another fact of this load: events come in groups of one time (a bus changing), so the queue keeps runs of same-time events and gives a whole timestamp at once, in the same order.
 2. **The run loop's own code** (`runUntil`, `markNetDirty`, `driveChanged`): what a fresh profile of its lines shows.
 3. **LTO** in the release build.
 4. **Specialised evaluation** (OPTIMISATION_IDEAS idea 1) on the ROM, within today's `EvalContext`. If the gain needs an addition to `EvalContext` (for instance reading several Pins at once), that is a Part API change: it is shown to the user with the ROM, not made silently. This stop is the likely outcome: idea 1's real lever (Net indices precomputed per Pin, no generic `read`/`drive`) needs more than today's `EvalContext`; within it, only loops and constants can be specialised. After the user's OK, other Parts in profile order (gate packages, 74LS157, 74LS74, 74LS244), one idea each, and ADD_PART describes the new way.

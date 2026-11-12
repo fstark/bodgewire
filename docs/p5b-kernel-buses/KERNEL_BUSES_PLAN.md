@@ -42,6 +42,17 @@ Only this step's paths are committed (the user edits docs in parallel).
 - `EvaluateRom` (design); ROM tests and the machines using ROMs green; measured.
 - **Stop:** show the user the ROM's new code, its numbers, and any `EvalContext` addition it would want. Wait for the OK before phase 6. Commit `parts: ROM with specialised evaluation` when the user OKs (or drop, logged).
 
+### Phase 5a — A second look (the user's OK, 2026-11-12)
+
+Four ideas found after phase 5 by reading the code and counting on `bus_load`, each measured first on a scratch copy, then applied in this order, one commit each, with the fences above:
+
+- 1f, the event queue as runs of same-time events (design, Idea 1f): `sim: event queue as runs of same-time events`.
+- 5, sampled inputs (design, Idea 5; the trace check stops comparing `evaluations`): `sim: sampled inputs never wake their Component`.
+- 4.2, gate packages (design, Idea 4.2): phase 6's first Part, with ADD_PART: `parts: gate packages with specialised evaluation`.
+- 2b, two small changes to the run loop (design, Idea 2b): `sim: readBit inline, the Net of each Pin kept by the Simulator`.
+
+Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User decisions).
+
 ### Phase 6 — Idea 4, further Parts (after the OK)
 
 - In profile order (gate packages, 74LS157, 74LS74, 74LS244, then the next in a fresh profile): one row and one commit each, `parts: <Part> with specialised evaluation`; ADD_PART updated in the first commit of this phase.
@@ -62,6 +73,7 @@ Only this step's paths are committed (the user edits docs in parallel).
 | 3 | Run loop | 2a dropped; nothing in the line profile reaches 5 % alone |
 | 4 | LTO | done: kept |
 | 5 | ROM, shown to the user | done: kept (the user's OK, 2026-11-12) |
+| 5a | A second look: 1f, 5, 4.2, 2b | 1f done |
 | 6 | Further Parts | — |
 | 7 | Finish | — |
 
@@ -78,7 +90,8 @@ Only this step's paths are committed (the user edits docs in parallel).
 | 1e | sorted vector, earliest last (on 1a) | 0.230× | 626 | 158 | 5.55× | 0.995× | no: +6 % cycles | — |
 | 2a | `markNetDirty`, `markComponentDirty` inline in the header | 0.245× | 623 | 148 | 5.58× | 1.020× | no: −1 % cycles | — |
 | 3 | LTO, release preset | 0.256× | 584 | 141 | 5.73× | 1.020× | yes: −5…6 % cycles, +5.0…5.3 % ratio (three runs) | `cd6a085` |
-| 4.1 | ROM: `EvaluateRom<Layout>`, compile-time pin layout per Part, reached through `RomSpec::evaluate` | 0.279× | 577 | 133 | 5.99× | 1.047× | yes, on the user's OK: −5…6 % cycles, +7…9 % ratio (two runs) | this commit |
+| 4.1 | ROM: `EvaluateRom<Layout>`, compile-time pin layout per Part, reached through `RomSpec::evaluate` | 0.279× | 577 | 133 | 5.99× | 1.047× | yes, on the user's OK: −5…6 % cycles, +7…9 % ratio (two runs) | `45f0d40` |
+| 1f | pending events as runs of same-time events, a take is a whole timestamp (on 4.1) | 0.354× | 503 | 103 | 5.76× | 1.071× | yes: −24 % cycles, +34 % ratio against 4.1 measured the same hour (0.265×, 578, 136) | this commit |
 
 ## Implementation notes
 
@@ -90,3 +103,5 @@ Only this step's paths are committed (the user edits docs in parallel).
 - Phase 4, LTO: clean release build 23 s → 27 s (SDL3, imgui and Catch2 included); touching `simulator.cpp` relinks in 7 s. Other netlists: ball 2.28 → 2.22×, dice 21.7 → 21.2× (−2 %), the rest equal or faster. The release test suite passes with LTO (810); debug, which LTO does not touch, was last green at 1a. From here profiles come from `build/profile-lto`.
 - Phase 5: profile on LTO (`build/profile-lto`, no `-g`: by function): `runUntil` 27.8 %, `pop` 26.2 %, `push` 9.8 %, gate packages 8.9 %, ROM 7.9 %, 74LS157 5.1 %, 74LS74 3.1 %, 2114 2.9 %, 74LS244 2.8 %, the stub 2.4 %. The ROM alone gained 6 % in cycles, more than the design's 3–4 %: the generic version looped over spans of run-time length and recomputed the longest delay each time. Trace identical; ROM, catalogue, manuals and `bus load` tests green in release (80) and debug (61).
 - ROM shown to the user: the first version dispatched on the spec's place in `s_specs` (`&spec_ == &s_specs[1]`), so a new ROM Part needed a layout, a dispatch branch and a constructor check kept in step. At the user's request the specialised function moved into the spec row (`RomSpec::evaluate = &EvaluateRom<layout>`): a new ROM is its arrays, one `RomLayout` line and its row; `Rom::evaluate` is one call. Same numbers (133–135 cycles an event), trace identical.
+- Phase 5a (2026-11-13), a second look. Counters on `bus_load` (100 ms, temporary): 13.7 M pops in 6.36 M timestamps, 2.16 each (one pop 55 % of timestamps, two 28 %, eight or more 7 %); 43 % of pushes carry the time of the push before; 12.9 M evaluations, 57 % of which drive nothing new and ask no wake; Net resolution by the single-driver path 65 %; 20.1 M Component marks for 11.9 M applied events, 7.2 M of them on a Component already marked. The ROM state (4.1) measured again before the first idea: 0.265×, 578 instructions and 136 cycles an event (the machine that hour; phase 5 logged 0.279×). The rows from 1f on compare with it.
+- 1f: four shapes replayed on the queue's own recorded operations (20 ms of `bus_load`, 2.7 M pushes and 1.27 M takes; cycles per event popped): the heap of 1a 51; groups by time, each its own vector, 23; unordered runs scanned for the earliest time 28–30; time-ordered runs in one flat array 22, kept. A first version moved the open run in time order when `keys_` refilled, so the next push to it overran its neighbour: found by a random comparison with the heap, which is now the test "same takes as a sorted list over long random use" (it fails when the mistake is put back). A test of the size before the sort: no gain (503 instructions and 103 cycles either way), left out. Other netlists (2 s, best of 3, 4.1 → 1f): ball 2.27 → 2.35×, chaser 13.7 → 14.3×, counter 12.5 → 12.9×, dice 22.4 → 23.6×, knob 15.6 → 16.0×, message 2.36 → 2.50×, tennis 1.53 → 1.58×, stopwatch 9.87 → 9.19× (9.3–10.0× on both builds when alternated: noise). Profile-guided optimisation, on the scratch copy only: +9 % on the heap, +3 % on top of 1f, 5 and 4.2 with the typewriter and the test pattern 4–6 % slower: not pursued.
