@@ -9,10 +9,10 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | `EvalContext::randomBit`, DIP-8 package | |
-| 2 | 2524 Part | |
-| 3 | 2518 Part | |
-| 4 | Netlist stage 1: video from the page | |
+| 1 | `EvalContext::randomBit`, DIP-8 package | `1d5a1a6` |
+| 2 | 2524 Part | `f9948c9` |
+| 3 | 2518 Part | `411c3b8` |
+| 4 | Netlist stage 1: video from the page | `d14e18c` |
 | 5 | Netlist stage 2: keyboard, writes, cursor, Clear | |
 | 6 | Manuals | |
 | 7 | Board (user routing), per-Machine loops | |
@@ -74,4 +74,7 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`
 
 ## Implementation notes
 
-(filled in as the phases run)
+- Docs review (before phase 1), fixed: the stale P4p Board moved out before the new netlist; the DIP-8 placer case with the 2524; MOS no-connect supply pins; the 2524's output moving only on `PHI1`; `ROW_CLK` = NAND(`QC`, `ACTIVE`) (a 2 ns hazard at dot 12 gone); the 2518 pin `REC`; the strobe margin (24.2 ms of 25 ms) and the one asynchronous key race stated; the blink screenshots 8 frames apart.
+- Phases 1–3: full debug suite 775 then 790 tests green.
+- Phase 4: release speed 0.67× with the page clocks decoded from `QA` (dots 11 and 13), P4p's final netlist 0.63× back to back on the same (loaded) machine. Decoding `PHI2_N` from `QC`, `QB_N` (dots 12–13) and `PHI1_N` from `DOT_END` (dot 15) gave 7% fewer evaluations, 0.73×: adopted, docs updated (cell 0, not 511, at the page's output after a frame). The stage-1 `.place` held only `J1`, `J2`, `U23` (the others came with stage 2). The phase-4 commit left `manuals: every Machine's manuals pass their checks` red (P4p's Service Manual names stage-2 parts), green again from phase 5.
+- Phase 5: every case passed first time. VCD of `--press SW1:1ms:30ms --type 'J3:40ms:HI' --time 200ms`: shortest levels `PHI1_N` 247 ns, `PHI2_N` 498 ns, `ROW_CLK` 499 ns (no glitch); `WR` rises once a key, 1.06 ms after `H`'s strobe and 19 ms after `I`'s (waiting for its cell). Release headless, alternated with P4p's final netlist on a quieter machine: random page 0.97–0.98× (P4p 0.94–0.95×), after Clear 1.21× (P4p 1.25–1.29×: the row buffer clocks every character on a blank page too). `bw_ui` without Board or instruments 1.00×, UI 0.2 ms. Screenshots at 2 s and 2.157 s: `HELLO` with the block off and on.
