@@ -12,7 +12,8 @@ namespace bw {
 
 namespace {
 
-constexpr std::array<std::pair<std::string_view, std::string_view>, 13> kFootprints{{
+constexpr std::array<std::pair<std::string_view, std::string_view>, 14> kFootprints{{
+    {"DIP-8", "Package_DIP:DIP-8_W7.62mm"},
     {"DIP-14", "Package_DIP:DIP-14_W7.62mm"},
     {"DIP-16", "Package_DIP:DIP-16_W7.62mm"},
     {"DIP-18", "Package_DIP:DIP-18_W7.62mm"},

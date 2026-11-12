@@ -529,6 +529,21 @@ public:
     std::vector<bool> bits;
 };
 
+// Draws 16 randomBit()s on each rising edge of CLK.
+class RandomDrawer final : public Component {
+public:
+    explicit RandomDrawer(std::string name)
+        : Component(std::move(name), {{"CLK", PinKind::Input, Family::Ttl, true}}) {}
+    void evaluate(EvalContext& ctx) override {
+        if (ctx.rose(0)) {
+            for (int i = 0; i < 16; ++i) {
+                bits.push_back(ctx.randomBit());
+            }
+        }
+    }
+    std::vector<bool> bits;
+};
+
 }  // namespace
 
 TEST_CASE("simulator: a bidirectional pin starts released", "[sim]") {
@@ -593,6 +608,25 @@ TEST_CASE("simulator: readBitBefore", "[sim]") {
     sim.runUntil(30_ns);
     // Power-on (0), the rise at 10 ns (0 before it), the fall at 20 ns (1 before it).
     CHECK(reader.bits == std::vector<bool>{false, false, true});
+}
+
+TEST_CASE("simulator: randomBit in evaluate is seeded", "[sim]") {
+    const auto draw = [](std::uint64_t seed) {
+        Circuit circuit;
+        const NetId clk = circuit.addNet("CLK");
+        auto& drawer = circuit.add<RandomDrawer>("U1");
+        circuit.connect(drawer, "CLK", clk);
+        AddDrivers(circuit, clk, {{Zero, {{10_ns, One}}}});
+        circuit.finalize();
+        Simulator sim(circuit);
+        sim.powerOn(seed);
+        sim.runUntil(20_ns);
+        return drawer.bits;
+    };
+    const std::vector<bool> first = draw(1);
+    CHECK(first.size() == 16);
+    CHECK(draw(1) == first);
+    CHECK(draw(2) != first);
 }
 
 TEST_CASE("simulator: readBitBefore reads X as a random bit", "[sim]") {

@@ -72,6 +72,19 @@ TEST_CASE("footprint: DIP-24 pads and courtyard", "[board]") {
     CHECK(dip.courtyardMax == Point{Mm(16.29), Mm(29.46)});
 }
 
+TEST_CASE("footprint: DIP-8 pads and courtyard", "[board]") {
+    const std::vector<std::string_view> packages{"DIP-8"};
+    const auto library = LoadFootprints(BW_FOOTPRINT_DIR, packages);
+    REQUIRE(library.has_value());
+    const Footprint& dip = library->at("DIP-8");
+    CHECK(dip.id == "Package_DIP:DIP-8_W7.62mm");
+    REQUIRE(dip.pads.size() == 8);
+    CHECK(dip.pads[4].number == "5");
+    CHECK(dip.pads[4].position == Point{Mm(7.62), Mm(7.62)});
+    CHECK(dip.courtyardMin == Point{Mm(-1.06), Mm(-1.52)});
+    CHECK(dip.courtyardMax == Point{Mm(8.67), Mm(9.14)});
+}
+
 TEST_CASE("footprint: DIP-18, DIP-20 and KK-10 pads", "[board]") {
     const std::vector<std::string_view> packages{"DIP-18", "DIP-20", "KK-10"};
     const auto library = LoadFootprints(BW_FOOTPRINT_DIR, packages);

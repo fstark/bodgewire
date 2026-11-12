@@ -26,6 +26,8 @@ bool EvalContext::readBit(PinIndex pin) {
     return value == LogicValue::One;
 }
 
+bool EvalContext::randomBit() { return sim_.rng_.nextBit(); }
+
 bool EvalContext::readBitBefore(PinIndex pin) {
     const LogicValue value = readBefore(pin);
     if (value == LogicValue::X) {
