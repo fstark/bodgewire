@@ -1,0 +1,7 @@
+# Zeros: Solder Bridge between U20 pin 2 (OUT, P4) and pin 3 (READ, tied to VCC): P4 is held at 1, so
+# the row buffer and the character ROM see bit 4 set in every character. The page is right. A U20 swap
+# does not help.
+machine typewriter
+title "Zeros"
+brief "Clear fills the screen with zeros instead of blanking it, and the letters A to O come out as other letters and signs."
+fault bridge U20.2 U20.3

@@ -1,0 +1,7 @@
+# M is Return: Broken Trace on CTL from U12 pin 4 to U30 pin 1 (U30's own branch); U30's input A floats
+# high, so the Return decoder takes any code ending in 01101: M and - as well as Return. The key is
+# printed (PRINT is unchanged), then the cursor goes to the start of the next line.
+machine typewriter
+title "M is Return"
+brief "Every M ends its line: the M shows, and what is typed next starts on the line below. A hyphen does the same."
+fault crack U12.4 U30.1 50%

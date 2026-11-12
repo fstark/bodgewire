@@ -1,6 +1,6 @@
 # 090 — TV Typewriter — Machine Design
 
-How the Machine in [TYPEWRITER.md](TYPEWRITER.md) is built: netlist, Board, manuals. P4q brings the 2524 and the 2518 (and the DIP-8 package); every other Part is in the catalogue (P4n the 74LS244 and the `KEYBOARD`, P4l the 2513 and the 74LS165). The step is [SHIFT_TYPEWRITER.md](../../p4q-shift-typewriter/SHIFT_TYPEWRITER.md).
+How the Machine in [TYPEWRITER.md](TYPEWRITER.md) is built: netlist, Board, Puzzle files, manuals. P4q brings the 2524 and the 2518 (and the DIP-8 package); every other Part is in the catalogue (P4n the 74LS244 and the `KEYBOARD`, P4l the 2513 and the 74LS165). The step is [SHIFT_TYPEWRITER.md](../../p4q-shift-typewriter/SHIFT_TYPEWRITER.md).
 
 ## Files
 
@@ -287,8 +287,41 @@ Placed by `bw place netlists/typewriter.bwn boards/typewriter/typewriter.place -
   ```
 
 - The 2513 is a 600-mil DIP-24, too big for the chip grid (as on 080). The 2524s (DIP-8, P4q), the 2518 (DIP-16) and the 74LS244s (DIP-20) fit the grid. The 39 other chips and `X1` go in the annealed grid.
-- No routing constraints: there are no Puzzles yet. P4r reads the routing it needs from the finished Board.
+- Puzzle constraints (P4r): `U18` pin 1 at the end of `PHI2_N`'s Trace (from `U17` pin 1, through a via) and `U30` pin 1 on its own branch of `CTL` (straight from `U12` pin 4); Zeros needs only `U20` pins 2 and 3 as wired (`OUT`, `READ` tied to VCC). A re-route keeps those or moves the cracks.
 - `bw check-board` prints `ok`; `drc_typewriter` and `place_drc_typewriter` pass (picked up by the globs).
+
+## Puzzles
+
+`machine typewriter` in each file (TYPEWRITER.md, Puzzles):
+
+| File | Fault line | Where |
+|---|---|---|
+| `lookalikes.bwp` | `fault crack U17.1 U18.1 50%` | `PHI2_N` |
+| `wallpaper.bwp` | `fault stuck U29.2Y 1` | `WRITE` |
+| `copies.bwp` | `fault stuck U22.REC 1` | `ROW_LOAD_N` into the row buffer |
+| `every_other_line.bwp` | `fault joint U36.5` | `Y0` into the cursor comparator |
+| `zeros.bwp` | `fault bridge U20.2 U20.3` | `P4` to the VCC tie on `READ` |
+| `m_is_return.bwp` | `fault crack U12.4 U30.1 50%` | `CTL` at the Return decoder |
+
+Titles and briefs:
+
+- Lookalikes: "Some letters come out as others that look a little like them: HELLO shows as HAHHK."
+- Wallpaper: "The whole screen is one character over and over, and each key typed fills the screen with that key. Clear blanks it only while it is held."
+- Copies: "Every line of the screen shows the same row of characters. Typing and Clear change nothing on the screen, though the block still moves."
+- Every other line: "After Clear the block is on the second line, not the first. Return goes down a line only every second time: the next line types over the one before."
+- Zeros: "Clear fills the screen with zeros instead of blanking it, and the letters A to O come out as other letters and signs."
+- M is Return: "Every M ends its line: the M shows, and what is typed next starts on the line below. A hyphen does the same."
+
+### Electrical Nets on a damaged Board
+
+- Lookalikes: `U18` `PHI2` alone on its Net, which has only a MOS input: it reads X but never rises. 10 ms after power-on (`PHI1` rose last) every bit of `U18` fades to 0, and no key writes it. A new `U18` fades the same way.
+- Wallpaper: `WRITE` stuck at 1 (Strong): every cell is written at each rise of `PHI2_N`, from `W0`–`W5`: `U26`'s copy of `D0`–`D5`, or spaces from `U27` while Clear is held. Before the first key the keyboard leaves `D0`–`D6` undriven, so what fills the page depends on the power-on seed. `KEY`, `WR` and the cursor work as usual.
+- Copies: `U22` reads `REC` as 1: it recirculates its power-on words forever. The page is written as usual (the test reads it from the 2524s); the TV shows the buffer's 32 words on every row.
+- Every other line: `U36` pin 5 floats (reads high): `NE5` = NOT `V4`, so the cursor's row `r` matches text row `r` OR 1. The cursor counter is right (the test reads it).
+- Zeros: `P4` and the `READ` tie are one Net with VCC (Supply) winning against `U20`'s output: `U22` takes bit 4 as 1 in every word. The page is right. A new `U20` drives the same Contention.
+- M is Return: `U30` pin 1 floats (reads high): `CR_N` is low for any code ending in `01101` (13, `-`, `M`). `PRINT` is unchanged, so `M` and `-` are written, then `CR_N` loads 0 into `U32`, `U33` and `YEN` steps the row at `WR`.
+
+The test (`tests/machines/typewriter_test.cpp`) presses Clear, types, and checks the page from the 2524s (or the TV, for Copies and Zeros, where the page is right and the picture is not); then the repair, and the fault-free page. The TV checks keep the cursor off text row 0: the TV draws the frame's first line about four characters to the left, which only a cursor on row 0 shows (a small bar in the left border; the Machine's timing is right, a VCD shows `CUR_SHOW` on line 0 at the cursor's column).
 
 ## Manuals
 

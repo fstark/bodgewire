@@ -1,0 +1,6 @@
+# Every other line: dry Joint at U36 pin 5 (2B, Y0 into the cursor comparator); it floats high, so the
+# cursor's row r matches text row r | 1: rows 2k and 2k + 1 both type on row 2k + 1.
+machine typewriter
+title "Every other line"
+brief "After Clear the block is on the second line, not the first. Return goes down a line only every second time: the next line types over the one before."
+fault joint U36.5

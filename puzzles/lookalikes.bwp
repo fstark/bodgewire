@@ -1,0 +1,7 @@
+# Lookalikes: Broken Trace on PHI2_N from U17 pin 1 to U18 pin 1 (the end of the Trace, through a via).
+# U18's input clock stops: 10 ms later its bits fade to 0 (PHI1 rose last), and keys no longer write
+# it: bit 2 of every character is 0. A new U18 fades the same way.
+machine typewriter
+title "Lookalikes"
+brief "Some letters come out as others that look a little like them: HELLO shows as HAHHK."
+fault crack U17.1 U18.1 50%

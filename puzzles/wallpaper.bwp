@@ -1,0 +1,7 @@
+# Wallpaper: U29 output 2Y (WRITE) stuck at 1: every page cell is written as it comes round, from the
+# write bus: the last key's code (before the first key, whatever the undriven keyboard lines read), or
+# spaces while Clear is held.
+machine typewriter
+title "Wallpaper"
+brief "The whole screen is one character over and over, and each key typed fills the screen with that key. Clear blanks it only while it is held."
+fault stuck U29.2Y 1

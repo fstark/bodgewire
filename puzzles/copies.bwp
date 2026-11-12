@@ -1,0 +1,7 @@
+# Copies: U22 (2518) input REC (ROW_LOAD_N) stuck at 1: the row buffer always recirculates and never
+# takes a row from the page, so all 16 rows show the 32 characters it held at power-on. The page itself
+# is written as usual.
+machine typewriter
+title "Copies"
+brief "Every line of the screen shows the same row of characters. Typing and Clear change nothing on the screen, though the block still moves."
+fault stuck U22.REC 1

@@ -32,7 +32,9 @@ const Crack&
 InvisibleBallCrack();  // tennis SERVING, U43 pin 10 → U38 pin 10: puzzles/invisible_ball.bwp
 const Crack& GibberishCrack();     // message CH5, U14 pin 15 → U15 pin 22: puzzles/gibberish.bwp
 const Crack& BlockLettersCrack();  // message CLK_N, U5 pin 6 → U16 pin 2: puzzles/block_letters.bwp
-const Crack& R1VccCrack();         // counter VCC, R1.1 → U1.16: R1's rail side cut off
-const Crack& Sw1GndCrack();        // dice GND, SW1 pad 2 → J1.2: SW1's rail end cut off
+const Crack& LookalikesCrack();  // typewriter PHI2_N, U17 pin 1 → U18 pin 1: puzzles/lookalikes.bwp
+const Crack& MIsReturnCrack();   // typewriter CTL, U12 pin 4 → U30 pin 1: puzzles/m_is_return.bwp
+const Crack& R1VccCrack();       // counter VCC, R1.1 → U1.16: R1's rail side cut off
+const Crack& Sw1GndCrack();      // dice GND, SW1 pad 2 → J1.2: SW1's rail end cut off
 
 }  // namespace bw

@@ -8,7 +8,7 @@ Memory without addresses. The page is six long shift registers, one per bit of t
 
 The page registers are dynamic: they keep their bits only while both their clocks keep pulsing. Stop one and that register's bits all fade to one level: one bit of every character is lost.
 
-Faults show as typing gone wrong in ways that point to one link: a page clock lost (one bit of every character fades to the same value: each character becomes its neighbour in the font), a bit of the page or the row buffer stuck (a column of the character set missing from the page), the write control (keys never show, or every cell fills with the key), the row buffer's load control (every row shows the same text), the cursor comparator (keys land in the wrong place, the cursor shows where it is not), the space buffer (Clear leaves `@`s).
+Faults show as typing gone wrong in ways that point to one link: a page clock lost (one bit of every character fades to 0: each letter becomes a lookalike), the write control (every cell fills with the key), the row buffer's load control (every row shows the same text), the cursor comparator (keys land on the wrong line), a page output held (every character shifted along the font, Clear leaves zeros), the Return decoder (a letter acts as Return).
 
 ## Circuit
 
@@ -70,6 +70,17 @@ The TV shows a page of random characters at power-on, locked within half a secon
 
 ## Puzzles
 
-None in this step: P4r writes the 090 Puzzles from the finished Board. Links worth a Fault: a page clock (`PHI2_N` cracked after some of the 2524s: after 10 ms their bits fade to 0 in every cell, so each character shows as its neighbour in the font, and those bits are no longer written; `PHI1_N` cracked: those registers stop moving, so their bit is the same in every cell, and fades to 1), one page bit or one row-buffer output stuck (characters from the wrong half of the font), the row buffer's `ROW_LOAD_N` stuck high (every row repeats what the buffer held) or low (rows smeared), `WRITE` stuck (nothing typed shows, or Clear never ends), a comparator bit (keys land in the wrong place), the space buffer (Clear leaves `@`s).
+Six Puzzles (P4r, 2026-11-12), each a different Fault on a different link, each seen once Clear is pressed and a few keys typed:
+
+| Puzzle | Fault | Symptom | Path to the fix |
+|---|---|---|---|
+| Lookalikes | Broken Trace on `PHI2_N` from `U17` pin 1 to `U18` pin 1 | bit 2 of every character is 0: `HELLO` shows as `HAHHK`; Clear still blanks | `P2` stays at 0; a new `U18` fades the same way; `PHI2_N` pulses at `U17` pin 1, nothing at `U18` pin 1: mend the Trace |
+| Wallpaper | `U29` output `2Y` (`WRITE`) stuck at 1 | the whole screen is one character; each key fills it with that key; Clear blanks it only while held; the cursor moves as it should | `WRITE` high at `U29` pin 6 while `WRK_N` pulses and `CLEAR_N` is high: swap `U29` |
+| Copies | `U22` input `REC` (`ROW_LOAD_N`) stuck at 1 | all 16 lines show the same 32 characters; typing and Clear change nothing on the screen, though the block moves | the page's outputs `P0`–`P5` change on the top lines and `ROW_LOAD_N` pulses on `U22` pin 4, yet `B0`–`B5` repeat every line: swap `U22` |
+| Every other line | Dry Joint at `U36` pin 5 (`2B`, `Y0`) | after Clear the block is on the second line; Return goes down a line every second time, the next line typing over the one before; the first line is never used | `Y0` changes on pin 5's pad (B.Cu) but the leg (F.Cu) stays high: resolder `U36` pin 5 |
+| Zeros | Solder Bridge between `U20` pin 2 (`OUT`, `P4`) and pin 3 (`READ`, tied to VCC) | Clear fills the screen with `0`s; `A`–`O` show as `P`–`_` (`HELLO` as `XU\\_`) | `P4` reads 1 at both ends, and a new `U20` changes nothing; with the power off the meter finds `P4` connected to VCC: cut the bridge on the solder side of `U20` |
+| M is Return | Broken Trace on `CTL` from `U12` pin 4 to `U30` pin 1 | every `M` (and `-`) is printed, then ends its line | `CR_N` pulses low for `M`; `CTL` pulses at `U12` pin 4, `U30` pin 1 floats: mend the Trace |
+
+Each teaches something different: dynamic memory losing its clock (the obvious swap fails), a write enable stuck on (every cell takes the bus), a register that never loads (the page is right, the picture is not), a dry Joint on a comparator input (rows paired), a bridge to a tie (the obvious swap fails again), and a decoder input cut (one key decoded as another).
 
 Netlist, Board and manuals: [TYPEWRITER_DESIGN.md](TYPEWRITER_DESIGN.md).

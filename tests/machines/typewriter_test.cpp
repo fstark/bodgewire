@@ -16,12 +16,15 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../machine/test_points.hpp"
 #include "devices/tv_input.hpp"
 #include "machine/machine.hpp"
+#include "machine/puzzle.hpp"
 #include "netlist/builder.hpp"
 #include "parts/button.hpp"
 #include "parts/keyboard.hpp"
 #include "parts/rom_contents.hpp"
+#include "parts/shift_register_2518.hpp"
 #include "parts/shift_register_2524.hpp"
 #include "sim/simulator.hpp"
 
@@ -170,12 +173,13 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
     return std::move(*result);
 }
 
-// The Machine on a simulator, powered on.
+// The Machine (its Board, or a Puzzle's) on a simulator, powered on.
 struct Typewriter {
-    std::unique_ptr<LoadedCircuit> loaded = BoardCircuit();
+    std::unique_ptr<LoadedCircuit> loaded;
     Simulator sim{loaded->circuit};
 
-    explicit Typewriter(std::uint64_t seed) {
+    explicit Typewriter(std::uint64_t seed, std::unique_ptr<LoadedCircuit> circuit = BoardCircuit())
+        : loaded(std::move(circuit)) {
         sim.powerOn(seed);
         sim.runFor(1_ms);
     }
@@ -227,14 +231,19 @@ struct Typewriter {
         return Cell{*x, *y};
     }
 
-    // The page's cells, read in the vertical blanking (run on until V8 is 1): after the last top
-    // line of a frame the page's output holds cell 0.
-    Codes codes() {
+    // Runs on into the vertical blanking (V8 is 1).
+    void toBlanking() {
         const NetId v8 = loaded->nets.at("V8");
         for (int i = 0; i < 400 && sim.value(v8) != One; ++i) {
             sim.runFor(100_us);
         }
         REQUIRE(sim.value(v8) == One);
+    }
+
+    // The page's cells, read in the vertical blanking: after the last top line of a frame the
+    // page's output holds cell 0.
+    Codes codes() {
+        toBlanking();
         std::array<const ShiftRegister2524*, 6> page{};
         for (std::size_t bit = 0; bit < page.size(); ++bit) {
             page[bit] = &static_cast<const ShiftRegister2524&>(
@@ -245,6 +254,18 @@ struct Typewriter {
             for (std::size_t bit = 0; bit < page.size(); ++bit) {
                 codes[i] |= (page[bit]->bit(i) ? 1u : 0u) << bit;
             }
+        }
+        return codes;
+    }
+
+    // The row buffer's 32 words as every row would show them, read in the vertical blanking: after
+    // the last text line the buffer has gone round once, word 0 at its outputs.
+    Codes rowBuffer() {
+        toBlanking();
+        const auto& buffer = static_cast<const ShiftRegister2518&>(*loaded->components.at("U22"));
+        Codes codes{};
+        for (std::size_t i = 0; i < codes.size(); ++i) {
+            codes[i] = buffer.word(i % kColumns);
         }
         return codes;
     }
@@ -387,4 +408,169 @@ TEST_CASE("typewriter: the typed page and a blinking cursor", "[machines][slow]"
     }
     CHECK(on > 0);
     CHECK(off > 0);
+}
+
+// Puzzles (TYPEWRITER.md, Puzzles): each from power-on (seed 1), Clear pressed, keys typed; faulty,
+// then repaired.
+
+namespace {
+
+Machine LoadPuzzle(const std::string& name) {
+    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
+std::unique_ptr<LoadedCircuit> Build(const Machine& machine) {
+    auto built = machine.build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
+// Clear, then `text` typed.
+Typewriter Typing(const Machine& machine, std::string_view text) {
+    Typewriter t(1, Build(machine));
+    t.clear();
+    t.type(text);
+    return t;
+}
+
+// The TV shows `codes` (with the blinking cursor) and nothing outside it. The tests keep the cursor
+// off text row 0: the TV draws the frame's first line a few characters left, which only the cursor
+// shows.
+void CheckShown(Typewriter& t, const Codes& codes) {
+    const auto cursor = t.cursor();
+    REQUIRE(cursor.has_value());
+    const auto frames = t.lockedFrames(2);
+    REQUIRE(frames.size() == 2);
+    const auto offset = ShownAt(frames[1], codes, *cursor);
+    REQUIRE(offset.has_value());
+    CHECK(LitOutside(frames[1], *offset) == 0);
+}
+
+// Each code with `mask` cleared and `set` set.
+Codes Changed(Codes codes, unsigned mask, unsigned set = 0) {
+    for (unsigned& code : codes) {
+        code = (code & ~mask) | set;
+    }
+    return codes;
+}
+
+}  // namespace
+
+TEST_CASE("typewriter: Puzzles have a title and a brief", "[machines]") {
+    for (const char* name :
+         {"lookalikes", "wallpaper", "copies", "every_other_line", "zeros", "m_is_return"}) {
+        INFO(name);
+        const auto puzzle =
+            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        REQUIRE(puzzle.has_value());
+        CHECK(puzzle->machine == "typewriter");
+        CHECK_FALSE(puzzle->title.empty());
+        CHECK_FALSE(puzzle->brief.empty());
+    }
+}
+
+TEST_CASE("typewriter: lookalikes", "[machines][slow]") {
+    Machine machine = LoadPuzzle("lookalikes");
+    {
+        Typewriter t = Typing(machine, "HELLO\r");
+        CHECK(*PinNet(*t.loaded, "U18", "PHI2") != *PinNet(*t.loaded, "U17", "PHI2"));
+        const Codes faded = Changed(Typed("HELLO"), 0x04);  // HAHHK
+        CHECK(t.codes() == faded);
+        CheckShown(t, faded);
+    }
+    REQUIRE(machine.swap("U18"));  // the tempting wrong repair: the new chip fades too
+    CHECK(Typing(machine, "HELLO\r").codes() == Changed(Typed("HELLO"), 0x04));
+    REQUIRE(machine.mend(LookalikesCrack().layer, LookalikesCrack().at));
+    CHECK(Typing(machine, "HELLO\r").codes() == Typed("HELLO"));
+}
+
+TEST_CASE("typewriter: wallpaper", "[machines][slow]") {
+    Machine machine = LoadPuzzle("wallpaper");
+    {
+        Typewriter t(1, Build(machine));
+        t.clear();
+        t.sim.runFor(20_ms);      // a frame: every cell written again
+        Codes codes = t.codes();  // before any key, what the undriven keyboard lines read
+        CHECK(std::ranges::all_of(codes, [&](unsigned code) { return code == codes[0]; }));
+        CHECK(codes[0] != kSpace);
+        t.type("A");
+        codes.fill('A' & 0x3F);
+        CHECK(t.codes() == codes);
+        CHECK(t.cursor() == Cell{1, 0});
+    }
+    REQUIRE(machine.swap("U29"));
+    CHECK(Typing(machine, "A").codes() == Typed("A"));
+}
+
+TEST_CASE("typewriter: copies", "[machines][slow]") {
+    Machine machine = LoadPuzzle("copies");
+    {
+        Typewriter t = Typing(machine, "HI\r");
+        CHECK(t.codes() == Typed("HI"));  // the page is right
+        const Codes shown = t.rowBuffer();
+        CHECK(shown != Typed("HI"));
+        CheckShown(t, shown);  // the buffer's row, 16 times
+    }
+    REQUIRE(machine.swap("U22"));
+    Typewriter t = Typing(machine, "HI\r");
+    CheckShown(t, Typed("HI"));
+}
+
+TEST_CASE("typewriter: every_other_line", "[machines][slow]") {
+    Machine machine = LoadPuzzle("every_other_line");
+    {
+        Typewriter t = Typing(machine, "AB\rCD\rE");
+        const Point pin5 = *machine.padPosition("U36", "5");
+        CHECK(machine.probeNet(*t.loaded, Layer::Back, pin5) == PinNet(*t.loaded, "U34", "QA"));
+        CHECK(*PinNet(*t.loaded, "U36", "2B") != *PinNet(*t.loaded, "U34", "QA"));  // the leg
+        Codes expected = Typed("");
+        expected[kColumns] = 'C' & 0x3F;  // AB typed on row 1, then CD over it
+        expected[kColumns + 1] = 'D' & 0x3F;
+        expected[3 * kColumns] = 'E' & 0x3F;
+        CHECK(t.codes() == expected);
+        CHECK(t.cursor() == Cell{1, 2});  // the counter is right: row 2 types on row 3
+    }
+    REQUIRE(machine.resolder({"U36", "5"}));
+    Codes expected = Typed("AB");
+    expected[kColumns] = 'C' & 0x3F;
+    expected[kColumns + 1] = 'D' & 0x3F;
+    expected[2 * kColumns] = 'E' & 0x3F;
+    CHECK(Typing(machine, "AB\rCD\rE").codes() == expected);
+}
+
+TEST_CASE("typewriter: zeros", "[machines][slow]") {
+    Machine machine = LoadPuzzle("zeros");
+    {
+        Typewriter t = Typing(machine, "HELLO\r");
+        CHECK(*PinNet(*t.loaded, "U20", "OUT") == *PinNet(*t.loaded, "U20", "READ"));  // P4 on VCC
+        CHECK(t.codes() == Typed("HELLO"));               // the page is right
+        CheckShown(t, Changed(Typed("HELLO"), 0, 0x10));  // XU\\_ on a page of zeros
+    }
+    REQUIRE(machine.swap("U20"));  // the tempting wrong repair
+    {
+        Typewriter t = Typing(machine, "HELLO\r");
+        CheckShown(t, Changed(Typed("HELLO"), 0, 0x10));
+    }
+    REQUIRE(machine.removeBridge({"U20", "2"}, {"U20", "3"}));
+    Typewriter t = Typing(machine, "HELLO\r");
+    CheckShown(t, Typed("HELLO"));
+}
+
+TEST_CASE("typewriter: m_is_return", "[machines][slow]") {
+    Machine machine = LoadPuzzle("m_is_return");
+    {
+        Typewriter t = Typing(machine, "AM-B");
+        CHECK(*PinNet(*t.loaded, "U30", "A") != *PinNet(*t.loaded, "U12", "2Y"));
+        Codes expected = Typed("AM");
+        expected[kColumns] = '-' & 0x3F;
+        expected[2 * kColumns] = 'B' & 0x3F;
+        CHECK(t.codes() == expected);
+        CHECK(t.cursor() == Cell{1, 2});
+    }
+    REQUIRE(machine.mend(MIsReturnCrack().layer, MIsReturnCrack().at));
+    Typewriter t = Typing(machine, "AM-B");
+    CHECK(t.codes() == Typed("AM-B"));
+    CHECK(t.cursor() == Cell{4, 0});
 }
