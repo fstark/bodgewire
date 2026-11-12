@@ -49,7 +49,7 @@ Four ideas found after phase 5 by reading the code and counting on `bus_load`, e
 - 1f, the event queue as runs of same-time events (design, Idea 1f): `sim: event queue as runs of same-time events`.
 - 5, sampled inputs (design, Idea 5; the trace check stops comparing `evaluations`): `sim: sampled inputs never wake their Component`.
 - 4.2, gate packages (design, Idea 4.2): phase 6's first Part, with ADD_PART: `parts: gate packages with specialised evaluation`.
-- 2b, two small changes to the run loop (design, Idea 2b): `sim: readBit inline, the Net of each Pin kept by the Simulator`.
+- 2b, the Net of each Pin kept by the Simulator (design, Idea 2b): `sim: the Net of each Pin kept by the Simulator`.
 
 Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User decisions).
 
@@ -69,11 +69,11 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Guards and baseline | done |
-| 2 | Event queue | done: 1a kept |
+| 2 | Event queue | done: 1a kept, then 1f in its place (phase 5a) |
 | 3 | Run loop | 2a dropped; nothing in the line profile reaches 5 % alone |
 | 4 | LTO | done: kept |
 | 5 | ROM, shown to the user | done: kept (the user's OK, 2026-11-12) |
-| 5a | A second look: 1f, 5, 4.2, 2b | 1f, 5, 4.2 done |
+| 5a | A second look: 1f, 5, 4.2, 2b | done |
 | 6 | Further Parts | gate packages done (4.2, in 5a); 74LS157, 74LS74, 74LS244 open |
 | 7 | Finish | — |
 
@@ -82,7 +82,7 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 | # | Idea | bus_load ratio | Instr./event | Cycles/event | Test pattern | Typewriter | Kept | Commit |
 |---|------|----------------|--------------|--------------|--------------|------------|------|--------|
 | 0 | baseline (P5a kernel) | 0.225× | 643 | 165 | 5.46× | 0.997× | — | `0757c02` |
-| 1a | one 128-bit key for `(time, target, stamp)` in the heap | 0.244× | 640 | 149 | 5.50× | 1.013× | yes: −10 % cycles, +8 % ratio; others equal or faster | this commit |
+| 1a | one 128-bit key for `(time, target, stamp)` in the heap | 0.244× | 640 | 149 | 5.50× | 1.013× | yes: −10 % cycles, +8 % ratio; others equal or faster | `147168a` |
 | 1b | timing wheel, 1,024 slots of 1,024 ps, overflow heap | 0.239× | 710 | — | 4.27× | 0.780× | no: +10 % instructions, others 15–40 % slower | — |
 | 1b′ | same, 256 slots of 4,096 ps, no sort of one-event slots | 0.239× | 705 | — | 4.37× | 0.775× | no | — |
 | 1c | 4-ary heap, hand-written | 0.202× | 657 | — | 5.43× | 0.959× | no: slower | — |
@@ -93,7 +93,8 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 | 4.1 | ROM: `EvaluateRom<Layout>`, compile-time pin layout per Part, reached through `RomSpec::evaluate` | 0.279× | 577 | 133 | 5.99× | 1.047× | yes, on the user's OK: −5…6 % cycles, +7…9 % ratio (two runs) | `45f0d40` |
 | 1f | pending events as runs of same-time events, a take is a whole timestamp (on 4.1) | 0.354× | 503 | 103 | 5.76× | 1.071× | yes: −24 % cycles, +34 % ratio against 4.1 measured the same hour (0.265×, 578, 136) | `dca233b` |
 | 5 | sampled inputs: `PinSpec::sampled`, the `D`s of the 74LS74 and 74LS175 never wake their chip | 0.377× | 479 | 100 | 5.89× | 1.083× | yes, on the user's decision (under the bar): −3 % cycles, −5 % instructions, +6 % ratio | `f62aa8b` |
-| 4.2 | gate packages: `EvaluatePackage<units, delays>`, reached through `GatePackageSpec::evaluate` | 0.407× | 434 | 91 | 7.27× | 1.385× | yes: −9 % cycles, +8 % ratio | this commit |
+| 4.2 | gate packages: `EvaluatePackage<units, delays>`, reached through `GatePackageSpec::evaluate` | 0.407× | 434 | 91 | 7.27× | 1.385× | yes: −9 % cycles, +8 % ratio | `7e26235` |
+| 2b | `Simulator::pinNet_`: each Pin's Net kept by the Simulator, a read is two loads from its own arrays | 0.407× | 424 | 89 | 7.41× | 1.384× | yes, on the user's decision (under the bar): −2 % cycles, −2 % instructions, ratio within noise | this commit |
 
 ## Implementation notes
 
@@ -109,3 +110,5 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 - 1f: four shapes replayed on the queue's own recorded operations (20 ms of `bus_load`, 2.7 M pushes and 1.27 M takes; cycles per event popped): the heap of 1a 51; groups by time, each its own vector, 23; unordered runs scanned for the earliest time 28–30; time-ordered runs in one flat array 22, kept. A first version moved the open run in time order when `keys_` refilled, so the next push to it overran its neighbour: found by a random comparison with the heap, which is now the test "same takes as a sorted list over long random use" (it fails when the mistake is put back). A test of the size before the sort: no gain (503 instructions and 103 cycles either way), left out. Other netlists (2 s, best of 3, 4.1 → 1f): ball 2.27 → 2.35×, chaser 13.7 → 14.3×, counter 12.5 → 12.9×, dice 22.4 → 23.6×, knob 15.6 → 16.0×, message 2.36 → 2.50×, tennis 1.53 → 1.58×, stopwatch 9.87 → 9.19× (9.3–10.0× on both builds when alternated: noise). Profile-guided optimisation, on the scratch copy only: +9 % on the heap, +3 % on top of 1f, 5 and 4.2 with the typewriter and the test pattern 4–6 % slower: not pursued.
 - 5: evaluations in the trace check's runs: `bus_load` 6,465,280 → 5,691,230 (−12 %), test pattern 1,224,046 → 1,204,510, typewriter 17,727,601 → 17,436,400; VCDs and applied events identical. The evaluations spared are short ones (a 74LS74 or 74LS175 finding no clock edge), hence 3 % of the cycles for 12 % of the evaluations. `bench/trace_check.sh` prints the two counts in place of comparing them. Nothing outside the kernel reads the fan-out (checked: only `runUntil`), so the Net panel and the electrical checks see the same Pins. Other netlists (1f → 5): ball 2.35 → 2.40×, chaser 14.3 → 14.7×, counter 12.9 → 13.4×, dice 23.6 → 23.4×, knob 16.0 → 16.4×, message 2.50 → 2.54×, stopwatch 9.19 → 9.42×, tennis 1.58 → 1.61×.
 - 4.2: gate packages were the hottest Part once the queue was cheaper (14 % of `bus_load` by function on 1f and 5, the 74LS157 next at 7 %). The same loop as before, on a `constexpr` unit array and `Delays` as template arguments; `GatePackageSpec::delays`, read by nothing else, is gone. Netlists made of gates gain most (5 → 4.2): test pattern 5.89 → 7.27×, typewriter 1.08 → 1.39×, dice 23.4 → 33.7×, tennis 1.61 → 1.96×, ball 2.40 → 2.68×, message 2.54 → 2.94×, stopwatch 9.42 → 11.1×, chaser 14.7 → 14.7×, counter 13.4 → 13.3×, knob 16.4 → 16.6×. The summed conversion so far (ROM and gate packages) is well over the 5 % bar of guard 3. ADD_PART: the gate package and ROM rows, and a rule on specialised evaluation.
+- 2b: three small changes had gained 2–3 % together on the scratch copy. Measured one at a time on 4.2 (434 instructions and 91 cycles an event): the Net of each Pin alone 424 and 88; with `readBit` and `readBitBefore` moved into the header 425 and 88 (LTO inlines them already); the test of the size before the queue's sort nothing (note on 1f). Only the first is made. Other netlists equal within noise (4.2 → 2b): ball 2.68 → 2.69×, chaser 14.7 → 14.8×, counter 13.3 → 13.5×, dice 33.7 → 34.8×, knob 16.6 → 16.3×, message 2.94 → 2.92×, stopwatch 11.1 → 11.0×, tennis 1.96 → 1.96×.
+- After phase 5a (2026-11-13): `bus_load` 0.407×, 424 instructions and 89 cycles an applied event, against 0.225×, 643 and 165 at the baseline. By function on the scratch copy at this point: `runUntil` a third, the queue a fifth, Parts the rest (74LS157 7 %, ROM, 74LS244 and the stub 4–5 % each, 2114 and 74LS74 3 % each). What is left with identical traces, estimated, not measured: the other Parts of phase 6 about +10 %, the fan-out marks and bus resolution in the run loop +5–8 %, so 0.45–0.5×. The full debug suite went from 758 s (4.1) to 485 s (4.2).

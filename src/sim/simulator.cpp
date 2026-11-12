@@ -69,6 +69,10 @@ Simulator::Simulator(Circuit& circuit) : circuit_(circuit) {
                  NetState{-1, LogicValue::Zero, LogicValue::Zero, LogicValue::Zero, false, false});
     outputs_.resize(circuit.pinCount(), OutputState{0, LogicValue::Zero, LogicValue::Zero, false});
     componentDirty_.resize(circuit.components().size(), 0);
+    pinNet_.reserve(circuit.pinCount());
+    for (std::uint32_t pin = 0; pin < circuit.pinCount(); ++pin) {
+        pinNet_.push_back(circuit.netOf(PinId{pin}));
+    }
 }
 
 void Simulator::markNetDirty(NetId net) {
@@ -191,7 +195,7 @@ void Simulator::runUntil(Time end) {
             o.current = StampValue(stamp);
             o.hasPending = false;
             ++stats_.appliedEvents;
-            markNetDirty(circuit_.netOf(PinId{target}));
+            markNetDirty(pinNet_[target]);
         }
 
         for (const NetId net : dirtyNets_) {

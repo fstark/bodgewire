@@ -63,10 +63,11 @@ private:
     void markComponentDirty(ComponentId component);
     Resolution resolveNet(NetId net) const;
     void scheduleWake(ComponentId component, Time delay);
-    const NetState& netOfPin(PinId pin) const { return nets_[ToIndex(circuit_.netOf(pin))]; }
+    const NetState& netOfPin(PinId pin) const { return nets_[ToIndex(pinNet_[ToIndex(pin)])]; }
 
     Circuit& circuit_;
     std::vector<NetState> nets_;
+    std::vector<NetId> pinNet_;  // each Pin's Net, copied from the Circuit: a read is two loads
     std::vector<OutputState> outputs_;
     std::vector<std::uint8_t> componentDirty_;
     std::vector<NetId> dirtyNets_;

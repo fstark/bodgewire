@@ -82,6 +82,14 @@ Measured on `bus_load` (100 ms, temporary counters): 12.9 M evaluations, 57 % of
 - Traces: an evaluation that is skipped had no clock edge, so it would have driven every output to the value it already had (`drive` does nothing then) and read no random bit (neither Part uses `readBit`). `bench/trace_check.sh` compares VCDs and `applied_events`, and prints `evaluations` of both sides.
 - Recipe: ADD_PART gains the field and the rule for when it may be set.
 
+## Idea 2b: the Net of each Pin (added 2026-11-12)
+
+From the profile after ideas 1f, 5 and 4.2: `runUntil` a third of the time with no line above 6 %, the queue a fifth, Parts the rest. One small change holds up when measured alone:
+
+- `Simulator::pinNet_`, each Pin's `NetId` copied from the Circuit at construction (the topology is fixed once finalized). `EvalContext::read` and its kin go `pinNet_` → `nets_`, two loads from the Simulator's own arrays, in place of a walk through the Circuit's 12-byte `PinInfo` rows; the update phase finds an applied event's Net the same way.
+
+It changes no order and no value. Two others measured with it gained nothing and are not made: `readBit` and `readBitBefore` moved into the header (LTO inlines them already), and a test of the size before the queue's sort.
+
 ## Idea 3: LTO
 
 `"CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"` in the `release` configure preset's `cacheVariables`. The top `CMakeLists.txt` gets `cmake_policy`/`CheckIPOSupported` only if CMake asks for it. Debug unchanged. The cache variable also puts LTO on the fetched SDL3, imgui and Catch2: the clean release build time is reported before and after including them (build complexity was P1d's reason to reject LTO); if that cost is what tips it, `INTERPROCEDURAL_OPTIMIZATION` on bodgewire's own targets only is the variant tried. Kept under guard 3 like any idea. Once kept, profiles come from `build/profile-lto` (the profile flags plus `-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON`), so they show what runs.
