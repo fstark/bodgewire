@@ -11,6 +11,8 @@ Spec: [KERNEL_BUSES.md](KERNEL_BUSES.md). Plan: [KERNEL_BUSES_PLAN.md](KERNEL_BU
 | `src/sim/event_queue.{hpp,cpp}` | idea 1: the queue's inside; its interface (`push`, `top`, `pop`, `empty`, `size`, `clear`) and pop order unchanged. Idea 1f: `top`, `pop` and `size` give way to `nextTime` and `takeNext` (a whole timestamp at once), the order unchanged |
 | `tests/sim/event_queue_test.cpp` | idea 1: cases for the new structure's edges |
 | `src/sim/simulator.{hpp,cpp}` | idea 2: `runUntil` and its helpers; `EvalContext`'s declared members unchanged. Idea 1f: the update phase loops over one `takeNext()` |
+| `src/sim/component.hpp`, `src/sim/circuit.{hpp,cpp}` | idea 5: `PinSpec::sampled`, carried into `PinInfo`; `buildTables` leaves sampled Pins out of the fan-out |
+| `src/parts/ls74.cpp`, `src/parts/ls175.cpp` | idea 5: the `D` Pins sampled |
 | `CMakePresets.json` | idea 3: `CMAKE_INTERPROCEDURAL_OPTIMIZATION` `ON` in the `release` preset only |
 | `src/parts/rom.{hpp,cpp}` | idea 4: specialised evaluation (below) |
 | later Parts' `.cpp`/`.hpp` | idea 4, after the user's OK |
@@ -69,6 +71,16 @@ Measured on `bus_load` (100 ms, temporary counters): 13.7 M pops in 6.36 M times
 ## Idea 2: the run loop
 
 From a line-level profile of `runUntil` after idea 1. Candidates, each its own try only if the profile points at it: the update loop's `queue_.top()`/`pop()` pair (one call that pops a whole timestamp into a small vector); stale events left by inertial cancellation (`staleEvents` read first, through a temporary print in `bw run`, not committed: if large, cancellation that removes the event instead of leaving it is a queue change, tried under idea 1's rules); the `recorder_.isRecording` test per changed Net; the `wakes` and `staleEvents` counters (`appliedEvents` and `evaluations` stay: the trace check and `measure.sh` use them). Evaluation order and RNG use stay as today (they set the traces).
+
+## Idea 5: sampled inputs (added 2026-11-12)
+
+Measured on `bus_load` (100 ms, temporary counters): 12.9 M evaluations, 57 % of them without a `drive` that changes anything or a wake. Among them: the 74LS74 that halves the clock is evaluated again when its own `Q_N` comes back on its `D` (half of its evaluations), and the 74LS175s of the character latch at every change of the memory data bus (85–92 % of theirs).
+
+- `PinSpec::sampled` (default false): an Input that `evaluate` reads only when another Pin acts. `Circuit::add` copies it into `PinInfo`; `Circuit::buildTables` skips such a Pin when it builds the fan-out, after counting it as a TTL load (`netHasTtlInput_`: it still pulls a floating Net high). A Net whose only readers are sampled Pins has an empty fan-out; a Component with a sampled Pin and another Pin on one Net keeps the entry of the other Pin.
+- Nothing changes in `Simulator` or `EvalContext`: `read` and `readBefore` go through the Net, whoever was woken.
+- Marked: `1D`, `2D` of the 74LS74; `1D`–`4D` of the 74LS175. Both read `D` with `readBefore` under `ctx.rose(clk)` and nowhere else. Not marked, because they act by themselves: `PRE_N`, `CLR_N`. Other Parts with inputs of this kind (74LS107 `J`/`K`, 74LS161 data and `LOAD_N`, 74LS164 `A`/`B`, 74LS165 `SER`, the shift registers' inputs) are left for when a profile asks: each needs its `evaluate` read through first.
+- Traces: an evaluation that is skipped had no clock edge, so it would have driven every output to the value it already had (`drive` does nothing then) and read no random bit (neither Part uses `readBit`). `bench/trace_check.sh` compares VCDs and `applied_events`, and prints `evaluations` of both sides.
+- Recipe: ADD_PART gains the field and the rule for when it may be set.
 
 ## Idea 3: LTO
 

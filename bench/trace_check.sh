@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# P5b trace check: every Net of three runs, byte-compared with a reference kernel's.
+# P5b trace check: every Net of three runs, byte-compared with a reference kernel's, and the
+# count of applied events. Evaluations are printed, not compared: sampled inputs (idea 5) spare
+# evaluations that changed nothing.
 # Usage: bench/trace_check.sh [commit]   (default 0757c02, the P5a kernel)
 # Builds the reference once in a worktree under build/trace-ref/<commit>/, records its traces
 # once, then records the current build/release traces and compares. Build release first.
@@ -53,10 +55,13 @@ done
 
 status=0
 for run in "${runs[@]}"; do
-    if ! diff -u "$ref/$run.txt" "$now/$run.txt"; then
-        echo "trace check: $run counters differ"
+    if ! diff -u <(grep '^applied_events ' "$ref/$run.txt") \
+        <(grep '^applied_events ' "$now/$run.txt"); then
+        echo "trace check: $run applied events differ"
         status=1
     fi
+    echo "$run: evaluations $(sed -n 's/^evaluations //p' "$ref/$run.txt") ->" \
+        "$(sed -n 's/^evaluations //p' "$now/$run.txt")"
     if ! out="$(cmp "$ref/$run.vcd" "$now/$run.vcd" 2>&1)"; then
         echo "trace check: $run VCD differs: $out"
         line="$(sed -nE 's/.* line ([0-9]+).*/\1/p' <<<"$out")"

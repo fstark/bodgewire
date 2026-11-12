@@ -138,6 +138,13 @@ TEST_CASE("74LS74: units are independent", "[parts]") {
     CHECK(sim.value(b.nets["2Q"]) == One);
 }
 
+TEST_CASE("74LS74: only the D inputs are sampled", "[parts]") {
+    Ls74 chip("U1");
+    for (const PinSpec& pin : chip.pins()) {
+        CHECK(pin.sampled == (pin.name == "1D" || pin.name == "2D"));
+    }
+}
+
 TEST_CASE("74LS74: delays", "[parts]") {
     Bench b(
         {{"1D", {Zero, {{50_ns, One}, {150_ns, Zero}}}},

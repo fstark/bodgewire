@@ -26,9 +26,12 @@ std::vector<PinSpec> Ls74Pins() {
     const auto clk = [](const char* name) {
         return PinSpec{name, PinKind::Input, Family::Ttl, true};
     };
-    return {in("1CLR_N"), in("1D"),     clk("1CLK"),  in("1PRE_N"), out("1Q"),
+    const auto d = [](const char* name) {  // read at the clock edge only: sampled
+        return PinSpec{name, PinKind::Input, Family::Ttl, false, true};
+    };
+    return {in("1CLR_N"), d("1D"),      clk("1CLK"),  in("1PRE_N"), out("1Q"),
             out("1Q_N"),  power("GND"), out("2Q_N"),  out("2Q"),    in("2PRE_N"),
-            clk("2CLK"),  in("2D"),     in("2CLR_N"), power("VCC")};
+            clk("2CLK"),  d("2D"),      in("2CLR_N"), power("VCC")};
 }
 
 }  // namespace

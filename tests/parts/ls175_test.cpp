@@ -69,6 +69,9 @@ TEST_CASE("74LS175: catalogue row and pins", "[parts]") {
     CHECK(pins[Ls175::kClrN].name == "CLR_N");
     CHECK(pins[Ls175::kClk].name == "CLK");
     CHECK(pins[Ls175::kClk].risingEdgeOnly);
+    for (const PinSpec& pin : pins) {  // the four D inputs, nothing else
+        CHECK(pin.sampled == (pin.name.size() == 2 && pin.name[1] == 'D'));
+    }
     CHECK(pins[7].name == "GND");
     CHECK(pins[15].name == "VCC");
     CHECK(pins[3].name == "1D");

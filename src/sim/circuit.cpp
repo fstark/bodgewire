@@ -75,6 +75,9 @@ void Circuit::buildTables() {
         if (info.family == Family::Ttl) {
             netHasTtlInput_[n] = 1;
         }
+        if (info.sampled) {
+            continue;  // still a load on its Net, but its changes wake nobody
+        }
         // Pins of one Component are contiguous, so checking the last entry merges them.
         if (fanOut[n].empty() || fanOut[n].back().component != info.owner) {
             fanOut[n].push_back({info.owner, info.risingEdgeOnly});

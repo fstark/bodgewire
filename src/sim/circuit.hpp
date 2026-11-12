@@ -22,9 +22,11 @@ struct PinInfo {
     PinKind kind;
     Family family;
     bool risingEdgeOnly;
+    bool sampled;
 };
 
-// One per (Net, reading Component): all Input Pins of that Component on that Net.
+// One per (Net, reading Component): all Input Pins of that Component on that Net that can wake
+// it (sampled Pins are left out).
 struct FanOut {
     ComponentId component;
     bool risingEdgeOnly;  // all those Pins are rising-edge-only
@@ -45,7 +47,8 @@ public:
         base.id_ = ComponentId{static_cast<std::uint32_t>(components_.size())};
         base.firstPin_ = PinId{static_cast<std::uint32_t>(pins_.size())};
         for (const PinSpec& spec : base.pins()) {
-            pins_.push_back({kUnconnected, base.id_, spec.kind, spec.family, spec.risingEdgeOnly});
+            pins_.push_back({kUnconnected, base.id_, spec.kind, spec.family, spec.risingEdgeOnly,
+                             spec.sampled});
         }
         components_.push_back(std::move(component));
         return result;

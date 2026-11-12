@@ -15,7 +15,7 @@ Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate packa
 | File | Change |
 |---|---|
 | `src/parts/lsNN.hpp` | `class LsNN final : public Component`; comment with the datasheet pinout; `static constexpr PinIndex kX = …` (index = package pin − 1); `powerOn`, `evaluate`; state as private members |
-| `src/parts/lsNN.cpp` | `LsNNPins()` builds `std::vector<PinSpec>` in pin order (`in`/`out`/`power` lambdas; clock pins: `PinSpec{"CLK", Input, Ttl, true}` = rising-edge-only); `powerOn` seeds state from `ctx.randomBit()` and `setOutput`s it; `evaluate` reads with `ctx.read`, `ctx.rose(kClk)`, `ctx.readBefore` (value before the edge, for data sampled on a clock), drives with `ctx.drive(pin, value, DelayFor(delays, value))` |
+| `src/parts/lsNN.cpp` | `LsNNPins()` builds `std::vector<PinSpec>` in pin order (`in`/`out`/`power` lambdas; clock pins: `PinSpec{"CLK", Input, Ttl, true}` = rising-edge-only; data pins read only at the clock edge: `PinSpec{"1D", Input, Ttl, false, true}` = sampled, see the rules); `powerOn` seeds state from `ctx.randomBit()` and `setOutput`s it; `evaluate` reads with `ctx.read`, `ctx.rose(kClk)`, `ctx.readBefore` (value before the edge, for data sampled on a clock), drives with `ctx.drive(pin, value, DelayFor(delays, value))` |
 | `src/parts/delays.hpp` | `inline constexpr Delays kLsNNSomething{rise_ps, fall_ps};` nominal datasheet typicals |
 | `src/parts/CMakeLists.txt` | add `lsNN.cpp` (keep sorted) |
 | `src/parts/catalogue.cpp` | include + `PartInfo{"74LSNN", "lowercase description", "DIP-14"/"DIP-16", Chip, …}` in `s_parts`, **sorted by name** |
@@ -31,6 +31,7 @@ Reference commit: `7fb9693` (74LS164: sequential chip). Combinational gate packa
 - Shared data pins (a RAM's `IO`, a transceiver): `PinKind::Bidirectional`. The pin is a Driver and a reader of its Net, starts released (Z) at power-on, and its chip is evaluated when its own drive changes the Net. MOS chips (RAM) read inputs with `ctx.readBit` / `ctx.readBitBefore` (X → random bit); a chip whose pins are MOS goes in `kMosSignals` in `tests/parts/catalogue_test.cpp`.
 - Open-collector outputs: `PinKind::OpenCollector` (needs a pull-up on the Board); drive 1 to release (`DriveOf` maps 1 to no drive).
 - Falling-edge clocks (74LS90, 74LS93, 74LS107): `ctx.fell(pin)`; leave the pin's `risingEdgeOnly` false, so it is evaluated on both edges.
+- Sampled inputs (the `D`s of the 74LS74 and 74LS175): `sampled = true` on a Pin tells the kernel that its changes never wake the chip, which spares an evaluation each time the data moves between clock edges. Only for a Pin that `evaluate` reads when another Pin acts and at no other time (`readBefore` at the clock edge). A Pin that acts by itself must stay unmarked, or the chip misses its changes without any error: an asynchronous clear, preset or load, an enable, the parallel inputs of a 74LS165 (transparent while `SH_LD_N` is low), anything an output follows directly. Check it in the Part's test (`pins[…].sampled`).
 - Power Pins not at the DIP corners (74LS90, 74LS93: `VCC` pin 5, `GND` pin 10): add the Part to `kOffCornerPower` in `tests/parts/catalogue_test.cpp`.
 - X on a control input makes the affected state X; never invent a 0/1.
 - No zero delays, no delta cycles: every `drive` has a datasheet delay.

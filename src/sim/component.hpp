@@ -18,6 +18,9 @@ struct PinSpec {
     PinKind kind;
     Family family;
     bool risingEdgeOnly = false;  // Input: other changes never alter evaluate()'s result
+    // Input read only when another Pin acts (a flip-flop's D): its changes never alter
+    // evaluate()'s result, so they do not wake the Component.
+    bool sampled = false;
 };
 
 // Passed to Component::evaluate(); hot members are inline in simulator.hpp, include it to use them.

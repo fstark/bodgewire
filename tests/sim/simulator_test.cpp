@@ -581,6 +581,45 @@ TEST_CASE("simulator: a bidirectional pin drives and reads its net", "[sim]") {
     CHECK(sim.isFloating(bus));
 }
 
+// A flip-flop: D is sampled, read as it was before the rising edge of CLK.
+class SampledLatch final : public Component {
+public:
+    explicit SampledLatch(std::string name)
+        : Component(std::move(name), {{"D", PinKind::Input, Family::Ttl, false, true},
+                                      {"CLK", PinKind::Input, Family::Ttl, true}}) {}
+    void evaluate(EvalContext& ctx) override {
+        ++evaluations;
+        if (ctx.rose(1)) {
+            latched = ctx.readBefore(0);
+        }
+    }
+    int evaluations = 0;
+    LogicValue latched = Z;
+};
+
+TEST_CASE("simulator: a sampled input does not wake its component", "[sim]") {
+    Circuit circuit;
+    const NetId d = circuit.addNet("D");
+    const NetId clk = circuit.addNet("CLK");
+    auto& latch = circuit.add<SampledLatch>("U1");
+    circuit.connect(latch, "D", d);
+    circuit.connect(latch, "CLK", clk);
+    AddDrivers(circuit, d, {{Zero, {{10_ns, One}, {20_ns, Zero}, {30_ns, One}, {60_ns, Zero}}}});
+    AddDrivers(circuit, clk, {{Zero, {{50_ns, One}, {70_ns, Zero}, {90_ns, One}}}});
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    CHECK(latch.evaluations == 1);  // power-on evaluates every Component
+    sim.runUntil(40_ns);
+    CHECK(latch.evaluations == 1);  // three changes of D: not woken
+    sim.runUntil(55_ns);
+    CHECK(latch.evaluations == 2);  // the clock edge
+    CHECK(latch.latched == One);    // D as it stood, read without having been woken for it
+    sim.runUntil(100_ns);
+    CHECK(latch.evaluations == 3);  // D at 60 ns and the clock's fall wake nobody
+    CHECK(latch.latched == Zero);
+}
+
 TEST_CASE("simulator: readBitBefore", "[sim]") {
     Circuit circuit;
     const NetId in = circuit.addNet("IN");

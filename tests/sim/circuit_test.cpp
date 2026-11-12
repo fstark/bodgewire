@@ -48,6 +48,15 @@ public:
     void evaluate(EvalContext& /*ctx*/) override {}
 };
 
+class SampledPins : public Component {
+public:
+    explicit SampledPins(std::string name)
+        : Component(std::move(name), {{"D", PinKind::Input, Family::Ttl, false, true},
+                                      {"CLK", PinKind::Input, Family::Ttl, true},
+                                      {"CLR_N", PinKind::Input, Family::Ttl}}) {}
+    void evaluate(EvalContext& /*ctx*/) override {}
+};
+
 }  // namespace
 
 TEST_CASE("circuit: power and no-connect pins are neither drivers nor readers", "[sim]") {
@@ -179,6 +188,33 @@ TEST_CASE("circuit: fan-out merges pins of one component", "[sim]") {
     const auto edgesFanOut = circuit.fanOut(edges);
     REQUIRE(edgesFanOut.size() == 1);
     CHECK(edgesFanOut[0].risingEdgeOnly);
+}
+
+TEST_CASE("circuit: a sampled pin is left out of the fan-out", "[sim]") {
+    Circuit circuit;
+    SampledPins& u1 = circuit.add<SampledPins>("U1");
+    SampledPins& u2 = circuit.add<SampledPins>("U2");
+    const NetId data = circuit.addNet("data");
+    const NetId fedBack = circuit.addNet("fedBack");
+    const NetId cleared = circuit.addNet("cleared");
+    circuit.connect(u1, "D", data);
+    circuit.connect(u2, "D", fedBack);
+    circuit.connect(u2, "CLK", fedBack);
+    circuit.connect(u1, "CLR_N", cleared);
+    circuit.connect(u1, "CLK", cleared);
+    circuit.finalize();
+
+    CHECK(circuit.fanOut(data).empty());
+    CHECK(circuit.hasTtlInput(data));  // still a TTL load: the Net floats high
+
+    const auto fedBackFanOut = circuit.fanOut(fedBack);  // the clock Pin alone decides
+    REQUIRE(fedBackFanOut.size() == 1);
+    CHECK(fedBackFanOut[0].component == u2.id());
+    CHECK(fedBackFanOut[0].risingEdgeOnly);
+
+    const auto clearedFanOut = circuit.fanOut(cleared);
+    REQUIRE(clearedFanOut.size() == 1);
+    CHECK_FALSE(clearedFanOut[0].risingEdgeOnly);
 }
 
 TEST_CASE("circuit: TTL input flag", "[sim]") {

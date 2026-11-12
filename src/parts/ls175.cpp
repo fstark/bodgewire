@@ -23,11 +23,14 @@ std::vector<PinSpec> Ls175Pins() {
     const auto in = [](const char* name) { return PinSpec{name, PinKind::Input, Family::Ttl}; };
     const auto out = [](const char* name) { return PinSpec{name, PinKind::Output, Family::Ttl}; };
     const auto power = [](const char* name) { return PinSpec{name, PinKind::Power, Family::Ttl}; };
+    const auto d = [](const char* name) {  // read at the clock edge only: sampled
+        return PinSpec{name, PinKind::Input, Family::Ttl, false, true};
+    };
     return {in("CLR_N"), out("1Q"),    out("1Q_N"),
-            in("1D"),    in("2D"),     out("2Q_N"),
+            d("1D"),     d("2D"),      out("2Q_N"),
             out("2Q"),   power("GND"), PinSpec{"CLK", PinKind::Input, Family::Ttl, true},
-            out("3Q"),   out("3Q_N"),  in("3D"),
-            in("4D"),    out("4Q_N"),  out("4Q"),
+            out("3Q"),   out("3Q_N"),  d("3D"),
+            d("4D"),     out("4Q_N"),  out("4Q"),
             power("VCC")};
 }
 

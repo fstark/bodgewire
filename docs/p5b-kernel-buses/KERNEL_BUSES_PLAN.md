@@ -73,7 +73,7 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 | 3 | Run loop | 2a dropped; nothing in the line profile reaches 5 % alone |
 | 4 | LTO | done: kept |
 | 5 | ROM, shown to the user | done: kept (the user's OK, 2026-11-12) |
-| 5a | A second look: 1f, 5, 4.2, 2b | 1f done |
+| 5a | A second look: 1f, 5, 4.2, 2b | 1f, 5 done |
 | 6 | Further Parts | — |
 | 7 | Finish | — |
 
@@ -91,7 +91,8 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 | 2a | `markNetDirty`, `markComponentDirty` inline in the header | 0.245× | 623 | 148 | 5.58× | 1.020× | no: −1 % cycles | — |
 | 3 | LTO, release preset | 0.256× | 584 | 141 | 5.73× | 1.020× | yes: −5…6 % cycles, +5.0…5.3 % ratio (three runs) | `cd6a085` |
 | 4.1 | ROM: `EvaluateRom<Layout>`, compile-time pin layout per Part, reached through `RomSpec::evaluate` | 0.279× | 577 | 133 | 5.99× | 1.047× | yes, on the user's OK: −5…6 % cycles, +7…9 % ratio (two runs) | `45f0d40` |
-| 1f | pending events as runs of same-time events, a take is a whole timestamp (on 4.1) | 0.354× | 503 | 103 | 5.76× | 1.071× | yes: −24 % cycles, +34 % ratio against 4.1 measured the same hour (0.265×, 578, 136) | this commit |
+| 1f | pending events as runs of same-time events, a take is a whole timestamp (on 4.1) | 0.354× | 503 | 103 | 5.76× | 1.071× | yes: −24 % cycles, +34 % ratio against 4.1 measured the same hour (0.265×, 578, 136) | `dca233b` |
+| 5 | sampled inputs: `PinSpec::sampled`, the `D`s of the 74LS74 and 74LS175 never wake their chip | 0.377× | 479 | 100 | 5.89× | 1.083× | yes, on the user's decision (under the bar): −3 % cycles, −5 % instructions, +6 % ratio | this commit |
 
 ## Implementation notes
 
@@ -105,3 +106,4 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 - ROM shown to the user: the first version dispatched on the spec's place in `s_specs` (`&spec_ == &s_specs[1]`), so a new ROM Part needed a layout, a dispatch branch and a constructor check kept in step. At the user's request the specialised function moved into the spec row (`RomSpec::evaluate = &EvaluateRom<layout>`): a new ROM is its arrays, one `RomLayout` line and its row; `Rom::evaluate` is one call. Same numbers (133–135 cycles an event), trace identical.
 - Phase 5a (2026-11-13), a second look. Counters on `bus_load` (100 ms, temporary): 13.7 M pops in 6.36 M timestamps, 2.16 each (one pop 55 % of timestamps, two 28 %, eight or more 7 %); 43 % of pushes carry the time of the push before; 12.9 M evaluations, 57 % of which drive nothing new and ask no wake; Net resolution by the single-driver path 65 %; 20.1 M Component marks for 11.9 M applied events, 7.2 M of them on a Component already marked. The ROM state (4.1) measured again before the first idea: 0.265×, 578 instructions and 136 cycles an event (the machine that hour; phase 5 logged 0.279×). The rows from 1f on compare with it.
 - 1f: four shapes replayed on the queue's own recorded operations (20 ms of `bus_load`, 2.7 M pushes and 1.27 M takes; cycles per event popped): the heap of 1a 51; groups by time, each its own vector, 23; unordered runs scanned for the earliest time 28–30; time-ordered runs in one flat array 22, kept. A first version moved the open run in time order when `keys_` refilled, so the next push to it overran its neighbour: found by a random comparison with the heap, which is now the test "same takes as a sorted list over long random use" (it fails when the mistake is put back). A test of the size before the sort: no gain (503 instructions and 103 cycles either way), left out. Other netlists (2 s, best of 3, 4.1 → 1f): ball 2.27 → 2.35×, chaser 13.7 → 14.3×, counter 12.5 → 12.9×, dice 22.4 → 23.6×, knob 15.6 → 16.0×, message 2.36 → 2.50×, tennis 1.53 → 1.58×, stopwatch 9.87 → 9.19× (9.3–10.0× on both builds when alternated: noise). Profile-guided optimisation, on the scratch copy only: +9 % on the heap, +3 % on top of 1f, 5 and 4.2 with the typewriter and the test pattern 4–6 % slower: not pursued.
+- 5: evaluations in the trace check's runs: `bus_load` 6,465,280 → 5,691,230 (−12 %), test pattern 1,224,046 → 1,204,510, typewriter 17,727,601 → 17,436,400; VCDs and applied events identical. The evaluations spared are short ones (a 74LS74 or 74LS175 finding no clock edge), hence 3 % of the cycles for 12 % of the evaluations. `bench/trace_check.sh` prints the two counts in place of comparing them. Nothing outside the kernel reads the fan-out (checked: only `runUntil`), so the Net panel and the electrical checks see the same Pins. Other netlists (1f → 5): ball 2.35 → 2.40×, chaser 14.3 → 14.7×, counter 12.9 → 13.4×, dice 23.6 → 23.4×, knob 16.0 → 16.4×, message 2.50 → 2.54×, stopwatch 9.19 → 9.42×, tennis 1.58 → 1.61×.

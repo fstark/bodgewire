@@ -39,7 +39,7 @@ Nothing a player, a Puzzle or an instrument sees changes. What is new:
 | `netlists/test_pattern.bwn` | 100 ms | none |
 | `netlists/typewriter.bwn` | 300 ms | `--type J3:100ms:HI` |
 
-The reference side runs once per reference commit (cached under `build/trace-ref/`); the current side runs on `build/release`. The check passes when the three VCDs are byte-identical and each run prints the same `applied_events` and `evaluations`. On a difference it prints the first differing VCD line and its time.
+The reference side runs once per reference commit (cached under `build/trace-ref/`); the current side runs on `build/release`. The check passes when the three VCDs are byte-identical and each run prints the same `applied_events`. On a difference it prints the first differing VCD line and its time. `evaluations` was compared too until idea 5 (S3.5), whose whole point is fewer evaluations; since then the script prints both counts.
 
 ### S2 Measurement
 
@@ -58,6 +58,8 @@ Baseline taken in phase 1 on the same day as the ideas, since the machine's load
 3. **LTO** in the release build.
 4. **Specialised evaluation** (OPTIMISATION_IDEAS idea 1) on the ROM, within today's `EvalContext`. If the gain needs an addition to `EvalContext` (for instance reading several Pins at once), that is a Part API change: it is shown to the user with the ROM, not made silently. This stop is the likely outcome: idea 1's real lever (Net indices precomputed per Pin, no generic `read`/`drive`) needs more than today's `EvalContext`; within it, only loops and constants can be specialised. After the user's OK, other Parts in profile order (gate packages, 74LS157, 74LS74, 74LS244), one idea each, and ADD_PART describes the new way.
 
+5. **Sampled inputs** (added 2026-11-12, the user's decision above): on `bus_load` 57 % of evaluations change nothing. The cheapest part of them: a flip-flop's `D` is read only at its clock edge, yet every change of it evaluates the chip. A `PinSpec` field, `sampled`, says so, as `risingEdgeOnly` does for clocks, and the kernel leaves such a Pin out of its Net's fan-out. The 74LS74 and the 74LS175 are marked. A skipped evaluation drove nothing, so every Net keeps its trace; the count of evaluations falls.
+
 Each idea's design is written in the plan's idea log when it is tried, not ahead: the next idea depends on the last profile.
 
 ## Tests
@@ -65,6 +67,7 @@ Each idea's design is written in the plan's idea log when it is tried, not ahead
 - `bench/trace_check.sh` passes after every kept idea (S1).
 - Event queue changes keep `tests/sim/event_queue_test.cpp` (pop order `(time, target, stamp)`) and gain cases for whatever the new queue adds (events far in the future, held in the overflow; a push from outside `runUntil` earlier than the event `top()` last showed, as `Simulator::wake(…, 0)` makes between two `runUntil` calls).
 - A converted Part keeps its existing tests unchanged; they are its behaviour check.
+- Sampled inputs: a sampled Pin is left out of its Net's fan-out but still counts as a TTL load; a Component is not evaluated when only its sampled input changes, and reads it right at its clock edge; the 74LS74 and 74LS175 mark their `D`s and nothing else.
 - The full debug suite after each kept idea (kernel and shared Parts: AGENTS.md).
 
 ## Results
