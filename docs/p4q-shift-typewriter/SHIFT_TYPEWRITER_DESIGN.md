@@ -148,7 +148,7 @@ Pins: `CLK` `{Input, Mos, risingEdgeOnly}`; `REC`, `IN1`–`IN6` `{Input, Mos}` 
 
 P4p's file, kept where it still applies: the picture helpers (`Lit`, `Font`, `ExpectedPage`, `Matches`, `FindPage`, `ShownAt`, `LitOutside`), `DesignCircuit`, the `Typewriter` struct's `clear()`, `cursor()`, `lockedFrames()`. Changed:
 
-- `codes()` (not `const`): run until `V8` is 1 (steps of 100 µs; the vertical blanking lasts 3.5 ms), then cell `i` = bits 0–5 from `U16`–`U21` `bit(i + 1)`: after the last top line of a frame the page's output holds cell 511, so cell 0 is next. The picture case checks this mapping against the TV.
+- `codes()` (not `const`): run until `V8` is 1 (steps of 100 µs; the vertical blanking lasts 3.5 ms), then cell `i` = bits 0–5 from `U16`–`U21` `bit(i)`: after the last top line of a frame the page's output holds cell 0 (TYPEWRITER_DESIGN.md, Timing notes). The picture case checks this mapping against the TV.
 - `type(keys)`: hands the keys to `J3` (at most 32 at a time: `kKeyboardWaiting`), waking it, and runs 26 ms a key plus 20 ms: each key's `STROBE` is 25 ms and a little, and the last key's cell comes round within a frame of its `STROBE`. No `queued` flag: the keyboard always queues.
 - `clear()` unchanged (25 ms held, more than a frame).
 - `#include "parts/shift_register_2524.hpp"` instead of the 2114's.

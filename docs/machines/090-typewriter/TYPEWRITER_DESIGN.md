@@ -17,7 +17,7 @@ The font is 080's `roms/2513.rom`, unchanged.
 
 ## Netlist
 
-`netlists/typewriter.bwn` (TYPEWRITER.md, Circuit), with the header comment of [ADD_MACHINE.md](../../recipes/ADD_MACHINE.md) step 2. 40 chips, `X1`, `SW1`, `R1`, `J1`–`J3`. Every unused TTL input is tied (spare gates and unused data inputs to `GND`, unused NAND inputs to `VCC`), so the netlist loads without warnings. Unused outputs stay unconnected: `U1` `QD`, `U3` `QC` `QD` `RCO`, `U8` `QB`–`QD` `RCO`, `U24` `QH_N`, `U25` `1Q_N`–`3Q_N` and `3Q`, `4Q`, `U26` and `U27` `2Y3` `2Y4`, `U28` `1Q_N`, `U29` gate 4, `U33` `QB`–`QD` `RCO`, `U34` `RCO`, `U39` `1Q_N` and half 2, `U40` `QB` `QC`. The negative supply pins (2513 `VGG` `VDD`, 2524 `VDD`, 2518 `VGG`) and the 2513's `NC` pins are no-connect.
+`netlists/typewriter.bwn` (TYPEWRITER.md, Circuit), with the header comment of [ADD_MACHINE.md](../../recipes/ADD_MACHINE.md) step 2. 40 chips, `X1`, `SW1`, `R1`, `J1`–`J3`. Every unused TTL input is tied (spare gates and unused data inputs to `GND`, unused NAND inputs to `VCC`), so the netlist loads without warnings. Unused outputs stay unconnected: `U1` `QA` `QD`, `U5` gate 6, `U3` `QC` `QD` `RCO`, `U8` `QB`–`QD` `RCO`, `U24` `QH_N`, `U25` `1Q_N`–`3Q_N` and `3Q`, `4Q`, `U26` and `U27` `2Y3` `2Y4`, `U28` `1Q_N`, `U29` gate 4, `U33` `QB`–`QD` `RCO`, `U34` `RCO`, `U39` `1Q_N` and half 2, `U40` `QB` `QC`. The negative supply pins (2513 `VGG` `VDD`, 2524 `VDD`, 2518 `VGG`) and the 2513's `NC` pins are no-connect.
 
 ```
 part X1  OSC freq=4MHz
@@ -25,7 +25,7 @@ part U1  74LS161    # dot counter 10-15
 part U2  74LS161    # C0-C3
 part U3  74LS161    # C4, C5
 part U4  74LS20     # LINE_END_N, HSYNC_N
-part U5  74LS04     # DOT_LOAD_N, QB_N, CLK_N, D1_N, D4_N, QC_N
+part U5  74LS04     # DOT_LOAD_N, QB_N, CLK_N, D1_N, D4_N
 part U6  74LS161    # V0-V3
 part U7  74LS161    # V4-V7
 part U8  74LS161    # V8
@@ -69,16 +69,15 @@ part J3  KEYBOARD strobe=25ms
 
 net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U25.CLK U5.3A
 
-# Dot counter 10..15: 6 dots a character; QA-QC time the page and row buffer clocks.
+# Dot counter 10..15: 6 dots a character; DOT_END, QB and QC time the page and row buffer clocks.
 net VCC         U1.CLR_N U1.ENP U1.ENT U1.B U1.D
 net GND         U1.A U1.C
-net DOT_END     U1.RCO U5.1A U2.ENP U3.ENP U4.1A U39.1CLK
+net DOT_END     U1.RCO U5.1A U2.ENP U3.ENP U4.1A U39.1CLK U15.1C
 net DOT_LOAD_N  U5.1Y U1.LOAD_N U24.SH_LD_N
-net QA          U1.QA U15.1C U15.2C
 net QB          U1.QB U5.2A
-net QC          U1.QC U5.6A U10.2A
+net QC          U1.QC U10.2A U15.2C
 net QB_N        U5.2Y U15.2D
-net QC_N        U5.6Y U15.1D
+net VCC         U15.1D
 
 # Column counter 0..41, reloaded with 0 after character 41.
 net VCC         U2.CLR_N U2.ENT U3.CLR_N
@@ -123,7 +122,7 @@ net R1          U13.1Y U23.A1
 net R2          U13.2Y U23.A2
 net R3          U13.3Y U23.A3
 
-# Page clocks: on the top line of each text row, PHI1 on dot 11 and PHI2 on dot 13 of characters 0-31.
+# Page clocks: on the top line of each text row, PHI2 on dots 12-13 and PHI1 on dot 15 of characters 0-31.
 net V01_ZERO    U14.1Y U13.4A U29.3A
 net V23_ZERO    U14.2Y U13.4B U29.3B
 net ROW_TOP     U13.4Y U15.1A U15.2A U38.2B
@@ -251,16 +250,16 @@ net BLINK       U40.QD U12.3B
 net CUR_SHOW    U12.3Y U36.4B
 
 # Spare gates.
-net GND         U29.4A U29.4B U39.2D U39.2CLK
+net GND         U5.6A U29.4A U29.4B U39.2D U39.2CLK
 net VCC         U39.2PRE_N U39.2CLR_N
 ```
 
 ### Timing notes
 
 - `DOT_END`, `CC`, `VC1`: carries with `ENT` tied high or chained from one, no glitch (as 080). `V8` alone clocks `U40`. `LINE_END` is re-timed in `U25` (P4p).
-- Page clocks: `PHI1_N` is low exactly while `U1` is at 11 (`QD`–`QA` = `1011`): `QA` rises into it and falls out of it, `QC_N` only ever changes on an edge where `QA` already deactivates the gate. `PHI2_N` likewise on 13 (`1101`) with `QB_N`. `ROW_TOP` and `ACTIVE` change only in dot 10 (line and column changes), never next to dots 11 and 13. Pulse 250 ns low (2524: at least 135 ns); `PHI2_N` falls 250 ns after `PHI1_N` rises (at least 10 ns).
+- Page clocks: `PHI2_N` = NAND(`ROW_TOP`, `ACTIVE`, `QC`, `QB_N`) is low while `U1` is at 12 or 13 (`QD`–`QA` = `110x`): `QC` rises into it at 12 while `QB_N` is still low, `QB_N` rises 10 ns later and holds it until `QB` rises at 14; at 10 and 11 `QC` is low. `PHI1_N` = NAND(`ROW_TOP`, `ACTIVE`, `DOT_END`) is low during dot 15 and rises at the character boundary as `DOT_END` falls (18 ns); `ACTIVE` changes at characters 0 and 32 only after that (25 ns), and `ROW_TOP` in line 0's character 0 later still. Each edge comes from one signal. Pulses 500 ns and 250 ns low (2524: at least 135 ns); `PHI1_N` falls about 250 ns after `PHI2_N` rises, and `PHI2_N` falls about 1 µs after `PHI1_N` rises (at least 10 ns). The dot counter's `QA`, which changes every dot, reaches no gate: fewer evaluations at 4 MHz.
 - `ROW_CLK` = NAND(`QC`, `ACTIVE`) is low during dots 12–15 (1 µs; 2518: at least 300 ns low, 200 ns high: dots 10–11 give 500 ns) and rises when `QC` falls at a character's start (15 ns after the clock, `U1`). Within a character only `QC` moves it, once each way. At the start of character 0, `ACTIVE` rises after `QC` has fallen (`C5` falls 15 ns after the clock, then 10 ns through `U12`; `QC` 15 ns): no glitch; at character 32 `ACTIVE` falls while `QC` is low already. At line 0, `V8` changes about 35 ns into the line, later still.
-- In character `k` (0–31) of a top line: `PHI1_N` rises at the end of dot 11 and cell (`r`, `k`) is on `P0`–`P5` 100 ns later; `PHI2_N` rises at the end of dot 13, writing that cell if `WRITE` is high; `ROW_CLK` rises at the end of dot 15 and `U22` takes `P0`–`P5` (`ROW_LOAD_N` low on `REC`: 2518 data setup 100 ns, recirculate setup 150 ns, hold 50 ns: `P0`–`P5` change again 1.1 µs later). That replaces the word shown in column `k`, which on a top line is glyph line 0, blank.
+- In character `k` (0–31) of a top line: cell (`r`, `k`) has been on `P0`–`P5` since 100 ns into the character (the rise of `PHI1_N` at the end of character `k` − 1, or of row `r` − 1's top line, or of line 240 for row 0); `PHI2_N` rises at the end of dot 13, writing that cell if `WRITE` is high; at the end of dot 15 `ROW_CLK` and `PHI1_N` rise together: `U22` takes `P0`–`P5` (`ROW_LOAD_N` low on `REC`: 2518 data setup 100 ns, recirculate setup 150 ns, hold 50 ns) and the page shows the next cell 100 ns later. After the last top line of a frame, cell 0 is at the page's output. That replaces the word shown in column `k`, which on a top line is glyph line 0, blank.
 - `U22`'s word `k` is on `B0`–`B5` 300 ns into character `k` (its clock rose as `k` started; word 0 since the end of character 31 of the line before). The 2513 answers 500 ns later, during dot 13; `DOT_LOAD_N` falls at the start of dot 15: about 450 ns to spare. Character 0 also takes the new line's `V1`–`V3` about 35 ns in, 450 ns before the bus settles.
 - `MATCH_N` and so `GO_N`, `GO`, `WRK_N` and `WRITE` decode column bits and may glitch at a character's start: they are read only at the rise of `PHI2_N` (the 2524's `WRITE` and `U28`'s `D`), at the end of dot 13, and `U39` samples `MATCH_N` on `DOT_END` (P4p). `WRITE` changes again no sooner than about 60 ns after that rise (`WR`, then the cursor counters, the comparator and three gates): 2524 hold 20 ns. One race is left, as on any asynchronous key input: a `STROBE` rising within about 20 ns before the rise of `PHI2_N` on the cursor's cell reaches `U28`'s `D` (`GO`, two gates after `KEY`) but not `WRITE` (two more): the cursor steps and the key is not written. About one key in a million; not modelled away.
 - `WR` rises 13 ns after the rise of `PHI2_N` that wrote the cell, steps the cursor counters and clears `KEY` through `WR_N` (25 ns): the next rise of `PHI2_N` (the next character, the next top line after column 31, or line 0 of the next frame after row 15's: 4.54 ms) takes `GO` low and `WR` falls. While `WR` is high `KEY` is held clear. A key is taken at most 19.66 ms after its `STROBE` rose and `WR` is low at most 4.54 ms after that: 24.2 ms, under the 25.002 ms to the next `STROBE`. A strobe shorter than about 24.2 ms would lose keys.
@@ -296,11 +295,11 @@ Placed by `bw place netlists/typewriter.bwn boards/typewriter/typewriter.place -
 - User: What it does (power on `J1`, TV on `J2`, ASCII keyboard on `J3`; random characters at power-on: press Clear, the button at the front right, to blank the page; what is typed appears at the blinking block, 16 lines of 32 characters, upper case; Return starts a new line; after the last line typing goes on at the top, over what is there; other control keys do nothing).
 - Service: Components, one bullet per reference with its Nets, netlist order (`X1`, `U1`–`U40`, `SW1`, `R1`, `J1`–`J3`):
   - `X1` dot clock: 4 MHz crystal oscillator, net `CLK`
-  - `U1` dot counter: counts 10–15, `DOT_END` on a character's last dot; 6 dots a character; `QA`–`QC` time the page and row buffer clocks
+  - `U1` dot counter: counts 10–15, `DOT_END` on a character's last dot; 6 dots a character; `QB`, `QC` time the page and row buffer clocks
   - `U2` column counter, low bits: `C0`–`C3`, carry `CC`
   - `U3` column counter, high bits: `C4`, `C5`; with `U2`, 42 characters a line, reloaded with 0 by `LINE_END_N`
   - `U4` line decoders: `LINE_END_N` on the last dot of character 41, `HSYNC_N` for characters 40–41
-  - `U5` inverters: `DOT_LOAD_N`, `CLK_N`; `QB_N`, `QC_N` for the page clocks; `D1_N`, `D4_N` for the Return decoder
+  - `U5` inverters: `DOT_LOAD_N`, `CLK_N`; `QB_N` for the page clocks; `D1_N`, `D4_N` for the Return decoder
   - `U6` line counter, bits 0–3: `V0` (each glyph line drawn twice), `V1`–`V3` (glyph line); clocked by `LINE_END`
   - `U7` line counter, bits 4–7: `V4`–`V7`, the text row
   - `U8` line counter, bit 8: `V8`; with `U6` and `U7` reloaded with 0 after line 311
@@ -310,7 +309,7 @@ Placed by `bw place netlists/typewriter.bwn boards/typewriter/typewriter.place -
   - `U12` text area `ACTIVE` (columns 0–31 of lines 0–255); `CTL`, high for control codes; `CUR_SHOW`, the blinking cursor; `MATCH`
   - `U13` row gates: `R1`–`R3` = `V1`–`V3` while `ACTIVE`, else 0; `ROW_TOP`, the first line of a text row
   - `U14` `V01_ZERO`, `V23_ZERO` (`V0`–`V3` low in pairs); `CLEAR`; `GO`
-  - `U15` page clock gates: `PHI1_N` on dot 11, `PHI2_N` on dot 13 of characters 0–31 of a row's top line
+  - `U15` page clock gates: `PHI2_N` on dots 12–13, `PHI1_N` on dot 15 of characters 0–31 of a row's top line
   - `U16` page (2524), bit 0 of each character: 512 cells, round once a frame, out on `P0`, written from `W0` while `WRITE` is high
   - `U17` page (2524), bit 1: `P1`, `W1`
   - `U18` page (2524), bit 2: `P2`, `W2`

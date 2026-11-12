@@ -1,0 +1,4 @@
+# 090 TV typewriter: panel parts and the character ROM (docs/machines/090-typewriter/TYPEWRITER_DESIGN.md, Board)
+edge J1 left middle    # power
+edge J2 back right     # TV
+row back left U23      # character ROM: DIP-24, no slot in the chip grid

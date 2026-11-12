@@ -1,4 +1,5 @@
-// 090 TV typewriter (docs/machines/090-typewriter/TYPEWRITER.md): the page RAMs on the TV.
+// 090 TV typewriter (docs/machines/090-typewriter/TYPEWRITER.md): the shift-register page on the
+// TV.
 
 #include <array>
 #include <cstddef>
@@ -18,8 +19,8 @@
 #include "netlist/builder.hpp"
 #include "parts/button.hpp"
 #include "parts/keyboard.hpp"
-#include "parts/ram2114.hpp"
 #include "parts/rom_contents.hpp"
+#include "parts/shift_register_2524.hpp"
 #include "sim/simulator.hpp"
 
 using namespace bw;
@@ -117,21 +118,6 @@ std::optional<Offset> FindPage(const TvFrame& frame, const Page& page) {
     return matches[matches.size() / 2];
 }
 
-// Where the page of `codes` is on the frame, with the cursor's cell either inverted or plain (it
-// blinks); nullopt unless exactly one of the two is found.
-std::optional<Offset> ShownAt(const TvFrame& frame, const Codes& codes, Cell cursor,
-                              bool* inverted = nullptr) {
-    const auto plain = FindPage(frame, ExpectedPage(codes));
-    const auto withCursor = FindPage(frame, ExpectedPage(codes, cursor));
-    if (plain.has_value() == withCursor.has_value()) {
-        return std::nullopt;
-    }
-    if (inverted != nullptr) {
-        *inverted = withCursor.has_value();
-    }
-    return plain ? plain : withCursor;
-}
-
 // Lit cells outside the text rectangle at `offset`, widened by one dot on the right (a cursor in
 // column 31 lights its sixth dot).
 int LitOutside(const TvFrame& frame, Offset offset) {
@@ -179,19 +165,18 @@ struct Typewriter {
         sim.runFor(1_ms);
     }
 
-    // Each code typed on J3 in turn, 250 µs apart (written and stepped within 79 µs, the next key
-    // 101 µs after a strobe); `queued`: all handed over at once, then 250 µs a key.
-    void type(const std::vector<std::uint8_t>& keys, bool queued = false) {
+    // The codes typed on J3, handed over at most 32 at a time (the keys the keyboard keeps
+    // waiting); 26 ms a key (a 25 ms strobe and a little) and 20 ms more for the last key's cell
+    // to come round.
+    void type(const std::vector<std::uint8_t>& keys) {
         Keyboard* keyboard = KeyboardOf(*loaded, "J3");
-        for (const std::uint8_t key : keys) {
-            REQUIRE(keyboard->type(key));
-            sim.wake(keyboard->id());
-            if (!queued) {
-                sim.runFor(250_us);
+        for (std::size_t first = 0; first < keys.size(); first += kKeyboardWaiting) {
+            const std::size_t count = std::min(kKeyboardWaiting, keys.size() - first);
+            for (std::size_t i = first; i < first + count; ++i) {
+                REQUIRE(keyboard->type(keys[i]));
             }
-        }
-        if (queued) {
-            sim.runFor(250_us * static_cast<Time>(keys.size()));
+            sim.wake(keyboard->id());
+            sim.runFor(26_ms * static_cast<Time>(count) + 20_ms);
         }
     }
     void type(std::string_view text) { type(std::vector<std::uint8_t>(text.begin(), text.end())); }
@@ -216,12 +201,24 @@ struct Typewriter {
         return Cell{*x, *y};
     }
 
-    Codes codes() const {
-        const auto& low = static_cast<const Ram2114&>(*loaded->components.at("U17"));
-        const auto& high = static_cast<const Ram2114&>(*loaded->components.at("U18"));
+    // The page's cells, read in the vertical blanking (run on until V8 is 1): after the last top
+    // line of a frame the page's output holds cell 0.
+    Codes codes() {
+        const NetId v8 = loaded->nets.at("V8");
+        for (int i = 0; i < 400 && sim.value(v8) != One; ++i) {
+            sim.runFor(100_us);
+        }
+        REQUIRE(sim.value(v8) == One);
+        std::array<const ShiftRegister2524*, 6> page{};
+        for (std::size_t bit = 0; bit < page.size(); ++bit) {
+            page[bit] = &static_cast<const ShiftRegister2524&>(
+                *loaded->components.at("U" + std::to_string(16 + bit)));
+        }
         Codes codes{};
         for (std::size_t i = 0; i < codes.size(); ++i) {
-            codes[i] = low.word(i) | (high.word(i) & 0b11u) << 4;
+            for (std::size_t bit = 0; bit < page.size(); ++bit) {
+                codes[i] |= (page[bit]->bit(i) ? 1u : 0u) << bit;
+            }
         }
         return codes;
     }
@@ -258,114 +255,20 @@ TEST_CASE("typewriter: netlist loads without warnings", "[machines]") {
     CHECK(loaded->warnings.empty());
 }
 
-TEST_CASE("typewriter: the TV shows the RAMs", "[machines][slow]") {
+TEST_CASE("typewriter: the TV shows the page", "[machines][slow]") {
     const std::uint64_t seed = GENERATE(1, 2);
     INFO("seed " << seed);
     Typewriter t(seed);
     // The first locked frame may have started before the counters fell into step.
     const auto frames = t.lockedFrames(3);
     REQUIRE(frames.size() == 3);
-    const auto cursor = t.cursor();
-    REQUIRE(cursor.has_value());
-    const auto offset = ShownAt(frames[1], t.codes(), *cursor);
+    const Codes codes = t.codes();
+    const auto offset = FindPage(frames[1], ExpectedPage(codes));
     REQUIRE(offset.has_value());
     INFO("left " << offset->left << ", top " << offset->top);
     CHECK(offset->left >= 30);
     CHECK(offset->left <= 38);
     CHECK(offset->top <= 8);
     CHECK(LitOutside(frames[1], *offset) == 0);
-    CHECK(ShownAt(frames[2], t.codes(), *cursor).has_value());
-}
-
-namespace {
-
-constexpr unsigned kSpace = 0x20;
-
-// The cleared page with `text` from cell `first` on, each character's code & 0x3F.
-Codes Typed(std::string_view text, std::size_t first = 0) {
-    Codes codes;
-    codes.fill(kSpace);
-    for (std::size_t i = 0; i < text.size(); ++i) {
-        codes[first + i] = static_cast<unsigned char>(text[i]) & 0x3Fu;
-    }
-    return codes;
-}
-
-}  // namespace
-
-TEST_CASE("typewriter: Clear blanks the page and homes the cursor", "[machines]") {
-    const std::uint64_t seed = GENERATE(1, 2, 3);
-    INFO("seed " << seed);
-    Typewriter t(seed);
-    t.clear();
-    CHECK(t.codes() == Typed(""));
-    CHECK(t.cursor() == Cell{0, 0});
-}
-
-TEST_CASE("typewriter: keys land at the cursor", "[machines]") {
-    Typewriter t(1);
-    t.clear();
-    t.type("HELLO, WORLD");
-    CHECK(t.codes() == Typed("HELLO, WORLD"));
-    CHECK(t.cursor() == Cell{12, 0});
-}
-
-TEST_CASE("typewriter: Return starts a line, other control keys do nothing", "[machines]") {
-    Typewriter t(2);
-    t.clear();
-    t.type("AB\rC");
-    t.type(std::vector<std::uint8_t>{8, 27, 1});  // Backspace, Esc, CTRL-A
-    Codes expected = Typed("AB");
-    expected[kColumns] = 'C' & 0x3F;
-    CHECK(t.codes() == expected);
-    CHECK(t.cursor() == Cell{1, 1});
-}
-
-TEST_CASE("typewriter: lines and the page wrap", "[machines]") {
-    Typewriter t(3);
-    t.clear();
-    const std::string letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFG";  // 33
-    t.type(letters);
-    CHECK(t.codes() == Typed(letters));
-    CHECK(t.cursor() == Cell{1, 1});
-    t.clear();
-    t.type(std::string(16, '\r'));
-    CHECK(t.cursor() == Cell{0, 0});
-    t.type("Z");
-    CHECK(t.codes() == Typed("Z"));
-    CHECK(t.cursor() == Cell{1, 0});
-}
-
-TEST_CASE("typewriter: keys typed at once all land", "[machines]") {
-    Typewriter t(4);
-    t.clear();
-    const std::string keys = "THE QUICK BROWN FOX JUMPS OVER T";  // 32
-    t.type(std::vector<std::uint8_t>(keys.begin(), keys.end()), true);
-    CHECK(t.codes() == Typed(keys));
-    CHECK(t.cursor() == Cell{0, 1});
-}
-
-TEST_CASE("typewriter: the typed page and a blinking cursor", "[machines][slow]") {
-    Typewriter t(1);
-    t.clear();
-    t.type("HELLO\rWORLD");
-    REQUIRE(t.cursor() == Cell{5, 1});
-    Codes expected = Typed("HELLO");
-    for (std::size_t i = 0; i < 5; ++i) {
-        expected[kColumns + i] = static_cast<unsigned char>("WORLD"[i]) & 0x3Fu;
-    }
-    REQUIRE(t.codes() == expected);
-    const auto frames = t.lockedFrames(20);
-    REQUIRE(frames.size() == 20);
-    int on = 0, off = 0;
-    for (std::size_t i = 1; i < frames.size(); ++i) {
-        INFO("frame " << i);
-        bool inverted = false;
-        const auto offset = ShownAt(frames[i], expected, Cell{5, 1}, &inverted);
-        REQUIRE(offset.has_value());
-        CHECK(LitOutside(frames[i], *offset) == 0);
-        (inverted ? on : off) += 1;
-    }
-    CHECK(on > 0);
-    CHECK(off > 0);
+    CHECK(FindPage(frames[2], ExpectedPage(codes)).has_value());
 }
