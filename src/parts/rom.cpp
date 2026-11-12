@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <utility>
 
 #include "parts/delays.hpp"
@@ -13,6 +14,93 @@ namespace bw {
 namespace {
 
 using enum LogicValue;
+
+// The compile-time part of a RomSpec: evaluate() is specialised on it, its loops unrolled.
+template <std::size_t A, std::size_t D, std::size_t E>
+struct RomLayout {
+    std::array<PinIndex, A> address;
+    std::array<Time, A> addressDelay;
+    std::array<PinIndex, D> data;
+    std::array<RomEnable, E> enables;
+    Time offDelay;
+
+    constexpr Time longestAddressDelay() const { return std::ranges::max(addressDelay); }
+    constexpr bool oneAddressDelay() const {
+        return std::ranges::min(addressDelay) == std::ranges::max(addressDelay);
+    }
+};
+
+// Data bits on which every word the address could select agrees, the `unknown` address bits
+// (X or floating) taking every value. More than 8 unknown bits: none.
+unsigned KnownBits(std::span<const std::uint8_t> words, std::size_t base, std::size_t unknown) {
+    if (std::popcount(unknown) > 8) {
+        return 0;
+    }
+    const unsigned value = words[base];
+    unsigned known = 0xFFu;
+    for (std::size_t subset = unknown; subset != 0; subset = (subset - 1) & unknown) {
+        known &= ~(words[base | subset] ^ value);
+    }
+    return known;
+}
+
+template <const auto& L>
+void EvaluateRom(EvalContext& ctx, std::span<const std::uint8_t> words) {
+    bool off = false;
+    bool unknownEnable = false;
+    bool enableChanged = false;
+    Time enableDelay = 0;
+    for (const RomEnable& enable : L.enables) {
+        const LogicValue v = ctx.read(enable.pin);
+        off |= v == One;
+        unknownEnable |= v != One && v != Zero;
+        if (v != ctx.readBefore(enable.pin)) {
+            enableChanged = true;
+            enableDelay = std::max(enableDelay, enable.delay);
+        }
+    }
+
+    std::size_t base = 0;
+    std::size_t unknown = 0;
+    bool addressChanged = false;
+    Time addressDelay = 0;
+    for (std::size_t i = 0; i < L.address.size(); ++i) {
+        const PinIndex pin = L.address[i];
+        const LogicValue v = ctx.read(pin);
+        base |= std::size_t{v == One} << i;
+        unknown |= std::size_t{v != One && v != Zero} << i;
+        if (v != ctx.readBefore(pin)) {
+            addressChanged = true;
+            if constexpr (!L.oneAddressDelay()) {
+                addressDelay = std::max(addressDelay, L.addressDelay[i]);
+            }
+        }
+    }
+    if constexpr (L.oneAddressDelay()) {
+        addressDelay = L.addressDelay[0];
+    }
+
+    const unsigned value = words[base];
+    const unsigned known = unknown == 0 ? 0xFFu : KnownBits(words, base, unknown);
+
+    Time delay = L.longestAddressDelay();  // first evaluation
+    if (enableChanged && off) {
+        delay = L.offDelay;
+    } else if (addressChanged) {
+        delay = addressDelay;
+    } else if (enableChanged) {
+        delay = enableDelay;
+    }
+    for (std::size_t b = 0; b < L.data.size(); ++b) {
+        LogicValue out = X;
+        if (off) {
+            out = Z;
+        } else if (!unknownEnable && ((known >> b) & 1)) {
+            out = ((value >> b) & 1) ? One : Zero;
+        }
+        ctx.drive(L.data[b], out, delay);
+    }
+}
 
 // 2716: 2K x 8 EPROM (Intel pinout).
 constexpr std::array<std::string_view, 24> s_2716Names{
@@ -27,6 +115,8 @@ constexpr std::array<PinIndex, 8> s_2716Data{8, 9, 10, 12, 13, 14, 15, 16};
 constexpr std::array<RomEnable, 2> s_2716Enables{
     {{17, delays::k2716ChipEnable}, {19, delays::k2716OutputEnable}}};
 constexpr std::array<PinIndex, 1> s_2716Other{20};
+constexpr RomLayout s_2716Layout{s_2716Address, s_2716AddressDelay, s_2716Data, s_2716Enables,
+                                 delays::k2716Float};
 
 // 2513: 64 x 8 x 5 character generator (Signetics 1972 MOS data book, p. 65).
 constexpr std::array<std::string_view, 24> s_2513Names{
@@ -39,6 +129,8 @@ constexpr std::array<Time, 9> s_2513AddressDelay{
     delays::k2513CharacterAccess, delays::k2513CharacterAccess, delays::k2513CharacterAccess};
 constexpr std::array<PinIndex, 5> s_2513Data{3, 4, 5, 6, 7};
 constexpr std::array<RomEnable, 1> s_2513Enables{{{10, delays::k2513ChipEnable}}};
+constexpr RomLayout s_2513Layout{s_2513Address, s_2513AddressDelay, s_2513Data, s_2513Enables,
+                                 delays::k2513ChipEnable};
 
 const std::array<RomSpec, 2> s_specs{{
     {"2513",
@@ -48,9 +140,10 @@ const std::array<RomSpec, 2> s_specs{{
      s_2513Data,
      s_2513Enables,
      {},
-     delays::k2513ChipEnable},
+     delays::k2513ChipEnable,
+     &EvaluateRom<s_2513Layout>},
     {"2716", s_2716Names, s_2716Address, s_2716AddressDelay, s_2716Data, s_2716Enables, s_2716Other,
-     delays::k2716Float},
+     delays::k2716Float, &EvaluateRom<s_2716Layout>},
 }};
 
 bool Listed(std::span<const PinIndex> pins, PinIndex pin) {
@@ -96,84 +189,8 @@ const RomSpec& RomSpecOf(std::string_view part) {
 Rom::Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> words)
     : Component(std::move(reference), RomPins(spec)), spec_(spec), words_(std::move(words)) {
     Check(words_.size() == std::size_t{1} << spec.address.size(), "rom: wrong number of words");
-    Check(spec.data.size() <= 8 && spec.addressDelay.size() == spec.address.size(),
-          "rom: bad spec");
 }
 
-void Rom::evaluate(EvalContext& ctx) {
-    bool off = false;
-    bool unknownEnable = false;
-    bool enableChanged = false;
-    Time enableDelay = 0;
-    for (const RomEnable& enable : spec_.enables) {
-        const LogicValue v = ctx.read(enable.pin);
-        if (v == One) {
-            off = true;
-        } else if (v != Zero) {
-            unknownEnable = true;
-        }
-        if (v != ctx.readBefore(enable.pin)) {
-            enableChanged = true;
-            enableDelay = std::max(enableDelay, enable.delay);
-        }
-    }
-
-    std::size_t base = 0;
-    std::array<std::size_t, 8> unknownBits{};
-    std::size_t unknownCount = 0;
-    bool tooMany = false;
-    bool addressChanged = false;
-    Time addressDelay = 0;
-    Time longestAddressDelay = 0;
-    for (std::size_t i = 0; i < spec_.address.size(); ++i) {
-        const PinIndex pin = spec_.address[i];
-        const LogicValue v = ctx.read(pin);
-        if (v == One) {
-            base |= std::size_t{1} << i;
-        } else if (v != Zero) {
-            if (unknownCount < unknownBits.size()) {
-                unknownBits[unknownCount++] = std::size_t{1} << i;
-            } else {
-                tooMany = true;
-            }
-        }
-        if (v != ctx.readBefore(pin)) {
-            addressChanged = true;
-            addressDelay = std::max(addressDelay, spec_.addressDelay[i]);
-        }
-        longestAddressDelay = std::max(longestAddressDelay, spec_.addressDelay[i]);
-    }
-
-    // Data bits on which every word the address could select agrees.
-    const unsigned value = words_[base];
-    unsigned known = tooMany ? 0u : 0xFFu;
-    for (std::size_t combo = 1; !tooMany && combo < (std::size_t{1} << unknownCount); ++combo) {
-        std::size_t address = base;
-        for (std::size_t b = 0; b < unknownCount; ++b) {
-            if ((combo >> b) & 1) {
-                address |= unknownBits[b];
-            }
-        }
-        known &= ~(words_[address] ^ value);
-    }
-
-    Time delay = longestAddressDelay;  // first evaluation
-    if (enableChanged && off) {
-        delay = spec_.offDelay;
-    } else if (addressChanged) {
-        delay = addressDelay;
-    } else if (enableChanged) {
-        delay = enableDelay;
-    }
-    for (std::size_t b = 0; b < spec_.data.size(); ++b) {
-        LogicValue out = X;
-        if (off) {
-            out = Z;
-        } else if (!unknownEnable && ((known >> b) & 1)) {
-            out = ((value >> b) & 1) ? One : Zero;
-        }
-        ctx.drive(spec_.data[b], out, delay);
-    }
-}
+void Rom::evaluate(EvalContext& ctx) { spec_.evaluate(ctx, words_); }
 
 }  // namespace bw

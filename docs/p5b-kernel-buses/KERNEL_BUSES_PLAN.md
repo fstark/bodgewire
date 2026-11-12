@@ -61,7 +61,7 @@ Only this step's paths are committed (the user edits docs in parallel).
 | 2 | Event queue | done: 1a kept |
 | 3 | Run loop | 2a dropped; nothing in the line profile reaches 5 % alone |
 | 4 | LTO | done: kept |
-| 5 | ROM, shown to the user | — |
+| 5 | ROM, shown to the user | done: kept (the user's OK, 2026-11-12) |
 | 6 | Further Parts | — |
 | 7 | Finish | — |
 
@@ -77,7 +77,8 @@ Only this step's paths are committed (the user edits docs in parallel).
 | 1d | binary heap, hand-written, child chosen without a branch (on 1a) | 0.244× | 636 | 149 | 5.54× | 0.991× | no: cycles unchanged | — |
 | 1e | sorted vector, earliest last (on 1a) | 0.230× | 626 | 158 | 5.55× | 0.995× | no: +6 % cycles | — |
 | 2a | `markNetDirty`, `markComponentDirty` inline in the header | 0.245× | 623 | 148 | 5.58× | 1.020× | no: −1 % cycles | — |
-| 3 | LTO, release preset | 0.256× | 584 | 141 | 5.73× | 1.020× | yes: −5…6 % cycles, +5.0…5.3 % ratio (three runs) | this commit |
+| 3 | LTO, release preset | 0.256× | 584 | 141 | 5.73× | 1.020× | yes: −5…6 % cycles, +5.0…5.3 % ratio (three runs) | `cd6a085` |
+| 4.1 | ROM: `EvaluateRom<Layout>`, compile-time pin layout per Part, reached through `RomSpec::evaluate` | 0.279× | 577 | 133 | 5.99× | 1.047× | yes, on the user's OK: −5…6 % cycles, +7…9 % ratio (two runs) | this commit |
 
 ## Implementation notes
 
@@ -87,3 +88,5 @@ Only this step's paths are committed (the user edits docs in parallel).
 - Line profile (`sample` call tree with offsets, self time per source line, a scratch parser; `xctrace` needs full Xcode): with 1a, `std::pop_heap` is 22.5 % of all time on a heap of ≈ 16; `runUntil`'s own 26 % is spread, the largest line being Net resolution (5.8 %). 1d and 1e show the heap's cost is the chain of dependent loads per level, not branches or depth: neither a branchless child choice nor a sorted vector shortens it.
 - Phase 3: `markNetDirty` was out of line (2.8 %); inlining gained 1 % (2a). No other line of `runUntil` exceeds 2 %: no run-loop try reaches the bar alone, so the phase ends here.
 - Phase 4, LTO: clean release build 23 s → 27 s (SDL3, imgui and Catch2 included); touching `simulator.cpp` relinks in 7 s. Other netlists: ball 2.28 → 2.22×, dice 21.7 → 21.2× (−2 %), the rest equal or faster. The release test suite passes with LTO (810); debug, which LTO does not touch, was last green at 1a. From here profiles come from `build/profile-lto`.
+- Phase 5: profile on LTO (`build/profile-lto`, no `-g`: by function): `runUntil` 27.8 %, `pop` 26.2 %, `push` 9.8 %, gate packages 8.9 %, ROM 7.9 %, 74LS157 5.1 %, 74LS74 3.1 %, 2114 2.9 %, 74LS244 2.8 %, the stub 2.4 %. The ROM alone gained 6 % in cycles, more than the design's 3–4 %: the generic version looped over spans of run-time length and recomputed the longest delay each time. Trace identical; ROM, catalogue, manuals and `bus load` tests green in release (80) and debug (61).
+- ROM shown to the user: the first version dispatched on the spec's place in `s_specs` (`&spec_ == &s_specs[1]`), so a new ROM Part needed a layout, a dispatch branch and a constructor check kept in step. At the user's request the specialised function moved into the spec row (`RomSpec::evaluate = &EvaluateRom<layout>`): a new ROM is its arrays, one `RomLayout` line and its row; `Rom::evaluate` is one call. Same numbers (133–135 cycles an event), trace identical.

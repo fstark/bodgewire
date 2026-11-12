@@ -27,6 +27,8 @@ struct RomSpec {
     std::span<const RomEnable> enables;
     std::span<const PinIndex> otherInputs;  // inputs with no function in a read ("VPP")
     Time offDelay;                          // enable high to outputs off, ps
+    // EvaluateRom<its layout>: evaluation specialised on these pins at compile time (rom.cpp)
+    void (*evaluate)(EvalContext& ctx, std::span<const std::uint8_t> words);
 };
 
 const RomSpec* FindRomSpec(std::string_view part);  // nullptr unless a ROM Part
