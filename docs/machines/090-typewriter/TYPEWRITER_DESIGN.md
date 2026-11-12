@@ -1,6 +1,6 @@
 # 090 — TV Typewriter — Machine Design
 
-How the Machine in [TYPEWRITER.md](TYPEWRITER.md) is built: netlist, Board, manuals. Every Part it uses is in the catalogue (P4n brought the 2114, the 74LS244 and the `KEYBOARD`; P4l the 2513 and the 74LS165); the step is [TV_TYPEWRITER.md](../../p4p-tv-typewriter/TV_TYPEWRITER.md).
+How the Machine in [TYPEWRITER.md](TYPEWRITER.md) is built: netlist, Board, manuals. P4q brings the 2524 and the 2518 (and the DIP-8 package); every other Part is in the catalogue (P4n the 74LS244 and the `KEYBOARD`, P4l the 2513 and the 74LS165). The step is [SHIFT_TYPEWRITER.md](../../p4q-shift-typewriter/SHIFT_TYPEWRITER.md).
 
 ## Files
 
@@ -17,7 +17,7 @@ The font is 080's `roms/2513.rom`, unchanged.
 
 ## Netlist
 
-`netlists/typewriter.bwn` (TYPEWRITER.md, Circuit), with the header comment of [ADD_MACHINE.md](../../recipes/ADD_MACHINE.md) step 2. 36 chips, `X1`, `SW1`, `R1`, `J1`–`J3`. Every unused TTL input is tied (spare gates and unused data inputs to `GND`, unused NAND inputs to `VCC`), so the netlist loads without warnings. Unused outputs stay unconnected: `U1` `QA`–`QD`, `U3` `QC` `QD` `RCO`, `U8` `QB`–`QD` `RCO`, `U5` gates 2 and 6, `U12` gate 4, `U16` `2Y`–`4Y`, `U18` `IO3` `IO4` (MOS, not warned), `U20` `QH_N`, `U21` `1Q_N`–`3Q_N` and `4Q`, `U22` and `U23` `2Y3` `2Y4`, `U24` `1Q_N` `2Q_N`, `U28` nothing, `U29` `QB`–`QD` `RCO`, `U30` `RCO`, `U34` gate 2, `U35` `1Q_N` and half 2, `U36` `QB` `QC`. The 2513's `VGG`, `VDD` and `NC` pins are no-connect.
+`netlists/typewriter.bwn` (TYPEWRITER.md, Circuit), with the header comment of [ADD_MACHINE.md](../../recipes/ADD_MACHINE.md) step 2. 40 chips, `X1`, `SW1`, `R1`, `J1`–`J3`. Every unused TTL input is tied (spare gates and unused data inputs to `GND`, unused NAND inputs to `VCC`), so the netlist loads without warnings. Unused outputs stay unconnected: `U1` `QD`, `U3` `QC` `QD` `RCO`, `U8` `QB`–`QD` `RCO`, `U24` `QH_N`, `U25` `1Q_N`–`3Q_N` and `3Q`, `4Q`, `U26` and `U27` `2Y3` `2Y4`, `U28` `1Q_N`, `U29` gate 4, `U33` `QB`–`QD` `RCO`, `U34` `RCO`, `U39` `1Q_N` and half 2, `U40` `QB` `QC`. The negative supply pins (2513 `VGG` `VDD`, 2524 `VDD`, 2518 `VGG`) and the 2513's `NC` pins are no-connect.
 
 ```
 part X1  OSC freq=4MHz
@@ -25,227 +25,251 @@ part U1  74LS161    # dot counter 10-15
 part U2  74LS161    # C0-C3
 part U3  74LS161    # C4, C5
 part U4  74LS20     # LINE_END_N, HSYNC_N
-part U5  74LS04     # DOT_LOAD_N, CLK_N, D1_N, D4_N
+part U5  74LS04     # DOT_LOAD_N, QB_N, CLK_N, D1_N, D4_N, QC_N
 part U6  74LS161    # V0-V3
 part U7  74LS161    # V4-V7
 part U8  74LS161    # V8
 part U9  74LS30     # FRAME_END_N
-part U10 74LS20     # VSYNC_N, KEY_CLR_N
+part U10 74LS20     # VSYNC_N, ROW_CLK
 part U11 74LS86     # composite sync; cursor compare V6, V7
-part U12 74LS02     # ACTIVE, CTL, CUR_SHOW
-part U13 74LS08     # R1-R3, WE_N
-part U14 74LS157    # RAM address 0-3
-part U15 74LS157    # RAM address 4-7
-part U16 74LS157    # RAM address 8
-part U17 2114       # page RAM, bits 0-3
-part U18 2114       # page RAM, bits 4-5
-part U19 2513 contents=../roms/2513.rom
-part U20 74LS165    # dots out
-part U21 74LS175    # output registers, write strobe, LINE_END
-part U22 74LS244    # keyboard onto the bus
-part U23 74LS244    # spaces onto the bus (Clear)
-part U24 74LS74     # KEY, WR
-part U25 74LS30     # write decoder
-part U26 74LS30     # Return decoder
-part U27 74LS00     # PRINT, ADV, XC_N, YEN
-part U28 74LS161    # cursor X0-X3
-part U29 74LS161    # cursor X4
-part U30 74LS161    # cursor Y0-Y3
-part U31 74LS86     # cursor compare C0-C3
-part U32 74LS86     # cursor compare C4, V4, V5; cursor into the video
-part U33 74LS27     # cursor compare
-part U34 74LS20     # MATCH_N
-part U35 74LS74     # cursor, one character late
-part U36 74LS93     # blink
+part U12 74LS02     # ACTIVE, CTL, CUR_SHOW, MATCH
+part U13 74LS08     # R1-R3, ROW_TOP
+part U14 74LS02     # V01_ZERO, V23_ZERO, CLEAR, GO
+part U15 74LS20     # PHI1_N, PHI2_N
+part U16 2524       # page, bit 0
+part U17 2524       # page, bit 1
+part U18 2524       # page, bit 2
+part U19 2524       # page, bit 3
+part U20 2524       # page, bit 4
+part U21 2524       # page, bit 5
+part U22 2518       # row buffer
+part U23 2513 contents=../roms/2513.rom
+part U24 74LS165    # dots out
+part U25 74LS175    # output registers, LINE_END
+part U26 74LS244    # keyboard onto the write bus
+part U27 74LS244    # spaces onto the write bus (Clear)
+part U28 74LS74     # KEY, WR
+part U29 74LS00     # WRK_N, WRITE, ROW_LOAD_N
+part U30 74LS30     # Return decoder
+part U31 74LS00     # PRINT, ADV, XC_N, YEN
+part U32 74LS161    # cursor X0-X3
+part U33 74LS161    # cursor X4
+part U34 74LS161    # cursor Y0-Y3
+part U35 74LS86     # cursor compare C0-C3
+part U36 74LS86     # cursor compare C4, V4, V5; cursor into the video
+part U37 74LS27     # cursor compare
+part U38 74LS20     # MATCH_N, GO_N
+part U39 74LS74     # cursor, one character late
+part U40 74LS93     # blink
 part SW1 BUTTON     # Clear
 part R1  R value=4k7
 part J1  POWER
 part J2  VIDEO
-part J3  KEYBOARD strobe=100us
+part J3  KEYBOARD strobe=25ms
 
-net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U21.CLK U5.3A
+net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U25.CLK U5.3A
 
-# Dot counter 10..15: 6 dots a character.
+# Dot counter 10..15: 6 dots a character; QA-QC time the page and row buffer clocks.
 net VCC         U1.CLR_N U1.ENP U1.ENT U1.B U1.D
 net GND         U1.A U1.C
-net DOT_END     U1.RCO U5.1A U2.ENP U3.ENP U4.1A U35.1CLK
-net DOT_LOAD_N  U5.1Y U1.LOAD_N U20.SH_LD_N
+net DOT_END     U1.RCO U5.1A U2.ENP U3.ENP U4.1A U39.1CLK
+net DOT_LOAD_N  U5.1Y U1.LOAD_N U24.SH_LD_N
+net QA          U1.QA U15.1C U15.2C
+net QB          U1.QB U5.2A
+net QC          U1.QC U5.6A U10.2A
+net QB_N        U5.2Y U15.2D
+net QC_N        U5.6Y U15.1D
 
 # Column counter 0..41, reloaded with 0 after character 41.
 net VCC         U2.CLR_N U2.ENT U3.CLR_N
 net GND         U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
-net C0          U2.QA U4.1D U14.1A U25.C U31.1A
-net C1          U2.QB U14.2A U25.D U31.2A
-net C2          U2.QC U14.3A U31.3A
-net C3          U2.QD U4.1C U4.2B U14.4A U31.4A
+net C0          U2.QA U4.1D U35.1A
+net C1          U2.QB U35.2A
+net C2          U2.QC U35.3A
+net C3          U2.QD U4.1C U4.2B U35.4A
 net CC          U2.RCO U3.ENT
-net C4          U3.QA U15.1A U32.1A
-net C5          U3.QB U4.1B U4.2A U12.1A U14.S U15.S U16.S U25.B U24.2CLK
+net C4          U3.QA U36.1A
+net C5          U3.QB U4.1B U4.2A U12.1A
 net VCC         U4.2C U4.2D
-net LINE_END_N  U4.1Y U2.LOAD_N U3.LOAD_N U21.4D
-net LINE_END    U21.4Q_N U6.CLK U7.CLK U8.CLK U28.CLK U29.CLK U30.CLK U10.2B
+net LINE_END_N  U4.1Y U2.LOAD_N U3.LOAD_N U25.4D
+net LINE_END    U25.4Q_N U6.CLK U7.CLK U8.CLK
 net HSYNC_N     U4.2Y U11.1A
 
-# Line counter 0..311, clocked at each line end (LINE_END from U21 below), loaded with 0 at the end of line 311.
+# Line counter 0..311, clocked at each line end, loaded with 0 at the end of line 311.
 net VCC         U6.CLR_N U6.ENP U6.ENT U7.CLR_N U7.ENP U8.CLR_N U8.ENP U9.G U9.H
 net GND         U6.A U6.B U6.C U6.D U7.A U7.B U7.C U7.D U8.A U8.B U8.C U8.D
-net V0          U6.QA U9.F
-net V1          U6.QB U9.E U13.1A
-net V2          U6.QC U9.D U10.1D U13.2A
-net V3          U6.QD U13.3A
+net V0          U6.QA U9.F U14.1A
+net V1          U6.QB U9.E U13.1A U14.1B
+net V2          U6.QC U9.D U10.1D U13.2A U14.2A
+net V3          U6.QD U13.3A U14.2B
 net VC1         U6.RCO U7.ENT
-net V4          U7.QA U9.C U10.1C U15.2A U32.2A
-net V5          U7.QB U9.B U10.1B U15.3A U32.3A
-net V6          U7.QC U15.4A U11.3A
-net V7          U7.QD U16.1A U11.4A
+net V4          U7.QA U9.C U10.1C U36.2A
+net V5          U7.QB U9.B U10.1B U36.3A
+net V6          U7.QC U11.3A
+net V7          U7.QD U11.4A
 net VC2         U7.RCO U8.ENT
-net V8          U8.QA U9.A U10.1A U12.1B U36.CKA
+net V8          U8.QA U9.A U10.1A U12.1B U40.CKA
 net FRAME_END_N U9.Y U6.LOAD_N U7.LOAD_N U8.LOAD_N
 net VSYNC_N     U10.1Y U11.1B
 
 # Composite sync: HSYNC XOR VSYNC, then inverted (as 060).
 net SYNC        U11.1Y U11.2A
 net VCC         U11.2B
-net SYNC_N_D    U11.2Y U21.1D
+net SYNC_N_D    U11.2Y U25.1D
 
-# Blanking: outside columns 0-31 and lines 0-255 the character ROM is asked for its blank line 0.
-net ACTIVE      U12.1Y U13.1B U13.2B U13.3B U34.1D
-net R1          U13.1Y U19.A1
-net R2          U13.2Y U19.A2
-net R3          U13.3Y U19.A3
+# Text area: characters 0-31 of lines 0-255. Outside it the character ROM reads its blank line 0.
+net ACTIVE      U12.1Y U13.1B U13.2B U13.3B U15.1B U15.2B U10.2B U38.1D
+net R1          U13.1Y U23.A1
+net R2          U13.2Y U23.A2
+net R3          U13.3Y U23.A3
 
-# RAM address: the beam during characters 0-31, the cursor during 32-41.
-net GND         U14.G_N U15.G_N U16.G_N U16.2A U16.2B U16.3A U16.3B U16.4A U16.4B
-net RA0         U14.1Y U17.A0 U18.A0
-net RA1         U14.2Y U17.A1 U18.A1
-net RA2         U14.3Y U17.A2 U18.A2
-net RA3         U14.4Y U17.A3 U18.A3
-net RA4         U15.1Y U17.A4 U18.A4
-net RA5         U15.2Y U17.A5 U18.A5
-net RA6         U15.3Y U17.A6 U18.A6
-net RA7         U15.4Y U17.A7 U18.A7
-net RA8         U16.1Y U17.A8 U18.A8
-net GND         U17.A9 U18.A9 U17.CS_N U18.CS_N
-net WE_N        U13.4Y U17.WE_N U18.WE_N
+# Page clocks: on the top line of each text row, PHI1 on dot 11 and PHI2 on dot 13 of characters 0-31.
+net V01_ZERO    U14.1Y U13.4A U29.3A
+net V23_ZERO    U14.2Y U13.4B U29.3B
+net ROW_TOP     U13.4Y U15.1A U15.2A U38.2B
+net PHI1_N      U15.1Y U16.PHI1 U17.PHI1 U18.PHI1 U19.PHI1 U20.PHI1 U21.PHI1
+net PHI2_N      U15.2Y U16.PHI2 U17.PHI2 U18.PHI2 U19.PHI2 U20.PHI2 U21.PHI2 U28.2CLK
 
-# Data bus: the RAMs, the two buffers and the character ROM's character address.
-net B0          U17.IO1 U22.1Y1 U23.1Y1 U19.A4
-net B1          U17.IO2 U22.1Y2 U23.1Y2 U19.A5
-net B2          U17.IO3 U22.1Y3 U23.1Y3 U19.A6
-net B3          U17.IO4 U22.1Y4 U23.1Y4 U19.A7
-net B4          U18.IO1 U22.2Y1 U23.2Y1 U19.A8
-net B5          U18.IO2 U22.2Y2 U23.2Y2 U19.A9
+# Page: six 512-bit recirculating shift registers, one per bit; a cell written from W0-W5 while WRITE is high.
+net VCC         U16.READ U17.READ U18.READ U19.READ U20.READ U21.READ
+net WRITE       U29.2Y U16.WRITE U17.WRITE U18.WRITE U19.WRITE U20.WRITE U21.WRITE
+net W0          U16.IN U26.1Y1 U27.1Y1
+net W1          U17.IN U26.1Y2 U27.1Y2
+net W2          U18.IN U26.1Y3 U27.1Y3
+net W3          U19.IN U26.1Y4 U27.1Y4
+net W4          U20.IN U26.2Y1 U27.2Y1
+net W5          U21.IN U26.2Y2 U27.2Y2
+net P0          U16.OUT U22.IN1
+net P1          U17.OUT U22.IN2
+net P2          U18.OUT U22.IN3
+net P3          U19.OUT U22.IN4
+net P4          U20.OUT U22.IN5
+net P5          U21.OUT U22.IN6
+
+# Row buffer: one text row, round once a line; it takes the row from the page on the row's top line.
+net VCC         U10.2C U10.2D
+net ROW_CLK     U10.2Y U22.CLK
+net ROW_LOAD_N  U29.3Y U22.REC
+net B0          U22.OUT1 U23.A4
+net B1          U22.OUT2 U23.A5
+net B2          U22.OUT3 U23.A6
+net B3          U22.OUT4 U23.A7
+net B4          U22.OUT5 U23.A8
+net B5          U22.OUT6 U23.A9
 
 # Character ROM: the dots of one glyph line, F5 leftmost.
-net GND         U19.CE_N
-net F1          U19.O1 U20.D
-net F2          U19.O2 U20.E
-net F3          U19.O3 U20.F
-net F4          U19.O4 U20.G
-net F5          U19.O5 U20.H
+net GND         U23.CE_N
+net F1          U23.O1 U24.D
+net F2          U23.O2 U24.E
+net F3          U23.O3 U24.F
+net F4          U23.O4 U24.G
+net F5          U23.O5 U24.H
 
 # Shift register: loads on a character's last dot, shifts in the middle of each dot.
-net CLK_N       U5.3Y U20.CLK
-net GND         U20.CLK_INH U20.SER U20.A U20.B U20.C
-net VIDEO_D     U20.QH U32.4A
+net CLK_N       U5.3Y U24.CLK
+net GND         U24.CLK_INH U24.SER U24.A U24.B U24.C
+net VIDEO_D     U24.QH U36.4A
 
-# Output registers: sync, video with the cursor, the write strobe and the line end, re-timed on the clock.
-net VCC         U21.CLR_N
-net SYNC_N      U21.1Q J2.SYNC_N
-net VIDEO_M     U32.4Y U21.2D
-net VIDEO       U21.2Q J2.VIDEO
-net WE_D        U25.Y U21.3D
-net WEK_N       U21.3Q U22.1OE_N U22.2OE_N U13.4A
+# Output registers: sync, video with the cursor and the line end, re-timed on the clock.
+net VCC         U25.CLR_N
+net GND         U25.3D
+net SYNC_N      U25.1Q J2.SYNC_N
+net VIDEO_M     U36.4Y U25.2D
+net VIDEO       U25.2Q J2.VIDEO
 
-# Keyboard: bits 0-5 onto the bus during a write; Return and printable codes decoded.
-net D0          J3.D0 U22.1A1 U26.F
-net D1          J3.D1 U22.1A2 U5.4A
-net D2          J3.D2 U22.1A3 U26.D
-net D3          J3.D3 U22.1A4 U26.C
-net D4          J3.D4 U22.2A1 U5.5A
-net D5          J3.D5 U22.2A2 U12.2B
+# Keyboard: bits 0-5 onto the write bus; Return and printable codes decoded.
+net D0          J3.D0 U26.1A1 U30.F
+net D1          J3.D1 U26.1A2 U5.4A
+net D2          J3.D2 U26.1A3 U30.D
+net D3          J3.D3 U26.1A4 U30.C
+net D4          J3.D4 U26.2A1 U5.5A
+net D5          J3.D5 U26.2A2 U12.2B
 net D6          J3.D6 U12.2A
-net GND         U22.2A3 U22.2A4
-net D1_N        U5.4Y U26.E
-net D4_N        U5.5Y U26.B
-net CTL         U12.2Y U26.A U27.1A U27.1B U27.2A
-net VCC         U26.G U26.H
-net CR_N        U26.Y U27.2B U27.4B U28.LOAD_N U29.LOAD_N
-net PRINT       U27.1Y U25.E
-net ADV         U27.2Y U28.ENT
+net GND         U26.2A3 U26.2A4
+net D1_N        U5.4Y U30.E
+net D4_N        U5.5Y U30.B
+net CTL         U12.2Y U30.A U31.1A U31.1B U31.2A
+net VCC         U30.G U30.H
+net CR_N        U30.Y U31.2B U31.4B U32.LOAD_N U33.LOAD_N
+net PRINT       U31.1Y U29.1B
+net ADV         U31.2Y U32.ENT
 
-# Write control: KEY set by the strobe, WR for one line from character 32, KEY cleared at the line end.
-net STROBE      J3.STROBE U24.1CLK
-net VCC         U24.1D U24.1PRE_N U24.2PRE_N U24.2CLR_N
-net KEY         U24.1Q U24.2D
-net WR          U24.2Q U10.2A U25.A U28.ENP U29.ENP U30.ENP
-net VCC         U10.2C U10.2D U25.F U25.G U25.H
-net KEY_CLR_N   U10.2Y U24.1CLR_N
+# Write control: KEY set by the strobe; GO while the cursor's cell is at the page's output; WR after its PHI2.
+net STROBE      J3.STROBE U28.1CLK
+net VCC         U28.1D U28.1PRE_N U28.2PRE_N U28.2CLR_N U38.2D
+net KEY         U28.1Q U38.2A
+net MATCH       U12.4Y U38.2C
+net GO_N        U38.2Y U14.4A U14.4B
+net GO          U14.4Y U28.2D U29.1A
+net WRK_N       U29.1Y U29.2A
+net WR          U28.2Q U32.CLK U33.CLK U34.CLK
+net WR_N        U28.2Q_N U28.1CLR_N
 
-# Cursor counter: X0-X4 the column, Y0-Y3 the row; steps at a line end after a write or Return.
-net GND         U28.A U28.B U28.C U28.D U29.A U29.B U29.C U29.D U30.A U30.B U30.C U30.D
-net VCC         U30.LOAD_N
-net X0          U28.QA U14.1B U31.1B
-net X1          U28.QB U14.2B U31.2B
-net X2          U28.QC U14.3B U31.3B
-net X3          U28.QD U14.4B U31.4B
-net XRCO        U28.RCO U29.ENT U27.3A
-net X4          U29.QA U15.1B U32.1B U27.3B
-net XC_N        U27.3Y U27.4A
-net YEN         U27.4Y U30.ENT
-net Y0          U30.QA U15.2B U32.2B
-net Y1          U30.QB U15.3B U32.3B
-net Y2          U30.QC U15.4B U11.3B
-net Y3          U30.QD U16.1B U11.4B
+# Cursor counter: X0-X4 the column, Y0-Y3 the row; steps when WR rises after a printable key or Return.
+net GND         U32.A U32.B U32.C U32.D U33.A U33.B U33.C U33.D U34.A U34.B U34.C U34.D
+net VCC         U32.ENP U33.ENP U34.ENP U34.LOAD_N
+net X0          U32.QA U35.1B
+net X1          U32.QB U35.2B
+net X2          U32.QC U35.3B
+net X3          U32.QD U35.4B
+net XRCO        U32.RCO U33.ENT U31.3A
+net X4          U33.QA U36.1B U31.3B
+net XC_N        U31.3Y U31.4A
+net YEN         U31.4Y U34.ENT
+net Y0          U34.QA U36.2B
+net Y1          U34.QB U36.3B
+net Y2          U34.QC U11.3B
+net Y3          U34.QD U11.4B
 
-# Clear: spaces onto the bus, every cell written, the cursor home.
+# Clear: spaces onto the write bus, every cell written, the cursor home.
 net VCC         R1.1
-net CLEAR_N     R1.2 SW1.1 U23.1OE_N U23.2OE_N U13.4B U28.CLR_N U29.CLR_N U30.CLR_N
+net CLEAR_N     R1.2 SW1.1 U27.1OE_N U27.2OE_N U29.2B U14.3A U14.3B U32.CLR_N U33.CLR_N U34.CLR_N
 net GND         SW1.2
-net GND         U23.1A1 U23.1A2 U23.1A3 U23.1A4 U23.2A1 U23.2A3 U23.2A4
-net VCC         U23.2A2
+net CLEAR       U14.3Y U26.1OE_N U26.2OE_N
+net GND         U27.1A1 U27.1A2 U27.1A3 U27.1A4 U27.2A1 U27.2A3 U27.2A4
+net VCC         U27.2A2
 
-# Cursor on the screen: beam address = cursor address, one character late, blinking.
-net NE0         U31.1Y U33.1A
-net NE1         U31.2Y U33.1B
-net NE2         U31.3Y U33.1C
-net NE3         U31.4Y U33.2A
-net NE4         U32.1Y U33.2B
-net NE5         U32.2Y U33.2C
-net NE6         U32.3Y U33.3A
-net NE7         U11.3Y U33.3B
-net NE8         U11.4Y U33.3C
-net EQ0         U33.1Y U34.1A
-net EQ1         U33.2Y U34.1B
-net EQ2         U33.3Y U34.1C
-net MATCH_N     U34.1Y U35.1D
-net VCC         U35.1PRE_N U35.1CLR_N
-net CURSOR_N    U35.1Q U12.3A
-net FRAME2      U36.QA U36.CKB
-net GND         U36.R01 U36.R02
-net BLINK       U36.QD U12.3B
-net CUR_SHOW    U12.3Y U32.4B
+# Cursor: beam address = cursor address; shown one character late, blinking.
+net NE0         U35.1Y U37.1A
+net NE1         U35.2Y U37.1B
+net NE2         U35.3Y U37.1C
+net NE3         U35.4Y U37.2A
+net NE4         U36.1Y U37.2B
+net NE5         U36.2Y U37.2C
+net NE6         U36.3Y U37.3A
+net NE7         U11.3Y U37.3B
+net NE8         U11.4Y U37.3C
+net EQ0         U37.1Y U38.1A
+net EQ1         U37.2Y U38.1B
+net EQ2         U37.3Y U38.1C
+net MATCH_N     U38.1Y U39.1D U12.4A U12.4B
+net VCC         U39.1PRE_N U39.1CLR_N
+net CURSOR_N    U39.1Q U12.3A
+net FRAME2      U40.QA U40.CKB
+net GND         U40.R01 U40.R02
+net BLINK       U40.QD U12.3B
+net CUR_SHOW    U12.3Y U36.4B
 
 # Spare gates.
-net GND         U5.2A U5.6A U12.4A U12.4B U34.2A U34.2B U34.2C U34.2D U35.2D U35.2CLK
-net VCC         U35.2PRE_N U35.2CLR_N
+net GND         U29.4A U29.4B U39.2D U39.2CLK
+net VCC         U39.2PRE_N U39.2CLR_N
 ```
 
 ### Timing notes
 
-- `DOT_END`, `CC`: carries with `ENT` tied high, no glitch (as 080). `C5` alone clocks `WR` and `V8` alone clocks `U36`: single counter outputs, clean.
-- `LINE_END_N` decodes `DOT_END` with column bits, and `DOT_END` falls about 5 ns after the column changes at a character's start: a real chip could give a runt pulse there (the simulator's inertial delay swallows it). It only goes to `LOAD_N` inputs, sampled at the next edge, and to `U21`, which samples it the same way: `LINE_END` (`U21` `4Q_N`) is high for exactly one dot, the first dot of character 0, and clocks the line counter and the cursor counter. `FRAME_END_N` likewise only goes to `LOAD_N` inputs.
-- `HSYNC_N`, `WE_D` and `MATCH_N` decode column bits that change on the same edge and may glitch just after it: `SYNC_N` and `WEK_N` are re-timed by `U21`, `MATCH_N` is sampled by `U35` on `DOT_END`, five dots after the column changes.
-- Within a character (dots 10–15 of `U1`, 0.25 µs each): the column changes at the start of dot 10; `RA0`–`RA8` settle 9–18 ns later; the bus 450 ns after that (into dot 12); `F1`–`F5` 500 ns later (into dot 14) or 450 ns after a row change; `DOT_LOAD_N` falls at the start of dot 15. About 230 ns to spare.
-- The write window: `C5` switches the multiplexer to the cursor at the start of character 32. `WEK_N` is low from one dot into character 35 to one dot into 36, and again at 39; the cursor's address has been steady since character 32 and stays so until `LINE_END` rises 20 ns into character 0, when the multiplexer is back on the beam. The RAMs write the bus at the cursor's cell twice, the same code each time. At the end of each write `WE_N` rises 8 ns after `WEK_N` (`U13`) and `U22` lets go of the bus 10 ns after it: the 2114 keeps the data held just before `WE_N` rises, 2 ns to spare in the model (P4n, no hold time).
-- The line counter steps about 35 ns into character 0, so `V1`–`V7` (and `ACTIVE` at lines 0 and 256) change as character 0 starts its fetch: the RAM answers about 500 ns into it and the 2513 about 1 µs, 250 ns before the load. Character 0 of every line is fetched with the new line, as on 080.
-- `U35` takes `MATCH_N` on the rise of `DOT_END` (start of the last dot of character k) and holds it until the next: `CURSOR_N` covers the dots `U21` samples for the cell addressed in k (the end of dot 15 of k to the end of dot 14 of k + 1).
-- `KEY_CLR_N` falls only with `WR` high, at a line end at most 79 µs after the `STROBE` that set `KEY`; the next `STROBE` rises at least 101 µs after it, so no key is lost to the clear.
-- Clear held: `WE_N` low throughout, the multiplexer's address sweeps every cell each frame (each cell on 16 lines, rows 0–3 again during lines 256–311), and the bus carries 0x20 from `U23`. A key written while Clear is held fights `U23` on the bus.
+- `DOT_END`, `CC`, `VC1`: carries with `ENT` tied high or chained from one, no glitch (as 080). `V8` alone clocks `U40`. `LINE_END` is re-timed in `U25` (P4p).
+- Page clocks: `PHI1_N` is low exactly while `U1` is at 11 (`QD`–`QA` = `1011`): `QA` rises into it and falls out of it, `QC_N` only ever changes on an edge where `QA` already deactivates the gate. `PHI2_N` likewise on 13 (`1101`) with `QB_N`. `ROW_TOP` and `ACTIVE` change only in dot 10 (line and column changes), never next to dots 11 and 13. Pulse 250 ns low (2524: at least 135 ns); `PHI2_N` falls 250 ns after `PHI1_N` rises (at least 10 ns).
+- `ROW_CLK` = NAND(`QC`, `ACTIVE`) is low during dots 12–15 (1 µs; 2518: at least 300 ns low, 200 ns high: dots 10–11 give 500 ns) and rises when `QC` falls at a character's start (15 ns after the clock, `U1`). Within a character only `QC` moves it, once each way. At the start of character 0, `ACTIVE` rises after `QC` has fallen (`C5` falls 15 ns after the clock, then 10 ns through `U12`; `QC` 15 ns): no glitch; at character 32 `ACTIVE` falls while `QC` is low already. At line 0, `V8` changes about 35 ns into the line, later still.
+- In character `k` (0–31) of a top line: `PHI1_N` rises at the end of dot 11 and cell (`r`, `k`) is on `P0`–`P5` 100 ns later; `PHI2_N` rises at the end of dot 13, writing that cell if `WRITE` is high; `ROW_CLK` rises at the end of dot 15 and `U22` takes `P0`–`P5` (`ROW_LOAD_N` low on `REC`: 2518 data setup 100 ns, recirculate setup 150 ns, hold 50 ns: `P0`–`P5` change again 1.1 µs later). That replaces the word shown in column `k`, which on a top line is glyph line 0, blank.
+- `U22`'s word `k` is on `B0`–`B5` 300 ns into character `k` (its clock rose as `k` started; word 0 since the end of character 31 of the line before). The 2513 answers 500 ns later, during dot 13; `DOT_LOAD_N` falls at the start of dot 15: about 450 ns to spare. Character 0 also takes the new line's `V1`–`V3` about 35 ns in, 450 ns before the bus settles.
+- `MATCH_N` and so `GO_N`, `GO`, `WRK_N` and `WRITE` decode column bits and may glitch at a character's start: they are read only at the rise of `PHI2_N` (the 2524's `WRITE` and `U28`'s `D`), at the end of dot 13, and `U39` samples `MATCH_N` on `DOT_END` (P4p). `WRITE` changes again no sooner than about 60 ns after that rise (`WR`, then the cursor counters, the comparator and three gates): 2524 hold 20 ns. One race is left, as on any asynchronous key input: a `STROBE` rising within about 20 ns before the rise of `PHI2_N` on the cursor's cell reaches `U28`'s `D` (`GO`, two gates after `KEY`) but not `WRITE` (two more): the cursor steps and the key is not written. About one key in a million; not modelled away.
+- `WR` rises 13 ns after the rise of `PHI2_N` that wrote the cell, steps the cursor counters and clears `KEY` through `WR_N` (25 ns): the next rise of `PHI2_N` (the next character, the next top line after column 31, or line 0 of the next frame after row 15's: 4.54 ms) takes `GO` low and `WR` falls. While `WR` is high `KEY` is held clear. A key is taken at most 19.66 ms after its `STROBE` rose and `WR` is low at most 4.54 ms after that: 24.2 ms, under the 25.002 ms to the next `STROBE`. A strobe shorter than about 24.2 ms would lose keys.
+- The longest pause in the page clocks is from line 240's character 31 to line 0's character 0: 72 lines, 4.5 ms, under the 10 ms the model keeps the bits (P4q spec).
+- Clear held: `WRITE` high throughout, `U27` on the write bus, every cell written with 0x20 as it comes round; `WR` may still rise for a waiting key (its cell is written with a space), and the cursor counters stay cleared.
 
 ### Where the page lands on the TV
 
-As on 080, the TV starts a line on the fall of `SYNC_N`, re-timed one dot after the start of character 40; the first text dot is shown from the start of character 1. The text therefore starts 3 characters less 1 dot after the line start: 17 dots, about TV column 34 (one dot is 2 columns), and is 384 columns wide. Line 0 is about 4 rows below the frame start. The tests read both offsets from the picture.
+As P4p: the text starts about TV column 34 (17 dots after the line start, one dot 2 columns) and is 384 columns wide; line 0 is about 4 rows below the frame start. The tests read both offsets from the picture.
 
 ## Board
 
@@ -260,56 +284,60 @@ Placed by `bw place netlists/typewriter.bwn boards/typewriter/typewriter.place -
   edge J3 front left     # keyboard
   edge SW1 front right   # Clear
   next R1 SW1 left       # CLEAR_N pull-up
-  row back left U19      # character ROM: DIP-24, no slot in the chip grid
+  row back left U23      # character ROM: DIP-24, no slot in the chip grid
   ```
 
-- The 2513 is a 600-mil DIP-24, too big for the chip grid (as on 080). The 2114s (DIP-18) and 74LS244s (DIP-20) fit the grid (P4n). The 35 other chips and `X1` go in the annealed grid.
+- The 2513 is a 600-mil DIP-24, too big for the chip grid (as on 080). The 2524s (DIP-8, P4q), the 2518 (DIP-16) and the 74LS244s (DIP-20) fit the grid. The 39 other chips and `X1` go in the annealed grid.
 - No routing constraints: there are no Puzzles yet. P4r reads the routing it needs from the finished Board.
 - `bw check-board` prints `ok`; `drc_typewriter` and `place_drc_typewriter` pass (picked up by the globs).
 
 ## Manuals
 
 - User: What it does (power on `J1`, TV on `J2`, ASCII keyboard on `J3`; random characters at power-on: press Clear, the button at the front right, to blank the page; what is typed appears at the blinking block, 16 lines of 32 characters, upper case; Return starts a new line; after the last line typing goes on at the top, over what is there; other control keys do nothing).
-- Service: Components, one bullet per reference with its Nets, netlist order (`X1`, `U1`–`U36`, `SW1`, `R1`, `J1`–`J3`):
+- Service: Components, one bullet per reference with its Nets, netlist order (`X1`, `U1`–`U40`, `SW1`, `R1`, `J1`–`J3`):
   - `X1` dot clock: 4 MHz crystal oscillator, net `CLK`
-  - `U1` dot counter: counts 10–15, `DOT_END` on a character's last dot; 6 dots a character
+  - `U1` dot counter: counts 10–15, `DOT_END` on a character's last dot; 6 dots a character; `QA`–`QC` time the page and row buffer clocks
   - `U2` column counter, low bits: `C0`–`C3`, carry `CC`
   - `U3` column counter, high bits: `C4`, `C5`; with `U2`, 42 characters a line, reloaded with 0 by `LINE_END_N`
   - `U4` line decoders: `LINE_END_N` on the last dot of character 41, `HSYNC_N` for characters 40–41
-  - `U5` inverters: `DOT_LOAD_N`, `CLK_N`; `D1_N`, `D4_N` for the Return decoder
+  - `U5` inverters: `DOT_LOAD_N`, `CLK_N`; `QB_N`, `QC_N` for the page clocks; `D1_N`, `D4_N` for the Return decoder
   - `U6` line counter, bits 0–3: `V0` (each glyph line drawn twice), `V1`–`V3` (glyph line); clocked by `LINE_END`
   - `U7` line counter, bits 4–7: `V4`–`V7`, the text row
   - `U8` line counter, bit 8: `V8`; with `U6` and `U7` reloaded with 0 after line 311
   - `U9` frame-end decoder: `FRAME_END_N` low during line 311
-  - `U10` vertical sync decoder `VSYNC_N` for lines 308–311; `KEY_CLR_N`, clearing `KEY` at the end of a writing line
+  - `U10` vertical sync decoder `VSYNC_N` for lines 308–311; `ROW_CLK`, the row buffer's clock, once a character in the text
   - `U11` sync mixer: composite sync from `HSYNC_N` and `VSYNC_N` into `SYNC_N_D`; two gates compare `V6`, `V7` with `Y2`, `Y3` (`NE7`, `NE8`)
-  - `U12` text area `ACTIVE` (columns 0–31 of lines 0–255); `CTL`, high for control codes; `CUR_SHOW`, the blinking cursor
-  - `U13` row gates: `R1`–`R3` = `V1`–`V3` while `ACTIVE`, else 0; `WE_N` = `WEK_N` AND `CLEAR_N`
-  - `U14` address multiplexer, bits 0–3: `RA0`–`RA3` from the beam's `C0`–`C3` during the text, from the cursor's `X0`–`X3` while `C5` is high
-  - `U15` address multiplexer, bits 4–7: `RA4`–`RA7` from `C4`, `V4`–`V6` or from `X4`, `Y0`–`Y2`
-  - `U16` address multiplexer, bit 8: `RA8` from `V7` or from `Y3`
-  - `U17` page RAM (2114), bits 0–3 of each character on `B0`–`B3`; 512 cells, row × 32 + column, at `RA0`–`RA8`
-  - `U18` page RAM (2114), bits 4–5 of each character on `B4`–`B5`
-  - `U19` character ROM (2513): address `R1`–`R3`, `B0`–`B5`; out the line's dots `F5` (left) to `F1`
-  - `U20` dot shift register: loads `F5`–`F1` on `DOT_LOAD_N`, shifts them out on `CLK_N` as `VIDEO_D`
-  - `U21` output register: re-times `SYNC_N`, `VIDEO`, the write strobe `WEK_N` and `LINE_END` (the first dot of each line) on the clock
-  - `U22` keyboard buffer: drives `D0`–`D5` onto the bus while `WEK_N` is low
-  - `U23` space buffer: drives 0x20 onto the bus while `CLEAR_N` is low
-  - `U24` key flip-flops: `KEY` set by `STROBE`; `WR` takes it at character 32, a line that writes
-  - `U25` write decoder: `WE_D` low during characters 35 and 39 of a writing line, for printable codes
-  - `U26` Return decoder: `CR_N` low while the last code is 13
-  - `U27` key gates: `PRINT`, `ADV` (printable or Return), `XC_N` (column 31), `YEN` (step the row)
-  - `U28` cursor column, bits 0–3: `X0`–`X3`, carry `XRCO`; loaded with 0 by `CR_N`
-  - `U29` cursor column, bit 4: `X4`
-  - `U30` cursor row: `Y0`–`Y3`; all three cursor counters step at a line end while `WR` is high, cleared by `CLEAR_N`
-  - `U31` cursor comparator: `NE0`–`NE3` high where `C0`–`C3` and `X0`–`X3` differ
-  - `U32` cursor comparator: `NE4`–`NE6` for `C4`, `V4`, `V5` against `X4`, `Y0`, `Y1`; gate 4 XORs `CUR_SHOW` into the video (`VIDEO_M`)
-  - `U33` comparator: `EQ0`–`EQ2`, high where three bits agree
-  - `U34` cursor match: `MATCH_N` low while the beam addresses the cursor's cell
-  - `U35` cursor delay: `CURSOR_N`, `MATCH_N` one character late, clocked by `DOT_END`
-  - `U36` blink counter: counts frames on `V8`; `BLINK` changes every 8 frames
+  - `U12` text area `ACTIVE` (columns 0–31 of lines 0–255); `CTL`, high for control codes; `CUR_SHOW`, the blinking cursor; `MATCH`
+  - `U13` row gates: `R1`–`R3` = `V1`–`V3` while `ACTIVE`, else 0; `ROW_TOP`, the first line of a text row
+  - `U14` `V01_ZERO`, `V23_ZERO` (`V0`–`V3` low in pairs); `CLEAR`; `GO`
+  - `U15` page clock gates: `PHI1_N` on dot 11, `PHI2_N` on dot 13 of characters 0–31 of a row's top line
+  - `U16` page (2524), bit 0 of each character: 512 cells, round once a frame, out on `P0`, written from `W0` while `WRITE` is high
+  - `U17` page (2524), bit 1: `P1`, `W1`
+  - `U18` page (2524), bit 2: `P2`, `W2`
+  - `U19` page (2524), bit 3: `P3`, `W3`
+  - `U20` page (2524), bit 4: `P4`, `W4`
+  - `U21` page (2524), bit 5: `P5`, `W5`
+  - `U22` row buffer (2518): the 32 characters of the row being drawn on `B0`–`B5`, round once a line on `ROW_CLK`; takes them from `P0`–`P5` while `ROW_LOAD_N` is low
+  - `U23` character ROM (2513): address `R1`–`R3`, `B0`–`B5`; out the line's dots `F5` (left) to `F1`
+  - `U24` dot shift register: loads `F5`–`F1` on `DOT_LOAD_N`, shifts them out on `CLK_N` as `VIDEO_D`
+  - `U25` output register: re-times `SYNC_N`, `VIDEO` and `LINE_END` (the first dot of each line) on the clock
+  - `U26` keyboard buffer: drives `D0`–`D5` onto the write bus `W0`–`W5` except during Clear
+  - `U27` space buffer: drives 0x20 onto `W0`–`W5` while `CLEAR_N` is low
+  - `U28` key flip-flops: `KEY` set by `STROBE`; `WR` after the key's cell is written, clears `KEY`
+  - `U29` write gates: `WRK_N`, `WRITE` (a printable key's cell, or Clear); `ROW_LOAD_N`, low on a row's top line
+  - `U30` Return decoder: `CR_N` low while the last code is 13
+  - `U31` key gates: `PRINT`, `ADV` (printable or Return), `XC_N` (column 31), `YEN` (step the row)
+  - `U32` cursor column, bits 0–3: `X0`–`X3`, carry `XRCO`; loaded with 0 by `CR_N`
+  - `U33` cursor column, bit 4: `X4`
+  - `U34` cursor row: `Y0`–`Y3`; all three cursor counters step when `WR` rises, cleared by `CLEAR_N`
+  - `U35` cursor comparator: `NE0`–`NE3` high where `C0`–`C3` and `X0`–`X3` differ
+  - `U36` cursor comparator: `NE4`–`NE6` for `C4`, `V4`, `V5` against `X4`, `Y0`, `Y1`; gate 4 XORs `CUR_SHOW` into the video (`VIDEO_M`)
+  - `U37` comparator: `EQ0`–`EQ2`, high where three bits agree
+  - `U38` cursor match: `MATCH_N` low while the beam is on the cursor's cell; `GO_N` low while a key waits and its cell is at the page's output
+  - `U39` cursor delay: `CURSOR_N`, `MATCH_N` one character late, clocked by `DOT_END`
+  - `U40` blink counter: counts frames on `V8`; `BLINK` changes every 8 frames
   - `SW1` Clear button: pulls `CLEAR_N` low while pressed
   - `R1` 4.7 kΩ pull-up on `CLEAR_N`
   - `J1` power connector: +5 V and 0 V for the whole board
   - `J2` monitor connector: `VIDEO` and `SYNC_N` out
-  - `J3` keyboard connector: the key's code on `D0`–`D6`, `STROBE` high for 100 µs after each key; the keyboard is powered from the board
+  - `J3` keyboard connector: the key's code on `D0`–`D6`, `STROBE` high for 25 ms after each key; the keyboard is powered from the board
