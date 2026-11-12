@@ -1,6 +1,7 @@
 // 090 TV typewriter (docs/machines/090-typewriter/TYPEWRITER.md): the shift-register page on the
 // TV.
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -16,6 +17,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "devices/tv_input.hpp"
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/button.hpp"
 #include "parts/keyboard.hpp"
@@ -148,6 +150,15 @@ int LitOutside(const TvFrame& frame, Offset offset) {
     return lit;
 }
 
+// The Machine built from its Board (boards/typewriter/).
+std::unique_ptr<LoadedCircuit> BoardCircuit() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "typewriter.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
     auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "typewriter.bwn");
     if (!result) {
@@ -161,7 +172,7 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
 
 // The Machine on a simulator, powered on.
 struct Typewriter {
-    std::unique_ptr<LoadedCircuit> loaded = DesignCircuit();
+    std::unique_ptr<LoadedCircuit> loaded = BoardCircuit();
     Simulator sim{loaded->circuit};
 
     explicit Typewriter(std::uint64_t seed) {
