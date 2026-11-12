@@ -28,6 +28,7 @@
 #include "parts/ram2114.hpp"
 #include "parts/rom.hpp"
 #include "parts/rom_contents.hpp"
+#include "parts/shift_register_2524.hpp"
 
 namespace bw {
 
@@ -210,6 +211,8 @@ constexpr std::array s_parts{
     PartInfo{"2114", "1K x 4 static RAM", "DIP-18", Chip, &CreateChip<Ram2114, "2114">},
     PartInfo{"2513", "64-character 5 x 7 character generator ROM", "DIP-24", Chip,
              &CreateRom<"2513">},
+    PartInfo{"2524", "512-bit dynamic recirculating shift register", "DIP-8", Chip,
+             &CreateChip<ShiftRegister2524, "2524">},
     PartInfo{"2716", "2K x 8 EPROM", "DIP-24", Chip, &CreateRom<"2716">},
     PartInfo{"74LS00", "quad 2-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS00">},
     PartInfo{"74LS02", "quad 2-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS02">},

@@ -86,6 +86,7 @@ add_executable(bw_tests
   parts/ram2114_test.cpp
   parts/rom_contents_test.cpp
   parts/rom_test.cpp
+  parts/shift_register_2524_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
   runner/led_consumer_test.cpp
