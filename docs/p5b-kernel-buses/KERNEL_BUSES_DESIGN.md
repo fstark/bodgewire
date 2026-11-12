@@ -1,0 +1,75 @@
+# P5b Kernel for buses — Design
+
+Spec: [KERNEL_BUSES.md](KERNEL_BUSES.md). Plan: [KERNEL_BUSES_PLAN.md](KERNEL_BUSES_PLAN.md). Recipe: [ADD_PART.md](../recipes/ADD_PART.md) (only when Parts are converted, idea 4).
+
+## Files
+
+| File | Change |
+|---|---|
+| `bench/trace_check.sh` | S1 (below) |
+| `bench/measure.sh` | S2 (below) |
+| `src/sim/event_queue.{hpp,cpp}` | idea 1: the queue's inside; its interface (`push`, `top`, `pop`, `empty`, `size`, `clear`) and pop order unchanged |
+| `tests/sim/event_queue_test.cpp` | idea 1: cases for the new structure's edges |
+| `src/sim/simulator.{hpp,cpp}` | idea 2: `runUntil` and its helpers; `EvalContext`'s declared members unchanged |
+| `CMakePresets.json` | idea 3: `CMAKE_INTERPROCEDURAL_OPTIMIZATION` `ON` in the `release` preset only |
+| `src/parts/rom.{hpp,cpp}` | idea 4: specialised evaluation (below) |
+| later Parts' `.cpp`/`.hpp` | idea 4, after the user's OK |
+| `docs/recipes/ADD_PART.md` | idea 4, if Parts are written differently |
+| `docs/ARCHITECTURE.md`, `docs/p1d-kernel-perf/OPTIMISATION_IDEAS.md` | last phase |
+
+## Trace check (`bench/trace_check.sh`)
+
+Bash, `set -euo pipefail`, run from the repository root. Argument: the reference commit, default `0757c02` (the P5a kernel, last commit before P5b's code).
+
+1. Reference build, once per commit: `git worktree add --detach build/trace-ref/<commit>/src <commit>` if missing; `cmake -S build/trace-ref/<commit>/src -B build/trace-ref/<commit>/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBW_BUILD_TESTS=OFF -DBW_BUILD_UI=OFF` (no Catch2, SDL3 or imgui fetched); build target `bw`. The worktree lives under `build/` (ignored by git); `git worktree prune` is not needed while it stays.
+2. Reference traces, once per commit: the three runs of the spec's S1 table with the reference `bw`, into `build/trace-ref/<commit>/{bus_load,test_pattern,typewriter}.{vcd,txt}`; `.txt` keeps the `applied_events` and `evaluations` lines (`ratio` and `wall_s` vary and are dropped).
+3. Current traces: the same runs with `build/release/src/cli/bw` into `build/trace-now/`.
+4. Compare: `cmp` each VCD and `diff` each `.txt`. On a VCD difference, print the line number from `cmp` and that line with the nearest preceding `#time` line of both files (`sed -n`). Exit 1 on any difference, 0 with "trace check: identical (3 runs)" otherwise.
+
+Each side runs on its own tree's netlists: the reference `bw` on `build/trace-ref/<commit>/src/netlists/…`, the current one on `netlists/…`. ROM contents resolve relative to the netlist file (`ResolveContentsPaths`, `src/netlist/builder.cpp`), so each finds its own ROMs. P5b changes no netlist or ROM, so the inputs are the same bytes.
+
+Disk: ≈ 55 + 8 + 150 MB per side, under `build/`.
+
+## Measurement (`bench/measure.sh`)
+
+Bash. Builds nothing (the caller builds release first).
+
+- Three rounds; in each, `bw run` on every `netlists/*.bwn` `--time 2s` in turn; keeps each netlist's best `ratio` and its `applied_events`, `evaluations`.
+- `/usr/bin/time -l build/release/src/cli/bw run netlists/bus_load.bwn --time 1s`: "instructions retired" and `applied_events`, printed with their quotient.
+- Prints the idea log's columns (`bus_load`, test pattern, typewriter) and one line per other netlist for the notes.
+
+The profile build stays manual as in P1d (`cmake -S . -B build/profile -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -g -fno-omit-frame-pointer"`, then `sample bw 8`), commands in the plan's notes.
+
+## Idea 1: the event queue
+
+Measured first, before any code: the queue's size distribution on `bus_load` (temporary counter, `git checkout` after) and the spread of event delays, to size the structure. Starting design, adjusted from those numbers and logged:
+
+- **Timing wheel with sorted slots.** `kSlots` (power of two) slots of `kSlotWidth` ps (power of two), each a `std::vector<Event>` that keeps its capacity. An event at `time` goes to slot `(time / kSlotWidth) % kSlots` if `time < horizon` (the end of the wheel's current turn), else to an overflow min-heap (today's heap code) drained into slots as the wheel turns.
+- The current slot is sorted once by `(time, target, stamp)` when the wheel reaches it and popped from the front (an index, not erase). An event pushed into the current slot (a delay shorter than the slot width) is inserted at its sorted place after the read index (`std::upper_bound`): slots hold few events, so the insertion is short. Same order as the heap's: traces identical by construction.
+- `top()` finds the next non-empty slot; an occupancy bitmap (`std::uint64_t` words, `std::countr_zero`) skips empty slots. `top()` stops being `const` (the queue is private to `sim`).
+- **Push invariant:** a push may carry any `time ≥` the last *popped* time, not only `≥ top().time`. `runUntil` calls `top()` on an event past `end`, then sets `now_ = end`; callers then push at `now_ + 0…` (`Simulator::wake` from `src/cli/main.cpp`, `src/runner/runner.cpp`, `src/session/session.cpp` button and keyboard jitter). So `top()` may advance the cursor and sort a slot, and a push earlier than the current slot's start goes into the current sorted slot at its sorted place (before everything there, since nothing earlier is pending).
+- **Overflow invariant:** every event with `time < horizon` is in a slot; the overflow holds only events `≥ horizon`. The horizon is a fixed turn boundary (the end of the wheel turn holding the cursor). When the cursor enters a new turn, the horizon moves one turn on and overflow events below it move into their slots *before* any slot of that turn is sorted.
+- `clear()` empties the slots, the bitmap and the overflow, keeping capacity, and resets the cursor.
+- Tests: push A at 1000, `top()`, push B at 10: B pops first; an overflow event that lands in the current slot; an event a whole turn ahead; the bitmap empty after `clear()`.
+
+P1d's wheel lost 9–12 % on a heap of 8–15 events; this one is kept only if `bus_load` gains ≥ 5 %. If it loses, a 4-ary heap (same interface, shallower) is the second try, one row of the log each.
+
+## Idea 2: the run loop
+
+From a line-level profile of `runUntil` after idea 1. Candidates, each its own try only if the profile points at it: the update loop's `queue_.top()`/`pop()` pair (one call that pops a whole timestamp into a small vector); stale events left by inertial cancellation (`staleEvents` read first, through a temporary print in `bw run`, not committed: if large, cancellation that removes the event instead of leaving it is a queue change, tried under idea 1's rules); the `recorder_.isRecording` test per changed Net; the `wakes` and `staleEvents` counters (`appliedEvents` and `evaluations` stay: the trace check and `measure.sh` use them). Evaluation order and RNG use stay as today (they set the traces).
+
+## Idea 3: LTO
+
+`"CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"` in the `release` configure preset's `cacheVariables`. The top `CMakeLists.txt` gets `cmake_policy`/`CheckIPOSupported` only if CMake asks for it. Debug unchanged. The cache variable also puts LTO on the fetched SDL3, imgui and Catch2: the clean release build time is reported before and after including them (build complexity was P1d's reason to reject LTO); if that cost is what tips it, `INTERPROCEDURAL_OPTIMIZATION` on bodgewire's own targets only is the variant tried. Kept under guard 3 like any idea. Once kept, profiles come from `build/profile-lto` (the profile flags plus `-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON`), so they show what runs.
+
+## Idea 4: specialised evaluation, the ROM
+
+Within today's `EvalContext` (guard 2), and with `class Rom`, its constructor, `size()`, `RomSpec`, `FindRomSpec`/`RomSpecOf` and the catalogue's `circuit.add<Rom>(…, spec, words)` unchanged (so `tests/parts/rom_test.cpp`, which builds `Rom` directly, stays as it is):
+
+- `template <std::size_t A, std::size_t D, std::size_t E> struct RomLayout` holds the compile-time part of a spec as `std::array`s (address pins and delays, data pins, enables, off delay), with `constexpr` `kLayout2716` and `kLayout2513` next to `s_specs`, built from the same arrays.
+- `Rom::evaluate` dispatches once on `&spec_` to `EvaluateRom<kLayout2716>(ctx, words_)` or `EvaluateRom<kLayout2513>(…)` (`template <const auto& L>`), a function in `rom.cpp`'s unnamed namespace.
+- In it: loops over arrays of known size (unrolled), the longest address delay a constant; the unknown-address path (X bits) moved into a separate function called only when a bit is not 0/1. For a layout with one address delay (2716), the changed-address check stops at the first changed bit; otherwise (2513, row and character access differ) it keeps the max over changed bits.
+- Expected: Rom's share (7 %) roughly halved, ≈ 3–4 % overall: below the 5 % bar alone, which is why the bar applies to the summed conversion (spec, Guard 3). It is the pattern shown to the user with its numbers.
+- If the profile shows the cost is in `read`/`readBefore` themselves (a Net index fetch per Pin), the fix is an `EvalContext` addition such as reading a list of Pins in one call: a Part API change, described to the user with the ROM and not made without an OK. This is the likely outcome (spec, S3.4).
+
+The ROM's tests (`tests/parts/rom_test.cpp`, the machines that use a 2716 or 2513) are its behaviour check, unchanged.
