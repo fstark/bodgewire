@@ -58,9 +58,9 @@ Only this step's paths are committed (the user edits docs in parallel).
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Guards and baseline | done |
-| 2 | Event queue | in progress: 1a kept |
-| 3 | Run loop | — |
-| 4 | LTO | — |
+| 2 | Event queue | done: 1a kept |
+| 3 | Run loop | 2a dropped; nothing in the line profile reaches 5 % alone |
+| 4 | LTO | done: kept |
 | 5 | ROM, shown to the user | — |
 | 6 | Further Parts | — |
 | 7 | Finish | — |
@@ -74,9 +74,16 @@ Only this step's paths are committed (the user edits docs in parallel).
 | 1b | timing wheel, 1,024 slots of 1,024 ps, overflow heap | 0.239× | 710 | — | 4.27× | 0.780× | no: +10 % instructions, others 15–40 % slower | — |
 | 1b′ | same, 256 slots of 4,096 ps, no sort of one-event slots | 0.239× | 705 | — | 4.37× | 0.775× | no | — |
 | 1c | 4-ary heap, hand-written | 0.202× | 657 | — | 5.43× | 0.959× | no: slower | — |
+| 1d | binary heap, hand-written, child chosen without a branch (on 1a) | 0.244× | 636 | 149 | 5.54× | 0.991× | no: cycles unchanged | — |
+| 1e | sorted vector, earliest last (on 1a) | 0.230× | 626 | 158 | 5.55× | 0.995× | no: +6 % cycles | — |
+| 2a | `markNetDirty`, `markComponentDirty` inline in the header | 0.245× | 623 | 148 | 5.58× | 1.020× | no: −1 % cycles | — |
+| 3 | LTO, release preset | 0.256× | 584 | 141 | 5.73× | 1.020× | yes: −5…6 % cycles, +5.0…5.3 % ratio (three runs) | this commit |
 
 ## Implementation notes
 
 - Phase 1 (2026-11-12): `bench/trace_check.sh` identical against `0757c02` (10 s once the reference is built); checked to fail and locate a changed VCD line (one value flipped in the reference test pattern: "line 5001", the `#time` and both values printed). macOS bash is 3.2: the scripts use no associative arrays or namerefs. Baseline, `bench/measure.sh` twice: bus_load 0.225 / 0.224×, 643 instructions per applied event (76.88 G for 119.5 M events, 1 s); test pattern 5.46 / 5.42×; typewriter 0.997 / 0.986×; others: ball 2.29×, chaser 12.8×, counter 11.6×, dice 21.7×, knob 15.4×, message 2.32×, stopwatch 9.28×, tennis 1.53×.
 - Queue on bus_load (100 ms, temporary counters): 13.7 M pops for 11.9 M applied events, 0.50 M stale, 1.30 M wakes. Size at pop: < 8 events 25 %, 8–15 43 %, 16–31 30 %, 32–63 2 %: **not the large queue P5a assumed**. Push delay from the last pop: < 16 ns 35 %, 16–33 ns 14 %, 66–131 ns 43 %, 131–262 ns 1 %, 262–524 ns 7 %; none beyond 0.53 µs. A heap of ≈ 16 is 4 levels deep: the cost per pop is in the comparison (three fields, branches) and sifting 16-byte events, not in depth.
 - Phase 2, idea 1 (2026-11-12): the queue's numbers above made the design's wheel unlikely; tried as designed anyway (1b, 1b′, 1c in the log): the trace check passed for each, and each lost. With ≈ 16 pending events a binary heap is 4 levels; the wheel pays for slot bookkeeping and bitmap scans on every pop, and on sparse netlists scans many empty words. 1a (one 128-bit key for `(time, target, stamp)`, same order) cut cycles 9.5 % (19.7 → 17.8 G, three runs each) with instructions −0.6 %: `bus_load` runs at ≈ 3.6 instructions a cycle against 5.7 on the test pattern, and the heap's three-field comparison mispredicts. The user then set the bar on ratio and cycles (spec, User decisions) and 1a was kept.
+- Line profile (`sample` call tree with offsets, self time per source line, a scratch parser; `xctrace` needs full Xcode): with 1a, `std::pop_heap` is 22.5 % of all time on a heap of ≈ 16; `runUntil`'s own 26 % is spread, the largest line being Net resolution (5.8 %). 1d and 1e show the heap's cost is the chain of dependent loads per level, not branches or depth: neither a branchless child choice nor a sorted vector shortens it.
+- Phase 3: `markNetDirty` was out of line (2.8 %); inlining gained 1 % (2a). No other line of `runUntil` exceeds 2 %: no run-loop try reaches the bar alone, so the phase ends here.
+- Phase 4, LTO: clean release build 23 s → 27 s (SDL3, imgui and Catch2 included); touching `simulator.cpp` relinks in 7 s. Other netlists: ball 2.28 → 2.22×, dice 21.7 → 21.2× (−2 %), the rest equal or faster. The release test suite passes with LTO (810); debug, which LTO does not touch, was last green at 1a. From here profiles come from `build/profile-lto`.
