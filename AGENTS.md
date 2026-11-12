@@ -3,6 +3,7 @@ There is a venv environment in venv.
 ## Build and test
 
 - Debug (ASan + UBSan): `cmake --preset debug && cmake --build --preset debug`; tests `ctest --preset debug -j 12`.
+- The full debug suite takes about 15 minutes (two tennis cases, about 14 minutes each). A change that one Part or Machine alone can see (its code, netlist, tests or docs) runs only the tests that can reach it, e.g. `ctest --preset debug -j 12 -R "2524|typewriter|catalogue|manuals"`, and the commit message says which. The full suite runs at a roadmap step's end, and for changes to shared code (kernel, builder, Board, UI, a Part other Machines use).
 - Release: `cmake --preset release && cmake --build --preset release`.
 - The agent can't see the screen: `build/release/src/ui/bw_ui puzzles/X.bwp --screenshot /tmp/x.png --after 1s`, then view the PNG (it also prints the speed ratio and UI ms).
 - `clang-format` on C++ files only, never on `CMakeLists.txt`.
