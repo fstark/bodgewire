@@ -30,6 +30,8 @@ docs/recipes/ADD_PART.md, ADD_MACHINE.md        §10
 
 ## 2. `EvalContext::randomBit`
 
+Removed after the user check, with the random decay it served (spec, the 2524 bullet); kept here as built in phase 1.
+
 [component.hpp](../../src/sim/component.hpp), beside `readBit`:
 
 ```cpp
@@ -50,7 +52,7 @@ ADD_PART "A new package": `DIP-8_W7.62mm.kicad_mod` copied from `/Applications/K
 // 1 PHI2, 2 OUT, 3 READ, 4 VDD, 5 WRITE, 6 IN, 7 PHI1, 8 VCC. Two clocks pulsed low in turn: on
 // the rise of PHI2 the bit at the output is rewritten from IN if WRITE is high, else kept
 // (recirculated); on the rise of PHI1 the next bit comes to OUT, or 0 while READ is low.
-// Dynamic: if either clock has not risen for k2524Hold, the bits go random. VDD (-5 V)
+// Dynamic: if either clock has not risen for k2524Hold, the bits fade (below). VDD (-5 V)
 // is not connected on these Boards; no GND pin. Inputs read X as a random bit.
 class ShiftRegister2524 final : public Component {
 public:
@@ -66,7 +68,8 @@ private:
     std::bitset<kBits> bits_;
     std::size_t head_ = 0;  // the bit at the output
     bool out_ = false;      // the output stage: bits_[head_] as of the last PHI1 rise
-    Time lastPhi1_ = 0, lastPhi2_ = 0, lastDecay_ = 0;
+    Time lastPhi1_ = 0, lastPhi2_ = 0;
+    bool faded_ = false;
 };
 ```
 
@@ -78,8 +81,9 @@ Pins: `PHI1`, `PHI2` `{Input, Mos, risingEdgeOnly = true}`; `READ`, `WRITE`, `IN
 evaluate:
     phi1 = rose(PHI1); phi2 = rose(PHI2)
     if phi1 or phi2:
-        since = max(min(lastPhi1_, lastPhi2_), lastDecay_)
-        if now - since > k2524Hold:  for each bit: bits_[i] = randomBit();  lastDecay_ = now
+        if now - min(lastPhi1_, lastPhi2_) > k2524Hold:
+            if !faded_:  every bit = (lastPhi2_ > lastPhi1_);  faded_ = true
+        else: faded_ = false
         if phi1: lastPhi1_ = now;  if phi2: lastPhi2_ = now
     if phi2 and readBitBefore(WRITE):  bits_[head_] = readBitBefore(IN)
     if phi1:  head_ = (head_ + 1) % kBits;  out_ = bits_[head_]
@@ -90,7 +94,7 @@ evaluate:
 - `drive` does nothing when the value is unchanged, so an evaluation on `READ`, `WRITE` or `IN` alone re-drives the same value. `READ` acting at once (the datasheet ANDs it with `PHI1`) is a simplification noted in the datasheet file.
 - A write never changes `OUT` (`out_` moves only on `PHI1`): the written bit comes out 512 shifts later, as on the real chip. The decay leaves `out_` alone.
 - A clock that never rises again never triggers the decay itself: the bits are only seen through `OUT`, which moves only on `PHI1`, so the lazy check at the next rise of either clock is enough. While one clock is stopped, the other's rises re-randomise every 10 ms (`lastDecay_`).
-- `powerOn`: 512 random bits, `head_` 0, `out_ = bits_[0]`, `lastPhi1_ = lastPhi2_ = lastDecay_ = 0`, `setOutput(OUT, out_)` (`READ` is not known yet; the first evaluation fixes it). The first frame's pause (power-on to the first top line) is under 10 ms.
+- `powerOn`: 512 random bits, `head_` 0, `out_ = bits_[0]`, `lastPhi1_ = lastPhi2_ = 0`, `faded_ = false`, `setOutput(OUT, out_)` (`READ` is not known yet; the first evaluation fixes it). The first frame's pause (power-on to the first top line) is under 10 ms.
 - No allocation (`std::bitset`).
 - Catalogue: `PartInfo{"2524", "512-bit dynamic recirculating shift register", "DIP-8", Chip, &CreateChip<ShiftRegister2524, "2524">}` sorted by name (`"2513" < "2518" < "2524" < "2716"`).
 

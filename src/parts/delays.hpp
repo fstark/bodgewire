@@ -65,7 +65,7 @@ inline constexpr Time k2513ChipEnable = 150'000;       // CE_N → O, on and off
 inline constexpr Time k2518ClockToOutput = 300'000;  // tA, CLK → OUT
 // Signetics 2524, 1972 MOS data book p. 95: the maximum (no typical given).
 inline constexpr Time k2524ClockToOutput = 100'000;  // tA+, PHI1 → OUT
-// The 2524's bits with a clock stopped: kept 10 ms, then random (P4q; the datasheet guarantees
+// The 2524's bits with a clock stopped: kept 10 ms, then faded (P4q; the datasheet guarantees
 // about 1 ms at 25 °C, typically 100 times more).
 inline constexpr Time k2524Hold = 10'000'000'000;
 

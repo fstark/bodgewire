@@ -35,7 +35,8 @@ void ShiftRegister2524::powerOn(PowerOnContext& ctx) {
     }
     head_ = 0;
     out_ = bits_[0];
-    lastPhi1_ = lastPhi2_ = lastDecay_ = 0;
+    lastPhi1_ = lastPhi2_ = 0;
+    faded_ = false;
     ctx.setOutput(kOut, out_ ? One : Zero);
 }
 
@@ -44,11 +45,17 @@ void ShiftRegister2524::evaluate(EvalContext& ctx) {
     const bool phi2 = ctx.rose(kPhi2);
     if (phi1 || phi2) {
         const Time now = ctx.now();
-        if (now - std::max(std::min(lastPhi1_, lastPhi2_), lastDecay_) > delays::k2524Hold) {
-            for (std::size_t i = 0; i < kBits; ++i) {
-                bits_[i] = ctx.randomBit();
+        if (now - std::min(lastPhi1_, lastPhi2_) > delays::k2524Hold) {
+            if (!faded_) {  // the charges leak towards the level of the last clock phase
+                if (lastPhi2_ > lastPhi1_) {
+                    bits_.set();
+                } else {
+                    bits_.reset();
+                }
+                faded_ = true;
             }
-            lastDecay_ = now;
+        } else {
+            faded_ = false;
         }
         if (phi1) {
             lastPhi1_ = now;

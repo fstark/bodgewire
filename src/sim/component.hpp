@@ -30,7 +30,6 @@ public:
     inline bool fell(PinIndex pin) const;              // Net went 1 → 0 at this timestamp
     bool readBit(PinIndex pin);                        // X → seeded random bit (MOS inputs, S4)
     bool readBitBefore(PinIndex pin);                  // readBefore, X → seeded random bit
-    bool randomBit();                                  // seeded random bit (dynamic MOS decay)
     inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
     void wakeAfter(Time delay);  // evaluate this Component again at now + delay
 

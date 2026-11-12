@@ -6,9 +6,9 @@ Ninth rung of the tutorial ladder. A board between an ASCII keyboard and a TV: w
 
 Memory without addresses. The page is six long shift registers, one per bit of the character code, 512 cells each: a cell can only be read or written when it comes round to the register's output, and the page comes round exactly once a frame because the registers are clocked 512 times a frame, in step with the beam. A short register, the row buffer, holds the 32 characters of the text row being drawn and brings them back on each of the row's 16 lines. To type, the board waits for the cursor's cell to come round and switches the page from recirculate to write for that one cell. To clear, it writes every cell for a whole frame.
 
-The page registers are dynamic: they keep their bits only while both their clocks keep pulsing. Stop one and the page is lost.
+The page registers are dynamic: they keep their bits only while both their clocks keep pulsing. Stop one and that register's bits all fade to one level: one bit of every character is lost.
 
-Faults show as typing gone wrong in ways that point to one link: a page clock lost (the page goes random, or stops), a bit of the page or the row buffer stuck (a column of the character set missing from the page), the write control (keys never show, or every cell fills with the key), the row buffer's load control (every row shows the same text), the cursor comparator (keys land in the wrong place, the cursor shows where it is not), the space buffer (Clear leaves `@`s).
+Faults show as typing gone wrong in ways that point to one link: a page clock lost (one bit of every character fades to the same value: each character becomes its neighbour in the font), a bit of the page or the row buffer stuck (a column of the character set missing from the page), the write control (keys never show, or every cell fills with the key), the row buffer's load control (every row shows the same text), the cursor comparator (keys land in the wrong place, the cursor shows where it is not), the space buffer (Clear leaves `@`s).
 
 ## Circuit
 
@@ -70,6 +70,6 @@ The TV shows a page of random characters at power-on, locked within half a secon
 
 ## Puzzles
 
-None in this step: P4r writes the 090 Puzzles from the finished Board. Links worth a Fault: a page clock (`PHI2_N` cracked: the page never takes a key and dissolves into random characters, again every 10 ms; `PHI1_N` cracked: the page stops moving and every cell shows one character), one page bit or one row-buffer output stuck (characters from the wrong half of the font), the row buffer's `ROW_LOAD_N` stuck high (every row repeats what the buffer held) or low (rows smeared), `WRITE` stuck (nothing typed shows, or Clear never ends), a comparator bit (keys land in the wrong place), the space buffer (Clear leaves `@`s).
+None in this step: P4r writes the 090 Puzzles from the finished Board. Links worth a Fault: a page clock (`PHI2_N` cracked after some of the 2524s: after 10 ms their bits fade to 0 in every cell, so each character shows as its neighbour in the font, and those bits are no longer written; `PHI1_N` cracked: those registers stop moving, so their bit is the same in every cell, and fades to 1), one page bit or one row-buffer output stuck (characters from the wrong half of the font), the row buffer's `ROW_LOAD_N` stuck high (every row repeats what the buffer held) or low (rows smeared), `WRITE` stuck (nothing typed shows, or Clear never ends), a comparator bit (keys land in the wrong place), the space buffer (Clear leaves `@`s).
 
 Netlist, Board and manuals: [TYPEWRITER_DESIGN.md](TYPEWRITER_DESIGN.md).

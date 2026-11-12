@@ -257,12 +257,12 @@ TEST_CASE("2524: random contents at power-on", "[parts]") {
     CHECK(bench.bits() != one);
 }
 
-TEST_CASE("2524: bits kept with the clocks stopped 9 ms, lost after 11 ms", "[parts]") {
+TEST_CASE("2524: clocks stopped 9 ms keep the bits; after 11 ms they fade", "[parts]") {
+    // One clock pair, a pause, then another pair: PHI2 rose last before the pause.
     for (const Time pause : {9_ms, 11_ms}) {
         INFO(pause);
         Steps phi1 = Clock(10_us, 1, 250_ns);
         Steps phi2 = Clock(10_us, 1, 750_ns);
-        // A second pair after the pause: it would bring the ring back to 2 shifts on.
         const Steps more1 = Clock(10_us + kPair + pause, 1, 250_ns);
         const Steps more2 = Clock(10_us + kPair + pause, 1, 750_ns);
         phi1.insert(phi1.end(), more1.begin(), more1.end());
@@ -272,27 +272,58 @@ TEST_CASE("2524: bits kept with the clocks stopped 9 ms, lost after 11 ms", "[pa
         sim.powerOn(4);
         const std::bitset<512> start = bench.bits();
         sim.runUntil(10_us + 2 * kPair + pause);
-        const bool kept = bench.bits() == Rotated(start, 2);
-        CHECK(kept == (pause < delays::k2524Hold));
+        if (pause < delays::k2524Hold) {
+            CHECK(bench.bits() == Rotated(start, 2));
+        } else {
+            CHECK(bench.bits().all());  // every bit 1
+        }
     }
 }
 
-TEST_CASE("2524: with one clock stopped the bits are lost every 10 ms", "[parts]") {
-    // PHI1 runs for 25 ms, PHI2 never: the bits shift, and go random after 10 ms and 20 ms.
+TEST_CASE("2524: a fade takes the level of the last clock phase", "[parts]") {
+    // A pair, then PHI1 alone, then the pause: PHI1 rose last, so the bits fade to 0.
+    Steps phi1 = Clock(10_us, 2, 250_ns);
+    const Steps again = Clock(10_us + 2 * kPair + 11_ms, 1, 250_ns);
+    phi1.insert(phi1.end(), again.begin(), again.end());
+    Bench bench({phi1, Clock(10_us, 1, 750_ns), {}, {}});
+    Simulator sim(bench.circuit);
+    sim.powerOn(5);
+    REQUIRE(bench.bits().any());
+    sim.runUntil(10_us + 3 * kPair + 11_ms);
+    CHECK(bench.bits().none());
+}
+
+TEST_CASE("2524: with one clock stopped the bits fade once and stay", "[parts]") {
+    // PHI1 runs for 25 ms, PHI2 stops after the first pair: faded to 0 after 10 ms, still 0
+    // later, and OUT shows it.
     constexpr std::size_t kPairs = 16'666;
-    Bench bench({Clock(10_us, kPairs, 250_ns), {}, {}, {}});
+    Bench bench({Clock(10_us, kPairs, 250_ns), Clock(10_us, 1, 750_ns), {}, {}});
     Simulator sim(bench.circuit);
     sim.powerOn(6);
-    const auto shiftsAt = [](Time t) { return static_cast<std::size_t>((t - 10_us) / kPair); };
-    const auto run = [&](Time t) {  // to the middle of the pair at t: no edge in flight
-        sim.runUntil(10_us + static_cast<Time>(shiftsAt(t)) * kPair + 1200_ns);
-        return bench.bits();
-    };
-    const std::bitset<512> at1 = run(1_ms);
-    CHECK(run(9_ms) == Rotated(at1, shiftsAt(9_ms) - shiftsAt(1_ms)));
-    const std::bitset<512> at11 = run(11_ms);
-    CHECK(at11 != Rotated(at1, shiftsAt(11_ms) - shiftsAt(1_ms)));
-    CHECK(run(19_ms) == Rotated(at11, shiftsAt(19_ms) - shiftsAt(11_ms)));
-    const std::bitset<512> at21 = run(21_ms);
-    CHECK(at21 != Rotated(at11, shiftsAt(21_ms) - shiftsAt(11_ms)));
+    sim.runUntil(1_ms);
+    REQUIRE(bench.bits().any());
+    sim.runUntil(9_ms);
+    CHECK(bench.bits().any());
+    sim.runUntil(11_ms);
+    CHECK(bench.bits().none());
+    sim.runUntil(24_ms);
+    CHECK(bench.bits().none());
+    CHECK(sim.value(bench.out) == Zero);
+}
+
+TEST_CASE("2524: written after a fade, the bits are kept", "[parts]") {
+    // Clocks stop 11 ms (PHI2 last: faded to 1), then run 1024 pairs: the first 512 write 0s,
+    // the next 512 recirculate them.
+    const Time restart = 10_us + kPair + 11_ms;
+    Steps phi1 = Clock(10_us, 1, 250_ns), phi2 = Clock(10_us, 1, 750_ns);
+    const Steps run1 = Clock(restart, 1024, 250_ns), run2 = Clock(restart, 1024, 750_ns);
+    phi1.insert(phi1.end(), run1.begin(), run1.end());
+    phi2.insert(phi2.end(), run2.begin(), run2.end());
+    Bench bench({phi1, phi2, {{restart, One}, {restart + 512 * kPair, Zero}}, {}});
+    Simulator sim(bench.circuit);
+    sim.powerOn(7);
+    sim.runUntil(restart + 600_ns);
+    CHECK(bench.bits().all());
+    sim.runUntil(restart + 1024 * kPair + 1_us);
+    CHECK(bench.bits().none());
 }
