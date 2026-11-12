@@ -14,7 +14,9 @@ Rough load estimate for a ZX80-class board (BW-80), to be measured:
 
 Current kernel: ≈ 37 M events/s on the test pattern. Gap: **≈ 3–6×**. Not hopeless, not there.
 
-Decision: keep building towards a real Machine; measure its real load before more kernel work (see Next steps). The simulation runs on its own thread, the UI on another: the single-threaded kernel needs a whole core.
+Decision: keep building towards a real Machine; measure its real load before more kernel work (see Next steps).
+
+Measured (P5a, 2026-11-12, [BUS_LOAD.md](../p5a-bus-load/BUS_LOAD.md)): `netlists/bus_load.bwn`, a stub Z80 with ZX80 bus timing, decoding and video, needs **120 M applied events/s** for real time and runs at **0.22×** (≈ 26 M/s, 644 instructions an event). Gap to the 2× target set then: ≈ 10×. Profile on that load: event queue `pop` + `push` 37 %, `runUntil` 25 %, Parts ≈ 30 %. The simulation runs on its own thread, the UI on another: the single-threaded kernel needs a whole core.
 
 ## How to measure
 
@@ -102,6 +104,16 @@ Split the board (e.g. CPU side, video side) over threads with conservative synch
 - The bus remains: 24+ real Nets per bus cycle, unavoidable if the player can probe them. Most of a BW-80's load will be there; any per-event saving counts.
 
 ## Next steps
+
+Done: 1 (P5a). Next, in P5b, on `netlists/bus_load.bwn` (release, `bw run --time 2s`, plus instructions retired):
+
+1. The event queue first: on this load it holds many pending events (address and data bits on 100–450 ns delays), so the timing wheel or a bucket queue rejected above is measured again here.
+2. The run loop's own code (25 %).
+3. Idea 1 on the hottest Parts (ROM, gate packages, 74LS157, 74LS74); generalise if it delivers.
+4. Ideas 2 and 3 only if 1–3 leave us short of 2×.
+
+The P1d plan, kept for history:
+
 
 1. Measure a BW-80-like load: a crude netlist with a stub CPU driving the bus at real timing, plus the video chain. Gives the real gap.
 2. If short: idea 1 on the 74LS161, measured in instructions; generalise if it delivers.

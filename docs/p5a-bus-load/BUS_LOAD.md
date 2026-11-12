@@ -1,6 +1,6 @@
 # P5a Bus load spike — Specification
 
-Roadmap row P5a ([ARCHITECTURE.md](../ARCHITECTURE.md), Roadmap). Design: [BUS_LOAD_DESIGN.md](BUS_LOAD_DESIGN.md). Plan: [BUS_LOAD_PLAN.md](BUS_LOAD_PLAN.md). Terminology: [GLOSSARY.md](../GLOSSARY.md).
+Roadmap row P5a ([ARCHITECTURE.md](../ARCHITECTURE.md), Roadmap). Row letters below follow the roadmap after P5a, which inserted P5b (kernel) and moved the later rows one letter on. Design: [BUS_LOAD_DESIGN.md](BUS_LOAD_DESIGN.md). Plan: [BUS_LOAD_PLAN.md](BUS_LOAD_PLAN.md). Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 ## Why
 
@@ -10,8 +10,8 @@ Today (2026-11-12, release, M5 Max, `bw run --time 2s`): test pattern 5.5×, 090
 
 ## What is new
 
-- **`Z80STUB`**, a catalogue Part on the real Z80 DIP-40 pinout. It does not execute code: it plays a fixed script of Z80 machine cycles shaped like a ZX80 showing its display, with Z80 pin timing at 3.25 MHz (S1). P5i's real Z80 Part takes its place on the same pins.
-- **DIP-40 package** (KiCad footprint, `kFootprints` row). P5b's 6502 needs it too.
+- **`Z80STUB`**, a catalogue Part on the real Z80 DIP-40 pinout. It does not execute code: it plays a fixed script of Z80 machine cycles shaped like a ZX80 showing its display, with Z80 pin timing at 3.25 MHz (S1). P5j's real Z80 Part takes its place on the same pins.
+- **DIP-40 package** (KiCad footprint, `kFootprints` row). P5c's 6502 needs it too.
 - **`netlists/bus_load.bwn`**: a ZX80-shaped circuit around the stub, existing Parts only (S2). No Board, no manuals, no Puzzles: a benchmark netlist, not a Machine. It runs in `bw run` and in `bw_ui` (netlist-only Session), and its TV shows a page of text.
 - **`roms/bus_load.rom`**: the 2716 contents (code-like bytes and an 8 × 8 character set), written by `roms/make_bus_load_rom.py` from `roms/2513.rom`.
 - **Measurements and a decision** (S3, S4), recorded here and in OPTIMISATION_IDEAS.
@@ -21,9 +21,9 @@ Today (2026-11-12, release, M5 Max, `bw run --time 2s`): test pattern 5.5×, 090
 | Question | Decision |
 |---|---|
 | The stub's bus traffic | a scripted ZX80 frame: display lines of M1 fetches from the display file with refresh, the NEWLINE HALT, an interrupt acknowledge, a few ROM and stack cycles; border lines of ROM fetches, RAM reads and writes; vertical sync from `IN`/`OUT` port `FE` |
-| Chips around it | existing catalogue Parts only; two 74LS244s stand in for the resistor-isolated data bus (pass, force NOP), a third for writes. P5j models the real ZX80 chips |
-| Threshold | ≥ 2× real time headless (release) means no kernel work. 1–2×: kernel work (idea 1, specialised evaluation) planned inside P5i, before BW-80. < 1×: kernel work becomes its own step before P5b |
-| Afterwards | kept as a benchmark: `Z80STUB` and `netlists/bus_load.bwn` stay; P5i swaps the real Z80 in and measures again |
+| Chips around it | existing catalogue Parts only; two 74LS244s stand in for the resistor-isolated data bus (pass, force NOP), a third for writes. P5k models the real ZX80 chips |
+| Threshold | ≥ 2× real time headless (release) means no kernel work. 1–2×: kernel work (idea 1, specialised evaluation) planned inside P5j, before BW-80. < 1×: kernel work becomes its own step before the 6502 Part |
+| Afterwards | kept as a benchmark: `Z80STUB` and `netlists/bus_load.bwn` stay; P5j swaps the real Z80 in and measures again |
 
 ## Behaviour
 
@@ -66,7 +66,24 @@ From S3.1 against the threshold above. The decision, with its numbers and the pr
 
 ## Results
 
-Filled in by the plan's last phase.
+Measured 2026-11-12, release, M5 Max ([BUS_LOAD_PLAN.md](BUS_LOAD_PLAN.md), notes, for the runs).
+
+| | bus_load | test pattern | typewriter |
+|---|---|---|---|
+| Ratio, `bw run --time 2s`, best of 3 alternated | **0.22×** (0.20–0.22) | 5.4× | 0.93× |
+| Applied events per simulated µs | 120 | 6 | 37 |
+| Evaluations per simulated µs | 129 | 12 | 59 |
+| Instructions per applied event | 644 | 768 | — |
+
+- The per-event cost is the P1d kernel's; the load is 20× the test pattern's events per µs. The estimate in OPTIMISATION_IDEAS (100–200 M events/s for real time) holds: 120 M. At ≈ 26 M applied events per wall second the kernel is 4.6× short of real time and 9× short of the 2× threshold.
+- Net changes per simulated µs (VCD, 5 ms of a running frame): clocks (`DOT`, `CLK`, `CLK_N`) 26; CPU data bus 18; memory data bus 17; CPU control 13; address 9; ROM address mux 9; decoding, video and sync 8.5; character latch 1.5. Total ≈ 102: the buses and their control are two thirds.
+- Profile (`sample`, 6,700 samples): event queue `pop` 27 %, `push` 11 %; `runUntil`'s own code 25 %; Parts ≈ 30 % (ROM 7 %, gate packages and `GateFunction` 9 %, 74LS157 4 %, 74LS74 3 %, 74LS244 2 %, the stub 2 %, 2114 1 %); `driveChanged` and `markNetDirty` 5 %. P1d's heap held 8–15 events; this Circuit keeps many more pending (address and data bits with 100–450 ns delays), and the queue becomes the largest single cost.
+- Recording 8 address Nets (`--record A0,…,A7`): no measurable cost (0.21× both ways).
+- `bw_ui netlists/bus_load.bwn`: 0.21×, UI 0.0 ms; the page on the TV (screenshot viewed).
+
+## Decision (2026-11-12)
+
+0.22× is below 1×: **kernel work becomes its own step, P5b, before the 6502** (the user's threshold). Target: ≥ 2× on `netlists/bus_load.bwn` headless, about 10× from today. A real Z80 Part replacing the stub adds its own evaluation cost, so the target keeps its margin. First levers, from the profile: the event queue (a bucket queue or timing wheel, rejected in P1d for a small heap, to be measured again on this load), the run loop's own code, then specialised evaluation (OPTIMISATION_IDEAS idea 1). The stub and the netlist stay as the benchmark.
 
 ## Done when
 
