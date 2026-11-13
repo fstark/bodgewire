@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <initializer_list>
+#include <string_view>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -218,4 +219,37 @@ TEST_CASE("6502 core: SO sets V", "[parts]") {
     sys.cycles(3);
     sys.core.setOverflow();
     CHECK((sys.core.registers().p & kV) != 0);
+}
+
+TEST_CASE("6502: decode gives the 151 documented opcodes", "[parts]") {
+    int documented = 0;
+    for (int code = 0; code < 256; ++code) {
+        documented += Mos6502Decode(static_cast<std::uint8_t>(code)).documented ? 1 : 0;
+    }
+    CHECK(documented == 151);
+
+    const auto is = [](std::uint8_t code, std::string_view mnemonic, Mos6502Operand operand,
+                       bool doc) {
+        const Mos6502Instruction i = Mos6502Decode(code);
+        CHECK(i.mnemonic == mnemonic);
+        CHECK(i.operand == operand);
+        CHECK(i.documented == doc);
+    };
+    using enum Mos6502Operand;
+    is(0xA9, "LDA", Immediate, true);
+    is(0x6C, "JMP", Indirect, true);
+    is(0x4C, "JMP", Absolute, true);
+    is(0x20, "JSR", Absolute, true);
+    is(0x96, "STX", ZeroPageY, true);
+    is(0xB1, "LDA", IndirectY, true);
+    is(0xA1, "LDA", IndirectX, true);
+    is(0x0A, "ASL", Accumulator, true);
+    is(0xD0, "BNE", Relative, true);
+    is(0x60, "RTS", None, true);
+    is(0x00, "BRK", None, true);
+    is(0xEA, "NOP", None, true);
+    is(0xEB, "SBC", Immediate, false);
+    is(0x1A, "NOP", None, false);
+    is(0xA7, "LAX", ZeroPage, false);
+    is(0x02, "JAM", None, false);
 }

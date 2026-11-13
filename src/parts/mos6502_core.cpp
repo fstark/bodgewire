@@ -1,6 +1,8 @@
 #include "parts/mos6502_core.hpp"
 
 #include <array>
+#include <cstddef>
+#include <string_view>
 
 namespace bw {
 
@@ -257,6 +259,78 @@ constexpr std::array<Opcode, 256> BuildOpcodes() {
 }
 
 constexpr std::array<Opcode, 256> kOpcodes = BuildOpcodes();
+
+// Mnemonics in the order of Op.
+constexpr std::array<std::string_view, static_cast<std::size_t>(Op::Jam) + 1> kMnemonics{
+    "LDA", "LDX", "LDY", "LAX", "ADC", "SBC", "AND", "ORA", "EOR", "CMP", "CPX", "CPY", "BIT",
+    "NOP", "LAS", "ANC", "ALR", "ARR", "SBX", "ANE", "LXA", "STA", "STX", "STY", "SAX", "SHA",
+    "SHX", "SHY", "TAS", "ASL", "LSR", "ROL", "ROR", "INC", "DEC", "SLO", "RLA", "SRE", "RRA",
+    "DCP", "ISC", "CLC", "SEC", "CLI", "SEI", "CLV", "CLD", "SED", "TAX", "TXA", "TAY", "TYA",
+    "TSX", "TXS", "INX", "INY", "DEX", "DEY", "PHA", "PHP", "PLA", "PLP", "BPL", "BMI", "BVC",
+    "BVS", "BCC", "BCS", "BNE", "BEQ", "JMP", "JSR", "RTS", "RTI", "BRK", "JAM"};
+static_assert(kMnemonics[static_cast<std::size_t>(Op::Lda)] == "LDA" &&
+              kMnemonics[static_cast<std::size_t>(Op::Dey)] == "DEY" && kMnemonics.back() == "JAM");
+
+constexpr bool IsDocumentedOp(Op op) {
+    switch (op) {
+    case Op::Lax:
+    case Op::Las:
+    case Op::Anc:
+    case Op::Alr:
+    case Op::Arr:
+    case Op::Sbx:
+    case Op::Ane:
+    case Op::Lxa:
+    case Op::Sax:
+    case Op::Sha:
+    case Op::Shx:
+    case Op::Shy:
+    case Op::Tas:
+    case Op::Slo:
+    case Op::Rla:
+    case Op::Sre:
+    case Op::Rra:
+    case Op::Dcp:
+    case Op::Isc:
+    case Op::Jam:
+        return false;
+    default:
+        return true;
+    }
+}
+
+constexpr Mos6502Operand OperandOf(Mode mode) {
+    switch (mode) {
+    case Mode::Accumulator:
+        return Mos6502Operand::Accumulator;
+    case Mode::Immediate:
+        return Mos6502Operand::Immediate;
+    case Mode::ZeroPage:
+        return Mos6502Operand::ZeroPage;
+    case Mode::ZeroPageX:
+        return Mos6502Operand::ZeroPageX;
+    case Mode::ZeroPageY:
+        return Mos6502Operand::ZeroPageY;
+    case Mode::Absolute:
+    case Mode::JumpAbsolute:
+    case Mode::Call:
+        return Mos6502Operand::Absolute;
+    case Mode::AbsoluteX:
+        return Mos6502Operand::AbsoluteX;
+    case Mode::AbsoluteY:
+        return Mos6502Operand::AbsoluteY;
+    case Mode::JumpIndirect:
+        return Mos6502Operand::Indirect;
+    case Mode::IndirectX:
+        return Mos6502Operand::IndirectX;
+    case Mode::IndirectY:
+        return Mos6502Operand::IndirectY;
+    case Mode::Relative:
+        return Mos6502Operand::Relative;
+    default:  // Implied, Return, ReturnFromInterrupt, Break, Push, Pull, Jam
+        return Mos6502Operand::None;
+    }
+}
 
 constexpr std::uint16_t Stack(std::uint8_t s) { return static_cast<std::uint16_t>(0x0100 | s); }
 
@@ -1031,6 +1105,13 @@ bool Mos6502Core::branchTaken() const {
     default:  // Beq
         return (p & kZ) != 0;
     }
+}
+
+Mos6502Instruction Mos6502Decode(std::uint8_t opcode) {
+    const Opcode& o = kOpcodes[opcode];
+    const bool documented =
+        IsDocumentedOp(o.op) && (o.op != Op::Nop || opcode == 0xEA) && opcode != 0xEB;
+    return {kMnemonics[static_cast<std::size_t>(o.op)], OperandOf(o.mode), documented};
 }
 
 }  // namespace bw

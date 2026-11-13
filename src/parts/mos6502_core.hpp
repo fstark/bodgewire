@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 
 namespace bw {
 
@@ -9,6 +10,32 @@ struct Mos6502Registers {
     std::uint16_t pc = 0;
     std::uint8_t a = 0, x = 0, y = 0, s = 0, p = 0;
 };
+
+// How an instruction's operand is written in assembly.
+enum class Mos6502Operand : std::uint8_t {
+    None,
+    Accumulator,
+    Immediate,
+    ZeroPage,
+    ZeroPageX,
+    ZeroPageY,
+    Absolute,
+    AbsoluteX,
+    AbsoluteY,
+    Indirect,
+    IndirectX,
+    IndirectY,
+    Relative
+};
+
+// An opcode as an assembler sees it, from the core's own table (so the two cannot disagree).
+struct Mos6502Instruction {
+    std::string_view mnemonic;  // upper case; undocumented ones by their usual names
+    Mos6502Operand operand = Mos6502Operand::None;
+    bool documented = false;  // one of the 151 in the MOS data sheet
+};
+
+Mos6502Instruction Mos6502Decode(std::uint8_t opcode);
 
 // One bus cycle as the CPU drives it.
 struct Mos6502Bus {

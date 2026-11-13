@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "asm/asm6502.hpp"
 #include "board/board_check.hpp"
 #include "board/footprint.hpp"
 #include "board/kicad_board.hpp"
@@ -54,7 +55,8 @@ constexpr std::string_view kUsage =
     "       bw export-kicad <file.bwn> -o <file.net>\n"
     "       bw check-board <file.bwn> <file.kicad_pcb>\n"
     "       bw place <file.bwn> <file.place> -o <file.kicad_pcb> [--seed 1] [--tries 4] "
-    "[--footprints DIR] [--force]";
+    "[--footprints DIR] [--force]\n"
+    "       bw asm <file.asm> -o <file.rom>";
 
 struct Options {
     std::string file;
@@ -288,6 +290,27 @@ std::optional<std::string> ReadText(const std::filesystem::path& path) {
     std::ostringstream text;
     text << in.rdbuf();
     return text.str();
+}
+
+int AsmCommand(std::span<char*> args) {
+    if (args.size() != 5 || std::string_view(args[3]) != "-o") {
+        return UsageError("asm needs <file.asm> -o <file.rom>");
+    }
+    const std::string_view out = args[4];
+    const auto rom = Assemble6502File(args[2]);
+    if (!rom) {
+        std::println(stderr, "bw: {}", rom.error());
+        return kExitNetlistErrors;
+    }
+    std::ofstream file{std::string(out), std::ios::binary};
+    file << rom->text;
+    if (!file) {
+        std::println(stderr, "bw: cannot write '{}'", out);
+        return kExitNetlistErrors;
+    }
+    std::println("{}: {} bytes at ${:04X}-${:04X}", out, rom->words.size(), rom->base,
+                 rom->base + rom->words.size() - 1);
+    return 0;
 }
 
 int PlaceCommand(std::span<char*> args) {
@@ -619,5 +642,8 @@ int main(int argc, char** argv) {
     if (command == "place") {
         return PlaceCommand(args);
     }
-    return UsageError("expected 'run', 'export-kicad', 'check-board' or 'place'");
+    if (command == "asm") {
+        return AsmCommand(args);
+    }
+    return UsageError("expected 'run', 'export-kicad', 'check-board', 'place' or 'asm'");
 }

@@ -6,6 +6,7 @@ FetchContent_Declare(Catch2
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(bw_tests
+  asm/asm6502_test.cpp
   board/board_check_test.cpp
   board/boards_test.cpp
   board/copper_test.cpp
@@ -120,7 +121,7 @@ add_executable(bw_tests
   view/keyboard_layout_test.cpp
   view/viewport_test.cpp
 )
-target_link_libraries(bw_tests PRIVATE bw_board bw_devices bw_instruments bw_machine bw_manual
+target_link_libraries(bw_tests PRIVATE bw_asm bw_board bw_devices bw_instruments bw_machine bw_manual
                                        bw_runner bw_session bw_view bw_warnings
                                        Catch2::Catch2WithMain)
 target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR}/netlists"
@@ -128,11 +129,23 @@ target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR
                                            BW_FOOTPRINT_DIR="${PROJECT_SOURCE_DIR}/boards/footprints"
                                            BW_PUZZLE_DIR="${PROJECT_SOURCE_DIR}/puzzles"
                                            BW_ROOT_DIR="${PROJECT_SOURCE_DIR}"
+                                           BW_ROM_DIR="${PROJECT_SOURCE_DIR}/roms"
                                            BW_6502_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data/6502"
                                            BW_6502_EXTERNAL_DIR="${PROJECT_SOURCE_DIR}/external/6502")
 
 include(Catch)
 catch_discover_tests(bw_tests)
+
+# bw asm on every ROM program: its output must be the committed .rom.
+file(GLOB programs CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/roms/*.asm)
+foreach(program ${programs})
+  get_filename_component(name ${program} NAME_WE)
+  add_test(NAME asm_${name}
+           COMMAND ${CMAKE_COMMAND} -DBW=$<TARGET_FILE:bw> -DSOURCE=${program}
+                   -DEXPECTED=${PROJECT_SOURCE_DIR}/roms/${name}.rom
+                   -DOUT=${CMAKE_CURRENT_BINARY_DIR}/asm_${name}.rom
+                   -P ${CMAKE_CURRENT_SOURCE_DIR}/asm_cli.cmake)
+endforeach()
 
 # KiCad's own design rule check on every committed Board; no kicad-cli, no tests.
 find_program(BW_KICAD_CLI kicad-cli PATHS /Applications/KiCad/KiCad.app/Contents/MacOS)
