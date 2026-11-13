@@ -14,7 +14,7 @@ P5a measured a ZX80-shaped load, `netlists/bus_load.bwn`, at **0.22×** real tim
 - **Guard 3, one idea at a time:** one commit each, kept only if it gains ≥ 5 % on `bus_load` (ratio and cycles elapsed, decided during phase 2; instructions logged) and its code reads as plainly as what it replaces; otherwise reverted and logged. Other Machines may get slower if they stay correct; measured and reported each time (every `netlists/*.bwn`). For specialised evaluation (S3.4) the unit is the conversion, not the Part: the ROM is kept on the user's OK as the pattern; further Parts are each committed and logged, and the 5 % bar applies to the summed conversion (ROM plus the Parts after it, against the last row before the ROM), measured before phase 6 closes; if it falls short, the whole conversion is reverted together.
 - **Progress:** before each idea the user is told what is tried, the gain expected and the files touched; after measuring, the result (ratio, instructions, other netlists) and kept or dropped. The plan's idea log has one row per idea.
 
-## User decisions (2026-11-12)
+## User decisions (2026-11-12, 2026-11-13)
 
 | Question | Decision |
 |---|---|
@@ -24,6 +24,7 @@ P5a measured a ZX80-shaped load, `netlists/bus_load.bwn`, at **0.22×** real tim
 | The bar of guard 3 (asked during phase 2) | ratio and **cycles elapsed** (`/usr/bin/time -l`), each ≥ 5 % on `bus_load`; instructions retired still logged. On `bus_load` the CPU retires ≈ 3.6 instructions a cycle (5.7 on the test pattern): time goes to stalls as well as instructions, so an idea that saves only stalls counts |
 | Specialised evaluation, first Part | the ROM (`Rom`, 2716 and 2513): the hottest single Part on `bus_load`, and the shape later memories and CPUs follow. Shown to the user, who OKs it before any other Part is converted |
 | The ROM, and four ideas from a second look at the code, each measured first on a scratch copy (asked after phase 5) | the ROM is kept. All four are applied, one commit each: the event queue as runs of same-time events (idea 1f), sampled inputs that never wake their Component (idea 5), gate packages specialised (idea 4.2), a small change to the run loop (idea 2b; of the three measured together on the scratch copy, the one that gains when measured alone). Idea 5 adds a `PinSpec` field: the exception to guard 2 this decision allows. Ideas 5 and 2b gain less than 5 % alone and are kept on this decision |
+| What follows P5b, short of 2× (asked at the end, 2026-11-13) | option 1 (Results): on to the 6502 with this kernel; the BW-2001 load measured when its netlist exists, the real Z80 on `bus_load` at P5j, before any further kernel work. Options 2–5 stay open for then |
 
 ## Behaviour
 
@@ -89,9 +90,9 @@ Every netlist is faster; none got slower. Traces identical to the P5a kernel thr
 
 What gained, in points of the baseline's cycles (rounded; the machine's speed drifted between rows): the event queue, one 128-bit key then runs of same-time events (1a, 1f: −30), specialised evaluation of the ROM and gate packages (−10), LTO (−5), sampled inputs (−2), the Net of each Pin kept by the Simulator (−1). What did not: timing wheels and other heaps, the run loop's own lines (no line over 2 %), and the hand-written Parts (74LS157, 74LS244: their Pins and delays are already constants; their cost is the `read` and `drive` calls themselves).
 
-**Aim not met:** 0.40× against 2×. Within the three guards, nothing left reaches the 5 % bar alone. The options, each bending the design and so the user's to choose ([OPTIMISATION_IDEAS.md](../p1d-kernel-perf/OPTIMISATION_IDEAS.md), Next steps):
+**Aim not met:** 0.40× against 2×. Within the three guards, nothing left reaches the 5 % bar alone. The options, each bending the design and so the user's to choose ([OPTIMISATION_IDEAS.md](../p1d-kernel-perf/OPTIMISATION_IDEAS.md), Next steps). **Chosen 2026-11-13: option 1** (User decisions).
 
-1. **Go on to the 6502 with this kernel** (recommended). `bus_load` is the BW-80, the last and heaviest computer; the 6502 Machines run at 1 MHz with no refresh or NOP forcing. Measure the BW-2001 load when its netlist exists, and the real Z80 in place of the stub (P5j), before choosing more.
+1. **Go on to the 6502 with this kernel** (chosen). `bus_load` is the BW-80, the last and heaviest computer; the 6502 Machines run at 1 MHz with no refresh or NOP forcing. Measure the BW-2001 load when its netlist exists, and the real Z80 in place of the stub (P5j), before choosing more.
 2. **An `EvalContext` that reads and drives several Pins at once** (Part API change, OPTIMISATION_IDEAS idea 1's real lever): the cost left in Parts is per-Pin bookkeeping. Estimated 10–20 %, not measured.
 3. **A Bus as one entity** (its lines changing at one time taken as one event): a second kernel path; 1.3–1.5× estimated from event counts.
 4. **Two cores** (idea 6), CPU side and video side: up to ≈ 2×, at the price of conservative synchronisation in the kernel.

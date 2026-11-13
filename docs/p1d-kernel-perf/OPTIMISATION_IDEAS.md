@@ -121,13 +121,42 @@ Split the board (e.g. CPU side, video side) over threads with conservative synch
 - Behavioural CPU, RAM, ROM (already planned): one evaluation per bus cycle instead of internal events.
 - The bus remains: 24+ real Nets per bus cycle, unavoidable if the player can probe them. Most of a BW-80's load will be there; any per-event saving counts.
 
+### 8. A Bus as one entity
+
+The user's idea (2026-11-13), assessed, not built. A Bus is kept as one word (value, with a driven mask and an unknown mask) in place of one Net per line; Parts read and drive it as a word; a Bus touched by a Fault goes back to one Net per line.
+
+Measured on `netlists/bus_load.bwn` with the kernel of `a0bc4cf` (0.41×) by `bench/bus_groups.py netlists/bus_load.bwn`: it runs 60 ms with every Net recorded (seed 1) and counts the Bus bits changing at one timestamp. A count of events, not a speed. To be run again when the Z80 Part replaces the stub (P5j).
+
+- Per simulated µs: 119 applied events, 113 evaluations, 95 Net changes. Of the Net changes: Buses 45 (`A` 10.4, `D` 10.4, `MD` 13.4, `RA` 9.5, `CH` 1.6, `LC` under 0.1), clocks 26, single control and glue lines 24. 47 of the 86 Nets are Bus lines.
+- The bits of a Bus changing at one timestamp taken as one event, timing unchanged: 45 → 12 (3.8 bits a group, a chip schedules only the bits that differ), all Net changes 95 → 62, 1.54× fewer.
+- Only lines joining the same chips grouped (a chip's Bus pins fully connected to another's): 45 → 26, all Net changes 95 → 76, 1.26× fewer. Only `D0`–`D7` is whole. The address Bus is 8 pieces (lines go off to decoders and to 4-bit chips), `MD` 3, `RA` 3.
+- One Bus transition is not always one timestamp: TTL drivers have different rise and fall delays (74LS157 select 15/18 ns, 74LS175 20/21 ns, 74LS244 enable 15/20 ns), so the rising bits and the falling bits land apart. With groups within 10 ns merged: 11.9 → 9.7 a µs.
+
+Estimated from these counts and the P5b profile (run loop a third, queue a fifth, Parts the rest), not measured:
+
+- 1.3–1.5× with lines grouped by the chip that drives them (0.41× → 0.55–0.6×); 1.1–1.2× under the fully-connected rule. Real time needs 2.5×.
+- Evaluations do not drop: chips wake at the same timestamps, and Parts are almost half the time.
+
+What it costs:
+
+- A second kernel path, out by P5b's guard 2 and by the P5 decision of 2026-11-12 (Buses as individual Nets). It must match the first per Pin: inertial delay (each Pin has its own pending change), resolution per Net (strength, contention, floating), the random bit an X input draws, in Pin order.
+- Every Part with Bus pins rewritten (CPU, ROM, RAM, 74LS244, 74LS157, 74LS175, 74LS165). One path in each if a Part reads and drives a port (a word and its masks) and the kernel chooses per port.
+- A Puzzle with a Bus Fault (A4 stuck, D3 cracked) runs that Bus one Net per line: that path must reach real time anyway, or the faulty Machine runs slower than the healthy one.
+
+What is easy:
+
+- No switch while running. Repairs rebuild the Circuit at the next power-on, so each Bus is chosen at build; Instruments read one bit of the word.
+- Divergence can be tested: the trace check, with Buses forced to one Net per line, against the same run with them whole.
+
+Recommendation (2026-11-13): shelve. Look again only if what is left to real time is within its gain (about 1.4×). More than half the Net changes are clocks and single lines, which no Bus scheme touches.
+
 ## Next steps
 
-Done: 1 (P5a), P5b (2026-11-13): the event queue, LTO, specialised evaluation of the spec-table Parts (ROM, gate packages), sampled inputs; 0.40× on `bus_load`. Within P5b's guards (Part API, traces and simulated Nets unchanged, no second kernel path) nothing left reaches 5 % alone. The options, each the user's to choose (spec, Results):
+Done: 1 (P5a), P5b (2026-11-13): the event queue, LTO, specialised evaluation of the spec-table Parts (ROM, gate packages), sampled inputs; 0.40× on `bus_load`. Within P5b's guards (Part API, traces and simulated Nets unchanged, no second kernel path) nothing left reaches 5 % alone. The options (spec, Results); **the user chose 1 (2026-11-13)**, the others stay open for when the measurements ask:
 
-1. Go on to the 6502 with this kernel and measure the BW-2001 load, then the real Z80 in place of the stub (P5j), before more kernel work (recommended: `bus_load` is the heaviest computer).
+1. Go on to the 6502 with this kernel and measure the BW-2001 load (P5i), then the real Z80 in place of the stub (P5j), before more kernel work: `bus_load` is the heaviest computer.
 2. Idea 1's real lever: an `EvalContext` that reads and drives several Pins at once (a Part API change). The cost left in Parts is per-Pin bookkeeping; 10–20 % estimated.
-3. A Bus as one entity: 1.3–1.5× estimated, a second kernel path.
+3. Idea 8, a Bus as one entity: 1.3–1.5× estimated, a second kernel path; `bench/bus_groups.py` counted again with the real Z80.
 4. Idea 6, two cores (CPU side, video side): up to ≈ 2×.
 5. Idea 2, generated code.
 
