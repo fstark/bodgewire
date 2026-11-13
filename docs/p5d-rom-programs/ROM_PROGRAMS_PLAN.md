@@ -2,7 +2,9 @@
 
 Spec: [ROM_PROGRAMS.md](ROM_PROGRAMS.md). Design: [ROM_PROGRAMS_DESIGN.md](ROM_PROGRAMS_DESIGN.md). Machine: [LED_COMPUTER.md](../machines/110-led-computer/LED_COMPUTER.md), [LED_COMPUTER_DESIGN.md](../machines/110-led-computer/LED_COMPUTER_DESIGN.md).
 
-Every phase ends with its fence: `cmake --build --preset debug` clean (reconfigure first when files are added), `clang-format` on the C++ files touched, the tests the phase names green in debug, one commit of this step's own paths only. The full debug suite runs at phases 2 (catalogue rows: shared code) and 6.
+Done 2026-11-13, user check pending.
+
+Every phase ended with its fence: `cmake --build --preset debug` clean, `clang-format` on the C++ files touched, the tests the phase names green in debug (the full suite at phases 2 and 6), one commit. Only this step's own paths were committed.
 
 ## Status
 
@@ -11,52 +13,9 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (reconfigu
 | 1 | Decode and assembler | `837dcee` |
 | 2 | 74LS138, 74LS273, POR | `ba95150` |
 | 3 | Program, netlist, manuals, fault-free test | `2e028aa` |
-| 4 | Board (user routes) | this commit |
-| 5 | Session test, release check | |
-| 6 | Recipes, docs, full suite | |
-
-## Phase 1 — Decode and assembler
-
-- `Mos6502Decode` (design, Decode); core decode cases in `mos6502_core_test.cpp`.
-- `src/asm/` (`bw_asm`), `Assemble6502`, `Assemble6502File`; root `CMakeLists.txt`; `bw asm` in `main.cpp`.
-- `tests/asm/asm6502_test.cpp` (spec, Tests: Assembler), `BW_ROM_DIR`; the ROMs case passes with no `.asm` yet.
-- `tests/asm_cli.cmake` and the `asm_<name>` glob (no test until phase 3 adds an `.asm`).
-- Fence: `ctest --preset debug -j 12 -R "6502|asm|heartbeat"` (the core is in a Part Heartbeat uses; the CLI change is a new command only). Commit: `asm: bw asm, a 6502 assembler writing .rom files`.
-
-## Phase 2 — 74LS138, 74LS273, POR
-
-- The three Parts, delays, catalogue rows, `CreatePowerOnReset`, datasheets (ADD_PART, Files); `catalogue_test.cpp` and `PartPinNames` (`manual.cpp`) pass `time=1ms` to `POR` (design, Catalogue tests).
-- `tests/parts/ls138_test.cpp`, `ls273_test.cpp`, `power_on_reset_test.cpp` (spec, Tests).
-- Fence: full debug suite (catalogue is shared). Commit: `parts: 74LS138, 74LS273, power-on reset`.
-
-## Phase 3 — Program, netlist, manuals, fault-free test
-
-- `roms/led_computer.asm`, then `bw asm roms/led_computer.asm -o roms/led_computer.rom` (release build); check the listing's addresses and vectors by eye.
-- `netlists/led_computer.bwn`, manuals, `tests/machines/led_computer_test.cpp` built from the netlist (`LoadNetlistFile`) until the Board exists; `manuals_test.cpp` list.
-- VCD of the first 50 µs after the reset release (`bw run --record-all --vcd`): the vector fetch, the first `STA $8000` and its `LATCH_CLK` (about 31 µs after the release). One step measured against 124.78 ms from a longer run (`bw run --time 400ms --record LATCH_CLK`).
-- Debug time of the slow bounce case measured and noted (estimate 20–40 s).
-- Release headless `bw run netlists/led_computer.bwn --time 2s`: ratio noted.
-- Fence: `ctest --preset debug -R "led_computer|asm|manuals"`. Commit: `led computer: program, netlist, manuals, fault-free test`.
-
-## Phase 4 — Board
-
-- `boards/led_computer/led_computer.place`; `bw place` (release); the wire length and grid noted; `bw export-kicad netlists/led_computer.bwn -o /tmp/led_computer.net` if the user wants it.
-- Stop for the user: open `boards/led_computer/led_computer.kicad_pro`, route (constraints in LED_COMPUTER_DESIGN, Board), save.
-- After routing: `bw check-board` `ok`; per-Machine loops (`boards_test`, `electrical_test`, `board_scene_test`); the Machine test built from the Board (`LoadNetlistMachine`), the warnings case from the netlist.
-- Fence: `ctest --preset debug -j 12 -R "led_computer|boards|electrical|view:|drc"`. Commit: `led computer: Board`.
-
-## Phase 5 — Session test, release check
-
-- `session: led computer with every instrument` (Machine design, Per-Machine checks).
-- Release `bw_ui netlists/led_computer.bwn` with every instrument (`--probe`, `--clip`, `--hook`, `--meter`), screenshot at 1 s viewed; ratio 1.00×, UI ms noted.
-- Fence: `ctest --preset debug -R "session: led computer"`. Commit with phase 6.
-
-## Phase 6 — Recipes, docs, full suite
-
-- ADD_MACHINE (ROM programs, reference commits), ADD_PART (three kinds, reference commits, a required parameter needs `PartPinNames` too), any recipe step found wrong on the way.
-- ARCHITECTURE: P5d row done with the date, links; GAME_DESIGN ladder: a 110 row.
-- This plan cut to the status table and implementation notes, "user check pending".
-- Fence: full debug suite. Commit: `docs: P5d implemented, user check pending`.
+| 4 | Board (user routes) | `4c34956` |
+| 5 | Session test, release check | this commit |
+| 6 | Recipes, docs, full suite | this commit |
 
 ## Implementation notes
 
@@ -66,3 +25,6 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (reconfigu
 - Phase 2: full debug suite 869 green in 544 s. The POR's release lands exactly at `time` (one drive with the hold as its delay).
 - Phase 3: the program assembled first time as designed (`$F800`–`$F83D`, vectors at `$FFFA`). Release headless `bw run --time 2s`: **3.82×**, 11.5 M applied events a simulated second. VCD: `RES_N` rises at 20 ms, the first `LATCH_CLK` rise at 20.029 58 ms (80 ns after `PHI0` falls), `L0` at +17 ns; a 74LS02 power-on glitch on `LATCH_CLK` in the first 40 ns, as the review foresaw (the latch is held clear then). Steps measured 124.780 ms apart (20.030, 144.810, 269.590, 394.370 ms). Debug: the bounce case 27 s, the others under 6 s. The service manual first had addresses in backticks (`F800`), read as unknown references: written `$F800` in plain text.
 - Phase 4: `bw place` gave 3.59 m on a 6 × 3 grid, the LED resistors in the two front rows of the grid. The user routed it and, before routing, moved the chip block as a whole, stood `R1`–`R8` upright (−90°) behind their LEDs, moved `R10`, `R11` and turned `SW1` 180°; so the committed Board is not what `led_computer.place` gives (`place_drc_led_computer` checks the rules' own Board). `check-board` ok; KiCad DRC 0 violations, 0 unconnected. The Machine tests now run on the routed Board; fence 58 green.
+- Phase 5: `session: led computer with every instrument` green (4 s debug): 8 Clips on the data bus, Hooks on `LATCH_CLK` and `PHI0`, the probe on `ROM_N`, the meter on `D1`; `D3` lit at 300 ms, the others dark. Release `bw_ui netlists/led_computer.bwn` with the same instruments: 1.00×, UI 0.7 ms; screenshots viewed (the meter 0.20 V on the dark `D1` at 1 s; at 1.3 s `D5` lit and `D6` fading, the eleventh write).
+- Phase 6: full debug suite 879 green in 493 s. Recipes (ADD_MACHINE: programs, `$` addresses in manuals, a `POR` on processor Machines; ADD_PART: a Part acting by itself, a required parameter and `PartPinNames`), ARCHITECTURE row, GAME_DESIGN ladder row 110.
+- User check pending: `bw_ui netlists/led_computer.bwn` (the light, Reset with `SW1`, the instruments on the bus and strobes); `bw asm` on a program of your own.

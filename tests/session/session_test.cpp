@@ -473,6 +473,44 @@ TEST_CASE("session: heartbeat with every instrument", "[session][slow]") {
     session.powerOff();
 }
 
+TEST_CASE("session: led computer with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "led_computer.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    REQUIRE(session.leds().size() == 8);
+    CHECK(session.leds()[0].reference == "D1");
+    CHECK(session.leds()[7].reference == "D8");
+
+    // 16 LED Nets + 8 Clips + 2 Hooks + the probe = 27 watched; the meter lead's Net is an LED's.
+    for (int bit = 0; bit < 8; ++bit) {
+        REQUIRE(session.clip("U1", "D" + std::to_string(bit)).has_value());
+    }
+    REQUIRE(session.hook("U6", "4Y").has_value());  // LATCH_CLK
+    REQUIRE(session.hook("U1", "PHI0").has_value());
+    const auto rom = session.padLead("U5", "Y7_N");  // ROM_N
+    const auto anode = session.padLead("D1", "A");
+    REQUIRE(rom.has_value());
+    REQUIRE(anode.has_value());
+    session.touch(ProbeTip{rom->at, Layer::Front});
+    REQUIRE(session.placeLead({anode->at, Layer::Front, anode->label}));
+
+    // Latch writes at about 20.03, 144.8 and 269.6 ms: the light on D3 at 300 ms.
+    session.powerOn(1, 300_ms);
+    session.runner().waitIdle();
+    for (std::size_t i = 0; i < 8; ++i) {
+        INFO(session.leds()[i].reference);
+        if (i == 2) {
+            CHECK(session.leds()[i].brightness > 0.9f);
+        } else {
+            CHECK(session.leds()[i].brightness < 0.1f);
+        }
+    }
+    session.powerOff();
+}
+
 TEST_CASE("session: ball with every instrument", "[session][slow]") {
     auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
     REQUIRE(machine.has_value());

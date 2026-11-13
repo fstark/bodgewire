@@ -79,6 +79,7 @@ Tutorial ladder, by difficulty, each spec in `docs/machines/NNN-name/`:
 | 080 | Message display | TV | fixed text: sync counters → message ROM → character ROM → shift register; the BW-2001 video chain with ROM instead of RAM |
 | 090 | TV typewriter | TV, ASCII keyboard | built as the 1973 TV Typewriter (half of the Apple 1): a page in MOS shift registers going round with the beam, written at a cursor from an ASCII keyboard when its cell comes round; memory without addresses before any CPU |
 | 100 | Heartbeat | LEDs, Reset button | the first processor: a 6502 free-running on a data bus held at NOP, its address lines on LEDs; the free-run test of a dead computer |
+| 110 | LED computer | LEDs, Reset button | the first computer: a 6502 running a program from ROM, RAM for its variables and stack, an address decoder and an output latch; a light bouncing along 8 LEDs |
 
 - LEDs, digits and buttons whose arrangement belongs to the Board are Components on it (clicked or watched in the board view, faulty like any other); standard devices (TV, keyboard) sit off the Board behind a Connector.
 
