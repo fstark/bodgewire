@@ -7,12 +7,14 @@ add_library(bw_parts STATIC
   keyboard.cpp
   led.cpp
   ls107.cpp
+  ls138.cpp
   ls157.cpp
   ls161.cpp
   ls164.cpp
   ls165.cpp
   ls175.cpp
   ls244.cpp
+  ls273.cpp
   ls47.cpp
   ls48.cpp
   ls74.cpp
@@ -22,6 +24,7 @@ add_library(bw_parts STATIC
   mos6502_core.cpp
   oscillator.cpp
   paddle.cpp
+  power_on_reset.cpp
   ram2114.cpp
   rom.cpp
   rom_contents.cpp

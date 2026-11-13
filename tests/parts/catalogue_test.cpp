@@ -33,6 +33,9 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         if (part.name == "OSC") {
             params.push_back({"freq", "1MHz"});
         }
+        if (part.name == "POR") {
+            params.push_back({"time", "1ms"});
+        }
         if (FindRomSpec(part.name) != nullptr) {
             params.push_back({"contents", std::string(BW_ROOT_DIR) + "/tests/data/empty.rom"});
         }

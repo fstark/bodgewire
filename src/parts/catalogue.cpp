@@ -12,12 +12,14 @@
 #include "parts/keyboard.hpp"
 #include "parts/led.hpp"
 #include "parts/ls107.hpp"
+#include "parts/ls138.hpp"
 #include "parts/ls157.hpp"
 #include "parts/ls161.hpp"
 #include "parts/ls164.hpp"
 #include "parts/ls165.hpp"
 #include "parts/ls175.hpp"
 #include "parts/ls244.hpp"
+#include "parts/ls273.hpp"
 #include "parts/ls47.hpp"
 #include "parts/ls48.hpp"
 #include "parts/ls74.hpp"
@@ -26,6 +28,7 @@
 #include "parts/mos6502.hpp"
 #include "parts/oscillator.hpp"
 #include "parts/paddle.hpp"
+#include "parts/power_on_reset.hpp"
 #include "parts/ram2114.hpp"
 #include "parts/rom.hpp"
 #include "parts/rom_contents.hpp"
@@ -152,6 +155,28 @@ std::expected<Component*, std::string> CreatePaddle(Circuit& circuit, std::strin
     return &circuit.add<Paddle>(std::move(reference), *low, *high, reversed);
 }
 
+std::expected<Component*, std::string> CreatePowerOnReset(Circuit& circuit, std::string reference,
+                                                          std::span<const PartParam> params) {
+    const PartParam* time = nullptr;
+    for (const PartParam& param : params) {
+        if (param.name != "time") {
+            return std::unexpected("POR: unknown parameter '" + param.name + "'");
+        }
+        time = &param;
+    }
+    if (time == nullptr) {
+        return std::unexpected("POR needs time=<duration>");
+    }
+    const auto hold = DurationFromText(time->value);
+    if (!hold) {
+        return std::unexpected(hold.error());
+    }
+    if (*hold < 1'000'000) {
+        return std::unexpected("POR: time must be at least 1us");
+    }
+    return &circuit.add<PowerOnReset>(std::move(reference), *hold);
+}
+
 std::expected<Component*, std::string> CreateKeyboard(Circuit& circuit, std::string reference,
                                                       std::span<const PartParam> params) {
     Time strobe = kKeyboardStrobe;
@@ -225,6 +250,7 @@ constexpr std::array s_parts{
     PartInfo{"74LS04", "hex inverter", "DIP-14", Chip, &CreateGatePackage<"74LS04">},
     PartInfo{"74LS08", "quad 2-input AND", "DIP-14", Chip, &CreateGatePackage<"74LS08">},
     PartInfo{"74LS107", "dual JK flip-flop, clear", "DIP-14", Chip, &CreateChip<Ls107, "74LS107">},
+    PartInfo{"74LS138", "3-to-8 line decoder", "DIP-16", Chip, &CreateChip<Ls138, "74LS138">},
     PartInfo{"74LS157", "quad 2-to-1 multiplexer", "DIP-16", Chip, &CreateChip<Ls157, "74LS157">},
     PartInfo{"74LS161", "synchronous 4-bit binary counter", "DIP-16", Chip,
              &CreateChip<Ls161, "74LS161">},
@@ -236,6 +262,7 @@ constexpr std::array s_parts{
     PartInfo{"74LS20", "dual 4-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS20">},
     PartInfo{"74LS244", "octal buffer, tri-state", "DIP-20", Chip, &CreateChip<Ls244, "74LS244">},
     PartInfo{"74LS27", "triple 3-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS27">},
+    PartInfo{"74LS273", "octal D flip-flop, clear", "DIP-20", Chip, &CreateChip<Ls273, "74LS273">},
     PartInfo{"74LS30", "8-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS30">},
     PartInfo{"74LS32", "quad 2-input OR", "DIP-14", Chip, &CreateGatePackage<"74LS32">},
     PartInfo{"74LS47", "BCD to 7-segment decoder, open collector", "DIP-16", Chip,
@@ -254,6 +281,7 @@ constexpr std::array s_parts{
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
     PartInfo{"PADDLE", "paddle controller connector", "KK-4", Connector, &CreatePaddle},
+    PartInfo{"POR", "power-on reset", "DIP-8", Chip, &CreatePowerOnReset},
     PartInfo{"POWER", "5 V power connector", "KK-2", Connector, &CreateConnector<"POWER">},
     PartInfo{"R", "resistor", "axial", Resistor, nullptr},
     PartInfo{"VIDEO", "TTL monitor connector", "KK-3", Connector, &CreateConnector<"VIDEO">},

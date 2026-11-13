@@ -233,6 +233,9 @@ std::vector<std::string> PartPinNames(const PartInfo& part) {
     if (part.name == "OSC") {
         params.push_back({"freq", "1MHz"});
     }
+    if (part.name == "POR") {
+        params.push_back({"time", "1ms"});
+    }
     if (part.name == "PADDLE") {
         params.push_back({"min", "30us"});
         params.push_back({"max", "9.93ms"});

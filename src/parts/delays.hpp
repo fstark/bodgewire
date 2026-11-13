@@ -43,6 +43,13 @@ inline constexpr Delays kLs165Load{22'000, 27'000};   // SH_LD_N → QH
 inline constexpr Delays kLs165Data{14'000, 21'000};   // H → QH while loading
 inline constexpr Delays kLs175ClockToQ{20'000, 21'000};
 inline constexpr Delays kLs175Clear{16'000, 20'000};  // Q_N rises, Q falls
+// 74LS138 (TI typicals; rise = output to 1).
+inline constexpr Delays kLs138Select{21'000, 21'000};    // A, B, C → Y (3 levels)
+inline constexpr Delays kLs138EnableG2{12'000, 20'000};  // G2A_N, G2B_N → Y
+inline constexpr Delays kLs138EnableG1{17'000, 26'000};  // G1 → Y
+// 74LS273 (TI typicals).
+inline constexpr Delays kLs273ClockToQ{17'000, 18'000};
+inline constexpr Delays kLs273Clear{18'000, 18'000};  // Q falls
 
 // ROMs: one delay for both edges. Intel 2716: maximums (no typicals published).
 inline constexpr Time k2716Access = 450'000;        // address → O
