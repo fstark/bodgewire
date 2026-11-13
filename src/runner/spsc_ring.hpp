@@ -3,28 +3,31 @@
 #include <atomic>
 #include <bit>
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <type_traits>
-#include <vector>
 
 #include "sim/check.hpp"
 
 namespace bw {
 
-// Lock-free single-producer/single-consumer FIFO; capacity is a power of two.
+// Lock-free single-producer/single-consumer FIFO; capacity is a power of two. Its memory is
+// allocated, not written: pages are committed only as slots are used.
 template <class T>
 class SpscRing {
     static_assert(std::is_trivially_copyable_v<T>);
 
 public:
-    explicit SpscRing(std::size_t capacity) : slots_(capacity), mask_(capacity - 1) {
+    explicit SpscRing(std::size_t capacity)
+        : slots_(std::allocator<T>{}.allocate(capacity), Deleter{capacity}), capacity_(capacity),
+          mask_(capacity - 1) {
         Check(capacity >= 2 && std::has_single_bit(capacity),
               "spsc ring: capacity must be a power of two >= 2");
     }
 
     bool tryPush(const T& value) {  // producer; false if full
         const std::size_t head = head_.load(std::memory_order_relaxed);
-        if (head - tail_.load(std::memory_order_acquire) == slots_.size()) {
+        if (head - tail_.load(std::memory_order_acquire) == capacity_) {
             return false;
         }
         slots_[head & mask_] = value;
@@ -47,7 +50,14 @@ public:
     }
 
 private:
-    std::vector<T> slots_;
+    struct Deleter {
+        std::size_t capacity;
+        void operator()(T* slots) const { std::allocator<T>{}.deallocate(slots, capacity); }
+    };
+
+    // Trivially copyable: assigning a slot starts its object's lifetime.
+    std::unique_ptr<T[], Deleter> slots_;
+    std::size_t capacity_;
     std::size_t mask_;
     alignas(64) std::atomic<std::size_t> head_{0};
     alignas(64) std::atomic<std::size_t> tail_{0};

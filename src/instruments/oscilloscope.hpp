@@ -10,7 +10,7 @@
 
 namespace bw {
 
-inline constexpr std::size_t kScopeChannels = 2;
+inline constexpr std::size_t kScopeChannels = 4;
 inline constexpr Time kDivisions = 10;
 // ps per division: 5 ns … 10 ms in 1-2-5 steps.
 inline constexpr std::array<Time, 20> kTimebases{
@@ -19,6 +19,7 @@ inline constexpr std::array<Time, 20> kTimebases{
     10'000'000,  20'000'000,    50'000'000,    100'000'000,   200'000'000,
     500'000'000, 1'000'000'000, 2'000'000'000, 5'000'000'000, 10'000'000'000};
 inline constexpr Time kAutoWait = 50'000'000'000;  // ps; auto waits max(this, one Sweep)
+inline constexpr Time kMaxDelayDivisions = 1000;
 
 enum class ScopeEdge : std::uint8_t { Rise, Fall };
 enum class ScopeMode : std::uint8_t { Auto, Normal };
@@ -29,6 +30,7 @@ struct ScopeSettings {
     std::size_t source = 0;     // Trigger Channel
     ScopeEdge edge = ScopeEdge::Rise;
     ScopeMode mode = ScopeMode::Auto;
+    Time delay = 0;  // ps from the Trigger to the screen's Trigger mark; 0..1000 divisions
     bool operator==(const ScopeSettings&) const = default;
 };
 
@@ -36,7 +38,8 @@ struct Sweep {
     std::uint64_t serial = 0;  // 0: none yet
     SweepKind kind = SweepKind::None;
     Time timebase = 0;
-    Time start = 0;  // ps since power-on of the left edge; Trigger at start + timebase
+    Time delay = 0;  // as configured for this Sweep
+    Time start = 0;  // ps since power-on of the left edge, at Trigger + delay - timebase
     // Per Channel: the value at `start` (time = start), then every change in
     // (start, start + 10 divisions]. Empty: no Hook.
     std::array<std::vector<Sample>, kScopeChannels> channels;
@@ -70,7 +73,8 @@ private:
 
     ScopeSettings settings_;
     std::array<std::vector<Sample>, kScopeChannels> history_;
-    std::array<LogicValue, kScopeChannels> last_{LogicValue::X, LogicValue::X};
+    std::array<LogicValue, kScopeChannels> last_{LogicValue::X, LogicValue::X, LogicValue::X,
+                                                 LogicValue::X};
     std::array<bool, kScopeChannels> hooked_{};
     Time now_ = 0;  // latest change or advanceTo
     bool sweeping_ = false;

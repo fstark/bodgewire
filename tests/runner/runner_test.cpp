@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <map>
 #include <memory>
+#include <span>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -256,4 +258,46 @@ TEST_CASE("runner: wake applies a button press at the next slice", "[runner]") {
     const Sample& last = log.samples.back();
     CHECK(last.value == LogicValue::Zero);
     CHECK(last.time == 2_ms + kButtonDelay);
+}
+
+namespace {
+
+class ManyNets final : public Consumer {
+public:
+    explicit ManyNets(std::vector<NetId> nets) : nets_(std::move(nets)) {}
+    std::span<const NetId> nets() const override { return nets_; }
+    void powerOn() override {}
+    void sample(NetId net, Sample) override { ++counts[net]; }
+    void seed(NetId net, Sample) override { ++counts[net]; }
+    void advanceTo(Time) override {}
+    void powerOff() override {}
+
+    std::map<NetId, std::size_t> counts;
+
+private:
+    std::vector<NetId> nets_;
+};
+
+}  // namespace
+
+TEST_CASE("runner: 96 watched Nets", "[runner]") {
+    auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "tennis.bwn");
+    REQUIRE(loaded.has_value());
+    std::vector<NetId> nets;
+    for (const auto& [name, net] : (*loaded)->nets) {
+        if (nets.size() < kMaxWatched && std::ranges::find(nets, net) == nets.end()) {
+            nets.push_back(net);
+        }
+    }
+    REQUIRE(nets.size() == kMaxWatched);
+    ManyNets many(nets);
+    Runner runner((*loaded)->circuit, {&many});
+    runner.setSpeed(Speed::Max);
+    runner.pauseAt(2_ms);
+    runner.powerOn(1);
+    runner.waitIdle();
+    for (const NetId net : nets) {
+        INFO(ToIndex(net));
+        CHECK(many.counts[net] >= 1);
+    }
 }

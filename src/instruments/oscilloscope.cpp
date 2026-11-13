@@ -18,6 +18,7 @@ void ScopeState::powerOn() {
 
 void ScopeState::configure(const ScopeSettings& settings, Time now) {
     settings_ = settings;
+    settings_.delay = std::clamp<Time>(settings_.delay, 0, kMaxDelayDivisions * settings_.timebase);
     sweeping_ = false;
     pending_.reset();
     waitFrom_ = now;
@@ -90,7 +91,7 @@ void ScopeState::catchUp(Time time, bool inclusive) {
 
 void ScopeState::startSweep(Time trigger, SweepKind kind) {
     sweeping_ = true;
-    start_ = trigger - settings_.timebase;
+    start_ = trigger + settings_.delay - settings_.timebase;
     end_ = start_ + kDivisions * settings_.timebase;
     kind_ = kind;
 }
@@ -119,6 +120,7 @@ void ScopeState::materialize() {
     ++sweep_.serial;
     sweep_.kind = pending_->kind;
     sweep_.timebase = settings_.timebase;
+    sweep_.delay = settings_.delay;
     sweep_.start = start;
 }
 

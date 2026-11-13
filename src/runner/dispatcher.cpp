@@ -1,6 +1,7 @@
 #include "runner/dispatcher.hpp"
 
 #include <algorithm>
+#include <functional>
 #include <utility>
 
 namespace bw {
@@ -48,28 +49,42 @@ void Dispatcher::apply(const Marker& marker) {
     }
 }
 
+// A heap merge over the slots holding Samples up to `end`: equal times go in slot order, as a
+// scan of every slot would. Each slot's Consumers are found once per slice: a Consumer retargeted
+// within the slice gets the old Net's last Samples of it (each such Consumer checks the Net).
 void Dispatcher::sliceEnd(Time end) {
+    using Key = std::pair<Time, std::size_t>;  // next Sample's time, slot
+    std::vector<Key>& heap = heap_;
+    heap.clear();
     std::array<std::size_t, kMaxWatched> next{};
-    while (true) {
-        std::size_t best = kMaxWatched;
-        for (std::size_t s = 0; s < kMaxWatched; ++s) {
-            if (!active_[s] || next[s] == staged_[s].size() || staged_[s][next[s]].time > end) {
-                continue;
-            }
-            if (best == kMaxWatched || staged_[s][next[s]].time < staged_[best][next[best]].time) {
-                best = s;
-            }
+    for (std::size_t s = 0; s < kMaxWatched; ++s) {
+        if (!active_[s] || staged_[s].empty() || staged_[s].front().time > end) {
+            continue;
         }
-        if (best == kMaxWatched) {
-            break;
-        }
-        const Sample sample = staged_[best][next[best]++];
-        last_[best] = sample;
+        heap.emplace_back(staged_[s].front().time, s);
+        auto& readers = readers_[s];
+        readers.clear();
         for (Consumer* consumer : consumers_) {
             const auto nets = consumer->nets();
-            if (std::ranges::find(nets, slotNet_[best]) != nets.end()) {
-                consumer->sample(slotNet_[best], sample);
+            if (std::ranges::find(nets, slotNet_[s]) != nets.end()) {
+                readers.push_back(consumer);
             }
+        }
+    }
+    std::ranges::make_heap(heap, std::greater<>{});
+    while (!heap.empty()) {
+        std::ranges::pop_heap(heap, std::greater<>{});
+        const std::size_t slot = heap.back().second;
+        const Sample sample = staged_[slot][next[slot]++];
+        last_[slot] = sample;
+        for (Consumer* consumer : readers_[slot]) {
+            consumer->sample(slotNet_[slot], sample);
+        }
+        if (next[slot] < staged_[slot].size() && staged_[slot][next[slot]].time <= end) {
+            heap.back().first = staged_[slot][next[slot]].time;
+            std::ranges::push_heap(heap, std::greater<>{});
+        } else {
+            heap.pop_back();
         }
     }
     for (std::size_t s = 0; s < kMaxWatched; ++s) {

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "runner/consumer.hpp"
@@ -13,7 +14,7 @@
 
 namespace bw {
 
-inline constexpr std::size_t kMaxWatched = 48;  // ring slots
+inline constexpr std::size_t kMaxWatched = 96;  // ring slots
 
 enum class MarkerKind : std::uint8_t { PowerOn, SliceEnd, Watch, Rewatch, Unwatch, PowerOff };
 
@@ -41,6 +42,8 @@ private:
     std::array<std::vector<Sample>, kMaxWatched> staged_;  // drained, not yet dispatched
     std::array<std::optional<Sample>, kMaxWatched> last_;  // last dispatched, for Rewatch
     std::array<bool, kMaxWatched> active_{};
+    std::array<std::vector<Consumer*>, kMaxWatched> readers_;  // per slot, for this slice
+    std::vector<std::pair<Time, std::size_t>> heap_;           // sliceEnd's merge
 };
 
 }  // namespace bw
