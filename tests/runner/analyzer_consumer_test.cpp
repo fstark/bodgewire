@@ -47,7 +47,7 @@ TEST_CASE("analyzer consumer: capture through the runner", "[runner]") {
     auto loaded = LoadTestPattern();
     const NetId lineEnd = loaded->nets.at("LINE_END_N");
     const NetId clk = loaded->nets.at("CLK");
-    AnalyzerSettings settings{.period = 100_ns};
+    AnalyzerSettings settings{.period = 10_ns};
     settings.trigger[0] = TriggerCondition::Fall;
 
     Simulator sim(loaded->circuit);
@@ -80,7 +80,7 @@ TEST_CASE("analyzer consumer: armed before power-on", "[runner]") {
     AnalyzerConsumer analyzer;
     Runner runner(loaded->circuit, {&analyzer});
     runner.setSpeed(Speed::Max);
-    analyzer.configure(runner, Armed({loaded->nets.at("CLK")}, {.period = 100_ns}));
+    analyzer.configure(runner, Armed({loaded->nets.at("CLK")}, {.period = 10_ns}));
     CHECK(analyzer.phase() == AnalyzerPhase::Armed);
     runner.pauseAt(2_ms);
     runner.powerOn(1);
@@ -94,7 +94,7 @@ TEST_CASE("analyzer consumer: reconfigure while armed restarts", "[runner]") {
     AnalyzerConsumer analyzer;
     Runner runner(loaded->circuit, {&analyzer});
     runner.setSpeed(Speed::Max);
-    AnalyzerSettings impossible{.period = 100_ns};
+    AnalyzerSettings impossible{.period = 10_ns};
     impossible.trigger[0] = TriggerCondition::High;
     impossible.trigger[1] = TriggerCondition::Low;
     analyzer.configure(runner, Armed({lineEnd, lineEnd}, impossible));
@@ -103,7 +103,7 @@ TEST_CASE("analyzer consumer: reconfigure while armed restarts", "[runner]") {
     runner.waitIdle();
     CHECK(analyzer.phase() == AnalyzerPhase::Armed);
 
-    AnalyzerSettings possible{.period = 100_ns};
+    AnalyzerSettings possible{.period = 10_ns};
     possible.trigger[0] = TriggerCondition::Fall;
     analyzer.configure(runner, Armed({lineEnd, lineEnd}, possible));
     RunTo(runner, 2_ms);
@@ -122,7 +122,7 @@ TEST_CASE("analyzer consumer: new clip gets its initial value", "[runner]") {
     runner.pauseAt(1_ms);
     runner.powerOn(1);
     runner.waitIdle();
-    analyzer.configure(runner, Armed({clear}, {.period = 100_ns}));
+    analyzer.configure(runner, Armed({clear}, {.period = 10_ns}));
     RunTo(runner, 2_ms);
     REQUIRE(analyzer.captures().update());
     CHECK(AllHigh(analyzer.captures().front(), 0));
@@ -139,7 +139,7 @@ TEST_CASE("analyzer consumer: second clip on a watched net", "[runner]") {
     runner.pauseAt(1_ms);
     runner.powerOn(1);
     runner.waitIdle();
-    analyzer.configure(runner, Armed({clear, clear}, {.period = 100_ns}));
+    analyzer.configure(runner, Armed({clear, clear}, {.period = 10_ns}));
     RunTo(runner, 2_ms);
     REQUIRE(analyzer.captures().update());
     CHECK(AllHigh(analyzer.captures().front(), 1));
@@ -149,7 +149,7 @@ TEST_CASE("analyzer consumer: a late power-off does not undo an Arm", "[runner]"
     auto loaded = LoadTestPattern();
     AnalyzerConsumer analyzer;
     Runner runner(loaded->circuit, {&analyzer});
-    const AnalyzerConfig armed = Armed({loaded->nets.at("CLK")}, {.period = 100_ns});
+    const AnalyzerConfig armed = Armed({loaded->nets.at("CLK")}, {.period = 10_ns});
     analyzer.configure(runner, armed);
     runner.waitIdle();
     analyzer.powerOff();  // the devices thread, before it applied the Arm

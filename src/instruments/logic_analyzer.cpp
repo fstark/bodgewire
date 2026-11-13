@@ -1,6 +1,7 @@
 #include "instruments/logic_analyzer.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <utility>
 
 namespace bw {
@@ -33,6 +34,101 @@ std::optional<TriggerCondition> ParseTrigger(std::string_view text) {
     return std::nullopt;
 }
 
+std::optional<std::vector<TriggerCondition>> ParseBusPattern(std::string_view pattern,
+                                                             std::size_t width) {
+    const std::size_t digits = (width + 3) / 4;
+    if (pattern.size() > digits) {
+        return std::nullopt;
+    }
+    std::vector<TriggerCondition> conditions(width, TriggerCondition::Any);
+    if (pattern.empty()) {
+        return conditions;
+    }
+    for (std::size_t d = 0; d < digits; ++d) {  // d: nibble, 0 = least significant
+        const std::size_t padding = digits - pattern.size();
+        const std::size_t at = digits - 1 - d;
+        const char digit = at < padding ? '0' : pattern[at - padding];
+        if (digit == 'x' || digit == 'X') {
+            continue;
+        }
+        int value = 0;
+        if (digit >= '0' && digit <= '9') {
+            value = digit - '0';
+        } else if (digit >= 'a' && digit <= 'f') {
+            value = digit - 'a' + 10;
+        } else if (digit >= 'A' && digit <= 'F') {
+            value = digit - 'A' + 10;
+        } else {
+            return std::nullopt;
+        }
+        for (std::size_t b = 0; b < 4; ++b) {
+            const bool one = (value >> b & 1) != 0;
+            const std::size_t bit = d * 4 + b;
+            if (bit >= width) {
+                if (one) {
+                    return std::nullopt;
+                }
+                continue;
+            }
+            conditions[bit] = one ? TriggerCondition::High : TriggerCondition::Low;
+        }
+    }
+    return conditions;
+}
+
+std::string FormatBusPattern(std::span<const TriggerCondition> conditions) {
+    const std::size_t digits = (conditions.size() + 3) / 4;
+    std::string text;
+    for (std::size_t n = digits; n-- > 0;) {
+        int value = 0, any = 0, levels = 0;
+        const std::size_t bits = std::min<std::size_t>(4, conditions.size() - n * 4);
+        for (std::size_t b = 0; b < bits; ++b) {
+            switch (conditions[n * 4 + b]) {
+            case TriggerCondition::Any:
+                ++any;
+                break;
+            case TriggerCondition::High:
+                value |= 1 << b;
+                ++levels;
+                break;
+            case TriggerCondition::Low:
+                ++levels;
+                break;
+            case TriggerCondition::Rise:
+            case TriggerCondition::Fall:
+                break;
+            }
+        }
+        if (any == static_cast<int>(bits)) {
+            text += 'x';
+        } else if (levels == static_cast<int>(bits)) {
+            text += "0123456789ABCDEF"[value];
+        } else {
+            text += '?';
+        }
+    }
+    return text;
+}
+
+std::optional<NameStem> StemOf(std::string_view pin) {
+    std::size_t end = pin.size();
+    while (end > 0 && std::isdigit(static_cast<unsigned char>(pin[end - 1])) == 0) {
+        --end;
+    }
+    if (end == 0) {
+        return std::nullopt;
+    }
+    std::size_t begin = end;
+    while (begin > 0 && std::isdigit(static_cast<unsigned char>(pin[begin - 1])) != 0) {
+        --begin;
+    }
+    std::uint32_t index = 0;
+    for (std::size_t i = begin; i < end; ++i) {
+        index = index * 10 + static_cast<std::uint32_t>(pin[i] - '0');
+    }
+    return NameStem{std::string(pin.substr(0, begin)) + "#" + std::string(pin.substr(end)), index};
+}
+
 void AnalyzerState::powerOn() {
     current_ = {};
     previous_.reset();
@@ -50,6 +146,26 @@ void AnalyzerState::powerOff() {
 void AnalyzerState::arm(const AnalyzerSettings& settings, std::array<std::string, kChannels> labels,
                         Time now) {
     settings_ = settings;
+    masks_ = {};
+    for (std::size_t c = 0; c < kChannels; ++c) {
+        const ChannelMask bit = ChannelMask{1} << c;
+        switch (settings_.trigger[c]) {
+        case TriggerCondition::Any:
+            break;
+        case TriggerCondition::Low:
+            masks_.low |= bit;
+            break;
+        case TriggerCondition::High:
+            masks_.high |= bit;
+            break;
+        case TriggerCondition::Rise:
+            masks_.rise |= bit;
+            break;
+        case TriggerCondition::Fall:
+            masks_.fall |= bit;
+            break;
+        }
+    }
     labels_ = std::move(labels);
     next_ = armedAt_ = (now + settings_.period - 1) / settings_.period * settings_.period;
     emitted_ = 0;
@@ -64,16 +180,16 @@ void AnalyzerState::disarm() {
     }
 }
 
-void AnalyzerState::change(Time time, std::uint8_t channels, LogicValue value) {
+void AnalyzerState::change(Time time, ChannelMask channels, LogicValue value) {
     emitUntil(time, false);
     switch (value) {
     case LogicValue::Zero:
-        current_.high &= static_cast<std::uint8_t>(~channels);
-        current_.unknown &= static_cast<std::uint8_t>(~channels);
+        current_.high &= ~channels;
+        current_.unknown &= ~channels;
         break;
     case LogicValue::One:
         current_.high |= channels;
-        current_.unknown &= static_cast<std::uint8_t>(~channels);
+        current_.unknown &= ~channels;
         break;
     case LogicValue::Z:
     case LogicValue::X:
@@ -133,34 +249,20 @@ void AnalyzerState::write(std::uint64_t count) {
 }
 
 bool AnalyzerState::triggers(ChannelBits now) const {
-    for (std::size_t c = 0; c < kChannels; ++c) {
-        const auto bit = static_cast<std::uint8_t>(1u << c);
-        const bool known = (now.unknown & bit) == 0;
-        const bool high = (now.high & bit) != 0;
-        const bool wasKnown = previous_ && (previous_->unknown & bit) == 0;
-        const bool wasHigh = previous_ && (previous_->high & bit) != 0;
-        bool ok = true;
-        switch (settings_.trigger[c]) {
-        case TriggerCondition::Any:
-            break;
-        case TriggerCondition::Low:
-            ok = known && !high;
-            break;
-        case TriggerCondition::High:
-            ok = known && high;
-            break;
-        case TriggerCondition::Rise:
-            ok = known && wasKnown && !wasHigh && high;
-            break;
-        case TriggerCondition::Fall:
-            ok = known && wasKnown && wasHigh && !high;
-            break;
-        }
-        if (!ok) {
-            return false;
-        }
+    const ChannelMask edges = masks_.rise | masks_.fall;
+    if (((masks_.low | masks_.high | edges) & now.unknown) != 0 || (masks_.low & now.high) != 0 ||
+        (masks_.high & ~now.high) != 0) {
+        return false;
     }
-    return true;
+    if (edges == 0) {
+        return true;
+    }
+    if (!previous_ || (edges & previous_->unknown) != 0) {
+        return false;
+    }
+    const ChannelMask rose = ~previous_->high & now.high;
+    const ChannelMask fell = previous_->high & ~now.high;
+    return (masks_.rise & ~rose) == 0 && (masks_.fall & ~fell) == 0;
 }
 
 void AnalyzerState::freeze() {
@@ -191,7 +293,7 @@ void LogicAnalyzer::arm(const AnalyzerSettings& settings) { state_.arm(settings,
 void LogicAnalyzer::update() {
     struct Change {
         Time time;
-        std::uint8_t channels;
+        ChannelMask channels;
         LogicValue value;
     };
     std::vector<Change> changes;
@@ -201,10 +303,10 @@ void LogicAnalyzer::update() {
             continue;
         }
         done.push_back(*net);
-        std::uint8_t mask = 0;
+        ChannelMask mask = 0;
         for (std::size_t c = 0; c < kChannels; ++c) {
             if (channels_[c] == net) {
-                mask |= static_cast<std::uint8_t>(1u << c);
+                mask |= ChannelMask{1} << c;
             }
         }
         for (const Sample sample : sim_.recorder().samples(*net)) {

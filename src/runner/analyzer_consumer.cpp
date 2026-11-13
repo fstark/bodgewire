@@ -74,7 +74,7 @@ void AnalyzerConsumer::adoptNets() const {
         if (!net) {
             continue;
         }
-        const auto bit = static_cast<std::uint8_t>(1u << c);
+        const ChannelMask bit = ChannelMask{1} << c;
         const auto found = std::ranges::find(nets_, *net);
         if (found == nets_.end()) {
             nets_.push_back(*net);

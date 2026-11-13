@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,8 +15,9 @@
 
 namespace bw {
 
-inline constexpr std::size_t kChannels = 8;
-inline constexpr std::size_t kDepth = 4096;  // sample points per Capture
+inline constexpr std::size_t kChannels = 32;
+inline constexpr std::size_t kDepth = 65'536;  // sample points per Capture
+using ChannelMask = std::uint32_t;             // bit c: Channel c
 // Sample periods, ps: 1 kHz … 100 MHz in 1-2-5 steps.
 inline constexpr std::array<Time, 16> kAnalyzerPeriods{
     1'000'000'000, 500'000'000, 200'000'000, 100'000'000, 50'000'000, 20'000'000,
@@ -34,7 +36,7 @@ struct AnalyzerSettings {
 
 // One sample point: Channel c is bit c; X where `unknown` has bit c set.
 struct ChannelBits {
-    std::uint8_t high = 0, unknown = 0xff;
+    ChannelMask high = 0, unknown = ~ChannelMask{0};
     bool operator==(const ChannelBits&) const = default;
 };
 
@@ -50,7 +52,7 @@ struct Capture {
 
 enum class AnalyzerPhase : std::uint8_t { Idle, Armed, Filling, Captured };
 
-std::size_t PreTriggerPoints(TriggerPosition position);  // 409, 2048, 3686
+std::size_t PreTriggerPoints(TriggerPosition position);  // 6553, 32768, 58982
 
 // Capture engine over Channel changes in time order. No Simulator, no threads.
 class AnalyzerState {
@@ -60,8 +62,8 @@ public:
     void arm(const AnalyzerSettings& settings, std::array<std::string, kChannels> labels,
              Time now);  // memory cleared; first point at the first multiple of period >= now
     void disarm();       // Armed/Filling → Idle; Captured stays
-    void change(Time time, std::uint8_t channels, LogicValue value);  // `channels`: bit mask
-    void advanceTo(Time end);                                         // samples every point <= end
+    void change(Time time, ChannelMask channels, LogicValue value);
+    void advanceTo(Time end);  // samples every point <= end
     AnalyzerPhase phase() const { return phase_; }
     const Capture& capture() const { return capture_; }  // last completed
 
@@ -69,11 +71,16 @@ private:
     void emitUntil(Time limit, bool inclusive);
     void emit(std::uint64_t count);        // `count` points of current_, trigger and memory
     void write(std::uint64_t count);       // `count` points of current_ into ring_
-    bool triggers(ChannelBits now) const;  // vs previous_, per settings_.trigger
+    bool triggers(ChannelBits now) const;  // vs previous_, per masks_
     void freeze();                         // ring → capture_, Captured
+
+    struct TriggerMasks {  // Channels per condition, from settings_.trigger at arm()
+        ChannelMask low = 0, high = 0, rise = 0, fall = 0;
+    };
 
     AnalyzerPhase phase_ = AnalyzerPhase::Idle;
     AnalyzerSettings settings_;
+    TriggerMasks masks_;
     std::array<std::string, kChannels> labels_;
     ChannelBits current_;                  // state after every change so far
     std::optional<ChannelBits> previous_;  // last emitted point; none right after arm
@@ -102,5 +109,21 @@ private:
 };
 
 std::optional<TriggerCondition> ParseTrigger(std::string_view text);  // "0" "1" "r" "f"
+
+// A bus pattern over `width` Channels, bit 0 first in the result: hex digits and x/X (don't
+// care), at most ceil(width / 4) digits, fewer padded with leading 0s. Refused: any other
+// character, too many digits, a 1 above the width. Empty: all Any.
+std::optional<std::vector<TriggerCondition>> ParseBusPattern(std::string_view pattern,
+                                                             std::size_t width);
+// Back from conditions (bit 0 first): a nibble of levels is its hex digit, all Any is x, anything
+// else (partly Any, or an edge) is ?.
+std::string FormatBusPattern(std::span<const TriggerCondition> conditions);
+
+struct NameStem {
+    std::string stem;     // the pin name with its last digit run replaced by '#': "A#", "#Q"
+    std::uint32_t index;  // that digit run's value
+    bool operator==(const NameStem&) const = default;
+};
+std::optional<NameStem> StemOf(std::string_view pin);  // nullopt: no digit in the name
 
 }  // namespace bw

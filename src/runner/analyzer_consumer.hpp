@@ -58,8 +58,8 @@ private:
     TripleBuffer<Capture> captures_;
     // devices thread
     mutable std::uint64_t netsGeneration_ = 0;
-    mutable std::vector<NetId> nets_;          // distinct
-    mutable std::vector<std::uint8_t> masks_;  // Channels per nets_ entry
+    mutable std::vector<NetId> nets_;         // distinct
+    mutable std::vector<ChannelMask> masks_;  // Channels per nets_ entry
     std::uint64_t configGeneration_ = 0;
     Time now_ = 0;  // last slice end; 0 after power-on
     AnalyzerConfig applied_;
