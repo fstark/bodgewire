@@ -56,5 +56,5 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 - A 74LS161's `RCO` follows `ENT` combinationally: with a decoded signal on `ENT` (a line end), `RCO` pulses for ~20 ns when the count reaches 15 before that signal falls. Never clock or clear anything from such an `RCO`; put the decoded enable on `ENP` and keep `ENT` for the carry chain (060 `VRCO`).
 - Power-on draws a random bit per output and Net, and every new chip changes every seed's draws: search seeds in the test (a `FindSeed` over the state the case needs), never hard-code them.
 - Picture-reading cases that simulate several seconds cost minutes in debug (070: 4–10 s each, the debug suite about 9 minutes); keep each case to what it shows.
-- The logic probe shows no level on a pin with no copper (an unconnected output, 100 `U1` `RW`, 080 `U1` `QA`): hook the scope on it instead. Seen in P5c, not fixed.
+- The logic probe shows no level on a pin with no copper (an unconnected output, 100 `U1` `RW`, 080 `U1` `QA`): hook the scope on it instead. Seen in P5c; to be fixed in P5e.
 - Board re-layouts move cracks: Puzzles use `fault crack A B N%`, so only which far pads lose the signal may change.
