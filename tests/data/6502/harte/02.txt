@@ -1,0 +1,403 @@
+# 6502 SingleStepTests (Tom Harte, MIT licence), opcode 02
+# source: https://github.com/SingleStepTests/65x02 6502/v1 @ 2f6980a2d95757486c7bee24355c360e40e2a224
+# 100 cases; written by tests/data/6502/convert_harte.py
+# 02 1
+I d8c a3 58 dc c fb ffff:d8 fffe:7b d8d:a1 d8c:2
+F d8d a3 58 dc c fb ffff:d8 fffe:7b d8d:a1 d8c:2
+C d8c:2:r d8d:a1:r ffff:d8:r fffe:7b:r fffe:7b:r ffff:d8:r ffff:d8:r ffff:d8:r ffff:d8:r ffff:d8:r ffff:d8:r
+# 02 2
+I 7faf ad be ec 8e fc fffe:b2 ffff:74 7fb0:49 7faf:2
+F 7fb0 ad be ec 8e fc fffe:b2 ffff:74 7fb0:49 7faf:2
+C 7faf:2:r 7fb0:49:r ffff:74:r fffe:b2:r fffe:b2:r ffff:74:r ffff:74:r ffff:74:r ffff:74:r ffff:74:r ffff:74:r
+# 02 3
+I 6f5d 3e e6 3 cd fd ffff:8d 6f5e:17 fffe:ad 6f5d:2
+F 6f5e 3e e6 3 cd fd ffff:8d 6f5e:17 fffe:ad 6f5d:2
+C 6f5d:2:r 6f5e:17:r ffff:8d:r fffe:ad:r fffe:ad:r ffff:8d:r ffff:8d:r ffff:8d:r ffff:8d:r ffff:8d:r ffff:8d:r
+# 02 4
+I 1e7f 55 fd 22 4c f4 fffe:f5 ffff:e 1e80:c3 1e7f:2
+F 1e80 55 fd 22 4c f4 fffe:f5 ffff:e 1e80:c3 1e7f:2
+C 1e7f:2:r 1e80:c3:r ffff:e:r fffe:f5:r fffe:f5:r ffff:e:r ffff:e:r ffff:e:r ffff:e:r ffff:e:r ffff:e:r
+# 02 5
+I f8b9 68 9a 85 c9 b3 ffff:75 fffe:66 f8ba:9f f8b9:2
+F f8ba 68 9a 85 c9 b3 ffff:75 fffe:66 f8ba:9f f8b9:2
+C f8b9:2:r f8ba:9f:r ffff:75:r fffe:66:r fffe:66:r ffff:75:r ffff:75:r ffff:75:r ffff:75:r ffff:75:r ffff:75:r
+# 02 6
+I 5b83 4 95 ad 16 ff fffe:6a ffff:88 5b84:6a 5b83:2
+F 5b84 4 95 ad 16 ff fffe:6a ffff:88 5b84:6a 5b83:2
+C 5b83:2:r 5b84:6a:r ffff:88:r fffe:6a:r fffe:6a:r ffff:88:r ffff:88:r ffff:88:r ffff:88:r ffff:88:r ffff:88:r
+# 02 7
+I a532 9e 48 25 a3 39 fffe:10 a533:3f ffff:7b a532:2
+F a533 9e 48 25 a3 39 fffe:10 a533:3f ffff:7b a532:2
+C a532:2:r a533:3f:r ffff:7b:r fffe:10:r fffe:10:r ffff:7b:r ffff:7b:r ffff:7b:r ffff:7b:r ffff:7b:r ffff:7b:r
+# 02 8
+I 3cd7 e2 be 1b e7 bf fffe:60 3cd8:72 ffff:24 3cd7:2
+F 3cd8 e2 be 1b e7 bf fffe:60 3cd8:72 ffff:24 3cd7:2
+C 3cd7:2:r 3cd8:72:r ffff:24:r fffe:60:r fffe:60:r ffff:24:r ffff:24:r ffff:24:r ffff:24:r ffff:24:r ffff:24:r
+# 02 9
+I 5cd7 84 60 a1 40 70 fffe:2c ffff:ab 5cd8:5f 5cd7:2
+F 5cd8 84 60 a1 40 70 fffe:2c ffff:ab 5cd8:5f 5cd7:2
+C 5cd7:2:r 5cd8:5f:r ffff:ab:r fffe:2c:r fffe:2c:r ffff:ab:r ffff:ab:r ffff:ab:r ffff:ab:r ffff:ab:r ffff:ab:r
+# 02 10
+I 46f1 bb 4b 6f 5d b6 fffe:e5 ffff:6e 46f2:a1 46f1:2
+F 46f2 bb 4b 6f 5d b6 fffe:e5 ffff:6e 46f2:a1 46f1:2
+C 46f1:2:r 46f2:a1:r ffff:6e:r fffe:e5:r fffe:e5:r ffff:6e:r ffff:6e:r ffff:6e:r ffff:6e:r ffff:6e:r ffff:6e:r
+# 02 11
+I 9d03 3d 8c b2 fa be fffe:f1 9d04:57 ffff:57 9d03:2
+F 9d04 3d 8c b2 fa be fffe:f1 9d04:57 ffff:57 9d03:2
+C 9d03:2:r 9d04:57:r ffff:57:r fffe:f1:r fffe:f1:r ffff:57:r ffff:57:r ffff:57:r ffff:57:r ffff:57:r ffff:57:r
+# 02 12
+I 6ca5 ab 88 56 88 73 ffff:d4 fffe:2f 6ca6:3c 6ca5:2
+F 6ca6 ab 88 56 88 73 ffff:d4 fffe:2f 6ca6:3c 6ca5:2
+C 6ca5:2:r 6ca6:3c:r ffff:d4:r fffe:2f:r fffe:2f:r ffff:d4:r ffff:d4:r ffff:d4:r ffff:d4:r ffff:d4:r ffff:d4:r
+# 02 13
+I b62a 6 51 b5 12 b5 ffff:b1 b62b:3c fffe:24 b62a:2
+F b62b 6 51 b5 12 b5 ffff:b1 b62b:3c fffe:24 b62a:2
+C b62a:2:r b62b:3c:r ffff:b1:r fffe:24:r fffe:24:r ffff:b1:r ffff:b1:r ffff:b1:r ffff:b1:r ffff:b1:r ffff:b1:r
+# 02 14
+I 74bd 35 85 84 7f f4 fffe:13 74be:b ffff:29 74bd:2
+F 74be 35 85 84 7f f4 fffe:13 74be:b ffff:29 74bd:2
+C 74bd:2:r 74be:b:r ffff:29:r fffe:13:r fffe:13:r ffff:29:r ffff:29:r ffff:29:r ffff:29:r ffff:29:r ffff:29:r
+# 02 15
+I eb26 21 49 f6 14 fa ffff:90 fffe:fb eb27:69 eb26:2
+F eb27 21 49 f6 14 fa ffff:90 fffe:fb eb27:69 eb26:2
+C eb26:2:r eb27:69:r ffff:90:r fffe:fb:r fffe:fb:r ffff:90:r ffff:90:r ffff:90:r ffff:90:r ffff:90:r ffff:90:r
+# 02 16
+I 9348 c3 c4 85 ee bc ffff:67 9349:2c fffe:70 9348:2
+F 9349 c3 c4 85 ee bc ffff:67 9349:2c fffe:70 9348:2
+C 9348:2:r 9349:2c:r ffff:67:r fffe:70:r fffe:70:r ffff:67:r ffff:67:r ffff:67:r ffff:67:r ffff:67:r ffff:67:r
+# 02 17
+I 6f2f e3 3a 1e 27 f9 ffff:50 fffe:7a 6f30:3d 6f2f:2
+F 6f30 e3 3a 1e 27 f9 ffff:50 fffe:7a 6f30:3d 6f2f:2
+C 6f2f:2:r 6f30:3d:r ffff:50:r fffe:7a:r fffe:7a:r ffff:50:r ffff:50:r ffff:50:r ffff:50:r ffff:50:r ffff:50:r
+# 02 18
+I 7179 e5 5b a9 e0 f3 ffff:f7 717a:3d fffe:a1 7179:2
+F 717a e5 5b a9 e0 f3 ffff:f7 717a:3d fffe:a1 7179:2
+C 7179:2:r 717a:3d:r ffff:f7:r fffe:a1:r fffe:a1:r ffff:f7:r ffff:f7:r ffff:f7:r ffff:f7:r ffff:f7:r ffff:f7:r
+# 02 19
+I d40d 43 bf 3d 8b fb fffe:de d40e:89 ffff:bf d40d:2
+F d40e 43 bf 3d 8b fb fffe:de d40e:89 ffff:bf d40d:2
+C d40d:2:r d40e:89:r ffff:bf:r fffe:de:r fffe:de:r ffff:bf:r ffff:bf:r ffff:bf:r ffff:bf:r ffff:bf:r ffff:bf:r
+# 02 20
+I 3b24 c9 ab e5 c9 f8 fffe:d 3b25:93 ffff:9c 3b24:2
+F 3b25 c9 ab e5 c9 f8 fffe:d 3b25:93 ffff:9c 3b24:2
+C 3b24:2:r 3b25:93:r ffff:9c:r fffe:d:r fffe:d:r ffff:9c:r ffff:9c:r ffff:9c:r ffff:9c:r ffff:9c:r ffff:9c:r
+# 02 21
+I c519 4d 99 ba 76 7d fffe:46 ffff:e0 c51a:21 c519:2
+F c51a 4d 99 ba 76 7d fffe:46 ffff:e0 c51a:21 c519:2
+C c519:2:r c51a:21:r ffff:e0:r fffe:46:r fffe:46:r ffff:e0:r ffff:e0:r ffff:e0:r ffff:e0:r ffff:e0:r ffff:e0:r
+# 02 22
+I 1640 48 38 df 60 31 fffe:1 ffff:d0 1641:b2 1640:2
+F 1641 48 38 df 60 31 fffe:1 ffff:d0 1641:b2 1640:2
+C 1640:2:r 1641:b2:r ffff:d0:r fffe:1:r fffe:1:r ffff:d0:r ffff:d0:r ffff:d0:r ffff:d0:r ffff:d0:r ffff:d0:r
+# 02 23
+I f22 77 8f 49 3c 70 ffff:e7 f23:89 fffe:69 f22:2
+F f23 77 8f 49 3c 70 ffff:e7 f23:89 fffe:69 f22:2
+C f22:2:r f23:89:r ffff:e7:r fffe:69:r fffe:69:r ffff:e7:r ffff:e7:r ffff:e7:r ffff:e7:r ffff:e7:r ffff:e7:r
+# 02 24
+I 853e dc 1f 9e eb 77 fffe:c5 853f:1e ffff:a3 853e:2
+F 853f dc 1f 9e eb 77 fffe:c5 853f:1e ffff:a3 853e:2
+C 853e:2:r 853f:1e:r ffff:a3:r fffe:c5:r fffe:c5:r ffff:a3:r ffff:a3:r ffff:a3:r ffff:a3:r ffff:a3:r ffff:a3:r
+# 02 25
+I 8ba2 b1 da d 4e 78 fffe:93 ffff:18 8ba3:9 8ba2:2
+F 8ba3 b1 da d 4e 78 fffe:93 ffff:18 8ba3:9 8ba2:2
+C 8ba2:2:r 8ba3:9:r ffff:18:r fffe:93:r fffe:93:r ffff:18:r ffff:18:r ffff:18:r ffff:18:r ffff:18:r ffff:18:r
+# 02 26
+I 9021 73 ab f3 b f8 fffe:ac ffff:9b 9022:ab 9021:2
+F 9022 73 ab f3 b f8 fffe:ac ffff:9b 9022:ab 9021:2
+C 9021:2:r 9022:ab:r ffff:9b:r fffe:ac:r fffe:ac:r ffff:9b:r ffff:9b:r ffff:9b:r ffff:9b:r ffff:9b:r ffff:9b:r
+# 02 27
+I c659 ca 19 15 0 34 fffe:c0 ffff:a1 c65a:31 c659:2
+F c65a ca 19 15 0 34 fffe:c0 ffff:a1 c65a:31 c659:2
+C c659:2:r c65a:31:r ffff:a1:r fffe:c0:r fffe:c0:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r
+# 02 28
+I eb44 c3 e3 6c 97 3b ffff:87 fffe:ad eb45:49 eb44:2
+F eb45 c3 e3 6c 97 3b ffff:87 fffe:ad eb45:49 eb44:2
+C eb44:2:r eb45:49:r ffff:87:r fffe:ad:r fffe:ad:r ffff:87:r ffff:87:r ffff:87:r ffff:87:r ffff:87:r ffff:87:r
+# 02 29
+I 5363 8 a6 53 b 3b fffe:22 ffff:87 5364:4b 5363:2
+F 5364 8 a6 53 b 3b fffe:22 ffff:87 5364:4b 5363:2
+C 5363:2:r 5364:4b:r ffff:87:r fffe:22:r fffe:22:r ffff:87:r ffff:87:r ffff:87:r ffff:87:r ffff:87:r ffff:87:r
+# 02 30
+I b545 8b c 2f 52 32 fffe:e8 b546:a6 ffff:57 b545:2
+F b546 8b c 2f 52 32 fffe:e8 b546:a6 ffff:57 b545:2
+C b545:2:r b546:a6:r ffff:57:r fffe:e8:r fffe:e8:r ffff:57:r ffff:57:r ffff:57:r ffff:57:r ffff:57:r ffff:57:r
+# 02 31
+I 28b8 ab 34 f7 11 bb ffff:8a 28b9:cd fffe:20 28b8:2
+F 28b9 ab 34 f7 11 bb ffff:8a 28b9:cd fffe:20 28b8:2
+C 28b8:2:r 28b9:cd:r ffff:8a:r fffe:20:r fffe:20:r ffff:8a:r ffff:8a:r ffff:8a:r ffff:8a:r ffff:8a:r ffff:8a:r
+# 02 32
+I f9c8 bc ec b4 ac 32 ffff:c8 f9c9:39 fffe:eb f9c8:2
+F f9c9 bc ec b4 ac 32 ffff:c8 f9c9:39 fffe:eb f9c8:2
+C f9c8:2:r f9c9:39:r ffff:c8:r fffe:eb:r fffe:eb:r ffff:c8:r ffff:c8:r ffff:c8:r ffff:c8:r ffff:c8:r ffff:c8:r
+# 02 33
+I 9fcd 60 c6 a8 40 ba ffff:d4 9fce:a4 fffe:8e 9fcd:2
+F 9fce 60 c6 a8 40 ba ffff:d4 9fce:a4 fffe:8e 9fcd:2
+C 9fcd:2:r 9fce:a4:r ffff:d4:r fffe:8e:r fffe:8e:r ffff:d4:r ffff:d4:r ffff:d4:r ffff:d4:r ffff:d4:r ffff:d4:r
+# 02 34
+I 9d44 74 e b8 40 39 fffe:57 9d45:c0 ffff:14 9d44:2
+F 9d45 74 e b8 40 39 fffe:57 9d45:c0 ffff:14 9d44:2
+C 9d44:2:r 9d45:c0:r ffff:14:r fffe:57:r fffe:57:r ffff:14:r ffff:14:r ffff:14:r ffff:14:r ffff:14:r ffff:14:r
+# 02 35
+I c24 ae b0 bb bc 77 ffff:b6 fffe:ad c25:b5 c24:2
+F c25 ae b0 bb bc 77 ffff:b6 fffe:ad c25:b5 c24:2
+C c24:2:r c25:b5:r ffff:b6:r fffe:ad:r fffe:ad:r ffff:b6:r ffff:b6:r ffff:b6:r ffff:b6:r ffff:b6:r ffff:b6:r
+# 02 36
+I 4b47 cd 4 74 32 f8 fffe:da ffff:d4 4b48:81 4b47:2
+F 4b48 cd 4 74 32 f8 fffe:da ffff:d4 4b48:81 4b47:2
+C 4b47:2:r 4b48:81:r ffff:d4:r fffe:da:r fffe:da:r ffff:d4:r ffff:d4:r ffff:d4:r ffff:d4:r ffff:d4:r ffff:d4:r
+# 02 37
+I 2087 47 5 94 fb f8 fffe:8 ffff:b5 2088:78 2087:2
+F 2088 47 5 94 fb f8 fffe:8 ffff:b5 2088:78 2087:2
+C 2087:2:r 2088:78:r ffff:b5:r fffe:8:r fffe:8:r ffff:b5:r ffff:b5:r ffff:b5:r ffff:b5:r ffff:b5:r ffff:b5:r
+# 02 38
+I 6f51 50 c3 d 6a 7e fffe:11 ffff:45 6f52:7e 6f51:2
+F 6f52 50 c3 d 6a 7e fffe:11 ffff:45 6f52:7e 6f51:2
+C 6f51:2:r 6f52:7e:r ffff:45:r fffe:11:r fffe:11:r ffff:45:r ffff:45:r ffff:45:r ffff:45:r ffff:45:r ffff:45:r
+# 02 39
+I 95bf c3 49 5 d9 f7 fffe:66 95c0:4b ffff:74 95bf:2
+F 95c0 c3 49 5 d9 f7 fffe:66 95c0:4b ffff:74 95bf:2
+C 95bf:2:r 95c0:4b:r ffff:74:r fffe:66:r fffe:66:r ffff:74:r ffff:74:r ffff:74:r ffff:74:r ffff:74:r ffff:74:r
+# 02 40
+I be 1 94 b9 c5 f1 fffe:62 bf:7b ffff:8f be:2
+F bf 1 94 b9 c5 f1 fffe:62 bf:7b ffff:8f be:2
+C be:2:r bf:7b:r ffff:8f:r fffe:62:r fffe:62:r ffff:8f:r ffff:8f:r ffff:8f:r ffff:8f:r ffff:8f:r ffff:8f:r
+# 02 41
+I d387 a8 19 5e 6f 7b fffe:6f ffff:cf d388:76 d387:2
+F d388 a8 19 5e 6f 7b fffe:6f ffff:cf d388:76 d387:2
+C d387:2:r d388:76:r ffff:cf:r fffe:6f:r fffe:6f:r ffff:cf:r ffff:cf:r ffff:cf:r ffff:cf:r ffff:cf:r ffff:cf:r
+# 02 42
+I f1af 5f eb 1 e1 31 fffe:49 ffff:a5 f1b0:cd f1af:2
+F f1b0 5f eb 1 e1 31 fffe:49 ffff:a5 f1b0:cd f1af:2
+C f1af:2:r f1b0:cd:r ffff:a5:r fffe:49:r fffe:49:r ffff:a5:r ffff:a5:r ffff:a5:r ffff:a5:r ffff:a5:r ffff:a5:r
+# 02 43
+I cef2 d 46 8d d4 34 ffff:46 fffe:c7 cef3:d5 cef2:2
+F cef3 d 46 8d d4 34 ffff:46 fffe:c7 cef3:d5 cef2:2
+C cef2:2:r cef3:d5:r ffff:46:r fffe:c7:r fffe:c7:r ffff:46:r ffff:46:r ffff:46:r ffff:46:r ffff:46:r ffff:46:r
+# 02 44
+I 18e1 40 fe a2 44 79 ffff:61 18e2:18 fffe:ca 18e1:2
+F 18e2 40 fe a2 44 79 ffff:61 18e2:18 fffe:ca 18e1:2
+C 18e1:2:r 18e2:18:r ffff:61:r fffe:ca:r fffe:ca:r ffff:61:r ffff:61:r ffff:61:r ffff:61:r ffff:61:r ffff:61:r
+# 02 45
+I ccb8 bc 8b fd 81 f9 ffff:a1 fffe:88 ccb9:7b ccb8:2
+F ccb9 bc 8b fd 81 f9 ffff:a1 fffe:88 ccb9:7b ccb8:2
+C ccb8:2:r ccb9:7b:r ffff:a1:r fffe:88:r fffe:88:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r
+# 02 46
+I 4d6b b1 68 a b2 fd ffff:e8 4d6c:b7 fffe:1b 4d6b:2
+F 4d6c b1 68 a b2 fd ffff:e8 4d6c:b7 fffe:1b 4d6b:2
+C 4d6b:2:r 4d6c:b7:r ffff:e8:r fffe:1b:r fffe:1b:r ffff:e8:r ffff:e8:r ffff:e8:r ffff:e8:r ffff:e8:r ffff:e8:r
+# 02 47
+I c3a4 f5 be 37 ea 7c ffff:5a c3a5:c0 fffe:d3 c3a4:2
+F c3a5 f5 be 37 ea 7c ffff:5a c3a5:c0 fffe:d3 c3a4:2
+C c3a4:2:r c3a5:c0:r ffff:5a:r fffe:d3:r fffe:d3:r ffff:5a:r ffff:5a:r ffff:5a:r ffff:5a:r ffff:5a:r ffff:5a:r
+# 02 48
+I f57 8a 93 ee ad b7 fffe:70 ffff:48 f58:d5 f57:2
+F f58 8a 93 ee ad b7 fffe:70 ffff:48 f58:d5 f57:2
+C f57:2:r f58:d5:r ffff:48:r fffe:70:r fffe:70:r ffff:48:r ffff:48:r ffff:48:r ffff:48:r ffff:48:r ffff:48:r
+# 02 49
+I c1b4 40 11 36 b8 f9 ffff:e4 fffe:c1 c1b5:df c1b4:2
+F c1b5 40 11 36 b8 f9 ffff:e4 fffe:c1 c1b5:df c1b4:2
+C c1b4:2:r c1b5:df:r ffff:e4:r fffe:c1:r fffe:c1:r ffff:e4:r ffff:e4:r ffff:e4:r ffff:e4:r ffff:e4:r ffff:e4:r
+# 02 50
+I 99a 6d d1 ee 73 fc ffff:f4 fffe:d0 99b:af 99a:2
+F 99b 6d d1 ee 73 fc ffff:f4 fffe:d0 99b:af 99a:2
+C 99a:2:r 99b:af:r ffff:f4:r fffe:d0:r fffe:d0:r ffff:f4:r ffff:f4:r ffff:f4:r ffff:f4:r ffff:f4:r ffff:f4:r
+# 02 51
+I 89c 63 66 f1 32 39 ffff:18 89d:ee fffe:5c 89c:2
+F 89d 63 66 f1 32 39 ffff:18 89d:ee fffe:5c 89c:2
+C 89c:2:r 89d:ee:r ffff:18:r fffe:5c:r fffe:5c:r ffff:18:r ffff:18:r ffff:18:r ffff:18:r ffff:18:r ffff:18:r
+# 02 52
+I fe4c 79 e0 10 36 b3 fffe:ca fe4d:20 ffff:6e fe4c:2
+F fe4d 79 e0 10 36 b3 fffe:ca fe4d:20 ffff:6e fe4c:2
+C fe4c:2:r fe4d:20:r ffff:6e:r fffe:ca:r fffe:ca:r ffff:6e:r ffff:6e:r ffff:6e:r ffff:6e:r ffff:6e:r ffff:6e:r
+# 02 53
+I 1b9 fb ec 79 2e 7f fffe:54 ffff:d3 1ba:11 1b9:2
+F 1ba fb ec 79 2e 7f fffe:54 ffff:d3 1ba:11 1b9:2
+C 1b9:2:r 1ba:11:r ffff:d3:r fffe:54:r fffe:54:r ffff:d3:r ffff:d3:r ffff:d3:r ffff:d3:r ffff:d3:r ffff:d3:r
+# 02 54
+I f8 8e 4e 5c 12 3a ffff:28 fffe:b f9:e0 f8:2
+F f9 8e 4e 5c 12 3a ffff:28 fffe:b f9:e0 f8:2
+C f8:2:r f9:e0:r ffff:28:r fffe:b:r fffe:b:r ffff:28:r ffff:28:r ffff:28:r ffff:28:r ffff:28:r ffff:28:r
+# 02 55
+I a7e1 27 be ec fb 77 fffe:79 ffff:6d a7e2:82 a7e1:2
+F a7e2 27 be ec fb 77 fffe:79 ffff:6d a7e2:82 a7e1:2
+C a7e1:2:r a7e2:82:r ffff:6d:r fffe:79:r fffe:79:r ffff:6d:r ffff:6d:r ffff:6d:r ffff:6d:r ffff:6d:r ffff:6d:r
+# 02 56
+I a490 80 8f 4a eb f5 ffff:e5 fffe:b2 a491:97 a490:2
+F a491 80 8f 4a eb f5 ffff:e5 fffe:b2 a491:97 a490:2
+C a490:2:r a491:97:r ffff:e5:r fffe:b2:r fffe:b2:r ffff:e5:r ffff:e5:r ffff:e5:r ffff:e5:r ffff:e5:r ffff:e5:r
+# 02 57
+I 8443 d4 7d a4 13 b1 ffff:a2 8444:df fffe:5a 8443:2
+F 8444 d4 7d a4 13 b1 ffff:a2 8444:df fffe:5a 8443:2
+C 8443:2:r 8444:df:r ffff:a2:r fffe:5a:r fffe:5a:r ffff:a2:r ffff:a2:r ffff:a2:r ffff:a2:r ffff:a2:r ffff:a2:r
+# 02 58
+I 7497 37 b9 bd 92 79 fffe:99 ffff:c0 7498:fc 7497:2
+F 7498 37 b9 bd 92 79 fffe:99 ffff:c0 7498:fc 7497:2
+C 7497:2:r 7498:fc:r ffff:c0:r fffe:99:r fffe:99:r ffff:c0:r ffff:c0:r ffff:c0:r ffff:c0:r ffff:c0:r ffff:c0:r
+# 02 59
+I ffdb 4d a2 9c e9 30 ffff:9b ffdc:31 fffe:ac ffdb:2
+F ffdc 4d a2 9c e9 30 ffff:9b ffdc:31 fffe:ac ffdb:2
+C ffdb:2:r ffdc:31:r ffff:9b:r fffe:ac:r fffe:ac:r ffff:9b:r ffff:9b:r ffff:9b:r ffff:9b:r ffff:9b:r ffff:9b:r
+# 02 60
+I d2fe e2 fe a2 40 b0 ffff:7e d2ff:3c fffe:34 d2fe:2
+F d2ff e2 fe a2 40 b0 ffff:7e d2ff:3c fffe:34 d2fe:2
+C d2fe:2:r d2ff:3c:r ffff:7e:r fffe:34:r fffe:34:r ffff:7e:r ffff:7e:r ffff:7e:r ffff:7e:r ffff:7e:r ffff:7e:r
+# 02 61
+I d1c1 ce 50 49 3 72 fffe:f7 ffff:ea d1c2:c2 d1c1:2
+F d1c2 ce 50 49 3 72 fffe:f7 ffff:ea d1c2:c2 d1c1:2
+C d1c1:2:r d1c2:c2:r ffff:ea:r fffe:f7:r fffe:f7:r ffff:ea:r ffff:ea:r ffff:ea:r ffff:ea:r ffff:ea:r ffff:ea:r
+# 02 62
+I 8205 8b 2d 96 e4 70 fffe:ba 8206:a7 ffff:72 8205:2
+F 8206 8b 2d 96 e4 70 fffe:ba 8206:a7 ffff:72 8205:2
+C 8205:2:r 8206:a7:r ffff:72:r fffe:ba:r fffe:ba:r ffff:72:r ffff:72:r ffff:72:r ffff:72:r ffff:72:r ffff:72:r
+# 02 63
+I 160e 98 19 23 23 bf fffe:45 ffff:b 160f:f6 160e:2
+F 160f 98 19 23 23 bf fffe:45 ffff:b 160f:f6 160e:2
+C 160e:2:r 160f:f6:r ffff:b:r fffe:45:r fffe:45:r ffff:b:r ffff:b:r ffff:b:r ffff:b:r ffff:b:r ffff:b:r
+# 02 64
+I 2a3d 69 a be 68 b3 ffff:4b fffe:4c 2a3e:c2 2a3d:2
+F 2a3e 69 a be 68 b3 ffff:4b fffe:4c 2a3e:c2 2a3d:2
+C 2a3d:2:r 2a3e:c2:r ffff:4b:r fffe:4c:r fffe:4c:r ffff:4b:r ffff:4b:r ffff:4b:r ffff:4b:r ffff:4b:r ffff:4b:r
+# 02 65
+I 6357 6c 9c ee 0 b1 fffe:ef ffff:ed 6358:c0 6357:2
+F 6358 6c 9c ee 0 b1 fffe:ef ffff:ed 6358:c0 6357:2
+C 6357:2:r 6358:c0:r ffff:ed:r fffe:ef:r fffe:ef:r ffff:ed:r ffff:ed:r ffff:ed:r ffff:ed:r ffff:ed:r ffff:ed:r
+# 02 66
+I d373 28 c9 af c4 f1 fffe:5 ffff:6e d374:f1 d373:2
+F d374 28 c9 af c4 f1 fffe:5 ffff:6e d374:f1 d373:2
+C d373:2:r d374:f1:r ffff:6e:r fffe:5:r fffe:5:r ffff:6e:r ffff:6e:r ffff:6e:r ffff:6e:r ffff:6e:r ffff:6e:r
+# 02 67
+I f20c a6 f7 e4 84 3a ffff:d0 f20d:47 fffe:67 f20c:2
+F f20d a6 f7 e4 84 3a ffff:d0 f20d:47 fffe:67 f20c:2
+C f20c:2:r f20d:47:r ffff:d0:r fffe:67:r fffe:67:r ffff:d0:r ffff:d0:r ffff:d0:r ffff:d0:r ffff:d0:r ffff:d0:r
+# 02 68
+I ff2c e1 18 76 b2 f3 ffff:5c ff2d:0 fffe:17 ff2c:2
+F ff2d e1 18 76 b2 f3 ffff:5c ff2d:0 fffe:17 ff2c:2
+C ff2c:2:r ff2d:0:r ffff:5c:r fffe:17:r fffe:17:r ffff:5c:r ffff:5c:r ffff:5c:r ffff:5c:r ffff:5c:r ffff:5c:r
+# 02 69
+I 801a df 50 32 2d 75 ffff:17 801b:e3 fffe:5f 801a:2
+F 801b df 50 32 2d 75 ffff:17 801b:e3 fffe:5f 801a:2
+C 801a:2:r 801b:e3:r ffff:17:r fffe:5f:r fffe:5f:r ffff:17:r ffff:17:r ffff:17:r ffff:17:r ffff:17:r ffff:17:r
+# 02 70
+I a7a6 3a 90 4e e7 f1 ffff:eb fffe:7e a7a7:f8 a7a6:2
+F a7a7 3a 90 4e e7 f1 ffff:eb fffe:7e a7a7:f8 a7a6:2
+C a7a6:2:r a7a7:f8:r ffff:eb:r fffe:7e:r fffe:7e:r ffff:eb:r ffff:eb:r ffff:eb:r ffff:eb:r ffff:eb:r ffff:eb:r
+# 02 71
+I 32ea e0 70 92 49 bd ffff:d5 32eb:17 fffe:72 32ea:2
+F 32eb e0 70 92 49 bd ffff:d5 32eb:17 fffe:72 32ea:2
+C 32ea:2:r 32eb:17:r ffff:d5:r fffe:72:r fffe:72:r ffff:d5:r ffff:d5:r ffff:d5:r ffff:d5:r ffff:d5:r ffff:d5:r
+# 02 72
+I d8b1 86 d3 e1 8 f7 ffff:a1 fffe:ab d8b2:3 d8b1:2
+F d8b2 86 d3 e1 8 f7 ffff:a1 fffe:ab d8b2:3 d8b1:2
+C d8b1:2:r d8b2:3:r ffff:a1:r fffe:ab:r fffe:ab:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r
+# 02 73
+I c94d f4 8c 1a 54 f5 ffff:d1 fffe:7 c94e:78 c94d:2
+F c94e f4 8c 1a 54 f5 ffff:d1 fffe:7 c94e:78 c94d:2
+C c94d:2:r c94e:78:r ffff:d1:r fffe:7:r fffe:7:r ffff:d1:r ffff:d1:r ffff:d1:r ffff:d1:r ffff:d1:r ffff:d1:r
+# 02 74
+I 9108 5e 28 35 53 76 ffff:59 fffe:60 9109:12 9108:2
+F 9109 5e 28 35 53 76 ffff:59 fffe:60 9109:12 9108:2
+C 9108:2:r 9109:12:r ffff:59:r fffe:60:r fffe:60:r ffff:59:r ffff:59:r ffff:59:r ffff:59:r ffff:59:r ffff:59:r
+# 02 75
+I d0ce 89 35 38 46 b5 ffff:40 d0cf:92 fffe:e5 d0ce:2
+F d0cf 89 35 38 46 b5 ffff:40 d0cf:92 fffe:e5 d0ce:2
+C d0ce:2:r d0cf:92:r ffff:40:r fffe:e5:r fffe:e5:r ffff:40:r ffff:40:r ffff:40:r ffff:40:r ffff:40:r ffff:40:r
+# 02 76
+I 145d 11 4e 51 13 bf ffff:30 fffe:da 145e:b2 145d:2
+F 145e 11 4e 51 13 bf ffff:30 fffe:da 145e:b2 145d:2
+C 145d:2:r 145e:b2:r ffff:30:r fffe:da:r fffe:da:r ffff:30:r ffff:30:r ffff:30:r ffff:30:r ffff:30:r ffff:30:r
+# 02 77
+I 8035 a6 99 5b cc 73 fffe:7d ffff:1a 8036:b4 8035:2
+F 8036 a6 99 5b cc 73 fffe:7d ffff:1a 8036:b4 8035:2
+C 8035:2:r 8036:b4:r ffff:1a:r fffe:7d:r fffe:7d:r ffff:1a:r ffff:1a:r ffff:1a:r ffff:1a:r ffff:1a:r ffff:1a:r
+# 02 78
+I 5bd1 96 f5 15 e9 b0 fffe:a2 5bd2:da ffff:b 5bd1:2
+F 5bd2 96 f5 15 e9 b0 fffe:a2 5bd2:da ffff:b 5bd1:2
+C 5bd1:2:r 5bd2:da:r ffff:b:r fffe:a2:r fffe:a2:r ffff:b:r ffff:b:r ffff:b:r ffff:b:r ffff:b:r ffff:b:r
+# 02 79
+I f69e 75 e4 6 8e b2 ffff:10 f69f:f9 fffe:b2 f69e:2
+F f69f 75 e4 6 8e b2 ffff:10 f69f:f9 fffe:b2 f69e:2
+C f69e:2:r f69f:f9:r ffff:10:r fffe:b2:r fffe:b2:r ffff:10:r ffff:10:r ffff:10:r ffff:10:r ffff:10:r ffff:10:r
+# 02 80
+I 432 7f 8a 65 e4 3c ffff:a6 433:b1 fffe:b5 432:2
+F 433 7f 8a 65 e4 3c ffff:a6 433:b1 fffe:b5 432:2
+C 432:2:r 433:b1:r ffff:a6:r fffe:b5:r fffe:b5:r ffff:a6:r ffff:a6:r ffff:a6:r ffff:a6:r ffff:a6:r ffff:a6:r
+# 02 81
+I ac05 81 d2 89 ef fe fffe:84 ffff:c2 ac06:ae ac05:2
+F ac06 81 d2 89 ef fe fffe:84 ffff:c2 ac06:ae ac05:2
+C ac05:2:r ac06:ae:r ffff:c2:r fffe:84:r fffe:84:r ffff:c2:r ffff:c2:r ffff:c2:r ffff:c2:r ffff:c2:r ffff:c2:r
+# 02 82
+I 6ad4 ae 9d 40 3a 35 ffff:65 fffe:a7 6ad5:13 6ad4:2
+F 6ad5 ae 9d 40 3a 35 ffff:65 fffe:a7 6ad5:13 6ad4:2
+C 6ad4:2:r 6ad5:13:r ffff:65:r fffe:a7:r fffe:a7:r ffff:65:r ffff:65:r ffff:65:r ffff:65:r ffff:65:r ffff:65:r
+# 02 83
+I d987 b8 c2 d 26 b4 fffe:6d ffff:45 d988:80 d987:2
+F d988 b8 c2 d 26 b4 fffe:6d ffff:45 d988:80 d987:2
+C d987:2:r d988:80:r ffff:45:r fffe:6d:r fffe:6d:r ffff:45:r ffff:45:r ffff:45:r ffff:45:r ffff:45:r ffff:45:r
+# 02 84
+I 761f 2a 2e 8e 31 f3 ffff:a1 7620:d6 fffe:79 761f:2
+F 7620 2a 2e 8e 31 f3 ffff:a1 7620:d6 fffe:79 761f:2
+C 761f:2:r 7620:d6:r ffff:a1:r fffe:79:r fffe:79:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r
+# 02 85
+I b665 4e b4 80 35 fa ffff:6b fffe:c5 b666:4c b665:2
+F b666 4e b4 80 35 fa ffff:6b fffe:c5 b666:4c b665:2
+C b665:2:r b666:4c:r ffff:6b:r fffe:c5:r fffe:c5:r ffff:6b:r ffff:6b:r ffff:6b:r ffff:6b:r ffff:6b:r ffff:6b:r
+# 02 86
+I 8d2b aa ea 67 1a 32 ffff:6f 8d2c:1c fffe:f4 8d2b:2
+F 8d2c aa ea 67 1a 32 ffff:6f 8d2c:1c fffe:f4 8d2b:2
+C 8d2b:2:r 8d2c:1c:r ffff:6f:r fffe:f4:r fffe:f4:r ffff:6f:r ffff:6f:r ffff:6f:r ffff:6f:r ffff:6f:r ffff:6f:r
+# 02 87
+I cd64 35 a0 bd d2 37 fffe:5 cd65:41 ffff:e2 cd64:2
+F cd65 35 a0 bd d2 37 fffe:5 cd65:41 ffff:e2 cd64:2
+C cd64:2:r cd65:41:r ffff:e2:r fffe:5:r fffe:5:r ffff:e2:r ffff:e2:r ffff:e2:r ffff:e2:r ffff:e2:r ffff:e2:r
+# 02 88
+I 9b93 16 a2 65 d8 3a fffe:13 ffff:5 9b94:60 9b93:2
+F 9b94 16 a2 65 d8 3a fffe:13 ffff:5 9b94:60 9b93:2
+C 9b93:2:r 9b94:60:r ffff:5:r fffe:13:r fffe:13:r ffff:5:r ffff:5:r ffff:5:r ffff:5:r ffff:5:r ffff:5:r
+# 02 89
+I ba1a 6e 52 d2 47 7f fffe:a ffff:2b ba1b:c7 ba1a:2
+F ba1b 6e 52 d2 47 7f fffe:a ffff:2b ba1b:c7 ba1a:2
+C ba1a:2:r ba1b:c7:r ffff:2b:r fffe:a:r fffe:a:r ffff:2b:r ffff:2b:r ffff:2b:r ffff:2b:r ffff:2b:r ffff:2b:r
+# 02 90
+I e16a 52 66 de 3f fc fffe:a8 ffff:f e16b:89 e16a:2
+F e16b 52 66 de 3f fc fffe:a8 ffff:f e16b:89 e16a:2
+C e16a:2:r e16b:89:r ffff:f:r fffe:a8:r fffe:a8:r ffff:f:r ffff:f:r ffff:f:r ffff:f:r ffff:f:r ffff:f:r
+# 02 91
+I 9f23 d6 5e 6b 45 f0 ffff:b9 9f24:2a fffe:14 9f23:2
+F 9f24 d6 5e 6b 45 f0 ffff:b9 9f24:2a fffe:14 9f23:2
+C 9f23:2:r 9f24:2a:r ffff:b9:r fffe:14:r fffe:14:r ffff:b9:r ffff:b9:r ffff:b9:r ffff:b9:r ffff:b9:r ffff:b9:r
+# 02 92
+I c3b3 99 27 a1 bf 7a ffff:8d c3b4:31 fffe:81 c3b3:2
+F c3b4 99 27 a1 bf 7a ffff:8d c3b4:31 fffe:81 c3b3:2
+C c3b3:2:r c3b4:31:r ffff:8d:r fffe:81:r fffe:81:r ffff:8d:r ffff:8d:r ffff:8d:r ffff:8d:r ffff:8d:r ffff:8d:r
+# 02 93
+I 61b2 fe 5f 2e d0 b4 fffe:ec 61b3:db ffff:a8 61b2:2
+F 61b3 fe 5f 2e d0 b4 fffe:ec 61b3:db ffff:a8 61b2:2
+C 61b2:2:r 61b3:db:r ffff:a8:r fffe:ec:r fffe:ec:r ffff:a8:r ffff:a8:r ffff:a8:r ffff:a8:r ffff:a8:r ffff:a8:r
+# 02 94
+I e98f 8f 96 b9 72 b1 fffe:aa ffff:be e990:bc e98f:2
+F e990 8f 96 b9 72 b1 fffe:aa ffff:be e990:bc e98f:2
+C e98f:2:r e990:bc:r ffff:be:r fffe:aa:r fffe:aa:r ffff:be:r ffff:be:r ffff:be:r ffff:be:r ffff:be:r ffff:be:r
+# 02 95
+I 5310 f1 e0 68 4f 79 ffff:cd 5311:6c fffe:2 5310:2
+F 5311 f1 e0 68 4f 79 ffff:cd 5311:6c fffe:2 5310:2
+C 5310:2:r 5311:6c:r ffff:cd:r fffe:2:r fffe:2:r ffff:cd:r ffff:cd:r ffff:cd:r ffff:cd:r ffff:cd:r ffff:cd:r
+# 02 96
+I f01f 4b df 5e 44 be fffe:2a ffff:aa f020:87 f01f:2
+F f020 4b df 5e 44 be fffe:2a ffff:aa f020:87 f01f:2
+C f01f:2:r f020:87:r ffff:aa:r fffe:2a:r fffe:2a:r ffff:aa:r ffff:aa:r ffff:aa:r ffff:aa:r ffff:aa:r ffff:aa:r
+# 02 97
+I e658 52 6d fd cb f0 ffff:a1 fffe:94 e659:17 e658:2
+F e659 52 6d fd cb f0 ffff:a1 fffe:94 e659:17 e658:2
+C e658:2:r e659:17:r ffff:a1:r fffe:94:r fffe:94:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r ffff:a1:r
+# 02 98
+I f2b5 cb 68 5f f1 b6 ffff:ca fffe:90 f2b6:35 f2b5:2
+F f2b6 cb 68 5f f1 b6 ffff:ca fffe:90 f2b6:35 f2b5:2
+C f2b5:2:r f2b6:35:r ffff:ca:r fffe:90:r fffe:90:r ffff:ca:r ffff:ca:r ffff:ca:r ffff:ca:r ffff:ca:r ffff:ca:r
+# 02 99
+I 94b3 db 5 ef 23 7d fffe:49 ffff:1d 94b4:a6 94b3:2
+F 94b4 db 5 ef 23 7d fffe:49 ffff:1d 94b4:a6 94b3:2
+C 94b3:2:r 94b4:a6:r ffff:1d:r fffe:49:r fffe:49:r ffff:1d:r ffff:1d:r ffff:1d:r ffff:1d:r ffff:1d:r ffff:1d:r
+# 02 100
+I bd22 c6 fb b5 89 f1 ffff:77 fffe:51 bd23:65 bd22:2
+F bd23 c6 fb b5 89 f1 ffff:77 fffe:51 bd23:65 bd22:2
+C bd22:2:r bd23:65:r ffff:77:r fffe:51:r fffe:51:r ffff:77:r ffff:77:r ffff:77:r ffff:77:r ffff:77:r ffff:77:r
