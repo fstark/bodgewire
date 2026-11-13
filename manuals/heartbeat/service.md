@@ -1,0 +1,53 @@
+# Heartbeat — Service Manual
+
+## Components
+
+- `X1` clock: 1 MHz crystal oscillator, drives `PHI0` of `U1`
+- `J1` power connector: +5 V and 0 V for the whole board
+- `U1` processor: a 6502; every byte it reads from `DB0`–`DB7` is `EA` (NOP), so it fetches from one address after the next for ever and puts each on `A0`–`A15`
+- `U2` address buffer: `A0`–`A7` to `LA0`–`LA7`, always enabled
+- `U3` address buffer: `A8`–`A15` to `LA8`–`LA15`, always enabled
+- `SW1` Reset button: pulls `RES_N` low while pressed
+- `D1` LED: lit while `A0` is high (`LA0`)
+- `D2` LED: lit while `A1` is high (`LA1`)
+- `D3` LED: lit while `A2` is high (`LA2`)
+- `D4` LED: lit while `A3` is high (`LA3`)
+- `D5` LED: lit while `A4` is high (`LA4`)
+- `D6` LED: lit while `A5` is high (`LA5`)
+- `D7` LED: lit while `A6` is high (`LA6`)
+- `D8` LED: lit while `A7` is high (`LA7`)
+- `D9` LED: lit while `A8` is high (`LA8`)
+- `D10` LED: lit while `A9` is high (`LA9`)
+- `D11` LED: lit while `A10` is high (`LA10`)
+- `D12` LED: lit while `A11` is high (`LA11`)
+- `D13` LED: lit while `A12` is high (`LA12`)
+- `D14` LED: lit while `A13` is high (`LA13`)
+- `D15` LED: lit while `A14` is high (`LA14`)
+- `D16` LED: lit while `A15` is high (`LA15`)
+- `R1` LED resistor: limits the current through `D1`
+- `R2` LED resistor: limits the current through `D2`
+- `R3` LED resistor: limits the current through `D3`
+- `R4` LED resistor: limits the current through `D4`
+- `R5` LED resistor: limits the current through `D5`
+- `R6` LED resistor: limits the current through `D6`
+- `R7` LED resistor: limits the current through `D7`
+- `R8` LED resistor: limits the current through `D8`
+- `R9` LED resistor: limits the current through `D9`
+- `R10` LED resistor: limits the current through `D10`
+- `R11` LED resistor: limits the current through `D11`
+- `R12` LED resistor: limits the current through `D12`
+- `R13` LED resistor: limits the current through `D13`
+- `R14` LED resistor: limits the current through `D14`
+- `R15` LED resistor: limits the current through `D15`
+- `R16` LED resistor: limits the current through `D16`
+- `R17` data pull-down: holds `DB0` at 0
+- `R18` data pull-up: holds `DB1` at 1
+- `R19` data pull-down: holds `DB2` at 0
+- `R20` data pull-up: holds `DB3` at 1
+- `R21` data pull-down: holds `DB4` at 0
+- `R22` data pull-up: holds `DB5` at 1
+- `R23` data pull-up: holds `DB6` at 1
+- `R24` data pull-up: holds `DB7` at 1
+- `R25` pull-up: holds `IRQ_N` high, no interrupt requests
+- `R26` pull-up: holds `NMI_N` high, no interrupts
+- `R27` pull-up: holds `RES_N` high while `SW1` is released
