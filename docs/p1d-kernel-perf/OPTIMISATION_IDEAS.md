@@ -18,6 +18,8 @@ Decision: keep building towards a real Machine; measure its real load before mor
 
 Measured (P5a, 2026-11-12, [BUS_LOAD.md](../p5a-bus-load/BUS_LOAD.md)): `netlists/bus_load.bwn`, a stub Z80 with ZX80 bus timing, decoding and video, needs **120 M applied events/s** for real time and runs at **0.22×** (≈ 26 M/s, 644 instructions an event). Gap to the 2× target set then: ≈ 10×. Profile on that load: event queue `pop` + `push` 37 %, `runUntil` 25 %, Parts ≈ 30 %. The simulation runs on its own thread, the UI on another: the single-threaded kernel needs a whole core.
 
+After P5b (2026-11-13, [KERNEL_BUSES.md](../p5b-kernel-buses/KERNEL_BUSES.md), Results): **0.40×** on `bus_load`, 424 instructions and 90 cycles an applied event, traces unchanged. Gap to 2×: ≈ 5×; to real time: 2.5×.
+
 ## How to measure
 
 - Machine: Apple M5 Max. The kernel runs at **~6.4 instructions per cycle**: cache misses and branch mispredictions are not the bottleneck. Cost = instruction count.
@@ -41,6 +43,22 @@ Measured (P5a, 2026-11-12, [BUS_LOAD.md](../p5a-bus-load/BUS_LOAD.md)): `netlist
 | Single-driver fast path in Net resolution | −8.4% instructions | yes |
 | Timing wheel instead of the binary heap | +9–12% instructions | no |
 | Now | 22.91 G instructions, ~5–5.7× | — |
+
+P5b, on `netlists/bus_load.bwn` (ratio best of 3 over 2 s, instructions and cycles an applied event; the full log in [KERNEL_BUSES_PLAN.md](../p5b-kernel-buses/KERNEL_BUSES_PLAN.md)):
+
+| Change | `bus_load` | Instr. | Cycles | Test pattern | Kept |
+|---|---|---|---|---|---|
+| P5a kernel | 0.225× | 643 | 165 | 5.46× | — |
+| One 128-bit key for `(time, target, stamp)` in the heap | 0.244× | 640 | 149 | 5.50× | yes |
+| Timing wheel, 4-ary heap, branchless heap, sorted vector | 0.20–0.24× | 626–710 | ≥ 149 | 4.3–5.6× | no |
+| LTO in the release build | 0.256× | 584 | 141 | 5.73× | yes |
+| ROM with specialised evaluation | 0.279× | 577 | 133 | 5.99× | yes |
+| Event queue as runs of same-time events | 0.354× | 503 | 103 | 5.76× | yes |
+| Sampled inputs (`D` of the 74LS74 and 74LS175) | 0.377× | 479 | 100 | 5.89× | yes |
+| Gate packages with specialised evaluation | 0.407× | 434 | 91 | 7.27× | yes |
+| The Net of each Pin kept by the Simulator | 0.407× | 424 | 89 | 7.41× | yes |
+| 74LS157, 74LS244 logic rewritten | 0.40–0.41× | 422–424 | 88–90 | — | no |
+| Now (2026-11-13) | 0.40× | 424 | 90 | 7.35× | — |
 
 ## What we learned
 
@@ -105,14 +123,15 @@ Split the board (e.g. CPU side, video side) over threads with conservative synch
 
 ## Next steps
 
-Done: 1 (P5a). Next, P5b, on `netlists/bus_load.bwn` (release, `bw run --time 2s`, plus instructions retired), under the guards in its ARCHITECTURE row (trace check first, the design unchanged, one idea a commit, kept at ≥ 5 %):
+Done: 1 (P5a), P5b (2026-11-13): the event queue, LTO, specialised evaluation of the spec-table Parts (ROM, gate packages), sampled inputs; 0.40× on `bus_load`. Within P5b's guards (Part API, traces and simulated Nets unchanged, no second kernel path) nothing left reaches 5 % alone. The options, each the user's to choose (spec, Results):
 
-1. The event queue: on this load it holds many pending events (address and data bits on 100–450 ns delays), so the timing wheel or a bucket queue rejected above is measured again here.
-2. The run loop's own code (25 %).
-3. LTO, rejected in P1d for build complexity, measured again.
-4. Idea 1 on the hottest Part (ROM, gate packages, 74LS157, 74LS74), shown to the user before it is generalised.
+1. Go on to the 6502 with this kernel and measure the BW-2001 load, then the real Z80 in place of the stub (P5j), before more kernel work (recommended: `bus_load` is the heaviest computer).
+2. Idea 1's real lever: an `EvalContext` that reads and drives several Pins at once (a Part API change). The cost left in Parts is per-Pin bookkeeping; 10–20 % estimated.
+3. A Bus as one entity: 1.3–1.5× estimated, a second kernel path.
+4. Idea 6, two cores (CPU side, video side): up to ≈ 2×.
+5. Idea 2, generated code.
 
-Ideas 2–4 are out of P5b: they bend the design (generated code, lost Nets, coarser timing). If 1–4 leave us short, P5b ends with the ratio and the options for the user.
+The P5b plan, kept for history: the event queue measured again on this load; the run loop's own code; LTO; idea 1 on the hottest Parts, shown to the user first. Ideas 2–4 were out of P5b: they bend the design (generated code, lost Nets, coarser timing).
 
 The P1d plan, kept for history:
 

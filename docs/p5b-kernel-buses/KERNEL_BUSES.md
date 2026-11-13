@@ -72,7 +72,30 @@ Each idea's design is written in the plan's idea log when it is tried, not ahead
 
 ## Results
 
-Filled at the end: baseline and final ratio and instructions on the three netlists, the idea log's summary, what is left.
+Measured 2026-11-13 (`bench/measure.sh`, release, best of 3; the idea log in [KERNEL_BUSES_PLAN.md](KERNEL_BUSES_PLAN.md) has every row):
+
+| Netlist | P5a kernel | P5b | Gain |
+|---|---|---|---|
+| `bus_load` | 0.225× | **0.40–0.41×** | 1.8× |
+| instructions an applied event | 643 | 424 | −34 % |
+| cycles an applied event | 165 | 90 | −45 % |
+| test pattern | 5.46× | 7.35× | 1.35× |
+| typewriter | 1.00× | 1.37× | 1.37× |
+| ball, chaser, counter | 2.29×, 12.8×, 11.6× | 2.68×, 14.8×, 13.3× | |
+| dice, knob, message | 21.7×, 15.4×, 2.32× | 34.3×, 16.6×, 2.91× | |
+| stopwatch, tennis | 9.28×, 1.53× | 11.1×, 1.94× | |
+
+Every netlist is faster; none got slower. Traces identical to the P5a kernel throughout (S1); `bw_ui` runs the typewriter at 1.00× and `bus_load` at 0.40×.
+
+What gained, in points of the baseline's cycles (rounded; the machine's speed drifted between rows): the event queue, one 128-bit key then runs of same-time events (1a, 1f: −30), specialised evaluation of the ROM and gate packages (−10), LTO (−5), sampled inputs (−2), the Net of each Pin kept by the Simulator (−1). What did not: timing wheels and other heaps, the run loop's own lines (no line over 2 %), and the hand-written Parts (74LS157, 74LS244: their Pins and delays are already constants; their cost is the `read` and `drive` calls themselves).
+
+**Aim not met:** 0.40× against 2×. Within the three guards, nothing left reaches the 5 % bar alone. The options, each bending the design and so the user's to choose ([OPTIMISATION_IDEAS.md](../p1d-kernel-perf/OPTIMISATION_IDEAS.md), Next steps):
+
+1. **Go on to the 6502 with this kernel** (recommended). `bus_load` is the BW-80, the last and heaviest computer; the 6502 Machines run at 1 MHz with no refresh or NOP forcing. Measure the BW-2001 load when its netlist exists, and the real Z80 in place of the stub (P5j), before choosing more.
+2. **An `EvalContext` that reads and drives several Pins at once** (Part API change, OPTIMISATION_IDEAS idea 1's real lever): the cost left in Parts is per-Pin bookkeeping. Estimated 10–20 %, not measured.
+3. **A Bus as one entity** (its lines changing at one time taken as one event): a second kernel path; 1.3–1.5× estimated from event counts.
+4. **Two cores** (idea 6), CPU side and video side: up to ≈ 2×, at the price of conservative synchronisation in the kernel.
+5. **Generated code** (idea 2): the largest gain and the largest change.
 
 ## Done when
 

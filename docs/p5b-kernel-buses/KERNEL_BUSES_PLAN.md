@@ -2,67 +2,7 @@
 
 Spec: [KERNEL_BUSES.md](KERNEL_BUSES.md). Design: [KERNEL_BUSES_DESIGN.md](KERNEL_BUSES_DESIGN.md).
 
-## Fences
-
-Every phase that changes code ends with:
-
-- `cmake --build --preset release` and `cmake --build --preset debug` clean; `clang-format` on the C++ files touched.
-- `bench/trace_check.sh` identical (from phase 2 on).
-- `bench/measure.sh`: the idea's row in the log (ratio of the three netlists, instructions and cycles per applied event on `bus_load`), against the last kept row, with nothing else running.
-- Kept (≥ 5 % on `bus_load` ratio and cycles, plain code; for phases 5–6 the bar applies to the summed conversion, spec Guard 3): the full debug suite (`ctest --preset debug -j 12`, ≈ 15 min: kernel and shared code, AGENTS.md), then one commit. Dropped: `git checkout` of the code, the log row committed with the next commit.
-- Before each idea, the user is told what is tried, the gain expected and the files touched; after, the result and kept or dropped (spec, Progress). This is a message, not a stop: work goes on unless the idea needs a guard-2 exception.
-
-Only this step's paths are committed (the user edits docs in parallel).
-
-## Phases
-
-### Phase 1 — Guards and baseline
-
-- `bench/trace_check.sh`, `bench/measure.sh` (design).
-- Run the trace check with the reference build: the current tree is the P5a kernel, so it must pass (it checks the script).
-- Baseline: `bench/measure.sh` twice; the log's row 0, the other netlists in the notes.
-- Queue numbers for idea 1: size distribution and delay spread on `bus_load` (temporary counters, not committed), in the notes.
-- Fence: trace check identical; commit `bench: trace check against the P5a kernel, measurement script`.
-
-### Phase 2 — Idea 1, the event queue
-
-- Wheel (design) with its tests; measured; kept or dropped. If dropped, the 4-ary heap as a second row.
-- Fence as above; commit `sim: event queue as a timing wheel` (or the kept variant's name).
-
-### Phase 3 — Idea 2, the run loop
-
-- Profile `runUntil` by line on the current best; one try per hot spot the profile shows (design, Idea 2), each its own row and commit `sim: …`.
-
-### Phase 4 — Idea 3, LTO
-
-- Release preset change; clean build time before and after in the notes; measured; commit `build: LTO in the release build` if kept.
-
-### Phase 5 — Idea 4, the ROM, shown to the user
-
-- `EvaluateRom` (design); ROM tests and the machines using ROMs green; measured.
-- **Stop:** show the user the ROM's new code, its numbers, and any `EvalContext` addition it would want. Wait for the OK before phase 6. Commit `parts: ROM with specialised evaluation` when the user OKs (or drop, logged).
-
-### Phase 5a — A second look (the user's OK, 2026-11-12)
-
-Four ideas found after phase 5 by reading the code and counting on `bus_load`, each measured first on a scratch copy, then applied in this order, one commit each, with the fences above:
-
-- 1f, the event queue as runs of same-time events (design, Idea 1f): `sim: event queue as runs of same-time events`.
-- 5, sampled inputs (design, Idea 5; the trace check stops comparing `evaluations`): `sim: sampled inputs never wake their Component`.
-- 4.2, gate packages (design, Idea 4.2): phase 6's first Part, with ADD_PART: `parts: gate packages with specialised evaluation`.
-- 2b, the Net of each Pin kept by the Simulator (design, Idea 2b): `sim: the Net of each Pin kept by the Simulator`.
-
-Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User decisions).
-
-### Phase 6 — Idea 4, further Parts (after the OK)
-
-- In profile order (gate packages, 74LS157, 74LS74, 74LS244, then the next in a fresh profile): one row and one commit each, `parts: <Part> with specialised evaluation`; ADD_PART updated in the first commit of this phase.
-- Before the phase closes: the summed conversion (ROM and these Parts) against the last row before phase 5; below 5 %, every conversion commit is reverted together (`git revert`) and logged.
-
-### Phase 7 — Finish
-
-- Final `bench/measure.sh`; the spec's Results; ARCHITECTURE (Performance, row P5b done with date and links); OPTIMISATION_IDEAS (Target, History, Next steps); if short of 2×, the options left for the user.
-- Release screenshots: `bw_ui netlists/bus_load.bwn --screenshot … --after 2s` and `bw_ui netlists/typewriter.bwn --screenshot … --after 2s`, viewed (pictures as before, ratio printed).
-- Full debug suite; plan cut to the status table, idea log and notes ("user check pending"); commit `docs: P5b implemented, user check pending`.
+Implemented 2026-11-13, user check pending. The phases and fences are in git history (`bf5b6c7`); results in the spec (Results).
 
 ## Status
 
@@ -74,8 +14,8 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 | 4 | LTO | done: kept |
 | 5 | ROM, shown to the user | done: kept (the user's OK, 2026-11-12) |
 | 5a | A second look: 1f, 5, 4.2, 2b | done |
-| 6 | Further Parts | gate packages done (4.2, in 5a); 74LS157, 74LS74, 74LS244 open |
-| 7 | Finish | — |
+| 6 | Further Parts | done: gate packages (4.2, in 5a); 74LS157 and 74LS244 dropped, 74LS74 not tried (notes) |
+| 7 | Finish | done 2026-11-13, user check pending |
 
 ## Idea log
 
@@ -94,7 +34,10 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 | 1f | pending events as runs of same-time events, a take is a whole timestamp (on 4.1) | 0.354× | 503 | 103 | 5.76× | 1.071× | yes: −24 % cycles, +34 % ratio against 4.1 measured the same hour (0.265×, 578, 136) | `dca233b` |
 | 5 | sampled inputs: `PinSpec::sampled`, the `D`s of the 74LS74 and 74LS175 never wake their chip | 0.377× | 479 | 100 | 5.89× | 1.083× | yes, on the user's decision (under the bar): −3 % cycles, −5 % instructions, +6 % ratio | `f62aa8b` |
 | 4.2 | gate packages: `EvaluatePackage<units, delays>`, reached through `GatePackageSpec::evaluate` | 0.407× | 434 | 91 | 7.27× | 1.385× | yes: −9 % cycles, +8 % ratio | `7e26235` |
-| 2b | `Simulator::pinNet_`: each Pin's Net kept by the Simulator, a read is two loads from its own arrays | 0.407× | 424 | 89 | 7.41× | 1.384× | yes, on the user's decision (under the bar): −2 % cycles, −2 % instructions, ratio within noise | this commit |
+| 2b | `Simulator::pinNet_`: each Pin's Net kept by the Simulator, a read is two loads from its own arrays | 0.407× | 424 | 89 | 7.41× | 1.384× | yes, on the user's decision (under the bar): −2 % cycles, −2 % instructions, ratio within noise | `a0bc4cf` |
+| 4.3 | 74LS157: Y copies the selected input when `S` and `G_N` are 0 or 1, the X loop only otherwise | 0.409× | 424 | 88–89 | — | — | no: −1…2 % cycles, within noise | — |
+| 4.4 | 74LS244: each `OE_N` read once, each `A` once | 0.400× | 422 | 90 | — | — | no: −0.4 % instructions, cycles unchanged | — |
+| end | final `bench/measure.sh` (on 2b) | 0.399× (0.40–0.41× in single runs) | 424 | 90 | 7.35× | 1.37× | — | — |
 
 ## Implementation notes
 
@@ -112,3 +55,5 @@ Ideas 5 and 2b gain less than 5 % alone: kept on the user's decision (spec, User
 - 4.2: gate packages were the hottest Part once the queue was cheaper (14 % of `bus_load` by function on 1f and 5, the 74LS157 next at 7 %). The same loop as before, on a `constexpr` unit array and `Delays` as template arguments; `GatePackageSpec::delays`, read by nothing else, is gone. Netlists made of gates gain most (5 → 4.2): test pattern 5.89 → 7.27×, typewriter 1.08 → 1.39×, dice 23.4 → 33.7×, tennis 1.61 → 1.96×, ball 2.40 → 2.68×, message 2.54 → 2.94×, stopwatch 9.42 → 11.1×, chaser 14.7 → 14.7×, counter 13.4 → 13.3×, knob 16.4 → 16.6×. The summed conversion so far (ROM and gate packages) is well over the 5 % bar of guard 3. ADD_PART: the gate package and ROM rows, and a rule on specialised evaluation.
 - 2b: three small changes had gained 2–3 % together on the scratch copy. Measured one at a time on 4.2 (434 instructions and 91 cycles an event): the Net of each Pin alone 424 and 88; with `readBit` and `readBitBefore` moved into the header 425 and 88 (LTO inlines them already); the test of the size before the queue's sort nothing (note on 1f). Only the first is made. Other netlists equal within noise (4.2 → 2b): ball 2.68 → 2.69×, chaser 14.7 → 14.8×, counter 13.3 → 13.5×, dice 33.7 → 34.8×, knob 16.6 → 16.3×, message 2.94 → 2.92×, stopwatch 11.1 → 11.0×, tennis 1.96 → 1.96×.
 - After phase 5a (2026-11-13): `bus_load` 0.407×, 424 instructions and 89 cycles an applied event, against 0.225×, 643 and 165 at the baseline. By function on the scratch copy at this point: `runUntil` a third, the queue a fifth, Parts the rest (74LS157 7 %, ROM, 74LS244 and the stub 4–5 % each, 2114 and 74LS74 3 % each). What is left with identical traces, estimated, not measured: the other Parts of phase 6 about +10 %, the fan-out marks and bus resolution in the run loop +5–8 %, so 0.45–0.5×. The full debug suite went from 758 s (4.1) to 485 s (4.2).
+- Phase 6 (2026-11-13): profile on 2b (`build/profile-lto`, by function, ≈ 5,000 samples): `runUntil` 37 %, the queue (`takeNext`, `openRun`) 22 %, 74LS157 7.8 %, ROM 5.2 %, 74LS244 5.0 %, the stub 4.9 %, 2114 3.9 %, 74LS74 3.5 %, 74LS165 2.1 %, gate packages 4.8 % together. The ROM and gate package pattern removes the run-time generality of a Part written once behind a spec table; the 74LS157, 74LS74 and 74LS244 are hand-written classes whose Pins and delays are already constants. Two tries on what remained in them: 4.3 (the 74LS157's X loop skipped when its controls are known) and 4.4 (the 74LS244's reads not repeated), both trace-identical, neither measurable. What these Parts cost is their `read` and `drive` calls: an `EvalContext` change (guard 2), left to the user (spec, Results, option 2). The 74LS74, smaller and of the same shape, was not tried. The summed conversion (ROM, gate packages) is −15 % cycles against 1a+LTO: over the bar, kept.
+- Phase 7 (2026-11-13): final `bench/measure.sh` in the log's last row; others: ball 2.68×, chaser 14.8×, counter 13.3×, dice 34.3×, knob 16.6×, message 2.91×, stopwatch 11.1×, tennis 1.94×. Trace check identical. Screenshots viewed: `bw_ui netlists/bus_load.bwn` shows the page at 0.40×, `netlists/typewriter.bwn` its random power-on page at 1.00×, both as before.
