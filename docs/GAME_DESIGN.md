@@ -78,6 +78,7 @@ Tutorial ladder, by difficulty, each spec in `docs/machines/NNN-name/`:
 | 070 | Paddle tennis | TV, paddle controllers, Start button | TTL only, the game of the 1972 arcade Pong: the 060 ball plus paddles, score digits on the TV and the game's rules |
 | 080 | Message display | TV | fixed text: sync counters → message ROM → character ROM → shift register; the BW-2001 video chain with ROM instead of RAM |
 | 090 | TV typewriter | TV, ASCII keyboard | built as the 1973 TV Typewriter (half of the Apple 1): a page in MOS shift registers going round with the beam, written at a cursor from an ASCII keyboard when its cell comes round; memory without addresses before any CPU |
+| 100 | Heartbeat | LEDs, Reset button | the first processor: a 6502 free-running on a data bus held at NOP, its address lines on LEDs; the free-run test of a dead computer |
 
 - LEDs, digits and buttons whose arrangement belongs to the Board are Components on it (clicked or watched in the board view, faulty like any other); standard devices (TV, keyboard) sit off the Board behind a Connector.
 

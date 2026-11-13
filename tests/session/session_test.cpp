@@ -441,6 +441,38 @@ TEST_CASE("session: stopwatch with every instrument", "[session][slow]") {
     session.powerOff();
 }
 
+TEST_CASE("session: heartbeat with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    REQUIRE(session.leds().size() == 16);
+    CHECK(session.leds()[0].reference == "D1");
+    CHECK(session.leds()[15].reference == "D16");
+
+    // 32 LED Nets + 8 Clips + 2 Hooks + the probe = 43 watched; the meter lead's Net is an LED's.
+    for (int bit = 0; bit < 8; ++bit) {
+        REQUIRE(session.clip("U1", "A" + std::to_string(bit)).has_value());
+    }
+    REQUIRE(session.hook("U1", "PHI0").has_value());
+    REQUIRE(session.hook("U1", "SYNC").has_value());
+    const auto rw = session.padLead("U1", "RW");
+    const auto anode = session.padLead("D16", "A");
+    REQUIRE(rw.has_value());
+    REQUIRE(anode.has_value());
+    session.touch(ProbeTip{rw->at, Layer::Front});
+    REQUIRE(session.placeLead({anode->at, Layer::Front, anode->label}));
+
+    session.powerOn(1, 300_ms);
+    session.runner().waitIdle();
+    const float a0 = session.leds()[0].brightness;  // A0 at 250 kHz: half lit
+    CHECK(a0 > 0.4f);
+    CHECK(a0 < 0.6f);
+    session.powerOff();
+}
+
 TEST_CASE("session: ball with every instrument", "[session][slow]") {
     auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
     REQUIRE(machine.has_value());

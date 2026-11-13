@@ -2,43 +2,9 @@
 
 Spec: [MOS6502.md](MOS6502.md). Design: [MOS6502_DESIGN.md](MOS6502_DESIGN.md). Machine: [HEARTBEAT.md](../machines/100-heartbeat/HEARTBEAT.md), [HEARTBEAT_DESIGN.md](../machines/100-heartbeat/HEARTBEAT_DESIGN.md).
 
-Every phase ends with its fence: `cmake --build --preset debug` clean (`-Werror`), `clang-format` on the C++ files touched, the tests the phase names green in debug, then one commit with the message given (the tests run named in it). Only this step's own paths are committed.
+Done 2026-11-13, user check pending.
 
-## Phase 1 — Test data
-
-`tests/data/6502/`: `convert_harte.py`, `fetch.sh`, `README.md`, `LICENSE-harte`; `.gitignore` `external/`. `fetch.sh --subset` writes the full set into `external/6502/` and the committed subset into `tests/data/6502/harte/` from each JSON before deleting it.
-
-Fence: the subset has 256 files of 100 cases (`grep -c '^I '`); `a9.txt` checked by eye against the JSON. Commit `tests: 6502 test data, Harte subset and fetch script`.
-
-## Phase 2 — Instruction core
-
-`src/parts/mos6502_core.{hpp,cpp}` with all 256 opcodes (design, Instruction core), `tests/parts/mos6502_cases.{hpp,cpp}` (the runner clearing only the cells a case touched), `tests/parts/mos6502_conformance_test.cpp`, `tests/parts/mos6502_core_test.cpp` (every hand case of the design, interrupts and reset included). Full Harte timed in debug; hidden tag if over 2 minutes (design, Tests); run once in release either way.
-
-Fence: `ctest --preset debug -j 12 -R "6502"`, with `external/6502/` present (Dormann and, by name if hidden, full Harte green). Commit `parts: 6502 instruction core, all 256 opcodes, Harte and Dormann tests`.
-
-## Phase 3 — The 6502 Part
-
-`src/parts/mos6502.{hpp,cpp}`, `kMos6502…` delays, catalogue row, `PowerPinVolts` and `PowerPinRail` (`GND2`), the builder's two power-pin spots, `datasheets/6502.md`, catalogue test lists and power-pin names, `builder_test` case, `tests/parts/mos6502_test.cpp` with `BenchMemory` (design, Pins and Tests).
-
-Fence: the builder is shared code, so the full `ctest --preset debug -j 12`. Commit `parts: 6502, the core behind its Pins; GND2`.
-
-## Phase 4 — 100 Heartbeat: netlist, manuals, fault-free test
-
-`netlists/heartbeat.bwn`, `manuals/heartbeat/`, `tests/machines/heartbeat_test.cpp` (netlist-built), the `manuals_test.cpp` list. By hand first: `bw run netlists/heartbeat.bwn --time 300ms` and a VCD of `PHI0,SYNC,RW,A0,A1,A15,RES_N` over 20 µs, read against HEARTBEAT.md, When it works. Release `bw run … --time 2s` ratio noted.
-
-Fence: `ctest --preset debug -j 12 -R "heartbeat|6502|manuals"`. Commit `heartbeat: netlist, manuals, fault-free test`.
-
-## Phase 5 — Board
-
-`boards/heartbeat/heartbeat.place`, `bw place` (release), `.kicad_pro` written; the `.net` exported for the user. **Stop: the user routes the Board** (HEARTBEAT_DESIGN, Board). Then `bw check-board` `ok`, the per-Machine loops (`boards_test`, `electrical_test`, `board_scene_test`), `heartbeat_test.cpp` built from the Board for all but the warnings case.
-
-Fence: `ctest --preset debug -j 12 -R "heartbeat|board|electrical|scene|drc"`. Commit `heartbeat: Board`.
-
-## Phase 6 — Session, release check, docs
-
-`session: heartbeat with every instrument`. Release: `bw_ui netlists/heartbeat.bwn --screenshot … --after 1s` with every instrument (`--probe`, `--clip`, `--hook`, `--meter`), ratio and UI ms noted, PNG viewed. ADD_PART (a CPU: core apart from the Pins, conformance data, `GND2` and `PowerPinRail`; reference commits), ADD_MACHINE (reference commits). ARCHITECTURE: P5c row done with the date and links. This plan cut down to the phase table and notes, "user check pending".
-
-Fence: full `ctest --preset debug -j 12`. Commit `docs: P5c implemented, user check pending`.
+Every phase ended with its fence: `cmake --build --preset debug` clean, `clang-format` on the C++ files touched, the tests the phase names green in debug (the full suite at phases 3 and 6), one commit. Only this step's own paths were committed.
 
 ## Status
 
@@ -48,8 +14,8 @@ Fence: full `ctest --preset debug -j 12`. Commit `docs: P5c implemented, user ch
 | 2 | Instruction core | `9517870` |
 | 3 | The 6502 Part | `0d5a860` |
 | 4 | Heartbeat netlist, manuals, fault-free test | `6344de2` |
-| 5 | Board | |
-| 6 | Session, release check, docs | |
+| 5 | Board | `8bbee8d` |
+| 6 | Session, release check, docs | this commit |
 
 ## Implementation notes
 
@@ -59,3 +25,5 @@ Fence: full `ctest --preset debug -j 12`. Commit `docs: P5c implemented, user ch
 - Phase 3: first Part test run caught three test mistakes (an address sampled before the stalled cycle drove it, an X tie the Circuit refuses, power-on evaluations counted); the Part itself unchanged. Full debug suite: 838 tests green in 557 s.
 - Phase 4: VCD over 12 µs as designed (`A0` every 2 µs at `PHI0`↓ + 130 ns, `LA0` 12 ns after through `U2`). Release headless `bw run --time 2s`: 7.08×, 9 M applied events a simulated second. The LED case first counted `LA15`'s settling from the 74LS244's random power-on output (20 ns) as an edge; it now skips the first µs. Debug: the four Heartbeat cases 2.3 s together.
 - Phase 5: `bw place` (4.22 m) scattered the LED resistors over the chip grid; the user moved and rotated parts by hand before routing (LED resistors in a row behind their LEDs, the data-bus resistors together, `U1` turned), so the committed Board is no longer what `heartbeat.place` gives (`place_drc_heartbeat` still checks the rules' own Board). `check-board` ok, KiCad DRC 0 violations, 0 unconnected. Keeping a hand arrangement across a regeneration: logged in ARCHITECTURE, Board authoring.
+- Phase 6: `session: heartbeat with every instrument` green (5 s debug). Release `bw_ui netlists/heartbeat.bwn` with the probe on `U1` `RW`, 8 Clips on `A0`–`A7`, Hooks on `PHI0` and `SYNC`, the meter on `D16` `A`: 1.00×, UI 0.7 ms; screenshot viewed (scope: `PHI0` at 1 MHz, `SYNC` every other cycle; meter 1.69 V on the half-lit `D16`). Seen, not fixed (shared UI code, older than P5c): the logic probe shows no level on a pin with no copper (`U1` `RW` and `SYNC` here, 080 `U1` `QA` too), while a scope Hook on the same pin works; noted in ADD_MACHINE.
+- User check pending: `bw_ui netlists/heartbeat.bwn` (the LEDs, Reset with `SW1`, the instruments on the bus); `tests/data/6502/fetch.sh` on your machine if you want the full suites in your runs (about 420 MB in `external/6502/`, 86 s more in a debug suite).
