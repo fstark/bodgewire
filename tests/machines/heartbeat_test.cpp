@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/button.hpp"
 #include "sim/simulator.hpp"
@@ -21,6 +22,15 @@ namespace {
 using enum LogicValue;
 
 constexpr Time kCycle = 1_us;  // 1 MHz
+
+// Built from the routed Board (the Machine as the player gets it).
+std::unique_ptr<LoadedCircuit> BoardCircuit() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
     auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
@@ -41,7 +51,7 @@ NetId CpuNet(const LoadedCircuit& loaded, const std::string& name) {
 
 // U1's pins and LA15 recorded from a seeded power-on.
 struct Run {
-    std::unique_ptr<LoadedCircuit> loaded = DesignCircuit();
+    std::unique_ptr<LoadedCircuit> loaded = BoardCircuit();
     std::map<std::string, NetId> nets;
     std::optional<Simulator> sim;
 
@@ -53,7 +63,9 @@ struct Run {
         for (const char* name : {"PHI0", "SYNC", "RW", "RES_N"}) {
             nets[name] = CpuNet(*loaded, name);
         }
-        nets["LA15"] = loaded->nets.at("LA15");
+        const auto anode = PinNet(*loaded, "D16", "A");  // LA15
+        REQUIRE(anode.has_value());
+        nets["LA15"] = *anode;
         sim.emplace(loaded->circuit);
         sim->powerOn(seed);
         for (const auto& [name, net] : nets) {

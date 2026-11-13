@@ -47,7 +47,7 @@ Fence: full `ctest --preset debug -j 12`. Commit `docs: P5c implemented, user ch
 | 1 | Test data | `d7aec85` |
 | 2 | Instruction core | `9517870` |
 | 3 | The 6502 Part | `0d5a860` |
-| 4 | Heartbeat netlist, manuals, fault-free test | |
+| 4 | Heartbeat netlist, manuals, fault-free test | `6344de2` |
 | 5 | Board | |
 | 6 | Session, release check, docs | |
 
@@ -58,3 +58,4 @@ Fence: full `ctest --preset debug -j 12`. Commit `docs: P5c implemented, user ch
 - Phase 2: every core case green; full Harte (2.56 M cases) green in 86 s debug with the runner reusing one array (17 s → 0.9 s for the subset), so it stays a registered ctest, not hidden; Dormann traps at `$3469` (success) in 3.7 s debug. Mutations caught: ANE's constant (subset), the taken-branch poll (IRQ case). Harte's PLP and RTI: B cleared and bit 5 set in the pulled P.
 - Phase 3: first Part test run caught three test mistakes (an address sampled before the stalled cycle drove it, an X tie the Circuit refuses, power-on evaluations counted); the Part itself unchanged. Full debug suite: 838 tests green in 557 s.
 - Phase 4: VCD over 12 µs as designed (`A0` every 2 µs at `PHI0`↓ + 130 ns, `LA0` 12 ns after through `U2`). Release headless `bw run --time 2s`: 7.08×, 9 M applied events a simulated second. The LED case first counted `LA15`'s settling from the 74LS244's random power-on output (20 ns) as an edge; it now skips the first µs. Debug: the four Heartbeat cases 2.3 s together.
+- Phase 5: `bw place` (4.22 m) scattered the LED resistors over the chip grid; the user moved and rotated parts by hand before routing (LED resistors in a row behind their LEDs, the data-bus resistors together, `U1` turned), so the committed Board is no longer what `heartbeat.place` gives (`place_drc_heartbeat` still checks the rules' own Board). `check-board` ok, KiCad DRC 0 violations, 0 unconnected. Keeping a hand arrangement across a regeneration: logged in ARCHITECTURE, Board authoring.

@@ -1,0 +1,5 @@
+# 100 Heartbeat: panel parts and the CPU (docs/machines/100-heartbeat/HEARTBEAT_DESIGN.md, Board)
+edge J1 left middle      # power
+row front left D16 D15 D14 D13 D12 D11 D10 D9 D8 D7 D6 D5 D4 D3 D2 D1   # A15 on the left
+edge SW1 front right     # Reset
+edge U1 back middle      # the 6502: DIP-40, no slot in the chip grid
