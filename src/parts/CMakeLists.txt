@@ -18,6 +18,7 @@ add_library(bw_parts STATIC
   ls74.cpp
   ls90.cpp
   ls93.cpp
+  mos6502_core.cpp
   oscillator.cpp
   paddle.cpp
   ram2114.cpp

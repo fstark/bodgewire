@@ -82,6 +82,9 @@ add_executable(bw_tests
   parts/ls74_test.cpp
   parts/ls90_test.cpp
   parts/ls93_test.cpp
+  parts/mos6502_cases.cpp
+  parts/mos6502_conformance_test.cpp
+  parts/mos6502_core_test.cpp
   parts/oscillator_test.cpp
   parts/paddle_test.cpp
   parts/ram2114_test.cpp
@@ -122,7 +125,9 @@ target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR
                                            BW_BOARD_DIR="${PROJECT_SOURCE_DIR}/boards"
                                            BW_FOOTPRINT_DIR="${PROJECT_SOURCE_DIR}/boards/footprints"
                                            BW_PUZZLE_DIR="${PROJECT_SOURCE_DIR}/puzzles"
-                                           BW_ROOT_DIR="${PROJECT_SOURCE_DIR}")
+                                           BW_ROOT_DIR="${PROJECT_SOURCE_DIR}"
+                                           BW_6502_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data/6502"
+                                           BW_6502_EXTERNAL_DIR="${PROJECT_SOURCE_DIR}/external/6502")
 
 include(Catch)
 catch_discover_tests(bw_tests)
