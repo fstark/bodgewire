@@ -252,6 +252,10 @@ One pass of the Oscilloscope across its screen, starting at a Trigger.
 **Capture**:
 What a Logic Analyzer recorded around one Trigger: every Channel over the same sample points.
 
+**Channel Group**:
+Logic Analyzer Channels read and triggered as one Bus value, shown in hex, such as `U1 A` for the 16 address Channels.
+_Avoid_: Bus (that is the circuit's group of Nets)
+
 **See-through Board**:
 The single top-down view of a Board showing every Layer at once, the back seen through the board rather than flipped.
 

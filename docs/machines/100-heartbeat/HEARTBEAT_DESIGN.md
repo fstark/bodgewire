@@ -112,6 +112,6 @@ Layout constraints for the user: none beyond the placed parts; route the `DB0`�
 
 ADD_MACHINE: `manuals_test.cpp` list; once the Board is routed, `boards_test.cpp`, `electrical_test.cpp`, `board_scene_test.cpp` loops; `drc_heartbeat` and `place_drc_heartbeat` appear by themselves.
 
-Session (`tests/session/session_test.cpp`, `session: heartbeat with every instrument` `[session][slow]`): 16 lamps `D1`–`D16`; 8 Clips on `U1` `A0`–`A7`, Hooks on `U1` `PHI0` and `SYNC`, the probe on `U1` `RW`, the meter lead on `D16` `A` (`LA15`, already watched for the LED). Watched Nets, one slot per distinct Net: 32 for the LEDs + 8 Clips + 2 Hooks + 1 probe = 43 ≤ `kMaxWatched` (48). After 300 ms: `D1` brightness 0.4–0.6 (`A0` at 250 kHz).
+Session (`tests/session/session_test.cpp`, `session: heartbeat with every instrument` `[session][slow]`): 16 lamps `D1`–`D16`; 8 Clips on `U1` `A0`–`A7`, Hooks on `U1` `PHI0` and `SYNC`, the probe on `U1` `RW`, the meter lead on `D16` `A` (`LA15`, already watched for the LED). Watched Nets, one slot per distinct Net: 32 for the LEDs + 8 Clips + 2 Hooks + 1 probe = 43 ≤ `kMaxWatched` (96 since P5e). After 300 ms: `D1` brightness 0.4–0.6 (`A0` at 250 kHz).
 
 Release: `bw_ui netlists/heartbeat.bwn` (then the Board) with every instrument, 1.00×, UI under 1 ms, screenshot viewed.

@@ -2,7 +2,7 @@
 
 A measuring tool placed on the Board with a window (logic probe P2g, logic analyzer P3c, multimeter and scope P3d). Threads: sim → devices (Consumers) → UI ([ARCHITECTURE.md](../ARCHITECTURE.md)).
 
-Reference commits (P3d, multimeter + scope): `ecb3915` placement + volts, `53327ba`/`1414e2b` engines, `7180f0c` consumers, `2bdcbe2` Session, `6c06d28` tool/window pairing, `94dd63b`/`d3388bf` windows.
+Reference commits (P3d, multimeter + scope): `ecb3915` placement + volts, `53327ba`/`1414e2b` engines, `7180f0c` consumers, `2bdcbe2` Session, `6c06d28` tool/window pairing, `94dd63b`/`d3388bf` windows. P5e (an instrument widened): `168402f` analyzer engine (32 Channels, mask Triggers, bus patterns), `ceaf4a0` scope delay, watch budget and Dispatcher merge, `7c45e1b` Channel Groups in the Session, `ddd0f7a` windows.
 
 ## Layers, in phase order
 
@@ -19,12 +19,15 @@ Reference commits (P3d, multimeter + scope): `ecb3915` placement + volts, `53327
 
 ## Gotchas
 
-- `kMaxWatched` = 48 watched Nets for devices + every instrument together.
+- `kMaxWatched` = 96 watched Nets for devices + every instrument together. Rings are allocated, not written: an unused slot costs no memory. The Dispatcher merges Samples with a heap over the slots that hold some; never go back to scanning every slot or every Consumer's `nets()` per Sample (a 32-Clip bus is millions of Samples a second).
 - A Net watched again gets no new Sample until it changes: implement `Consumer::seed` or it reads X.
 - `configure()` while Off must set the UI-side phase directly (no slices arrive).
 - `Runner::powerOff` is queued: `waitIdle()` before checking; `waitIdle` hangs if Running without `pauseAt`.
-- Short tests: high sample rates (10 MHz), not 1 MHz (4.1 ms per Capture).
+- Short tests: a Capture is 65 536 points: 655 µs at 100 MHz, 6.5 ms at 10 MHz, 65 ms at 1 MHz. Runner and Session tests use 100 MHz.
+- Reading a bus in a Capture: take the data at the last point of the cycle with `PHI2` high, not the cycle's last point (the 6502 lets go of the data 40 ns before it changes the address; a floating bus with TTL inputs reads `FF`).
 - Threads: run the session/runner tests under TSan (separate build dir with `-fsanitize=thread`).
 - Release gate: 1.00× with every instrument attached on the busiest Machine, UI under ~1 ms (`bw_ui --screenshot` prints both).
 - ImGui default font lacks `–`/`—`: use `Displayable`.
-- The agent can't see the live screen: use `bw_ui … --screenshot X.png --after 1s` (release build) and view the PNG.
+- The agent can't see the live screen: use `bw_ui … --screenshot X.png --after 1s` (release build) and view the PNG. The analyzer opens fitted to the whole Capture, where bus values are too narrow to read: to see them, temporarily set the view around the Trigger after `captures().update()`, screenshot, revert.
+- Window input: read pan and zoom once per frame before drawing any lane, and take the wheel with `ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY)` so zooming never scrolls the window (P3c's intermittent navigation bugs).
+- Draw long Captures from runs (`CaptureRuns`), jumping sub-pixel runs by binary search: per-point loops over 65 536 points × 32 lanes blow the UI budget.

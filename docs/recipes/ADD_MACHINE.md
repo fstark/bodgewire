@@ -58,5 +58,4 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 - A processor Machine: a `POR` on `RES_N` (open collector, with the pull-up and the Reset button on the same Net) starts the CPU at its reset vector; without one it runs from a random state. Gates start with random outputs too, so a strobe built from them can pulse once in the first ns: count strobes only after the reset.
 - Power-on draws a random bit per output and Net, and every new chip changes every seed's draws: search seeds in the test (a `FindSeed` over the state the case needs), never hard-code them.
 - Picture-reading cases that simulate several seconds cost minutes in debug (070: 4–10 s each, the debug suite about 9 minutes); keep each case to what it shows.
-- The logic probe shows no level on a pin with no copper (an unconnected output, 100 `U1` `RW`, 080 `U1` `QA`): hook the scope on it instead. Seen in P5c; to be fixed in P5e.
 - Board re-layouts move cracks: Puzzles use `fault crack A B N%`, so only which far pads lose the signal may change.
