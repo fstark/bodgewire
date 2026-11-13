@@ -297,6 +297,20 @@ TEST_CASE("machine: probeNet across a crack", "[machine]") {
     CHECK(backOnly > 0);
 }
 
+TEST_CASE("machine: probeNet on an unconnected pin", "[machine]") {
+    // 100 Heartbeat: U1 RW has a pad but no copper and no netlist Net.
+    const auto machine =
+        LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    const auto rw = machine->padPosition("U1", "34");
+    REQUIRE(rw.has_value());
+    const auto net = machine->probeNet(**built, Layer::Front, *rw);
+    REQUIRE(net.has_value());
+    CHECK(*net == PinNet(**built, "U1", "RW"));
+}
+
 TEST_CASE("machine: padPosition", "[machine]") {
     const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
     REQUIRE(machine.has_value());

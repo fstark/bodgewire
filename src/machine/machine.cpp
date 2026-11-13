@@ -407,6 +407,16 @@ std::optional<NetId> Machine::probeNet(const LoadedCircuit& built, Layer layer, 
     }
     const std::string name = IslandNetNames(*designCircuit_, board_, islands)[*island];
     if (name.empty()) {
+        // No netlist Net reaches this island (an unconnected pin): its pad's own Net, as Clips
+        // and Hooks read it.
+        for (std::size_t c = 0; c < board_.components.size(); ++c) {
+            const BoardComponent& component = board_.components[c];
+            for (std::size_t p = 0; p < component.pads.size(); ++p) {
+                if (islands.padIsland[c][p] == *island) {
+                    return PinNet(built, component.reference, component.pads[p].number);
+                }
+            }
+        }
         return std::nullopt;
     }
     const auto it = built.nets.find(name);
