@@ -39,8 +39,14 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
     return std::move(*result);
 }
 
-// The Machine as the tests run it.
-std::unique_ptr<LoadedCircuit> MachineCircuit() { return DesignCircuit(); }
+// Built from the routed Board (the Machine as the player gets it).
+std::unique_ptr<LoadedCircuit> MachineCircuit() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "led_computer.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
 
 // The reset vector, from the assembled ROM (so the test follows the program).
 std::uint16_t ResetVector() {

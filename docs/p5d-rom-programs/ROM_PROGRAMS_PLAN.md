@@ -9,9 +9,9 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (reconfigu
 | Phase | Description | Commit |
 |-------|-------------|--------|
 | 1 | Decode and assembler | `837dcee` |
-| 2 | 74LS138, 74LS273, POR | see log |
-| 3 | Program, netlist, manuals, fault-free test | this commit |
-| 4 | Board (user routes) | |
+| 2 | 74LS138, 74LS273, POR | `ba95150` |
+| 3 | Program, netlist, manuals, fault-free test | `2e028aa` |
+| 4 | Board (user routes) | this commit |
 | 5 | Session test, release check | |
 | 6 | Recipes, docs, full suite | |
 
@@ -65,3 +65,4 @@ Every phase ends with its fence: `cmake --build --preset debug` clean (reconfigu
 - Phase 1: a label named `a` reads as the accumulator (`bne a`), as in ca65; the tests use other names. Fence 36 green.
 - Phase 2: full debug suite 869 green in 544 s. The POR's release lands exactly at `time` (one drive with the hold as its delay).
 - Phase 3: the program assembled first time as designed (`$F800`–`$F83D`, vectors at `$FFFA`). Release headless `bw run --time 2s`: **3.82×**, 11.5 M applied events a simulated second. VCD: `RES_N` rises at 20 ms, the first `LATCH_CLK` rise at 20.029 58 ms (80 ns after `PHI0` falls), `L0` at +17 ns; a 74LS02 power-on glitch on `LATCH_CLK` in the first 40 ns, as the review foresaw (the latch is held clear then). Steps measured 124.780 ms apart (20.030, 144.810, 269.590, 394.370 ms). Debug: the bounce case 27 s, the others under 6 s. The service manual first had addresses in backticks (`F800`), read as unknown references: written `$F800` in plain text.
+- Phase 4: `bw place` gave 3.59 m on a 6 × 3 grid, the LED resistors in the two front rows of the grid. The user routed it and, before routing, moved the chip block as a whole, stood `R1`–`R8` upright (−90°) behind their LEDs, moved `R10`, `R11` and turned `SW1` 180°; so the committed Board is not what `led_computer.place` gives (`place_drc_led_computer` checks the rules' own Board). `check-board` ok; KiCad DRC 0 violations, 0 unconnected. The Machine tests now run on the routed Board; fence 58 green.
