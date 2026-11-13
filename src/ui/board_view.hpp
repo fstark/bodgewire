@@ -28,19 +28,25 @@ struct CutMark {
 };
 
 // Analyzer Channel colours, readable on the green Board; shared with the Analyzer window.
-inline constexpr std::array<ImU32, kChannels> kChannelColours{
+inline constexpr std::array<ImU32, 8> kChannelColours{
     IM_COL32(255, 230, 0, 255),   IM_COL32(0, 230, 255, 255),   IM_COL32(255, 60, 220, 255),
     IM_COL32(255, 140, 0, 255),   IM_COL32(140, 255, 100, 255), IM_COL32(110, 160, 255, 255),
     IM_COL32(255, 150, 180, 255), IM_COL32(255, 255, 255, 255)};
 
+inline ImU32 ChannelColour(std::size_t channel) { return kChannelColours[channel % 8]; }
+// A Channel Group's colour, by its index: groups made one after the other differ.
+inline ImU32 GroupColour(std::size_t group) { return kChannelColours[(group + 2) % 8]; }
+
 struct ClipTag {
     Point at;  // pad, nm
     std::size_t channel;
+    ImU32 colour;  // the Channel's, or its Channel Group's
 };
 
-// Oscilloscope Channel colours: yellow, cyan.
-inline constexpr std::array<ImU32, kScopeChannels> kHookColours{IM_COL32(255, 230, 0, 255),
-                                                                IM_COL32(0, 230, 255, 255)};
+// Oscilloscope Channel colours: yellow, cyan, magenta, blue.
+inline constexpr std::array<ImU32, kScopeChannels> kHookColours{
+    IM_COL32(255, 230, 0, 255), IM_COL32(0, 230, 255, 255), IM_COL32(255, 60, 220, 255),
+    IM_COL32(110, 160, 255, 255)};
 
 struct HookTag {
     Point at;  // pad, nm
@@ -77,6 +83,7 @@ struct BoardClick {
     Layer active;                          // Active Layer at the click
     std::optional<Pick> pick;              // nullopt: off everything
     std::optional<std::size_t> component;  // the pick's Component, else componentAt(at)
+    bool shift = false;                    // Shift held at the release
 };
 
 using TooltipText = std::function<std::string(const BoardScene&, const Hit&)>;
@@ -126,6 +133,8 @@ public:
         bridges_.assign(bridges.begin(), bridges.end());
     }
     std::optional<std::size_t> bridgeAt(Point at) const;  // as wireAt()
+    // Shows `reason` next to the cursor for a moment (with the banner's own message).
+    void refuse(std::string reason);
 
 private:
     struct Flash {
@@ -166,6 +175,12 @@ private:
     std::vector<BodgeWire> bridges_;
     std::optional<Point> wireStart_;
     TooltipText tooltip_;
+    struct Refusal {
+        std::string reason;
+        ImVec2 at;  // screen
+        std::chrono::steady_clock::time_point until;
+    };
+    std::optional<Refusal> refusal_;
 };
 
 }  // namespace bw

@@ -556,15 +556,15 @@ void BoardView::draw(ImVec2 size) {
         const float side = std::max(12.0f, map.pixels(1'000'000));
         const ImVec2 pad = map(tag.at);
         const ImVec2 min{pad.x + 2, pad.y - 2 - side};
-        const ImVec2 max{pad.x + 2 + side, pad.y - 2};
-        list.AddRectFilled(min, max, kChannelColours[tag.channel], 3.0f);
-        list.AddRect(min, max, IM_COL32_BLACK, 3.0f, 0, 1.0f);
-        const char digit[2] = {static_cast<char>('1' + tag.channel), '\0'};
+        const std::string number = std::to_string(tag.channel + 1);
         const float fontSize = std::min(ImGui::GetFontSize(), side);
-        const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, digit);
+        const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, number.c_str());
+        const ImVec2 max{std::max(pad.x + 2 + side, min.x + text.x + 4), pad.y - 2};
+        list.AddRectFilled(min, max, tag.colour, 3.0f);
+        list.AddRect(min, max, IM_COL32_BLACK, 3.0f, 0, 1.0f);
         list.AddText(nullptr, fontSize,
                      {(min.x + max.x - text.x) / 2, (min.y + max.y - text.y) / 2}, IM_COL32_BLACK,
-                     digit);
+                     number.c_str());
     }
     for (const HookTag& tag : hooks_) {
         const float radius = std::max(7.0f, map.pixels(600'000));
@@ -577,6 +577,17 @@ void BoardView::draw(ImVec2 size) {
         const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, digit);
         list.AddText(nullptr, fontSize, {centre.x - text.x / 2, centre.y - text.y / 2},
                      IM_COL32_BLACK, digit);
+    }
+    if (refusal_ && std::chrono::steady_clock::now() < refusal_->until) {
+        const ImVec2 text = ImGui::CalcTextSize(refusal_->reason.c_str());
+        const ImVec2 min{refusal_->at.x + 14, refusal_->at.y + 14};
+        const ImVec2 max{min.x + text.x + 12, min.y + text.y + 8};
+        list.AddRectFilled(min, max, IM_COL32(60, 10, 10, 235), 4.0f);
+        list.AddRect(min, max, IM_COL32(255, 90, 90, 255), 4.0f);
+        list.AddText({min.x + 6, min.y + 4}, IM_COL32(255, 220, 220, 255),
+                     refusal_->reason.c_str());
+    } else {
+        refusal_.reset();
     }
     for (const LeadTag& tag : leads_) {
         const ImU32 fill = tag.red ? kProbeRed : IM_COL32(20, 20, 20, 255);
@@ -699,7 +710,7 @@ void BoardView::input(ImVec2 origin) {
             } else {
                 component = scene_->componentAt(at);
             }
-            click_ = BoardClick{at, active_, picked, component};
+            click_ = BoardClick{at, active_, picked, component, io.KeyShift};
         }
         pressed_ = false;
         dragging_ = false;
@@ -754,6 +765,11 @@ void BoardView::input(ImVec2 origin) {
     if (!hovered_) {
         hovered_ = scene_->componentAt(at);
     }
+}
+
+void BoardView::refuse(std::string reason) {
+    refusal_ = Refusal{std::move(reason), ImGui::GetIO().MousePos,
+                       std::chrono::steady_clock::now() + std::chrono::milliseconds(1500)};
 }
 
 std::optional<BoardClick> BoardView::takeClick() { return std::exchange(click_, std::nullopt); }

@@ -51,7 +51,8 @@ constexpr std::string_view kUsage =
     "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] "
     "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,"
     "unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
-    "[--clip REF.PIN[:0|1|r|f],...] [--rate 10MHz] [--hook REF.PIN,...] [--timebase 1us] "
+    "[--clip REF.PIN[:0|1|r|f],...] [--group REF.PIN[:E0xx],...] [--rate 10MHz] "
+    "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
     "[--type REF:START:TEXT] [--manual user] [--screenshot OUT.png [--after 1s]]";
 
@@ -62,10 +63,12 @@ struct Options {
     std::optional<std::string> probe;  // REF.PIN
     std::vector<std::string> repair;
     std::vector<std::string> clip;     // REF.PIN[:T]
+    std::vector<std::string> group;    // REF.PIN[:PATTERN]
     std::optional<Time> rate;          // Analyzer sample period, ps
     std::optional<std::string> meter;  // REF.PIN: red Test Lead, V mode
-    std::vector<std::string> hook;     // REF.PIN, at most 2
+    std::vector<std::string> hook;     // REF.PIN, at most kScopeChannels
     std::optional<Time> timebase;      // Oscilloscope ps per division
+    std::optional<Time> delay;         // Oscilloscope Trigger delay, ps
     std::vector<ButtonPress> press;
     std::vector<KnobSetting> knob;
     std::vector<Typing> type;
@@ -115,6 +118,14 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             options.repair = SplitCommas(argv[++i]);
         } else if (arg == "--clip") {
             options.clip = SplitCommas(argv[++i]);
+        } else if (arg == "--group") {
+            options.group = SplitCommas(argv[++i]);
+        } else if (arg == "--delay") {
+            const auto delay = ParseDuration(argv[++i]);
+            if (!delay || *delay < 0) {
+                return std::nullopt;
+            }
+            options.delay = *delay;
         } else if (arg == "--rate") {
             const auto period = ParsePeriodFromFrequency(argv[++i]);
             if (!period || std::ranges::find(kAnalyzerPeriods, *period) == kAnalyzerPeriods.end()) {
@@ -326,7 +337,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     }
     Speed speed = Speed::RealTime;
     toolbar.userManualOpen = options.userManual;
-    toolbar.analyzerOpen = !options.clip.empty();
+    toolbar.analyzerOpen = !options.clip.empty() || !options.group.empty();
     toolbar.meterOpen = options.meter.has_value();
     toolbar.scopeOpen = !options.hook.empty();
     ManualWindows manualWindows;
@@ -386,6 +397,10 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 session.touch(std::nullopt);
             }
         }
+        const auto refuse = [&](std::string reason) {
+            boardView.refuse(reason);
+            toolbar.refused(std::move(reason));
+        };
         if (const auto click = boardView.takeClick()) {
             const auto& pick = click->pick;
             if (click->component) {
@@ -423,14 +438,14 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     const WireEnds& b = machine->bridges()[*bridge];
                     result = session.repair(UnbridgeRepair{b.a, b.b});
                 } else if (!pick || pick->hit.kind != HitKind::Trace) {
-                    toolbar.refused("Cut: click a trace or a wire");
+                    refuse("Cut: click a trace or a wire");
                 } else if (boardView.scene()->board().traces[pick->hit.index].mid) {
-                    toolbar.refused("Cut: straight traces only");
+                    refuse("Cut: straight traces only");
                 } else {
                     result = session.repair(CutRepair{pick->layer, pick->contact});
                 }
                 if (result == RepairResult::Unknown) {
-                    toolbar.refused("Cut: click a trace or a wire");
+                    refuse("Cut: click a trace or a wire");
                 }
                 break;
             case Tool::Wire: {
@@ -439,7 +454,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     break;
                 }
                 if (!pick || pick->hit.kind != HitKind::Pad) {
-                    toolbar.refused("Wire: solder to pins only");
+                    refuse("Wire: solder to pins only");
                     break;
                 }
                 const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
@@ -462,14 +477,14 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     break;
                 }
                 if (!pick || pick->hit.kind != HitKind::Pad) {
-                    toolbar.refused("Resolder: chip pins only");
+                    refuse("Resolder: chip pins only");
                     break;
                 }
                 const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
                 result = session.repair(
                     ResolderRepair{{part.reference, part.pads[pick->hit.index].number}});
                 if (result == RepairResult::Unknown) {
-                    toolbar.refused("Resolder: chip pins only");
+                    refuse("Resolder: chip pins only");
                 }
                 break;
             }
@@ -480,23 +495,30 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     break;
                 }
                 if (!AcceptsLead(LeadKind::Attached, pick->hit.kind)) {
-                    toolbar.refused(
-                        std::format("{}: attaches to pins only", isClip ? "Clip" : "Hook"));
+                    refuse(std::format("{}: attaches to pins only", isClip ? "Clip" : "Hook"));
                     break;
                 }
                 const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
                 const std::string& pin = part.pads[pick->hit.index].number;
                 if (isClip) {
-                    if (const auto channel = session.clipAt(part.reference, pin)) {
+                    const auto channel = session.clipAt(part.reference, pin);
+                    const auto group = channel ? session.groupOf(*channel) : std::nullopt;
+                    if (channel && click->shift && group) {
+                        session.unclipGroup(*group);
+                    } else if (channel) {
                         session.unclip(*channel);
+                    } else if (click->shift) {
+                        if (const auto clipped = session.clipGroup(part.reference, pin); !clipped) {
+                            refuse("Clip: " + clipped.error());
+                        }
                     } else if (!session.clip(part.reference, pin)) {
-                        toolbar.refused("Clip: all 8 channels used");
+                        refuse(std::format("Clip: all {} channels used", kChannels));
                     }
                 } else {
                     if (const auto channel = session.hookAt(part.reference, pin)) {
                         session.unhook(*channel);
                     } else if (!session.hook(part.reference, pin)) {
-                        toolbar.refused("Hook: both channels used");
+                        refuse(std::format("Hook: all {} channels used", kScopeChannels));
                     }
                 }
                 break;
@@ -505,12 +527,13 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 if (pick && AcceptsLead(LeadKind::Held, pick->hit.kind) &&
                     !session.placeLead({pick->contact, pick->layer,
                                         LeadLabel(*boardView.scene(), pick->hit, pick->layer)})) {
-                    toolbar.refused("Meter: power off for continuity");
+                    refuse("Meter: power off for continuity");
                 }
                 break;
             }
             if (result == RepairResult::Refused) {
                 toolbar.refused();
+                boardView.refuse("Power off first");
             }
         }
         const auto tip = session.probeTip();
@@ -519,7 +542,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         std::vector<ClipTag> tags;
         for (std::size_t c = 0; c < kChannels; ++c) {
             if (const auto& clip = session.clips()[c]) {
-                tags.push_back({clip->at, c});
+                const auto group = session.groupOf(c);
+                tags.push_back({clip->at, c, group ? GroupColour(*group) : ChannelColour(c)});
             }
         }
         boardView.setClips(tags);
@@ -719,8 +743,29 @@ int main(int argc, char** argv) {
         }
         analyzer.trigger[*channel] = *trigger;
     }
-    if (!options->clip.empty()) {
+    if (!options->clip.empty() || !options->group.empty()) {
         session.setAnalyzer(analyzer);
+    }
+    for (const std::string& item : options->group) {
+        const std::size_t colon = item.find(':');
+        const std::string pin = item.substr(0, colon);
+        const std::size_t dot = pin.find('.');
+        const auto clipped =
+            dot == std::string::npos
+                ? std::nullopt
+                : std::optional(session.clipGroup(pin.substr(0, dot), pin.substr(dot + 1)));
+        const bool ok = clipped && *clipped &&
+                        (colon == std::string::npos ||
+                         ((*clipped)->group &&
+                          session.setGroupTrigger(*(*clipped)->group, item.substr(colon + 1))));
+        if (!ok) {
+            std::println(stderr, "bw_ui: bad group '{}'{}", item,
+                         clipped && !*clipped ? ": " + clipped->error() : "");
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+    }
+    if (!options->clip.empty() || !options->group.empty()) {
         session.arm();
     }
     for (const std::string& item : options->hook) {
@@ -731,9 +776,14 @@ int main(int argc, char** argv) {
             return kExitUsage;
         }
     }
-    if (options->timebase) {
+    if (options->timebase || options->delay) {
         ScopeSettings scope = session.scopeSettings();
-        scope.timebase = *options->timebase;
+        scope.timebase = options->timebase.value_or(scope.timebase);
+        scope.delay = options->delay.value_or(scope.delay);
+        if (scope.delay > kMaxDelayDivisions * scope.timebase) {
+            std::println(stderr, "bw_ui: delay over {} divisions", kMaxDelayDivisions);
+            return kExitUsage;
+        }
         session.setScope(scope);
     }
     if (options->meter) {

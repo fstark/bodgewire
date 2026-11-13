@@ -2,8 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <limits>
 #include <string>
+
+#include "netlist/units.hpp"
 
 #include <imgui.h>
 
@@ -16,7 +19,7 @@ namespace bw {
 
 namespace {
 
-constexpr float kBandHeight = 110.0f;
+constexpr float kBandHeight = 70.0f;
 constexpr double kFullScale = 5.0;  // V per band
 constexpr ImU32 kScreen = IM_COL32(8, 14, 10, 255);
 constexpr ImU32 kGrid = IM_COL32(60, 80, 65, 255);
@@ -26,7 +29,6 @@ constexpr ImU32 kCursorLine = IM_COL32(255, 255, 255, 90);
 constexpr ImU32 kMarkerLine = IM_COL32(255, 200, 0, 160);
 constexpr ImU32 kScale = IM_COL32(150, 170, 150, 255);
 constexpr ImVec4 kGrey{0.5f, 0.5f, 0.5f, 1.0f};
-constexpr std::array<const char*, 4> kTriggers{"ch1 rise", "ch1 fall", "ch2 rise", "ch2 fall"};
 
 const char* StateText(const Session& session) {
     if (!session.powered()) {
@@ -58,9 +60,9 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
         return;
     }
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowSize({640, 340}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({640, 440}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 660, viewport->WorkPos.y + 340},
+        {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 660, viewport->WorkPos.y + 230},
         ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Oscilloscope", &open, ImGuiWindowFlags_NoSavedSettings)) {
         ImGui::End();
@@ -86,10 +88,13 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(100);
+    const auto triggerText = [](std::size_t t) {
+        return std::format("ch{} {}", t / 2 + 1, t % 2 == 0 ? "rise" : "fall");
+    };
     const std::size_t trigger = settings.source * 2 + (settings.edge == ScopeEdge::Fall ? 1 : 0);
-    if (ImGui::BeginCombo("##trigger", kTriggers[trigger])) {
-        for (std::size_t t = 0; t < kTriggers.size(); ++t) {
-            if (ImGui::Selectable(kTriggers[t], t == trigger)) {
+    if (ImGui::BeginCombo("##trigger", triggerText(trigger).c_str())) {
+        for (std::size_t t = 0; t < 2 * kScopeChannels; ++t) {
+            if (ImGui::Selectable(triggerText(t).c_str(), t == trigger)) {
                 settings.source = t / 2;
                 settings.edge = t % 2 == 0 ? ScopeEdge::Rise : ScopeEdge::Fall;
                 changed = true;
@@ -110,6 +115,54 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     ImGui::SameLine(0, 16);
     ImGui::TextUnformatted(StateText(session));
 
+    // Delay: typed as a time, or stepped by a division.
+    ImGui::TextUnformatted("delay");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(90);
+    if (!delayEditing_) {
+        const std::string text = settings.delay == 0 ? "0" : FormatTime(settings.delay, false);
+        std::ranges::fill(delayText_, '\0');
+        std::ranges::copy(text.substr(0, delayText_.size() - 1), delayText_.begin());
+    }
+    if (delayRefused_) {
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4{0.55f, 0.1f, 0.1f, 1.0f});
+    }
+    ImGui::InputText("##delay", delayText_.data(), delayText_.size());
+    if (delayRefused_) {
+        ImGui::PopStyleColor();
+    }
+    ImGui::SetItemTooltip("time from the Trigger to its mark: 12.5us, 2ms, 0");
+    delayEditing_ = ImGui::IsItemActive();
+    if (ImGui::IsItemEdited()) {
+        delayRefused_ = false;
+    }
+    const Time maxDelay = kMaxDelayDivisions * settings.timebase;
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        std::string text(delayText_.data());
+        std::erase(text, ' ');
+        const auto parsed = text == "0" ? std::expected<Time, std::string>(0) : ParseDuration(text);
+        delayRefused_ = !parsed || *parsed > maxDelay;
+        if (!delayRefused_) {
+            settings.delay = *parsed;
+            changed = true;
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("-") && settings.delay > 0) {
+        settings.delay = std::max<Time>(0, settings.delay - settings.timebase);
+        changed = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("+") && settings.delay < maxDelay) {
+        settings.delay = std::min(maxDelay, settings.delay + settings.timebase);
+        changed = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("0")) {
+        settings.delay = 0;
+        changed = true;
+    }
+
     // Screen.
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const ImVec2 top = ImGui::GetCursorScreenPos();
@@ -120,8 +173,9 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     const float mouseX = ImGui::GetIO().MousePos.x;
     const Time timebase = shown_ ? shown_->timebase : settings.timebase;
     const double span = static_cast<double>(kDivisions * timebase);
+    const Time delay = shown_ ? shown_->delay : settings.delay;
     const auto timeAt = [&](float x) {  // ps since the Trigger
-        return static_cast<Time>(std::llround((x - top.x) / width * span)) - timebase;
+        return static_cast<Time>(std::llround((x - top.x) / width * span)) + delay - timebase;
     };
     if (ImGui::IsItemClicked()) {
         marker_ = timeAt(mouseX);
@@ -140,10 +194,26 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
         const float x = top.x + width * static_cast<float>(d) / static_cast<float>(kDivisions);
         list.AddLine({x, top.y}, {x, top.y + height}, kGrid);
     }
-    const float triggerX = top.x + width / static_cast<float>(kDivisions);
-    list.AddLine({triggerX, top.y}, {triggerX, top.y + height}, kTriggerMark, 1.5f);
-    list.AddTriangleFilled({triggerX - 5, top.y}, {triggerX + 5, top.y}, {triggerX, top.y + 7},
-                           kTriggerMark);
+    const float triggerX = top.x + width / static_cast<float>(kDivisions) -
+                           static_cast<float>(static_cast<double>(delay) / span * width);
+    if (triggerX >= top.x) {
+        list.AddLine({triggerX, top.y}, {triggerX, top.y + height}, kTriggerMark, 1.5f);
+        list.AddTriangleFilled({triggerX - 5, top.y}, {triggerX + 5, top.y}, {triggerX, top.y + 7},
+                               kTriggerMark);
+    } else {
+        // Off screen to the left: an arrow and how far back it is.
+        const float y = top.y + height - 8;
+        list.AddTriangleFilled({top.x + 2, y}, {top.x + 10, y - 5}, {top.x + 10, y + 5},
+                               kTriggerMark);
+        const std::string back = "T " + FormatTime(-(delay - timebase), true);
+        list.AddText({top.x + 14, y - 8}, kTriggerMark, back.c_str());
+    }
+    const bool anyHook =
+        std::ranges::any_of(session.hooks(), [](const auto& h) { return h.has_value(); });
+    if (!anyHook) {
+        list.AddText({top.x + 8, top.y + kBandHeight / 2}, ImGui::GetColorU32(kGrey),
+                     "Hook (O), then click a chip pin.");
+    }
 
     const auto bandY = [&](std::size_t c, double volts) {
         const float bandBottom = top.y + kBandHeight * static_cast<float>(c + 1) - 4;
@@ -221,7 +291,8 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     list.AddText({top.x + width - 30, top.y + 2}, kScale, "5 V");
     if (marker_) {
         const float x =
-            top.x + static_cast<float>(static_cast<double>(*marker_ + timebase) / span * width);
+            top.x +
+            static_cast<float>(static_cast<double>(*marker_ + timebase - delay) / span * width);
         list.AddLine({x, top.y}, {x, top.y + height}, kMarkerLine, 1.0f);
     }
     if (hovered) {

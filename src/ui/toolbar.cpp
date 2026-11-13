@@ -180,6 +180,7 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
         if (ToolButton("Probe (P)", board.tool() == Tool::Probe)) {
             board.setTool(Tool::Probe);
         }
+        ImGui::SetItemTooltip("Logic probe: touch any copper; HIGH, LOW, PULSE");
         ImGui::SameLine(0, 2);
         if (ToolButton("Swap (S)", board.tool() == Tool::Swap)) {
             board.setTool(Tool::Swap);
@@ -204,14 +205,17 @@ void Toolbar::draw(Session& session, BoardView& board, Speed& speed, std::uint64
         if (ToolButton("Clip (C)", board.tool() == Tool::Clip)) {
             board.setTool(Tool::Clip);
         }
+        ImGui::SetItemTooltip("Logic Analyzer leads: click a chip pin; shift-click: its whole bus");
         ImGui::SameLine(0, 2);
         if (ToolButton("Hook (O)", board.tool() == Tool::Hook)) {
             board.setTool(Tool::Hook);
         }
+        ImGui::SetItemTooltip("Oscilloscope leads: click a chip pin (4 channels)");
         ImGui::SameLine(0, 2);
         if (ToolButton("Meter (V)", board.tool() == Tool::Meter)) {
             board.setTool(Tool::Meter);
         }
+        ImGui::SetItemTooltip("Multimeter leads: volts, or continuity with the power off");
         ImGui::SameLine(0, 24);
         const bool front = board.activeLayer() == Layer::Front;
         if (ToolButton(front ? "F.Cu (L)" : "B.Cu (L)", false)) {

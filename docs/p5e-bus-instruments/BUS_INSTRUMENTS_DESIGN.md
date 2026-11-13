@@ -149,7 +149,7 @@ std::optional<std::size_t> groupOf(std::size_t channel) const;
 - `BoardClick::shift = ImGui::GetIO().KeyShift` at the click.
 - `BoardView::refuse(std::string reason)`: stores the reason and the cursor's screen position; `draw` puts it in a small dark red box just below-right of that point for 1.5 s (the banner keeps its own 2 s). `main.cpp` gets one lambda `refuse(reason)` calling `toolbar.refused(reason)` and `boardView.refuse(reason)`; a repair `Refused` (powered), where the banner only flashes, says "Power off first" at the cursor.
 - The refusal texts name the new sizes: "Clip: all 32 channels used", "Hook: all 4 channels used" (`std::format` with the constants).
-- Clip tags: `ClipTag` gains `ImU32 colour`, set by `main.cpp` (`ChannelColour(groupFirst or c)`); `board_view.cpp` draws that colour. `ChannelColour(c) = kChannelColours[c % 8]`.
+- Clip tags: `ClipTag` gains `ImU32 colour`, set by `main.cpp` (`GroupColour(g)` for a member, else `ChannelColour(c)`); `board_view.cpp` draws that colour. `ChannelColour(c) = kChannelColours[c % 8]`, `GroupColour(g) = kChannelColours[(g + 2) % 8]`.
 - `kHookColours`: yellow, cyan, `IM_COL32(255, 60, 220, 255)`, `IM_COL32(110, 160, 255, 255)`.
 - Toolbar tooltips (`ImGui::SetItemTooltip`): `Clip (C)`: "Logic Analyzer leads: click a pin; shift-click a whole bus"; `Hook (O)`: "Oscilloscope leads: click a pin"; the meter and probe buttons name what they read.
 
