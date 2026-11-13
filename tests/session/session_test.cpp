@@ -1,5 +1,6 @@
 #include "session/session.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <string>
@@ -104,6 +105,25 @@ TEST_CASE("session: probe across a mend", "[session]") {
     session.powerOff();
 }
 
+TEST_CASE("session: probe on an unconnected pin", "[session]") {
+    // 100 Heartbeat: U1 RW, no copper; the 6502 only reads (NOPs), so RW stays high.
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    const auto rw = session.padLead("U1", "RW");
+    REQUIRE(rw.has_value());
+    session.touch(ProbeTip{rw->at, Layer::Front});
+    REQUIRE(session.probedNet().has_value());
+    session.powerOn(1, 1_ms);
+    session.runner().waitIdle();
+    CHECK(session.lamps().high);
+    CHECK_FALSE(session.lamps().low);
+    session.powerOff();
+}
+
 TEST_CASE("session: clips", "[session]") {
     Session session = PuzzleSession("broken_trace");
     CHECK(session.clip("U6", "6") == 0);
@@ -115,11 +135,160 @@ TEST_CASE("session: clips", "[session]") {
     session.unclip(0);
     CHECK_FALSE(session.clipAt("U6", "6").has_value());
     CHECK(session.clip("U9", "5") == 0);
-    for (std::size_t c = 2; c < kChannels; ++c) {
-        CHECK(session.clip("U1", std::to_string(c + 9)) == c);
+    std::size_t next = 2;
+    for (const BoardComponent& component : session.machine()->board().components) {
+        for (const Pad& pad : component.pads) {
+            if (next < kChannels && !session.clipAt(component.reference, pad.number) &&
+                session.padLead(component.reference, pad.number)) {
+                CHECK(session.clip(component.reference, pad.number) == next++);
+            }
+        }
     }
+    REQUIRE(next == kChannels);
     CHECK_FALSE(session.clip("U1", "2").has_value());
     CHECK_FALSE(session.clip("U99", "1").has_value());
+}
+
+namespace {
+
+Session HeartbeatSession() {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return Session(std::move(*machine), std::move(*built));
+}
+
+}  // namespace
+
+TEST_CASE("session: clip a group", "[session]") {
+    Session session = HeartbeatSession();
+    REQUIRE(session.clip("U1", "RW") == 0);
+    REQUIRE(session.clip("U1", "A5") == 1);
+    const auto result = session.clipGroup("U1", "A3");
+    REQUIRE(result.has_value());
+    REQUIRE(result->group == 0);
+    REQUIRE(session.groups().size() == 1);
+    const ChannelGroup& group = session.groups()[0];
+    CHECK(group.name == "U1 A");
+    REQUIRE(group.channels.size() == 16);
+    for (std::size_t b = 0; b < 16; ++b) {
+        INFO(b);
+        const auto& clip = session.clips()[group.channels[b]];
+        REQUIRE(clip.has_value());
+        CHECK(clip->label.ends_with(" A" + std::to_string(b)));
+    }
+    CHECK(group.channels[5] == 1);                       // already clipped: moved in
+    CHECK(session.clipAt("U1", "12") == result->first);  // A3
+    CHECK(session.groupOf(0) == std::nullopt);
+    CHECK(session.groupOf(1) == 0);
+
+    // RW has no stem partner: clipped alone (already, so its Channel).
+    const auto alone = session.clipGroup("U1", "RW");
+    REQUIRE(alone.has_value());
+    CHECK(alone->first == 0);
+    CHECK_FALSE(alone->group.has_value());
+
+    REQUIRE(session.clipGroup("U1", "D0").has_value());
+    CHECK(session.groups()[1].name == "U1 D");
+    // PHI0, PHI1, PHI2 share a stem too.
+    const auto phi = session.clipGroup("U1", "PHI2");
+    REQUIRE(phi.has_value());
+    REQUIRE(phi->group == 2);
+    CHECK(session.groups()[2].name == "U1 PHI");
+    CHECK(session.groups()[2].channels.size() == 3);
+    CHECK_FALSE(session.clipGroup("U99", "A0").has_value());
+}
+
+TEST_CASE("session: group refused without enough channels", "[session]") {
+    Session session = HeartbeatSession();
+    REQUIRE(session.clipGroup("U1", "A0").has_value());  // 16
+    REQUIRE(session.clipGroup("U1", "D0").has_value());  // 24
+    for (const char* pin : {"RW", "PHI0", "PHI1", "PHI2", "SYNC", "RDY"}) {
+        REQUIRE(session.clip("U1", pin).has_value());  // 30
+    }
+    // U2 is the first 74LS244: 1A1-1A4 is a group of 4, 2 free.
+    const auto result = session.clipGroup("U2", "1A1");
+    REQUIRE_FALSE(result.has_value());
+    CHECK(result.error() == "group U2 1A needs 4 channels, 2 free");
+}
+
+TEST_CASE("session: unclip leaves the group", "[session]") {
+    Session session = HeartbeatSession();
+    REQUIRE(session.clipGroup("U1", "D0").has_value());
+    const std::vector<std::size_t> channels = session.groups()[0].channels;
+    for (std::size_t b = 0; b < 6; ++b) {
+        session.unclip(channels[b]);
+    }
+    REQUIRE(session.groups().size() == 1);
+    CHECK(session.groups()[0].channels.size() == 2);
+    session.unclip(channels[6]);  // one left: the group dissolves, D7 stays clipped
+    CHECK(session.groups().empty());
+    CHECK(session.clips()[channels[7]].has_value());
+
+    REQUIRE(session.clipGroup("U1", "D0").has_value());
+    REQUIRE(session.setGroupTrigger(0, "81"));
+    session.unclipGroup(0);
+    CHECK(session.groups().empty());
+    CHECK(std::ranges::none_of(session.clips(), [](const auto& c) { return c.has_value(); }));
+    CHECK(std::ranges::all_of(session.analyzerSettings().trigger,
+                              [](TriggerCondition t) { return t == TriggerCondition::Any; }));
+}
+
+TEST_CASE("session: hand groups", "[session]") {
+    Session session = HeartbeatSession();
+    const auto a2 = session.clip("U1", "A2");
+    const auto a0 = session.clip("U1", "A0");
+    const auto rw = session.clip("U1", "RW");
+    const auto sync = session.clip("U1", "SYNC");
+    REQUIRE((a2 && a0 && rw && sync));
+    CHECK_FALSE(session.group({*a0}).has_value());
+    CHECK_FALSE(session.group({*a0, 9}).has_value());  // a free Channel
+    // Both with a stem: by index, A0 first.
+    REQUIRE(session.group({*a2, *a0}) == 0);
+    CHECK(session.groups()[0].channels == std::vector{*a0, *a2});
+    CHECK(session.groups()[0].name == "group 1");
+    // RW and SYNC have none: as given, the first most significant.
+    REQUIRE(session.group({*rw, *sync}) == 1);
+    CHECK(session.groups()[1].channels == std::vector{*sync, *rw});
+    CHECK(session.groups()[1].name == "group 2");
+    // Regrouping takes Channels out of their groups (both dissolve).
+    REQUIRE(session.group({*a0, *rw}) == 0);
+    CHECK(session.groups().size() == 1);
+    CHECK(session.groups()[0].name == "group 1");
+    session.ungroup(0);
+    CHECK(session.groups().empty());
+    CHECK(session.clips()[*a0].has_value());
+}
+
+TEST_CASE("session: group trigger", "[session]") {
+    Session session = HeartbeatSession();
+    REQUIRE(session.clipGroup("U1", "A0").has_value());
+    const ChannelGroup group = session.groups()[0];
+    CHECK(session.groupTrigger(0) == "xxxx");
+    REQUIRE(session.setGroupTrigger(0, "E0xx"));
+    CHECK(session.groupTrigger(0) == "E0xx");
+    const auto& trigger = session.analyzerSettings().trigger;
+    CHECK(trigger[group.channels[15]] == TriggerCondition::High);
+    CHECK(trigger[group.channels[12]] == TriggerCondition::Low);
+    CHECK(trigger[group.channels[0]] == TriggerCondition::Any);
+    CHECK_FALSE(session.setGroupTrigger(0, "1E0xx"));
+    CHECK(session.groupTrigger(0) == "E0xx");
+}
+
+TEST_CASE("session: groups survive a repair", "[session]") {
+    Session session = HeartbeatSession();
+    session.setSpeed(Speed::Max);
+    REQUIRE(session.clipGroup("U1", "A0").has_value());
+    session.powerOn(1, 1_ms);
+    session.runner().waitIdle();
+    session.powerOff();
+    REQUIRE(session.repair(SwapRepair{"U2"}) == RepairResult::Done);
+    session.powerOn(2, 1_ms);
+    session.runner().waitIdle();
+    session.powerOff();
+    REQUIRE(session.groups().size() == 1);
+    CHECK(session.groups()[0].channels.size() == 16);
 }
 
 TEST_CASE("session: unclip frees the Channel's Trigger", "[session]") {
@@ -151,7 +320,7 @@ TEST_CASE("session: clips survive a repair", "[session]") {
 TEST_CASE("session: arm before power-on captures", "[session]") {
     Session session = PuzzleSession("stuck_gate");
     REQUIRE(session.clip("U12", "11") == 0);
-    session.setAnalyzer({.period = 1'000'000});
+    session.setAnalyzer({.period = 10'000});  // 100 MHz: a Capture in 655 us
     session.arm();
     CHECK(session.analyzerPhase() == AnalyzerPhase::Armed);
     session.powerOn(1);
@@ -169,7 +338,7 @@ TEST_CASE("session: arm before power-on captures", "[session]") {
 TEST_CASE("session: a capture is not re-armed by a repair", "[session]") {
     Session session = PuzzleSession("broken_trace");
     REQUIRE(session.clip("U1", "14") == 0);
-    session.setAnalyzer({.period = 1'000'000});
+    session.setAnalyzer({.period = 10'000});  // 100 MHz: a Capture in 655 us
     session.arm();
     session.powerOn(1);
     RunTo(session, 5_ms);
@@ -187,7 +356,9 @@ TEST_CASE("session: hooks", "[session]") {
     CHECK(session.hook("U1", "2") == 0);
     CHECK(session.hook("U1", "QA") == 1);
     CHECK(session.hook("U1", "14") == 1);
-    CHECK_FALSE(session.hook("U1", "13").has_value());
+    CHECK(session.hook("U1", "13") == 2);
+    CHECK(session.hook("U1", "12") == 3);
+    CHECK_FALSE(session.hook("U1", "11").has_value());
     REQUIRE(session.hooks()[1].has_value());
     CHECK(session.hooks()[1]->label == "U1.14 QA");
     CHECK(session.hookAt("U1", "14") == 1);
@@ -484,12 +655,21 @@ TEST_CASE("session: led computer with every instrument", "[session][slow]") {
     CHECK(session.leds()[0].reference == "D1");
     CHECK(session.leds()[7].reference == "D8");
 
-    // 16 LED Nets + 8 Clips + 2 Hooks + the probe = 27 watched; the meter lead's Net is an LED's.
-    for (int bit = 0; bit < 8; ++bit) {
-        REQUIRE(session.clip("U1", "D" + std::to_string(bit)).has_value());
+    // At most 16 LED Nets + 32 Clips + 4 Hooks + the probe = 53 watched (kMaxWatched 96); the
+    // meter lead's Net is an LED's.
+    REQUIRE(session.clipGroup("U1", "A0").has_value());
+    REQUIRE(session.clipGroup("U1", "D0").has_value());
+    REQUIRE(session.clipGroup("U1", "PHI0").has_value());
+    for (const char* pin : {"RW", "SYNC", "RES_N", "IRQ_N", "NMI_N"}) {
+        REQUIRE(session.clip("U1", pin).has_value());
     }
+    CHECK(std::ranges::all_of(session.clips(), [](const auto& c) { return c.has_value(); }));
+    REQUIRE(session.setGroupTrigger(0, "8000"));
+    session.arm();
     REQUIRE(session.hook("U6", "4Y").has_value());  // LATCH_CLK
     REQUIRE(session.hook("U1", "PHI0").has_value());
+    REQUIRE(session.hook("U1", "RW").has_value());
+    REQUIRE(session.hook("U1", "SYNC").has_value());
     const auto rom = session.padLead("U5", "Y7_N");  // ROM_N
     const auto anode = session.padLead("D1", "A");
     REQUIRE(rom.has_value());
@@ -500,6 +680,7 @@ TEST_CASE("session: led computer with every instrument", "[session][slow]") {
     // Latch writes at about 20.03, 144.8 and 269.6 ms: the light on D3 at 300 ms.
     session.powerOn(1, 300_ms);
     session.runner().waitIdle();
+    CHECK(session.analyzerPhase() == AnalyzerPhase::Captured);
     for (std::size_t i = 0; i < 8; ++i) {
         INFO(session.leds()[i].reference);
         if (i == 2) {

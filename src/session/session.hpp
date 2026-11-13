@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <expected>
 #include <map>
 #include <memory>
 #include <optional>
@@ -40,6 +41,17 @@ struct PadLead {                 // a Clip or a Hook
     std::string reference, pin;  // pin by number: "6"
     std::string label;           // "U6.6 1Y"
     Point at;                    // pad, nm
+};
+
+// Analyzer Channels read as one Bus value.
+struct ChannelGroup {
+    std::string name;                   // "U1 A"; hand-made: "group 1"
+    std::vector<std::size_t> channels;  // bit 0 first
+};
+
+struct ClipGroupResult {
+    std::size_t first;                 // a Channel of the clicked pin
+    std::optional<std::size_t> group;  // nullopt: the pin had no stem partner, clipped alone
 };
 
 enum class MeterMode : std::uint8_t { Volts, Continuity };
@@ -96,6 +108,24 @@ public:
     std::optional<std::size_t> clipAt(std::string_view reference, std::string_view pin) const;
     std::span<const std::optional<PadLead>, kChannels> clips() const { return clips_; }
     std::optional<NetId> clipNet(std::size_t channel) const { return analyzer_.nets[channel]; }
+    // The pin's group on its chip: the pins sharing its name stem (StemOf; not power or
+    // no-connect), at least 2, each clipped in bit order to the lowest free Channel, those already
+    // clipped moved into the group. A pin with no partner is clipped alone. Errors (reason text):
+    // no Machine or unknown pin, not enough free Channels.
+    std::expected<ClipGroupResult, std::string> clipGroup(std::string_view reference,
+                                                          std::string_view pin);
+    void unclipGroup(std::size_t group);  // unclips every member
+    // Hand grouping of at least 2 clipped Channels, taken out of their groups; ordered by their
+    // pins' StemOf index when all have one and they differ, else as given (first = most
+    // significant). nullopt: fewer than 2, or a free Channel.
+    std::optional<std::size_t> group(std::vector<std::size_t> channels);
+    void ungroup(std::size_t group);  // members stay clipped with their conditions
+    // Sets each member's condition from a bus pattern (ParseBusPattern); false: refused.
+    bool setGroupTrigger(std::size_t group, std::string_view pattern);
+    std::string groupTrigger(std::size_t group) const;  // FormatBusPattern of the members
+    std::span<const ChannelGroup> groups() const { return groups_; }
+    std::optional<std::size_t> groupOf(std::size_t channel) const;
+
     void setAnalyzer(const AnalyzerSettings& settings);
     const AnalyzerSettings& analyzerSettings() const { return analyzer_.settings; }
     void arm();
@@ -173,6 +203,7 @@ private:
     void touchLive();
     void configureLive();
     void recomputeContinuity();
+    void leaveGroup(std::size_t channel);  // a group left with one member is erased
 
     std::optional<Machine> machine_;
     std::optional<Board> drawn_;
@@ -184,7 +215,8 @@ private:
     std::vector<std::string> log_;
     std::vector<SolderBlob> blobs_;
     std::array<std::optional<PadLead>, kChannels> clips_;
-    AnalyzerConfig analyzer_;  // nets filled per build
+    std::vector<ChannelGroup> groups_;  // disjoint; erasing one renumbers the later ones
+    AnalyzerConfig analyzer_;           // nets filled per build
     std::array<std::optional<PadLead>, kScopeChannels> hooks_;
     ScopeConfig scope_;  // nets filled per build
     MeterMode meterMode_ = MeterMode::Volts;
