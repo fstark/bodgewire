@@ -45,6 +45,7 @@ add_executable(bw_tests
   machines/counter_test.cpp
   machines/dice_test.cpp
   machines/heartbeat_test.cpp
+  machines/led_computer_test.cpp
   machines/knob_test.cpp
   machines/logic_analyzer_test.cpp
   machines/manuals_test.cpp
