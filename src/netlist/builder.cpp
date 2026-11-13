@@ -231,8 +231,9 @@ private:
                         error(decl.line, where + " is not connected inside " + part.decl->part);
                         continue;
                     }
-                    if (spec.kind == PinKind::Power && decl.name != spec.name) {
-                        error(decl.line, where + " can only be on net " + spec.name);
+                    if (spec.kind == PinKind::Power && decl.name != PowerPinRail(spec.name)) {
+                        error(decl.line, where + " can only be on net " +
+                                             std::string(PowerPinRail(spec.name)));
                         continue;
                     }
                 }
@@ -254,7 +255,8 @@ private:
             const auto pins = part.component->pins();
             for (PinIndex i = 0; i < pins.size(); ++i) {
                 if (pins[i].kind == PinKind::Power) {
-                    const std::string_view rail = loaded_->nets.find(pins[i].name)->first;
+                    const std::string_view rail =
+                        loaded_->nets.find(PowerPinRail(pins[i].name))->first;
                     pinNet_.try_emplace({reference, i}, NetOfPin{netNamed(rail), rail});
                 }
             }

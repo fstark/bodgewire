@@ -45,7 +45,7 @@ Fence: full `ctest --preset debug -j 12`. Commit `docs: P5c implemented, user ch
 | Phase | Description | Commit |
 |-------|-------------|--------|
 | 1 | Test data | `d7aec85` |
-| 2 | Instruction core | |
+| 2 | Instruction core | `9517870` |
 | 3 | The 6502 Part | |
 | 4 | Heartbeat netlist, manuals, fault-free test | |
 | 5 | Board | |
@@ -56,3 +56,4 @@ Fence: full `ctest --preset debug -j 12`. Commit `docs: P5c implemented, user ch
 - Docs review (before phase 1), fixed: `GND2` refused by the builder's power-pin check and missing from `addImplicitPower` (now `PowerPinRail`, phase 3, full-suite fence); LED resistors overlapping behind a row of LEDs (now in the grid) and `SW1` against the row (row from the left); `LA15`'s high time 65.536 ms; the reset fetch at the 6th fall; the subset written before each JSON is deleted; the taken-branch poll latched at the fetch; `NC1`–`NC3` MOS; how "wakes only on PHI0" is measured; the full-Harte debug time; Dormann's success line is a macro expansion; watched Nets 43 (one slot per Net); data Nets `DB0`–`DB7`; test names `"6502: …"`.
 - Written before the docs commit (the core was drafted while the review ran): the subset and full set fetched (Harte `2f6980a`, Dormann `7954e2d`, success `$3469`; `external/6502/` 418 MB, the subset 4.8 MB); the core passes all 25,600 subset cases (17 s debug) and Dormann (3.7 s debug) at the first run; a mutation (ANE's constant) is caught. Phases 2 and 3 of the first plan (documented, then undocumented opcodes) became one: the table was written whole.
 - Phase 2: every core case green; full Harte (2.56 M cases) green in 86 s debug with the runner reusing one array (17 s → 0.9 s for the subset), so it stays a registered ctest, not hidden; Dormann traps at `$3469` (success) in 3.7 s debug. Mutations caught: ANE's constant (subset), the taken-branch poll (IRQ case). Harte's PLP and RTI: B cleared and bit 5 set in the pulled P.
+- Phase 3: first Part test run caught three test mistakes (an address sampled before the stalled cycle drove it, an X tie the Circuit refuses, power-on evaluations counted); the Part itself unchanged. Full debug suite: 838 tests green in 557 s.

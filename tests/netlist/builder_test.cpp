@@ -152,6 +152,18 @@ TEST_CASE("builder: power pins connect implicitly", "[netlist]") {
     }
 }
 
+TEST_CASE("builder: a second ground pin joins GND", "[netlist]") {
+    for (const char* text : {"part U1 6502\n", "part U1 6502\nnet GND U1.GND2\n"}) {
+        const auto result = LoadNetlist(text, "t.bwn");
+        REQUIRE(result.has_value());
+        const LoadedCircuit& loaded = **result;
+        CHECK(NetOfPin(loaded, "U1", 20) == loaded.nets.at("GND"));  // pin 21
+        CHECK(NetOfPin(loaded, "U1", 0) == loaded.nets.at("GND"));
+    }
+    CHECK(Errors("part U1 6502\nnet VCC U1.GND2\n") ==
+          Lines{"2: U1.GND2 (GND2) can only be on net GND"});
+}
+
 TEST_CASE("builder: GND and VCC exist and are supply", "[netlist]") {
     const auto result = LoadNetlist("", "t.bwn");
     REQUIRE(result.has_value());

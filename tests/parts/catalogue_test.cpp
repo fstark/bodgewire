@@ -48,11 +48,11 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         for (const PinSpec& pin : pins) {
             names.insert(pin.name);
             // MOS chips' signal pins (bus charge, X read as a random bit).
-            constexpr std::string_view kMosSignals[] = {"2114", "2518", "2524"};
+            constexpr std::string_view kMosSignals[] = {"2114", "2518", "2524", "6502"};
             const bool mos = std::ranges::find(kMosSignals, part.name) != std::end(kMosSignals) &&
                              pin.kind != PinKind::Power;
             CHECK(pin.family == (mos ? Family::Mos : Family::Ttl));
-            if (pin.name == "GND" || pin.name == "VCC") {
+            if (pin.name == "GND" || pin.name == "GND2" || pin.name == "VCC") {
                 CHECK(pin.kind == PinKind::Power);
             } else {
                 CHECK(pin.kind != PinKind::Power);
@@ -65,8 +65,9 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         CHECK(names.contains("GND") != noGround);
         CHECK(names.contains("VCC"));
         // The 74LS90's datasheet puts VCC on pin 5 and GND on pin 10; the 2513's GND is pin 10; the
-        // Z80's VCC is pin 11, GND pin 29.
-        constexpr std::string_view kOffCornerPower[] = {"74LS90", "74LS93", "2513", "Z80STUB"};
+        // Z80's VCC is pin 11, GND pin 29; the 6502's GND is pin 1, VCC pin 8, GND2 pin 21.
+        constexpr std::string_view kOffCornerPower[] = {"74LS90", "74LS93", "2513", "6502",
+                                                        "Z80STUB"};
         if (std::ranges::find(kOffCornerPower, part.name) == std::end(kOffCornerPower)) {
             CHECK((noGround || pins[count / 2 - 1].name == "GND"));
             CHECK(pins[count - 1].name == "VCC");

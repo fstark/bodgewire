@@ -81,4 +81,15 @@ inline constexpr Time kZ80Rfsh = 130'000;     // CLK rise → RFSH_N, both ways
 inline constexpr Time kZ80Halt = 300'000;     // CLK → HALT_N
 inline constexpr Time kZ80Data = 150'000;     // CLK → D0-D7 valid, or floating
 
+// MOS 6502, 1 MHz (MOS 6500 data sheet, Nov. 1985, p. 5), from the PHI0 edge: the data sheet
+// measures from PHI2 (out), whose delay from PHI0 it does not publish (30 ns assumed; PHI1 rises
+// after PHI2 falls and falls before it rises: TD >= 5 ns), plus its typical where it gives one.
+inline constexpr Delays kMos6502Phi1{40'000, 20'000};
+inline constexpr Delays kMos6502Phi2{30'000, 30'000};
+inline constexpr Time kMos6502Address = 130'000;    // + tADS 100 ns typical
+inline constexpr Time kMos6502ReadWrite = 130'000;  // + tRWS 100 ns typical
+inline constexpr Time kMos6502Sync = 390'000;       // + tSYNC 360 ns maximum (no typical)
+inline constexpr Time kMos6502DataOut = 180'000;    // PHI0 rise + tMDS 150 ns typical
+inline constexpr Time kMos6502DataHold = 90'000;    // PHI0 fall + tHW 60 ns typical: released
+
 }  // namespace bw::delays

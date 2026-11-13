@@ -23,6 +23,7 @@
 #include "parts/ls74.hpp"
 #include "parts/ls90.hpp"
 #include "parts/ls93.hpp"
+#include "parts/mos6502.hpp"
 #include "parts/oscillator.hpp"
 #include "parts/paddle.hpp"
 #include "parts/ram2114.hpp"
@@ -218,6 +219,7 @@ constexpr std::array s_parts{
     PartInfo{"2524", "512-bit dynamic recirculating shift register", "DIP-8", Chip,
              &CreateChip<ShiftRegister2524, "2524">},
     PartInfo{"2716", "2K x 8 EPROM", "DIP-24", Chip, &CreateRom<"2716">},
+    PartInfo{"6502", "8-bit microprocessor (NMOS)", "DIP-40", Chip, &CreateChip<Mos6502, "6502">},
     PartInfo{"74LS00", "quad 2-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS00">},
     PartInfo{"74LS02", "quad 2-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS02">},
     PartInfo{"74LS04", "hex inverter", "DIP-14", Chip, &CreateGatePackage<"74LS04">},
@@ -273,8 +275,8 @@ const PartInfo* FindPart(std::string_view name) {
 std::span<const PartInfo> AllParts() { return s_parts; }
 
 std::optional<double> PowerPinVolts(std::string_view pin) {
-    constexpr std::array<std::pair<std::string_view, double>, 2> kVolts{
-        {{"VCC", 5.0}, {"GND", 0.0}}};
+    constexpr std::array<std::pair<std::string_view, double>, 3> kVolts{
+        {{"VCC", 5.0}, {"GND", 0.0}, {"GND2", 0.0}}};
     for (const auto& [name, volts] : kVolts) {
         if (name == pin) {
             return volts;
@@ -282,5 +284,7 @@ std::optional<double> PowerPinVolts(std::string_view pin) {
     }
     return std::nullopt;
 }
+
+std::string_view PowerPinRail(std::string_view pin) { return pin == "GND2" ? "GND" : pin; }
 
 }  // namespace bw

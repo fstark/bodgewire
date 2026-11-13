@@ -57,7 +57,10 @@ struct PartInfo {
 const PartInfo* FindPart(std::string_view name);  // nullptr if unknown
 std::span<const PartInfo> AllParts();
 
-// Voltage a chip's power Pin expects: "VCC" 5, "GND" 0; nullopt for other names.
+// Voltage a chip's power Pin expects: "VCC" 5, "GND" and "GND2" 0; nullopt for other names.
 std::optional<double> PowerPinVolts(std::string_view pin);
+
+// The rail Net a chip's power Pin belongs on: its own name, but GND for a second ground (GND2).
+std::string_view PowerPinRail(std::string_view pin);
 
 }  // namespace bw
