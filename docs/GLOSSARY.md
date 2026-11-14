@@ -72,7 +72,7 @@ The part of a Machine the player watches it through. Standard devices (a TV) sit
 _Avoid_: Display, screen (when meaning the device in general)
 
 **Input Device**:
-The part of a Machine the player operates it through. Standard devices (an ASCII keyboard, a paddle controller) sit off the Board behind a Connector; buttons whose arrangement belongs to the Board are Components on it, and can be faulty like any other.
+The part of a Machine the player operates it through. Standard devices (an ASCII keyboard, a paddle controller) sit off the Board behind a Connector; buttons and keys whose arrangement belongs to the Board are Switches on it, and can be faulty like any other.
 _Avoid_: Control, input (when meaning the device)
 
 **Knob**:
@@ -127,6 +127,10 @@ _Avoid_: Dead output
 **Stuck Cell**:
 A Fault inside a memory chip: one bit of one word always reads 0 or 1, whatever is written. A **Stuck Column** is that bit stuck in every word. Repaired by a swap.
 _Avoid_: Bad bit, dead bit
+
+**Switch Fault**:
+A Fault of a Switch: stuck closed (its Nets joined from power-on, a press changes nothing) or never closes (a press does nothing). Repaired by a swap.
+_Avoid_: Dead button, sticky key
 
 **Short**:
 A Fault that joins two Nets, or a Net to GND/VCC, that should be separate.
@@ -273,6 +277,14 @@ The Layer drawn on top and preferred by player actions such as probing, cutting 
 Our own circuit diagram of a Machine, generated from its Nets and hand-adjusted. It is a view only, not a source of connectivity.
 _Avoid_: Circuit diagram, original schematic
 
+**Switch**:
+A push button or key on the Board: two legs whose Nets are joined while it is held down (closed). A button usually has one leg on a Rail; a key in a matrix joins a row to a column. One switch network joins the Nets of every closed Switch, so a crack, a bridge or a dry pad on a Switch's copper acts as on any copper.
+_Avoid_: Contact, push (as nouns)
+
+**Ghost Key**:
+A key read as held when it is not: three held keys at three corners of a rectangle in a key matrix join the fourth corner's row and column. Emerges from the switch network; never scripted.
+_Avoid_: Phantom key
+
 **Typing**:
-The `bw_ui` mode in which every key the player presses goes to the Machine's keyboard instead of the tools: on while the keyboard window has focus, F2 toggles it. Escape is a key of the keyboard.
+The `bw_ui` mode in which every key the player presses goes to the Machine's keyboard instead of the tools: on while the keyboard window has focus, F2 toggles it. Escape is a key of the keyboard. On a Machine with Board keys and no keyboard, F2 turns it on for the Board: a PC key held down holds the key with that `pc=`, several at once.
 _Avoid_: Keyboard capture (in player text)

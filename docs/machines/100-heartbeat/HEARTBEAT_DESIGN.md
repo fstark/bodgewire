@@ -83,7 +83,7 @@ The data Nets are `DB0`–`DB7`, not `D0`–`D7` like the pins: the LEDs are `D1
 - `heartbeat: netlist loads without warnings`.
 - `heartbeat: the address counts` — seeds 1–3, 200 µs after 10 µs of settling, `A0`–`A15`, `SYNC` and `RW` recorded: at each `PHI0` fall + 500 ns the address read off the Nets goes PC, PC + 1, PC + 1, PC + 2, … (mod 65536), `SYNC` high on the first of each pair, `RW` high throughout.
 - `heartbeat: the top LED blinks` `[slow]` — seed 1, 300 ms: `LA15` high for 65.536 ms (± 10 µs) in each full period of 131.072 ms (A15 is high from the dummy read at `$8000` to the fetch at `$FFFF`: 1 + 2 × 32767 + 1 cycles).
-- `heartbeat: reset starts at EAEA` — `SW1` held 5 µs then released (`ButtonOf`, as `dice_test.cpp`): the cycle ending at the first `PHI0` fall that sees `RES_N` high is the sequence's T1; at the 6th fall after it the CPU drives the fetch at `$EAEA` with `SYNC` high; the cycles between: PC, `$01xx` three times, `$FFFC`, `$FFFD`, all reads.
+- `heartbeat: reset starts at EAEA` — `SW1` held 5 µs then released (`SwitchOf`, as `dice_test.cpp`): the cycle ending at the first `PHI0` fall that sees `RES_N` high is the sequence's T1; at the 6th fall after it the CPU drives the fetch at `$EAEA` with `SYNC` high; the cycles between: PC, `$01xx` three times, `$FFFC`, `$FFFD`, all reads.
 
 Debug cost: the slow case ≈ 300 ms simulated with 16 address Nets switching: a few seconds.
 

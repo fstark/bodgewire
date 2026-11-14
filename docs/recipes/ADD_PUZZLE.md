@@ -35,7 +35,8 @@ fault crack R6.2 D5.2 51%
   - `fault bridge U5.3 U5.4`: solder bridge between neighbouring pins; repaired by the Cut tool.
   - `fault cell U3.IO2 $1FF 0`: inside a RAM or ROM (2114, 2716, 2513), bit `IO2` of word `$1FF` (the chip's own address: its `A` pins, bit 0 first; `$` hex or decimal) always reads 0; writes do not change it; repaired by swapping the chip;
   - `fault column U15.O1 0`: the same bit stuck in every word, inside the chip: the pin is fine while another chip drives the line; repaired by swapping;
-  - an internal address line (the chip ignores `A0`, words pair up) is a stuck input: `fault stuck U3.A0 0`.
+  - an internal address line (the chip ignores `A0`, words pair up) is a stuck input: `fault stuck U3.A0 0`;
+  - `fault switch SW1 closed` (stuck closed: joined from power-on, a press changes nothing) or `fault switch SW1 open` (never closes): on a `BUTTON` or `KEY`; repaired by swapping the switch. A stuck-closed key in a scanned matrix shows on every scan, and with two other held keys can make a ghost.
 - Check it loads and shows the symptom: `./build/debug/src/cli/bw run puzzles/<name>.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`). `--probe` reads the leg (the pin's own Net).
 - `bw_ui --press` is read once per UI frame: hold a scripted press at least 100 ms (`--press SW1:50ms:200ms`), or it may be missed. `bw run --tv x.bmp` writes the last TV frame alone, quicker to read than a cropped screenshot. Convert it to view it (`sips -s format png x.bmp --out x.png`).
 - A crack or dry Joint leaves a TTL input high, but a Net with only MOS inputs (2513, 2518, 2524) reads X, a random bit at every read: on a data or control input that gives noise, not a symptom. Cut a MOS clock (it never rises: a 2524 fades), or use `stuck` on a MOS input (typewriter `lookalikes`, `copies`).

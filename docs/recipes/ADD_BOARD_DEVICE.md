@@ -1,6 +1,6 @@
 # Recipe — Add an on-board device Part
 
-A Part the player watches or presses on the Board itself: LED (P4a), push button (P4d), 7-segment digit (P4f). Off-board devices (TV, keyboard, paddle controller) go behind a Connector instead: [ADD_CONNECTOR_DEVICE.md](ADD_CONNECTOR_DEVICE.md).
+A Part the player watches or presses on the Board itself: LED (P4a), push button (P4d, a switch since P5i), 7-segment digit (P4f), key (P5i). Off-board devices (TV, keyboard, paddle controller) go behind a Connector instead: [ADD_CONNECTOR_DEVICE.md](ADD_CONNECTOR_DEVICE.md).
 
 Reference commits: LED output `ab92f30` → `22f5a90` → `b8eb2c2` → `8049a68`; button input `28ecaea` → `e5983f3` → `c2958a2` → `469ce1d` → `e86fa8c` → `175929e`; digit (lamps, drawing) `1419047` → `a2deab7`.
 
@@ -22,12 +22,16 @@ A Part that lights is a list of lamps in its catalogue row (`Lamp`: shape, up to
 
 Tests: `tests/parts/<part>_test.cpp`, `tests/devices/<x>_test.cpp`, `tests/runner/<x>_consumer_test.cpp`, a `[session]` case in `tests/session/session_test.cpp` (cf. `session: counter LED`).
 
-## Input device (pressed on the Board): the button chain
+## Input device (pressed on the Board): switches
 
-- Part `src/parts/button.{hpp,cpp}`: `Output` TTL pins; `attach(signal, rail)` by the builder (`wireButtons` in `src/netlist/builder.cpp`); the rail pin is not connected as a driver; `std::atomic` pressed state, change wakes the sim via `Simulator::wake` / `Runner::wake`.
-- `ButtonOf(loaded, ref)` in `src/netlist/builder.hpp` finds it in a build.
-- Electrical netlist leaves buttons out like resistors (`src/machine/electrical.cpp`), but their pins are still named.
-- Session holds presses (`Session::setPressed`/`pressed`); UI picks the body with `BoardScene::bodyAt`; CLI `--press SW1:200ms:700ms` (`bw run`, `bw_ui`).
+Buttons and keys are one Part since P5i ([SWITCHES.md](../p5i-switches/SWITCHES.md)): a new kind of switch is a catalogue row of `Switch`, not a new chain. Reference commits: P4d button `28ecaea` → `175929e`; P5i switches (phases 1, 2, 5 of [SWITCHES_PLAN.md](../p5i-switches/SWITCHES_PLAN.md)).
+
+- Part `src/parts/switch.{hpp,cpp}`: `Switch`, two legs `1`, `2` (TTL Outputs that never drive: the same random draws as the P4d button); `BUTTON` takes `pc=`, `KEY` (`MX-1U`, Cherry MX 1u) takes `legend=` (1–4 characters, not `#`) and `pc=` (defaults to a one-character legend; `IsPcKey` lists the names); Faults `SwitchFault::StuckClosed`, `NeverCloses`.
+- Joining: the builder (`wireSwitches`) adds one `SwitchNetwork` with a `PinKind::Switched` Pin on every Net a leg is on. Closed switches group Nets; each group is driven at Supply strength with the merged drives of its Nets read without the network's own (`EvalContext::external`), so a rail beats a TTL output, a pull-up reaches the other Net, and ghosts, cracks and bridges follow from the copper. The kernel wakes the network when a Net's other drives change, never on its own drive.
+- A press: `setPressed` (any thread), then wake the switch (`Simulator`/`Runner::wake(sw->id())`); the switch reads it at that instant and wakes the network: the Nets move `kPressLatency` (2 ps) after the wake. `SwitchOf(loaded, ref)`.
+- A leg on no Net is open; both legs on one Net do nothing. PC keys are unique in a netlist.
+- Session: `switches()`, `switchKeys()`, `setPressed`/`pressed`; CLI `--press SW1:200ms:700ms` (`bw run`, `bw_ui`).
+- UI: `SwitchTag` per switch; a button drawn round, a key as the ASCII keyboard's cap (`src/ui/keycap.{hpp,cpp}`, `DrawKeyCap`) over its courtyard so the copper between keys stays visible; left-click holds, right-click latches, except under the Swap tool (it swaps). PC keys through Typing (`src/ui/board_keys.{hpp,cpp}`, F2) on a Machine without a KEYBOARD; with one, only the keyboard types (no Machine has both yet).
 - A UI press must land at any time inside the slice (`836dd59`: dice rolled only even faces otherwise).
 
 ## New PartKind checklist

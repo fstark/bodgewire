@@ -90,7 +90,7 @@ Briefs:
 
 ## Electrical Nets on a damaged Board
 
-With the `dead_button` crack, `SW1` pad 1 is alone on its island. That island is named `BTN_N` (SW1's Connection comes before U4's), and the rest of the Net becomes `BTN_N~2`. `SW1` is still between a rail and a signal, so it stays in the build: pressing it pulls its own island low, which the probe shows, while `U4` pin 3 stays high through `R9` ([PUSH_BUTTON_DESIGN.md](../../p4d-push-button/PUSH_BUTTON_DESIGN.md) §5.2).
+With the `dead_button` crack, `SW1` pad 1 is alone on its island. That island is named `BTN_N` (SW1's Connection comes before U4's), and the rest of the Net becomes `BTN_N~2`. `SW1` joins its own island to `GND` while pressed (a switch since P5i, [SWITCHES.md](../../p5i-switches/SWITCHES.md)): pressing it pulls that island low, which the probe shows, while `U4` pin 3 stays high through `R9`.
 
 With the `loaded_dice` crack, `U2` pin 3 and `U3` pin 2 share an island without a Driver: floating TTL inputs read high. `FOUR_N` is low for good and `SIX_N` follows `NOT N1`, so `U1` loads 1 whenever it reaches 2: the count alternates 1, 2, shown as a 3 (`D2` `D4` `D6`) and a 6.
 
