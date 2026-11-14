@@ -124,6 +124,10 @@ _Avoid_: Effect, glitch
 A Fault where a Component's output Pin always drives 0 or always drives 1. On a bidirectional Pin it forces the Net and the chip reads the stuck value too.
 _Avoid_: Dead output
 
+**Stuck Cell**:
+A Fault inside a memory chip: one bit of one word always reads 0 or 1, whatever is written. A **Stuck Column** is that bit stuck in every word. Repaired by a swap.
+_Avoid_: Bad bit, dead bit
+
 **Short**:
 A Fault that joins two Nets, or a Net to GND/VCC, that should be separate.
 _Avoid_: Bridge (that is one kind, the Solder Bridge)

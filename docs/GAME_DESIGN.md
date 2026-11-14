@@ -59,6 +59,8 @@ Faulty machine + symptom → run, observe, measure, study the board and the manu
 - Hard because the machine is complex: good. Hard because the player has no reasonable way to find the fault: bug.
 - Timing example: BASIC runs fine, a graphics demo shows vertical artifacts. RAM, counters and address lines look correct on the logic probe; the scope shows the address decoder output switching too late relative to the pixel clock.
 - A part replaced by a slower equivalent can break a working machine.
+- **Broken or flaky.** A broken Machine fails the same way at every power-on; a flaky one works, then fails, differently each time. Flakiness has many causes: intermittent contacts (socket, cracked Joint, opened by tapping, flexing or heat), thermal chips (fail warm, work again cooled), timing margins (a slower part, a strobe that glitches while the address changes), floating or contended lines, and flaky memory (weak cells, unstable bits, cells disturbed by a neighbour's write). It needs its own tools: tapping, heat and cold, long runs, RAM test ROMs (which can miss coupling faults). If RAM were its only cause, the player would just swap RAM.
+- **Memory Faults pay off where the Machine shows the memory** (a character or message ROM, video RAM): each Fault draws its own picture. In program memory they mostly crash the program.
 
 ## Machines
 
@@ -108,5 +110,6 @@ Computers, after the ladder:
 
 - Timing faults: worth it, or too brutal?
 - Visual layout: realistic or stylised board? (Authoring: see [ARCHITECTURE.md](ARCHITECTURE.md).)
+- The swap reflex: while a swap costs nothing, "swap every chip" solves every chip Fault. Soldered chips (desoldering takes time, can lift a pad) against socketed ones, limited spares, a clock?
 - *Bitrot* as the name of an expert mode / nasty-fault campaign?
 - "Bodgewire" not yet checked against existing games and trademarks.
