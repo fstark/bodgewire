@@ -214,6 +214,20 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
                                   decl.word ? std::optional<std::size_t>(*decl.word) : std::nullopt,
                                   decl.value});
     }
+    for (const SwitchDecl& decl : puzzle.switches) {
+        const auto part = std::ranges::find(loaded.parts, decl.reference, &LoadedPart::reference);
+        if (part == loaded.parts.end()) {
+            error(decl.line, "unknown reference '" + decl.reference + "'");
+            continue;
+        }
+        if (part->info->kind != PartKind::Switch) {
+            error(decl.line, "switch " + decl.reference + ": buttons and keys only");
+            continue;
+        }
+        std::erase_if(machine.switches_,
+                      [&](const StuckSwitch& s) { return s.reference == decl.reference; });
+        machine.switches_.push_back({decl.reference, decl.closed});
+    }
     if (!errors.empty()) {
         return std::unexpected(std::move(errors));
     }
@@ -227,6 +241,7 @@ bool Machine::swap(std::string_view reference) {
     }
     std::erase_if(stuck_, [&](const StuckPin& s) { return s.reference == reference; });
     std::erase_if(cells_, [&](const StuckCell& c) { return c.reference == reference; });
+    std::erase_if(switches_, [&](const StuckSwitch& s) { return s.reference == reference; });
     return true;
 }
 
@@ -392,7 +407,7 @@ std::optional<PinRef> Machine::dryLegAt(Layer layer, Point at) const {
 
 LoadResult Machine::build() const {
     return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_, dry_), stuck_,
-                        power_.unpowered, cells_);
+                        power_.unpowered, cells_, switches_);
 }
 
 std::optional<std::uint32_t> Machine::islandAt(const Islands& islands, Layer layer,

@@ -470,6 +470,29 @@ TEST_CASE("machine: memory fault errors", "[machine]") {
                 "8: cell U2.O0 $800: U2 (2716) has 2048 words"});
 }
 
+TEST_CASE("machine: switch fault errors", "[machine]") {
+    Puzzle puzzle = LedComputer();
+    puzzle.switches = {{2, "SW9", true}, {3, "U3", false}, {4, "R1", true}};
+    CHECK(Errors(puzzle) == Lines{"2: unknown reference 'SW9'",
+                                  "3: switch U3: buttons and keys only",
+                                  "4: switch R1: buttons and keys only"});
+}
+
+TEST_CASE("machine: a swap removes a switch Fault", "[machine]") {
+    Puzzle puzzle = LedComputer();
+    puzzle.switches = {{2, "SW1", true}};
+    auto machine = LoadMachine(puzzle, Root());
+    REQUIRE(machine.has_value());
+    const auto fault = [&] {
+        const auto built = machine->build();
+        REQUIRE(built.has_value());
+        return SwitchOf(**built, "SW1")->fault();
+    };
+    CHECK(fault() == SwitchFault::StuckClosed);
+    CHECK(machine->swap("SW1"));
+    CHECK(fault() == SwitchFault::None);
+}
+
 TEST_CASE("machine: a swap removes the chip's memory Faults", "[machine]") {
     Puzzle puzzle = LedComputer();
     puzzle.cells = {{2, {"U3", "IO1"}, 0x10, LogicValue::One},

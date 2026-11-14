@@ -219,3 +219,35 @@ TEST_CASE("dice: odd_dice", "[machines]") {
     REQUIRE(machine.swap("U1"));
     CheckSixFaces(machine);
 }
+
+TEST_CASE("dice: switch Faults", "[machines]") {
+    // The count at 1 ms and a few µs later, with no press (seed 1).
+    const auto counts = [](Machine& machine) {
+        auto built = machine.build();
+        REQUIRE(built.has_value());
+        Simulator sim((*built)->circuit);
+        sim.powerOn(1);
+        std::set<int> seen;
+        for (Time t = 1_ms; t < 1_ms + 6_us; t += 1_us) {
+            sim.runUntil(t);
+            seen.insert(Read(**built, sim).count);
+        }
+        return seen;
+    };
+    SECTION("stuck closed: the dice roll with no press") {
+        Machine machine = InlinePuzzle("machine dice\nfault switch SW1 closed\n");
+        CHECK(counts(machine).size() == 6);
+        REQUIRE(machine.swap("SW1"));
+        CHECK(counts(machine).size() == 1);
+    }
+    SECTION("never closes: a press does not roll") {
+        Machine machine = InlinePuzzle("machine dice\nfault switch SW1 open\n");
+        auto built = machine.build();
+        REQUIRE(built.has_value());
+        const Face before = Roll(**built, 3_us);
+        const Face after = Roll(**built, 4_us);
+        CHECK(before.count == after.count);
+        REQUIRE(machine.swap("SW1"));
+        CheckSixFaces(machine);
+    }
+}

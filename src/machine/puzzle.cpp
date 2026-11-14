@@ -163,8 +163,10 @@ public:
         } else if (tokens[0] == "fault" && tokens.size() >= 2 &&
                    (tokens[1] == "cell" || tokens[1] == "column")) {
             cell(number, tokens);
+        } else if (tokens[0] == "fault" && tokens.size() >= 2 && tokens[1] == "switch") {
+            switchFault(number, tokens);
         } else if (tokens[0] == "fault") {
-            error(number, "expected: fault stuck|crack|bridge|joint|cell|column ...");
+            error(number, "expected: fault stuck|crack|bridge|joint|cell|column|switch ...");
         } else {
             error(number, "unknown directive '" + std::string(tokens[0]) + "'");
         }
@@ -267,6 +269,16 @@ private:
             return;
         }
         puzzle_.joints.push_back({line, *pin});
+    }
+
+    // `fault switch REF closed|open`.
+    void switchFault(std::uint32_t line, const std::vector<std::string_view>& tokens) {
+        if (tokens.size() != 4 || tokens[2].empty() ||
+            (tokens[3] != "closed" && tokens[3] != "open")) {
+            error(line, "expected: fault switch REF closed|open");
+            return;
+        }
+        puzzle_.switches.push_back({line, std::string(tokens[2]), tokens[3] == "closed"});
     }
 
     // `fault cell REF.PIN WORD 0|1` or `fault column REF.PIN 0|1`.

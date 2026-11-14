@@ -37,7 +37,8 @@ public:
     std::string_view name() const {
         return name_;
     }  // never the Puzzle's file name: it names the Fault
-    // Chip swap: removes its stuck pins, cells and columns; false if no such Component.
+    // Chip or switch swap: removes its stuck pins, cells, columns and switch Fault; false if no
+    // such Component.
     bool swap(std::string_view reference);
     bool mend(Layer layer, Point at);  // removes cracks and Cuts within 1 mm
     bool cut(Layer layer, Point at);   // false: no straight Trace there in the current Copper
@@ -95,7 +96,8 @@ private:
     std::vector<WireEnds> bridges_;  // Solder Bridges: same shape as a Bodge Wire
     std::vector<PinRef> dry_;        // dry Joints, pin numbers
     std::vector<StuckCell> cells_;   // stuck cells and columns inside memory chips
-    BoardPower power_;               // of board_, see rebuildBoard()
+    std::vector<StuckSwitch> switches_;
+    BoardPower power_;  // of board_, see rebuildBoard()
 };
 
 // The directory holding netlists/, boards/, puzzles/, manuals/, datasheets/: the file's

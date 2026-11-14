@@ -67,8 +67,8 @@ TEST_CASE("puzzle: errors", "[machine]") {
     CHECK(Errors("machine ../x\n") == Lines{"0: no machine line", "1: bad machine name '../x'"});
     CHECK(Errors("machine m\nfoo\n") == Lines{"2: unknown directive 'foo'"});
     CHECK(Errors("machine m\nfault\nfault short U1.1\n") ==
-          Lines{"2: expected: fault stuck|crack|bridge|joint|cell|column ...",
-                "3: expected: fault stuck|crack|bridge|joint|cell|column ..."});
+          Lines{"2: expected: fault stuck|crack|bridge|joint|cell|column|switch ...",
+                "3: expected: fault stuck|crack|bridge|joint|cell|column|switch ..."});
     CHECK(Errors("machine m\nfault stuck U1.QA\nfault stuck U1 0\nfault stuck U1.QA 2\n") ==
           Lines{"2: expected: fault stuck REF.PIN 0|1", "3: expected: fault stuck REF.PIN 0|1",
                 "4: expected: fault stuck REF.PIN 0|1"});
@@ -82,7 +82,7 @@ TEST_CASE("puzzle: errors", "[machine]") {
           Lines{"2: bad position '101%'", "3: bad position '1.234%'", "4: bad position '%'",
                 "5: bad position '5.%'", "6: bad position '-5%'"});
     CHECK(Errors("machine m\nfault frob\n") ==
-          Lines{"2: expected: fault stuck|crack|bridge|joint|cell|column ..."});
+          Lines{"2: expected: fault stuck|crack|bridge|joint|cell|column|switch ..."});
     CHECK(Errors("machine m\nfault bridge U1.7\nfault bridge U17 U1.8\nfault bridge U1. U1.8\n") ==
           Lines{"2: expected: fault bridge REF.PIN REF.PIN",
                 "3: expected: fault bridge REF.PIN REF.PIN",
@@ -140,6 +140,22 @@ TEST_CASE("puzzle: bad title or brief", "[machine]") {
     CHECK(Errors("machine m\nbrief\n") == Lines{"2: expected: brief \"TEXT\""});
     CHECK(Errors("machine m\ntitle \"a\"\ntitle \"b\"\n") ==
           Lines{"3: title already given at line 2"});
+}
+
+TEST_CASE("puzzle: switch", "[machine]") {
+    const auto result =
+        ParsePuzzle("machine m\nfault switch SW1 closed\nfault switch SW12 open\n", "t.bwp");
+    REQUIRE(result.has_value());
+    REQUIRE(result->switches.size() == 2);
+    CHECK(result->switches[0].line == 2);
+    CHECK(result->switches[0].reference == "SW1");
+    CHECK(result->switches[0].closed);
+    CHECK(result->switches[1].reference == "SW12");
+    CHECK_FALSE(result->switches[1].closed);
+    const std::string expected = "expected: fault switch REF closed|open";
+    CHECK(Errors("machine m\nfault switch SW1\nfault switch SW1 shut\n"
+                 "fault switch SW1 open now\n") ==
+          Lines{"2: " + expected, "3: " + expected, "4: " + expected});
 }
 
 TEST_CASE("puzzle: cell and column", "[machine]") {

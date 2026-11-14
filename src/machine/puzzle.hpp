@@ -44,6 +44,12 @@ struct CellDecl {
     LogicValue value;                   // Zero or One
 };
 
+struct SwitchDecl {
+    std::uint32_t line;
+    std::string reference;  // a BUTTON or KEY
+    bool closed;            // `closed`: stuck closed; `open`: never closes
+};
+
 struct Puzzle {
     std::string file;
     std::uint32_t machineLine = 0;
@@ -55,6 +61,7 @@ struct Puzzle {
     std::vector<BridgeDecl> bridges;
     std::vector<JointDecl> joints;  // dry Joints
     std::vector<CellDecl> cells;    // stuck cells and columns, in file order
+    std::vector<SwitchDecl> switches;
 };
 
 // All syntax errors, in line order.
