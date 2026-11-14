@@ -29,6 +29,7 @@
 #include "parts/catalogue.hpp"
 #include "session/session.hpp"
 #include "ui/analyzer_window.hpp"
+#include "ui/board_keys.hpp"
 #include "ui/board_view.hpp"
 #include "ui/keyboard_window.hpp"
 #include "ui/loaded.hpp"
@@ -376,6 +377,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         capture.reference = keyboards.front();
     }
     KeyboardWindow keyboardWindow(legends);
+    BoardKeyCapture boardKeys;  // only without a KEYBOARD: that one takes the typing
+    if (capture.reference.empty()) {
+        boardKeys.keys = session.switchKeys();
+    }
+    boardView.setLegendFont(legends);
     bool keyboardOpen = !capture.reference.empty();
     if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
         if (const auto component =
@@ -408,7 +414,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         const auto frameStart = std::chrono::steady_clock::now();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (capture.handle(event, session)) {
+            if (capture.handle(event, session) || boardKeys.handle(event)) {
                 continue;
             }
             ImGui_ImplSDL3_ProcessEvent(&event);
@@ -630,7 +636,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 latched.clear();
             }
             const auto toggled = boardView.takeLatchToggle();
-            std::vector<ButtonTag> buttonTags;
+            std::vector<SwitchTag> switchTags;
             for (const std::string& reference : session.switches()) {
                 const auto component =
                     scene ? scene->componentIndex(reference) : std::optional<std::size_t>();
@@ -643,13 +649,20 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                            status.simTime < p.up;
                 });
                 session.setPressed(reference, latched.contains(reference) || scripted ||
-                                                  (component && boardView.held() == component));
+                                                  (component && boardView.held() == component) ||
+                                                  boardKeys.holds(reference));
                 if (component) {
-                    buttonTags.push_back({*component, session.pressed(reference)});
+                    const Switch* sw = SwitchOf(session.circuit(), reference);
+                    const auto part = std::ranges::find(session.circuit().parts, reference,
+                                                        &LoadedPart::reference);
+                    switchTags.push_back(
+                        {*component, session.pressed(reference),
+                         part != session.circuit().parts.end() && part->info->name == "KEY",
+                         sw ? std::string(sw->legend()) : std::string()});
                 }
             }
             if (scene) {
-                boardView.setButtons(buttonTags);
+                boardView.setSwitches(switchTags);
             }
         }
         {
@@ -715,7 +728,14 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         // Also without a Board (a netlist-only Session, the bench).
         keyboardWindow.draw(keyboardOpen, session, capture);
         capture.sync(window);
-        toolbar.typing = capture.on ? capture.reference : std::string();
+        if (!boardKeys.keys.empty() && !boardKeys.on && !ImGui::GetIO().WantTextInput &&
+            ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
+            boardKeys.on = true;
+        }
+        boardKeys.sync();
+        toolbar.typing = capture.on     ? capture.reference
+                         : boardKeys.on ? std::string("Board keys")
+                                        : std::string();
         if (const auto picked = boardView.takePicked()) {
             wireStart.reset();
             toolbar.analyzerOpen |= *picked == Tool::Clip;

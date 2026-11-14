@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "board/copper.hpp"
+#include "ui/keycap.hpp"
 #include "view/digit_shape.hpp"
 
 namespace bw {
@@ -232,7 +233,8 @@ ImVec2 Centre(std::span<const ImVec2> points) {
 }
 
 void DrawCourtyard(ImDrawList& list, const Mapper& map, const BoardComponent& component,
-                   std::span<const Point> courtyard, std::string_view partName, bool lit) {
+                   std::span<const Point> courtyard, std::string_view partName, bool lit,
+                   bool onKeycap) {
     std::vector<ImVec2> points;
     for (const Point p : courtyard) {
         points.push_back(map(p));
@@ -253,10 +255,18 @@ void DrawCourtyard(ImDrawList& list, const Mapper& map, const BoardComponent& co
     for (const ImVec2 p : points) {
         width = std::max(width, std::abs(p.x - centre.x) * 2);
     }
-    const bool showPart = !part.empty() && part != component.reference && partTextSize.x <= width &&
-                          textSize.x <= width;
+    const bool showPart = !onKeycap && !part.empty() && part != component.reference &&
+                          partTextSize.x <= width && textSize.x <= width;
     const float top = centre.y - (textSize.y + (showPart ? partTextSize.y : 0)) / 2;
-    list.AddText(font, size, {centre.x - textSize.x / 2, top}, kReference, text);
+    if (onKeycap) {
+        // A key's legend fills its cap: the reference goes small in the top left corner.
+        const float small = size * kPartNameShare;
+        const auto [minX, maxX] = std::ranges::minmax(points, {}, &ImVec2::x);
+        const auto [minY, maxY] = std::ranges::minmax(points, {}, &ImVec2::y);
+        list.AddText(font, small, {minX.x + small * 0.4f, minY.y + small * 0.3f}, kReference, text);
+    } else {
+        list.AddText(font, size, {centre.x - textSize.x / 2, top}, kReference, text);
+    }
     if (showPart) {
         list.AddText(font, partSize, {centre.x - partTextSize.x / 2, top + textSize.y}, kPartName,
                      part.c_str());
@@ -449,7 +459,7 @@ void BoardView::draw(ImVec2 size) {
                                  Lerp(kSegmentDim, kLedLit, glow));
     }
 
-    for (const ButtonTag& button : buttons_) {
+    for (const SwitchTag& button : switches_) {
         const auto courtyard = scene_->courtyard(button.component);
         if (courtyard.empty()) {
             continue;
@@ -458,6 +468,15 @@ void BoardView::draw(ImVec2 size) {
         const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
         const ImVec2 min = map({minX.x, minY.y});
         const ImVec2 max = map({maxX.x, maxY.y});
+        if (button.key && legendFont_ != nullptr) {
+            // The cap covers the courtyard only, so the copper between keys stays in view.
+            const ImVec2 a{std::min(min.x, max.x), std::min(min.y, max.y)};
+            const ImVec2 b{std::max(min.x, max.x), std::max(min.y, max.y)};
+            const KeyCap cap{0, 0, 1, button.legend, "", CapKind::Character, 0};
+            DrawKeyCap(list, legendFont_, cap, a, b, std::min(b.x - a.x, b.y - a.y),
+                       button.pressed);
+            continue;
+        }
         list.AddRectFilled({std::min(min.x, max.x), std::min(min.y, max.y)},
                            {std::max(min.x, max.x), std::max(min.y, max.y)}, kButtonBody, 2.0f);
         const ImVec2 centre = map({(minX.x + maxX.x) / 2, (minY.y + maxY.y) / 2});
@@ -502,8 +521,12 @@ void BoardView::draw(ImVec2 size) {
     }
     for (std::size_t k = 0; k < board.components.size(); ++k) {
         const bool outlined = hoverTarget_ && hoverTarget_->component == k && !hoverTarget_->pad;
+        const bool keycap =
+            legendFont_ != nullptr && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
+                return t.key && t.component == k;
+            });
         DrawCourtyard(list, map, board.components[k], scene_->courtyard(k), scene_->partName(k),
-                      outlined);
+                      outlined, keycap);
     }
     if (hoverTarget_ && hoverTarget_->pad) {
         const Pad& pad = board.components[hoverTarget_->component].pads[*hoverTarget_->pad];
@@ -723,8 +746,10 @@ void BoardView::input(ImVec2 origin) {
     }
     const auto buttonAt = [&]() -> std::optional<std::size_t> {
         const auto body = scene_->bodyAt(at);
-        if (body && std::ranges::any_of(buttons_,
-                                        [&](const ButtonTag& b) { return b.component == *body; })) {
+        // Not under the Swap tool: a click on a switch body swaps it (P5i).
+        if (body && tool_ != Tool::Swap && std::ranges::any_of(switches_, [&](const SwitchTag& b) {
+                return b.component == *body;
+            })) {
             return body;
         }
         return std::nullopt;

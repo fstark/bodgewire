@@ -64,9 +64,12 @@ struct LedTag {
     float brightness;  // 0 dark .. 1 fully lit
 };
 
-struct ButtonTag {
+// A BUTTON or KEY on the Board (P5i).
+struct SwitchTag {
     std::size_t component;
     bool pressed;
+    bool key;  // drawn as a keycap with `legend`; else a round button
+    std::string legend;
 };
 
 struct BoardTarget {
@@ -117,9 +120,10 @@ public:
     void setHooks(std::span<const HookTag> hooks) { hooks_.assign(hooks.begin(), hooks.end()); }
     void setLeads(std::span<const LeadTag> leads) { leads_.assign(leads.begin(), leads.end()); }
     void setLeds(std::span<const LedTag> leds) { leds_.assign(leds.begin(), leds.end()); }
-    void setButtons(std::span<const ButtonTag> buttons) {
-        buttons_.assign(buttons.begin(), buttons.end());
+    void setSwitches(std::span<const SwitchTag> switches) {
+        switches_.assign(switches.begin(), switches.end());
     }
+    void setLegendFont(ImFont* font) { legendFont_ = font; }   // keycap legends
     std::optional<std::size_t> held() const { return held_; }  // left button down on a body
     std::optional<std::size_t> takeLatchToggle();              // right-clicked body
     void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
@@ -168,7 +172,8 @@ private:
     std::vector<HookTag> hooks_;
     std::vector<LeadTag> leads_;
     std::vector<LedTag> leds_;
-    std::vector<ButtonTag> buttons_;
+    std::vector<SwitchTag> switches_;
+    ImFont* legendFont_ = nullptr;
     std::optional<std::size_t> held_, latchToggle_;
     std::vector<CutMark> cuts_;
     std::vector<BodgeWire> bodgeWires_;

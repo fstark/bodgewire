@@ -12,7 +12,7 @@ Each phase ends with its fence: the checks listed, `cmake --build --preset debug
 | 1 | Kernel: switched Pin, external drives, waking | `bce6852` |
 | 2 | `Switch`, `SwitchNetwork`, `BUTTON` and `KEY`, builder, electrical, session | `7248627` |
 | 3 | 74145 and the switch bench | `e1516b6` |
-| 4 | `fault switch`: syntax, Machine, swap, dice | |
+| 4 | `fault switch`: syntax, Machine, swap, dice | `8653f38` |
 | 5 | `bw_ui`: keycaps on the Board, PC keys through Typing | |
 | 6 | Release check, recipes, glossary, roadmap | |
 
