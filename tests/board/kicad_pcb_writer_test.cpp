@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "board/kicad_board.hpp"
@@ -141,6 +142,36 @@ TEST_CASE("kicad pcb writer: reads back where it was placed", "[board]") {
     REQUIRE(board->outline.size() == 4);
     CHECK(board->traces.empty());
     CHECK(board->vias.empty());
+}
+
+TEST_CASE("kicad pcb writer: a footprint's point in Board coordinates", "[board]") {
+    // KiCad 10 reads a footprint's (point) at its Board position, not relative to the footprint.
+    const Written w = Write(LoadedFrom(kNetlist), kRules);
+    const auto root = ParseSExpr(w.text, "t.kicad_pcb");
+    REQUIRE(root.has_value());
+    const PlacedPart& u1 = *std::ranges::find(w.placement.parts, "U1", &PlacedPart::reference);
+    int points = 0;
+    for (const SExpr& footprint : root->list) {
+        const auto isU1 = [](const SExpr& c) {
+            return c.head() == "property" && c.atomAt(1) == "Reference" && c.atomAt(2) == "U1";
+        };
+        if (footprint.head() != "footprint" || !std::ranges::any_of(footprint.list, isU1)) {
+            continue;
+        }
+        for (const SExpr& child : footprint.list) {
+            if (child.head() == "point") {
+                const SExpr* at = child.find("at");
+                REQUIRE(at != nullptr);
+                // DIP-14_W7.62mm's point is its centre, (3.81, 7.62) from pad 1.
+                CHECK(std::stod(std::string(at->atomAt(1))) * 1e6 ==
+                      Catch::Approx(static_cast<double>(u1.origin.x) + 3.81e6));
+                CHECK(std::stod(std::string(at->atomAt(2))) * 1e6 ==
+                      Catch::Approx(static_cast<double>(u1.origin.y) + 7.62e6));
+                ++points;
+            }
+        }
+    }
+    CHECK(points == 1);
 }
 
 TEST_CASE("kicad pcb writer: pads carry their Nets", "[board]") {

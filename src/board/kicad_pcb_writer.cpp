@@ -1,6 +1,8 @@
 #include "board/kicad_pcb_writer.hpp"
 
+#include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <format>
 #include <map>
@@ -57,7 +59,8 @@ PadNets PadNetsOf(const LoadedCircuit& loaded) {
 void WriteFootprint(std::ostream& out, const PlacedPart& part, std::string_view value,
                     const PadNets& nets) {
     const std::string_view text = part.footprint->text;
-    std::string pad;  // number of the pad block we are in, "" outside one
+    std::string pad;     // number of the pad block we are in, "" outside one
+    bool point = false;  // in a (point …) block: KiCad keeps its (at …) in Board coordinates
     bool first = true;
     bool placed = false;
     std::size_t start = 0;
@@ -87,6 +90,9 @@ void WriteFootprint(std::ostream& out, const PlacedPart& part, std::string_view 
         } else if (depth == 1) {
             pad.clear();
         }
+        if (depth == 1) {
+            point = body.starts_with("(point");
+        }
         if (!pad.empty() && depth == 2 && body.starts_with("(layers ")) {
             if (const auto it = nets.find({part.reference, pad}); it != nets.end()) {
                 out << "\t\t\t(net " << KicadQuote(it->second.net) << ")\n";
@@ -101,6 +107,16 @@ void WriteFootprint(std::ostream& out, const PlacedPart& part, std::string_view 
                    KicadQuote(part.reference);
         } else if (depth == 1 && body.starts_with("(property \"Value\" ")) {
             copy = std::string(line.substr(0, depth)) + "(property \"Value\" " + KicadQuote(value);
+        }
+        if (point && depth == 2 && body.starts_with("(at ")) {
+            // A footprint's (point) is the one item KiCad reads in Board coordinates, unlike its
+            // pads and graphics: moved by the origin, or it lands far from its part.
+            double x = 0, y = 0;
+            Check(std::sscanf(std::string(body).c_str(), "(at %lf %lf)", &x, &y) == 2,
+                  "footprint " + part.footprint->id + ": bad point " + std::string(body));
+            copy = std::string(line.substr(0, depth)) + "(at " +
+                   Millimetres(part.origin.x + std::llround(x * 1e6)) + ' ' +
+                   Millimetres(part.origin.y + std::llround(y * 1e6)) + ')';
         }
         out << '\t' << copy << '\n';
         if (!placed && depth == 1 && body == "(layer \"F.Cu\")") {
