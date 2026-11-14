@@ -33,8 +33,9 @@ fault crack R6.2 D5.2 51%
   - `fault joint U15.13`: dry Joint on a chip signal pin: the pin is off its pad's Net (an input floats high, an output drives only its leg); repaired by resoldering, not by a swap;
   - `fault crack A B N%`: Broken Trace on the Copper between pads A and B, `N%` along its crackable straight stretches; repaired by mending;
   - `fault bridge U5.3 U5.4`: solder bridge between neighbouring pins; repaired by the Cut tool.
-  - `fault cell U3.IO2 $1FF 0`: inside a RAM or ROM (2114, 2716, 2513), bit `IO2` of word `$1FF` (the chip's own address: its `A` pins, bit 0 first; `$` hex or decimal) always reads 0; writes do not change it; repaired by swapping the chip;
+  - `fault cell U3.IO2 $1FF 0`: inside a RAM or ROM (2114, 2716, 2513, 6102, 6530), bit `IO2` of word `$1FF` (the chip's own address: its `A` pins, bit 0 first; `$` hex or decimal) always reads 0; writes do not change it; repaired by swapping the chip;
   - `fault column U15.O1 0`: the same bit stuck in every word, inside the chip: the pin is fine while another chip drives the line; repaired by swapping;
+  - `fault cell U2.D3 ram $3F 0`, `fault column U2.D0 rom 1`: a chip with several memories (the 6530's `rom` and `ram`) needs the memory's name before the word; the word is that memory's own address (`ram` `$00`–`$3F`); a chip with one memory takes no name;
   - an internal address line (the chip ignores `A0`, words pair up) is a stuck input: `fault stuck U3.A0 0`;
   - `fault switch SW1 closed` (stuck closed: joined from power-on, a press changes nothing) or `fault switch SW1 open` (never closes): on a `BUTTON` or `KEY`; repaired by swapping the switch. A stuck-closed key in a scanned matrix shows on every scan, and with two other held keys can make a ghost.
 - Check it loads and shows the symptom: `./build/debug/src/cli/bw run puzzles/<name>.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`). `--probe` reads the leg (the pin's own Net).

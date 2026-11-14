@@ -91,6 +91,9 @@ _Avoid_: Level, voltage
 **Driver**:
 A Pin's contribution to the value of its Net: what it drives and how strongly. Also, a Pin that drives its Net: an output, a bidirectional Pin, a pull-up/pull-down or a supply.
 
+**Pull-up Pin**:
+A chip Pin that drives 0 and otherwise holds its Net at 1 through its own pull-up (an NMOS port pin, the 6530's): anything driving 0 beats its 1, and nothing else on the Net reads 1, not floating. It reads its Net too.
+
 **Load**:
 A Pin that only reads its Net, such as a gate input or a chip's power pin.
 _Avoid_: Sink, receiver
@@ -125,7 +128,7 @@ A Fault where a Component's output Pin always drives 0 or always drives 1. On a 
 _Avoid_: Dead output
 
 **Stuck Cell**:
-A Fault inside a memory chip: one bit of one word always reads 0 or 1, whatever is written. A **Stuck Column** is that bit stuck in every word. Repaired by a swap.
+A Fault inside a memory chip: one bit of one word always reads 0 or 1, whatever is written. A **Stuck Column** is that bit stuck in every word. In a chip with several memories (the 6530's ROM and RAM), it is in one of them, named. Repaired by a swap.
 _Avoid_: Bad bit, dead bit
 
 **Switch Fault**:

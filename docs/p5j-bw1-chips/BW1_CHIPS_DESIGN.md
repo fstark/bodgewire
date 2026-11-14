@@ -168,7 +168,7 @@ struct Mos6530Mask {
 const Mos6530Mask* FindMos6530Mask(std::string_view name);  // nullptr if unknown
 ```
 
-`PartInfo{"6530", "ROM, RAM, I/O and timer (KIM mask 002 or 003)", "DIP-40", Chip, &CreateMos6530}`. `CreateMos6530` (catalogue.cpp, after `CreateRom`'s shape): `mask=` and `contents=` both required; errors `"6530 needs mask=002|003"`, `"6530: unknown mask '004' (002|003)"`, `"6530 needs contents=<file>"`, any other name `"6530 takes mask= and contents="`; contents by `ReadRomContents(path, 1024, 8)`. `ResolveContentsPaths` already resolves `contents=`.
+`PartInfo{"6530", "ROM, RAM, I/O and timer (KIM mask 002 or 003)", "DIP-40", Chip, &CreateMos6530}`. `CreateMos6530` (catalogue.cpp, after `CreateRom`'s shape): `mask=` and `contents=` both required; errors `"6530 needs mask=002|003"`, `"6530: unknown mask '004' (002|003)"`, `"6530 needs contents=<file>"`, any other name `"6530: unknown parameter 'freq'"` (the ROMs' style); contents by `ReadRomContents(path, 1024, 8)`. `ResolveContentsPaths` already resolves `contents=`.
 
 `PartPinNames` (manual.cpp) returns the names of `Mos6530::Pins()` for `"6530"` (it cannot build one without a file), as it does for ROMs; `tests/manual/manual_test.cpp` checks it has 40 names (recipe: a Part with a required parameter). `catalogue_test` passes `mask=002` and `tests/data/empty.rom`; `kMosSignals` and `kOffCornerPower` gain `6530` (GND pin 1, VCC pin 20). The placer test is unaffected (DIP-40 exists; a 6530 needs a placement rule, as the 6502).
 
