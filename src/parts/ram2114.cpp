@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "parts/delays.hpp"
+#include "sim/check.hpp"
 #include "sim/simulator.hpp"
 
 namespace bw {
@@ -35,6 +36,31 @@ void Ram2114::powerOn(PowerOnContext& ctx) {
             word = static_cast<std::uint8_t>(word | (ctx.randomBit() ? 1u << bit : 0u));
         }
     }
+    for (std::size_t a = 0; a < words_.size(); ++a) {
+        store(a, words_[a]);
+    }
+}
+
+std::optional<unsigned> Ram2114::dataBit(PinIndex pin) const {
+    const auto it = std::ranges::find(kData, pin);
+    if (it == kData.end()) {
+        return std::nullopt;
+    }
+    return static_cast<unsigned>(it - kData.begin());
+}
+
+void Ram2114::stick(std::size_t word, unsigned bit, bool one) {
+    Check(word < words_.size() && bit < kData.size(), "2114: no such cell");
+    const auto mask = static_cast<std::uint8_t>(1u << bit);
+    stuckMask_[word] |= mask;
+    stuckValue_[word] =
+        static_cast<std::uint8_t>(one ? stuckValue_[word] | mask : stuckValue_[word] & ~mask);
+    store(word, words_[word]);
+}
+
+void Ram2114::store(std::size_t address, unsigned data) {
+    words_[address] = static_cast<std::uint8_t>(
+        ((data & ~unsigned{stuckMask_[address]}) | stuckValue_[address]) & 0xFu);
 }
 
 void Ram2114::evaluate(EvalContext& ctx) {
@@ -48,7 +74,7 @@ void Ram2114::evaluate(EvalContext& ctx) {
         for (std::size_t i = 0; i < kData.size(); ++i) {
             data |= static_cast<unsigned>(ctx.readBitBefore(kData[i])) << i;
         }
-        words_[address] = static_cast<std::uint8_t>(data);
+        store(address, data);
     }
 
     const bool selected = !ctx.readBit(kCsN);
@@ -62,7 +88,7 @@ void Ram2114::evaluate(EvalContext& ctx) {
         for (std::size_t i = 0; i < kData.size(); ++i) {
             data |= static_cast<unsigned>(ctx.readBit(kData[i])) << i;
         }
-        words_[address] = static_cast<std::uint8_t>(data);
+        store(address, data);
     }
     if (!selected || writing) {
         for (const PinIndex pin : kData) {

@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <ranges>
 #include <string>
 #include <utility>
 #include <vector>
@@ -242,4 +243,49 @@ TEST_CASE("2114: random contents at power-on, set by the seed", "[parts]") {
     CHECK(contents(2) != one);
     CHECK(std::ranges::any_of(one, [](std::uint8_t w) { return w != 0; }));
     CHECK(std::ranges::all_of(one, [](std::uint8_t w) { return w < 16; }));
+}
+
+TEST_CASE("2114: a stuck cell holds its value through writes and power-on", "[parts]") {
+    // Writes 0000 at 3 (1-2 us) and at 2 (3-4 us), then reads 3 from 4.5 us.
+    for (std::uint64_t seed = 1; seed <= 4; ++seed) {
+        INFO(seed);
+        Bench bench(
+            {{"A0", {One, {{2500_ns, Zero}, {4500_ns, One}}}},
+             {"A1", {One, {}}},
+             {"WE_N", {One, {{1000_ns, Zero}, {2000_ns, One}, {3000_ns, Zero}, {4000_ns, One}}}}},
+            BusWord({{{900_ns, 2100_ns}, 0}, {{3150_ns, 4100_ns}, 0}}));
+        CHECK(bench.ram->wordCount() == 1024);
+        CHECK(bench.ram->dataBit(Ram2114::kData[2]) == 2u);
+        CHECK_FALSE(bench.ram->dataBit(Ram2114::kAddress[0]).has_value());
+        bench.ram->stick(3, 2, true);
+        CHECK((bench.ram->word(3) & 0b0100) != 0);
+        Simulator sim(bench.circuit);
+        sim.powerOn(seed);
+        CHECK((bench.ram->word(3) & 0b0100) != 0);
+        sim.runUntil(2010_ns);
+        CHECK(bench.ram->word(3) == 0b0100);
+        sim.runUntil(4010_ns);
+        CHECK(bench.ram->word(2) == 0);
+        sim.runUntil(4500_ns + delays::k2114Address);
+        CHECK(bench.word(sim) == 0b0100);
+    }
+}
+
+TEST_CASE("2114: a stuck column sticks every word", "[parts]") {
+    // Writes 1111 at 0 (1-2 us) and at 1 (3-4 us).
+    Bench bench(
+        {{"A0", {Zero, {{2500_ns, One}}}},
+         {"WE_N", {One, {{1000_ns, Zero}, {2000_ns, One}, {3000_ns, Zero}, {4000_ns, One}}}}},
+        BusWord({{{900_ns, 2100_ns}, 0b1111}, {{3150_ns, 4100_ns}, 0b1111}}));
+    for (std::size_t word = 0; word < bench.ram->wordCount(); ++word) {
+        bench.ram->stick(word, 0, false);
+    }
+    Simulator sim(bench.circuit);
+    sim.powerOn(1);
+    CHECK(std::ranges::all_of(std::views::iota(std::size_t{0}, std::size_t{1024}),
+                              [&](std::size_t a) { return (bench.ram->word(a) & 1) == 0; }));
+    sim.runUntil(4000_ns + delays::k2114Select);
+    CHECK(bench.ram->word(0) == 0b1110);
+    CHECK(bench.ram->word(1) == 0b1110);
+    CHECK(bench.word(sim) == 0b1110);
 }

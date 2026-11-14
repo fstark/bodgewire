@@ -193,4 +193,18 @@ Rom::Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> w
 
 void Rom::evaluate(EvalContext& ctx) { spec_.evaluate(ctx, words_); }
 
+std::optional<unsigned> Rom::dataBit(PinIndex pin) const {
+    const auto it = std::ranges::find(spec_.data, pin);
+    if (it == spec_.data.end()) {
+        return std::nullopt;
+    }
+    return static_cast<unsigned>(it - spec_.data.begin());
+}
+
+void Rom::stick(std::size_t word, unsigned bit, bool one) {
+    Check(word < words_.size() && bit < spec_.data.size(), "rom: no such cell");
+    const auto mask = static_cast<std::uint8_t>(1u << bit);
+    words_[word] = static_cast<std::uint8_t>(one ? words_[word] | mask : words_[word] & ~mask);
+}
+
 }  // namespace bw

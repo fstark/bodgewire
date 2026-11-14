@@ -43,9 +43,11 @@ struct Bench {
     Circuit circuit;
     std::map<std::string, NetId, std::less<>> nets;
     const RomSpec& spec;
+    Rom* rom = nullptr;
 
     Bench(std::string_view part, std::map<std::string, Input> inputs) : spec(RomSpecOf(part)) {
         auto& chip = circuit.add<Rom>("U1", spec, Pattern(spec));
+        rom = &chip;
         const auto drive = [&](PinIndex pin) {
             const std::string name(spec.names[pin]);
             Input input{Zero, {}};
@@ -271,4 +273,35 @@ TEST_CASE("rom: the factory reads contents=", "[parts]") {
     const auto created = part->create(circuit, "U1", contents);
     REQUIRE(created.has_value());
     CHECK(static_cast<Rom*>(*created)->size() == 512);
+}
+
+TEST_CASE("rom: stuck cell and column", "[parts]") {
+    {
+        // Address 5 holds 35 = 0010 0011; O1 stuck at 0 there gives 33.
+        Bench bench("2716", {{"A0", {One, {}}}, {"A2", {One, {}}}});
+        CHECK(bench.rom->wordCount() == 2048);
+        const Component& chip = *bench.rom;
+        CHECK(bench.rom->dataBit(chip.pinIndex("O3")) == 3u);
+        CHECK_FALSE(bench.rom->dataBit(chip.pinIndex("A0")).has_value());
+        bench.rom->stick(5, 1, false);
+        Simulator sim(bench.circuit);
+        sim.powerOn(1);
+        sim.runUntil(2_us);
+        CHECK(bench.word(sim) == 33);
+    }
+    for (const bool high : {false, true}) {
+        // 2513, O1 stuck at 0 in every word: addresses 1 (7) and 3 (21) read 6 and 20.
+        Bench bench("2513", {{"A1", {One, {}}}, {"A2", {Zero, {{3_us, One}}}}});
+        const Component& chip = *bench.rom;
+        CHECK(bench.rom->dataBit(chip.pinIndex("O1")) == 0u);
+        for (std::size_t word = 0; word < bench.rom->wordCount(); ++word) {
+            bench.rom->stick(word, 0, false);
+        }
+        Simulator sim(bench.circuit);
+        sim.powerOn(high ? 2 : 1);
+        sim.runUntil(2_us);
+        CHECK(bench.word(sim) == 6);
+        sim.runUntil(5_us);
+        CHECK(bench.word(sim) == 20);
+    }
 }

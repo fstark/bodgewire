@@ -2,11 +2,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "parts/memory_cells.hpp"
 #include "sim/component.hpp"
 #include "sim/time.hpp"
 
@@ -35,12 +37,17 @@ const RomSpec* FindRomSpec(std::string_view part);  // nullptr unless a ROM Part
 const RomSpec& RomSpecOf(std::string_view part);    // Check()s
 
 // Read-only memory: the word at the address on the data Pins while enabled, floating otherwise.
-// `words` holds 2^address bits words of the data width (ROM_PARTS_DESIGN.md §3).
-class Rom final : public Component {
+// `words` holds 2^address bits words of the data width (ROM_PARTS_DESIGN.md §3). A stuck cell
+// (MemoryCells) changes the contents.
+class Rom final : public Component, public MemoryCells {
 public:
     Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> words);
     void evaluate(EvalContext& ctx) override;
     std::size_t size() const { return words_.size(); }
+
+    std::size_t wordCount() const override { return size(); }
+    std::optional<unsigned> dataBit(PinIndex pin) const override;  // index in the spec's data
+    void stick(std::size_t word, unsigned bit, bool one) override;
 
 private:
     const RomSpec& spec_;
