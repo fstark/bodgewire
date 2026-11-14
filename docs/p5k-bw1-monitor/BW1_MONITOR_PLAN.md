@@ -46,11 +46,12 @@ Commit: `docs: P5k implemented, user check pending`.
 |-------|-------------|--------|
 | 1 | `.checksum` | `4387229` |
 | 2 | The model | `b826d4f` |
-| 3 | The monitor | this commit |
-| 4 | The self-test | |
+| 3 | The monitor | `0530d01` |
+| 4 | The self-test | this commit |
 | 5 | Finish | |
 
 ## Notes
 
 - Review (before code), fixed in the docs: the ROM sums' `Z` after `inx` (a `tay` before the branch); the `3795F0` stuck values; the SST case's third display (`$0206` holds RAM); the KIM entry-point program written out; test names beginning `bw1 …` for the `-R` filters; the timer flagged, not refused, and not checked in the bad-RAM cases (random code); `SEG_*` constant names, numbered local labels, `FAILn` by `jmp`; the scan about 3.5 ms; the 003's `PA` pins left unconnected in P5l.
 - Monitor: 306 bytes of code and tables; every entry point on its KIM address (`.org`, checked by a test). A scan by cycle count: about 552 cycles a digit (`CONVX` 545 with its `jsr`, `DELAY` 100), 3.4 ms with `AK`: `DELAY` kept.
+- Self-test: 885 bytes (`$1800`–`$1B74`, `$1BF0` free for the ROM-sum case). By cycle count: tests 1–5 about 75 ms (main RAM two passes about 47 ms, RIOT RAMs 4 ms, ROM sums 23 ms); every segment from about 75 to 865 ms; each digit alone 0.33 s, digit 1 from 0.86 to 1.19 s; `PASS` from about 2.85 s. The cases check at 2–7 ms, 300 ms, 1.0 s and 3.2 s.
