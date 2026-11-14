@@ -462,12 +462,14 @@ TEST_CASE("machine: memory fault errors", "[machine]") {
                     {5, {"R1", "1"}, std::nullopt, LogicValue::Zero},
                     {6, {"U3", "A0"}, std::nullopt, LogicValue::One},
                     {7, {"U3", "IO1"}, 0x400, LogicValue::One},
-                    {8, {"U2", "O0"}, 0x800, LogicValue::One}};
+                    {8, {"U2", "O0"}, 0x800, LogicValue::One},
+                    {9, {"U3", "IO1"}, 0x10, LogicValue::One, "ram"}};
     CHECK(Errors(puzzle) ==
           Lines{"2: unknown reference 'U99'", "3: U3 (2114) has no pin XX",
                 "4: cell U5.A $0: RAM and ROM chips only", "5: column R1.1: RAM and ROM chips only",
                 "6: column U3.A0: not a data pin", "7: cell U3.IO1 $400: U3 (2114) has 1024 words",
-                "8: cell U2.O0 $800: U2 (2716) has 2048 words"});
+                "8: cell U2.O0 $800: U2 (2716) has 2048 words",
+                "9: cell U3.IO1 ram $10: U3 (2114) has one memory: no name"});
 }
 
 TEST_CASE("machine: switch fault errors", "[machine]") {

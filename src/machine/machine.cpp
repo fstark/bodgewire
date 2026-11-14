@@ -44,6 +44,46 @@ std::optional<std::string> ReadFile(const std::filesystem::path& path) {
 
 }  // namespace
 
+std::expected<StuckCell, std::string> ResolveCell(const CellDecl& decl, const Component& component,
+                                                  std::string_view part) {
+    const auto* memory = dynamic_cast<const MemoryCells*>(&component);
+    if (memory == nullptr) {
+        return std::unexpected("RAM and ROM chips only");
+    }
+    const auto pin = FindPin(component, decl.pin.pin);
+    if (!pin || !memory->dataBit(*pin)) {
+        return std::unexpected("not a data pin");
+    }
+    const std::string chip = std::format("{} ({})", decl.pin.reference, part);
+    const auto names = memory->memories();
+    std::size_t index = 0;
+    if (names.size() > 1 && decl.memory.empty()) {
+        std::string list;
+        for (std::size_t i = 0; i < names.size(); ++i) {
+            list += (i == 0 ? "" : i + 1 == names.size() ? " and " : ", ") + std::string(names[i]);
+        }
+        return std::unexpected(chip + " has memories " + list + ": name one");
+    }
+    if (names.size() == 1 && !decl.memory.empty()) {
+        return std::unexpected(chip + " has one memory: no name");
+    }
+    if (!decl.memory.empty()) {
+        const auto it = std::ranges::find(names, decl.memory);
+        if (it == names.end()) {
+            return std::unexpected(chip + " has no memory '" + decl.memory + "'");
+        }
+        index = static_cast<std::size_t>(it - names.begin());
+    }
+    if (decl.word && *decl.word >= memory->wordCount(index)) {
+        return std::unexpected(std::format("{}{} has {} words", chip,
+                                           decl.memory.empty() ? "" : " " + decl.memory,
+                                           memory->wordCount(index)));
+    }
+    return StuckCell{decl.pin.reference, *pin,
+                     decl.word ? std::optional<std::size_t>(*decl.word) : std::nullopt, decl.value,
+                     index};
+}
+
 std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle,
                                                             const std::filesystem::path& root) {
     std::vector<Diagnostic> errors;
@@ -185,34 +225,26 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
     }
     for (const CellDecl& decl : puzzle.cells) {
         const std::string pinText = decl.pin.reference + "." + decl.pin.pin;
+        const std::string memory = decl.memory.empty() ? "" : " " + decl.memory;
         const std::string written =
-            decl.word ? std::format("cell {} ${:X}", pinText, *decl.word) : "column " + pinText;
+            decl.word ? std::format("cell {}{} ${:X}", pinText, memory, *decl.word)
+                      : "column " + pinText + memory;
         if (!known(decl.line, decl.pin)) {
             continue;
         }
         const auto component = loaded.components.find(decl.pin.reference);
-        const auto* memory = component == loaded.components.end()
-                                 ? nullptr
-                                 : dynamic_cast<const MemoryCells*>(component->second);
-        if (memory == nullptr) {
-            error(decl.line, written + ": RAM and ROM chips only");
+        if (component == loaded.components.end()) {
+            error(decl.line, written + ": RAM and ROM chips only");  // a resistor: no Component
             continue;
         }
-        const auto pin = FindPin(*component->second, decl.pin.pin);
-        if (!pin || !memory->dataBit(*pin)) {
-            error(decl.line, written + ": not a data pin");
+        const auto part =
+            std::ranges::find(loaded.parts, decl.pin.reference, &LoadedPart::reference);
+        auto cell = ResolveCell(decl, *component->second, part->info->name);
+        if (!cell) {
+            error(decl.line, written + ": " + cell.error());
             continue;
         }
-        if (decl.word && *decl.word >= memory->wordCount()) {
-            const auto part =
-                std::ranges::find(loaded.parts, decl.pin.reference, &LoadedPart::reference);
-            error(decl.line, std::format("{}: {} ({}) has {} words", written, decl.pin.reference,
-                                         part->info->name, memory->wordCount()));
-            continue;
-        }
-        machine.cells_.push_back({decl.pin.reference, *pin,
-                                  decl.word ? std::optional<std::size_t>(*decl.word) : std::nullopt,
-                                  decl.value});
+        machine.cells_.push_back(std::move(*cell));
     }
     for (const SwitchDecl& decl : puzzle.switches) {
         const auto part = std::ranges::find(loaded.parts, decl.reference, &LoadedPart::reference);

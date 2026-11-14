@@ -147,16 +147,17 @@ private:
             auto* memory =
                 it == loaded_->components.end() ? nullptr : dynamic_cast<MemoryCells*>(it->second);
             const auto bit = memory ? memory->dataBit(c.pin) : std::nullopt;
-            Check(bit && (!c.word || *c.word < memory->wordCount()) &&
+            Check(bit && c.memory < memory->memories().size() &&
+                      (!c.word || *c.word < memory->wordCount(c.memory)) &&
                       (c.value == LogicValue::Zero || c.value == LogicValue::One),
                   "builder: stuck cell must be a data bit of a memory word");
             const bool one = c.value == LogicValue::One;
             if (c.word) {
-                memory->stick(*c.word, *bit, one);
+                memory->stick(c.memory, *c.word, *bit, one);
                 continue;
             }
-            for (std::size_t word = 0; word < memory->wordCount(); ++word) {
-                memory->stick(word, *bit, one);
+            for (std::size_t word = 0; word < memory->wordCount(c.memory); ++word) {
+                memory->stick(c.memory, word, *bit, one);
             }
         }
     }

@@ -42,6 +42,7 @@ struct CellDecl {
     PinRef pin;                         // the data pin, by number or name: U3.IO2, U3.11
     std::optional<std::uint32_t> word;  // the chip's own address; nullopt: `fault column`
     LogicValue value;                   // Zero or One
+    std::string memory = {};            // "rom" or "ram" on a 6530; "" when not written
 };
 
 struct SwitchDecl {

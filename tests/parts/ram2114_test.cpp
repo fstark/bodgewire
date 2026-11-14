@@ -254,10 +254,10 @@ TEST_CASE("2114: a stuck cell holds its value through writes and power-on", "[pa
              {"A1", {One, {}}},
              {"WE_N", {One, {{1000_ns, Zero}, {2000_ns, One}, {3000_ns, Zero}, {4000_ns, One}}}}},
             BusWord({{{900_ns, 2100_ns}, 0}, {{3150_ns, 4100_ns}, 0}}));
-        CHECK(bench.ram->wordCount() == 1024);
+        CHECK(bench.ram->wordCount(0) == 1024);
         CHECK(bench.ram->dataBit(Ram2114::kData[2]) == 2u);
         CHECK_FALSE(bench.ram->dataBit(Ram2114::kAddress[0]).has_value());
-        bench.ram->stick(3, 2, true);
+        bench.ram->stick(0, 3, 2, true);
         CHECK((bench.ram->word(3) & 0b0100) != 0);
         Simulator sim(bench.circuit);
         sim.powerOn(seed);
@@ -277,8 +277,8 @@ TEST_CASE("2114: a stuck column sticks every word", "[parts]") {
         {{"A0", {Zero, {{2500_ns, One}}}},
          {"WE_N", {One, {{1000_ns, Zero}, {2000_ns, One}, {3000_ns, Zero}, {4000_ns, One}}}}},
         BusWord({{{900_ns, 2100_ns}, 0b1111}, {{3150_ns, 4100_ns}, 0b1111}}));
-    for (std::size_t word = 0; word < bench.ram->wordCount(); ++word) {
-        bench.ram->stick(word, 0, false);
+    for (std::size_t word = 0; word < bench.ram->wordCount(0); ++word) {
+        bench.ram->stick(0, word, 0, false);
     }
     Simulator sim(bench.circuit);
     sim.powerOn(1);

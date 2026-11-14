@@ -100,6 +100,11 @@ private:
     BoardPower power_;  // of board_, see rebuildBoard()
 };
 
+// A cell or column Fault on `component` (Part `part`, "6530"), checked: the StuckCell, or the
+// error text that follows "cell U2.D3 ram $3F: " or "column U2.D0 rom: ".
+std::expected<StuckCell, std::string> ResolveCell(const CellDecl& decl, const Component& component,
+                                                  std::string_view part);
+
 // The directory holding netlists/, boards/, puzzles/, manuals/, datasheets/: the file's
 // directory's parent.
 std::filesystem::path MachineRoot(const std::filesystem::path& file);

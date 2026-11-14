@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 
+#include "parts/memory_block.hpp"
 #include "parts/memory_cells.hpp"
 #include "sim/component.hpp"
 
@@ -26,15 +27,14 @@ public:
 
     void powerOn(PowerOnContext& ctx) override;  // random contents
     void evaluate(EvalContext& ctx) override;
-    std::uint8_t word(std::size_t address) const { return words_[address]; }  // tests, 4 bits
+    std::uint8_t word(std::size_t address) const { return cells_[address]; }  // tests, 4 bits
 
-    std::size_t wordCount() const override { return words_.size(); }
+    std::size_t wordCount(std::size_t memory) const override;
     std::optional<unsigned> dataBit(PinIndex pin) const override;  // index in kData
-    void stick(std::size_t word, unsigned bit, bool one) override;
+    void stick(std::size_t memory, std::size_t word, unsigned bit, bool one) override;
 
 private:
-    void store(std::size_t address, unsigned data);  // with the stuck bits forced
-    std::array<std::uint8_t, 1024> words_{}, stuckMask_{}, stuckValue_{};
+    RamBlock cells_{1024, 4};
 };
 
 }  // namespace bw

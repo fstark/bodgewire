@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 
+#include "parts/memory_block.hpp"
 #include "parts/memory_cells.hpp"
 #include "sim/component.hpp"
 #include "sim/time.hpp"
@@ -43,15 +44,15 @@ class Rom final : public Component, public MemoryCells {
 public:
     Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> words);
     void evaluate(EvalContext& ctx) override;
-    std::size_t size() const { return words_.size(); }
+    std::size_t size() const { return block_.size(); }
 
-    std::size_t wordCount() const override { return size(); }
+    std::size_t wordCount(std::size_t memory) const override;
     std::optional<unsigned> dataBit(PinIndex pin) const override;  // index in the spec's data
-    void stick(std::size_t word, unsigned bit, bool one) override;
+    void stick(std::size_t memory, std::size_t word, unsigned bit, bool one) override;
 
 private:
     const RomSpec& spec_;
-    std::vector<std::uint8_t> words_;
+    RomBlock block_;
 };
 
 }  // namespace bw

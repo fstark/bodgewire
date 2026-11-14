@@ -29,16 +29,11 @@ std::vector<PinSpec> Ram2114Pins() {
 
 Ram2114::Ram2114(std::string reference) : Component(std::move(reference), Ram2114Pins()) {}
 
-void Ram2114::powerOn(PowerOnContext& ctx) {
-    for (std::uint8_t& word : words_) {
-        word = 0;
-        for (int bit = 0; bit < 4; ++bit) {
-            word = static_cast<std::uint8_t>(word | (ctx.randomBit() ? 1u << bit : 0u));
-        }
-    }
-    for (std::size_t a = 0; a < words_.size(); ++a) {
-        store(a, words_[a]);
-    }
+void Ram2114::powerOn(PowerOnContext& ctx) { cells_.powerOn(ctx); }
+
+std::size_t Ram2114::wordCount(std::size_t memory) const {
+    Check(memory == 0, "2114: one memory");
+    return cells_.size();
 }
 
 std::optional<unsigned> Ram2114::dataBit(PinIndex pin) const {
@@ -49,18 +44,9 @@ std::optional<unsigned> Ram2114::dataBit(PinIndex pin) const {
     return static_cast<unsigned>(it - kData.begin());
 }
 
-void Ram2114::stick(std::size_t word, unsigned bit, bool one) {
-    Check(word < words_.size() && bit < kData.size(), "2114: no such cell");
-    const auto mask = static_cast<std::uint8_t>(1u << bit);
-    stuckMask_[word] |= mask;
-    stuckValue_[word] =
-        static_cast<std::uint8_t>(one ? stuckValue_[word] | mask : stuckValue_[word] & ~mask);
-    store(word, words_[word]);
-}
-
-void Ram2114::store(std::size_t address, unsigned data) {
-    words_[address] = static_cast<std::uint8_t>(
-        ((data & ~unsigned{stuckMask_[address]}) | stuckValue_[address]) & 0xFu);
+void Ram2114::stick(std::size_t memory, std::size_t word, unsigned bit, bool one) {
+    Check(memory == 0, "2114: one memory");
+    cells_.stick(word, bit, one);
 }
 
 void Ram2114::evaluate(EvalContext& ctx) {
@@ -74,7 +60,7 @@ void Ram2114::evaluate(EvalContext& ctx) {
         for (std::size_t i = 0; i < kData.size(); ++i) {
             data |= static_cast<unsigned>(ctx.readBitBefore(kData[i])) << i;
         }
-        store(address, data);
+        cells_.store(address, data);
     }
 
     const bool selected = !ctx.readBit(kCsN);
@@ -88,7 +74,7 @@ void Ram2114::evaluate(EvalContext& ctx) {
         for (std::size_t i = 0; i < kData.size(); ++i) {
             data |= static_cast<unsigned>(ctx.readBit(kData[i])) << i;
         }
-        store(address, data);
+        cells_.store(address, data);
     }
     if (!selected || writing) {
         for (const PinIndex pin : kData) {
@@ -109,7 +95,7 @@ void Ram2114::evaluate(EvalContext& ctx) {
         delay = delays::k2114Address;  // power-on, or only the data pins moved
     }
     for (std::size_t i = 0; i < kData.size(); ++i) {
-        ctx.drive(kData[i], (words_[address] >> i) & 1 ? One : Zero, delay);
+        ctx.drive(kData[i], (cells_[address] >> i) & 1 ? One : Zero, delay);
     }
 }
 

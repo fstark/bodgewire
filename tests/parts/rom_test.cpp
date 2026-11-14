@@ -279,11 +279,11 @@ TEST_CASE("rom: stuck cell and column", "[parts]") {
     {
         // Address 5 holds 35 = 0010 0011; O1 stuck at 0 there gives 33.
         Bench bench("2716", {{"A0", {One, {}}}, {"A2", {One, {}}}});
-        CHECK(bench.rom->wordCount() == 2048);
+        CHECK(bench.rom->wordCount(0) == 2048);
         const Component& chip = *bench.rom;
         CHECK(bench.rom->dataBit(chip.pinIndex("O3")) == 3u);
         CHECK_FALSE(bench.rom->dataBit(chip.pinIndex("A0")).has_value());
-        bench.rom->stick(5, 1, false);
+        bench.rom->stick(0, 5, 1, false);
         Simulator sim(bench.circuit);
         sim.powerOn(1);
         sim.runUntil(2_us);
@@ -294,8 +294,8 @@ TEST_CASE("rom: stuck cell and column", "[parts]") {
         Bench bench("2513", {{"A1", {One, {}}}, {"A2", {Zero, {{3_us, One}}}}});
         const Component& chip = *bench.rom;
         CHECK(bench.rom->dataBit(chip.pinIndex("O1")) == 0u);
-        for (std::size_t word = 0; word < bench.rom->wordCount(); ++word) {
-            bench.rom->stick(word, 0, false);
+        for (std::size_t word = 0; word < bench.rom->wordCount(0); ++word) {
+            bench.rom->stick(0, word, 0, false);
         }
         Simulator sim(bench.circuit);
         sim.powerOn(high ? 2 : 1);

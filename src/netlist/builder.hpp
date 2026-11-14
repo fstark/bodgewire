@@ -52,13 +52,14 @@ struct StuckPin {
     LogicValue value;
 };
 
-// Stuck cell Fault inside a memory chip (MemoryCells): bit `pin` (a data Pin) of word `word`, or
-// of every word (a stuck column), reads `value` (Zero or One).
+// Stuck cell Fault inside a memory chip (MemoryCells): bit `pin` (a data Pin) of word `word` of
+// memory `memory`, or of every word (a stuck column), reads `value` (Zero or One).
 struct StuckCell {
     std::string reference;
     PinIndex pin;
     std::optional<std::size_t> word;  // nullopt: every word
     LogicValue value;
+    std::size_t memory = 0;  // index in MemoryCells::memories() (the 6530's ram is 1)
 };
 
 // Switch Fault (P5i): the switch is stuck closed (`closed`) or never closes.

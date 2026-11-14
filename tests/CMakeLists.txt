@@ -87,6 +87,7 @@ add_executable(bw_tests
   parts/ls74_test.cpp
   parts/ls90_test.cpp
   parts/ls93_test.cpp
+  parts/memory_block_test.cpp
   parts/mos6502_cases.cpp
   parts/mos6502_conformance_test.cpp
   parts/mos6502_core_test.cpp

@@ -187,11 +187,16 @@ const RomSpec& RomSpecOf(std::string_view part) {
 }
 
 Rom::Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> words)
-    : Component(std::move(reference), RomPins(spec)), spec_(spec), words_(std::move(words)) {
-    Check(words_.size() == std::size_t{1} << spec.address.size(), "rom: wrong number of words");
+    : Component(std::move(reference), RomPins(spec)), spec_(spec), block_(std::move(words)) {
+    Check(block_.size() == std::size_t{1} << spec.address.size(), "rom: wrong number of words");
 }
 
-void Rom::evaluate(EvalContext& ctx) { spec_.evaluate(ctx, words_); }
+void Rom::evaluate(EvalContext& ctx) { spec_.evaluate(ctx, block_.words()); }
+
+std::size_t Rom::wordCount(std::size_t memory) const {
+    Check(memory == 0, "rom: one memory");
+    return block_.size();
+}
 
 std::optional<unsigned> Rom::dataBit(PinIndex pin) const {
     const auto it = std::ranges::find(spec_.data, pin);
@@ -201,10 +206,9 @@ std::optional<unsigned> Rom::dataBit(PinIndex pin) const {
     return static_cast<unsigned>(it - spec_.data.begin());
 }
 
-void Rom::stick(std::size_t word, unsigned bit, bool one) {
-    Check(word < words_.size() && bit < spec_.data.size(), "rom: no such cell");
-    const auto mask = static_cast<std::uint8_t>(1u << bit);
-    words_[word] = static_cast<std::uint8_t>(one ? words_[word] | mask : words_[word] & ~mask);
+void Rom::stick(std::size_t memory, std::size_t word, unsigned bit, bool one) {
+    Check(memory == 0 && bit < spec_.data.size(), "rom: no such cell");
+    block_.stick(word, bit, one);
 }
 
 }  // namespace bw

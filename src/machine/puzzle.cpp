@@ -1,5 +1,6 @@
 #include "machine/puzzle.hpp"
 
+#include <algorithm>
 #include <optional>
 #include <utility>
 
@@ -281,26 +282,34 @@ private:
         puzzle_.switches.push_back({line, std::string(tokens[2]), tokens[3] == "closed"});
     }
 
-    // `fault cell REF.PIN WORD 0|1` or `fault column REF.PIN 0|1`.
+    // `fault cell REF.PIN [MEMORY] WORD 0|1` or `fault column REF.PIN [MEMORY] 0|1`.
     void cell(std::uint32_t line, const std::vector<std::string_view>& tokens) {
         const bool column = tokens[1] == "column";
         const std::size_t count = column ? 4 : 5;
-        const auto pin = tokens.size() == count ? ParsePin(tokens[2]) : std::nullopt;
-        if (!pin || (tokens.back() != "0" && tokens.back() != "1")) {
-            error(line, column ? "expected: fault column REF.PIN 0|1"
-                               : "expected: fault cell REF.PIN WORD 0|1");
+        const bool named = tokens.size() == count + 1;
+        const auto pin = tokens.size() == count || named ? ParsePin(tokens[2]) : std::nullopt;
+        const auto lower = [](std::string_view text) {
+            return !text.empty() &&
+                   std::ranges::all_of(text, [](char c) { return c >= 'a' && c <= 'z'; });
+        };
+        if (!pin || (named && !lower(tokens[3])) ||
+            (tokens.back() != "0" && tokens.back() != "1")) {
+            error(line, column ? "expected: fault column REF.PIN [MEMORY] 0|1"
+                               : "expected: fault cell REF.PIN [MEMORY] WORD 0|1");
             return;
         }
         std::optional<std::uint32_t> word;
         if (!column) {
-            word = ParseWord(tokens[3]);
+            const std::string_view text = tokens[tokens.size() - 2];
+            word = ParseWord(text);
             if (!word) {
-                error(line, "bad word '" + std::string(tokens[3]) + "'");
+                error(line, "bad word '" + std::string(text) + "'");
                 return;
             }
         }
-        puzzle_.cells.push_back(
-            {line, *pin, word, tokens.back() == "1" ? LogicValue::One : LogicValue::Zero});
+        puzzle_.cells.push_back({line, *pin, word,
+                                 tokens.back() == "1" ? LogicValue::One : LogicValue::Zero,
+                                 named ? std::string(tokens[3]) : std::string()});
     }
 
     Puzzle puzzle_;

@@ -175,8 +175,9 @@ TEST_CASE("puzzle: cell and column", "[machine]") {
     CHECK(result->cells[1].value == LogicValue::One);
     CHECK(result->cells[2].pin.reference == "U15");
     CHECK_FALSE(result->cells[2].word.has_value());
-    const std::string cell = "expected: fault cell REF.PIN WORD 0|1";
-    const std::string column = "expected: fault column REF.PIN 0|1";
+    CHECK(result->cells[0].memory.empty());
+    const std::string cell = "expected: fault cell REF.PIN [MEMORY] WORD 0|1";
+    const std::string column = "expected: fault column REF.PIN [MEMORY] 0|1";
     CHECK(Errors("machine m\nfault cell U3.IO2 $1FF\nfault cell U3 $1FF 0\n"
                  "fault cell U3.IO2 $1FF 2\nfault column U3.IO2 $1FF 0\nfault column U3.IO2\n") ==
           Lines{"2: " + cell, "3: " + cell, "4: " + cell, "5: " + column, "6: " + column});
@@ -185,4 +186,24 @@ TEST_CASE("puzzle: cell and column", "[machine]") {
                  "fault cell U3.IO2 1234567890 0\n") ==
           Lines{"2: bad word '$'", "3: bad word '$1G'", "4: bad word '12a'",
                 "5: bad word '$123456789'", "6: bad word '1234567890'"});
+}
+
+TEST_CASE("puzzle: cell and column in a named memory", "[machine]") {
+    const auto result =
+        ParsePuzzle("machine m\nfault cell U2.D3 ram $3F 0\nfault column U2.D0 rom 1\n", "t.bwp");
+    REQUIRE(result.has_value());
+    REQUIRE(result->cells.size() == 2);
+    CHECK(result->cells[0].memory == "ram");
+    CHECK(result->cells[0].word == 0x3Fu);
+    CHECK(result->cells[0].value == LogicValue::Zero);
+    CHECK(result->cells[1].memory == "rom");
+    CHECK_FALSE(result->cells[1].word.has_value());
+    CHECK(result->cells[1].value == LogicValue::One);
+    const std::string cell = "expected: fault cell REF.PIN [MEMORY] WORD 0|1";
+    const std::string column = "expected: fault column REF.PIN [MEMORY] 0|1";
+    CHECK(Errors("machine m\nfault cell U2.D3 Ram $3F 0\nfault cell U2.D3 r4m $3F 0\n"
+                 "fault cell U2.D3 ram x $3F 0\nfault column U2.D0 ROM 1\n"
+                 "fault column U2.D0 rom x 1\nfault cell U2.D3 ram $3G 0\n") ==
+          Lines{"2: " + cell, "3: " + cell, "4: " + cell, "5: " + column, "6: " + column,
+                "7: bad word '$3G'"});
 }
