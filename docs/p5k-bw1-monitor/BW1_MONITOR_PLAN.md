@@ -44,8 +44,8 @@ Commit: `docs: P5k implemented, user check pending`.
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | `.checksum` | |
-| 2 | The model | |
+| 1 | `.checksum` | `4387229` |
+| 2 | The model | this commit |
 | 3 | The monitor | |
 | 4 | The self-test | |
 | 5 | Finish | |
