@@ -73,9 +73,13 @@ TEST_CASE("time view: grid anchored to the Trigger", "[view]") {
     }
     const auto later = Grid({.perDivision = 1_us, .left = 3'500'000}, 660, 60);
     CHECK(later.front().time == 4_us);
-    CHECK(GridLabel(-3_us) == "-3 µs");
-    CHECK(GridLabel(0) == "0");
-    CHECK(GridLabel(6_us) == "+6 µs");
+    CHECK(GridLabel(-3_us, 1_us) == "-3 µs");
+    CHECK(GridLabel(0, 1_us) == "0");
+    CHECK(GridLabel(6_us, 1_us) == "+6 µs");
+    // Neighbours never print alike: 100 and 100.5 µs at 500 ns a division.
+    CHECK(GridLabel(100_us, 500_ns) == "+100 µs");
+    CHECK(GridLabel(100'500'000, 500_ns) == "+100.5 µs");
+    CHECK(GridLabel(2'500'000'000, 500_us) == "+2.5 ms");
 }
 
 TEST_CASE("time view: off-screen Trigger", "[view]") {

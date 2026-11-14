@@ -1,5 +1,6 @@
 #include "ui/instrument_marks.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 
@@ -11,13 +12,26 @@ namespace {
 
 constexpr ImU32 kMarkText = IM_COL32(23, 24, 27, 255);
 
-std::string OffScreenText(Time distance) { return "T " + FormatTime(std::abs(distance), false); }
+// To a tenth of a division, as the scope's position is set.
+std::string OffScreenText(Time distance, Time perDivision) {
+    return "T " + FormatTimeStep(std::abs(distance), perDivision / 10, false);
+}
 
-float OffScreenWidth(Time distance) {
-    return ImGui::CalcTextSize(OffScreenText(distance).c_str()).x + 18;
+float OffScreenWidth(Time distance, Time perDivision) {
+    return ImGui::CalcTextSize(OffScreenText(distance, perDivision).c_str()).x + 18;
 }
 
 }  // namespace
+
+std::vector<GridLine> LabelledGrid(const TimeView& view, float width) {
+    // The widest label is at an end of the view: the most digits before the point.
+    float widest = 0;
+    for (const Time t : {view.left, view.left + view.span()}) {
+        const Time line = t / view.perDivision * view.perDivision;
+        widest = std::max(widest, ImGui::CalcTextSize(GridLabel(line, view.perDivision).c_str()).x);
+    }
+    return Grid(view, width, std::max(60.0f, widest + 16));
+}
 
 void DrawGrid(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX& x, float top,
               float bottom, ImU32 colour) {
@@ -27,18 +41,19 @@ void DrawGrid(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX
     }
 }
 
-void DrawAxisLabels(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX& x, float y,
-                    float left, float right, std::optional<Time> offScreenTrigger) {
+void DrawAxisLabels(ImDrawList& list, const TimeView& view, const std::vector<GridLine>& grid,
+                    const TimeToX& x, float y, float left, float right) {
+    const std::optional<Time> offScreenTrigger = OffScreenTrigger(view);
     list.PushClipRect({left, y}, {right, y + kAxisHeight}, true);
     float from = left, to = right;  // where labels may go
     if (offScreenTrigger) {
         (*offScreenTrigger < 0 ? from : to) +=
-            (*offScreenTrigger < 0 ? 1 : -1) * OffScreenWidth(*offScreenTrigger);
+            (*offScreenTrigger < 0 ? 1 : -1) * OffScreenWidth(*offScreenTrigger, view.perDivision);
     }
     for (const GridLine& line : grid) {
         const float at = std::round(x(line.time));
         list.AddLine({at, y + kAxisHeight - 5}, {at, y + kAxisHeight}, kAxisText);
-        const std::string label = GridLabel(line.time);
+        const std::string label = GridLabel(line.time, view.perDivision);
         if (line.labelled && at + 3 >= from &&
             at + 3 + ImGui::CalcTextSize(label.c_str()).x <= to) {
             const ImU32 colour = line.time == 0 ? kTriggerMark : kAxisText;
@@ -53,10 +68,16 @@ void DrawTrigger(ImDrawList& list, float x, float top, float bottom) {
     list.AddTriangleFilled({x - 6, top}, {x + 6, top}, {x, top + 8}, kTriggerMark);
 }
 
-void DrawOffScreenTrigger(ImDrawList& list, Time distance, float left, float right, float y) {
-    const std::string text = OffScreenText(distance);
+void DrawOffScreenTrigger(ImDrawList& list, const TimeView& view, float left, float right,
+                          float y) {
+    const std::optional<Time> off = OffScreenTrigger(view);
+    if (!off) {
+        return;
+    }
+    const Time distance = *off;
+    const std::string text = OffScreenText(distance, view.perDivision);
     const float mid = y + kAxisHeight / 2;
-    const float width = OffScreenWidth(distance);
+    const float width = OffScreenWidth(distance, view.perDivision);
     if (distance < 0) {
         list.AddTriangleFilled({left + 2, mid}, {left + 10, mid - 5}, {left + 10, mid + 5},
                                kTriggerMark);

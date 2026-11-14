@@ -97,7 +97,9 @@ std::vector<GridLine> Grid(const TimeView& view, float width, float labelGap) {
     return lines;
 }
 
-std::string GridLabel(Time time) { return FormatTime(time, true); }
+std::string GridLabel(Time time, Time perDivision) {
+    return FormatTimeStep(time, perDivision, true);
+}
 
 std::optional<Time> OffScreenTrigger(const TimeView& view) {
     if (view.left > 0) {

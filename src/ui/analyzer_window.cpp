@@ -22,7 +22,6 @@ constexpr float kLaneHeight = 20.0f;
 constexpr float kOverviewHeight = 14.0f;
 constexpr float kLabelWidth = 340.0f;
 constexpr float kValueX = 190.0f, kTriggerX = 240.0f, kUnclipX = 316.0f;
-constexpr float kLabelGap = 60.0f;  // px between time labels
 constexpr ImU32 kUnknown = IM_COL32(140, 140, 140, 110);
 constexpr ImU32 kGridLine = IM_COL32(255, 255, 255, 22);
 constexpr ImU32 kOutside = IM_COL32(0, 0, 0, 70);  // beyond the Capture
@@ -400,7 +399,7 @@ void AnalyzerWindow::draw(bool& open, Session& session, BoardView& board) {
     // Behind the lanes: the grid, darker beyond the Capture.
     if (shown_) {
         draw.PushClipRect({laneX0, visibleTop}, {laneX1, visibleBottom}, true);
-        DrawGrid(draw, Grid(view_, width, kLabelGap), x, visibleTop, visibleBottom, kGridLine);
+        DrawGrid(draw, LabelledGrid(view_, width), x, visibleTop, visibleBottom, kGridLine);
         const TimeRange record = RecordOf(*shown_);
         if (x(record.from) > laneX0) {
             draw.AddRectFilled({laneX0, visibleTop}, {x(record.from), visibleBottom}, kOutside);
@@ -675,11 +674,8 @@ void AnalyzerWindow::draw(bool& open, Session& session, BoardView& board) {
         window.AddText({contentX + kValueX, axisY + 1}, heading, "Value");
         window.AddText({contentX + kTriggerX, axisY + 1}, heading, "Trigger");
         if (shown_) {
-            DrawAxisLabels(window, Grid(view_, width, kLabelGap), x, axisY, laneX0, laneX1,
-                           OffScreenTrigger(view_));
-            if (const auto off = OffScreenTrigger(view_)) {
-                DrawOffScreenTrigger(window, *off, laneX0, laneX1, axisY);
-            }
+            DrawAxisLabels(window, view_, LabelledGrid(view_, width), x, axisY, laneX0, laneX1);
+            DrawOffScreenTrigger(window, view_, laneX0, laneX1, axisY);
         }
     }
 

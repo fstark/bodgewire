@@ -45,7 +45,8 @@ struct GridLine {
 // Lines at whole multiples of the step inside the view; labels every 1, 2, 5 or 10 divisions,
 // the fewest whose spacing reaches `labelGap` px.
 std::vector<GridLine> Grid(const TimeView& view, float width, float labelGap);
-std::string GridLabel(Time time);  // "-3 µs", "0", "+6 µs"
+// "-3 µs", "0", "+100.5 µs": with the digits the step needs.
+std::string GridLabel(Time time, Time perDivision);
 
 // The Trigger's distance from the view when it is off screen: < 0 left of it, > 0 right.
 std::optional<Time> OffScreenTrigger(const TimeView& view);

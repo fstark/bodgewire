@@ -21,7 +21,6 @@ namespace bw {
 namespace {
 
 constexpr float kMinBand = 50.0f;
-constexpr float kLabelGap = 60.0f;  // px between time labels
 constexpr double kFullScale = 5.0;  // V per band: 1 V a division
 constexpr ImU32 kScreen = IM_COL32(8, 14, 10, 255);
 constexpr ImU32 kGrid = IM_COL32(60, 80, 65, 255);
@@ -193,7 +192,8 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     ImGui::SameLine();
     ImGui::SetNextItemWidth(90);
     if (!delayEditing_) {
-        const std::string text = settings.delay == 0 ? "0" : FormatTime(settings.delay, false);
+        // To the tenth of a division a drag snaps to, so 98.45 µs never reads 98.4 µs.
+        const std::string text = FormatTimeStep(settings.delay, settings.timebase / 10, false);
         std::ranges::fill(delayText_, '\0');
         std::ranges::copy(text.substr(0, delayText_.size() - 1), delayText_.begin());
     }
@@ -328,7 +328,7 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
         }
         list.AddLine({top.x, bandTop}, {top.x + width, bandTop}, kGrid);
     }
-    const std::vector<GridLine> grid = Grid(view, width, kLabelGap);
+    const std::vector<GridLine> grid = LabelledGrid(view, width);
     DrawGrid(list, grid, x, top.y, top.y + height, kGrid);
     if (bands.empty()) {
         list.AddText({top.x + 8, top.y + bandHeight / 2 - 8}, ImGui::GetColorU32(kHintGrey),
@@ -425,10 +425,8 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     list.PopClipRect();
 
     // Axis strip.
-    DrawAxisLabels(list, grid, x, axisY, top.x, top.x + width, OffScreenTrigger(view));
-    if (const auto off = OffScreenTrigger(view)) {
-        DrawOffScreenTrigger(list, *off, top.x, top.x + width, axisY);
-    }
+    DrawAxisLabels(list, view, grid, x, axisY, top.x, top.x + width);
+    DrawOffScreenTrigger(list, view, top.x, top.x + width, axisY);
 
     // Hook rows, two a line: value at the cursor, else at the marker.
     const std::optional<Time> readTime = cursor ? cursor : marker_;
