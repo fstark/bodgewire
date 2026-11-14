@@ -22,9 +22,10 @@ using TimeToX = std::function<float(Time)>;  // ps from the Trigger → screen x
 
 void DrawGrid(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX& x, float top,
               float bottom, ImU32 colour);
-// Labels along an axis strip at `y`, each right of its line, clipped to [left, right].
+// Labels along an axis strip at `y`, each right of its line; a label not wholly inside
+// [left, right], or under the off-screen Trigger's arrow, is left out.
 void DrawAxisLabels(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX& x, float y,
-                    float left, float right);
+                    float left, float right, std::optional<Time> offScreenTrigger);
 void DrawTrigger(ImDrawList& list, float x, float top, float bottom);  // line + triangle on top
 // The Trigger off the view: an arrow at that end of the axis strip and its distance.
 void DrawOffScreenTrigger(ImDrawList& list, Time distance, float left, float right, float y);

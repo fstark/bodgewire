@@ -11,6 +11,12 @@ namespace {
 
 constexpr ImU32 kMarkText = IM_COL32(23, 24, 27, 255);
 
+std::string OffScreenText(Time distance) { return "T " + FormatTime(std::abs(distance), false); }
+
+float OffScreenWidth(Time distance) {
+    return ImGui::CalcTextSize(OffScreenText(distance).c_str()).x + 18;
+}
+
 }  // namespace
 
 void DrawGrid(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX& x, float top,
@@ -22,13 +28,19 @@ void DrawGrid(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX
 }
 
 void DrawAxisLabels(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX& x, float y,
-                    float left, float right) {
+                    float left, float right, std::optional<Time> offScreenTrigger) {
     list.PushClipRect({left, y}, {right, y + kAxisHeight}, true);
+    float from = left, to = right;  // where labels may go
+    if (offScreenTrigger) {
+        (*offScreenTrigger < 0 ? from : to) +=
+            (*offScreenTrigger < 0 ? 1 : -1) * OffScreenWidth(*offScreenTrigger);
+    }
     for (const GridLine& line : grid) {
         const float at = std::round(x(line.time));
         list.AddLine({at, y + kAxisHeight - 5}, {at, y + kAxisHeight}, kAxisText);
         const std::string label = GridLabel(line.time);
-        if (line.labelled && at + 3 + ImGui::CalcTextSize(label.c_str()).x <= right) {
+        if (line.labelled && at + 3 >= from &&
+            at + 3 + ImGui::CalcTextSize(label.c_str()).x <= to) {
             const ImU32 colour = line.time == 0 ? kTriggerMark : kAxisText;
             list.AddText({at + 3, y + 1}, colour, label.c_str());
         }
@@ -42,19 +54,14 @@ void DrawTrigger(ImDrawList& list, float x, float top, float bottom) {
 }
 
 void DrawOffScreenTrigger(ImDrawList& list, Time distance, float left, float right, float y) {
-    const std::string text = "T " + FormatTime(std::abs(distance), false);
+    const std::string text = OffScreenText(distance);
     const float mid = y + kAxisHeight / 2;
-    // Painted over the labels at that end, so it reads on its own.
-    const float width = ImGui::CalcTextSize(text.c_str()).x + 18;
+    const float width = OffScreenWidth(distance);
     if (distance < 0) {
-        list.AddRectFilled({left, y}, {left + width, y + kAxisHeight},
-                           ImGui::GetColorU32(ImGuiCol_WindowBg));
         list.AddTriangleFilled({left + 2, mid}, {left + 10, mid - 5}, {left + 10, mid + 5},
                                kTriggerMark);
         list.AddText({left + 14, y + 1}, kTriggerMark, text.c_str());
     } else {
-        list.AddRectFilled({right - width, y}, {right, y + kAxisHeight},
-                           ImGui::GetColorU32(ImGuiCol_WindowBg));
         list.AddTriangleFilled({right - 2, mid}, {right - 10, mid - 5}, {right - 10, mid + 5},
                                kTriggerMark);
         list.AddText({right - width + 2, y + 1}, kTriggerMark, text.c_str());

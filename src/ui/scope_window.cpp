@@ -12,25 +12,28 @@
 
 #include "instruments/volts.hpp"
 #include "ui/board_view.hpp"
-#include "view/time_text.hpp"
+#include "ui/instrument_marks.hpp"
 #include "ui/toolbar.hpp"
+#include "view/time_text.hpp"
 
 namespace bw {
 
 namespace {
 
-constexpr float kBandHeight = 70.0f;
-constexpr double kFullScale = 5.0;  // V per band
+constexpr float kMinBand = 50.0f;
+constexpr float kLabelGap = 60.0f;  // px between time labels
+constexpr double kFullScale = 5.0;  // V per band: 1 V a division
 constexpr ImU32 kScreen = IM_COL32(8, 14, 10, 255);
 constexpr ImU32 kGrid = IM_COL32(60, 80, 65, 255);
 constexpr ImU32 kGridMinor = IM_COL32(35, 50, 40, 255);
-constexpr ImU32 kTriggerMark = IM_COL32(255, 140, 0, 220);
-constexpr ImU32 kCursorLine = IM_COL32(255, 255, 255, 90);
-constexpr ImU32 kMarkerLine = IM_COL32(255, 200, 0, 160);
 constexpr ImU32 kScale = IM_COL32(150, 170, 150, 255);
-constexpr ImVec4 kGrey{0.5f, 0.5f, 0.5f, 1.0f};
+constexpr const char* kGestures =
+    "wheel: zoom   drag: position   click: marker   right-click: clear   double-click: T";
 
-const char* StateText(const Session& session) {
+const char* StateText(const Session& session, bool stopped) {
+    if (stopped) {
+        return "stopped";
+    }
     if (!session.powered()) {
         return "power off";
     }
@@ -50,43 +53,104 @@ const char* StateText(const Session& session) {
 
 std::string TimebaseText(Time timebase) { return FormatTime(timebase, false) + "/div"; }
 
+// Power-on time of the Sweep's Trigger: its left edge is delay - timebase after it.
+Time TriggerTime(const Sweep& sweep) { return sweep.start - (sweep.delay - sweep.timebase); }
+
 }  // namespace
 
+void ScopeWindow::preset(std::optional<Time> marker, std::optional<Time> cursor) {
+    marker_ = marker;
+    presetCursor_ = cursor;
+}
+
+std::string ScopeWindow::valueAt(std::size_t channel, Time t,
+                                 const std::optional<double>& rail) const {
+    if (!shown_ || shown_->channels[channel].empty()) {
+        return "";
+    }
+    const Time at = TriggerTime(*shown_) + t;
+    if (at < shown_->start || at > shown_->start + kDivisions * shown_->timebase) {
+        return "";
+    }
+    if (rail) {
+        return std::format("{:.1f} V", *rail);
+    }
+    const auto& samples = shown_->channels[channel];
+    const auto it = std::ranges::upper_bound(samples, at, {}, &Sample::time);
+    const Sample& sample = *(it == samples.begin() ? it : it - 1);
+    if (sample.floating) {
+        return std::format("Z {:.1f} V", LogicVolts(sample));
+    }
+    switch (sample.value) {
+    case LogicValue::Zero:
+        return std::format("L {:.1f} V", LogicVolts(sample));
+    case LogicValue::One:
+        return std::format("H {:.1f} V", LogicVolts(sample));
+    default:
+        return "X";
+    }
+}
+
 void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
-    if (session.sweeps().update()) {
+    if (session.sweeps().update() && !stopped_) {
         shown_ = session.sweeps().front();
     }
+    focused_ = false;
     if (!open) {
         return;
     }
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowSize({640, 440}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({700, 480}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 660, viewport->WorkPos.y + 230},
+        {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 720, viewport->WorkPos.y + 200},
         ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Oscilloscope", &open, ImGuiWindowFlags_NoSavedSettings)) {
         ImGui::End();
         return;
     }
+    ScopeSettings settings = session.scopeSettings();
+    bool changed = false;
+    const auto set = [&](const ScopeSettings& next) {
+        if (next != settings) {
+            settings = next;
+            changed = true;
+        }
+    };
+    const float width = std::max(10.0f, ImGui::GetContentRegionAvail().x);
+    const auto zoomBy = [&](Time anchor, int notches) {
+        set(WithView(settings, ZoomAbout(ScopeView(settings), anchor, notches, kTimebases.front(),
+                                         kTimebases.back())));
+    };
+    const auto centre = [&] { return ScopeView(settings).left + ScopeView(settings).span() / 2; };
 
-    // Header.
+    // Header line 1.
     if (ToolButton("Hook (O)", board.tool() == Tool::Hook)) {
         board.setTool(Tool::Hook);
     }
-    ScopeSettings settings = session.scopeSettings();
-    bool changed = false;
     ImGui::SameLine(0, 16);
+    if (ImGui::Button("-", {24, 0})) {
+        zoomBy(centre(), -1);
+    }
+    ImGui::SetItemTooltip("zoom out (wheel)");
+    ImGui::SameLine();
     ImGui::SetNextItemWidth(110);
     if (ImGui::BeginCombo("##timebase", TimebaseText(settings.timebase).c_str())) {
         for (const Time timebase : kTimebases) {
             if (ImGui::Selectable(TimebaseText(timebase).c_str(), timebase == settings.timebase)) {
-                settings.timebase = timebase;
-                changed = true;
+                ScopeSettings next = settings;
+                next.timebase = timebase;
+                next.delay = std::min(next.delay, kMaxDelayDivisions * timebase);
+                set(next);
             }
         }
         ImGui::EndCombo();
     }
     ImGui::SameLine();
+    if (ImGui::Button("+", {24, 0})) {
+        zoomBy(centre(), 1);
+    }
+    ImGui::SetItemTooltip("zoom in (wheel)");
+    ImGui::SameLine(0, 16);
     ImGui::SetNextItemWidth(100);
     const auto triggerText = [](std::size_t t) {
         return std::format("ch{} {}", t / 2 + 1, t % 2 == 0 ? "rise" : "fall");
@@ -95,28 +159,36 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     if (ImGui::BeginCombo("##trigger", triggerText(trigger).c_str())) {
         for (std::size_t t = 0; t < 2 * kScopeChannels; ++t) {
             if (ImGui::Selectable(triggerText(t).c_str(), t == trigger)) {
-                settings.source = t / 2;
-                settings.edge = t % 2 == 0 ? ScopeEdge::Rise : ScopeEdge::Fall;
-                changed = true;
+                ScopeSettings next = settings;
+                next.source = t / 2;
+                next.edge = t % 2 == 0 ? ScopeEdge::Rise : ScopeEdge::Fall;
+                set(next);
             }
         }
         ImGui::EndCombo();
     }
     ImGui::SameLine();
     if (ImGui::RadioButton("auto", settings.mode == ScopeMode::Auto)) {
-        settings.mode = ScopeMode::Auto;
-        changed = true;
+        ScopeSettings next = settings;
+        next.mode = ScopeMode::Auto;
+        set(next);
     }
     ImGui::SameLine();
     if (ImGui::RadioButton("normal", settings.mode == ScopeMode::Normal)) {
-        settings.mode = ScopeMode::Normal;
-        changed = true;
+        ScopeSettings next = settings;
+        next.mode = ScopeMode::Normal;
+        set(next);
     }
     ImGui::SameLine(0, 16);
-    ImGui::TextUnformatted(StateText(session));
+    if (ImGui::Button(stopped_ ? "Run" : "Stop", {50, 0})) {
+        stopped_ = !stopped_;
+    }
+    ImGui::SetItemTooltip(stopped_ ? "show the next Sweep" : "keep this Sweep on the screen");
+    ImGui::SameLine(0, 12);
+    ImGui::TextUnformatted(StateText(session, stopped_));
 
-    // Delay: typed as a time, or stepped by a division.
-    ImGui::TextUnformatted("delay");
+    // Header line 2: position (the delay), typed or dragged on the screen.
+    ImGui::TextUnformatted("position");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(90);
     if (!delayEditing_) {
@@ -131,7 +203,7 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     if (delayRefused_) {
         ImGui::PopStyleColor();
     }
-    ImGui::SetItemTooltip("time from the Trigger to its mark: 12.5us, 2ms, 0");
+    ImGui::SetItemTooltip("time from the Trigger to its mark: 12.5us, 2ms, 0 (or drag the screen)");
     delayEditing_ = ImGui::IsItemActive();
     if (ImGui::IsItemEdited()) {
         delayRefused_ = false;
@@ -143,96 +215,141 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
         const auto parsed = text == "0" ? std::expected<Time, std::string>(0) : ParseDuration(text);
         delayRefused_ = !parsed || *parsed > maxDelay;
         if (!delayRefused_) {
-            settings.delay = *parsed;
-            changed = true;
+            ScopeSettings next = settings;
+            next.delay = *parsed;
+            set(next);
         }
     }
     ImGui::SameLine();
-    if (ImGui::Button("-") && settings.delay > 0) {
-        settings.delay = std::max<Time>(0, settings.delay - settings.timebase);
-        changed = true;
+    if (ImGui::Button("T", {28, 0})) {
+        ScopeSettings next = settings;
+        next.delay = 0;
+        set(next);
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+") && settings.delay < maxDelay) {
-        settings.delay = std::min(maxDelay, settings.delay + settings.timebase);
-        changed = true;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("0")) {
-        settings.delay = 0;
-        changed = true;
-    }
+    ImGui::SetItemTooltip("the Trigger back at the first division (double-click)");
+    ImGui::SameLine(0, 24);
+    ImGui::TextColored(kHintGrey, "1 V/div");
 
-    // Screen.
+    // Axis strip: reserved here, drawn once the input below settles the view.
+    const float axisY = ImGui::GetCursorScreenPos().y;
+    ImGui::Dummy({0, kAxisHeight});
+
+    // Screen: a band per hooked Channel, sharing the height left by the rows below.
+    std::vector<std::size_t> bands;
+    for (std::size_t c = 0; c < kScopeChannels; ++c) {
+        if (session.hooks()[c]) {
+            bands.push_back(c);
+        }
+    }
+    const float line = ImGui::GetTextLineHeightWithSpacing();
+    const float footer = 3 * line + 2 * ImGui::GetStyle().ItemSpacing.y;
+    const float bandHeight =
+        std::max(kMinBand, (ImGui::GetContentRegionAvail().y - footer) /
+                               static_cast<float>(std::max<std::size_t>(1, bands.size())));
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const ImVec2 top = ImGui::GetCursorScreenPos();
-    const float width = std::max(10.0f, ImGui::GetContentRegionAvail().x);
-    const float height = kBandHeight * kScopeChannels;
+    const float height = bandHeight * static_cast<float>(std::max<std::size_t>(1, bands.size()));
     ImGui::InvisibleButton("##screen", {width, height});
-    const bool hovered = ImGui::IsItemHovered();
-    const float mouseX = ImGui::GetIO().MousePos.x;
-    const Time timebase = shown_ ? shown_->timebase : settings.timebase;
-    const double span = static_cast<double>(kDivisions * timebase);
-    const Time delay = shown_ ? shown_->delay : settings.delay;
-    const auto timeAt = [&](float x) {  // ps since the Trigger
-        return static_cast<Time>(std::llround((x - top.x) / width * span)) + delay - timebase;
+    ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
+    ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelX);
+    const ImGuiIO& io = ImGui::GetIO();
+    const float mouseX = io.MousePos.x;
+    const auto timeAt = [&](float px) {  // ps from the Trigger, at the current settings
+        const TimeView view = ScopeView(settings);
+        return view.left + static_cast<Time>(std::llround((px - top.x) / width *
+                                                          static_cast<double>(view.span())));
     };
-    if (ImGui::IsItemClicked()) {
-        marker_ = timeAt(mouseX);
+
+    // Input, once, before drawing: the view is the settings.
+    if (ImGui::IsItemHovered()) {
+        if (const int notches = WheelNotches(io.MouseWheel, wheelRest_); notches != 0) {
+            zoomBy(timeAt(mouseX), notches);
+        }
+        if (io.MouseWheelH != 0) {
+            panRest_ += -io.MouseWheelH * width / static_cast<float>(kDivisions) / 2;
+            const ScopeSettings next =
+                WithView(settings, Pan(ScopeView(settings), panRest_, width));
+            if (next.delay != settings.delay) {
+                set(next);
+                panRest_ = 0;
+            }
+        }
+        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+            ScopeSettings next = settings;
+            next.delay = 0;
+            set(next);
+        }
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            marker_.reset();
+        }
+    }
+    if (ImGui::IsItemActivated()) {
+        pressed_ = settings;
+        pressX_ = mouseX;
+        moved_ = false;
+    }
+    if (ImGui::IsItemActive() && pressed_) {
+        moved_ = moved_ || std::abs(mouseX - pressX_) > 3;
+        if (moved_) {
+            // From the press, so slow drags are not rounded away frame by frame.
+            set(WithView(*pressed_, Pan(ScopeView(*pressed_), mouseX - pressX_, width)));
+        }
+    }
+    if (ImGui::IsItemDeactivated()) {
+        if (!moved_) {
+            marker_ = timeAt(mouseX);
+        }
+        pressed_.reset();
+    }
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+        ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        marker_.reset();
+    }
+    const TimeView view = ScopeView(settings);
+    const double span = static_cast<double>(view.span());
+    const auto x = [&](Time t) {
+        return top.x + static_cast<float>(static_cast<double>(t - view.left) / span * width);
+    };
+    std::optional<Time> cursor;
+    if (ImGui::IsItemHovered()) {
+        cursor = timeAt(mouseX);
+    } else if (presetCursor_) {
+        cursor = presetCursor_;
     }
 
+    // Grid.
     list.AddRectFilled(top, {top.x + width, top.y + height}, kScreen);
-    for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        const float bandTop = top.y + kBandHeight * static_cast<float>(c);
+    for (std::size_t b = 0; b < std::max<std::size_t>(1, bands.size()); ++b) {
+        const float bandTop = top.y + bandHeight * static_cast<float>(b);
         for (int v = 1; v < 5; ++v) {
-            const float y = bandTop + kBandHeight * static_cast<float>(v) / 5;
+            const float y = bandTop + bandHeight * static_cast<float>(v) / 5;
             list.AddLine({top.x, y}, {top.x + width, y}, kGridMinor);
         }
         list.AddLine({top.x, bandTop}, {top.x + width, bandTop}, kGrid);
     }
-    for (Time d = 0; d <= kDivisions; ++d) {
-        const float x = top.x + width * static_cast<float>(d) / static_cast<float>(kDivisions);
-        list.AddLine({x, top.y}, {x, top.y + height}, kGrid);
-    }
-    const float triggerX = top.x + width / static_cast<float>(kDivisions) -
-                           static_cast<float>(static_cast<double>(delay) / span * width);
-    if (triggerX >= top.x) {
-        list.AddLine({triggerX, top.y}, {triggerX, top.y + height}, kTriggerMark, 1.5f);
-        list.AddTriangleFilled({triggerX - 5, top.y}, {triggerX + 5, top.y}, {triggerX, top.y + 7},
-                               kTriggerMark);
-    } else {
-        // Off screen to the left: an arrow and how far back it is.
-        const float y = top.y + height - 8;
-        list.AddTriangleFilled({top.x + 2, y}, {top.x + 10, y - 5}, {top.x + 10, y + 5},
-                               kTriggerMark);
-        const std::string back = "T " + FormatTime(-(delay - timebase), true);
-        list.AddText({top.x + 14, y - 8}, kTriggerMark, back.c_str());
-    }
-    const bool anyHook =
-        std::ranges::any_of(session.hooks(), [](const auto& h) { return h.has_value(); });
-    if (!anyHook) {
-        list.AddText({top.x + 8, top.y + kBandHeight / 2}, ImGui::GetColorU32(kGrey),
+    const std::vector<GridLine> grid = Grid(view, width, kLabelGap);
+    DrawGrid(list, grid, x, top.y, top.y + height, kGrid);
+    if (bands.empty()) {
+        list.AddText({top.x + 8, top.y + bandHeight / 2 - 8}, ImGui::GetColorU32(kHintGrey),
                      "Hook (O), then click a chip pin.");
     }
 
-    const auto bandY = [&](std::size_t c, double volts) {
-        const float bandBottom = top.y + kBandHeight * static_cast<float>(c + 1) - 4;
-        return bandBottom - static_cast<float>(volts / kFullScale) * (kBandHeight - 8);
-    };
+    // The stored Sweep at the current settings: columns where its samples fall now.
     std::array<std::optional<double>, kScopeChannels> rails;
     for (std::size_t c = 0; c < kScopeChannels; ++c) {
         rails[c] = session.hooks()[c] ? session.hookRail(c) : std::nullopt;
     }
-    if (shown_ &&
-        (shown_->serial != columnsSerial_ || width != columnsWidth_ || rails != columnsRail_)) {
+    if (shown_ && (shown_->serial != columnsSerial_ || width != columnsWidth_ ||
+                   rails != columnsRail_ || view != columnsView_)) {
         columnsSerial_ = shown_->serial;
         columnsWidth_ = width;
         columnsRail_ = rails;
+        columnsView_ = view;
         const auto columns = static_cast<std::size_t>(width);
-        const double end = static_cast<double>(shown_->start) + span;
-        const auto x = [&](double t) {
-            return std::clamp((t - static_cast<double>(shown_->start)) / span * width, 0.0,
-                              static_cast<double>(columns - 1));
+        const Time triggerAt = TriggerTime(*shown_);
+        const Time end = shown_->start + kDivisions * shown_->timebase;
+        const auto px = [&](Time at) {  // power-on time → column, unclamped
+            return static_cast<double>(at - triggerAt - view.left) / span * width;
         };
         for (std::size_t c = 0; c < kScopeChannels; ++c) {
             auto& out = columns_[c];
@@ -240,32 +357,37 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
                        {std::numeric_limits<float>::max(), std::numeric_limits<float>::lowest()});
             const auto& samples = shown_->channels[c];
             for (std::size_t i = 0; i < samples.size(); ++i) {
-                const double t0 = static_cast<double>(samples[i].time);
-                const double t1 =
-                    i + 1 < samples.size() ? static_cast<double>(samples[i + 1].time) : end;
+                const double p0 = px(samples[i].time);
+                const double p1 = px(i + 1 < samples.size() ? samples[i + 1].time : end);
+                if (p1 < 0 || p0 >= static_cast<double>(columns)) {
+                    continue;  // outside the screen
+                }
                 const auto volts =
                     static_cast<float>(rails[c] ? *rails[c] : LogicVolts(samples[i]));
-                const auto px1 = static_cast<std::size_t>(x(t1));
-                for (auto px = static_cast<std::size_t>(x(t0)); px <= px1; ++px) {
-                    out[px].first = std::min(out[px].first, volts);
-                    out[px].second = std::max(out[px].second, volts);
+                const auto first = static_cast<std::size_t>(std::max(0.0, p0));
+                const auto last =
+                    static_cast<std::size_t>(std::min(p1, static_cast<double>(columns - 1)));
+                for (std::size_t column = first; column <= last; ++column) {
+                    out[column].first = std::min(out[column].first, volts);
+                    out[column].second = std::max(out[column].second, volts);
                 }
             }
         }
     }
 
     list.PushClipRect(top, {top.x + width, top.y + height}, true);
-    for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        const auto& hook = session.hooks()[c];
-        if (!hook) {
-            continue;
-        }
+    for (std::size_t b = 0; b < bands.size(); ++b) {
+        const std::size_t c = bands[b];
         const ImU32 colour = kHookColours[c];
-        const float bandTop = top.y + kBandHeight * static_cast<float>(c);
-        const std::string label = std::to_string(c + 1) + " " + hook->label;
+        const float bandTop = top.y + bandHeight * static_cast<float>(b);
+        const auto bandY = [&](double volts) {
+            const float bandBottom = bandTop + bandHeight - 4;
+            return bandBottom - static_cast<float>(volts / kFullScale) * (bandHeight - 8);
+        };
+        const std::string label = std::to_string(c + 1) + " " + session.hooks()[c]->label;
         list.AddText({top.x + 4, bandTop + 2}, colour, label.c_str());
         if (!session.powered()) {
-            const float y = bandY(c, 0.0);
+            const float y = bandY(0.0);
             list.AddLine({top.x, y}, {top.x + width, y}, colour, 1.5f);
             continue;
         }
@@ -273,65 +395,72 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
             continue;
         }
         const auto& columns = columns_[c];
-        for (std::size_t px = 0; px < columns.size();) {
-            const auto [lo, hi] = columns[px];
-            std::size_t next = px + 1;
-            while (next < columns.size() && columns[next] == columns[px]) {
+        for (std::size_t column = 0; column < columns.size();) {
+            const auto [lo, hi] = columns[column];
+            std::size_t next = column + 1;
+            while (next < columns.size() && columns[next] == columns[column]) {
                 ++next;  // one rect per run of equal columns
             }
             if (lo <= hi) {
-                const float x = top.x + static_cast<float>(px);
-                list.AddRectFilled({x, bandY(c, hi) - 0.75f},
-                                   {top.x + static_cast<float>(next), bandY(c, lo) + 0.75f},
-                                   colour);
+                const float left = top.x + static_cast<float>(column);
+                list.AddRectFilled({left, bandY(hi) - 0.75f},
+                                   {top.x + static_cast<float>(next), bandY(lo) + 0.75f}, colour);
             }
-            px = next;
+            column = next;
         }
     }
-    list.AddText({top.x + width - 30, top.y + 2}, kScale, "5 V");
-    if (marker_) {
-        const float x =
-            top.x +
-            static_cast<float>(static_cast<double>(*marker_ + timebase - delay) / span * width);
-        list.AddLine({x, top.y}, {x, top.y + height}, kMarkerLine, 1.0f);
+    if (!bands.empty()) {
+        list.AddText({top.x + width - 30, top.y + 2}, kScale, "5 V");
     }
-    if (hovered) {
-        list.AddLine({mouseX, top.y}, {mouseX, top.y + height}, kCursorLine, 1.0f);
+    if (x(0) >= top.x && x(0) <= top.x + width) {
+        DrawTrigger(list, std::round(x(0)), top.y, top.y + height);
+    }
+    if (marker_) {
+        DrawMarker(list, std::round(x(*marker_)), top.y, top.y + height);
+    }
+    if (cursor) {
+        list.AddLine({x(*cursor), top.y}, {x(*cursor), top.y + height}, kCursorLine);
     }
     list.PopClipRect();
 
-    // Hook rows.
+    // Axis strip.
+    DrawAxisLabels(list, grid, x, axisY, top.x, top.x + width, OffScreenTrigger(view));
+    if (const auto off = OffScreenTrigger(view)) {
+        DrawOffScreenTrigger(list, *off, top.x, top.x + width, axisY);
+    }
+
+    // Hook rows, two a line: value at the cursor, else at the marker.
+    const std::optional<Time> readTime = cursor ? cursor : marker_;
     for (std::size_t c = 0; c < kScopeChannels; ++c) {
         ImGui::PushID(static_cast<int>(c));
+        if (c % 2 == 1) {
+            ImGui::SameLine(width / 2 + ImGui::GetStyle().WindowPadding.x);
+        }
         const auto& hook = session.hooks()[c];
         ImGui::ColorButton("##colour", ImColor(kHookColours[c]),
                            ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker, {12, 12});
         ImGui::SameLine();
+        const float rowX = ImGui::GetCursorPosX();
         if (hook) {
             ImGui::Text("%zu  %s", c + 1, hook->label.c_str());
+            const std::string value =
+                readTime && session.powered() ? valueAt(c, *readTime, rails[c]) : "";
+            ImGui::SameLine(rowX + 170);
+            ImGui::TextColored(ImColor(kHookColours[c]), "%s", value.c_str());
         } else {
-            ImGui::TextColored(kGrey, "%zu  free", c + 1);
+            ImGui::TextColored(kHintGrey, "%zu  free", c + 1);
         }
-        ImGui::SameLine(220);
+        ImGui::SameLine(rowX + 250);
         ImGui::BeginDisabled(!hook);
-        if (ImGui::SmallButton("\u00d7")) {
+        if (ImGui::SmallButton("×")) {
             session.unhook(c);
         }
         ImGui::EndDisabled();
-        if (c == 0) {
-            ImGui::SameLine(0, 40);
-            if (hovered) {
-                std::string readout = "t = " + FormatTime(timeAt(mouseX), true);
-                if (marker_) {
-                    readout += "   dt = " + FormatTime(timeAt(mouseX) - *marker_, true);
-                }
-                ImGui::TextUnformatted(readout.c_str());
-            } else {
-                ImGui::TextColored(kGrey, "hover: time   click: marker");
-            }
-        }
         ImGui::PopID();
     }
+    StatusLine(cursor, marker_, kGestures);
+
+    focused_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     if (changed) {
         session.setScope(settings);
     }

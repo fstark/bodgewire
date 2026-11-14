@@ -675,7 +675,8 @@ void AnalyzerWindow::draw(bool& open, Session& session, BoardView& board) {
         window.AddText({contentX + kValueX, axisY + 1}, heading, "Value");
         window.AddText({contentX + kTriggerX, axisY + 1}, heading, "Trigger");
         if (shown_) {
-            DrawAxisLabels(window, Grid(view_, width, kLabelGap), x, axisY, laneX0, laneX1);
+            DrawAxisLabels(window, Grid(view_, width, kLabelGap), x, axisY, laneX0, laneX1,
+                           OffScreenTrigger(view_));
             if (const auto off = OffScreenTrigger(view_)) {
                 DrawOffScreenTrigger(window, *off, laneX0, laneX1, axisY);
             }

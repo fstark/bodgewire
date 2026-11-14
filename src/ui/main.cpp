@@ -393,6 +393,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     MeterWindow meterWindow;
     ScopeWindow scopeWindow;
     analyzerWindow.preset(options.view, options.marker, options.cursor);
+    scopeWindow.preset(options.marker, options.cursor);
     boardView.setTooltip([&loaded](const BoardScene& scene, const Hit& hit) {
         return Tooltip(scene, hit, loaded.manuals.manuals);
     });
