@@ -3,6 +3,7 @@
 #include <string_view>
 
 #include "machine/crack.hpp"
+#include "machine/machine.hpp"
 #include "machine/puzzle.hpp"
 
 namespace bw {
@@ -11,6 +12,10 @@ namespace bw {
 Crack PuzzleCrack(std::string_view puzzle);
 // A crack placed on the fault-free netlists/<machine>.bwn Board.
 Crack BoardCrack(std::string_view machine, const PinRef& a, const PinRef& b, double percent);
+
+// A Puzzle from its text ("machine led_computer\nfault ..."), loaded against the repository: a
+// Fault tested before its Puzzle file exists.
+Machine InlinePuzzle(std::string_view text);
 
 // Cached cracks shared by tests.
 const Crack& H0Crack();             // test_pattern H0, U1.QA → U13.2B: puzzles/broken_trace.bwp

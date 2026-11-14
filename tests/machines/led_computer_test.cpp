@@ -11,6 +11,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../machine/test_points.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/button.hpp"
@@ -63,11 +64,12 @@ NetId PartNet(const LoadedCircuit& loaded, const std::string& reference, const s
 
 // The LEDs' latch, the CPU's address and SYNC, RES_N and LATCH_CLK recorded from power-on.
 struct Run {
-    std::unique_ptr<LoadedCircuit> loaded = MachineCircuit();
+    std::unique_ptr<LoadedCircuit> loaded;
     std::map<std::string, NetId> nets;
     std::optional<Simulator> sim;
 
-    explicit Run(std::uint64_t seed) {
+    explicit Run(std::uint64_t seed, std::unique_ptr<LoadedCircuit> circuit = MachineCircuit())
+        : loaded(std::move(circuit)) {
         for (int bit = 0; bit < 16; ++bit) {
             const std::string name = "A" + std::to_string(bit);
             nets[name] = PartNet(*loaded, "U1", name);
@@ -218,4 +220,67 @@ TEST_CASE("led_computer: Reset restarts the light", "[machines]") {
     CHECK(run.leds(press + 1_ms) == 0);
     CHECK(run.leds(press + 1_ms + 100_us) == 0x01);
     CHECK(run.leds(press + 1_ms + kStep + 1_ms) == 0x02);
+}
+
+// Memory Faults (P5g), from inline Puzzles: no Puzzle file yet.
+
+namespace {
+
+std::unique_ptr<LoadedCircuit> Build(const Machine& machine) {
+    auto built = machine.build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
+// The lights shown by the first `count` latch writes after the reset.
+std::vector<int> FirstLights(std::unique_ptr<LoadedCircuit> circuit, std::uint64_t seed,
+                             std::size_t count, Time until) {
+    Run run(seed, std::move(circuit));
+    run.sim->runUntil(until);
+    std::vector<int> lights;
+    for (const Time write : run.latchWrites(kPowerOnReset)) {
+        if (lights.size() == count) {
+            break;
+        }
+        lights.push_back(run.leds(write + 100_ns));
+    }
+    return lights;
+}
+
+const std::vector<int> kFirstThree{0x01, 0x02, 0x04};
+
+}  // namespace
+
+TEST_CASE("led_computer: a stuck stack cell breaks the return", "[machines][slow]") {
+    // Bit 7 of the high byte JSR pushes at $01FF (U4 holds DB4-DB7): RTS goes to $7814, where
+    // nothing answers; the bus reads $FF, which the 6502 runs up to $E000, the ROM's mirror of
+    // $F800, and the program starts again: D1 lights again and again.
+    Machine machine = InlinePuzzle("machine led_computer\nfault cell U4.IO4 $1FF 0\n");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Run run(seed, Build(machine));
+        run.sim->runUntil(kPowerOnReset + 2 * kStep);
+        const std::vector<Time> writes = run.latchWrites(kPowerOnReset);
+        REQUIRE_FALSE(writes.empty());
+        for (const Time write : writes) {
+            CHECK(run.leds(write + 100_ns) == 0x01);
+        }
+    }
+    REQUIRE(machine.swap("U4"));
+    CHECK(FirstLights(Build(machine), 1, 3, kPowerOnReset + 2 * kStep + 1_ms) == kFirstThree);
+}
+
+TEST_CASE("led_computer: an internal address line darkens the LEDs", "[machines][slow]") {
+    // U3 reads A0 as 0: light ($00) and dir ($01) share their low nibble, so `sta dir` clears
+    // the light; JSR's two return bytes share word $1FE, so RTS goes to erased ROM ($FF), which
+    // runs on to $F800 and starts the program again.
+    Machine machine = InlinePuzzle("machine led_computer\nfault stuck U3.A0 0\n");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        // Each restart adds a few ms to the step: run a step longer.
+        CHECK(FirstLights(Build(machine), seed, 3, kPowerOnReset + 3 * kStep) ==
+              std::vector<int>{0x00, 0x00, 0x00});
+    }
+    REQUIRE(machine.swap("U3"));
+    CHECK(FirstLights(Build(machine), 1, 3, kPowerOnReset + 2 * kStep + 1_ms) == kFirstThree);
 }

@@ -80,4 +80,6 @@ Six Puzzles (P4m, 2026-11-11), each a different Fault on a different link of the
 
 Each teaches something different: an output stuck (half the address space never asked for), an input stuck (a border that is not blanked although its signal is right), a data line cut between two ROMs (every lookup shifted by the same amount), a dry Joint on an address input (two cells read as one), a bridge to a tie (the obvious chip swap fails), and a clock cut (a register that loads but never shifts).
 
+Memory Fault candidates (P5g, tested in `message_test`, no Puzzle file yet): a stuck cell in the character ROM (`fault cell U15.O3 $29 0`: every `E` loses the middle dot of its top bar, the only Fault that touches one letter alone) and a stuck column (`fault column U15.O1 0`: Thin letters' picture made inside `U15`: `F1` is low at both ends but nothing ties it to GND, so the swap that fails there is the fix here).
+
 Netlist, Board and manuals: [MESSAGE_DESIGN.md](MESSAGE_DESIGN.md).

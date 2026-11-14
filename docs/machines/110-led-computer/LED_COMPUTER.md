@@ -40,4 +40,6 @@ So every step needs the ROM (the code), the RAM (the two variables, and the retu
 
 None yet: a later roadmap row, from the routed Board. Candidates seen while designing: a data line cracked between the RAMs and the CPU (the light jumps or the program crashes after the first `RTS`), the ROM's `CE_N` stuck (nothing runs), a decoder select line swapped by a bridge (the latch answers in the RAM's block: the LEDs show the stack), `LATCH_CLK` cracked at `U7` (dark LEDs with a running CPU), `WR_N` stuck high (the RAM never written: `RTS` returns to a random address), the power-on reset stuck low (a dead computer that the Reset button cannot wake).
 
+Memory Fault candidates (P5g, tested in `led_computer_test`): a stuck cell in the stack (`fault cell U4.IO4 $1FF 0`: the first `RTS` returns to `$7814`, the open bus reads `$FF` and the 6502 runs it round to `$E000`, so `D1` lights again and again) and an internal address line (`fault stuck U3.A0 0`: `light` and `dir` share a cell, `sta dir` clears the light, the LEDs stay dark). Of the 2114's address lines only `A0` shows with this program; the others alias words it never uses.
+
 Netlist, program, Board and manuals: [LED_COMPUTER_DESIGN.md](LED_COMPUTER_DESIGN.md).

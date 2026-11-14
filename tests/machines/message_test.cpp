@@ -39,6 +39,8 @@ struct PageFault {
     unsigned glyphLines = 7;   // Half letters: R3 held low
     unsigned dotsMask = 0x1F;  // Thin letters: F1 held low
     bool blocks = false;       // Block letters: F5 shown on all six dots
+    int fontWord = -1;         // a character ROM word with stuck cells, ANDed with fontAnd
+    unsigned fontAnd = 0x1F;
 };
 
 // The page as dots, from the two ROM files: [line][dot].
@@ -56,7 +58,11 @@ std::vector<std::vector<bool>> ExpectedPage(const PageFault& fault = {}) {
             const unsigned code = ((*message)[address] & 0x3F) | fault.codeOr;
             for (int line = 0; line < kCellLines; ++line) {
                 const unsigned glyphLine = static_cast<unsigned>(line / 2) & fault.glyphLines;
-                const unsigned dots = (*font)[code * 8 + glyphLine] & fault.dotsMask;
+                const unsigned word = code * 8 + glyphLine;
+                unsigned dots = (*font)[word] & fault.dotsMask;
+                if (static_cast<int>(word) == fault.fontWord) {
+                    dots &= fault.fontAnd;
+                }
                 auto& out = page[static_cast<std::size_t>(row * kCellLines + line)];
                 for (int x = 0; x < (fault.blocks ? kCellDots : 5); ++x) {
                     const int bit = fault.blocks ? 4 : 4 - x;
@@ -339,5 +345,22 @@ TEST_CASE("message: block_letters", "[machines][slow]") {
     }
     CheckFaultyPage(machine, {.blocks = true});
     REQUIRE(machine.mend(BlockLettersCrack().layer, BlockLettersCrack().at));
+    CheckRepaired(machine);
+}
+
+// Memory Faults inside the character ROM (P5g), from inline Puzzles: no Puzzle file yet.
+
+TEST_CASE("message: a stuck column in the character ROM", "[machines][slow]") {
+    Machine machine = InlinePuzzle("machine message\nfault column U15.O1 0\n");
+    CheckFaultyPage(machine, {.dotsMask = 0x1E});  // thin_letters' page, made inside U15
+    REQUIRE(machine.swap("U15"));
+    CheckRepaired(machine);
+}
+
+TEST_CASE("message: a stuck cell in the character ROM", "[machines][slow]") {
+    // E (code 5), glyph line 1: word $29 = #####; O3 (bit 2) stuck at 0 takes out the middle dot.
+    Machine machine = InlinePuzzle("machine message\nfault cell U15.O3 $29 0\n");
+    CheckFaultyPage(machine, {.fontWord = 0x29, .fontAnd = 0x1B});
+    REQUIRE(machine.swap("U15"));
     CheckRepaired(machine);
 }

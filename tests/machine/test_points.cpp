@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <string>
+#include <utility>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -15,6 +16,19 @@ Crack PuzzleCrack(std::string_view puzzle) {
     REQUIRE(machine.has_value());
     REQUIRE(machine->cracks().size() == 1);
     return machine->cracks()[0];
+}
+
+Machine InlinePuzzle(std::string_view text) {
+    const auto puzzle = ParsePuzzle(text, "inline.bwp");
+    REQUIRE(puzzle.has_value());
+    auto machine = LoadMachine(*puzzle, std::filesystem::path(BW_NETLIST_DIR).parent_path());
+    if (!machine) {
+        for (const Diagnostic& d : machine.error()) {
+            UNSCOPED_INFO(Format(d));
+        }
+    }
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
 }
 
 Crack BoardCrack(std::string_view machine, const PinRef& a, const PinRef& b, double percent) {
