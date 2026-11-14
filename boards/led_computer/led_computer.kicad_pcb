@@ -491,7 +491,7 @@
 			)
 		)
 		(point
-			(at 19.22 20.84)
+			(at 95.16 121.5)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "98c1d217-675f-494c-96d6-b3af4617aa35")
@@ -813,7 +813,7 @@
 			)
 		)
 		(point
-			(at 38.77 5.5)
+			(at 116.24 164.25)
 			(size 2)
 			(layer "F.Fab")
 			(uuid "16d234c2-661c-4b06-945b-59ff672f5ff0")
@@ -1050,7 +1050,7 @@
 			)
 		)
 		(point
-			(at 19.22 20.84)
+			(at 127.16 94.5)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "66586bf6-8483-46a5-b989-bd668329ca5c")
@@ -1559,7 +1559,7 @@
 			)
 		)
 		(point
-			(at 38.77 5.5)
+			(at 107.35 164.25)
 			(size 2)
 			(layer "F.Fab")
 			(uuid "5a9351d2-87ab-47cc-a3da-f22fde5afb68")
@@ -1796,7 +1796,7 @@
 			)
 		)
 		(point
-			(at 23.03 37.35)
+			(at 73.83 55.13)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "d95a086b-ca33-4078-9efd-449777a95203")
@@ -2400,7 +2400,7 @@
 			)
 		)
 		(point
-			(at 19.22 23.38)
+			(at 95.16 97.04)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "8fd4c3ab-9696-4b54-bd59-4dc53cfa6e50")
@@ -2798,7 +2798,7 @@
 			)
 		)
 		(point
-			(at 23.03 27.19)
+			(at 92.88 44.97)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "30d5f2d8-9d10-4cc8-8762-77e5448c9170")
@@ -3951,7 +3951,7 @@
 			)
 		)
 		(point
-			(at 38.77 5.5)
+			(at 73.06 164.25)
 			(size 2)
 			(layer "F.Fab")
 			(uuid "b0fd3d79-16af-40be-9db6-513fbb036e51")
@@ -4188,7 +4188,7 @@
 			)
 		)
 		(point
-			(at 19.22 22.11)
+			(at 111.16 95.77)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "d5058859-7b82-4f2a-b100-b2448a19fd2e")
@@ -4556,7 +4556,7 @@
 			)
 		)
 		(point
-			(at 19.22 24.65)
+			(at 79.16 125.31)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "baba8546-2351-4361-a06a-bb78237c774a")
@@ -4938,7 +4938,7 @@
 			)
 		)
 		(point
-			(at 38.77 5.5)
+			(at 65.44 164.25)
 			(size 2)
 			(layer "F.Fab")
 			(uuid "8966270d-ea19-486e-904b-3d1074af6c90")
@@ -5348,7 +5348,7 @@
 			)
 		)
 		(point
-			(at 38.77 5.5)
+			(at 81.95 164.25)
 			(size 2)
 			(layer "F.Fab")
 			(uuid "9a5d9d26-b751-4437-bd3f-0c9bb2bda3a8")
@@ -5585,7 +5585,7 @@
 			)
 		)
 		(point
-			(at 19.22 23.38)
+			(at 79.16 97.04)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "e5643f21-6332-4975-8514-dd383cf98f66")
@@ -6574,7 +6574,7 @@
 			)
 		)
 		(point
-			(at 38.77 5.5)
+			(at 98.46 164.25)
 			(size 2)
 			(layer "F.Fab")
 			(uuid "b7a0b76c-73f1-49ff-a2d4-4fae24fee850")
@@ -6811,7 +6811,7 @@
 			)
 		)
 		(point
-			(at 19.22 17.03)
+			(at 127.16 117.69)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "ff2fa6bd-da52-42be-b8dd-1435f4419885")
@@ -7063,7 +7063,7 @@
 			)
 		)
 		(point
-			(at 38.77 5.5)
+			(at 90.84 164.25)
 			(size 2)
 			(layer "F.Fab")
 			(uuid "cc760cf3-47fc-40e2-931a-7cdd04d95e11")
@@ -8015,7 +8015,7 @@
 			)
 		)
 		(point
-			(at 38.77 5.5)
+			(at 57.82 164.25)
 			(size 2)
 			(layer "F.Fab")
 			(uuid "9422e992-8a7d-40ff-af4a-2523d6012835")
