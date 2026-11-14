@@ -100,9 +100,10 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
         return;
     }
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowSize({700, 480}, ImGuiCond_FirstUseEver);
+    // Below the Multimeter's reading, as in P5e.
+    ImGui::SetNextWindowSize({680, 460}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 720, viewport->WorkPos.y + 200},
+        {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 700, viewport->WorkPos.y + 230},
         ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Oscilloscope", &open, ImGuiWindowFlags_NoSavedSettings)) {
         ImGui::End();

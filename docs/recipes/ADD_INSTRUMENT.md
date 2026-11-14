@@ -2,7 +2,7 @@
 
 A measuring tool placed on the Board with a window (logic probe P2g, logic analyzer P3c, multimeter and scope P3d). Threads: sim → devices (Consumers) → UI ([ARCHITECTURE.md](../ARCHITECTURE.md)).
 
-Reference commits (P3d, multimeter + scope): `ecb3915` placement + volts, `53327ba`/`1414e2b` engines, `7180f0c` consumers, `2bdcbe2` Session, `6c06d28` tool/window pairing, `94dd63b`/`d3388bf` windows. P5e (an instrument widened): `168402f` analyzer engine (32 Channels, mask Triggers, bus patterns), `ceaf4a0` scope delay, watch budget and Dispatcher merge, `7c45e1b` Channel Groups in the Session, `ddd0f7a` windows.
+Reference commits (P3d, multimeter + scope): `ecb3915` placement + volts, `53327ba`/`1414e2b` engines, `7180f0c` consumers, `2bdcbe2` Session, `6c06d28` tool/window pairing, `94dd63b`/`d3388bf` windows. P5e (an instrument widened): `168402f` analyzer engine (32 Channels, mask Triggers, bus patterns), `ceaf4a0` scope delay, watch budget and Dispatcher merge, `7c45e1b` Channel Groups in the Session, `ddd0f7a` windows. P5f (windows made coherent): `d3759d1` time view maths, `2bf1bb3` analyzer window and flags, `f24ff06` scope window.
 
 ## Layers, in phase order
 
@@ -14,8 +14,8 @@ Reference commits (P3d, multimeter + scope): `ecb3915` placement + volts, `53327
 | Session | `src/session/session.{hpp,cpp}` | owns the placement (tip / lead / clip / hook: Layer + Point), resolves the Net with `machine_->probeNet(...)` in `touchLive()`, pushes config in `configureLive()`, adds the consumer in `makeLive()`; survives rebuilds after a Repair. Tests in `tests/session/session_test.cpp` |
 | Placement rule | `src/view/board_scene.{hpp,cpp}` | `AcceptsLead`/`LeadLabel`: held tips take any copper, attached clips/hooks take pads only; refusal says why |
 | Tool | `src/ui/toolbar.{hpp,cpp}`, `src/ui/board_view.{hpp,cpp}` | tool mode + key; `takePicked()` hands the pick to `main.cpp`; `refused(reason)` |
-| Window | `src/ui/<x>_window.{hpp,cpp}`, `src/ui/CMakeLists.txt`, `src/ui/main.cpp` | ImGui window; the tool opens its window, the window has a button for its tool, focus never changes the tool |
-| CLI | `src/ui/main.cpp` | `bw_ui` flag to place it at start (`--probe`, `--clip`, `--hook`, `--meter`) so screenshots can show it |
+| Window | `src/ui/<x>_window.{hpp,cpp}`, `src/ui/CMakeLists.txt`, `src/ui/main.cpp` | ImGui window; the tool opens its window, the window has a button for its tool, focus never changes the tool. A window over time takes its view, zoom, pan, grid and status line from `src/view/time_view.hpp` (tested there) and draws Trigger, marker, grid and axis with `src/ui/instrument_marks.hpp`, so it looks and moves like the scope and analyzer; its `focused()` keeps `Esc` from the Board |
+| CLI | `src/ui/main.cpp` | `bw_ui` flag to place it at start (`--probe`, `--clip`, `--hook`, `--meter`) so screenshots can show it; `--sample`, `--view`, `--marker`, `--cursor` set what a screenshot of a window over time shows |
 
 ## Gotchas
 
@@ -27,7 +27,7 @@ Reference commits (P3d, multimeter + scope): `ecb3915` placement + volts, `53327
 - Reading a bus in a Capture: take the data at the last point of the cycle with `PHI2` high, not the cycle's last point (the 6502 lets go of the data 40 ns before it changes the address; a floating bus with TTL inputs reads `FF`).
 - Threads: run the session/runner tests under TSan (separate build dir with `-fsanitize=thread`).
 - Release gate: 1.00× with every instrument attached on the busiest Machine, UI under ~1 ms (`bw_ui --screenshot` prints both).
-- ImGui default font lacks `–`/`—`: use `Displayable`.
-- The agent can't see the live screen: use `bw_ui … --screenshot X.png --after 1s` (release build) and view the PNG. The analyzer opens fitted to the whole Capture, where bus values are too narrow to read: to see them, temporarily set the view around the Trigger after `captures().update()`, screenshot, revert.
-- Window input: read pan and zoom once per frame before drawing any lane, and take the wheel with `ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY)` so zooming never scrolls the window (P3c's intermittent navigation bugs).
+- ImGui default fonts (vector and bitmap) lack `–`/`—`, `−`, `Δ`, `◀`: use `Displayable`, ASCII `-`, `dt`, and draw arrows as triangles. They have `µ`, `·`, `×`.
+- The agent can't see the live screen: use `bw_ui … --screenshot X.png --after 1s` (release build) and view the PNG. The analyzer opens at its first view (10 sample points per division about the Trigger: bus values readable at 100 ns); `--view 1us:+5us`, `--marker +2us`, `--cursor +3.7us` set the rest. At `2us` a 1 µs bus cycle is too narrow for its text in the default window.
+- Window input: read pan and zoom once per frame before drawing anything that depends on the view (lanes, but also an axis or overview above them: reserve their rows, draw them after), and take the wheel with `ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY)` and `ImGuiKey_MouseWheelX` so zooming never scrolls the window (P3c's intermittent navigation bugs). Trackpad wheels are fractional: step on whole notches (`WheelNotches`). A drag that rounds (the scope's delay to tenths of a division) is measured from the press, or slow drags never move.
 - Draw long Captures from runs (`CaptureRuns`), jumping sub-pixel runs by binary search: per-point loops over 65 536 points × 32 lanes blow the UI budget.
