@@ -12,7 +12,7 @@
 
 #include "instruments/volts.hpp"
 #include "ui/board_view.hpp"
-#include "ui/time_text.hpp"
+#include "view/time_text.hpp"
 #include "ui/toolbar.hpp"
 
 namespace bw {

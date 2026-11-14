@@ -9,8 +9,8 @@
 #include <imgui.h>
 
 #include "ui/board_view.hpp"
-#include "ui/time_text.hpp"
 #include "ui/toolbar.hpp"
+#include "view/time_text.hpp"
 
 namespace bw {
 
@@ -34,12 +34,6 @@ constexpr std::array<const char*, 5> kConditions{"any", "0", "1", "rise", "fall"
 constexpr std::array<const char*, 3> kPositions{"10 %", "50 %", "90 %"};
 constexpr const char* kEmptyHint =
     "Clip (C), then click a chip pin. Shift-click: the pin's whole bus.";
-
-std::string FormatFrequency(Time period) {
-    const Time hz = kPicosPerSecond / period;
-    return hz >= 1'000'000 ? std::format("{} MHz", hz / 1'000'000)
-                           : std::format("{} kHz", hz / 1'000);
-}
 
 const char* PhaseText(AnalyzerPhase phase, bool powered) {
     switch (phase) {

@@ -30,7 +30,7 @@ configure_file(keycap_font.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp @O
 
 add_executable(bw_ui main.cpp analyzer_window.cpp board_view.cpp chip_panel.cpp keyboard_capture.cpp
                      keyboard_window.cpp manual_view.cpp meter_window.cpp scope_window.cpp
-                     side_panel.cpp time_text.cpp toolbar.cpp tv_view.cpp
+                     side_panel.cpp toolbar.cpp tv_view.cpp
                      ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp)
 target_link_libraries(bw_ui PRIVATE bw_session bw_machine bw_manual bw_runner bw_view bw_imgui
                                     bw_warnings)

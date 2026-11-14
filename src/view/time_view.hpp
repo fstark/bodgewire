@@ -1,0 +1,70 @@
+#pragma once
+
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "instruments/oscilloscope.hpp"
+#include "sim/time.hpp"
+
+namespace bw {
+
+// What an instrument window shows: kDivisions divisions of a 1-2-5 step, from a left edge given
+// in ps from the Trigger (negative before it). The analyzer's view over its Capture; the scope's
+// settings (ScopeView, WithView).
+struct TimeView {
+    Time perDivision = 1'000'000;  // ps, a 1-2-5 step
+    Time left = 0;                 // ps from the Trigger at the left edge
+    Time span() const { return kDivisions * perDivision; }
+    bool operator==(const TimeView&) const = default;
+};
+
+struct TimeRange {  // what a record holds, ps from the Trigger
+    Time from = 0, to = 0;
+    Time length() const { return to - from; }
+};
+
+Time StepAtLeast(Time t);  // smallest 1-2-5 step >= t (at least 1 ps)
+Time StepUp(Time step);    // the next 1-2-5 step: 1 µs → 2 µs
+Time StepDown(Time step);  // 1 µs → 500 ns; 1 ps stays
+
+// `notches` > 0 zooms in (smaller steps), one step per notch; `anchor` (ps from T) stays at the
+// same fraction of the width; the step stays within [minStep, maxStep].
+TimeView ZoomAbout(TimeView view, Time anchor, int notches, Time minStep, Time maxStep);
+TimeView Pan(TimeView view, double pixels, float width);  // > 0: the content moves right
+TimeView Clamp(TimeView view, TimeRange record);          // inside when it fits, else centred
+TimeView Fit(TimeRange record);                           // smallest step holding it, centred
+TimeView FirstView(TimeRange record, Time period);        // 10 points per division about T, clamped
+TimeView CentredOn(Time perDivision, Time centre);
+
+struct GridLine {
+    Time time;  // ps from T, a whole multiple of the step
+    bool labelled;
+    bool operator==(const GridLine&) const = default;
+};
+// Lines at whole multiples of the step inside the view; labels every 1, 2, 5 or 10 divisions,
+// the fewest whose spacing reaches `labelGap` px.
+std::vector<GridLine> Grid(const TimeView& view, float width, float labelGap);
+std::string GridLabel(Time time);  // "-3 µs", "0", "+6 µs"
+
+// The Trigger's distance from the view when it is off screen: < 0 left of it, > 0 right.
+std::optional<Time> OffScreenTrigger(const TimeView& view);
+
+// Where a run's value text starts, or none: [x0, x1] the run's true ends (they may lie outside
+// [left, right]); a slant only at an end inside the view; a cut run puts its text against the cut
+// edge, so it never looks shorter than it is.
+std::optional<float> RunTextX(float x0, float x1, float left, float right, float textWidth,
+                              float slant);
+
+// The scope's view is its settings: left = delay - timebase (the Trigger at the first division
+// for a delay of 0).
+TimeView ScopeView(const ScopeSettings& settings);
+// Back: the timebase within kTimebases, the delay rounded to a tenth of a division and clamped
+// to 0 … kMaxDelayDivisions divisions.
+ScopeSettings WithView(ScopeSettings settings, const TimeView& view);
+
+// "cursor +3.7 µs   M +2 µs   dt 1.7 µs (588 kHz)" (the font has no Greek); parts left out
+// when unset; "" for neither.
+std::string StatusText(std::optional<Time> cursor, std::optional<Time> marker);
+
+}  // namespace bw
