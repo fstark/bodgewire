@@ -52,10 +52,20 @@ struct StuckPin {
     LogicValue value;
 };
 
+// Stuck cell Fault inside a memory chip (MemoryCells): bit `pin` (a data Pin) of word `word`, or
+// of every word (a stuck column), reads `value` (Zero or One).
+struct StuckCell {
+    std::string reference;
+    PinIndex pin;
+    std::optional<std::size_t> word;  // nullopt: every word
+    LogicValue value;
+};
+
 // `unpowered`: References of chips (and PADDLE controllers) left out of the Circuit's Nets (outputs
 // Z, inputs ignored).
 LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck = {},
-                        std::span<const std::string> unpowered = {});  // all errors, by line
+                        std::span<const std::string> unpowered = {},
+                        std::span<const StuckCell> cells = {});  // all errors, by line
 LoadResult LoadNetlist(std::string_view text, std::string file);
 LoadResult LoadNetlistFile(const std::filesystem::path& path);  // diagnostics name the file only
 

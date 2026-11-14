@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -36,6 +37,13 @@ struct JointDecl {
     PinRef pin;  // by number or name: U15.13, U15.2D
 };
 
+struct CellDecl {
+    std::uint32_t line;
+    PinRef pin;                         // the data pin, by number or name: U3.IO2, U3.11
+    std::optional<std::uint32_t> word;  // the chip's own address; nullopt: `fault column`
+    LogicValue value;                   // Zero or One
+};
+
 struct Puzzle {
     std::string file;
     std::uint32_t machineLine = 0;
@@ -46,6 +54,7 @@ struct Puzzle {
     std::vector<CrackDecl> cracks;
     std::vector<BridgeDecl> bridges;
     std::vector<JointDecl> joints;  // dry Joints
+    std::vector<CellDecl> cells;    // stuck cells and columns, in file order
 };
 
 // All syntax errors, in line order.

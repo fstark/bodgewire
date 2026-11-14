@@ -37,9 +37,10 @@ public:
     std::string_view name() const {
         return name_;
     }  // never the Puzzle's file name: it names the Fault
-    bool swap(std::string_view reference);  // chip swap; false if no such Component
-    bool mend(Layer layer, Point at);       // removes cracks and Cuts within 1 mm
-    bool cut(Layer layer, Point at);        // false: no straight Trace there in the current Copper
+    // Chip swap: removes its stuck pins, cells and columns; false if no such Component.
+    bool swap(std::string_view reference);
+    bool mend(Layer layer, Point at);  // removes cracks and Cuts within 1 mm
+    bool cut(Layer layer, Point at);   // false: no straight Trace there in the current Copper
     bool addWire(const PinRef& a, const PinRef& b);       // false: unknown pad, or the same pad
     bool removeWire(const PinRef& a, const PinRef& b);    // either order; false: no such wire
     bool removeBridge(const PinRef& a, const PinRef& b);  // either order; false: no such bridge
@@ -93,6 +94,7 @@ private:
     std::vector<WireEnds> wires_;
     std::vector<WireEnds> bridges_;  // Solder Bridges: same shape as a Bodge Wire
     std::vector<PinRef> dry_;        // dry Joints, pin numbers
+    std::vector<StuckCell> cells_;   // stuck cells and columns inside memory chips
     BoardPower power_;               // of board_, see rebuildBoard()
 };
 

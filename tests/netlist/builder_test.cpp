@@ -523,3 +523,19 @@ TEST_CASE("builder: ButtonOf", "[netlist]") {
     CHECK(ButtonOf(**result, "U1") == nullptr);
     CHECK(ButtonOf(**result, "SW9") == nullptr);
 }
+
+TEST_CASE("builder: stuck cells reach the memory", "[netlist]") {
+    const auto netlist = ParseNetlist("part U1 2114\n", "t.bwn");
+    REQUIRE(netlist.has_value());
+    const StuckCell cells[] = {{"U1", Ram2114::kData[0], 7, One},
+                               {"U1", Ram2114::kData[3], std::nullopt, One}};
+    const auto result = BuildCircuit(*netlist, {}, {}, cells);
+    REQUIRE(result.has_value());
+    auto& ram = static_cast<Ram2114&>(*(*result)->components.at("U1"));
+    Simulator sim((*result)->circuit);
+    sim.powerOn(1);
+    CHECK((ram.word(7) & 0b0001) != 0);
+    for (std::size_t word = 0; word < 1024; ++word) {
+        CHECK((ram.word(word) & 0b1000) != 0);
+    }
+}

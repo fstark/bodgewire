@@ -82,6 +82,32 @@ std::optional<double> ParsePercent(std::string_view text) {
     return value;
 }
 
+// "$1FF" (1-8 hex digits, either case) or "511" (1-9 decimal digits).
+std::optional<std::uint32_t> ParseWord(std::string_view text) {
+    const bool hex = text.starts_with('$');
+    if (hex) {
+        text.remove_prefix(1);
+    }
+    if (text.empty() || text.size() > (hex ? 8u : 9u)) {
+        return std::nullopt;
+    }
+    std::uint32_t value = 0;
+    for (const char c : text) {
+        unsigned digit = 0;
+        if (c >= '0' && c <= '9') {
+            digit = static_cast<unsigned>(c - '0');
+        } else if (hex && c >= 'a' && c <= 'f') {
+            digit = static_cast<unsigned>(c - 'a' + 10);
+        } else if (hex && c >= 'A' && c <= 'F') {
+            digit = static_cast<unsigned>(c - 'A' + 10);
+        } else {
+            return std::nullopt;
+        }
+        value = value * (hex ? 16u : 10u) + digit;
+    }
+    return value;
+}
+
 // `"TEXT"` then only spaces or a # comment; nullopt otherwise.
 std::optional<std::string> QuotedValue(std::string_view rest) {
     std::size_t i = 0;
@@ -134,8 +160,11 @@ public:
             bridge(number, tokens);
         } else if (tokens[0] == "fault" && tokens.size() >= 2 && tokens[1] == "joint") {
             joint(number, tokens);
+        } else if (tokens[0] == "fault" && tokens.size() >= 2 &&
+                   (tokens[1] == "cell" || tokens[1] == "column")) {
+            cell(number, tokens);
         } else if (tokens[0] == "fault") {
-            error(number, "expected: fault stuck|crack|bridge|joint ...");
+            error(number, "expected: fault stuck|crack|bridge|joint|cell|column ...");
         } else {
             error(number, "unknown directive '" + std::string(tokens[0]) + "'");
         }
@@ -238,6 +267,28 @@ private:
             return;
         }
         puzzle_.joints.push_back({line, *pin});
+    }
+
+    // `fault cell REF.PIN WORD 0|1` or `fault column REF.PIN 0|1`.
+    void cell(std::uint32_t line, const std::vector<std::string_view>& tokens) {
+        const bool column = tokens[1] == "column";
+        const std::size_t count = column ? 4 : 5;
+        const auto pin = tokens.size() == count ? ParsePin(tokens[2]) : std::nullopt;
+        if (!pin || (tokens.back() != "0" && tokens.back() != "1")) {
+            error(line, column ? "expected: fault column REF.PIN 0|1"
+                               : "expected: fault cell REF.PIN WORD 0|1");
+            return;
+        }
+        std::optional<std::uint32_t> word;
+        if (!column) {
+            word = ParseWord(tokens[3]);
+            if (!word) {
+                error(line, "bad word '" + std::string(tokens[3]) + "'");
+                return;
+            }
+        }
+        puzzle_.cells.push_back(
+            {line, *pin, word, tokens.back() == "1" ? LogicValue::One : LogicValue::Zero});
     }
 
     Puzzle puzzle_;

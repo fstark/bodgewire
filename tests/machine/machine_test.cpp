@@ -4,13 +4,16 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include "board/copper.hpp"
 #include "machine/crack.hpp"
+#include "parts/ram2114.hpp"
 #include "runner/runner.hpp"
+#include "sim/simulator.hpp"
 #include "test_points.hpp"
 
 using namespace bw;
@@ -27,6 +30,12 @@ Puzzle TestPattern() {
     puzzle.file = "t.bwp";
     puzzle.machineLine = 1;
     puzzle.machine = "test_pattern";
+    return puzzle;
+}
+
+Puzzle LedComputer() {
+    Puzzle puzzle = TestPattern();
+    puzzle.machine = "led_computer";
     return puzzle;
 }
 
@@ -443,4 +452,54 @@ TEST_CASE("machine: placeCrack", "[machine]") {
           "crack U1.QA U5.A: pads not joined by Copper");
     CHECK(machine->placeCrack({"U1", "QA"}, {"U99", "1"}, 50).error() ==
           "crack U1.QA U99.1: unknown pad");
+}
+
+TEST_CASE("machine: memory fault errors", "[machine]") {
+    Puzzle puzzle = LedComputer();
+    puzzle.cells = {{2, {"U99", "1"}, 0, LogicValue::Zero},
+                    {3, {"U3", "XX"}, 0, LogicValue::Zero},
+                    {4, {"U5", "A"}, 0, LogicValue::Zero},
+                    {5, {"R1", "1"}, std::nullopt, LogicValue::Zero},
+                    {6, {"U3", "A0"}, std::nullopt, LogicValue::One},
+                    {7, {"U3", "IO1"}, 0x400, LogicValue::One},
+                    {8, {"U2", "O0"}, 0x800, LogicValue::One}};
+    CHECK(Errors(puzzle) ==
+          Lines{"2: unknown reference 'U99'", "3: U3 (2114) has no pin XX",
+                "4: cell U5.A $0: RAM and ROM chips only", "5: column R1.1: RAM and ROM chips only",
+                "6: column U3.A0: not a data pin", "7: cell U3.IO1 $400: U3 (2114) has 1024 words",
+                "8: cell U2.O0 $800: U2 (2716) has 2048 words"});
+}
+
+TEST_CASE("machine: a swap removes the chip's memory Faults", "[machine]") {
+    Puzzle puzzle = LedComputer();
+    puzzle.cells = {{2, {"U3", "IO1"}, 0x10, LogicValue::One},
+                    {3, {"U4", "14"}, std::nullopt, LogicValue::One}};  // 14: IO1
+    auto machine = LoadMachine(puzzle, Root());
+    REQUIRE(machine.has_value());
+    // Power-on contents: U3 word $10 bit 0, U4 bit 0 of every word; seeds differ elsewhere.
+    const auto stuck = [&](std::uint64_t seed) {
+        const auto built = machine->build();
+        REQUIRE(built.has_value());
+        Simulator sim((*built)->circuit);
+        sim.powerOn(seed);
+        const auto& u3 = static_cast<const Ram2114&>(*(*built)->components.at("U3"));
+        const auto& u4 = static_cast<const Ram2114&>(*(*built)->components.at("U4"));
+        bool cell = (u3.word(0x10) & 1) != 0;
+        bool column = true;
+        for (std::size_t a = 0; a < 1024; ++a) {
+            column = column && (u4.word(a) & 1) != 0;
+        }
+        return std::pair{cell, column};
+    };
+    for (std::uint64_t seed = 1; seed <= 4; ++seed) {
+        CHECK(stuck(seed) == std::pair{true, true});
+    }
+    CHECK(machine->swap("U3"));
+    bool cellEverLow = false;
+    for (std::uint64_t seed = 1; seed <= 8; ++seed) {
+        const auto [cell, column] = stuck(seed);
+        cellEverLow = cellEverLow || !cell;
+        CHECK(column);
+    }
+    CHECK(cellEverLow);  // random again
 }

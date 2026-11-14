@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <string>
@@ -12,6 +13,7 @@
 #include "board/kicad_board.hpp"
 #include "machine/crack.hpp"
 #include "machine/electrical.hpp"
+#include "parts/memory_cells.hpp"
 
 namespace bw {
 
@@ -181,6 +183,37 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
             machine.dry_.push_back(*pin);
         }
     }
+    for (const CellDecl& decl : puzzle.cells) {
+        const std::string pinText = decl.pin.reference + "." + decl.pin.pin;
+        const std::string written =
+            decl.word ? std::format("cell {} ${:X}", pinText, *decl.word) : "column " + pinText;
+        if (!known(decl.line, decl.pin)) {
+            continue;
+        }
+        const auto component = loaded.components.find(decl.pin.reference);
+        const auto* memory = component == loaded.components.end()
+                                 ? nullptr
+                                 : dynamic_cast<const MemoryCells*>(component->second);
+        if (memory == nullptr) {
+            error(decl.line, written + ": RAM and ROM chips only");
+            continue;
+        }
+        const auto pin = FindPin(*component->second, decl.pin.pin);
+        if (!pin || !memory->dataBit(*pin)) {
+            error(decl.line, written + ": not a data pin");
+            continue;
+        }
+        if (decl.word && *decl.word >= memory->wordCount()) {
+            const auto part =
+                std::ranges::find(loaded.parts, decl.pin.reference, &LoadedPart::reference);
+            error(decl.line, std::format("{}: {} ({}) has {} words", written, decl.pin.reference,
+                                         part->info->name, memory->wordCount()));
+            continue;
+        }
+        machine.cells_.push_back({decl.pin.reference, *pin,
+                                  decl.word ? std::optional<std::size_t>(*decl.word) : std::nullopt,
+                                  decl.value});
+    }
     if (!errors.empty()) {
         return std::unexpected(std::move(errors));
     }
@@ -193,6 +226,7 @@ bool Machine::swap(std::string_view reference) {
         return false;
     }
     std::erase_if(stuck_, [&](const StuckPin& s) { return s.reference == reference; });
+    std::erase_if(cells_, [&](const StuckCell& c) { return c.reference == reference; });
     return true;
 }
 
@@ -358,7 +392,7 @@ std::optional<PinRef> Machine::dryLegAt(Layer layer, Point at) const {
 
 LoadResult Machine::build() const {
     return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_, dry_), stuck_,
-                        power_.unpowered);
+                        power_.unpowered, cells_);
 }
 
 std::optional<std::uint32_t> Machine::islandAt(const Islands& islands, Layer layer,

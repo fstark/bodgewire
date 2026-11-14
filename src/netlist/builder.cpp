@@ -11,6 +11,7 @@
 #include "parts/button.hpp"
 #include "parts/catalogue.hpp"
 #include "parts/connector.hpp"
+#include "parts/memory_cells.hpp"
 #include "sim/check.hpp"
 
 namespace bw {
@@ -45,8 +46,8 @@ void SortByLine(std::vector<Diagnostic>& diagnostics) {
 class Builder {
 public:
     explicit Builder(const Netlist& netlist, std::span<const StuckPin> stuck,
-                     std::span<const std::string> unpowered)
-        : netlist_(netlist), stuck_(stuck), unpowered_(unpowered),
+                     std::span<const std::string> unpowered, std::span<const StuckCell> cells)
+        : netlist_(netlist), stuck_(stuck), unpowered_(unpowered), cells_(cells),
           loaded_(std::make_unique<LoadedCircuit>()) {}
 
     LoadResult build() {
@@ -70,6 +71,7 @@ public:
                       (s.value == LogicValue::Zero || s.value == LogicValue::One),
                   "builder: stuck pin must be an output or input of a placed Component");
         }
+        stickCells();
         for (const auto& [pin, net] : pinNet_) {
             const PlacedPart& part = placed_.find(pin.first)->second;
             if (isUnpowered(pin.first)) {
@@ -128,6 +130,27 @@ private:
 
     bool isUnpowered(std::string_view reference) const {
         return std::ranges::find(unpowered_, reference) != unpowered_.end();
+    }
+
+    // The Machine checked them (LoadMachine); the Check only guards misuse.
+    void stickCells() {
+        for (const StuckCell& c : cells_) {
+            const auto it = loaded_->components.find(c.reference);
+            auto* memory =
+                it == loaded_->components.end() ? nullptr : dynamic_cast<MemoryCells*>(it->second);
+            const auto bit = memory ? memory->dataBit(c.pin) : std::nullopt;
+            Check(bit && (!c.word || *c.word < memory->wordCount()) &&
+                      (c.value == LogicValue::Zero || c.value == LogicValue::One),
+                  "builder: stuck cell must be a data bit of a memory word");
+            const bool one = c.value == LogicValue::One;
+            if (c.word) {
+                memory->stick(*c.word, *bit, one);
+                continue;
+            }
+            for (std::size_t word = 0; word < memory->wordCount(); ++word) {
+                memory->stick(word, *bit, one);
+            }
+        }
     }
 
     void error(std::uint32_t line, std::string message) {
@@ -332,6 +355,7 @@ private:
     const Netlist& netlist_;
     std::span<const StuckPin> stuck_;
     std::span<const std::string> unpowered_;
+    std::span<const StuckCell> cells_;
     std::unique_ptr<LoadedCircuit> loaded_;
     std::map<std::string, PlacedPart, std::less<>> placed_;  // by reference
     std::map<std::pair<std::string, PinIndex>, NetOfPin> pinNet_;
@@ -344,8 +368,8 @@ private:
 bool IsRail(std::string_view net) { return net == "GND" || net == "VCC"; }
 
 LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck,
-                        std::span<const std::string> unpowered) {
-    return Builder(netlist, stuck, unpowered).build();
+                        std::span<const std::string> unpowered, std::span<const StuckCell> cells) {
+    return Builder(netlist, stuck, unpowered, cells).build();
 }
 
 LoadResult LoadNetlist(std::string_view text, std::string file) {
