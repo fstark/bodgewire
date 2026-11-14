@@ -20,6 +20,7 @@ struct AssembledRom {
 // (docs/p5d-rom-programs/ROM_PROGRAMS.md, What is new 1). In short:
 //   label:  @local:  NAME = expr  ; comment
 //   .rom BASE, SIZE (first, once)  .org expr  .byte expr|"text", ...  .word expr, ...
+//   .checksum: one byte making the whole ROM (unwritten 0xFF words too) sum to 0 mod 256, once
 //   operands: (none) A #e e e,X e,Y (e) (e,X) (e),Y; an operand starting with ( is indirect;
 //   zero page when e is known in the first pass and 0-255, else absolute.
 //   expressions: $hex %bin decimal 'c' symbol * (this statement's address), unary - < > ~,

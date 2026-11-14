@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -196,6 +197,30 @@ TEST_CASE("asm: the .rom text reads back as the same ROM", "[asm]") {
     const auto words = ParseRomContents(rom->text, "p.rom", 256, 8);
     REQUIRE(words.has_value());
     CHECK(*words == rom->words);
+}
+
+TEST_CASE("asm: .checksum makes the ROM sum to 0", "[asm]") {
+    const auto rom = Assemble6502("  .rom $F000, $400\n  .org $F000\n  lda #$12\n  .checksum\n"
+                                  "  jmp $F000\n  .org $F3FC\n  .word $F000\n",
+                                  "c.asm");
+    REQUIRE(rom.has_value());
+    unsigned sum = 0;
+    for (const std::uint8_t w : rom->words) {
+        sum += w;
+    }
+    CHECK((sum & 0xFF) == 0);
+    // The byte is the one the .rom text carries.
+    const auto words = ParseRomContents(rom->text, "c.rom", 0x400, 8);
+    REQUIRE(words.has_value());
+    CHECK(*words == rom->words);
+    CHECK(rom->text.find(std::format("@002 {:02X}", rom->words[2])) != std::string::npos);
+    // Without one, the bytes are as written.
+    CHECK(Bytes("  nop\n") == Bytes_{0xEA});
+    CHECK(Error("  .checksum 5\n") == "t.asm line 3: .checksum takes no value");
+    CHECK(Error("  .checksum\n  .checksum\n") == "t.asm line 4: .checksum given twice");
+    const auto early = Assemble6502("  .org 0\n  .checksum\n", "n.asm");
+    REQUIRE_FALSE(early.has_value());
+    CHECK(early.error() == "n.asm line 2: no .rom BASE, SIZE before the first byte");
 }
 
 TEST_CASE("asm: every ROM program matches its committed .rom", "[asm]") {

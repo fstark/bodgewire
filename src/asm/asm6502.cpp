@@ -232,29 +232,47 @@ public:
     }
 
     AssembledRom run() {
-        for (pass_ = 1; pass_ <= 2; ++pass_) {
-            pc_.reset();
-            scope_.clear();
-            emitted_.clear();
-            for (line_ = 0; line_ < lines_.size(); ++line_) {
-                try {
-                    statement(lines_[line_]);
-                } catch (const AsmError& error) {
-                    Fail(std::format("{} line {}: {}", file_, line_ + 1, error.message));
-                }
-                if (pass_ == 2) {
-                    writeLine();
-                }
-                emitted_.clear();
-            }
-        }
+        pass(1);
+        pass(2);
         if (!rom_) {
             Fail(std::format("{}: no .rom BASE, SIZE", file_));
+        }
+        if (checksumAt_) {
+            // The byte making the whole ROM sum to 0; pass 2 again writes it into the text.
+            unsigned sum = 0;
+            for (std::size_t i = 0; i < words_.size(); ++i) {
+                sum += i == *checksumAt_ ? 0u : words_[i];
+            }
+            checksum_ = static_cast<std::uint8_t>((256u - (sum & 0xFFu)) & 0xFFu);
+            pass(2);
         }
         return {static_cast<std::uint16_t>(base_), std::move(words_), std::move(text_)};
     }
 
 private:
+    void pass(int which) {
+        pass_ = which;
+        pc_.reset();
+        scope_.clear();
+        emitted_.clear();
+        if (pass_ == 2) {
+            std::fill(words_.begin(), words_.end(), std::uint8_t{0xFF});
+            std::fill(written_.begin(), written_.end(), false);
+            text_.clear();
+        }
+        for (line_ = 0; line_ < lines_.size(); ++line_) {
+            try {
+                statement(lines_[line_]);
+            } catch (const AsmError& error) {
+                Fail(std::format("{} line {}: {}", file_, line_ + 1, error.message));
+            }
+            if (pass_ == 2) {
+                writeLine();
+            }
+            emitted_.clear();
+        }
+    }
+
     // --- statements -------------------------------------------------------------------------
 
     void statement(std::string_view line) {
@@ -361,6 +379,8 @@ private:
                     emit(static_cast<std::uint8_t>(v.number & 0xFF));
                 }
             }
+        } else if (name == ".CHECKSUM") {
+            checksumDirective(args);
         } else if (name == ".WORD") {
             for (const std::string_view arg : SplitArguments(args)) {
                 const Value v = expression(arg);
@@ -371,6 +391,19 @@ private:
         } else {
             Fail(std::format("unknown directive '{}'", code.substr(0, word)));
         }
+    }
+
+    void checksumDirective(std::string_view args) {
+        if (!args.empty()) {
+            Fail(".checksum takes no value");
+        }
+        if (pass_ == 1 && checksumAt_) {
+            Fail(".checksum given twice");
+        }
+        if (pc_ && rom_) {
+            checksumAt_ = static_cast<std::size_t>(*pc_ - base_);
+        }
+        emit(checksum_);
     }
 
     void romDirective(std::string_view args) {
@@ -851,6 +884,8 @@ private:
     int digits_ = 3;
     std::vector<std::uint8_t> words_;
     std::vector<bool> written_;
+    std::optional<std::size_t> checksumAt_;  // offset of the .checksum byte in words_
+    std::uint8_t checksum_ = 0;              // its value: 0 until pass 2 has summed the rest
 
     std::vector<std::uint8_t> emitted_;  // this line's bytes (pass 2)
     std::int64_t lineAddress_ = 0;
