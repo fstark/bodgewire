@@ -222,7 +222,7 @@ Titles and briefs:
 - Three lights: "D1, D2 and D5 are lit and stay lit: the light never moves."
 - First light: "D1 lights, but the light never moves on: it starts again at D1 every time."
 - Lightless: "The LEDs never light."
-- Blackout: "No light runs: the LEDs stay dark, or now and then a few light up at once and stay lit."
+- Blackout: "The LEDs never light."
 
 Four Puzzles show dark LEDs on purpose: from outside they are alike, the instruments tell them apart (the program running or not, `RES_N`, `LATCH_CLK` at each end, `ROM_N` against what `U2` drives).
 
@@ -234,7 +234,7 @@ Four Puzzles show dark LEDs on purpose: from outside they are alike, the instrum
 - Three lights: `LATCH_N` and `WR_N` one Net, low whenever either output is: every write cycle also makes `LATCH_CLK`. The last write before the delay is `JSR`'s push of its return address low byte, `$13` (the return address is `$F813`), which stays on the LEDs. A new `U6` gives the same.
 - First light: P5g's stack cell; `RTS` goes to `$7814`, the open bus reads `$FF`, the 6502 runs it up to `$E000` (the ROM's mirror of `$F800`) and the program starts again.
 - Lightless: P5g's internal address line; `light` and `dir` share a nibble, `sta dir` clears the light; `RTS` goes to erased ROM, which runs on to the start.
-- Blackout: `ROM_N` is right on its Net; `U2` reads it as 1 and never drives the bus. The CPU runs the open bus and the RAMs' random power-on contents: seed-dependent wandering that mostly never writes `$8000`–`$9FFF`; on about one power-on in six it writes there once and the LEDs freeze on a random pattern (seed 8: `$46` from about 146 ms). No seed shows a moving light.
+- Blackout: `ROM_N` is right on its Net; `U2` reads it as 1 and never drives the bus. The CPU runs the open bus and the RAMs' random power-on contents. On seed 1, the one `bw_ui` powers on with, it never writes `$8000`–`$9FFF`: dark LEDs. Other seeds (the Debug panel's Seed) wander differently: about one in six writes there once and the LEDs freeze on a random pattern (seed 8: `$46` from about 146 ms); none shows a moving light, so the Puzzle still reads as broken.
 
 The test (`tests/machines/led_computer_test.cpp`) checks each symptom (the latch byte, `RES_N`, `LATCH_CLK` at each end) on seeds 1–3 where it does not depend on the seed, then the repair: the light at `D1`, `D2`, `D3`. Full house and Three lights swap the chip first, which does not help.
 

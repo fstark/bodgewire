@@ -46,7 +46,7 @@ Seven Puzzles (P5h), each a different link. Four of them leave the LEDs dark: al
 - Three lights: `LATCH_N` bridged to `WR_N` at `U6`: every write also loads the latch, the LEDs show the stack (`$13`, the low byte of `JSR`'s return address). A new `U6` does not help.
 - First light: a stuck cell in the stack (`U4`, bit 7 of `$1FF`): the first `RTS` goes astray and the program starts again, so `D1` lights again and again.
 - Lightless: `U3` ignores its `A0` (an internal address line): `light` and `dir` share a cell, `sta dir` clears the light, the LEDs stay dark. Of the 2114's address lines only `A0` shows with this program; the others alias words it never uses.
-- Blackout: `U2` reads `CE_N` stuck high: the program is never read and the CPU wanders. Mostly dark; on some power-ons a random pattern freezes on the LEDs.
+- Blackout: `U2` reads `CE_N` stuck high: the program is never read and the CPU wanders. Dark LEDs (the player's seed 1; other seeds may freeze a random pattern).
 
 Files, Fault lines and Nets: [LED_COMPUTER_DESIGN.md](LED_COMPUTER_DESIGN.md#puzzles).
 

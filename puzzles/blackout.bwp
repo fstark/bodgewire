@@ -1,8 +1,8 @@
 # Blackout: U2 reads CE_N stuck at 1: the ROM never answers, so the CPU never reads the program: it
-# runs whatever the open bus and the RAM's random power-on contents give it. Mostly it never writes
-# the LEDs; on some power-ons it stumbles on a write to $8000-$9FFF and freezes a random pattern
-# there. ROM_N itself is right.
+# runs whatever the open bus and the RAM's random power-on contents give it, and on seed 1 never
+# writes the LEDs. Another seed (Debug) may write $8000-$9FFF once and freeze a random pattern there.
+# ROM_N itself is right.
 machine led_computer
 title "Blackout"
-brief "No light runs: the LEDs stay dark, or now and then a few light up at once and stay lit."
+brief "The LEDs never light."
 fault stuck U2.CE_N 1
