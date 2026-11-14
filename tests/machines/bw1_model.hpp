@@ -15,6 +15,10 @@ namespace bw {
 // GETKEY codes of the keys that are not hex digits (KIM listing).
 inline constexpr int kKeyAd = 0x10, kKeyDa = 0x11, kKeyPlus = 0x12, kKeyGo = 0x13, kKeyPc = 0x14;
 
+// A digit's lit segments (bit 0 = a, from PA0, ... bit 6 = g) as text: 0-9 A-F, 'P', '-', ' ',
+// else '?' (S and 5 are the same segments).
+char Bw1DigitChar(std::uint8_t segments);
+
 // The KIM-1 as the BW-1's ROMs see it (docs/p5k-bw1-monitor/BW1_MONITOR.md, "The KIM it runs
 // on"), around Mos6502Core: one bus cycle a microsecond. Not the netlist (P5l): the 6530s' ports
 // and RAM, the 1K RAM, U24, keypad, strap, ST, SST and the six digits, modelled.

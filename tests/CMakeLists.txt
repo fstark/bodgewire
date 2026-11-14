@@ -40,6 +40,7 @@ add_executable(bw_tests
   machines/board_repair_test.cpp
   machines/bus_load_test.cpp
   machines/bw1_model.cpp
+  machines/bw1_test.cpp
   machines/bw1_model_test.cpp
   machines/bw1_monitor_test.cpp
   machines/bw1_selftest_test.cpp

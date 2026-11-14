@@ -26,18 +26,26 @@ std::vector<std::uint8_t> LoadRom(std::string_view name) {
     return *words;
 }
 
-// Segment patterns (PA0 = a ... PA6 = g) and what display() shows for them.
-struct Glyph {
-    std::uint8_t segments;
-    char shown;
-};
-constexpr std::array<Glyph, 19> kGlyphs{{
-    {0x3F, '0'}, {0x06, '1'}, {0x5B, '2'}, {0x4F, '3'}, {0x66, '4'}, {0x6D, '5'}, {0x7D, '6'},
-    {0x07, '7'}, {0x7F, '8'}, {0x6F, '9'}, {0x77, 'A'}, {0x7C, 'B'}, {0x39, 'C'}, {0x5E, 'D'},
-    {0x79, 'E'}, {0x71, 'F'}, {0x73, 'P'}, {0x40, '-'}, {0x00, ' '},
-}};
-
 }  // namespace
+
+char Bw1DigitChar(std::uint8_t segments) {
+    // Segment patterns (PA0 = a ... PA6 = g) and what they show.
+    struct Glyph {
+        std::uint8_t segments;
+        char shown;
+    };
+    constexpr std::array<Glyph, 19> kGlyphs{{
+        {0x3F, '0'}, {0x06, '1'}, {0x5B, '2'}, {0x4F, '3'}, {0x66, '4'}, {0x6D, '5'}, {0x7D, '6'},
+        {0x07, '7'}, {0x7F, '8'}, {0x6F, '9'}, {0x77, 'A'}, {0x7C, 'B'}, {0x39, 'C'}, {0x5E, 'D'},
+        {0x79, 'E'}, {0x71, 'F'}, {0x73, 'P'}, {0x40, '-'}, {0x00, ' '},
+    }};
+    for (const Glyph& g : kGlyphs) {
+        if (g.segments == segments) {
+            return g.shown;
+        }
+    }
+    return '?';
+}
 
 Bw1Model::Bw1Model(std::uint64_t seed)
     : rom002_(LoadRom("bw1_002.rom")), rom003_(LoadRom("bw1_003.rom")),
@@ -166,13 +174,7 @@ std::string Bw1Model::display(std::uint64_t us) {
                 segments = static_cast<std::uint8_t>(segments | (1u << s));
             }
         }
-        char c = '?';
-        for (const Glyph& g : kGlyphs) {
-            if (g.segments == segments) {
-                c = g.shown;
-            }
-        }
-        shown += c;
+        shown += Bw1DigitChar(segments);
     }
     return shown;
 }

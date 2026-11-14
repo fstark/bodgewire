@@ -50,9 +50,9 @@ Commit: `docs: P5l implemented, user check pending`
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Lamps with two cathodes, `DIGITCC` | |
-| 2 | `SLIDE` | |
-| 3 | Netlist, manuals, fault-free tests | |
+| 1 | Lamps with two cathodes, `DIGITCC` | `e88bc09` |
+| 2 | `SLIDE` | `e88bc09` (with phase 1) |
+| 3 | Netlist, manuals, fault-free tests | this commit |
 | 4 | Board (user routes) | |
 | 5 | Session test, release check | |
 | 6 | Recipes, docs, full suite | |
@@ -61,3 +61,5 @@ Commit: `docs: P5l implemented, user check pending`
 
 - Docs review (before the docs commit), fixed: `DIGIT-CC` is not a part name (`IsPartName`: letters and digits): `DIGITCC`; a Bodge Wire to an unconnected pad joins no Net (`ElectricalNetlist` builds from connections): the strap pin on a one-pin Net `STRAP`, and the netlist-level strap test rewrites that line; the SST case's second step shows RAM's byte at `$0204`; the strap test times counted from power-on (POR 20 ms); `--press` needs a unit and a start after 0 (`1ms`); the slide's click reuses `latchToggle_`, clears `pressed_`, and the keycap test; no default PC key for a one-character slide legend, the legend error names the Part; the Session Clips named; `manuals` in the early fences; the footprint test named; debug costs; 16 grid chips; three `NMI_N` Drivers; `X1` in the manual's order. The Session case for `DIGITCC` alone dropped: a Session's lamps need a Board.
 - Drafted while the review ran: phases 1–3 code and the Board placement.
+- Phases 1 and 2: one commit, as `catalogue.cpp` carries both; fence 278 green. A one-pin Net (`STRAP`) gives no builder warning.
+- Phase 3: every case passed first time but the SST one, whose expectation was wrong (fixed in the docs review). Release headless `bw run --time 2s`: **2.55×** idle, **2.53×** with key `0` held (`--press SW1:1ms:2s`). Debug: reset 4 s, RS 9 s, typing cases 18–31 s, the strap case 83 s. Manuals: pin names (`RS0`, `CS1`) and the undriven `A13`–`A15` are not backticked (unknown references).
