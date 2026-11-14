@@ -12,7 +12,7 @@
 #include "../machine/test_points.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
-#include "parts/button.hpp"
+#include "parts/switch.hpp"
 #include "sim/simulator.hpp"
 
 using namespace bw;
@@ -159,7 +159,7 @@ TEST_CASE("heartbeat: the top LED blinks", "[machines][slow]") {
 
 TEST_CASE("heartbeat: reset starts at EAEA", "[machines]") {
     Run run(1);
-    Button* button = ButtonOf(*run.loaded, "SW1");
+    Switch* button = SwitchOf(*run.loaded, "SW1");
     REQUIRE(button != nullptr);
     run.sim->runUntil(50_us);
     button->setPressed(true);

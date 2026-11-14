@@ -7,8 +7,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "parts/button.hpp"
 #include "parts/catalogue.hpp"
+#include "parts/switch.hpp"
 #include "sim/circuit.hpp"
 #include "sim/primitives.hpp"
 #include "sim/simulator.hpp"
@@ -59,9 +59,12 @@ TEST_CASE("POR: low from power-on for its time, then released to the pull-up", "
     circuit.tie(rst, One, DriveStrength::Weak);
     auto& por = circuit.add<PowerOnReset>("U1", 20_us);
     circuit.connect(por, PowerOnReset::kRstN, rst);
-    auto& button = *static_cast<Button*>(*FindPart("BUTTON")->create(circuit, "SW1", {}));
-    button.attach(0, Zero);
-    circuit.connect(button, "1", rst);
+    auto& button = *static_cast<Switch*>(*FindPart("BUTTON")->create(circuit, "SW1", {}));
+    const std::vector<std::string> nets{"GND", "RES_N"};
+    auto& network = circuit.add<SwitchNetwork>(nets);
+    circuit.connect(network, 0, gnd);
+    circuit.connect(network, 1, rst);
+    network.add(button, 0, 1);
     circuit.finalize();
     for (const std::uint64_t seed : {1u, 2u, 3u}) {
         Simulator sim(circuit);

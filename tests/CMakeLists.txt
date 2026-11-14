@@ -66,7 +66,6 @@ add_executable(bw_tests
   netlist/ram_bench_test.cpp
   netlist/sample_test.cpp
   netlist/units_test.cpp
-  parts/button_test.cpp
   parts/catalogue_test.cpp
   parts/connector_test.cpp
   parts/digit_test.cpp
@@ -99,6 +98,7 @@ add_executable(bw_tests
   parts/rom_test.cpp
   parts/shift_register_2518_test.cpp
   parts/shift_register_2524_test.cpp
+  parts/switch_test.cpp
   parts/z80_stub_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp

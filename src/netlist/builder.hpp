@@ -13,9 +13,9 @@
 
 #include "netlist/diagnostic.hpp"
 #include "netlist/parser.hpp"
-#include "parts/button.hpp"
 #include "parts/keyboard.hpp"
 #include "parts/paddle.hpp"
+#include "parts/switch.hpp"
 #include "sim/circuit.hpp"
 
 namespace bw {
@@ -61,11 +61,18 @@ struct StuckCell {
     LogicValue value;
 };
 
+// Switch Fault (P5i): the switch is stuck closed (`closed`) or never closes.
+struct StuckSwitch {
+    std::string reference;
+    bool closed;
+};
+
 // `unpowered`: References of chips (and PADDLE controllers) left out of the Circuit's Nets (outputs
 // Z, inputs ignored).
 LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck = {},
                         std::span<const std::string> unpowered = {},
-                        std::span<const StuckCell> cells = {});  // all errors, by line
+                        std::span<const StuckCell> cells = {},
+                        std::span<const StuckSwitch> switches = {});  // all errors, by line
 LoadResult LoadNetlist(std::string_view text, std::string file);
 LoadResult LoadNetlistFile(const std::filesystem::path& path);  // diagnostics name the file only
 
@@ -90,9 +97,9 @@ std::optional<double> RailVolts(const LoadedCircuit& loaded, NetId net);
 
 bool IsRail(std::string_view net);  // "GND" or "VCC"
 
-// The Button Part `reference` of this build; nullptr if none (unknown, not a Button, or left out
-// of an electrical build).
-Button* ButtonOf(const LoadedCircuit& loaded, std::string_view reference);
+// The switch (BUTTON or KEY) `reference` of this build; nullptr if none (unknown, or not a
+// switch).
+Switch* SwitchOf(const LoadedCircuit& loaded, std::string_view reference);
 
 // The PADDLE Part `reference` of this build; nullptr if none (unknown or not a PADDLE).
 Paddle* PaddleOf(const LoadedCircuit& loaded, std::string_view reference);

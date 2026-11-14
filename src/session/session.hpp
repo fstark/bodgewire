@@ -62,6 +62,11 @@ struct TestLead {
     std::string label;  // "U1.14 QA", "Trace", "via"
 };
 
+struct SwitchKey {
+    std::string reference;
+    std::string pc;  // IsPcKey
+};
+
 struct LedLight {
     std::string reference;  // "D1", "DS1"
     LampShape shape;        // which lamp of the Part
@@ -160,8 +165,10 @@ public:
     // powered or not watched (an unconnected lamp).
     std::vector<LedLight> leds() const;
 
-    // Every Button Part of the circuit, in netlist order.
-    std::vector<std::string> buttons() const;
+    // Every switch (BUTTON, KEY) of the circuit, in netlist order.
+    std::vector<std::string> switches() const;
+    // Switches with a PC key (`pc=`), in netlist order.
+    std::vector<SwitchKey> switchKeys() const;
     // Ignored while not powered. Applied at the next slice boundary; power-off releases all.
     void setPressed(std::string_view reference, bool pressed);
     bool pressed(std::string_view reference) const { return pressed_.contains(reference); }

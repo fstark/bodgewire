@@ -242,7 +242,7 @@ TEST_CASE("runner: wake applies a button press at the next slice", "[runner]") {
                               "t.bwn");
     REQUIRE(result.has_value());
     const NetId signal = (*result)->nets.at("BTN_N");
-    Button* button = ButtonOf(**result, "SW1");
+    Switch* button = SwitchOf(**result, "SW1");
     REQUIRE(button != nullptr);
     SampleLog log(signal);
     Runner runner((*result)->circuit, {&log});
@@ -257,7 +257,7 @@ TEST_CASE("runner: wake applies a button press at the next slice", "[runner]") {
     REQUIRE_FALSE(log.samples.empty());
     const Sample& last = log.samples.back();
     CHECK(last.value == LogicValue::Zero);
-    CHECK(last.time == 2_ms + kButtonDelay);
+    CHECK(last.time == 2_ms + kPressLatency);
 }
 
 namespace {

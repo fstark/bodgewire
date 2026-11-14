@@ -1,17 +1,19 @@
 #include "netlist/builder.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <optional>
 #include <set>
 #include <utility>
 
-#include "parts/button.hpp"
 #include "parts/catalogue.hpp"
 #include "parts/connector.hpp"
 #include "parts/memory_cells.hpp"
+#include "parts/switch.hpp"
 #include "sim/check.hpp"
 
 namespace bw {
@@ -46,9 +48,10 @@ void SortByLine(std::vector<Diagnostic>& diagnostics) {
 class Builder {
 public:
     explicit Builder(const Netlist& netlist, std::span<const StuckPin> stuck,
-                     std::span<const std::string> unpowered, std::span<const StuckCell> cells)
+                     std::span<const std::string> unpowered, std::span<const StuckCell> cells,
+                     std::span<const StuckSwitch> switches)
         : netlist_(netlist), stuck_(stuck), unpowered_(unpowered), cells_(cells),
-          loaded_(std::make_unique<LoadedCircuit>()) {}
+          switches_(switches), loaded_(std::make_unique<LoadedCircuit>()) {}
 
     LoadResult build() {
         Circuit& circuit = loaded_->circuit;
@@ -58,7 +61,7 @@ public:
         connectNets();
         addImplicitPower();
         tieResistors();
-        wireButtons();
+        wireSwitches();
         if (!errors_.empty()) {
             SortByLine(errors_);
             return std::unexpected(std::move(errors_));
@@ -81,7 +84,7 @@ public:
                     circuit.tie(net.net, s->value, DriveStrength::Strong);
                 }  // a stuck input: on its own Net below
             } else if (notConnected_.contains(pin)) {
-                // a Button's rail end: the Button drives the signal end only
+                // a switch's second leg: on a Net of its own, as the P4d button's rail end
             } else if (part.component != nullptr) {
                 circuit.connect(*part.component, pin.second, net.net);
             }
@@ -112,6 +115,11 @@ public:
                 }
             }
             loaded_->parts.push_back({decl.reference, part.info, std::move(value)});
+        }
+        for (const StuckSwitch& s : switches_) {
+            Switch* sw = SwitchOf(*loaded_, s.reference);
+            Check(sw != nullptr, "builder: switch Fault on a Part that is not a switch");
+            sw->setFault(s.closed ? SwitchFault::StuckClosed : SwitchFault::NeverCloses);
         }
         warnUnconnectedInputs();
         circuit.finalize();
@@ -309,27 +317,71 @@ private:
         }
     }
 
-    // Same rule as resistors: one pin on a rail, the other on a signal Net.
-    void wireButtons() {
-        for (const auto& [reference, part] : placed_) {
-            if (part.info == nullptr || part.info->kind != PartKind::Button ||
+    // Switches (P5i): one leg connected to its Net as a never-driving Output and the other left
+    // on a Net of its own, as the P4d button's signal and rail ends were (the same Nets and
+    // random draws); the SwitchNetwork gets a Switched Pin on every Net a leg is listed on.
+    void wireSwitches() {
+        struct Legs {
+            Switch* member;
+            std::array<std::optional<NetId>, 2> nets;
+        };
+        std::vector<Legs> switches;
+        std::map<std::string, std::string, std::less<>> pcTaken;  // PC key → reference
+        for (const PartDecl& decl : netlist_.parts) {
+            const PlacedPart& part = placed_.find(decl.reference)->second;
+            if (part.info == nullptr || part.info->kind != PartKind::Switch ||
                 part.component == nullptr) {
                 continue;
             }
-            const auto a = pinNet_.find({reference, 0});
-            const auto b = pinNet_.find({reference, 1});
-            if (a == pinNet_.end() || b == pinNet_.end() ||
-                IsRail(a->second.name) == IsRail(b->second.name)) {
-                error(part.decl->line, reference +
-                                           ": a button needs one pin on GND or VCC and the other "
-                                           "on a signal net");
-                continue;
+            auto& sw = static_cast<Switch&>(*part.component);
+            if (!sw.pcKey().empty()) {
+                const auto [it, added] = pcTaken.emplace(sw.pcKey(), decl.reference);
+                if (!added) {
+                    error(decl.line, decl.reference + ": PC key " + std::string(sw.pcKey()) +
+                                         " is already " + it->second + "'s");
+                }
             }
-            const PinIndex rail = IsRail(a->second.name) ? 0 : 1;
-            const std::string_view railNet = (rail == 0 ? a : b)->second.name;
-            static_cast<Button&>(*part.component)
-                .attach(1 - rail, railNet == "VCC" ? LogicValue::One : LogicValue::Zero);
-            notConnected_.insert({reference, rail});
+            Legs legs{&sw, {}};
+            for (PinIndex leg = 0; leg < 2; ++leg) {
+                if (const auto it = pinNet_.find({decl.reference, leg}); it != pinNet_.end()) {
+                    legs.nets[leg] = it->second.net;
+                }
+            }
+            const auto onRail = [&](PinIndex leg) {
+                const auto it = pinNet_.find({decl.reference, leg});
+                return it != pinNet_.end() && IsRail(it->second.name);
+            };
+            notConnected_.insert({decl.reference, !onRail(0) || onRail(1) ? 1u : 0u});
+            switches.push_back(legs);
+        }
+        std::vector<NetId> nets;
+        for (const Legs& legs : switches) {
+            if (legs.nets[0] && legs.nets[1] && *legs.nets[0] != *legs.nets[1]) {
+                nets.push_back(*legs.nets[0]);
+                nets.push_back(*legs.nets[1]);
+            }
+        }
+        std::ranges::sort(nets);
+        nets.erase(std::unique(nets.begin(), nets.end()), nets.end());
+        if (nets.empty()) {
+            return;
+        }
+        Circuit& circuit = loaded_->circuit;
+        std::vector<std::string> names;
+        for (const NetId net : nets) {
+            names.emplace_back(circuit.netName(net));
+        }
+        auto& network = circuit.add<SwitchNetwork>(names);
+        for (PinIndex p = 0; p < nets.size(); ++p) {
+            circuit.connect(network, p, nets[p]);
+        }
+        const auto pinOf = [&](NetId net) {
+            return static_cast<PinIndex>(std::ranges::lower_bound(nets, net) - nets.begin());
+        };
+        for (const Legs& legs : switches) {
+            if (legs.nets[0] && legs.nets[1] && *legs.nets[0] != *legs.nets[1]) {
+                network.add(*legs.member, pinOf(*legs.nets[0]), pinOf(*legs.nets[1]));
+            }
         }
     }
 
@@ -356,6 +408,7 @@ private:
     std::span<const StuckPin> stuck_;
     std::span<const std::string> unpowered_;
     std::span<const StuckCell> cells_;
+    std::span<const StuckSwitch> switches_;
     std::unique_ptr<LoadedCircuit> loaded_;
     std::map<std::string, PlacedPart, std::less<>> placed_;  // by reference
     std::map<std::pair<std::string, PinIndex>, NetOfPin> pinNet_;
@@ -368,8 +421,9 @@ private:
 bool IsRail(std::string_view net) { return net == "GND" || net == "VCC"; }
 
 LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck,
-                        std::span<const std::string> unpowered, std::span<const StuckCell> cells) {
-    return Builder(netlist, stuck, unpowered, cells).build();
+                        std::span<const std::string> unpowered, std::span<const StuckCell> cells,
+                        std::span<const StuckSwitch> switches) {
+    return Builder(netlist, stuck, unpowered, cells, switches).build();
 }
 
 LoadResult LoadNetlist(std::string_view text, std::string file) {
@@ -443,13 +497,13 @@ std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view refere
     return loaded.circuit.netOf(PinId{ToIndex(component->second->firstPin()) + *index});
 }
 
-Button* ButtonOf(const LoadedCircuit& loaded, std::string_view reference) {
+Switch* SwitchOf(const LoadedCircuit& loaded, std::string_view reference) {
     const auto part = std::ranges::find(loaded.parts, reference, &LoadedPart::reference);
-    if (part == loaded.parts.end() || part->info->kind != PartKind::Button) {
+    if (part == loaded.parts.end() || part->info->kind != PartKind::Switch) {
         return nullptr;
     }
     const auto component = loaded.components.find(reference);
-    return component == loaded.components.end() ? nullptr : static_cast<Button*>(component->second);
+    return component == loaded.components.end() ? nullptr : static_cast<Switch*>(component->second);
 }
 
 Paddle* PaddleOf(const LoadedCircuit& loaded, std::string_view reference) {

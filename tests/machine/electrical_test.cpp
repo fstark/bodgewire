@@ -15,6 +15,7 @@
 #include "machine/crack.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
+#include "sim/simulator.hpp"
 #include "test_points.hpp"
 
 using namespace bw;
@@ -142,17 +143,24 @@ TEST_CASE("electrical: pull-up cut from VCC is left out", "[machine]") {
     CHECK(BuildCircuit(netlist).has_value());
 }
 
-TEST_CASE("electrical: button cut from GND is left out", "[machine]") {
+TEST_CASE("electrical: button cut from GND joins its signal to a dead island", "[machine]") {
     const Design design = LoadDesign("dice");
     const Netlist netlist = ElectricalNetlist(design.netlist, *design.circuit,
                                               CrackBoard(design.board, {&Sw1GndCrack(), 1}));
-    for (const PartDecl& part : netlist.parts) {
-        CHECK(part.reference != "SW1");
-    }
-    CHECK(NetOf(netlist, "SW1.1").empty());
+    CHECK(
+        std::ranges::any_of(netlist.parts, [](const PartDecl& p) { return p.reference == "SW1"; }));
+    CHECK(NetOf(netlist, "SW1.1") == "BTN_N");
+    CHECK(NetOf(netlist, "SW1.2").starts_with("GND~"));
     const auto built = BuildCircuit(netlist);
     REQUIRE(built.has_value());
-    CHECK(ButtonOf(**built, "SW1") == nullptr);
+    Switch* button = SwitchOf(**built, "SW1");
+    REQUIRE(button != nullptr);
+    Simulator sim((*built)->circuit);
+    sim.powerOn(1);
+    button->setPressed(true);
+    sim.wake(button->id());
+    sim.runUntil(1'000'000);
+    CHECK(sim.value((*built)->nets.at("BTN_N")) == LogicValue::One);  // pulled up, still
 }
 
 TEST_CASE("electrical: button alone on its signal island stays in", "[machine]") {
@@ -165,7 +173,7 @@ TEST_CASE("electrical: button alone on its signal island stays in", "[machine]")
     CHECK(NetOf(netlist, "SW1.2") == "GND");
     const auto built = BuildCircuit(netlist);
     REQUIRE(built.has_value());
-    CHECK(ButtonOf(**built, "SW1") != nullptr);
+    CHECK(SwitchOf(**built, "SW1") != nullptr);
 }
 
 namespace {

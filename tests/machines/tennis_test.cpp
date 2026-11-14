@@ -259,7 +259,7 @@ std::unique_ptr<LoadedCircuit> BoardCircuit() {
 
 // Presses Start for 2 ms at `at`.
 StepHook PressStart(LoadedCircuit& loaded, Time at) {
-    Button* button = ButtonOf(loaded, "SW1");
+    Switch* button = SwitchOf(loaded, "SW1");
     REQUIRE(button != nullptr);
     return [button, at](Simulator& sim) {
         if (sim.now() == at || sim.now() == at + 2_ms) {
@@ -860,7 +860,7 @@ TEST_CASE("tennis: game over", "[machines][slow]") {
                bit(sim, "SERVING") == 0;
     });
     Player player(*PaddleOf(*loaded, "J3"), *PaddleOf(*loaded, "J4"), 8, +1);
-    Button* button = ButtonOf(*loaded, "SW1");
+    Switch* button = SwitchOf(*loaded, "SW1");
     REQUIRE(button != nullptr);
     Time over = 0;  // GAME_OVER rose
     int right = -1;

@@ -2,10 +2,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstddef>
+#include <optional>
 #include <utility>
 
-#include "parts/button.hpp"
 #include "parts/connector.hpp"
 #include "parts/digit.hpp"
 #include "parts/gate_package.hpp"
@@ -34,6 +35,7 @@
 #include "parts/rom_contents.hpp"
 #include "parts/shift_register_2518.hpp"
 #include "parts/shift_register_2524.hpp"
+#include "parts/switch.hpp"
 #include "parts/z80_stub.hpp"
 
 namespace bw {
@@ -204,12 +206,46 @@ std::expected<Component*, std::string> CreateLed(Circuit& circuit, std::string r
     return &circuit.add<Led>(std::move(reference));
 }
 
-std::expected<Component*, std::string> CreateButton(Circuit& circuit, std::string reference,
+// BUTTON: `pc=`; KEY: `legend=` (1-4 printable characters, not '#') and `pc=`, which defaults
+// to a one-character legend.
+template <PartName Name>
+std::expected<Component*, std::string> CreateSwitch(Circuit& circuit, std::string reference,
                                                     std::span<const PartParam> params) {
-    if (!params.empty()) {
-        return std::unexpected("BUTTON takes no parameters");
+    const std::string name(Name.view());
+    const bool key = name == "KEY";
+    std::optional<std::string> legend, pc;
+    for (const PartParam& param : params) {
+        std::optional<std::string>* slot = param.name == "pc"              ? &pc
+                                           : key && param.name == "legend" ? &legend
+                                                                           : nullptr;
+        if (slot == nullptr) {
+            return std::unexpected(name + (key ? " takes legend= and pc=" : " takes pc=") +
+                                   ", not " + param.name + "=");
+        }
+        if (slot->has_value()) {
+            return std::unexpected(name + ": " + param.name + "= given twice");
+        }
+        *slot = param.value;
     }
-    return &circuit.add<Button>(std::move(reference));
+    if (legend &&
+        (legend->empty() || legend->size() > 4 ||
+         !std::ranges::all_of(*legend, [](char c) { return c > ' ' && c < 0x7F && c != '#'; }))) {
+        return std::unexpected("KEY legend= takes 1 to 4 printable characters, not '" + *legend +
+                               "'");
+    }
+    if (pc && !IsPcKey(*pc)) {
+        return std::unexpected(name + ": unknown PC key '" + *pc +
+                               "' (one character, Space, Enter, Tab, Backspace, Escape, Up, "
+                               "Down, Left or Right)");
+    }
+    if (!pc && legend && IsPcKey(*legend) && legend->size() == 1) {
+        pc = legend;
+    }
+    std::string pcKey = pc.value_or("");
+    if (pcKey.size() == 1) {
+        pcKey[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(pcKey[0])));
+    }
+    return &circuit.add<Switch>(std::move(reference), legend.value_or(""), std::move(pcKey));
 }
 
 std::expected<Component*, std::string> CreateDigit(Circuit& circuit, std::string reference,
@@ -274,9 +310,10 @@ constexpr std::array s_parts{
     PartInfo{"74LS86", "quad 2-input XOR", "DIP-14", Chip, &CreateGatePackage<"74LS86">},
     PartInfo{"74LS90", "decade counter", "DIP-14", Chip, &CreateChip<Ls90, "74LS90">},
     PartInfo{"74LS93", "4-bit binary counter", "DIP-14", Chip, &CreateChip<Ls93, "74LS93">},
-    PartInfo{"BUTTON", "push button", "TACT-6x3.5", Button, &CreateButton},
+    PartInfo{"BUTTON", "push button", "TACT-6x3.5", Switch, &CreateSwitch<"BUTTON">},
     PartInfo{"DIGIT", "red 0.56-inch 7-segment digit, common anode", "DIGIT-0.56", Led,
              &CreateDigit, kDigitLamps},
+    PartInfo{"KEY", "key switch", "MX-1U", Switch, &CreateSwitch<"KEY">},
     PartInfo{"KEYBOARD", "ASCII keyboard connector", "KK-10", Connector, &CreateKeyboard},
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},

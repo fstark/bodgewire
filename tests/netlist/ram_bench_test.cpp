@@ -39,7 +39,7 @@ struct Bench {
 
     // SW1 held for 10 µs, then 10 µs to settle.
     void reset() {
-        Button* button = ButtonOf(*loaded, "SW1");
+        Switch* button = SwitchOf(*loaded, "SW1");
         button->setPressed(true);
         sim.wake(button->id());
         sim.runUntil(sim.now() + 10_us);

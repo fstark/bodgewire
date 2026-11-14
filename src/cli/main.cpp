@@ -493,12 +493,12 @@ int Run(std::span<char*> args) {
     };
     std::vector<InputEdge> edges;
     for (const ButtonPress& press : options.press) {
-        Button* button = ButtonOf(loaded, press.reference);
-        if (button == nullptr) {
-            return UsageError("'" + press.reference + "' is not a button");
+        Switch* sw = SwitchOf(loaded, press.reference);
+        if (sw == nullptr) {
+            return UsageError("'" + press.reference + "' is not a switch");
         }
-        edges.push_back({press.down, button->id(), [button] { button->setPressed(true); }});
-        edges.push_back({press.up, button->id(), [button] { button->setPressed(false); }});
+        edges.push_back({press.down, sw->id(), [sw] { sw->setPressed(true); }});
+        edges.push_back({press.up, sw->id(), [sw] { sw->setPressed(false); }});
     }
     for (const Typing& typing : options.type) {
         Keyboard* keyboard = KeyboardOf(loaded, typing.reference);

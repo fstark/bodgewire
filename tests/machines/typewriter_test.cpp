@@ -21,11 +21,11 @@
 #include "machine/machine.hpp"
 #include "machine/puzzle.hpp"
 #include "netlist/builder.hpp"
-#include "parts/button.hpp"
 #include "parts/keyboard.hpp"
 #include "parts/rom_contents.hpp"
 #include "parts/shift_register_2518.hpp"
 #include "parts/shift_register_2524.hpp"
+#include "parts/switch.hpp"
 #include "sim/simulator.hpp"
 
 using namespace bw;
@@ -186,7 +186,7 @@ struct Typewriter {
 
     // Clear (SW1) held for 25 ms, more than a frame, then released.
     void clear() {
-        Button* button = ButtonOf(*loaded, "SW1");
+        Switch* button = SwitchOf(*loaded, "SW1");
         button->setPressed(true);
         sim.wake(button->id());
         sim.runFor(25_ms);

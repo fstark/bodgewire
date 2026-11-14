@@ -1,5 +1,4 @@
 add_library(bw_parts STATIC
-  button.cpp
   catalogue.cpp
   connector.cpp
   digit.cpp
@@ -30,6 +29,7 @@ add_library(bw_parts STATIC
   rom_contents.cpp
   shift_register_2518.cpp
   shift_register_2524.cpp
+  switch.cpp
   z80_stub.cpp
 )
 target_link_libraries(bw_parts PUBLIC bw_sim PRIVATE bw_warnings)

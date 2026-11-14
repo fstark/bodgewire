@@ -489,7 +489,7 @@ TEST_CASE("builder: a button pulls its signal to the rail while pressed", "[netl
         const NetId gnd = loaded.nets.at("GND");
         const NetId signal = loaded.nets.at("BTN_N");
         CHECK((PinNet(loaded, "SW1", "1") == gnd || PinNet(loaded, "SW1", "2") == gnd));
-        Button* button = ButtonOf(loaded, "SW1");
+        Switch* button = SwitchOf(loaded, "SW1");
         REQUIRE(button != nullptr);
         Simulator sim((*result)->circuit);
         sim.powerOn(1);
@@ -505,23 +505,70 @@ TEST_CASE("builder: a button pulls its signal to the rail while pressed", "[netl
     }
 }
 
-TEST_CASE("builder: a button needs one rail end", "[netlist]") {
-    const std::string message =
-        "2: SW1: a button needs one pin on GND or VCC and the other on a signal net";
-    CHECK(Errors("part U1 74LS04\npart SW1 BUTTON\nnet A SW1.1 U1.1A\nnet B SW1.2 U1.3A\n") ==
-          Lines{message});
-    CHECK(Errors("part U1 74LS04\npart SW1 BUTTON\nnet VCC SW1.1\nnet GND SW1.2\n") ==
-          Lines{message});
-    CHECK(Errors("part U1 74LS04\npart SW1 BUTTON\nnet GND SW1.1\n") == Lines{message});
+TEST_CASE("builder: a key joins two signals", "[netlist]") {
+    auto result = LoadNetlist("part R1 R value=4k7\npart SW1 KEY legend=1\npart U1 74LS04\n"
+                              "net VCC R1.1 U1.2A\nnet COL R1.2 SW1.2 U1.1A\nnet ROW SW1.1 U1.2Y\n"
+                              "net OUT U1.1Y\n",
+                              "t.bwn");
+    REQUIRE(result.has_value());
+    const LoadedCircuit& loaded = **result;
+    Switch* key = SwitchOf(loaded, "SW1");
+    REQUIRE(key != nullptr);
+    CHECK(key->attached());
+    Simulator sim((*result)->circuit);
+    sim.powerOn(1);
+    sim.runUntil(1_us);
+    CHECK(sim.value(loaded.nets.at("COL")) == One);
+    key->setPressed(true);
+    sim.wake(key->id());
+    sim.runUntil(2_us);
+    CHECK(sim.value(loaded.nets.at("COL")) == Zero);  // ROW is U1.2Y, its input high: low
+    CHECK(sim.value(loaded.nets.at("OUT")) == One);
 }
 
-TEST_CASE("builder: ButtonOf", "[netlist]") {
+TEST_CASE("builder: a switch leg on no Net is open", "[netlist]") {
+    for (const std::string_view text :
+         {std::string_view("part SW1 BUTTON\npart U1 74LS04\nnet A SW1.1 U1.1A\n"),
+          std::string_view("part SW1 BUTTON\npart U1 74LS04\nnet A SW1.1 SW1.2 U1.1A\n")}) {
+        auto result = LoadNetlist(text, "t.bwn");
+        REQUIRE(result.has_value());
+        Switch* sw = SwitchOf(**result, "SW1");
+        REQUIRE(sw != nullptr);
+        CHECK_FALSE(sw->attached());
+        Simulator sim((*result)->circuit);
+        sim.powerOn(1);
+        sw->setPressed(true);
+        sim.wake(sw->id());
+        sim.runUntil(1_us);  // nothing to join: no crash, nothing moves
+        CHECK(sim.value((*result)->nets.at("A")) == One);
+    }
+}
+
+TEST_CASE("builder: PC keys are unique", "[netlist]") {
+    CHECK(Errors("part SW1 KEY legend=G\npart SW2 KEY legend=GO pc=g\n") ==
+          Lines{"2: SW2: PC key G is already SW1's"});
+}
+
+TEST_CASE("builder: switch Faults reach the switch", "[netlist]") {
+    const auto netlist = ParseNetlist(std::string(kButtonNetlist), "t.bwn");
+    REQUIRE(netlist.has_value());
+    const StuckSwitch switches[] = {{"SW1", true}};
+    auto result = BuildCircuit(*netlist, {}, {}, {}, switches);
+    REQUIRE(result.has_value());
+    CHECK(SwitchOf(**result, "SW1")->fault() == SwitchFault::StuckClosed);
+    Simulator sim((*result)->circuit);
+    sim.powerOn(1);
+    sim.runUntil(1_us);
+    CHECK(sim.value((*result)->nets.at("BTN_N")) == Zero);
+}
+
+TEST_CASE("builder: SwitchOf", "[netlist]") {
     auto result = LoadNetlist(kButtonNetlist, "t.bwn");
     REQUIRE(result.has_value());
-    CHECK(ButtonOf(**result, "SW1") != nullptr);
-    CHECK(ButtonOf(**result, "R1") == nullptr);
-    CHECK(ButtonOf(**result, "U1") == nullptr);
-    CHECK(ButtonOf(**result, "SW9") == nullptr);
+    CHECK(SwitchOf(**result, "SW1") != nullptr);
+    CHECK(SwitchOf(**result, "R1") == nullptr);
+    CHECK(SwitchOf(**result, "U1") == nullptr);
+    CHECK(SwitchOf(**result, "SW9") == nullptr);
 }
 
 TEST_CASE("builder: stuck cells reach the memory", "[netlist]") {

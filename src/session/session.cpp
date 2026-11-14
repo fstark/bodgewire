@@ -139,8 +139,8 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
 
 void Session::powerOff() {
     for (const std::string& reference : pressed_) {
-        if (Button* button = ButtonOf(*live_->circuit, reference)) {
-            button->setPressed(false);
+        if (Switch* sw = SwitchOf(*live_->circuit, reference)) {
+            sw->setPressed(false);
         }
     }
     pressed_.clear();
@@ -538,15 +538,26 @@ std::vector<LedLight> Session::leds() const {
     return lights;
 }
 
-std::vector<std::string> Session::buttons() const {
+std::vector<std::string> Session::switches() const {
     std::vector<std::string> references;
     const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
     for (const LoadedPart& part : circuit.parts) {
-        if (part.info->kind == PartKind::Button) {
+        if (part.info->kind == PartKind::Switch) {
             references.push_back(part.reference);
         }
     }
     return references;
+}
+
+std::vector<SwitchKey> Session::switchKeys() const {
+    std::vector<SwitchKey> keys;
+    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
+    for (const std::string& reference : switches()) {
+        if (const Switch* sw = SwitchOf(circuit, reference); sw && !sw->pcKey().empty()) {
+            keys.push_back({reference, std::string(sw->pcKey())});
+        }
+    }
+    return keys;
 }
 
 void Session::setPressed(std::string_view reference, bool pressed) {
@@ -558,9 +569,9 @@ void Session::setPressed(std::string_view reference, bool pressed) {
     } else {
         pressed_.erase(pressed_.find(reference));
     }
-    if (Button* button = ButtonOf(*live_->circuit, reference)) {
-        button->setPressed(pressed);
-        live_->runner->wake(button->id(), PressJitter());
+    if (Switch* sw = SwitchOf(*live_->circuit, reference)) {
+        sw->setPressed(pressed);
+        live_->runner->wake(sw->id(), PressJitter());
     }
 }
 

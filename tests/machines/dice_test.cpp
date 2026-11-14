@@ -49,7 +49,7 @@ Face Read(const LoadedCircuit& loaded, const Simulator& sim) {
 
 // Seed 1, run 1 ms, hold SW1 for `held`, run 100 µs more.
 Face Roll(LoadedCircuit& loaded, Time held) {
-    Button* button = ButtonOf(loaded, "SW1");
+    Switch* button = SwitchOf(loaded, "SW1");
     REQUIRE(button != nullptr);
     button->setPressed(false);
     Simulator sim(loaded.circuit);
@@ -157,7 +157,7 @@ TEST_CASE("dice: dead_button", "[machines]") {
         const NetId atSwitch = *PinNet(loaded, "SW1", "1");
         const NetId atGate = *PinNet(loaded, "U4", "3");
         REQUIRE(atSwitch != atGate);
-        Button* button = ButtonOf(loaded, "SW1");
+        Switch* button = SwitchOf(loaded, "SW1");
         REQUIRE(button != nullptr);
         Simulator sim(loaded.circuit);
         sim.powerOn(1);

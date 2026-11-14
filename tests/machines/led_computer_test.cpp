@@ -14,9 +14,9 @@
 #include "../machine/test_points.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
-#include "parts/button.hpp"
 #include "parts/ram2114.hpp"
 #include "parts/rom_contents.hpp"
+#include "parts/switch.hpp"
 #include "sim/simulator.hpp"
 
 using namespace bw;
@@ -205,7 +205,7 @@ TEST_CASE("led_computer: the variables live in RAM", "[machines]") {
 
 TEST_CASE("led_computer: Reset restarts the light", "[machines]") {
     Run run(1);
-    Button* button = ButtonOf(*run.loaded, "SW1");
+    Switch* button = SwitchOf(*run.loaded, "SW1");
     REQUIRE(button != nullptr);
     const Time press = kPowerOnReset + 2 * kStep + 10_ms;  // the light at 0x04
     run.sim->runUntil(press);
@@ -307,7 +307,7 @@ TEST_CASE("led_computer: sleeper", "[machines][slow]") {
     Machine machine = LoadPuzzle("sleeper");
     {
         Run run(1, Build(machine));
-        Button* button = ButtonOf(*run.loaded, "SW1");
+        Switch* button = SwitchOf(*run.loaded, "SW1");
         REQUIRE(button != nullptr);
         run.sim->runUntil(kPowerOnReset + 50_ms);
         button->setPressed(true);  // Reset does not wake it

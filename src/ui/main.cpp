@@ -631,7 +631,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             }
             const auto toggled = boardView.takeLatchToggle();
             std::vector<ButtonTag> buttonTags;
-            for (const std::string& reference : session.buttons()) {
+            for (const std::string& reference : session.switches()) {
                 const auto component =
                     scene ? scene->componentIndex(reference) : std::optional<std::size_t>();
                 if (component && toggled == component && session.powered() &&

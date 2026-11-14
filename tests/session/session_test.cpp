@@ -735,7 +735,7 @@ TEST_CASE("session: tennis with every instrument", "[session][slow]") {
     CHECK(session.leds().empty());
     REQUIRE(session.tv() != nullptr);
     CHECK(session.knobs() == std::vector<std::string>{"J3", "J4"});
-    CHECK(session.buttons() == std::vector<std::string>{"SW1"});
+    CHECK(session.switches() == std::vector<std::string>{"SW1"});
 
     for (const char* chip : {"U48", "U49"}) {
         for (const char* pin : {"QA", "QB", "QC", "QD"}) {
@@ -887,14 +887,14 @@ TEST_CASE("session: buttons only press while powered", "[session]") {
     REQUIRE(loaded.has_value());
     Session session(std::nullopt, std::move(*loaded));
     session.setSpeed(Speed::Max);
-    CHECK(session.buttons() == std::vector<std::string>{"SW1"});
+    CHECK(session.switches() == std::vector<std::string>{"SW1"});
     session.setPressed("SW1", true);
     CHECK_FALSE(session.pressed("SW1"));
 
     session.powerOn(1);
     session.setPressed("SW1", true);
     CHECK(session.pressed("SW1"));
-    const Button* button = ButtonOf(session.circuit(), "SW1");
+    const Switch* button = SwitchOf(session.circuit(), "SW1");
     REQUIRE(button != nullptr);
     CHECK(button->pressed());
     session.setPressed("SW9", true);  // not a Button: remembered, does nothing

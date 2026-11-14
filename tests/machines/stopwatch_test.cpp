@@ -61,7 +61,7 @@ class Watch {
 public:
     Watch(LoadedCircuit& loaded, std::uint64_t seed) : loaded_(loaded), sim_(loaded.circuit) {
         for (const char* button : {"SW1", "SW2", "SW3"}) {
-            Button* b = ButtonOf(loaded_, button);
+            Switch* b = SwitchOf(loaded_, button);
             REQUIRE(b != nullptr);
             b->setPressed(false);
         }
@@ -74,7 +74,7 @@ public:
 
     // Holds `button` for 500 µs from now.
     void press(std::string_view button) {
-        Button* b = ButtonOf(loaded_, button);
+        Switch* b = SwitchOf(loaded_, button);
         b->setPressed(true);
         sim_.wake(b->id());
         runFor(500_us);
