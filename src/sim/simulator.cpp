@@ -165,7 +165,8 @@ void Simulator::powerOn(std::uint64_t seed) {
         OutputState& o = outputs_[p];
         o = {0, LogicValue::Zero, LogicValue::Zero, false};
         const PinKind kind = circuit_.pinInfo(PinId{p}).kind;
-        if (kind == PinKind::Bidirectional || kind == PinKind::Switched) {
+        if (kind == PinKind::Bidirectional || kind == PinKind::Switched ||
+            kind == PinKind::PullUp) {
             o.current = LogicValue::Z;  // released until the first evaluation; no random draw
         } else if (IsDriver(kind)) {
             o.current = rng_.nextBit() ? LogicValue::One : LogicValue::Zero;

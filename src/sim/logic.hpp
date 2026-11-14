@@ -9,6 +9,7 @@ enum class DriveStrength : std::uint8_t { None, Weak, Strong, Supply };
 enum class Family : std::uint8_t { Ttl, Mos };
 // Switched: a Pin of the switch network (P5i): drives its Net at Supply strength, reads nothing
 // through the Net's value; its Component is woken when the Net's other drives change.
+// PullUp: an NMOS port pin (6530, P5j): drives 0 Strong, 1 Weak (its own pull-up); reads its Net.
 enum class PinKind : std::uint8_t {
     Input,
     Output,
@@ -16,18 +17,19 @@ enum class PinKind : std::uint8_t {
     Bidirectional,
     Power,
     NoConnect,
-    Switched
+    Switched,
+    PullUp
 };
 
-// Drives its Net: an output of any kind, a bidirectional or a switched Pin.
+// Drives its Net: an output of any kind, a bidirectional, switched or pull-up Pin.
 constexpr bool IsDriver(PinKind kind) {
     return kind == PinKind::Output || kind == PinKind::OpenCollector ||
-           kind == PinKind::Bidirectional || kind == PinKind::Switched;
+           kind == PinKind::Bidirectional || kind == PinKind::Switched || kind == PinKind::PullUp;
 }
 
-// Reads its Net: an input or a bidirectional Pin.
+// Reads its Net: an input, a bidirectional or a pull-up Pin.
 constexpr bool IsReader(PinKind kind) {
-    return kind == PinKind::Input || kind == PinKind::Bidirectional;
+    return kind == PinKind::Input || kind == PinKind::Bidirectional || kind == PinKind::PullUp;
 }
 
 struct Drive {
@@ -60,7 +62,8 @@ constexpr char ToChar(LogicValue value) {
     }
 }
 
-// Output Pin value → its Drive: totem-pole Z → None; open collector 1/Z → None; switched: Supply.
+// Output Pin value → its Drive: totem-pole Z → None; open collector 1/Z → None; switched: Supply;
+// pull-up: 1 Weak, Z → None.
 constexpr Drive DriveOf(PinKind kind, Family family, LogicValue value) {
     switch (kind) {
     case PinKind::Output:
@@ -69,6 +72,12 @@ constexpr Drive DriveOf(PinKind kind, Family family, LogicValue value) {
                 family};
     case PinKind::Switched:
         return {value, value == LogicValue::Z ? DriveStrength::None : DriveStrength::Supply,
+                family};
+    case PinKind::PullUp:
+        if (value == LogicValue::Z) {
+            return {value, DriveStrength::None, family};
+        }
+        return {value, value == LogicValue::One ? DriveStrength::Weak : DriveStrength::Strong,
                 family};
     case PinKind::OpenCollector:
         if (value == LogicValue::Zero || value == LogicValue::X) {

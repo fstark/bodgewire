@@ -91,8 +91,8 @@ public:
             loaded_->connections.push_back({pin.first, pin.second, std::string(net.name)});
         }
         // A stuck input reads its value through a Net of its own, listed or not (a dry Joint). A
-        // stuck bidirectional Pin forces its Net above and reads its value here; Supply, so the
-        // chip's own drive onto that Net never fights the tie into X.
+        // stuck bidirectional or pull-up Pin forces its Net above and reads its value here; Supply,
+        // so the chip's own drive onto that Net never fights the tie into X.
         for (const StuckPin& s : stuck_) {
             const Component& component = *loaded_->components.at(s.reference);
             const PinKind kind = component.pins()[s.pin].kind;
@@ -102,8 +102,9 @@ public:
             const NetId own =
                 circuit.addNet(s.reference + "." + component.pins()[s.pin].name + " stuck");
             circuit.tie(own, s.value,
-                        kind == PinKind::Bidirectional ? DriveStrength::Supply
-                                                       : DriveStrength::Strong);
+                        kind == PinKind::Bidirectional || kind == PinKind::PullUp
+                            ? DriveStrength::Supply
+                            : DriveStrength::Strong);
             circuit.connect(component, s.pin, own);
         }
         for (const PartDecl& decl : netlist_.parts) {

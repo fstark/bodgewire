@@ -516,6 +516,21 @@ private:
     LogicValue value_;
 };
 
+// One pull-up Pin P driving `value` from its first evaluation; records what it reads on P.
+class PortChip final : public Component {
+public:
+    explicit PortChip(std::string name, LogicValue value)
+        : Component(std::move(name), {{"P", PinKind::PullUp, Family::Mos}}), value_(value) {}
+    void evaluate(EvalContext& ctx) override {
+        reads.push_back(ctx.read(0));
+        ctx.drive(0, value_, 10_ns);
+    }
+    std::vector<LogicValue> reads;
+
+private:
+    LogicValue value_;
+};
+
 // Copies readBitBefore() of its MOS input to its output on each evaluation.
 class BeforeReader final : public Component {
 public:
@@ -666,4 +681,42 @@ TEST_CASE("simulator: fell only at a 1 to 0 change", "[sim]") {
     sim.powerOn(1);
     sim.runUntil(50_ns);
     CHECK(probe.falls == std::vector<Time>{20_ns});
+}
+
+TEST_CASE("simulator: a pull-up pin starts released, then holds its net at a weak 1", "[sim]") {
+    for (std::uint64_t seed = 1; seed <= 8; ++seed) {
+        Circuit circuit;
+        const NetId port = circuit.addNet("PORT");
+        auto& chip = circuit.add<PortChip>("U1", One);
+        circuit.connect(chip, "P", port);
+        circuit.finalize();
+        Simulator sim(circuit);
+        sim.powerOn(seed);
+        CHECK(sim.isFloating(port));  // no random draw, nothing driven yet
+        sim.runUntil(20_ns);
+        CHECK(sim.value(port) == One);
+        CHECK_FALSE(sim.isFloating(port));
+    }
+}
+
+TEST_CASE("simulator: a strong 0 beats a pull-up pin's 1; its own 0 is strong", "[sim]") {
+    Circuit circuit;
+    const NetId port = circuit.addNet("PORT");
+    auto& chip = circuit.add<PortChip>("U1", One);
+    circuit.connect(chip, "P", port);
+    AddDrivers(circuit, port, {{Z, {{50_ns, Zero}, {100_ns, Z}}, Family::Ttl}});
+    const NetId low = circuit.addNet("LOW");
+    auto& sink = circuit.add<PortChip>("U2", Zero);
+    circuit.connect(sink, "P", low);
+    AddDrivers(circuit, low, {{One, {}, Family::Mos}});  // a strong 1 fights it: contention
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runUntil(40_ns);
+    CHECK(sim.value(port) == One);
+    sim.runUntil(60_ns);
+    CHECK(sim.value(port) == Zero);
+    sim.runUntil(110_ns);
+    CHECK(sim.value(port) == One);
+    CHECK(sim.value(low) == X);  // Strong 0 against Strong 1 on a MOS net
 }

@@ -56,6 +56,7 @@ TEST_CASE("logic: IsDriver", "[sim]") {
     CHECK(IsDriver(PinKind::Output));
     CHECK(IsDriver(PinKind::OpenCollector));
     CHECK(IsDriver(PinKind::Bidirectional));
+    CHECK(IsDriver(PinKind::PullUp));
     CHECK_FALSE(IsDriver(PinKind::Power));
     CHECK_FALSE(IsDriver(PinKind::NoConnect));
 }
@@ -63,6 +64,7 @@ TEST_CASE("logic: IsDriver", "[sim]") {
 TEST_CASE("logic: IsReader", "[sim]") {
     CHECK(IsReader(PinKind::Input));
     CHECK(IsReader(PinKind::Bidirectional));
+    CHECK(IsReader(PinKind::PullUp));
     CHECK_FALSE(IsReader(PinKind::Output));
     CHECK_FALSE(IsReader(PinKind::OpenCollector));
     CHECK_FALSE(IsReader(PinKind::Power));
@@ -75,6 +77,19 @@ TEST_CASE("logic: DriveOf bidirectional is a tri-state output", "[sim]") {
     CHECK(Same(DriveOf(PinKind::Bidirectional, f, One), Mos(One)));
     CHECK(Same(DriveOf(PinKind::Bidirectional, f, X), Mos(X)));
     CHECK(Same(DriveOf(PinKind::Bidirectional, f, Z), Mos(Z, None)));
+}
+
+TEST_CASE("logic: DriveOf pull-up drives 0 strongly and 1 weakly", "[sim]") {
+    const Family f = Family::Mos;
+    CHECK(Same(DriveOf(PinKind::PullUp, f, Zero), Mos(Zero)));
+    CHECK(Same(DriveOf(PinKind::PullUp, f, One), Mos(One, Weak)));
+    CHECK(Same(DriveOf(PinKind::PullUp, f, X), Mos(X)));
+    CHECK(Same(DriveOf(PinKind::PullUp, f, Z), Mos(Z, None)));
+    // Its 1 loses to any strong 0 and reads 1 alone, not floating.
+    CHECK(Resolve({DriveOf(PinKind::PullUp, f, One), Ttl(Zero)}).value == Zero);
+    const Resolution alone = Resolve({DriveOf(PinKind::PullUp, f, One)});
+    CHECK(alone.value == One);
+    CHECK_FALSE(alone.floating);
 }
 
 TEST_CASE("logic: DriveOf power and no-connect is None", "[sim]") {
