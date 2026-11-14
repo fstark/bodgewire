@@ -74,6 +74,22 @@ TEST_CASE("switch: catalogue entries", "[parts]") {
     REQUIRE(key != nullptr);
     CHECK(key->kind == PartKind::Switch);
     CHECK(key->package == "MX-1U");
+    const PartInfo* slide = FindPart("SLIDE");
+    REQUIRE(slide != nullptr);
+    CHECK(slide->kind == PartKind::Switch);
+    CHECK(slide->package == "SLIDE-1");
+}
+
+TEST_CASE("switch: SLIDE takes legend= only", "[parts]") {
+    Circuit circuit;
+    Switch& sst = Create(circuit, "SLIDE", {{"legend", "SST"}});
+    CHECK(sst.legend() == "SST");
+    CHECK(sst.pcKey().empty());
+    CHECK(Create(circuit, "SLIDE").legend().empty());
+    CHECK(Create(circuit, "SLIDE", {{"legend", "S"}}).pcKey().empty());
+    CHECK(CreateError("SLIDE", {{"pc", "S"}}) == "SLIDE takes legend=, not pc=");
+    CHECK(CreateError("SLIDE", {{"legend", "SINGLE"}}) ==
+          "SLIDE legend= takes 1 to 4 printable characters, not 'SINGLE'");
 }
 
 TEST_CASE("switch: legend and PC key", "[parts]") {

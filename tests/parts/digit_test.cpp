@@ -39,10 +39,11 @@ TEST_CASE("digit: seven segments and a point on both anodes", "[parts]") {
     const std::string cathodes = "ABCDEFG";
     for (std::size_t k = 0; k < 7; ++k) {
         CHECK(lamps[k].shape == static_cast<LampShape>(k + 1));
-        CHECK(lamps[k].cathode == std::string(1, cathodes[k]));
+        CHECK(lamps[k].cathodes[0] == std::string(1, cathodes[k]));
+        CHECK(lamps[k].cathodes[1].empty());
     }
     CHECK(lamps[7].shape == LampShape::DecimalPoint);
-    CHECK(lamps[7].cathode == "DP");
+    CHECK(lamps[7].cathodes[0] == "DP");
     for (const Lamp& lamp : lamps) {
         CHECK(lamp.anodes[0] == "CA1");
         CHECK(lamp.anodes[1] == "CA2");
@@ -52,5 +53,43 @@ TEST_CASE("digit: seven segments and a point on both anodes", "[parts]") {
     CHECK(led[0].shape == LampShape::Round);
     CHECK(led[0].anodes[0] == "A");
     CHECK(led[0].anodes[1].empty());
-    CHECK(led[0].cathode == "K");
+    CHECK(led[0].cathodes[0] == "K");
+    CHECK(led[0].cathodes[1].empty());
+}
+
+TEST_CASE("digit: common-cathode catalogue entry", "[parts]") {
+    const PartInfo* info = FindPart("DIGITCC");
+    REQUIRE(info != nullptr);
+    CHECK(info->kind == PartKind::Led);
+    CHECK(info->package == "DIGIT-0.56");
+    Circuit circuit;
+    const std::vector<PartParam> params{{"colour", "red"}};
+    const auto created = info->create(circuit, "DS1", params);
+    REQUIRE_FALSE(created.has_value());
+    CHECK(created.error() == "DIGITCC takes no parameters");
+}
+
+TEST_CASE("digit: common-cathode pins and lamps", "[parts]") {
+    const Digit digit("DS1", DigitCommon::Cathode);
+    std::vector<std::string> names;
+    for (const PinSpec& pin : digit.pins()) {
+        names.push_back(pin.name);
+        CHECK(pin.kind == PinKind::Input);
+        CHECK(pin.family == Family::Mos);
+    }
+    CHECK(names == std::vector<std::string>{"E", "D", "CC1", "C", "DP", "B", "A", "CC2", "F", "G"});
+    const auto lamps = FindPart("DIGITCC")->lamps;
+    REQUIRE(lamps.size() == 8);
+    const std::string anodes = "ABCDEFG";
+    for (std::size_t k = 0; k < 7; ++k) {
+        CHECK(lamps[k].shape == static_cast<LampShape>(k + 1));
+        CHECK(lamps[k].anodes[0] == std::string(1, anodes[k]));
+        CHECK(lamps[k].anodes[1].empty());
+    }
+    CHECK(lamps[7].shape == LampShape::DecimalPoint);
+    CHECK(lamps[7].anodes[0] == "DP");
+    for (const Lamp& lamp : lamps) {
+        CHECK(lamp.cathodes[0] == "CC1");
+        CHECK(lamp.cathodes[1] == "CC2");
+    }
 }

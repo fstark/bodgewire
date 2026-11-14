@@ -2,6 +2,7 @@
 
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <span>
@@ -64,11 +65,14 @@ struct LedTag {
     float brightness;  // 0 dark .. 1 fully lit
 };
 
-// A BUTTON or KEY on the Board (P5i).
+// How a switch is drawn: a round push button, a keycap with its legend, a slide switch.
+enum class SwitchLook : std::uint8_t { Button, Key, Slide };
+
+// A BUTTON, KEY or SLIDE on the Board (P5i, P5l).
 struct SwitchTag {
     std::size_t component;
-    bool pressed;
-    bool key;  // drawn as a keycap with `legend`; else a round button
+    bool pressed;  // a slide: at ON
+    SwitchLook look;
     std::string legend;
 };
 
@@ -125,7 +129,7 @@ public:
     }
     void setLegendFont(ImFont* font) { legendFont_ = font; }   // keycap legends
     std::optional<std::size_t> held() const { return held_; }  // left button down on a body
-    std::optional<std::size_t> takeLatchToggle();              // right-clicked body
+    std::optional<std::size_t> takeLatchToggle();  // right-clicked body; any click on a slide
     void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
     void setBodgeWires(std::span<const BodgeWire> wires) {
         bodgeWires_.assign(wires.begin(), wires.end());

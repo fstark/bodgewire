@@ -12,7 +12,7 @@ namespace bw {
 
 namespace {
 
-constexpr std::array<std::pair<std::string_view, std::string_view>, 16> kFootprints{{
+constexpr std::array<std::pair<std::string_view, std::string_view>, 17> kFootprints{{
     {"DIP-8", "Package_DIP:DIP-8_W7.62mm"},
     {"DIP-14", "Package_DIP:DIP-14_W7.62mm"},
     {"DIP-16", "Package_DIP:DIP-16_W7.62mm"},
@@ -29,6 +29,7 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 16> kFootpri
     {"DIGIT-0.56", "Display_7Segment:7SegmentLED_LTS6760_LTS6780"},
     {"TACT-6x3.5", "Button_Switch_THT:SW_PUSH_1P1T_6x3.5mm_H5.0_APEM_MJTP1250"},
     {"MX-1U", "Button_Switch_Keyboard:SW_Cherry_MX_1.00u_PCB"},
+    {"SLIDE-1", "Button_Switch_THT:SW_DIP_SPSTx01_Slide_9.78x4.72mm_W7.62mm_P2.54mm"},
 }};
 
 std::uint64_t Fnv1a(std::string_view text, std::uint64_t hash) {

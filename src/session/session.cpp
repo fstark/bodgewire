@@ -80,12 +80,15 @@ std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> 
         for (const LoadedPart& part : live->circuit->parts) {
             for (std::size_t i = 0; i < part.info->lamps.size(); ++i) {
                 const Lamp& lamp = part.info->lamps[i];
-                const auto cathode = ConnectedNet(*live->circuit, part.reference, lamp.cathode);
                 const std::array anodes{
                     ConnectedNet(*live->circuit, part.reference, lamp.anodes[0]),
                     ConnectedNet(*live->circuit, part.reference, lamp.anodes[1])};
-                if (cathode && (anodes[0] || anodes[1])) {  // an unconnected lamp: never lit
-                    nets.push_back({part.reference, i, anodes, *cathode});
+                const std::array cathodes{
+                    ConnectedNet(*live->circuit, part.reference, lamp.cathodes[0]),
+                    ConnectedNet(*live->circuit, part.reference, lamp.cathodes[1])};
+                // An unconnected lamp: never lit.
+                if ((anodes[0] || anodes[1]) && (cathodes[0] || cathodes[1])) {
+                    nets.push_back({part.reference, i, anodes, cathodes});
                 }
             }
         }

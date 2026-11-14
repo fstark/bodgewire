@@ -9,9 +9,9 @@ void LedGlow::setAnode(Sample sample, std::size_t which) {
     anodes_[which] = sample;
 }
 
-void LedGlow::setCathode(Sample sample) {
+void LedGlow::setCathode(Sample sample, std::size_t which) {
     advanceTo(sample.time);
-    cathode_ = sample;
+    cathodes_[which] = sample;
 }
 
 void LedGlow::advanceTo(Time time) {
@@ -29,7 +29,9 @@ void LedGlow::reset() { *this = LedGlow{}; }
 bool LedGlow::lit() const {
     const bool anode = std::ranges::any_of(
         anodes_, [](const Sample& a) { return a.value == LogicValue::One && !a.floating; });
-    return anode && cathode_.value == LogicValue::Zero && !cathode_.floating;
+    const bool cathode = std::ranges::any_of(
+        cathodes_, [](const Sample& k) { return k.value == LogicValue::Zero && !k.floating; });
+    return anode && cathode;
 }
 
 void LedGlow::integrateTo(Time time) {

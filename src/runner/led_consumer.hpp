@@ -15,10 +15,10 @@ namespace bw {
 
 // One lamp of a Part (the LED itself, or a segment of a digit).
 struct LedNets {
-    std::string reference;                       // "D1", "DS1"
-    std::size_t lamp;                            // index into the Part's catalogue lamps
-    std::array<std::optional<NetId>, 2> anodes;  // at least one
-    NetId cathode;
+    std::string reference;                         // "D1", "DS1"
+    std::size_t lamp;                              // index into the Part's catalogue lamps
+    std::array<std::optional<NetId>, 2> anodes;    // at least one
+    std::array<std::optional<NetId>, 2> cathodes;  // at least one
 };
 
 // One LedGlow per lamp. brightness(): UI thread; overrides: devices thread.

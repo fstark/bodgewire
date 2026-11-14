@@ -370,6 +370,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     std::optional<PinRef> wireStart;  // Wire tool: the first pin
     Point wireStartAt{};
     std::set<std::string> latched;  // Buttons kept pressed by a right-click
+    std::set<std::string> slid;     // SLIDE switches at ON, kept across power off and on
     std::vector<std::size_t> typedKeys(options.type.size(), 0);  // --type: keys sent so far
     bool wasPowered = false;
     KeyboardCapture capture;
@@ -640,25 +641,34 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             for (const std::string& reference : session.switches()) {
                 const auto component =
                     scene ? scene->componentIndex(reference) : std::optional<std::size_t>();
-                if (component && toggled == component && session.powered() &&
-                    !latched.erase(reference)) {
+                const auto part =
+                    std::ranges::find(session.circuit().parts, reference, &LoadedPart::reference);
+                const std::string_view type =
+                    part != session.circuit().parts.end() ? part->info->name : "";
+                const SwitchLook look = type == "KEY"     ? SwitchLook::Key
+                                        : type == "SLIDE" ? SwitchLook::Slide
+                                                          : SwitchLook::Button;
+                if (look == SwitchLook::Slide) {
+                    // A slide stays where it is moved, powered or not.
+                    if (component && toggled == component && !slid.erase(reference)) {
+                        slid.insert(reference);
+                    }
+                } else if (component && toggled == component && session.powered() &&
+                           !latched.erase(reference)) {
                     latched.insert(reference);
                 }
                 const bool scripted = std::ranges::any_of(options.press, [&](const ButtonPress& p) {
                     return p.reference == reference && p.down <= status.simTime &&
                            status.simTime < p.up;
                 });
-                session.setPressed(reference, latched.contains(reference) || scripted ||
+                session.setPressed(reference, latched.contains(reference) ||
+                                                  slid.contains(reference) || scripted ||
                                                   (component && boardView.held() == component) ||
                                                   boardKeys.holds(reference));
                 if (component) {
                     const Switch* sw = SwitchOf(session.circuit(), reference);
-                    const auto part = std::ranges::find(session.circuit().parts, reference,
-                                                        &LoadedPart::reference);
-                    switchTags.push_back(
-                        {*component, session.pressed(reference),
-                         part != session.circuit().parts.end() && part->info->name == "KEY",
-                         sw ? std::string(sw->legend()) : std::string()});
+                    switchTags.push_back({*component, session.pressed(reference), look,
+                                          sw ? std::string(sw->legend()) : std::string()});
                 }
             }
             if (scene) {

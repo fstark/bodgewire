@@ -175,7 +175,7 @@ void DigitPinout(const BoardScene& scene, std::size_t component, const PartInfo&
     std::vector<ImVec2> points;
     for (const Lamp& lamp : info.lamps) {
         const bool lit =
-            hoveredPin && (*hoveredPin == lamp.cathode ||
+            hoveredPin && (std::ranges::find(lamp.cathodes, *hoveredPin) != lamp.cathodes.end() ||
                            std::ranges::find(lamp.anodes, *hoveredPin) != lamp.anodes.end());
         points.clear();
         for (const Point p : LampOutline(frame, lamp.shape)) {

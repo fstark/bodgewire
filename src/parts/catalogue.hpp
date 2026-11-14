@@ -29,11 +29,12 @@ enum class LampShape : std::uint8_t {
     DecimalPoint
 };
 
-// One light of a Part: lit while an anode Pin reads a driven 1 and the cathode Pin a driven 0.
+// One light of a Part: lit while one of its anode Pins reads a driven 1 and one of its cathode
+// Pins a driven 0 (a digit's two common pins are joined inside).
 struct Lamp {
     LampShape shape;
-    std::array<std::string_view, 2> anodes;  // Pin names; the second "" if one
-    std::string_view cathode;
+    std::array<std::string_view, 2> anodes;    // Pin names; the second "" if one
+    std::array<std::string_view, 2> cathodes;  // Pin names; the second "" if one
 };
 
 struct PartParam {

@@ -105,7 +105,8 @@ TEST_CASE("catalogue: every lamp names Pins of its Part", "[parts]") {
             names.insert(pin.name);
         }
         for (const Lamp& lamp : part.lamps) {
-            CHECK(names.contains(lamp.cathode));
+            CHECK(names.contains(lamp.cathodes[0]));
+            CHECK((lamp.cathodes[1].empty() || names.contains(lamp.cathodes[1])));
             CHECK(names.contains(lamp.anodes[0]));
             CHECK((lamp.anodes[1].empty() || names.contains(lamp.anodes[1])));
         }

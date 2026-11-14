@@ -7,9 +7,11 @@ namespace bw {
 
 namespace {
 
-std::vector<PinSpec> DigitPins() {
+std::vector<PinSpec> DigitPins(DigitCommon common) {
+    const bool anode = common == DigitCommon::Anode;
     std::vector<PinSpec> pins;
-    for (const char* name : {"E", "D", "CA1", "C", "DP", "B", "A", "CA2", "F", "G"}) {
+    for (const char* name :
+         {"E", "D", anode ? "CA1" : "CC1", "C", "DP", "B", "A", anode ? "CA2" : "CC2", "F", "G"}) {
         pins.push_back({name, PinKind::Input, Family::Mos});
     }
     return pins;
@@ -17,7 +19,8 @@ std::vector<PinSpec> DigitPins() {
 
 }  // namespace
 
-Digit::Digit(std::string reference) : Component(std::move(reference), DigitPins()) {}
+Digit::Digit(std::string reference, DigitCommon common)
+    : Component(std::move(reference), DigitPins(common)) {}
 
 void Digit::evaluate(EvalContext& /*ctx*/) {}
 

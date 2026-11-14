@@ -68,6 +68,11 @@ constexpr ImU32 kButtonCapDown = IM_COL32(95, 95, 100, 255);
 constexpr ImU32 kButtonRim = IM_COL32(230, 230, 235, 255);
 constexpr float kButtonCapShare = 0.35f;  // of the courtyard's smaller side
 constexpr float kButtonCapDownScale = 0.85f;
+constexpr ImU32 kSlideBody = IM_COL32(150, 30, 30, 255);  // a red DIP switch body
+constexpr ImU32 kSlideSlot = IM_COL32(45, 12, 12, 255);
+constexpr ImU32 kSlideKnob = IM_COL32(235, 232, 222, 255);
+constexpr ImU32 kSlideText = IM_COL32(245, 235, 225, 255);
+constexpr float kSlideBodyShare = 0.78f;  // of the courtyard's height
 constexpr double kPadReachPx = 12;
 constexpr double kCopperReachPx = 10;
 constexpr double kFocusPadMinPx = 14;
@@ -345,6 +350,42 @@ void DrawPinNames(ImDrawList& list, const Mapper& map, const BoardScene& scene,
     }
 }
 
+// A slide switch in a red DIP body: a dark slot along its long side, the knob at the right
+// (ON) end while on, else at the left; ON printed by the right end, the legend under the slot.
+void DrawSlide(ImDrawList& list, ImFont* font, ImVec2 a, ImVec2 b, const std::string& legend,
+               bool on) {
+    const float w = b.x - a.x;
+    const float h = b.y - a.y;
+    const float inset = h * (1 - kSlideBodyShare) / 2;
+    const ImVec2 bodyA{a.x + inset, a.y + inset};
+    const ImVec2 bodyB{b.x - inset, b.y - inset};
+    list.AddRectFilled(bodyA, bodyB, kSlideBody, h * 0.05f);
+    const float slotH = (bodyB.y - bodyA.y) * 0.34f;
+    const float slotW = (bodyB.x - bodyA.x) * 0.5f;
+    const ImVec2 slotA{a.x + (w - slotW) / 2, a.y + h * 0.5f - slotH / 2 - h * 0.08f};
+    const ImVec2 slotB{slotA.x + slotW, slotA.y + slotH};
+    list.AddRectFilled(slotA, slotB, kSlideSlot, slotH * 0.15f);
+    const float knobW = slotW * 0.45f;
+    const float gap = slotH * 0.12f;
+    const float knobX = on ? slotB.x - gap - knobW : slotA.x + gap;
+    list.AddRectFilled({knobX, slotA.y + gap}, {knobX + knobW, slotB.y - gap}, kSlideKnob,
+                       slotH * 0.1f);
+    if (font == nullptr) {
+        return;
+    }
+    const float small = slotH * 0.55f;
+    const ImVec2 onSize = font->CalcTextSizeA(small, FLT_MAX, 0, "ON");
+    list.AddText(font, small,
+                 {slotB.x + (bodyB.x - slotB.x - onSize.x) / 2, slotA.y + (slotH - onSize.y) / 2},
+                 kSlideText, "ON");
+    if (!legend.empty()) {
+        const float size = slotH * 0.75f;
+        const ImVec2 t = font->CalcTextSizeA(size, FLT_MAX, 0, legend.c_str());
+        const float y = slotB.y + (bodyB.y - slotB.y - t.y) / 2;
+        list.AddText(font, size, {a.x + (w - t.x) / 2, y}, kSlideText, legend.c_str());
+    }
+}
+
 }  // namespace
 
 void BoardView::draw(ImVec2 size) {
@@ -468,7 +509,13 @@ void BoardView::draw(ImVec2 size) {
         const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
         const ImVec2 min = map({minX.x, minY.y});
         const ImVec2 max = map({maxX.x, maxY.y});
-        if (button.key && legendFont_ != nullptr) {
+        if (button.look == SwitchLook::Slide) {
+            DrawSlide(list, legendFont_, {std::min(min.x, max.x), std::min(min.y, max.y)},
+                      {std::max(min.x, max.x), std::max(min.y, max.y)}, button.legend,
+                      button.pressed);
+            continue;
+        }
+        if (button.look == SwitchLook::Key && legendFont_ != nullptr) {
             // The cap covers the courtyard only, so the copper between keys stays in view.
             const ImVec2 a{std::min(min.x, max.x), std::min(min.y, max.y)};
             const ImVec2 b{std::max(min.x, max.x), std::max(min.y, max.y)};
@@ -523,7 +570,7 @@ void BoardView::draw(ImVec2 size) {
         const bool outlined = hoverTarget_ && hoverTarget_->component == k && !hoverTarget_->pad;
         const bool keycap =
             legendFont_ != nullptr && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
-                return t.key && t.component == k;
+                return t.look != SwitchLook::Button && t.component == k;
             });
         DrawCourtyard(list, map, board.components[k], scene_->courtyard(k), scene_->partName(k),
                       outlined, keycap);
@@ -764,7 +811,15 @@ void BoardView::input(ImVec2 origin) {
     }
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         held_ = buttonAt();
-        pressed_ = !held_;
+        if (held_ && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
+                return t.component == *held_ && t.look == SwitchLook::Slide;
+            })) {
+            latchToggle_ = held_;  // a slide moves at the click and is not held
+            held_.reset();
+            pressed_ = false;
+        } else {
+            pressed_ = !held_;
+        }
         dragging_ = false;
     }
     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked) {

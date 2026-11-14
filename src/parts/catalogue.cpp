@@ -241,19 +241,23 @@ std::expected<Component*, std::string> CreateLed(Circuit& circuit, std::string r
 }
 
 // BUTTON: `pc=`; KEY: `legend=` (1-4 printable characters, not '#') and `pc=`, which defaults
-// to a one-character legend.
+// to a one-character legend; SLIDE: `legend=` only (moved by a click, no PC key).
 template <PartName Name>
 std::expected<Component*, std::string> CreateSwitch(Circuit& circuit, std::string reference,
                                                     std::span<const PartParam> params) {
     const std::string name(Name.view());
     const bool key = name == "KEY";
+    const bool slide = name == "SLIDE";
     std::optional<std::string> legend, pc;
     for (const PartParam& param : params) {
-        std::optional<std::string>* slot = param.name == "pc"              ? &pc
-                                           : key && param.name == "legend" ? &legend
-                                                                           : nullptr;
+        std::optional<std::string>* slot = !slide && param.name == "pc"               ? &pc
+                                           : (key || slide) && param.name == "legend" ? &legend
+                                                                                      : nullptr;
         if (slot == nullptr) {
-            return std::unexpected(name + (key ? " takes legend= and pc=" : " takes pc=") +
+            return std::unexpected(name +
+                                   (key     ? " takes legend= and pc="
+                                    : slide ? " takes legend="
+                                            : " takes pc=") +
                                    ", not " + param.name + "=");
         }
         if (slot->has_value()) {
@@ -264,15 +268,15 @@ std::expected<Component*, std::string> CreateSwitch(Circuit& circuit, std::strin
     if (legend &&
         (legend->empty() || legend->size() > 4 ||
          !std::ranges::all_of(*legend, [](char c) { return c > ' ' && c < 0x7F && c != '#'; }))) {
-        return std::unexpected("KEY legend= takes 1 to 4 printable characters, not '" + *legend +
-                               "'");
+        return std::unexpected(name + " legend= takes 1 to 4 printable characters, not '" +
+                               *legend + "'");
     }
     if (pc && !IsPcKey(*pc)) {
         return std::unexpected(name + ": unknown PC key '" + *pc +
                                "' (one character, Space, Enter, Tab, Backspace, Escape, Up, "
                                "Down, Left or Right)");
     }
-    if (!pc && legend && IsPcKey(*legend) && legend->size() == 1) {
+    if (!slide && !pc && legend && IsPcKey(*legend) && legend->size() == 1) {
         pc = legend;
     }
     std::string pcKey = pc.value_or("");
@@ -282,24 +286,36 @@ std::expected<Component*, std::string> CreateSwitch(Circuit& circuit, std::strin
     return &circuit.add<Switch>(std::move(reference), legend.value_or(""), std::move(pcKey));
 }
 
+template <DigitCommon Common>
 std::expected<Component*, std::string> CreateDigit(Circuit& circuit, std::string reference,
                                                    std::span<const PartParam> params) {
     if (!params.empty()) {
-        return std::unexpected("DIGIT takes no parameters");
+        return std::unexpected(Common == DigitCommon::Anode ? "DIGIT takes no parameters"
+                                                            : "DIGITCC takes no parameters");
     }
-    return &circuit.add<Digit>(std::move(reference));
+    return &circuit.add<Digit>(std::move(reference), Common);
 }
 
-constexpr std::array<Lamp, 1> kLedLamps{{{LampShape::Round, {"A", ""}, "K"}}};
+constexpr std::array<Lamp, 1> kLedLamps{{{LampShape::Round, {"A", ""}, {"K", ""}}}};
 constexpr std::array<Lamp, 8> kDigitLamps{{
-    {LampShape::SegmentA, {"CA1", "CA2"}, "A"},
-    {LampShape::SegmentB, {"CA1", "CA2"}, "B"},
-    {LampShape::SegmentC, {"CA1", "CA2"}, "C"},
-    {LampShape::SegmentD, {"CA1", "CA2"}, "D"},
-    {LampShape::SegmentE, {"CA1", "CA2"}, "E"},
-    {LampShape::SegmentF, {"CA1", "CA2"}, "F"},
-    {LampShape::SegmentG, {"CA1", "CA2"}, "G"},
-    {LampShape::DecimalPoint, {"CA1", "CA2"}, "DP"},
+    {LampShape::SegmentA, {"CA1", "CA2"}, {"A", ""}},
+    {LampShape::SegmentB, {"CA1", "CA2"}, {"B", ""}},
+    {LampShape::SegmentC, {"CA1", "CA2"}, {"C", ""}},
+    {LampShape::SegmentD, {"CA1", "CA2"}, {"D", ""}},
+    {LampShape::SegmentE, {"CA1", "CA2"}, {"E", ""}},
+    {LampShape::SegmentF, {"CA1", "CA2"}, {"F", ""}},
+    {LampShape::SegmentG, {"CA1", "CA2"}, {"G", ""}},
+    {LampShape::DecimalPoint, {"CA1", "CA2"}, {"DP", ""}},
+}};
+constexpr std::array<Lamp, 8> kDigitCcLamps{{
+    {LampShape::SegmentA, {"A", ""}, {"CC1", "CC2"}},
+    {LampShape::SegmentB, {"B", ""}, {"CC1", "CC2"}},
+    {LampShape::SegmentC, {"C", ""}, {"CC1", "CC2"}},
+    {LampShape::SegmentD, {"D", ""}, {"CC1", "CC2"}},
+    {LampShape::SegmentE, {"E", ""}, {"CC1", "CC2"}},
+    {LampShape::SegmentF, {"F", ""}, {"CC1", "CC2"}},
+    {LampShape::SegmentG, {"G", ""}, {"CC1", "CC2"}},
+    {LampShape::DecimalPoint, {"DP", ""}, {"CC1", "CC2"}},
 }};
 
 using enum PartKind;
@@ -352,7 +368,9 @@ constexpr std::array s_parts{
     PartInfo{"74LS93", "4-bit binary counter", "DIP-14", Chip, &CreateChip<Ls93, "74LS93">},
     PartInfo{"BUTTON", "push button", "TACT-6x3.5", Switch, &CreateSwitch<"BUTTON">},
     PartInfo{"DIGIT", "red 0.56-inch 7-segment digit, common anode", "DIGIT-0.56", Led,
-             &CreateDigit, kDigitLamps},
+             &CreateDigit<DigitCommon::Anode>, kDigitLamps},
+    PartInfo{"DIGITCC", "red 0.56-inch 7-segment digit, common cathode", "DIGIT-0.56", Led,
+             &CreateDigit<DigitCommon::Cathode>, kDigitCcLamps},
     PartInfo{"KEY", "key switch", "MX-1U", Switch, &CreateSwitch<"KEY">},
     PartInfo{"KEYBOARD", "ASCII keyboard connector", "KK-10", Connector, &CreateKeyboard},
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
@@ -361,6 +379,7 @@ constexpr std::array s_parts{
     PartInfo{"POR", "power-on reset", "DIP-8", Chip, &CreatePowerOnReset},
     PartInfo{"POWER", "5 V power connector", "KK-2", Connector, &CreateConnector<"POWER">},
     PartInfo{"R", "resistor", "axial", Resistor, nullptr},
+    PartInfo{"SLIDE", "slide switch", "SLIDE-1", Switch, &CreateSwitch<"SLIDE">},
     PartInfo{"VIDEO", "TTL monitor connector", "KK-3", Connector, &CreateConnector<"VIDEO">},
     PartInfo{"Z80STUB", "Z80 stub playing a ZX80 frame (benchmark)", "DIP-40", Chip,
              &CreateChip<Z80Stub, "Z80STUB">},

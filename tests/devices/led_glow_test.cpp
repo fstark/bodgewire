@@ -40,6 +40,21 @@ TEST_CASE("led glow: floating cathode stays dark", "[devices]") {
     CHECK(glow.brightness() == 0.0f);
 }
 
+TEST_CASE("led glow: either cathode lights a two-cathode lamp", "[devices]") {
+    LedGlow glow;
+    glow.setAnode({0, One});
+    glow.setCathode({0, Zero, true}, 0);
+    glow.setCathode({0, Zero}, 1);
+    glow.advanceTo(40_ms);
+    CHECK(glow.brightness() == 1.0f);
+    LedGlow both;
+    both.setAnode({0, One});
+    both.setCathode({0, Zero, true}, 0);
+    both.setCathode({0, Zero, true}, 1);
+    both.advanceTo(40_ms);
+    CHECK(both.brightness() == 0.0f);
+}
+
 TEST_CASE("led glow: floating anode stays dark", "[devices]") {
     LedGlow glow;
     glow.setAnode({0, One, true});

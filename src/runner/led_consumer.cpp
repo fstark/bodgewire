@@ -18,7 +18,11 @@ LedConsumer::LedConsumer(std::vector<LedNets> leds)
                 add(*anode);
             }
         }
-        add(led.cathode);
+        for (const std::optional<NetId>& cathode : led.cathodes) {
+            if (cathode) {
+                add(*cathode);
+            }
+        }
     }
 }
 
@@ -40,8 +44,10 @@ void LedConsumer::sample(NetId net, Sample sample) {
                 glows_[i].setAnode(sample, a);
             }
         }
-        if (leds_[i].cathode == net) {
-            glows_[i].setCathode(sample);
+        for (std::size_t k = 0; k < leds_[i].cathodes.size(); ++k) {
+            if (leds_[i].cathodes[k] == net) {
+                glows_[i].setCathode(sample, k);
+            }
         }
     }
 }
