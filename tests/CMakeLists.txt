@@ -118,6 +118,7 @@ add_executable(bw_tests
   sim/recorder_test.cpp
   sim/rng_test.cpp
   sim/simulator_test.cpp
+  sim/switched_test.cpp
   sim/time_test.cpp
   sim/vcd_test.cpp
   view/board_scene_test.cpp

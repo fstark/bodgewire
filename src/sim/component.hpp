@@ -34,7 +34,12 @@ public:
     bool readBit(PinIndex pin);                        // X → seeded random bit (MOS inputs, S4)
     bool readBitBefore(PinIndex pin);                  // readBefore, X → seeded random bit
     inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
-    void wakeAfter(Time delay);  // evaluate this Component again at now + delay
+    void wakeAfter(Time delay);                // evaluate this Component again at now + delay
+    void wake(ComponentId other, Time delay);  // evaluate `other` at now + delay (≥ 1 ps)
+    // Switched Pins only (P5i): the drives on the Pin's Net but its own, and whether they
+    // changed at this timestamp.
+    inline const Resolver& external(PinIndex pin) const;
+    inline bool externalChanged(PinIndex pin) const;
 
 private:
     friend class Simulator;

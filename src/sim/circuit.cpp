@@ -63,11 +63,16 @@ void Circuit::buildTables() {
     std::vector<std::vector<PinId>> drivers(netCount);
     std::vector<std::vector<FanOut>> fanOut(netCount);
     netHasTtlInput_.assign(netCount, 0);
+    netSwitchPin_.assign(netCount, kNoPin);
     for (std::uint32_t p = 0; p < pins_.size(); ++p) {
         const PinInfo& info = pins_[p];
         const std::uint32_t n = ToIndex(info.net);
         if (IsDriver(info.kind)) {
             drivers[n].push_back(PinId{p});
+        }
+        if (info.kind == PinKind::Switched) {
+            Check(netSwitchPin_[n] == kNoPin, "circuit: two switched pins on one net");
+            netSwitchPin_[n] = PinId{p};
         }
         if (!IsReader(info.kind)) {
             continue;

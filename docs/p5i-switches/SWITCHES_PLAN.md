@@ -86,4 +86,4 @@ Commit: `docs: P5i implemented, user check pending`
 
 ## Notes
 
-(filled while implementing)
+- Phase 1 speed (release, headless, median of 3): before 0.392× `bus_load`, 1.974× 070, 5.83× 110 in the morning; the same build again just before the change 0.363×, 1.726×, 5.03×; after 0.374×, 1.86×, 5.22×. The machine drifts more than the change: within noise.

@@ -51,6 +51,8 @@ void EvalContext::driveChanged(PinId id, LogicValue value, Time delay) {
 
 void EvalContext::wakeAfter(Time delay) { sim_.scheduleWake(component_, delay); }
 
+void EvalContext::wake(ComponentId other, Time delay) { sim_.scheduleWake(other, delay); }
+
 // --- PowerOnContext ---
 
 bool PowerOnContext::randomBit() { return sim_.rng_.nextBit(); }
@@ -65,8 +67,12 @@ void PowerOnContext::setOutput(PinIndex pin, LogicValue value) {
 
 Simulator::Simulator(Circuit& circuit) : circuit_(circuit) {
     Check(circuit.isFinalized(), "simulator: circuit not finalized");
-    nets_.resize(circuit.netCount(),
-                 NetState{-1, LogicValue::Zero, LogicValue::Zero, LogicValue::Zero, false, false});
+    nets_.resize(circuit.netCount(), NetState{-1, LogicValue::Zero, LogicValue::Zero,
+                                              LogicValue::Zero, false, false, false});
+    external_.resize(circuit.netCount(), External{Resolver{}, -1});
+    for (std::uint32_t n = 0; n < nets_.size(); ++n) {
+        nets_[n].switched = circuit.switchPin(NetId{n}) != Circuit::kNoPin;
+    }
     outputs_.resize(circuit.pinCount(), OutputState{0, LogicValue::Zero, LogicValue::Zero, false});
     componentDirty_.resize(circuit.components().size(), 0);
     pinNet_.reserve(circuit.pinCount());
@@ -91,7 +97,28 @@ void Simulator::markComponentDirty(ComponentId component) {
     }
 }
 
+Resolver Simulator::externalDrives(NetId net) const {
+    Resolver resolver;
+    resolver.add(circuit_.tieOf(net));
+    const PinId own = circuit_.switchPin(net);
+    for (const PinId pin : circuit_.drivers(net)) {
+        if (pin != own) {
+            const PinInfo& info = circuit_.pinInfo(pin);
+            resolver.add(DriveOf(info.kind, info.family, outputs_[ToIndex(pin)].current));
+        }
+    }
+    return resolver;
+}
+
 Resolution Simulator::resolveNet(NetId net) const {
+    const NetState& state = nets_[ToIndex(net)];
+    if (state.switched) {  // external_ is up to date: add the Switched Pin's own drive
+        Resolver resolver = external_[ToIndex(net)].drives;
+        const PinId own = circuit_.switchPin(net);
+        const PinInfo& info = circuit_.pinInfo(own);
+        resolver.add(DriveOf(info.kind, info.family, outputs_[ToIndex(own)].current));
+        return resolver.finish(circuit_.hasTtlInput(net), state.lastDriven);
+    }
     const PinId single = circuit_.singleDriver(net);
     if (single != Circuit::kNoPin) {
         const LogicValue value = outputs_[ToIndex(single)].current;
@@ -138,8 +165,8 @@ void Simulator::powerOn(std::uint64_t seed) {
         OutputState& o = outputs_[p];
         o = {0, LogicValue::Zero, LogicValue::Zero, false};
         const PinKind kind = circuit_.pinInfo(PinId{p}).kind;
-        if (kind == PinKind::Bidirectional) {
-            o.current = LogicValue::Z;  // released until the chip's first evaluation
+        if (kind == PinKind::Bidirectional || kind == PinKind::Switched) {
+            o.current = LogicValue::Z;  // released until the first evaluation; no random draw
         } else if (IsDriver(kind)) {
             o.current = rng_.nextBit() ? LogicValue::One : LogicValue::Zero;
         }
@@ -154,6 +181,9 @@ void Simulator::powerOn(std::uint64_t seed) {
     for (std::uint32_t n = 0; n < nets_.size(); ++n) {
         NetState& s = nets_[n];
         s.lastDriven = rng_.nextBit() ? LogicValue::One : LogicValue::Zero;
+        if (s.switched) {
+            external_[n] = {externalDrives(NetId{n}), -1};
+        }
         const Resolution r = resolveNet(NetId{n});
         s.value = r.value;
         s.previous = r.value;
@@ -199,8 +229,17 @@ void Simulator::runUntil(Time end) {
         }
 
         for (const NetId net : dirtyNets_) {
-            const Resolution r = resolveNet(net);
             NetState& s = nets_[ToIndex(net)];
+            if (s.switched) {
+                // Woken by the other drives only: its own drive never wakes it (no echo).
+                const Resolver drives = externalDrives(net);
+                External& e = external_[ToIndex(net)];
+                if (drives != e.drives) {
+                    e = {drives, now_};
+                    markComponentDirty(circuit_.pinInfo(circuit_.switchPin(net)).owner);
+                }
+            }
+            const Resolution r = resolveNet(net);
             s.dirty = false;
             const bool wasFloating = s.floating;
             s.floating = r.floating;
