@@ -31,11 +31,13 @@
 #include "parts/paddle.hpp"
 #include "parts/power_on_reset.hpp"
 #include "parts/ram2114.hpp"
+#include "parts/ram6102.hpp"
 #include "parts/rom.hpp"
 #include "parts/rom_contents.hpp"
 #include "parts/shift_register_2518.hpp"
 #include "parts/shift_register_2524.hpp"
 #include "parts/switch.hpp"
+#include "parts/ttl125.hpp"
 #include "parts/ttl145.hpp"
 #include "parts/z80_stub.hpp"
 
@@ -281,7 +283,9 @@ constexpr std::array s_parts{
     PartInfo{"2524", "512-bit dynamic recirculating shift register", "DIP-8", Chip,
              &CreateChip<ShiftRegister2524, "2524">},
     PartInfo{"2716", "2K x 8 EPROM", "DIP-24", Chip, &CreateRom<"2716">},
+    PartInfo{"6102", "1K x 1 static RAM", "DIP-16", Chip, &CreateChip<Ram6102, "6102">},
     PartInfo{"6502", "8-bit microprocessor (NMOS)", "DIP-40", Chip, &CreateChip<Mos6502, "6502">},
+    PartInfo{"74125", "quad bus buffer, tri-state", "DIP-14", Chip, &CreateChip<Ttl125, "74125">},
     PartInfo{"74145", "BCD-to-decimal decoder/driver, open collector", "DIP-16", Chip,
              &CreateChip<Ttl145, "74145">},
     PartInfo{"74LS00", "quad 2-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS00">},

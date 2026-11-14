@@ -96,11 +96,13 @@ add_executable(bw_tests
   parts/paddle_test.cpp
   parts/power_on_reset_test.cpp
   parts/ram2114_test.cpp
+  parts/ram6102_test.cpp
   parts/rom_contents_test.cpp
   parts/rom_test.cpp
   parts/shift_register_2518_test.cpp
   parts/shift_register_2524_test.cpp
   parts/switch_test.cpp
+  parts/ttl125_test.cpp
   parts/ttl145_test.cpp
   parts/z80_stub_test.cpp
   runner/analyzer_consumer_test.cpp

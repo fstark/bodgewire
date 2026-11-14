@@ -62,6 +62,15 @@ inline constexpr Time k2716Float = 100'000;         // CE_N or OE_N high → O o
 inline constexpr Delays kLs244Data{12'000, 12'000};     // A → Y
 inline constexpr Delays kLs244Enable{15'000, 20'000};   // OE_N low → Y (tPZH, tPZL)
 inline constexpr Delays kLs244Disable{10'000, 15'000};  // OE_N high → Y off (tPHZ, tPLZ)
+// 74125 (rise = from/to 1, fall = from/to 0): assumed typicals, the TI sheet not fetched.
+inline constexpr Delays kTtl125Data{8'000, 12'000};     // A → Y
+inline constexpr Delays kTtl125Enable{14'000, 16'000};  // OE_N low → Y (tPZH, tPZL)
+inline constexpr Delays kTtl125Disable{5'000, 7'000};   // OE_N high → Y off (tPHZ, tPLZ)
+// MOS 6102 (500 ns grade, the KIM-1 parts list): maximums. Access from the KIM's list; chip
+// enable as the 2102 family's (equal to access) and output off as the 2114's: assumed.
+inline constexpr Time k6102Access = 500'000;  // address → DOUT
+inline constexpr Time k6102Select = 500'000;  // CE_N low (or RW back high) → DOUT
+inline constexpr Time k6102Off = 100'000;     // CE_N high or RW low → DOUT off
 // Intel 2114 (450 ns grade): maximums (no typicals published).
 inline constexpr Time k2114Address = 450'000;  // tAA, address → IO
 inline constexpr Time k2114Select = 120'000;   // tCO, CS_N low (or WE_N back high) → IO

@@ -26,11 +26,13 @@ add_library(bw_parts STATIC
   paddle.cpp
   power_on_reset.cpp
   ram2114.cpp
+  ram6102.cpp
   rom.cpp
   rom_contents.cpp
   shift_register_2518.cpp
   shift_register_2524.cpp
   switch.cpp
+  ttl125.cpp
   ttl145.cpp
   z80_stub.cpp
 )
