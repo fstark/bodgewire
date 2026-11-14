@@ -350,6 +350,12 @@ void DrawPinNames(ImDrawList& list, const Mapper& map, const BoardScene& scene,
     }
 }
 
+// How bright a digit's segment looks for the share of time it is lit. Multiplexed digits are
+// driven harder while selected, and the eye's response is close to a cube root (Stevens): a
+// digit of six lit a sixth of the time reads clearly, not at a sixth. Round LEDs stay linear, so
+// a half-lit address LED (Heartbeat) still looks half lit.
+float Perceived(float brightness) { return std::cbrt(std::clamp(brightness, 0.0f, 1.0f)); }
+
 // A slide switch in a red DIP body: a dark slot along its long side, the knob at the right
 // (ON) end while on, else at the left; ON printed by the right end, the legend under the slot.
 void DrawSlide(ImDrawList& list, ImFont* font, ImVec2 a, ImVec2 b, const std::string& legend,
@@ -495,7 +501,7 @@ void BoardView::draw(ImVec2 size) {
         for (const Point p : LampOutline(*frame, led.shape)) {
             points.push_back(map(p));
         }
-        const float glow = std::clamp(led.brightness, 0.0f, 1.0f);
+        const float glow = Perceived(led.brightness);
         list.AddConvexPolyFilled(points.data(), static_cast<int>(points.size()),
                                  Lerp(kSegmentDim, kLedLit, glow));
     }

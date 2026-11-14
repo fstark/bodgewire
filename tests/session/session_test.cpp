@@ -692,6 +692,65 @@ TEST_CASE("session: led computer with every instrument", "[session][slow]") {
     session.powerOff();
 }
 
+TEST_CASE("session: bw1 with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "bw1.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    // Six common-cathode digits: 48 lamps. Built from the Board, each unconnected decimal point
+    // has its pad's own Net: 13 + 6 lamp Nets.
+    REQUIRE(session.leds().size() == 48);
+
+    // 19 lamp Nets + 32 Clips + 4 Hooks + the probe + the meter = 57 watched (kMaxWatched 96).
+    REQUIRE(session.clipGroup("U1", "A0").has_value());
+    REQUIRE(session.clipGroup("U1", "D0").has_value());
+    REQUIRE(session.clipGroup("U1", "PHI0").has_value());
+    for (const char* pin : {"RW", "SYNC", "RES_N", "IRQ_N", "NMI_N"}) {
+        REQUIRE(session.clip("U1", pin).has_value());
+    }
+    CHECK(std::ranges::all_of(session.clips(), [](const auto& c) { return c.has_value(); }));
+    REQUIRE(session.setGroupTrigger(0, "1F1F"));  // SCANDS
+    session.arm();
+    REQUIRE(session.hook("U1", "PHI0").has_value());
+    REQUIRE(session.hook("U1", "SYNC").has_value());
+    REQUIRE(session.hook("U1", "NMI_N").has_value());
+    REQUIRE(session.hook("U4", "Y7_N").has_value());  // K7
+    const auto row = session.padLead("U24", "Y0_N");  // ROW0
+    const auto column = session.padLead("U2", "PA0");
+    REQUIRE(row.has_value());
+    REQUIRE(column.has_value());
+    session.touch(ProbeTip{row->at, Layer::Front});
+    REQUIRE(session.placeLead({column->at, Layer::Front, column->label}));
+
+    // The monitor shows 0200 from about 25 ms: DS1 a '0' (G dark), DS2 a '2' (C, F dark), each
+    // digit lit about a sixth of the time.
+    session.powerOn(1, 300_ms);
+    session.runner().waitIdle();
+    CHECK(session.analyzerPhase() == AnalyzerPhase::Captured);
+    const auto glow = [&](std::string_view reference, LampShape shape) {
+        for (const LedLight& led : session.leds()) {
+            if (led.reference == reference && led.shape == shape) {
+                return led.brightness;
+            }
+        }
+        FAIL("no lamp " << reference);
+        return 0.0f;
+    };
+    using enum LampShape;
+    for (const LampShape lit : {SegmentA, SegmentB, SegmentC, SegmentD, SegmentE, SegmentF}) {
+        CHECK(glow("DS1", lit) > 0.08f);
+    }
+    CHECK(glow("DS1", SegmentG) < 0.02f);
+    for (const LampShape lit : {SegmentA, SegmentB, SegmentD, SegmentE, SegmentG}) {
+        CHECK(glow("DS2", lit) > 0.08f);
+    }
+    CHECK(glow("DS2", SegmentC) < 0.02f);
+    CHECK(glow("DS2", SegmentF) < 0.02f);
+    session.powerOff();
+}
+
 TEST_CASE("session: ball with every instrument", "[session][slow]") {
     auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
     REQUIRE(machine.has_value());
