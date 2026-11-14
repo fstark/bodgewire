@@ -36,6 +36,7 @@
 #include "parts/shift_register_2518.hpp"
 #include "parts/shift_register_2524.hpp"
 #include "parts/switch.hpp"
+#include "parts/ttl145.hpp"
 #include "parts/z80_stub.hpp"
 
 namespace bw {
@@ -281,6 +282,8 @@ constexpr std::array s_parts{
              &CreateChip<ShiftRegister2524, "2524">},
     PartInfo{"2716", "2K x 8 EPROM", "DIP-24", Chip, &CreateRom<"2716">},
     PartInfo{"6502", "8-bit microprocessor (NMOS)", "DIP-40", Chip, &CreateChip<Mos6502, "6502">},
+    PartInfo{"74145", "BCD-to-decimal decoder/driver, open collector", "DIP-16", Chip,
+             &CreateChip<Ttl145, "74145">},
     PartInfo{"74LS00", "quad 2-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS00">},
     PartInfo{"74LS02", "quad 2-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS02">},
     PartInfo{"74LS04", "hex inverter", "DIP-14", Chip, &CreateGatePackage<"74LS04">},

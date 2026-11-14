@@ -1,0 +1,54 @@
+# Bench for P5i (docs/p5i-switches/SWITCHES.md), no Board. U1 counts the 1 MHz clock; its low two
+# bits select one of ROW0-ROW3 through the 74145 U2 (open collector, low while scanned), each for
+# 1 us. Key k (SW(k+1), legend k in hex) joins ROW(k/4) to COL(k%4); the columns are pulled up
+# and read by U3, so KEYc goes high while a held key on column c is on the scanned row. Three keys
+# at three corners of a rectangle also join the fourth corner (a ghost). SW17 pulls BTN_N to GND.
+
+part X1   OSC freq=1MHz
+part J1   POWER
+part U1   74LS93    # row counter
+part U2   74145     # rows
+part U3   74LS04    # column readers
+part SW1   KEY legend=0
+part SW2   KEY legend=1
+part SW3   KEY legend=2
+part SW4   KEY legend=3
+part SW5   KEY legend=4
+part SW6   KEY legend=5
+part SW7   KEY legend=6
+part SW8   KEY legend=7
+part SW9   KEY legend=8
+part SW10  KEY legend=9
+part SW11  KEY legend=A
+part SW12  KEY legend=B
+part SW13  KEY legend=C
+part SW14  KEY legend=D
+part SW15  KEY legend=E
+part SW16  KEY legend=F
+part SW17  BUTTON pc=Space
+part R1    R value=4k7
+part R2    R value=4k7
+part R3    R value=4k7
+part R4    R value=4k7
+part R5    R value=4k7
+
+net CLK    X1.OUT U1.CKA
+net QA     U1.QA U1.CKB U2.A
+net QB     U1.QB U2.B
+net GND    U1.R01 U1.R02 U2.C U2.D U3.6A
+net ROW0   U2.Y0_N SW1.1 SW2.1 SW3.1 SW4.1
+net ROW1   U2.Y1_N SW5.1 SW6.1 SW7.1 SW8.1
+net ROW2   U2.Y2_N SW9.1 SW10.1 SW11.1 SW12.1
+net ROW3   U2.Y3_N SW13.1 SW14.1 SW15.1 SW16.1
+net COL0   R1.2 U3.1A SW1.2 SW5.2 SW9.2 SW13.2
+net KEY0   U3.1Y
+net COL1   R2.2 U3.2A SW2.2 SW6.2 SW10.2 SW14.2
+net KEY1   U3.2Y
+net COL2   R3.2 U3.3A SW3.2 SW7.2 SW11.2 SW15.2
+net KEY2   U3.3Y
+net COL3   R4.2 U3.4A SW4.2 SW8.2 SW12.2 SW16.2
+net KEY3   U3.4Y
+net BTN_N  R5.2 SW17.1 U3.5A
+net BTN    U3.5Y
+net GND    SW17.2
+net VCC    R1.1 R2.1 R3.1 R4.1 R5.1

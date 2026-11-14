@@ -1096,3 +1096,30 @@ TEST_CASE("session: typing control codes", "[session]") {
     session.powerOff();
     session.runner().waitIdle();
 }
+
+TEST_CASE("session: switch keys on the switch bench", "[session]") {
+    auto loaded =
+        LoadNetlistFile(std::filesystem::path(BW_ROOT_DIR) / "tests/data/switch_bench.bwn");
+    REQUIRE(loaded.has_value());
+    Session session(std::nullopt, std::move(*loaded));
+    CHECK(session.switches().size() == 17);
+    const auto keys = session.switchKeys();
+    REQUIRE(keys.size() == 17);
+    CHECK(keys[0].reference == "SW1");
+    CHECK(keys[0].pc == "0");
+    CHECK(keys[10].pc == "A");
+    CHECK(keys[16].reference == "SW17");
+    CHECK(keys[16].pc == "Space");
+
+    // A key held through the Session: the inverter on its column goes high on its row's scans.
+    session.setSpeed(Speed::Max);
+    session.powerOn(1, 1_ms);
+    session.setPressed("SW1", true);  // key 0: row 0, column 0
+    session.runner().waitIdle();
+    const Switch* key = SwitchOf(session.circuit(), "SW1");
+    REQUIRE(key != nullptr);
+    CHECK(key->closed());
+    session.powerOff();
+    session.runner().waitIdle();
+    CHECK_FALSE(key->pressed());
+}

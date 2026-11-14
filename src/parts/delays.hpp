@@ -44,6 +44,8 @@ inline constexpr Delays kLs165Data{14'000, 21'000};   // H → QH while loading
 inline constexpr Delays kLs175ClockToQ{20'000, 21'000};
 inline constexpr Delays kLs175Clear{16'000, 20'000};  // Q_N rises, Q falls
 // 74LS138 (TI typicals; rise = output to 1).
+// Assumed typicals: TI gives only 50 ns maximums. Rise is the open collector's release.
+inline constexpr Delays kTtl145{25'000, 20'000};         // A-D → Y_N
 inline constexpr Delays kLs138Select{21'000, 21'000};    // A, B, C → Y (3 levels)
 inline constexpr Delays kLs138EnableG2{12'000, 20'000};  // G2A_N, G2B_N → Y
 inline constexpr Delays kLs138EnableG1{17'000, 26'000};  // G1 → Y

@@ -30,6 +30,7 @@ add_library(bw_parts STATIC
   shift_register_2518.cpp
   shift_register_2524.cpp
   switch.cpp
+  ttl145.cpp
   z80_stub.cpp
 )
 target_link_libraries(bw_parts PUBLIC bw_sim PRIVATE bw_warnings)
