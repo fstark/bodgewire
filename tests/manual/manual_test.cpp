@@ -109,6 +109,9 @@ TEST_CASE("manual: part pin names", "[manual]") {
     CHECK(PartPinNames(*FindPart("PADDLE")).size() == 4);
     CHECK(PartPinNames(*FindPart("POR")).size() == 8);
     CHECK(PartPinNames(*FindPart("KEYBOARD")).size() == 10);
+    const Names riot = PartPinNames(*FindPart("6530"));
+    CHECK(riot.size() == 40);
+    CHECK(std::ranges::find(riot, "CS1") != riot.end());
     CHECK(PartPinNames(*FindPart("R")).empty());
 }
 

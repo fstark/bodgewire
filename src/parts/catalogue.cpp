@@ -27,6 +27,7 @@
 #include "parts/ls90.hpp"
 #include "parts/ls93.hpp"
 #include "parts/mos6502.hpp"
+#include "parts/mos6530.hpp"
 #include "parts/oscillator.hpp"
 #include "parts/paddle.hpp"
 #include "parts/power_on_reset.hpp"
@@ -100,6 +101,36 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
         return std::unexpected(name + ": " + words.error());
     }
     return &circuit.add<Rom>(std::move(reference), spec, std::move(*words));
+}
+
+std::expected<Component*, std::string> CreateMos6530(Circuit& circuit, std::string reference,
+                                                     std::span<const PartParam> params) {
+    const PartParam* mask = nullptr;
+    const PartParam* contents = nullptr;
+    for (const PartParam& param : params) {
+        if (param.name == "mask") {
+            mask = &param;
+        } else if (param.name == "contents") {
+            contents = &param;
+        } else {
+            return std::unexpected("6530: unknown parameter '" + param.name + "'");
+        }
+    }
+    if (mask == nullptr) {
+        return std::unexpected("6530 needs mask=002|003");
+    }
+    const Mos6530Mask* found = FindMos6530Mask(mask->value);
+    if (found == nullptr) {
+        return std::unexpected("6530: unknown mask '" + mask->value + "' (002|003)");
+    }
+    if (contents == nullptr) {
+        return std::unexpected("6530 needs contents=<file>");
+    }
+    auto words = ReadRomContents(contents->value, 1024, 8);
+    if (!words) {
+        return std::unexpected("6530: " + words.error());
+    }
+    return &circuit.add<Mos6530>(std::move(reference), *found, std::move(*words));
 }
 
 std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::string reference,
@@ -285,6 +316,8 @@ constexpr std::array s_parts{
     PartInfo{"2716", "2K x 8 EPROM", "DIP-24", Chip, &CreateRom<"2716">},
     PartInfo{"6102", "1K x 1 static RAM", "DIP-16", Chip, &CreateChip<Ram6102, "6102">},
     PartInfo{"6502", "8-bit microprocessor (NMOS)", "DIP-40", Chip, &CreateChip<Mos6502, "6502">},
+    PartInfo{"6530", "ROM, RAM, I/O and timer (KIM mask 002 or 003)", "DIP-40", Chip,
+             &CreateMos6530},
     PartInfo{"74125", "quad bus buffer, tri-state", "DIP-14", Chip, &CreateChip<Ttl125, "74125">},
     PartInfo{"74145", "BCD-to-decimal decoder/driver, open collector", "DIP-16", Chip,
              &CreateChip<Ttl145, "74145">},

@@ -11,6 +11,7 @@
 
 #include "board/copper.hpp"
 #include "machine/crack.hpp"
+#include "parts/mos6530.hpp"
 #include "parts/ram2114.hpp"
 #include "runner/runner.hpp"
 #include "sim/simulator.hpp"
@@ -470,6 +471,30 @@ TEST_CASE("machine: memory fault errors", "[machine]") {
                 "6: column U3.A0: not a data pin", "7: cell U3.IO1 $400: U3 (2114) has 1024 words",
                 "8: cell U2.O0 $800: U2 (2716) has 2048 words",
                 "9: cell U3.IO1 ram $10: U3 (2114) has one memory: no name"});
+}
+
+TEST_CASE("machine: cell Faults in a chip with two memories", "[machine]") {
+    const Mos6530 chip("U2", *FindMos6530Mask("002"), std::vector<std::uint8_t>(1024, 0xFF));
+    const auto resolve = [&](std::optional<std::uint32_t> word, std::string memory) {
+        const CellDecl decl{1, {"U2", "D3"}, word, LogicValue::One, std::move(memory)};
+        return ResolveCell(decl, chip, "6530");
+    };
+    CHECK(resolve(0x3F, "").error() == "U2 (6530) has memories rom and ram: name one");
+    CHECK(resolve(0x3F, "xyz").error() == "U2 (6530) has no memory 'xyz'");
+    CHECK(resolve(0x40, "ram").error() == "U2 (6530) ram has 64 words");
+    CHECK(resolve(0x400, "rom").error() == "U2 (6530) rom has 1024 words");
+    const CellDecl pa{1, {"U2", "PA0"}, 0, LogicValue::One, "ram"};
+    CHECK(ResolveCell(pa, chip, "6530").error() == "not a data pin");
+    const auto ram = resolve(0x3F, "ram");
+    REQUIRE(ram.has_value());
+    CHECK(ram->reference == "U2");
+    CHECK(ram->pin == Mos6530::kData[3]);
+    CHECK(ram->word == std::size_t{0x3F});
+    CHECK(ram->memory == 1u);
+    const auto rom = resolve(std::nullopt, "rom");
+    REQUIRE(rom.has_value());
+    CHECK_FALSE(rom->word.has_value());
+    CHECK(rom->memory == 0u);
 }
 
 TEST_CASE("machine: switch fault errors", "[machine]") {

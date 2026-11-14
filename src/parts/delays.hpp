@@ -109,5 +109,10 @@ inline constexpr Time kMos6502ReadWrite = 130'000;  // + tRWS 100 ns typical
 inline constexpr Time kMos6502Sync = 390'000;       // + tSYNC 360 ns maximum (no typical)
 inline constexpr Time kMos6502DataOut = 180'000;    // PHI0 rise + tMDS 150 ns typical
 inline constexpr Time kMos6502DataHold = 90'000;    // PHI0 fall + tHW 60 ns typical: released
+// MOS 6530 at 1 MHz, preliminary data sheet (Aug. 1975) p. 3: maximums, no typicals published.
+inline constexpr Time kMos6530DataOut = 395'000;  // PHI2 rise → D valid (TCDR)
+inline constexpr Time kMos6530DataHold = 10'000;  // PHI2 fall → D released (THR)
+inline constexpr Time kMos6530Port = 1'000'000;   // PHI2 fall → PA, PB valid (TCPW)
+inline constexpr Time kMos6530Irq = 300'000;      // PHI2 fall → PB7 low: TIC 200 ns at 1 MHz
 
 }  // namespace bw::delays

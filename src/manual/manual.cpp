@@ -6,6 +6,7 @@
 #include <set>
 #include <utility>
 
+#include "parts/mos6530.hpp"
 #include "parts/rom.hpp"
 #include "sim/circuit.hpp"
 
@@ -227,6 +228,13 @@ std::vector<std::string> PartPinNames(const PartInfo& part) {
     }
     if (const RomSpec* rom = FindRomSpec(part.name)) {  // a ROM needs a contents file to build
         return {rom->names.begin(), rom->names.end()};
+    }
+    if (part.name == "6530") {  // so does a 6530
+        std::vector<std::string> names;
+        for (const PinSpec& pin : Mos6530::Pins()) {
+            names.push_back(pin.name);
+        }
+        return names;
     }
     Circuit circuit;
     std::vector<PartParam> params;

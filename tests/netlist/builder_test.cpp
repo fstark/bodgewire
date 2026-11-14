@@ -1,14 +1,17 @@
 #include "netlist/builder.hpp"
 
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "parts/mos6530.hpp"
 #include "parts/ram2114.hpp"
 #include "sim/simulator.hpp"
 
@@ -366,6 +369,34 @@ TEST_CASE("builder: stuck bidirectional pin forces its net and is read by its ch
         CHECK(sim.value(b0) == (fight ? Zero : One));
         const auto& ram = static_cast<const Ram2114&>(*loaded.components.at("U1"));
         CHECK((ram.word(0) & 1) == 1);  // the chip reads its stuck value, fight or not
+    }
+}
+
+TEST_CASE("builder: a stuck pull-up pin holds its chip's own net against the chip", "[netlist]") {
+    // A 6530 powers on with random port registers: on some seeds PA0 drives a strong 0 onto the
+    // chip's own stuck Net, which a Strong tie would fight into X (seeds 1-16 include such).
+    const std::string text = "part U1 6530 mask=002 contents=" + std::string(BW_ROOT_DIR) +
+                             "/tests/data/empty.rom\nnet PA0 U1.PA0\n";
+    const auto netlist = ParseNetlist(text, "t.bwn");
+    REQUIRE(netlist.has_value());
+    const StuckPin stuck[] = {{"U1", Mos6530::kPortA[0], One}};
+    for (std::uint64_t seed = 1; seed <= 16; ++seed) {
+        INFO(seed);
+        const auto result = BuildCircuit(*netlist, stuck);
+        REQUIRE(result.has_value());
+        LoadedCircuit& loaded = **result;
+        Simulator sim(loaded.circuit);
+        sim.powerOn(seed);
+        sim.runUntil(1_us);
+        CHECK(sim.value(loaded.nets.at("PA0")) == One);
+        std::optional<NetId> own;  // the chip's own Net: not listed in `nets`
+        for (std::uint32_t n = 0; n < loaded.circuit.netCount(); ++n) {
+            if (loaded.circuit.netName(NetId{n}) == "U1.PA0 stuck") {
+                own = NetId{n};
+            }
+        }
+        REQUIRE(own.has_value());
+        CHECK(sim.value(*own) == One);
     }
 }
 
