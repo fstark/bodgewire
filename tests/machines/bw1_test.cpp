@@ -17,6 +17,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "bw1_model.hpp"
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
 #include "parts/switch.hpp"
@@ -38,6 +39,19 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
     auto result = LoadNetlistFile(NetlistPath());
     REQUIRE(result.has_value());
     return std::move(*result);
+}
+
+// The Circuit built from the Board's Copper, with no Faults; with `strap`, a Bodge Wire from U24
+// pad 4 (STRAP) to U2 pad 2 (PA0).
+std::unique_ptr<LoadedCircuit> BoardCircuit(bool strap = false) {
+    auto machine = LoadNetlistMachine(NetlistPath());
+    REQUIRE(machine.has_value());
+    if (strap) {
+        REQUIRE(machine->addWire({"U24", "4"}, {"U2", "2"}));
+    }
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
 }
 
 // The netlist with U24 output 3 joined to PA0: the self-test strap.
@@ -223,12 +237,12 @@ TEST_CASE("bw1: netlist loads without warnings", "[machines]") {
 TEST_CASE("bw1: reset shows 0200", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2, 3);
     INFO("seed " << seed);
-    Bw1 bw1 = Started(DesignCircuit(), seed);
+    Bw1 bw1 = Started(BoardCircuit(), seed);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: keys set the address and write memory", "[machines][slow]") {
-    Bw1 bw1 = Started(DesignCircuit(), 1);
+    Bw1 bw1 = Started(BoardCircuit(), 1);
     bw1.type("AD 0300 DA A9 +");
     CheckShows(bw1.display(), "0301");
     bw1.type("AD 0300");
@@ -236,7 +250,7 @@ TEST_CASE("bw1: keys set the address and write memory", "[machines][slow]") {
 }
 
 TEST_CASE("bw1: a program typed in runs", "[machines][slow]") {
-    Bw1 bw1 = Started(DesignCircuit(), 1);
+    Bw1 bw1 = Started(BoardCircuit(), 1);
     bw1.type("DA A9 + 42 + 85 + 10 + 00 AD 0200 GO");  // LDA #$42, STA $10, BRK
     CheckShows(bw1.display(), "0206");
     bw1.type("AD 0010");
@@ -244,7 +258,7 @@ TEST_CASE("bw1: a program typed in runs", "[machines][slow]") {
 }
 
 TEST_CASE("bw1: ST stops a loop", "[machines][slow]") {
-    Bw1 bw1 = Started(DesignCircuit(), 1);
+    Bw1 bw1 = Started(BoardCircuit(), 1);
     bw1.type("DA 4C + 00 + 02 AD 0200 GO");  // JMP $0200
     bw1.run(50_ms);
     bw1.press("ST");
@@ -252,7 +266,7 @@ TEST_CASE("bw1: ST stops a loop", "[machines][slow]") {
 }
 
 TEST_CASE("bw1: SST steps one instruction", "[machines][slow]") {
-    Bw1 bw1 = Started(DesignCircuit(), 1);
+    Bw1 bw1 = Started(BoardCircuit(), 1);
     bw1.type("DA A9 + 11 + A9 + 22 AD 0200");  // LDA #$11, LDA #$22
     bw1.setSst(true);
     bw1.type("GO");
@@ -262,7 +276,7 @@ TEST_CASE("bw1: SST steps one instruction", "[machines][slow]") {
 }
 
 TEST_CASE("bw1: RS returns to 0200", "[machines]") {
-    Bw1 bw1 = Started(DesignCircuit(), 1);
+    Bw1 bw1 = Started(BoardCircuit(), 1);
     bw1.type("AD 1234");
     CheckShows(bw1.display(), "1234");
     bw1.press("RS");
@@ -280,4 +294,10 @@ TEST_CASE("bw1: the strap runs the self-test", "[machines][slow]") {
     bw1.hold("GO");
     bw1.run(10_ms);
     CHECK(bw1.display() == "PA5513");
+}
+
+TEST_CASE("bw1: a Bodge Wire on the strap runs the self-test", "[machines][slow]") {
+    Bw1 bw1(BoardCircuit(true), 1);
+    bw1.runUntil(300_ms);
+    CHECK(bw1.display() == "888888");
 }

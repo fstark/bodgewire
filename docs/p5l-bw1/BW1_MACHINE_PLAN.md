@@ -52,8 +52,8 @@ Commit: `docs: P5l implemented, user check pending`
 |-------|-------------|--------|
 | 1 | Lamps with two cathodes, `DIGITCC` | `e88bc09` |
 | 2 | `SLIDE` | `e88bc09` (with phase 1) |
-| 3 | Netlist, manuals, fault-free tests | this commit |
-| 4 | Board (user routes) | |
+| 3 | Netlist, manuals, fault-free tests | `232d7fe` |
+| 4 | Board (user routes) | this commit |
 | 5 | Session test, release check | |
 | 6 | Recipes, docs, full suite | |
 
@@ -63,3 +63,4 @@ Commit: `docs: P5l implemented, user check pending`
 - Drafted while the review ran: phases 1–3 code and the Board placement.
 - Phases 1 and 2: one commit, as `catalogue.cpp` carries both; fence 278 green. A one-pin Net (`STRAP`) gives no builder warning.
 - Phase 3: every case passed first time but the SST one, whose expectation was wrong (fixed in the docs review). Release headless `bw run --time 2s`: **2.55×** idle, **2.53×** with key `0` held (`--press SW1:1ms:2s`). Debug: reset 4 s, RS 9 s, typing cases 18–31 s, the strap case 83 s. Manuals: pin names (`RS0`, `CS1`) and the undriven `A13`–`A15` are not backticked (unknown references).
+- Phase 4: `bw place` gave 8.74 m on an 8 × 3 grid. The user laid the Board out after the KIM's own (chips turned, `X1` where the KIM's crystal is; the 74LS244 and POR, which the KIM lacks, placed freely) and routed it, so the committed Board is not what `bw1.place` gives (`place_drc_bw1` checks the rules' own Board). Freerouting left `SEG_C` open between `DS2` and `DS3`: three B.Cu segments added under the digits at y 162.5. KiCad DRC 0 errors, 0 unconnected (48 silkscreen warnings); `check-board` ok. The user saw stray magenta crosses: KiCad 10 footprint points, which KiCad keeps in Board coordinates but `bw place` wrote relative (fixed in the writer, separate commit; the 21 in this Board moved back to their parts' centres). The Machine tests run on the Board's Circuit; the Bodge Wire case (U24 pad 4 to `U2` pad 2) shows `888888` at 300 ms. Fence 149 green.
