@@ -41,6 +41,7 @@ add_executable(bw_tests
   machines/bus_load_test.cpp
   machines/bw1_model.cpp
   machines/bw1_model_test.cpp
+  machines/bw1_monitor_test.cpp
   machines/bodge_wire_test.cpp
   machines/ball_test.cpp
   machines/chaser_test.cpp

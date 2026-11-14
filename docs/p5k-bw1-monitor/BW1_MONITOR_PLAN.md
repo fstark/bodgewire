@@ -45,11 +45,12 @@ Commit: `docs: P5k implemented, user check pending`.
 | Phase | Description | Commit |
 |-------|-------------|--------|
 | 1 | `.checksum` | `4387229` |
-| 2 | The model | this commit |
-| 3 | The monitor | |
+| 2 | The model | `b826d4f` |
+| 3 | The monitor | this commit |
 | 4 | The self-test | |
 | 5 | Finish | |
 
 ## Notes
 
 - Review (before code), fixed in the docs: the ROM sums' `Z` after `inx` (a `tay` before the branch); the `3795F0` stuck values; the SST case's third display (`$0206` holds RAM); the KIM entry-point program written out; test names beginning `bw1 …` for the `-R` filters; the timer flagged, not refused, and not checked in the bad-RAM cases (random code); `SEG_*` constant names, numbered local labels, `FAILn` by `jmp`; the scan about 3.5 ms; the 003's `PA` pins left unconnected in P5l.
+- Monitor: 306 bytes of code and tables; every entry point on its KIM address (`.org`, checked by a test). A scan by cycle count: about 552 cycles a digit (`CONVX` 545 with its `jsr`, `DELAY` 100), 3.4 ms with `AK`: `DELAY` kept.
