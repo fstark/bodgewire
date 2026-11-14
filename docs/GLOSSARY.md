@@ -80,7 +80,11 @@ What the player turns on a paddle controller, from 0 at the left stop to 1 at th
 _Avoid_: Paddle, pot (when meaning the setting)
 
 **Monitor**:
-The small ROM program that runs on a Machine with a CPU; there is no BASIC.
+The small ROM program that runs on a Machine with a CPU: it shows memory and lets the player change it and run a program from its keys (the BW-1's AD, DA, GO); there is no BASIC.
+
+**Strap**:
+A jumper or wire on the Board that a program reads to choose what it does: on the BW-1, closed at reset, it runs the self-test instead of the Monitor.
+_Avoid_: Jumper (when meaning what it selects)
 
 ## Signal states
 
