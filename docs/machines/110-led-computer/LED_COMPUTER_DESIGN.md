@@ -198,7 +198,45 @@ row back middle U1 U2            # the 6502 and the 2716: DIP-40 and DIP-24, no 
 
 `U3`–`U8`, `X1` and the 11 resistors fill the chip grid by annealing. A draft `bw place` comes before the user routes; a failed rule changes the `.place`, noted in the plan. The LED resistors are not put behind their LEDs with `next` (an axial courtyard, 9.72 mm, is wider than the row's LED pitch, as on 100 Heartbeat); the annealing may scatter them, as it did there, and the user may move them before routing.
 
-Layout constraints for the user: the parts as placed (no rotation); F.Cu/B.Cu, DRC 0 errors, 0 unconnected. No crack Puzzles yet, so no route order to keep. Optional: keep the data bus (`DB0`–`DB7`) and address bus tracks grouped as buses, since a player will follow them.
+Layout constraints for the user: the parts as placed (no rotation); F.Cu/B.Cu, DRC 0 errors, 0 unconnected. The crack Puzzle cuts a two-pad Net (`LATCH_CLK`), so a new route keeps it. Optional: keep the data bus (`DB0`–`DB7`) and address bus tracks grouped as buses, since a player will follow them.
+
+## Puzzles
+
+`machine led_computer` in each file (LED_COMPUTER.md, Puzzles):
+
+| File | Fault line | Where |
+|---|---|---|
+| `lights_out.bwp` | `fault crack U6.4Y U7.CLK 50%` | `LATCH_CLK` at the latch |
+| `sleeper.bwp` | `fault stuck U8.RST_N 0` | `RES_N` |
+| `full_house.bwp` | `fault bridge U5.15 U5.16` | `RAM_N` to `U5`'s VCC pin |
+| `three_lights.bwp` | `fault bridge U6.8 U6.9` | `LATCH_N` to `WR_N` |
+| `first_light.bwp` | `fault cell U4.IO4 $1FF 0` | the stack, inside `U4` |
+| `lightless.bwp` | `fault stuck U3.A0 0` | `A0` inside `U3` |
+| `blackout.bwp` | `fault stuck U2.CE_N 1` | `ROM_N` inside `U2` |
+
+Titles and briefs:
+
+- Lights out: "The LEDs never light."
+- Sleeper: "The LEDs never light, and pressing Reset does not wake the computer."
+- Full house: "All eight LEDs are lit, and they stay lit."
+- Three lights: "D1, D2 and D5 are lit and stay lit: the light never moves."
+- First light: "D1 lights, but the light never moves on: it starts again at D1 every time."
+- Lightless: "The LEDs never light."
+- Blackout: "No light runs: the LEDs stay dark, or now and then a few light up at once and stay lit."
+
+Four Puzzles show dark LEDs on purpose: from outside they are alike, the instruments tell them apart (the program running or not, `RES_N`, `LATCH_CLK` at each end, `ROM_N` against what `U2` drives).
+
+### Electrical Nets on a damaged Board
+
+- Lights out: `U7` `CLK` alone on its Net (TTL, reads high, never rises); `U6` `4Y` pulses once a step as usual. The latch keeps the 0s `RES_N` cleared it to.
+- Sleeper: `RES_N` held at 0 by `U8` (Strong) against `R9`; `SW1` only pulls it lower. The CPU stays in reset, the latch cleared.
+- Full house: `RAM_N` and `U5`'s VCC pin are one Net with VCC (Supply) winning: the RAMs never answer. `lda light` reads the open bus, `$FF`, which the program writes to the latch (the test sees `$FF` at every step on seeds 1–3). A new `U5` drives the same Contention.
+- Three lights: `LATCH_N` and `WR_N` one Net, low whenever either output is: every write cycle also makes `LATCH_CLK`. The last write before the delay is `JSR`'s push of its return address low byte, `$13` (the return address is `$F813`), which stays on the LEDs. A new `U6` gives the same.
+- First light: P5g's stack cell; `RTS` goes to `$7814`, the open bus reads `$FF`, the 6502 runs it up to `$E000` (the ROM's mirror of `$F800`) and the program starts again.
+- Lightless: P5g's internal address line; `light` and `dir` share a nibble, `sta dir` clears the light; `RTS` goes to erased ROM, which runs on to the start.
+- Blackout: `ROM_N` is right on its Net; `U2` reads it as 1 and never drives the bus. The CPU runs the open bus and the RAMs' random power-on contents: seed-dependent wandering that mostly never writes `$8000`–`$9FFF`; on about one power-on in six it writes there once and the LEDs freeze on a random pattern (seed 8: `$46` from about 146 ms). No seed shows a moving light.
+
+The test (`tests/machines/led_computer_test.cpp`) checks each symptom (the latch byte, `RES_N`, `LATCH_CLK` at each end) on seeds 1–3 where it does not depend on the seed, then the repair: the light at `D1`, `D2`, `D3`. Full house and Three lights swap the chip first, which does not help.
 
 ## Manuals
 

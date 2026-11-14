@@ -1,0 +1,6 @@
+# Lights out: the LATCH_CLK Trace from U6 pin 13 (4Y) to U7 pin 11 (CLK) is cracked: U7's clock floats
+# high and never rises, so the latch keeps the 0s RES_N cleared it to. The program runs as usual.
+machine led_computer
+title "Lights out"
+brief "The LEDs never light."
+fault crack U6.4Y U7.CLK 50%

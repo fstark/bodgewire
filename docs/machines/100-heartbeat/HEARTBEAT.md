@@ -27,6 +27,12 @@ A processor is a chip like the others: clock in, address out. Before suspecting 
 
 ## Puzzles
 
-None yet: a later roadmap row, from the routed Board. Candidates seen while designing: a data line pulled the wrong way (another opcode: `$EE`, INC absolute, reads and writes far away, so the count stutters and `RW` pulses; two lines wrong can make a JAM, which freezes the address at `$FFFF` with every LED lit), an address line cracked between `U1` and its buffer, `RES_N` stuck low (the address frozen at one place), a dead clock.
+Three Puzzles (P5h), each a different link of the free-run test:
+
+- Flatline: the clock cracked between `X1` and `U1`: every LED frozen. The clock is at `X1`'s pad, not at `U1`'s.
+- Fifteen: `A14` cracked between `U1` and its buffer `U3`: `D15` always lit. The analyzer shows `A14` counting at `U1`, not at `U3`.
+- Flutter: `U1`'s `D2` stuck at 1: every opcode is `$EE` (INC absolute), the address sits at `$EEEE` half the time, `RW` pulses although nothing should be written. The analyzer reads `$EE` on the data bus; a resistor is not to blame; swap `U1`.
+
+A data line cracked shows nothing on this Machine: the floating line keeps the bit it had. Files, Fault lines and Nets: [HEARTBEAT_DESIGN.md](HEARTBEAT_DESIGN.md#puzzles).
 
 Netlist, Board and manuals: [HEARTBEAT_DESIGN.md](HEARTBEAT_DESIGN.md).

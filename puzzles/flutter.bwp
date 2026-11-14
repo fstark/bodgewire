@@ -1,0 +1,7 @@
+# Flutter: U1's D2 stuck at 1: the CPU reads $EE (INC absolute) instead of $EA (NOP). Each INC reads
+# $EEEE and writes it back twice, so the address sits at $EEEE half the time and RW pulses although
+# nothing should ever be written. The lights show 1110 in every group of four.
+machine heartbeat
+title "Flutter"
+brief "The lights stop counting: they all glow at once, D1, D5, D9 and D13 dim and the others bright, the same whatever happens. Reset changes nothing."
+fault stuck U1.D2 1

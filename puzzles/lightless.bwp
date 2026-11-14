@@ -1,0 +1,7 @@
+# Lightless: U3 reads its A0 as 0 (the internal address line): light ($00) and dir ($01) share their
+# low nibble, so `sta dir` clears the light; JSR's two return bytes share word $1FE, so RTS goes to
+# erased ROM, which runs on to $F800 and starts the program again. Every latch write is 0.
+machine led_computer
+title "Lightless"
+brief "The LEDs never light."
+fault stuck U3.A0 0

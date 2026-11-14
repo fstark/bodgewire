@@ -1,0 +1,6 @@
+# Fifteen: the A14 Trace from U1 pin 24 to U3 pin 6 (2A3) is cracked: the buffer's input floats high,
+# so LA14 is always 1 and D15 always lit. The CPU counts as usual.
+machine heartbeat
+title "Fifteen"
+brief "The second light from the left, D15, is always lit: it never blinks. The others look as they should."
+fault crack U1.A14 U3.2A3 50%

@@ -1,0 +1,6 @@
+# Flatline: the PHI0 Trace from X1's output to U1 pin 37 is cracked: U1's clock input floats, the CPU
+# never sees a clock edge and the address stays wherever power-on left it. X1 still oscillates.
+machine heartbeat
+title "Flatline"
+brief "The lights never move: a few are lit, the others dark, and they stay that way. Reset changes nothing."
+fault crack X1.OUT U1.PHI0 50%

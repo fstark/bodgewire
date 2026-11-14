@@ -1,0 +1,7 @@
+# First light: inside U4, bit IO4 (DB7) of word $1FF stuck at 0: the high byte of JSR's return address
+# reads $78, not $F8. RTS goes to $7814, where nothing answers; the open bus reads $FF, which the 6502
+# runs up to $E000, the ROM's mirror of $F800, and the program starts again.
+machine led_computer
+title "First light"
+brief "D1 lights, but the light never moves on: it starts again at D1 every time."
+fault cell U4.IO4 $1FF 0

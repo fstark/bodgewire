@@ -1,0 +1,7 @@
+# Full house: Solder Bridge between U5 pin 15 (Y0_N, RAM_N) and pin 16 (VCC): RAM_N is held at 1, so
+# the RAMs never answer. The variables read the open bus ($FF), which the program writes to the LEDs.
+# A U5 swap does not help.
+machine led_computer
+title "Full house"
+brief "All eight LEDs are lit, and they stay lit."
+fault bridge U5.15 U5.16

@@ -1,0 +1,6 @@
+# Sleeper: U8 output RST_N stuck at 0: RES_N is held low, the CPU stays in reset and the latch stays
+# cleared. SW1 can only pull RES_N lower.
+machine led_computer
+title "Sleeper"
+brief "The LEDs never light, and pressing Reset does not wake the computer."
+fault stuck U8.RST_N 0

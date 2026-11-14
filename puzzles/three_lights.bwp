@@ -1,0 +1,7 @@
+# Three lights: Solder Bridge between U6 pin 8 (LATCH_N) and pin 9 (WR_N): both are low together at
+# every write, so every write also clocks the LED latch. The last write of each step is JSR's push of
+# its return address low byte ($13), which stays on the LEDs through the delay. A U6 swap does not help.
+machine led_computer
+title "Three lights"
+brief "D1, D2 and D5 are lit and stay lit: the light never moves."
+fault bridge U6.8 U6.9

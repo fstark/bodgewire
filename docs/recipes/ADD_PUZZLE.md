@@ -11,6 +11,7 @@ Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice). Crack synt
 - The player has a fair way to find it with the probe and the Board. Hard because the Machine is complex is fine; hard because the clue is missing is a bug.
 - Seed-independent: the symptom shows for every power-on seed.
 - A memory Fault belongs where the Machine shows the memory (a character or message ROM, video RAM): in program memory it mostly crashes the program, which only tells the player "swap". Check which words the program really uses: an address line that aliases unused words shows nothing.
+- On a CPU's bus a cut data line keeps its bus charge (the last value driven or pulled): where only resistors drive it (100 Heartbeat) a crack shows nothing; use `stuck` on the CPU's pin. A Fault that sends a CPU wandering through the open bus and random RAM is seed-dependent: run several seeds (`bw run --seed N`), write the brief for what every seed shares and test a seed of each kind (110 `blackout`).
 - Each Puzzle on a Machine should teach something different (stuck output, stuck input, broken trace, bridge, dead rail, dry Joint).
 - Pin Faults (stuck input, dry Joint) show nothing on the Board: the clue is the leg against the pad (a touch on a chip pad reads the leg with F.Cu active, the pad with B.Cu). A stuck input's leg reads the right signal while the chip acts wrong; a dry Joint's leg differs from its pad.
 

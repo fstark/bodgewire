@@ -99,9 +99,35 @@ edge SW1 front right                   # Reset
 edge U1 back middle                    # the 6502: DIP-40, no slot in the chip grid
 ```
 
-`U2`, `U3`, `X1` and all 27 resistors fill the chip grid by annealing: the LED resistors land along the front, near their LEDs; the data-bus resistors near `U1`'s data pins. Each LED's resistor is not put behind it with `next`: an axial resistor's courtyard (9.72 mm) is wider than the row's LED pitch (8.43 mm), so neighbours would overlap. The row starts at the left so it cannot meet `SW1` at the right. A draft `bw place` comes before the user routes; if a rule fails, the `.place` changes and the change is noted in the plan. The user routes it (F.Cu/B.Cu, DRC 0 errors); no crack Puzzles yet, so no route order to keep.
+`U2`, `U3`, `X1` and all 27 resistors fill the chip grid by annealing: the LED resistors land along the front, near their LEDs; the data-bus resistors near `U1`'s data pins. Each LED's resistor is not put behind it with `next`: an axial resistor's courtyard (9.72 mm) is wider than the row's LED pitch (8.43 mm), so neighbours would overlap. The row starts at the left so it cannot meet `SW1` at the right. A draft `bw place` comes before the user routes; if a rule fails, the `.place` changes and the change is noted in the plan. The user routes it (F.Cu/B.Cu, DRC 0 errors). The two crack Puzzles cut two-pad Nets (`PHI0`, `A14`), so a new route keeps them.
 
 Layout constraints for the user: none beyond the placed parts; route the `DB0`–`DB7` resistors short (they are the "bus" a player will probe).
+
+## Puzzles
+
+`machine heartbeat` in each file (HEARTBEAT.md, Puzzles):
+
+| File | Fault line | Where |
+|---|---|---|
+| `flatline.bwp` | `fault crack X1.OUT U1.PHI0 50%` | `PHI0` |
+| `fifteen.bwp` | `fault crack U1.A14 U3.2A3 50%` | `A14` into its buffer |
+| `flutter.bwp` | `fault stuck U1.D2 1` | `DB2` at the CPU |
+
+Titles and briefs:
+
+- Flatline: "The lights never move: a few are lit, the others dark, and they stay that way. Reset changes nothing."
+- Fifteen: "The second light from the left, D15, is always lit: it never blinks. The others look as they should."
+- Flutter: "The lights stop counting: they all glow at once, D1, D5, D9 and D13 dim and the others bright, the same whatever happens. Reset changes nothing."
+
+### Electrical Nets on a damaged Board
+
+- Flatline: `U1` `PHI0` alone on its Net (MOS, X): the CPU never sees an edge, `PHI1`/`PHI2` and the address stay where power-on left them. `X1`'s pad still oscillates.
+- Fifteen: `U3` `2A3` alone on its Net: a floating TTL input reads high, so `LA14` is 1. `U1` `A14` counts as usual.
+- Flutter: the CPU forces `DB2` to 1 and reads it (a stuck Bidirectional pin): every opcode and operand is `$EE`, INC absolute, 6 cycles: the fetch, `$EE` `$EE`, a read of `$EEEE` and two writes to it. The address is `$EEEE` in half the cycles (the LEDs `1110` in each group of four, the dim ones at a quarter), `RW` low twice an instruction.
+
+Not used: a crack or dry Joint on a data line. The floating line keeps its bus charge, which is the `$EA` bit it already had: no symptom. Bridges between neighbouring data pins of `U1` pit two pull resistors (random) or give `$EB` (a two-byte NOP, the count twice as fast: too subtle).
+
+The test (`tests/machines/heartbeat_test.cpp`) checks each symptom on `U1`'s pins and the LED anodes, then the repair: the address counts again.
 
 ## Manuals
 
