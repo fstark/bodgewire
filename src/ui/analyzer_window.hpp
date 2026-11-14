@@ -11,6 +11,7 @@
 
 #include "instruments/logic_analyzer.hpp"
 #include "session/session.hpp"
+#include "view/time_view.hpp"
 
 namespace bw {
 
@@ -27,11 +28,19 @@ struct CaptureRuns {
 
 CaptureRuns RunsOf(const Capture& capture, const std::vector<std::size_t>& channels);
 
+// What a Capture holds from its first sampled point, ps from its Trigger.
+TimeRange RecordOf(const Capture& capture);
+
 // The floating Logic Analyzer: settings, Channel Group and Channel rows, the last Capture's
-// waveforms on one canvas.
+// waveforms on one canvas under an overview and a time axis.
 class AnalyzerWindow {
 public:
     void draw(bool& open, Session& session, BoardView& board);
+    // From bw_ui, for screenshots: the view and marker taken at the first Capture; a cursor
+    // drawn whenever the mouse is not over the waveforms.
+    void preset(std::optional<TimeView> view, std::optional<Time> marker,
+                std::optional<Time> cursor);
+    bool focused() const { return focused_; }  // last frame: its Esc is not the Board's
 
 private:
     struct Row {
@@ -44,15 +53,20 @@ private:
         bool refused = false;
     };
 
-    void fit() { from_ = 0, to_ = kDepth; }
     std::vector<Row> rows(const Session& session) const;
     const CaptureRuns& runs(const std::vector<std::size_t>& channels);
+    void zoom(Time anchor, int notches);
 
-    std::optional<Capture> shown_;   // kept across rebuilds and power-off
-    double from_ = 0, to_ = kDepth;  // visible points
-    std::optional<double> marker_;   // point
-    float pressX_ = 0;               // canvas press, to tell a click from a drag
+    std::optional<Capture> shown_;  // kept across rebuilds and power-off
+    std::optional<Time> shownPeriod_;
+    TimeView view_;
+    std::optional<Time> marker_;  // ps from the Trigger
+    float pressX_ = 0;            // canvas press, to tell a click from a drag
     bool moved_ = false;
+    float wheelRest_ = 0;
+    bool focused_ = false;
+    std::optional<TimeView> presetView_;
+    std::optional<Time> presetMarker_, presetCursor_;
     std::set<std::size_t> selected_;                        // Channels picked for a hand group
     std::set<std::string> expanded_;                        // group names shown with their members
     std::map<std::vector<std::size_t>, CaptureRuns> runs_;  // for shown_

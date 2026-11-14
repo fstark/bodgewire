@@ -28,7 +28,7 @@ file(READ "${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf" keycap_font_hex HEX
 string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," bytes "${keycap_font_hex}")
 configure_file(keycap_font.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp @ONLY)
 
-add_executable(bw_ui main.cpp analyzer_window.cpp board_view.cpp chip_panel.cpp keyboard_capture.cpp
+add_executable(bw_ui main.cpp analyzer_window.cpp board_view.cpp chip_panel.cpp instrument_marks.cpp keyboard_capture.cpp
                      keyboard_window.cpp manual_view.cpp meter_window.cpp scope_window.cpp
                      side_panel.cpp toolbar.cpp tv_view.cpp
                      ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp)

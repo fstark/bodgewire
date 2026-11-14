@@ -17,10 +17,12 @@ class BoardView;
 class ScopeWindow {
 public:
     void draw(bool& open, Session& session, BoardView& board);
+    bool focused() const { return focused_; }  // last frame: its Esc is not the Board's
 
 private:
     std::optional<Sweep> shown_;  // kept across rebuilds and power-off
     std::optional<Time> marker_;  // ps since the Trigger
+    bool focused_ = false;
     std::array<char, 16> delayText_{};
     bool delayEditing_ = false, delayRefused_ = false;
     // Column cache, per Channel: lo/hi volts per pixel; rebuilt when serial, width or rail change.

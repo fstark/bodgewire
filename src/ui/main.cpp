@@ -38,6 +38,7 @@
 #include "ui/side_panel.hpp"
 #include "ui/toolbar.hpp"
 #include "ui/tv_view.hpp"
+#include "view/time_view.hpp"
 
 using namespace bw;
 
@@ -51,7 +52,8 @@ constexpr std::string_view kUsage =
     "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] "
     "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,"
     "unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
-    "[--clip REF.PIN[:0|1|r|f],...] [--group REF.PIN[:E0xx],...] [--rate 10MHz] "
+    "[--clip REF.PIN[:0|1|r|f],...] [--group REF.PIN[:E0xx],...] [--sample 100ns] "
+    "[--view 1us[:+20us]] [--marker +2us] [--cursor +3.7us] "
     "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
     "[--type REF:START:TEXT] [--manual user] [--screenshot OUT.png [--after 1s]]";
@@ -64,7 +66,10 @@ struct Options {
     std::vector<std::string> repair;
     std::vector<std::string> clip;     // REF.PIN[:T]
     std::vector<std::string> group;    // REF.PIN[:PATTERN]
-    std::optional<Time> rate;          // Analyzer sample period, ps
+    std::optional<Time> sample;        // Analyzer sample period, ps
+    std::optional<TimeView> view;      // Analyzer view at its first Capture
+    std::optional<Time> marker;        // ps from the Trigger, both instrument windows
+    std::optional<Time> cursor;        // a fake hover, ps from the Trigger
     std::optional<std::string> meter;  // REF.PIN: red Test Lead, V mode
     std::vector<std::string> hook;     // REF.PIN, at most kScopeChannels
     std::optional<Time> timebase;      // Oscilloscope ps per division
@@ -85,6 +90,38 @@ std::vector<std::string> SplitCommas(std::string_view list) {
         }
         start = comma + 1;
     }
+}
+
+// "+2us", "-1.5us", "2us", "0": ps.
+std::optional<Time> ParseSignedDuration(std::string_view text) {
+    if (text == "0") {
+        return 0;
+    }
+    const bool negative = text.starts_with('-');
+    if (negative || text.starts_with('+')) {
+        text.remove_prefix(1);
+    }
+    const auto duration = ParseDuration(text);
+    if (!duration) {
+        return std::nullopt;
+    }
+    return negative ? -*duration : *duration;
+}
+
+// "1us" or "1us:+20us": a 1-2-5 time per division, centred on the Trigger or the time given.
+std::optional<TimeView> ParseView(std::string_view text) {
+    const std::size_t colon = text.find(':');
+    const auto perDivision = ParseDuration(text.substr(0, colon));
+    if (!perDivision || StepAtLeast(*perDivision) != *perDivision) {
+        return std::nullopt;
+    }
+    const auto centre = colon == std::string_view::npos
+                            ? std::optional<Time>(0)
+                            : ParseSignedDuration(text.substr(colon + 1));
+    if (!centre) {
+        return std::nullopt;
+    }
+    return CentredOn(*perDivision, *centre);
 }
 
 std::optional<Options> ParseOptions(int argc, char** argv) {
@@ -126,12 +163,23 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
             options.delay = *delay;
-        } else if (arg == "--rate") {
-            const auto period = ParsePeriodFromFrequency(argv[++i]);
+        } else if (arg == "--sample") {
+            const auto period = ParseDuration(argv[++i]);
             if (!period || std::ranges::find(kAnalyzerPeriods, *period) == kAnalyzerPeriods.end()) {
                 return std::nullopt;
             }
-            options.rate = *period;
+            options.sample = *period;
+        } else if (arg == "--view") {
+            options.view = ParseView(argv[++i]);
+            if (!options.view) {
+                return std::nullopt;
+            }
+        } else if (arg == "--marker" || arg == "--cursor") {
+            const auto time = ParseSignedDuration(argv[++i]);
+            if (!time) {
+                return std::nullopt;
+            }
+            (arg == "--marker" ? options.marker : options.cursor) = *time;
         } else if (arg == "--meter") {
             options.meter = argv[++i];
         } else if (arg == "--hook") {
@@ -344,6 +392,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     AnalyzerWindow analyzerWindow;
     MeterWindow meterWindow;
     ScopeWindow scopeWindow;
+    analyzerWindow.preset(options.view, options.marker, options.cursor);
     boardView.setTooltip([&loaded](const BoardScene& scene, const Hit& hit) {
         return Tooltip(scene, hit, loaded.manuals.manuals);
     });
@@ -388,7 +437,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         toolbar.draw(session, boardView, speed, seed);
         const ImVec2 available = ImGui::GetContentRegionAvail();
         boardView.draw({available.x * kBoardShare, available.y});
-        if (boardView.takeEscape()) {
+        // Esc in an instrument window clears its marker; it is not the Board's.
+        if (boardView.takeEscape() && !analyzerWindow.focused() && !scopeWindow.focused()) {
             if (boardView.tool() == Tool::Meter) {
                 session.liftLeads();
             } else if (boardView.tool() == Tool::Wire) {
@@ -723,8 +773,8 @@ int main(int argc, char** argv) {
         session.touch(ProbeTip{*at, Layer::Front});
     }
     AnalyzerSettings analyzer;
-    if (options->rate) {
-        analyzer.period = *options->rate;
+    if (options->sample) {
+        analyzer.period = *options->sample;
     }
     for (const std::string& item : options->clip) {
         const std::size_t colon = item.find(':');
