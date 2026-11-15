@@ -2,7 +2,9 @@
 
 Spec: [BW2001_MACHINE.md](BW2001_MACHINE.md). Design: [BW2001_MACHINE_DESIGN.md](BW2001_MACHINE_DESIGN.md). Machine: [BW2001.md](../machines/130-bw2001/BW2001.md), [BW2001_DESIGN.md](../machines/130-bw2001/BW2001_DESIGN.md).
 
-Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-format` on the C++ files touched, the tests the phase names green in debug, one commit of this step's own paths with the message given. Machine and BW-2001 cases are `[slow]`; their release-only cases run in the release build at the phase that adds them.
+Implemented 2026-11-15; user check pending.
+
+Every phase ended with its fence: `cmake --build --preset debug` clean, `clang-format` on the C++ files touched, the tests the phase names green in debug, one commit of this step's own paths. Machine and BW-2001 cases are `[slow]`; their release-only cases run in the release build at the phase that adds them.
 
 ## Status
 
@@ -19,88 +21,8 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 | 9 | Netlist stage 2: computer | `c245d61` |
 | 10 | Netlist stage 3: edges, BASIC 1, manuals | `fe47105` |
 | 11 | Board (user routes) | `1f8e110` (placer: `54d13c3`) |
-| 12 | Board tests, Session test, release check | this commit |
-| 13 | Recipes, docs, full suite | |
-
-## Phases
-
-### 1. Port drive strength (design §1)
-
-`DriveStrength::Port`; `DriveOf` for `PullUp`; datasheets 6520, 6522, 6530; `logic_test` cases.
-
-Fence: `ctest --preset debug -R "logic|resolve|6520|6522|6530|bw1|bw2001|bench|switch"`; the P5n bench's power-on note checked (VIA `PB5` against `X2` before `RES_N`: now 1, not X; nothing asserts on it). Commit `kernel: an NMOS port's low output loses to an output's high (P5q)`.
-
-### 2. `74LS139`, `MC3446`, passive connectors (design §2–§4)
-
-Parts, delays, catalogue rows, datasheets (`74LS139`, `MC3446`, `IEEE488`, `USERPORT`, `CASSETTE`), footprints (`PinHeader_2x12`, `1x06`; the `1x07` and `1x20` come in phases 3 and 4), `PartPinNames` needs nothing (no parameters).
-
-Fence: `-R "139|3446|connector|catalogue|footprint|manual"`. Commit `parts: 74LS139, MC3446, IEEE-488, user port and cassette connectors (P5q)`.
-
-### 3. `MONITOR`, the TV's separate drives (design §5)
-
-`TvSync`, the drive setters, `TvConsumer`/`TvInput` constructors (`powerOn` keeps the mode), `tests/runner/tv_consumer_test.cpp` (new), the Session and `bw run --tv` finding `MONITOR`; `HDR-1x07` footprint.
-
-Fence: `-R "tv|session|connector|catalogue|footprint|pattern|message|typewriter|ball|tennis"`. Commit `tv: separate drives and the MONITOR connector (P5q)`.
-
-### 4. Switch contacts, `MATRIXKB`, Session, `--type` (design §6.1–§6.4)
-
-`SwitchContact` (no behaviour change: every switch test and switch Machine as before), `MatrixKeyboard`, `Bw2001KeyFor`, the builder, `MatrixKeyboardOf`, Session, CLI; `HDR-1x20` footprint.
-
-Fence: `-R "switch|matrix|keyboard|session|bw1|dice|catalogue|footprint|manual|bw2001 netlist"` (the P5p minimal netlist's 74 keys run on the contacts too). Commit `parts: the BW-2001 keyboard behind MATRIXKB, keys on switch contacts (P5q)`.
-
-### 5. The keyboard window, capture, paste (design §6.5)
-
-Layout (tested headless), window, capture generalised, paste. Checked by release screenshots on a small netlist with a `MATRIXKB` (the phase 4 test netlist) before the Machine exists, and again in phase 12; iterate until the caps read as the PET 2001's.
-
-Fence: `-R "layout|keyboard|capture"`; screenshots viewed. Commit `ui: the BW-2001 keyboard window, PC typing by character, paste (P5q)`.
-
-### 6. `grid pet` in `bw place` (design §7)
-
-Rule, placer, writer angles, tests.
-
-Fence: `-R "place|placer|board|drc|footprint"` (every Machine's `place_drc_*` unchanged). Commit `place: grid pet, chips at their PET locations (P5q)`.
-
-### 7. The editor's retrace wait (design §8)
-
-`bw2001.inc`, `bw2001_edit.asm` (and any print path in `bw2001_basic.asm`/`_kernel.asm` that stores to the screen outside the editor), the `.rom` files, the reset's VIA `PCR` = `$0C`, the model's `PB5`, its VIA reads not flagged, `snowAccesses()`.
-
-Fence: `-R "bw2001|asm|basic"` (model cases and the minimal netlist's every-build cases); release: the minimal netlist's whole conformance set. Commit `bw2001: the editor writes the screen only in the retrace (P5q)`.
-
-### 8. Netlist stage 1: video (Machine design, Netlist, stage 1)
-
-`netlists/bw2001.bwn` with sheet 3, `X1`, `J7`, `J8`, the ties; `bw2001_screen`; stage 1 cases; `bw2001` in `manuals_test` only from phase 10 (no manuals yet; the manuals test lists Machines explicitly).
-
-Machine test cases are named `bw2001 machine: stage N …` so the fences match. Fence: `-R "bw2001 machine"`; the debug ratio measured and recorded (a case that would run past about 10 minutes in debug becomes release-only); release ratios recorded in the notes (headless `--time 2s`, `bw_ui netlists/bw2001.bwn` without a Board: the TV and the ratio). Commit `bw2001: the video stage of the PET 2001 netlist (P5q)`.
-
-### 9. Netlist stage 2: computer
-
-Sheets 1 and 2 without their connectors; the ties of stage 1 removed; our ROMs; stage 2 cases; stage 1 cases kept (a power-on picture before the reset code clears the screen: the screen-reader case moves to a seed and time where the video RAM is still random, or reads the video RAM against the picture at any time).
-
-Fence: as phase 8; ratios. Commit `bw2001: the computer stage, our firmware on the TV (P5q)`.
-
-### 10. Netlist stage 3: edges, BASIC 1, manuals
-
-`J1`, `J2`, `J3`, `J5`, `J6`, the MC3446s; stage 3 cases; the BASIC 1 and killer-poke cases (release, skipped without `external/roms/pet`); the Machine harness target and one P5o session on the Machine (release); manuals; `bw2001` in `manuals_test`.
-
-Fence: `-R "bw2001|manuals"`; release: the release-only Machine cases; ratios; `bw_ui` screenshots of the banner and the snow (BASIC 1 by a local netlist copy). Commit `bw2001: the PET's edges, the keyboard connector, manuals (P5q)`.
-
-### 11. Board
-
-`boards/bw2001/bw2001.place`, `bw place … -o boards/bw2001/bw2001.kicad_pcb`, `bw export-kicad netlists/bw2001.bwn -o /tmp/bw2001.net` for reference. **Stop for the user**: route it in KiCad (two layers, no zones, DRC 0 errors), the layout constraints from the Machine design (chips at the PET grid; connectors on their edges; any crack constraints come with P5r). The agent then runs `check-board` (adds a missing connection if Freerouting left one, ADD_MACHINE §3).
-
-Commit (after the user's routing) `bw2001: Board, the PET 2001's grid, routed by the user (P5q)`.
-
-### 12. Board tests, Session test, release check
-
-The Machine cases built from the Board; the per-Machine Board loops (`boards_test`, `electrical_test`, `board_scene_test`); `session: bw2001 with every instrument`; release check (design §11), screenshots viewed.
-
-Fence: `-R "bw2001|board|electrical|scene|session|drc"`. Commit `bw2001: Board tests, Session case, release check (P5q)`.
-
-### 13. Recipes, docs, full suite
-
-Design §10; the plan cut down to this table and the notes; the ARCHITECTURE row done with the date and links; the kernel speed row. Full debug suite.
-
-Commit `docs: P5q done (P5q)`.
+| 12 | Board tests, Session test, release check | `7f65169` |
+| 13 | Recipes, docs, full suite | this commit |
 
 ## Implementation notes
 
@@ -115,3 +37,6 @@ Commit `docs: P5q done (P5q)`.
 - Phase 10: the edges joined; every case passed first time but one expectation (BASIC 1 leaves a blank row before `READY.`). Release cases: typing through `J5` (`PRINT 2+2`), a 30-line `FOR … PRINT` scrolling ten times without a screen access in the display, the self-test by `DIAG` grounded (the netlist's `DIAG` line rewritten), session `27_cls` on the Machine, and the real BASIC 1 (the empty `UH2`, `UH6` fitted by the test): its banner on the TV, no snow while it prints, then `POKE 59458,62`: over 100 screen accesses in the display while a loop prints (snow), `VIDEO_ON` never X, and a line typed afterwards echoes and runs (the port's `Port` strength: the retrace interrupt goes on). The manuals checker takes one section a manual: the self-test is in "What it does", the service notes went to BW2001.md. Debug fence (`bw2001|manuals`) 44/44 in 147 s.
 - Phase 11: headers standing upright reached 30–50 mm into the Board: under `grid pet` a pin header on the back or front edge now lies along it (`54d13c3`), 396 × 300 mm instead of 373 deep. The address pull-ups `R28`–`R38` run as one row under `UE2`–`UE4`, the keyboard's `R18`–`R25` both ways from `UG8`'s middle (chained from one end they left the Board). `bw place`: 51.4 m of wire. Routed by the user (2026-11-15) as placed; `check-board` ok, KiCad DRC 0 unconnected, one silkscreen warning (`R99`'s reference). The user found the chips' orientation on the real 320137 differs (at least): a pass bringing the Board closer to the real one comes after P5q.
 - Phase 12: the Machine's cases run on the Board's circuit (the netlist keeps "loads without warnings" and the text variants); every case green in debug and release first time. `session: bw2001 with every instrument` (32 Clips on the 6502, 4 Hooks, probe, meter; the TV locked at 150 ms). Release `bw_ui netlists/bw2001.bwn` on the routed Board with every instrument: **0.22×**, UI **2.6 ms** (2.3 ms without instruments: the 400-Net Board's traces; over the ~1 ms of the recipe, left for the speed row). Screenshots viewed: the banner, `PRINT 2+2` typed through `J5`, the keyboard window, the instruments. BASIC 1 (a scratch netlist with the user's ROMs, no Board): without the poke a `PRINT CHR$(19);I,I,I,I` loop prints at the top with a clean picture; with `POKE 59458,62` it runs several times faster and specks of snow show beside the text. Scrolling blanks whole frames under BASIC 1 (its editor holds `BLANK_TV` low while it scrolls, as the PET 2001's did): a screenshot can land on a black frame.
+- Phase 13: recipes (ADD_PART: the `Port` strength, transceiver pins, speed grades, the Motorola data book; ADD_CONNECTOR_DEVICE: passive connectors, monitors, key matrices, typing into a slow Machine, drawn arrows; ADD_MACHINE: a real board from its schematic, stages of a real board, critical paths and speed grades, watching a rare event, `grid pet`), GLOSSARY (Snow), GAME_DESIGN ladder row 130, ARCHITECTURE: the P5q row done, P5q1 (the Board as the 320137, the user's suggestion) and P5q2 (a kernel for the BW-2001).
+- User check pending: `bw_ui netlists/bw2001.bwn`: the banner; type in the keyboard window (click it or F2), PC keys by character, paste a program (Cmd+V); `10 FOR I=1 TO 30:PRINT I:NEXT`, `RUN` (scrolls a row at a time, no snow); `PRINT USR(61440)`, `.M 0400 0420`, `.X`; the self-test by a Bodge Wire from `J2` pad 9 (`DIAG`) to `J2` pad 1, then power off and on; the instruments on `PHI0`, `HORZ_DRIVE`, `SEL8`. BASIC 1 and the killer poke need a local netlist with the ROMs (the Machine tests build one).
+- Full debug suite: 1196 of 1197 in 688 s, the release-only killer poke case skipped as designed; the one failure was `simulator: a strong 0 beats a pull-up pin's 1; its own 0 is strong`, a case phase 1's fence missed (its name matched no filter): it asserted the old rule (a port's 0 against an output's 1 reads X). Renamed and changed to the new rule (1); `simulator|logic|resolve` 54/54. The release-only Machine cases passed in phases 10 and 12.

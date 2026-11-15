@@ -43,6 +43,8 @@ As P5p's ([BW2001_FIRMWARE.md](../../p5p-bw2001-firmware/BW2001_FIRMWARE.md#the-
 | sheet 2's `R12` 10K on `SEL1_N` past the 8K jumper (the same reference as sheet 3's 1K `R12`) | left out, the jumper closed | the 8K machine; `R12` stays sheet 3's |
 | cassette motor transistors (`Q1`–`Q6`, `VR1`, `VR2`, …) | `CASS1_MOTOR` = PIA1 `CB2` straight to `J6` pin 3, `CASS2_MOTOR` = VIA `PB4` to `J3` pin 3 | logic-only equivalents (GAME_DESIGN): the control level, not the 9 V |
 | `UF3.SO` not drawn | on `VCC` | as on P5n's bench |
+| `UH2`, `UH6` (empty sockets) | left out | no chip in them; a test fits them for BASIC 1 |
+| the 2114s | `access=300ns` (the 2114-3) | at 450 ns the video path misses every 64th character (P5q plan, phase 8) |
 | spare gate inputs | tied to `VCC` or `GND` | loads without warnings |
 
 The transcription's uncertain readings ([SHEET1.md](schematic/SHEET1.md#uncertain-readings), [SHEET2.md](schematic/SHEET2.md), [SHEET3.md](schematic/SHEET3.md#uncertain-readings-15)) that BASIC 1's boot settles: `UE2` pin 13 on `NMI_N` (else `BA0` is wrong and nothing boots), `SEL8` active high from `UE5`, the 74LS139's enables and taps, the 74LS244 directions on both sheets, the 74177/74100 nest (the text is in the right place, row after row), `UA2`'s address lines (the glyphs are right). Those it does not settle stay as read and are listed in the service manual's notes only if a Puzzle (P5r) depends on them: `J5`'s column letters, `R18`–`R25` order, the IEEE handshake bundle (checked against the MC3446 pinout and the PET's documented IEEE port), the cassette read and switch lines.

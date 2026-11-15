@@ -82,6 +82,9 @@ _Avoid_: Paddle, pot (when meaning the setting)
 **Monitor**:
 The small ROM program that runs on a Machine with a CPU: it shows memory and lets the player change it and run a program from its keys (the BW-1's AD, DA, GO); there is no BASIC.
 
+**Snow**:
+White specks on the picture where the CPU reached the video RAM while the beam drew the text: the video drew the CPU's byte instead of the screen's. On the BW-2001 (the PET 2001's board) every access to the screen in the display makes it; the editor waits for the retrace to avoid it.
+
 **Strap**:
 A jumper or wire on the Board that a program reads to choose what it does: on the BW-1, closed at reset, it runs the self-test instead of the Monitor.
 _Avoid_: Jumper (when meaning what it selects)

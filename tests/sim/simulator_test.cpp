@@ -699,7 +699,8 @@ TEST_CASE("simulator: a pull-up pin starts released, then holds its net at a wea
     }
 }
 
-TEST_CASE("simulator: a strong 0 beats a pull-up pin's 1; its own 0 is strong", "[sim]") {
+TEST_CASE("simulator: a strong 0 beats a pull-up pin's 1; its own 0 loses to an output's 1",
+          "[sim]") {
     Circuit circuit;
     const NetId port = circuit.addNet("PORT");
     auto& chip = circuit.add<PortChip>("U1", One);
@@ -708,7 +709,7 @@ TEST_CASE("simulator: a strong 0 beats a pull-up pin's 1; its own 0 is strong", 
     const NetId low = circuit.addNet("LOW");
     auto& sink = circuit.add<PortChip>("U2", Zero);
     circuit.connect(sink, "P", low);
-    AddDrivers(circuit, low, {{One, {}, Family::Mos}});  // a strong 1 fights it: contention
+    AddDrivers(circuit, low, {{One, {}, Family::Mos}});  // an output's 1 against it
     circuit.finalize();
     Simulator sim(circuit);
     sim.powerOn(1);
@@ -718,5 +719,5 @@ TEST_CASE("simulator: a strong 0 beats a pull-up pin's 1; its own 0 is strong", 
     CHECK(sim.value(port) == Zero);
     sim.runUntil(110_ns);
     CHECK(sim.value(port) == One);
-    CHECK(sim.value(low) == X);  // Strong 0 against Strong 1 on a MOS net
+    CHECK(sim.value(low) == One);  // a port's 0 is Port strength: the output wins (P5q)
 }

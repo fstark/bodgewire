@@ -2,7 +2,7 @@
 
 A standard device off the Board, plugged into a Connector Part: the paddle controller (P4i), the ASCII keyboard (P4n). The device's logic lives inside the Connector Part, so it is simulated like a chip; the Board holds only the header. Devices whose arrangement belongs to the Board (LEDs, digits, buttons) are on-board Parts instead: [ADD_BOARD_DEVICE.md](ADD_BOARD_DEVICE.md).
 
-Reference commits (paddle controller): `8bfbcc6` Part, connector pins, footprint, power; `da76381` knob through the Session, `bw run`, `bw_ui`; `d24f490` → `e1468a0` the knob meter Machine (045). Keyboard: `e0feb33` Part (a setting that is an event), `53e109f` typing through the Session, `--type`, a bench netlist, `605db6c` the capture mode in `bw_ui`; `23a4d87` control codes through the Session, `5ef5183` the drawn layout, `785e7a7` the keyboard window (P4o).
+Reference commits (paddle controller): `8bfbcc6` Part, connector pins, footprint, power; `da76381` knob through the Session, `bw run`, `bw_ui`; `d24f490` → `e1468a0` the knob meter Machine (045). Keyboard: `e0feb33` Part (a setting that is an event), `53e109f` typing through the Session, `--type`, a bench netlist, `605db6c` the capture mode in `bw_ui`; `23a4d87` control codes through the Session, `5ef5183` the drawn layout, `785e7a7` the keyboard window (P4o). Matrix keyboard (P5q, `a0d2ab3`): keys as switch contacts, a window, PC typing and paste; the same commit's `MONITOR` (a monitor on separate drives). Passive connectors with the PET's pin labels: `7668c14`.
 
 ## The chain
 
@@ -24,9 +24,17 @@ Reference commits (paddle controller): `8bfbcc6` Part, connector pins, footprint
 
 Tests: `tests/parts/<device>_test.cpp` (row, pins, parameters refused with their messages, behaviour, setting clamped, `ConnectorPowersDevice`), `tests/machine/<x>_setting_test.cpp`, `[session]` cases (setting kept across power, and across a Repair once a Machine has a Puzzle), `manual_test.cpp` (pin names).
 
+## Kinds of device
+
+- **Passive** (a header with nothing plugged in: `IEEE488`, `USERPORT`, `CASSETTE`): `Connector` with every pin a `sampled` MOS `Input` (no "floats high", never woken: an 8 MHz video line on a user port must not evaluate an empty Part every dot); grounds and `VCC` named as the real connector's but plain `Input`s listed on the rails (a `Power` pin named `GND1` needs `PowerPinRail` and `PowerPinVolts` rows); unused pads `NoConnect`. A 2 × N header standing for an edge connector keeps each letter opposite its number (pad 2n − 1 the n-th number, pad 2k the k-th letter).
+- **A monitor** (`VIDEO` composite, `MONITOR` separate drives): no Part logic; the Session and `bw run --tv` find the connector by name and build the TV's consumer on its Nets (`TvConsumer`, `TvInput`, `TvSync`); a video active low is inverted in the consumer.
+- **A key matrix** (`MATRIXKB`): the Part owns one `SwitchContact` a key, which the builder joins to the Board's `SwitchNetwork` between its row and column Pins' Nets (`wireSwitches`): ghosting and the matrix's faults on the Board side come for free. Held from the UI (`setHeld` + a wake), typed in simulation time from an SPSC queue (a press held 40 ms then released 40 ms, longer than a scan), its pins `sampled` (a row's change must not wake the Part and disturb its own timing); the scripted press published in an atomic for the window to draw.
+
 ## Gotchas
 
 - A device that takes the whole PC keyboard (the ASCII keyboard) needs a capture mode in `bw_ui` (`src/ui/keyboard_capture.cpp`): on while its window is focused (`NoFocusOnAppearing`, else it captures at launch), F2 toggles; SDL key and text events taken before ImGui sees them, key-ups always seen and passed on so no key stays held; PC keys drawn by what they type, not where they sit (any PC layout); Ctrl codes from the shifted key (`SDL_GetKeyFromScancode` with Shift); `SDL_StartTextInput` kept on while capturing; a banner drawn with or without a Board.
+- PC typing into a slow Machine (BW-2001 at 0.23×): queue the press in simulation time rather than hold the key for as long as the PC key is down; a quick tap would last about one scan. Paste is the same queue (Cmd/Ctrl+V while the window captures, `SDL_GetClipboardText`).
+- The keycap font has no arrow glyphs: draw ←, ↑ and the CRSR arrows with ImGui primitives.
 - In `bw_ui`, a scripted input (`--press`, `--type`) must not act in the first frame after a power-on: `status.simTime` is still the previous run's.
 
 - A Puzzle that unpowers the device cracks its supply Trace: ask for the device's `VCC` pad as a leaf of `VCC` in the layout (045 Dead knob).
