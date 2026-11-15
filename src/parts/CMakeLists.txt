@@ -16,6 +16,8 @@ add_library(bw_parts STATIC
   ls175.cpp
   ls244.cpp
   ls273.cpp
+  ls365.cpp
+  ls373.cpp
   ls47.cpp
   ls48.cpp
   ls74.cpp
@@ -35,6 +37,7 @@ add_library(bw_parts STATIC
   power_on_reset.cpp
   ram2114.cpp
   ram6102.cpp
+  resistor_network.cpp
   rom.cpp
   rom_contents.cpp
   shift_register_2518.cpp

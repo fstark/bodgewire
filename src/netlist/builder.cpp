@@ -10,10 +10,12 @@
 #include <set>
 #include <utility>
 
+#include "netlist/units.hpp"
 #include "parts/catalogue.hpp"
 #include "parts/connector.hpp"
 #include "parts/matrix_keyboard.hpp"
 #include "parts/memory_cells.hpp"
+#include "parts/resistor_network.hpp"
 #include "parts/switch.hpp"
 #include "sim/check.hpp"
 
@@ -61,8 +63,8 @@ public:
         placeParts();
         connectNets();
         addImplicitPower();
-        tieResistors();
         wireSwitches();
+        wireResistors();
         if (!errors_.empty()) {
             SortByLine(errors_);
             return std::unexpected(std::move(errors_));
@@ -297,26 +299,88 @@ private:
         }
     }
 
-    // Pull-up / pull-down only: one pin on a rail, the other on a signal Net.
-    void tieResistors() {
-        for (const auto& [reference, part] : placed_) {
+    // Resistors (P5u): a pull (one end on a rail) is tied to its signal Net, unless that Net is
+    // joined; a series resistor (both ends on signals) joins its two Nets through the
+    // ResistorNetwork, which also takes the pulls of joined Nets (they decide weak fights there).
+    void wireResistors() {
+        struct Pull {
+            NetId signal;
+            LogicValue value;
+            std::uint32_t ohms;
+        };
+        struct Series {
+            NetId a, b;
+            std::uint32_t ohms;
+        };
+        std::vector<Pull> pulls;
+        std::vector<Series> series;
+        std::set<NetId> joined;
+        for (const PartDecl& decl : netlist_.parts) {
+            const PlacedPart& part = placed_.find(decl.reference)->second;
             if (!IsResistor(part)) {
                 continue;
             }
-            const auto a = pinNet_.find({reference, 0});
-            const auto b = pinNet_.find({reference, 1});
-            if (a == pinNet_.end() || b == pinNet_.end() ||
-                IsRail(a->second.name) == IsRail(b->second.name)) {
-                error(part.decl->line, reference +
-                                           ": only pull-up/pull-down resistors are supported (one "
-                                           "pin on GND or VCC, the other on a signal net)");
+            const auto a = pinNet_.find({decl.reference, 0});
+            const auto b = pinNet_.find({decl.reference, 1});
+            if (a == pinNet_.end() || b == pinNet_.end()) {
+                error(decl.line, decl.reference + ": a resistor needs both pins connected");
                 continue;
             }
-            const NetOfPin& rail = IsRail(a->second.name) ? a->second : b->second;
-            const NetOfPin& signal = IsRail(a->second.name) ? b->second : a->second;
-            loaded_->circuit.tie(signal.net,
-                                 rail.name == "VCC" ? LogicValue::One : LogicValue::Zero,
-                                 DriveStrength::Weak);
+            const auto value = std::ranges::find(decl.params, "value", &PartParam::name);
+            if (value == decl.params.end()) {
+                error(decl.line, decl.reference + ": a resistor needs value= (ohms)");
+                continue;
+            }
+            const auto ohms = ParseOhms(value->value);
+            if (!ohms) {
+                error(decl.line, decl.reference + ": " + ohms.error());
+                continue;
+            }
+            const bool railA = IsRail(a->second.name), railB = IsRail(b->second.name);
+            if (a->second.net == b->second.net) {
+                error(decl.line,
+                      decl.reference + ": both ends on net " + std::string(a->second.name));
+            } else if (railA && railB) {
+                error(decl.line, decl.reference + ": a resistor between two rails");
+            } else if (railA || railB) {
+                const NetOfPin& rail = railA ? a->second : b->second;
+                const NetOfPin& signal = railA ? b->second : a->second;
+                pulls.push_back(
+                    {signal.net, rail.name == "VCC" ? LogicValue::One : LogicValue::Zero, *ohms});
+            } else {
+                series.push_back({a->second.net, b->second.net, *ohms});
+                joined.insert(a->second.net);
+                joined.insert(b->second.net);
+            }
+        }
+        Circuit& circuit = loaded_->circuit;
+        for (const Pull& pull : pulls) {
+            if (!joined.contains(pull.signal)) {
+                circuit.tie(pull.signal, pull.value, DriveStrength::Weak);
+            }
+        }
+        if (joined.empty()) {
+            return;
+        }
+        const std::vector<NetId> nets(joined.begin(), joined.end());  // NetId order
+        const auto pinOf = [&](NetId net) {
+            return static_cast<PinIndex>(std::ranges::lower_bound(nets, net) - nets.begin());
+        };
+        std::vector<std::string> names;
+        for (const NetId net : nets) {
+            names.emplace_back(circuit.netName(net));
+        }
+        auto& network = circuit.add<ResistorNetwork>(names);
+        for (PinIndex p = 0; p < nets.size(); ++p) {
+            circuit.connect(network, p, nets[p]);
+        }
+        for (const Series& s : series) {
+            network.join(pinOf(s.a), pinOf(s.b), s.ohms);
+        }
+        for (const Pull& pull : pulls) {
+            if (joined.contains(pull.signal)) {
+                network.pull(pinOf(pull.signal), pull.value, pull.ohms);
+            }
         }
     }
 

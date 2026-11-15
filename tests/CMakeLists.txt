@@ -80,6 +80,7 @@ add_executable(bw_tests
   netlist/bw1_bench_test.cpp
   netlist/bw2001_bench_test.cpp
   netlist/bw2001_netlist_test.cpp
+  netlist/bw80_bench_test.cpp
   netlist/diagnostic_test.cpp
   netlist/external_rom_test.cpp
   netlist/net_pins_test.cpp
@@ -108,6 +109,8 @@ add_executable(bw_tests
   parts/ls175_test.cpp
   parts/ls244_test.cpp
   parts/ls273_test.cpp
+  parts/ls365_test.cpp
+  parts/ls373_test.cpp
   parts/ls47_test.cpp
   parts/ls48_test.cpp
   parts/ls74_test.cpp
@@ -127,6 +130,7 @@ add_executable(bw_tests
   parts/power_on_reset_test.cpp
   parts/ram2114_test.cpp
   parts/ram6102_test.cpp
+  parts/resistor_network_test.cpp
   parts/rom_contents_test.cpp
   parts/rom_test.cpp
   parts/shift_register_2518_test.cpp
@@ -155,6 +159,7 @@ add_executable(bw_tests
   sim/check_test.cpp
   sim/circuit_test.cpp
   sim/event_queue_test.cpp
+  sim/joined_test.cpp
   sim/logic_test.cpp
   sim/primitives_test.cpp
   sim/recorder_test.cpp

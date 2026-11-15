@@ -25,6 +25,8 @@
 #include "parts/ls175.hpp"
 #include "parts/ls244.hpp"
 #include "parts/ls273.hpp"
+#include "parts/ls365.hpp"
+#include "parts/ls373.hpp"
 #include "parts/ls47.hpp"
 #include "parts/ls48.hpp"
 #include "parts/ls74.hpp"
@@ -119,12 +121,18 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
             return std::unexpected(name + ": unknown parameter '" + param.name + "'");
         }
     }
-    // select= (2316B): one letter a chip select, CS1 first; H active high, L active low.
+    // select= (2316B, 2332): one letter a chip select, CS1 first; H active high, L active low.
     unsigned activeHigh = 0;
     if (spec.selectable) {
+        const std::size_t count = spec.enables.size();
         if (select == nullptr) {
-            return std::unexpected(name + " needs select=<CS1 CS2 CS3: L or H each>, e.g. "
-                                          "select=LLH");
+            std::string pins;
+            for (std::size_t i = 0; i < count; ++i) {
+                pins += (i == 0 ? "CS" : " CS") + std::to_string(i + 1);
+            }
+            return std::unexpected(name + " needs select=<" + pins +
+                                   ": L or H each>, e.g. select=" + std::string(count - 1, 'L') +
+                                   "H");
         }
         const std::string& letters = select->value;
         bool good = letters.size() == spec.enables.size();
@@ -133,7 +141,9 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
             activeHigh |= (letters[i] == 'H' ? 1u : 0u) << i;
         }
         if (!good) {
-            return std::unexpected(name + ": bad select '" + letters + "' (three of L or H)");
+            const char* number = spec.enables.size() == 2 ? "two" : "three";
+            return std::unexpected(name + ": bad select '" + letters + "' (" + number +
+                                   " of L or H)");
         }
     }
     if (contents == nullptr) {
@@ -426,6 +436,7 @@ constexpr std::array s_parts{
     PartInfo{"2114", "1K x 4 static RAM", "DIP-18", Chip, &CreateRam2114},
     PartInfo{"2316B", "2K x 8 mask ROM, mask-set chip selects", "DIP-24", Chip,
              &CreateRom<"2316B">},
+    PartInfo{"2332", "4K x 8 mask ROM, mask-set chip selects", "DIP-24", Chip, &CreateRom<"2332">},
     PartInfo{"2513", "64-character 5 x 7 character generator ROM", "DIP-24", Chip,
              &CreateRom<"2513">},
     PartInfo{"2518", "hex 32-bit static shift register", "DIP-16", Chip,
@@ -451,7 +462,10 @@ constexpr std::array s_parts{
     PartInfo{"74LS00", "quad 2-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS00">},
     PartInfo{"74LS02", "quad 2-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS02">},
     PartInfo{"74LS04", "hex inverter", "DIP-14", Chip, &CreateGatePackage<"74LS04">},
+    PartInfo{"74LS05", "hex inverter, open collector", "DIP-14", Chip,
+             &CreateGatePackage<"74LS05">},
     PartInfo{"74LS08", "quad 2-input AND", "DIP-14", Chip, &CreateGatePackage<"74LS08">},
+    PartInfo{"74LS10", "triple 3-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS10">},
     PartInfo{"74LS107", "dual JK flip-flop, clear", "DIP-14", Chip, &CreateChip<Ls107, "74LS107">},
     PartInfo{"74LS138", "3-to-8 line decoder", "DIP-16", Chip, &CreateChip<Ls138, "74LS138">},
     PartInfo{"74LS139", "dual 2-to-4 line decoder", "DIP-16", Chip, &CreateChip<Ls139, "74LS139">},
@@ -473,6 +487,10 @@ constexpr std::array s_parts{
     PartInfo{"74LS273", "octal D flip-flop, clear", "DIP-20", Chip, &CreateChip<Ls273, "74LS273">},
     PartInfo{"74LS30", "8-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS30">},
     PartInfo{"74LS32", "quad 2-input OR", "DIP-14", Chip, &CreateGatePackage<"74LS32">},
+    PartInfo{"74LS365", "hex buffer, tri-state, two enables", "DIP-16", Chip,
+             &CreateChip<Ls365, "74LS365">},
+    PartInfo{"74LS373", "octal transparent latch, tri-state", "DIP-20", Chip,
+             &CreateChip<Ls373, "74LS373">},
     PartInfo{"74LS47", "BCD to 7-segment decoder, open collector", "DIP-16", Chip,
              &CreateChip<Ls47, "74LS47">},
     PartInfo{"74LS48", "BCD to 7-segment decoder, active-high outputs", "DIP-16", Chip,

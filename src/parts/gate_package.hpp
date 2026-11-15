@@ -26,12 +26,12 @@ struct GatePackageSpec {
     // EvaluatePackage<its units, its delays>: evaluation specialised on them at compile time
     // (gate_package.cpp)
     void (*evaluate)(EvalContext& ctx);
-    bool openCollector = false;  // unit outputs are PinKind::OpenCollector (7417)
+    bool openCollector = false;  // unit outputs are PinKind::OpenCollector (7417, 74LS05)
 };
 
 const GatePackageSpec& GatePackageSpecOf(std::string_view part);  // Check()s
 
-// One chip of independent gates (74LS00, 02, 04, 08, 20, 21, 27, 30, 32, 86; 7417).
+// One chip of independent gates (74LS00, 02, 04, 05, 08, 10, 20, 21, 27, 30, 32, 86; 7417).
 class GatePackage final : public Component {
 public:
     GatePackage(std::string reference, const GatePackageSpec& spec);

@@ -96,7 +96,7 @@ One of `0`, `1`, `Z` (high impedance, nothing driving) or `X` (unknown or confli
 _Avoid_: Level, voltage
 
 **Driver**:
-A Pin's contribution to the value of its Net: what it drives and how strongly. Also, a Pin that drives its Net: an output, a bidirectional Pin, a pull-up/pull-down or a supply.
+A Pin's contribution to the value of its Net: what it drives and how strongly. Also, a Pin that drives its Net: an output, a bidirectional Pin, a pull-up/pull-down, a series resistor or a supply.
 
 **Pull-up Pin**:
 A chip Pin that drives 0 and otherwise holds its Net at 1 through its own pull-up (an NMOS port pin, the 6530's): anything driving 0 beats its 1, and nothing else on the Net reads 1, not floating. It reads its Net too.
@@ -111,6 +111,12 @@ How hard a Driver forces its Net, so stronger Drivers win over weaker ones (e.g.
 **Tie**:
 A constant Driver attached to a Net rather than a Pin: a supply rail (GND/VCC) or a pull-up / pull-down resistor.
 _Avoid_: Constant Driver
+
+**Series Resistor**:
+A resistor between two signal Nets (the ZX80's data bus, P5u): a Net that nothing else drives takes the other's value through it, weakly, while a Net with a Driver of its own keeps it. One resistor network resolves them all; between two weak values on a Net, the one through less resistance wins (a pull-up on a joined Net counts as one of them, not as a Tie).
+
+**Joined Pin**:
+The resistor network's Pin on a Net that a Series Resistor touches (P5u), as the switch network has one on each Net a Switch is on (a Net may have both): it drives the Net weakly and is woken only by the Net's other Drivers.
 
 **Floating**:
 The state of a Net with no Driver.

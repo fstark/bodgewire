@@ -123,8 +123,8 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
     const Namer namer = NameIslands(designCircuit, board, islands);
 
     std::map<std::string, std::vector<PinRef>> pins;
-    // Resistors: kept only while one end is on a rail and the other on a signal. A switch's legs
-    // are named by their islands like a chip's pins.
+    // Resistors: kept while their ends are on two different islands, not both rails. A switch's
+    // legs are named by their islands like a chip's pins.
     std::map<std::string, std::vector<const Connection*>> railParts;
     for (const Connection& c : designCircuit.connections) {
         if (IsResistor(designCircuit, c.reference)) {
@@ -149,8 +149,10 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
         Check(ends.size() == 2, "electrical: resistor without two pins");
         const auto a = namer.nameOf(namer.island(reference, ends[0]->pin));
         const auto b = namer.nameOf(namer.island(reference, ends[1]->pin));
-        const bool pulls = a && b && IsRail(*a) != IsRail(*b);
-        if (!pulls) {
+        // A pull (one end on a rail) or a series resistor (both on signals, P5u); bridged
+        // across, or between two rails, it does nothing and is left out.
+        const bool kept = a && b && *a != *b && !(IsRail(*a) && IsRail(*b));
+        if (!kept) {
             leftOut.insert(reference);
             continue;
         }
