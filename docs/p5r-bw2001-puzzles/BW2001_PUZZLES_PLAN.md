@@ -8,7 +8,7 @@ Every phase ends with its fence: `cmake --build --preset debug` and `--preset re
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Rig | |
+| 1 | Rig | this commit |
 | 2 | Picture Puzzles (1–5) | |
 | 3 | Computer Puzzles (6–10) | |
 | 4 | Self-test and instrument Puzzles (11–15) | |
@@ -53,3 +53,4 @@ Commit: `docs: P5r done, BW-2001 Puzzles`
 ## Implementation notes
 
 - Docs review (before the docs commit), fixed: a video RAM column garbles the self-test's own report, so `garbled_text` became `ghost_letter`, one stuck cell; `wrong_chip`'s dry Joint gives an expected build warning; `SnowWatch`'s pins (`UE5.4Y`, `UC6.3Y`, `UC5.2Q`); `short_memory` on `IO1` (`RAM BAD 0C00 01`); the dead Puzzles' pictures measured on seeds 1–3, `no_clock` too; the cursor cell left out of the stripe check; the service manual note `missing_keys` needs; no empty Puzzle list; timings.
+- Phase 1: `bw2001_rig.{hpp,cpp}` as designed (names prefixed `Bw2001`: they leave the anonymous namespace). The release case `a scrolling screen without snow` failed before any change (1 access): at power-on, before reset ends, the 6502's random address selects the screen for a moment on seed 3 (the draws changed when P5q2 fitted `UH2`, `UH6`); the case now counts from the banner, as it means to. Debug `bw2001|manuals|puzzle` 57/57 in 205 s; release `bw2001` 46/46 in 197 s.

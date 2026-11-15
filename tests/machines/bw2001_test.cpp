@@ -13,6 +13,7 @@
 
 #include "../netlist/external_rom.hpp"
 #include "bw2001_harness.hpp"
+#include "bw2001_rig.hpp"
 #include "bw2001_screen.hpp"
 #include "devices/tv_input.hpp"
 #include "machine/machine.hpp"
@@ -27,10 +28,8 @@ using namespace bw::literals;
 
 namespace {
 
-std::filesystem::path NetlistPath() { return std::filesystem::path(BW_NETLIST_DIR) / "bw2001.bwn"; }
-
 std::string NetlistText() {
-    std::ifstream in(NetlistPath());
+    std::ifstream in(Bw2001NetlistPath());
     REQUIRE(in);
     std::stringstream text;
     text << in.rdbuf();
@@ -41,7 +40,7 @@ std::string NetlistText() {
 std::unique_ptr<LoadedCircuit> VariantCircuit(const std::string& text) {
     auto netlist = ParseNetlist(text, "bw2001.bwn");
     REQUIRE(netlist.has_value());
-    ResolveContentsPaths(*netlist, NetlistPath().parent_path());
+    ResolveContentsPaths(*netlist, Bw2001NetlistPath().parent_path());
     auto result = BuildCircuit(*netlist);
     if (!result) {
         for (const Diagnostic& d : result.error()) {
@@ -69,7 +68,7 @@ std::unique_ptr<LoadedCircuit> Basic1Circuit() {
         std::filesystem::create_symlink(*ExternalRom(rom.file),
                                         dir / (std::string(rom.socket) + ".bin"));
     }
-    auto machine = LoadNetlistMachine(NetlistPath(), dir);  // on the Board
+    auto machine = LoadNetlistMachine(Bw2001NetlistPath(), dir);  // on the Board
     if (!machine) {
         for (const Diagnostic& d : machine.error()) {
             UNSCOPED_INFO(Format(d));
@@ -81,17 +80,8 @@ std::unique_ptr<LoadedCircuit> Basic1Circuit() {
     return std::move(*built);
 }
 
-// The Circuit built from the Board's Copper, with no Faults.
-std::unique_ptr<LoadedCircuit> BoardCircuit() {
-    auto machine = LoadNetlistMachine(NetlistPath());
-    REQUIRE(machine.has_value());
-    auto built = machine->build();
-    REQUIRE(built.has_value());
-    return std::move(*built);
-}
-
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
-    auto result = LoadNetlistFile(NetlistPath());
+    auto result = LoadNetlistFile(Bw2001NetlistPath());
     if (!result) {
         for (const Diagnostic& d : result.error()) {
             UNSCOPED_INFO(Format(d));
@@ -100,116 +90,6 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
     REQUIRE(result.has_value());
     return std::move(*result);
 }
-
-// Screen accesses while the beam draws the text (SEL8, VIDEO_ON and DIS_ON all high): the PET's
-// snow. Fed each slice's samples before they are trimmed.
-struct SnowWatch {
-    NetId sel8, videoOn, disOn;
-    LogicValue s = LogicValue::Zero, v = LogicValue::Zero, d = LogicValue::Zero;
-    Time fedUntil = -1;
-    int accesses = 0;  // rises into all three high
-    int all = 0;       // SEL8's rises: every screen access
-
-    void feed(const Simulator& sim) {
-        struct Edge {
-            Time time;
-            int net;
-            LogicValue value;
-        };
-        std::vector<Edge> edges;
-        const NetId nets[3]{sel8, videoOn, disOn};
-        for (int n = 0; n < 3; ++n) {
-            for (const Sample& sample : sim.recorder().samples(nets[n])) {
-                if (sample.time > fedUntil) {
-                    edges.push_back({sample.time, n, sample.value});
-                }
-            }
-        }
-        std::ranges::stable_sort(edges, {}, &Edge::time);
-        for (const Edge& e : edges) {
-            const bool before =
-                s == LogicValue::One && v == LogicValue::One && d == LogicValue::One;
-            (e.net == 0 ? s : e.net == 1 ? v : d) = e.value;
-            const bool after = s == LogicValue::One && v == LogicValue::One && d == LogicValue::One;
-            accesses += !before && after && e.net == 0 ? 1 : 0;
-            all += e.net == 0 && e.value == LogicValue::One ? 1 : 0;
-        }
-        fedUntil = sim.now();
-    }
-};
-
-// The Machine running, its TV on the MONITOR connector; a harness target (P5p's typist and
-// sessions run on it as on the model).
-struct Running final : Bw2001Target {
-    std::unique_ptr<LoadedCircuit> loaded;
-    std::unique_ptr<Simulator> sim;
-    std::unique_ptr<TvInput> tv;
-    std::optional<SnowWatch> snow;
-    const Ram2114* videoLow = nullptr;
-    const Ram2114* videoHigh = nullptr;
-    std::vector<const Ram2114*> low, high;
-
-    explicit Running(std::uint64_t seed, std::unique_ptr<LoadedCircuit> circuit = BoardCircuit(),
-                     bool watchSnow = false)
-        : loaded(std::move(circuit)) {
-        sim = std::make_unique<Simulator>(loaded->circuit);
-        sim->powerOn(seed);
-        tv = std::make_unique<TvInput>(*sim,
-                                       SeparateDrives{*ConnectorNet(*loaded, "MONITOR", "VIDEO_N"),
-                                                      *ConnectorNet(*loaded, "MONITOR", "HDRIVE"),
-                                                      *ConnectorNet(*loaded, "MONITOR", "VDRIVE")});
-        videoLow = dynamic_cast<const Ram2114*>(loaded->components.at("UC3"));
-        videoHigh = dynamic_cast<const Ram2114*>(loaded->components.at("UC4"));
-        for (int chip = 8; chip >= 1; --chip) {  // UI8/UJ8 hold $0000 (SHEET2.md)
-            const auto find = [&](std::string ref) -> const Ram2114* {
-                const auto it = loaded->components.find(ref);
-                return it == loaded->components.end() ? nullptr
-                                                      : dynamic_cast<const Ram2114*>(it->second);
-            };
-            low.push_back(find("UI" + std::to_string(chip)));
-            high.push_back(find("UJ" + std::to_string(chip)));
-        }
-        if (watchSnow) {
-            snow = SnowWatch{loaded->nets.at("SEL8"), loaded->nets.at("VIDEO_ON"),
-                             loaded->nets.at("DIS_ON")};
-            for (const NetId net : {snow->sel8, snow->videoOn, snow->disOn}) {
-                sim->record(net);
-            }
-        }
-    }
-    void runUntil(Time t) {
-        while (sim->now() < t) {
-            sim->runUntil(std::min(t, sim->now() + 1_ms));
-            tv->update();
-            if (snow) {
-                snow->feed(*sim);
-            }
-            sim->trimRecordings();
-        }
-    }
-    void run(std::uint64_t us) override { runUntil(sim->now() + static_cast<Time>(us) * 1_us); }
-    void setKey(Bw2001Key key, bool held) override {
-        MatrixKeyboard* keyboard = MatrixKeyboardOf(*loaded, "J5");
-        REQUIRE(keyboard != nullptr);
-        const auto index = Bw2001KeyAt(key.row, key.column);
-        REQUIRE(index.has_value());
-        keyboard->setHeld(*index, held);
-        sim->wake(keyboard->id());
-    }
-    std::uint8_t ram(std::uint16_t address) const override {
-        const std::size_t chip = address >> 10, word = address & 0x3FF;
-        if (address >= 0x2000 || low[chip] == nullptr) {
-            return 0xFF;
-        }
-        return static_cast<std::uint8_t>(low[chip]->word(word) | high[chip]->word(word) << 4);
-    }
-    std::uint8_t screen(std::size_t offset) const override {
-        return static_cast<std::uint8_t>(videoLow->word(offset) | videoHigh->word(offset) << 4);
-    }
-};
-
-const std::vector<std::string> kBanner{"*** BW-2001 TINY BASIC ***", "", "7166 BYTES FREE", "",
-                                       "READY"};
 
 }  // namespace
 
@@ -277,51 +157,19 @@ TEST_CASE("bw2001 machine: stage 1, the picture is the video RAM", "[machines][s
 }
 
 TEST_CASE("bw2001 machine: stage 2, our firmware's banner on the TV, no snow", "[machines][slow]") {
-    Running m(1, BoardCircuit(), true);
+    Running m(1, Bw2001BoardCircuit(), true);
     const NetId led = m.loaded->nets.at("DIAG_LED_N");
     Bw2001Typist typist(m);
     REQUIRE(typist.waitForLine(3'000'000));
     UNSCOPED_INFO("READY at " << m.sim->now() / 1_ms << " ms");
-    CHECK(typist.rows() == kBanner);
+    CHECK(typist.rows() == kBw2001Banner);
     m.runUntil(m.sim->now() + 40_ms);  // two whole frames after the last print
-    CHECK(Bw2001TvRows(m.tv->tv().completedFrame()) == kBanner);
+    CHECK(Bw2001TvRows(m.tv->tv().completedFrame()) == kBw2001Banner);
     CHECK(Bw2001BorderDots(m.tv->tv().completedFrame()) == 0);
     CHECK(m.snow->all > 1000);     // the clear (1000 bytes) and the banner: the watch sees them
     CHECK(m.snow->accesses == 0);  // the editor touches the screen only in the retrace
     CHECK(m.sim->value(led) == LogicValue::One);  // DS1 dark: no software selects row 11
 }
-
-namespace {
-
-// The video RAM as text rows, as typist.rows() (P5p's screen codes; BASIC 1 uses the same).
-std::vector<std::string> ScreenRows(const Running& m) {
-    std::vector<std::string> rows;
-    for (int row = 0; row < kBw2001Rows; ++row) {
-        std::string text;
-        for (int column = 0; column < kBw2001Columns; ++column) {
-            text.push_back(Bw2001ScreenChar(m.screen(static_cast<std::size_t>(row * 40 + column))));
-        }
-        text.erase(text.find_last_not_of(' ') + 1);
-        rows.push_back(text);
-    }
-    while (!rows.empty() && rows.back().empty()) {
-        rows.pop_back();
-    }
-    return rows;
-}
-
-// Types `text` on J5 (40 ms down, 40 ms up a character) and runs until it is all typed.
-void Type(Running& m, std::string_view text) {
-    MatrixKeyboard* keyboard = MatrixKeyboardOf(*m.loaded, "J5");
-    REQUIRE(keyboard != nullptr);
-    for (const char c : text) {
-        REQUIRE(keyboard->type(static_cast<unsigned char>(c)));
-    }
-    m.sim->wake(keyboard->id());
-    m.runUntil(m.sim->now() + static_cast<Time>(text.size()) * (kMatrixHold + kMatrixGap) + 20_ms);
-}
-
-}  // namespace
 
 TEST_CASE("bw2001 machine: stage 3, typing through the keyboard connector", "[machines][slow]") {
 #ifndef NDEBUG
@@ -330,7 +178,7 @@ TEST_CASE("bw2001 machine: stage 3, typing through the keyboard connector", "[ma
     Running m(2);
     Bw2001Typist typist(m);
     REQUIRE(typist.waitForLine());
-    Type(m, "PRINT 2+2\r");
+    Bw2001Type(m, "PRINT 2+2\r");
     REQUIRE(typist.waitForLine());
     const auto rows = typist.rows();
     REQUIRE(rows.size() >= 3);
@@ -345,10 +193,13 @@ TEST_CASE("bw2001 machine: stage 3, a scrolling screen without snow", "[machines
 #ifndef NDEBUG
     SKIP("about 6 s simulated: runs in the release build");
 #endif
-    Running m(3, BoardCircuit(), true);
+    Running m(3, Bw2001BoardCircuit(), true);
     Bw2001Typist typist(m);
     REQUIRE(typist.waitForLine());
-    Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");
+    // From the banner: before reset ends (1 ms) the 6502's address is its power-on state, which
+    // may select the screen for a moment (seed 3 since UH2 and UH6 were fitted, P5q2).
+    const int before = m.snow->accesses;
+    Bw2001Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");
     REQUIRE(typist.waitForLine(10'000'000));
     const auto rows = typist.rows();
     REQUIRE(rows.size() == 24);  // scrolled: the cursor's row is the 25th
@@ -356,7 +207,7 @@ TEST_CASE("bw2001 machine: stage 3, a scrolling screen without snow", "[machines
     CHECK(rows[22] == "30");
     CHECK(rows[23] == "READY");
     CHECK(m.snow->all > 5000);  // ten scrolls of 1000 bytes and more
-    CHECK(m.snow->accesses == 0);
+    CHECK(m.snow->accesses == before);
 }
 
 TEST_CASE("bw2001 machine: stage 3, the self-test by DIAG on the user port", "[machines][slow]") {
@@ -369,7 +220,7 @@ TEST_CASE("bw2001 machine: stage 3, the self-test by DIAG on the user port", "[m
     text.replace(at, 9, "net GND ");  // a wire from user port pin 5 to ground
     Running m(1, VariantCircuit(text));
     m.runUntil(1500_ms);
-    const auto rows = ScreenRows(m);
+    const auto rows = Bw2001ScreenRows(m);
     REQUIRE(rows.size() >= 12);
     CHECK(rows[0] == "BW-2001 SELF-TEST");
     for (std::size_t r = 2; r <= 9; ++r) {
@@ -389,7 +240,7 @@ TEST_CASE("bw2001 machine: the real BASIC 1 and its killer poke", "[machines][sl
     }
     Running m(1, std::move(circuit), true);
     m.runUntil(1500_ms);
-    auto rows = ScreenRows(m);
+    auto rows = Bw2001ScreenRows(m);
     REQUIRE(rows.size() >= 5);
     CHECK(rows[0] == "*** COMMODORE BASIC ***");
     CHECK(rows[2] == " 7167 BYTES FREE");
@@ -399,20 +250,20 @@ TEST_CASE("bw2001 machine: the real BASIC 1 and its killer poke", "[machines][sl
 
     // Its editor waits for the retrace before each screen store: printing makes no snow.
     const int before = m.snow->accesses;
-    Type(m, "PRINT 12\r");
+    Bw2001Type(m, "PRINT 12\r");
     m.runUntil(m.sim->now() + 300_ms);
     CHECK(m.snow->accesses == before);
 
     // POKE 59458,62: PB5 an output, its 0 against the video's gate. The wait reads 0 at once and
     // printing snows; the gate wins the line, so the retrace interrupt and the keyboard go on.
-    Type(m, "POKE 59458,62\r");
-    Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");
+    Bw2001Type(m, "POKE 59458,62\r");
+    Bw2001Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");
     m.runUntil(m.sim->now() + 1500_ms);
     CHECK(m.snow->accesses > before + 100);
     CHECK(m.sim->value(m.loaded->nets.at("VIDEO_ON")) != LogicValue::X);
-    Type(m, "PRINT 777\r");
+    Bw2001Type(m, "PRINT 777\r");
     m.runUntil(m.sim->now() + 500_ms);
-    rows = ScreenRows(m);
+    rows = Bw2001ScreenRows(m);
     REQUIRE(rows.size() >= 4);  // BASIC 1 leaves a blank row before READY.
     CHECK(rows[rows.size() - 4] == "PRINT 777");
     CHECK(rows[rows.size() - 3] == " 777");
