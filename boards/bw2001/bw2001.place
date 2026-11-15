@@ -1,0 +1,48 @@
+# BW-2001 (Machine 130): the PET 2001's board 320137. Every chip at its PET location (grid pet,
+# P5q): rows A (back) to J (front), columns 1 (left) to 9 (right). The edge connectors at the
+# back as on the PET, the monitor and cassette #1 at the left, the keyboard at the front.
+grid pet
+edge J3 back 10%
+edge J2 back 40%
+edge J1 back 75%
+edge J6 left back
+edge J7 left 60%
+edge J5 front middle
+edge J8 right front
+edge DS1 right 30%
+
+# Pull-ups beside the chip whose pins they hold (the schematic's), chained along a row.
+next R28 UE2 front              # BA0
+next R29 UE3 front              # BA1-BA5
+next R30 R29 right
+next R31 R30 right
+next R32 R31 right
+next R33 R32 right
+next R34 R33 right              # BA6-BA10, on along the same row
+next R35 R34 right
+next R36 R35 right
+next R37 R36 right
+next R38 R37 right
+next R21 UG8 front              # KIN0-KIN7, the keyboard columns, both ways from the middle
+next R20 R21 left
+next R19 R20 left
+next R18 R19 left
+next R22 R21 right
+next R23 R22 right
+next R24 R23 right
+next R25 R24 right
+next R10 UA9 front              # IFC_N, EOI_N
+next R48 R10 right
+next R13 UF3 front              # NMI_N, RDY, IRQ_N
+next R14 R13 right
+next R17 R14 right
+next R26 UG3 front              # spare inputs of UG3, UG4
+next R46 UE2 back               # the clock gate's enable
+next R12 UC7 front              # the flip-flops' J, K and clears
+next R39 UC5 front
+next R40 UD2 front
+next R41 UB6 front
+next R43 UA1 front
+next R44 UC1 front
+next R45 R44 right
+next R27 UE8 front
