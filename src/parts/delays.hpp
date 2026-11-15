@@ -138,5 +138,13 @@ inline constexpr Time kMos6530DataOut = 395'000;  // PHI2 rise → D valid (TCDR
 inline constexpr Time kMos6530DataHold = 10'000;  // PHI2 fall → D released (THR)
 inline constexpr Time kMos6530Port = 1'000'000;   // PHI2 fall → PA, PB valid (TCPW)
 inline constexpr Time kMos6530Irq = 300'000;      // PHI2 fall → PB7 low: TIC 200 ns at 1 MHz
+// 6520 PIA at 1 MHz (MCS6520 p. 4). The control and IRQ delays are assumed: the control lines'
+// maximum is 1.0 µs, but a one-cycle pulse needs each edge under half a cycle (drives are
+// inertial); no CA1-to-IRQ figure is published (the MC6821's is 1.0 µs maximum).
+inline constexpr Time kMos6520DataOut = 395'000;  // PHI2 rise → D valid (tDDR, max)
+inline constexpr Time kMos6520DataHold = 10'000;  // PHI2 fall → D released (tHR)
+inline constexpr Time kMos6520Port = 1'000'000;   // PHI2 fall → PA, PB valid (tPDW, max)
+inline constexpr Time kMos6520Control = 400'000;  // PHI2 edge → CA2, CB2 (assumed)
+inline constexpr Time kMos6520Irq = 200'000;      // deciding PHI2 edge → IRQ_N (assumed)
 
 }  // namespace bw::delays

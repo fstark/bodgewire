@@ -102,6 +102,7 @@ add_executable(bw_tests
   parts/mos6502_conformance_test.cpp
   parts/mos6502_core_test.cpp
   parts/mos6502_test.cpp
+  parts/mos6520_test.cpp
   parts/mos6530_test.cpp
   parts/oscillator_test.cpp
   parts/paddle_test.cpp

@@ -28,6 +28,7 @@
 #include "parts/ls90.hpp"
 #include "parts/ls93.hpp"
 #include "parts/mos6502.hpp"
+#include "parts/mos6520.hpp"
 #include "parts/mos6530.hpp"
 #include "parts/oscillator.hpp"
 #include "parts/paddle.hpp"
@@ -367,6 +368,8 @@ constexpr std::array s_parts{
     PartInfo{"2716", "2K x 8 EPROM", "DIP-24", Chip, &CreateRom<"2716">},
     PartInfo{"6102", "1K x 1 static RAM", "DIP-16", Chip, &CreateChip<Ram6102, "6102">},
     PartInfo{"6502", "8-bit microprocessor (NMOS)", "DIP-40", Chip, &CreateChip<Mos6502, "6502">},
+    PartInfo{"6520", "peripheral interface adapter (PIA)", "DIP-40", Chip,
+             &CreateChip<Mos6520, "6520">},
     PartInfo{"6530", "ROM, RAM, I/O and timer (KIM mask 002 or 003)", "DIP-40", Chip,
              &CreateMos6530},
     PartInfo{"74100", "8-bit bistable latch", "DIP-24", Chip, &CreateChip<Ttl100, "74100">},

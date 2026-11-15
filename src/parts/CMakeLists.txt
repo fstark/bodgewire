@@ -23,6 +23,7 @@ add_library(bw_parts STATIC
   memory_block.cpp
   mos6502.cpp
   mos6502_core.cpp
+  mos6520.cpp
   mos6530.cpp
   oscillator.cpp
   paddle.cpp
