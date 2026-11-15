@@ -68,6 +68,7 @@ add_executable(bw_tests
   machines/test_pattern_test.cpp
   netlist/builder_test.cpp
   netlist/bw1_bench_test.cpp
+  netlist/bw2001_bench_test.cpp
   netlist/diagnostic_test.cpp
   netlist/external_rom_test.cpp
   netlist/net_pins_test.cpp
