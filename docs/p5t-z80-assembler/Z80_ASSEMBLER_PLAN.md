@@ -9,8 +9,8 @@ On branch `p5t-z80-asm` (a worktree), while P5q1 runs on `main`.
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Docs reviewed | |
-| 1 | Front end apart from the 6502; `Assemble`, `.cpu` | |
+| 0 | Docs reviewed | `3aadd06` |
+| 1 | Front end apart from the 6502; `Assemble`, `.cpu` | `733124e` |
 | 2 | Z80 instructions; hand table, disassembler round trip, core lengths | |
 | 3 | `roms/bus_load_z80.asm`, the script retired | |
 | 4 | Release check, recipes, roadmap | |
@@ -53,3 +53,5 @@ Fence: release check done, full suite passes (or its failures shown not P5t's). 
 
 - Review (before the commit of the docs), fixed in them: expressions from the original text (symbols case-sensitive); `Cond` tried before `Reg8` in the first operand of `JP`/`CALL`/`JR`/`RET`; the Z80 test helpers read the `.rom` text's rows (the 6502 helper strips real `$FF`s and starts at the window); no "register as a value" error (a register name inside an expression is a symbol, as noted); why `ED 63`/`ED 6B` leave the round trip; the shared helpers listed; test names `asm z80: …` for `-R`; narrower phase 1 filter; phase 3 with the debug `bw`; the disassembler's types; `im` apart from `m`; the 6502's error order kept.
 - Phase 1 was written while the review ran, then checked against it.
+- Phase 2: the form table needs no separate `(HL)`/`(XY+d)` rows: one pattern `M` (`r`, `(HL)` as code 6, `(XY+d)` as 6 behind its prefix) covers each 8-bit row, a memory-to-memory pair refused; `LD r,r'` is `LD M,M`. The opcode list's operand bytes: after DD/FD, nn is `$5AFD` (d and n read as one word). A first count of 698: the unprefixed loop fed `DD 34 12` and `FD 34 12` as plain opcodes (decoded as `INC (IX+18)`); the loop now skips the four prefix bytes. Mutations, each failing cases: the `DD CB d op` order swapped (3 cases), `JP cc`'s condition shifted to bit 4 (3), `JR`'s offset from the instruction's start (5). Debug: `ctest -R asm` 29 tests, 0.6 s.
+- The `.rom` listing's comment column is padded for three bytes (the 6502's longest); a 4-byte Z80 instruction pushes its comment right. Left so: widening it would change every committed 6502 `.rom`.

@@ -7,6 +7,8 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(bw_tests
   asm/asm6502_test.cpp
+  asm/asmz80_test.cpp
+  asm/z80_disassembler.cpp
   board/board_check_test.cpp
   board/boards_test.cpp
   board/copper_test.cpp
