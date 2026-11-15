@@ -1,0 +1,256 @@
+# Minimal netlist for P5p (docs/p5p-bw2001-firmware/BW2001_FIRMWARE_DESIGN.md §10), no Board: P5n's
+# bench (tests/data/bw2001_bench.bwn) with our firmware in the PET 2001's sockets, the whole
+# keyboard matrix and a DIAG switch. Not the Machine (P5q): no video chain, the retrace still X2's
+# 60 Hz stand-in. UH1/UH5 hold BASIC, UH3 the editor, UH4 the monitor, UH7 reset and the
+# self-test; UH2 and UH6 stay empty. SW1-SW73 are the matrix's keys, row 0 PB0 first (the
+# unused places skipped); SW74 holds DIAG (PIA1 PA7) low.
+
+part X1   OSC freq=1MHz                              # PHI0 (the PET divides 8 MHz: P5q)
+part X2   OSC freq=60Hz                              # RETRACE, a stand-in for the video
+part J1   POWER
+part UF3  6502
+part UG2  74LS154                                    # SEL0_N-SELF_N, 4 KB blocks
+part UE5  74LS04                                     # RW_N, SELE, A15_N
+part UG3  74LS00                                     # WE_N, IO_N
+part U50  74LS138                                    # RAM0_N-RAM7_N, 1 KB blocks
+part UI1  2114                                       # $0000 D0-D3
+part UI2  2114                                       # $0400 D0-D3
+part UI3  2114                                       # $0800 D0-D3
+part UI4  2114                                       # $0C00 D0-D3
+part UI5  2114                                       # $1000 D0-D3
+part UI6  2114                                       # $1400 D0-D3
+part UI7  2114                                       # $1800 D0-D3
+part UI8  2114                                       # $1C00 D0-D3
+part UJ1  2114                                       # $0000 D4-D7
+part UJ2  2114                                       # $0400 D4-D7
+part UJ3  2114                                       # $0800 D4-D7
+part UJ4  2114                                       # $0C00 D4-D7
+part UJ5  2114                                       # $1000 D4-D7
+part UJ6  2114                                       # $1400 D4-D7
+part UJ7  2114                                       # $1800 D4-D7
+part UJ8  2114                                       # $1C00 D4-D7
+part UC3  2114                                       # video RAM D0-D3
+part UC4  2114                                       # video RAM D4-D7
+part UH1  2316B select=LLH contents=../../roms/bw2001_basic.rom offset=0      # $C000
+part UH5  2316B select=LHH contents=../../roms/bw2001_basic.rom offset=$800   # $C800
+part UH2  2316B select=LLH contents=empty.rom        # $D000
+part UH6  2316B select=LHH contents=empty.rom        # $D800
+part UH3  2316B select=LLH contents=../../roms/bw2001_edit.rom              # $E000
+part UH4  2316B select=LLH contents=../../roms/bw2001_kernel.rom offset=0     # $F000
+part UH7  2316B select=LHH contents=../../roms/bw2001_kernel.rom offset=$800  # $F800
+part UG8  6520                                       # PIA1 $E810
+part UB8  6520                                       # PIA2 $E820
+part UA5  6522                                       # VIA $E840
+part UG9  74LS145                                    # keyboard rows
+part SW1   KEY                                      # row 0 column 0: !
+part SW2   KEY                                      # row 0 column 1: #
+part SW3   KEY                                      # row 0 column 2: %
+part SW4   KEY                                      # row 0 column 3: &
+part SW5   KEY                                      # row 0 column 4: (
+part SW6   KEY                                      # row 0 column 5: _
+part SW7   KEY                                      # row 0 column 6: HOME
+part SW8   KEY                                      # row 0 column 7: CRSR RT
+part SW9   KEY                                      # row 1 column 0: "
+part SW10  KEY                                      # row 1 column 1: $
+part SW11  KEY                                      # row 1 column 2: '
+part SW12  KEY                                      # row 1 column 3: \
+part SW13  KEY                                      # row 1 column 4: )
+part SW14  KEY                                      # row 1 column 6: CRSR DN
+part SW15  KEY                                      # row 1 column 7: DEL
+part SW16  KEY                                      # row 2 column 0: Q
+part SW17  KEY                                      # row 2 column 1: E
+part SW18  KEY                                      # row 2 column 2: T
+part SW19  KEY                                      # row 2 column 3: U
+part SW20  KEY                                      # row 2 column 4: O
+part SW21  KEY                                      # row 2 column 5: ^
+part SW22  KEY                                      # row 2 column 6: 7
+part SW23  KEY                                      # row 2 column 7: 9
+part SW24  KEY                                      # row 3 column 0: W
+part SW25  KEY                                      # row 3 column 1: R
+part SW26  KEY                                      # row 3 column 2: Y
+part SW27  KEY                                      # row 3 column 3: I
+part SW28  KEY                                      # row 3 column 4: P
+part SW29  KEY                                      # row 3 column 6: 8
+part SW30  KEY                                      # row 3 column 7: /
+part SW31  KEY                                      # row 4 column 0: A
+part SW32  KEY                                      # row 4 column 1: D
+part SW33  KEY                                      # row 4 column 2: G
+part SW34  KEY                                      # row 4 column 3: J
+part SW35  KEY                                      # row 4 column 4: L
+part SW36  KEY                                      # row 4 column 6: 4
+part SW37  KEY                                      # row 4 column 7: 6
+part SW38  KEY                                      # row 5 column 0: S
+part SW39  KEY                                      # row 5 column 1: F
+part SW40  KEY                                      # row 5 column 2: H
+part SW41  KEY                                      # row 5 column 3: K
+part SW42  KEY                                      # row 5 column 4: :
+part SW43  KEY                                      # row 5 column 6: 5
+part SW44  KEY                                      # row 5 column 7: *
+part SW45  KEY                                      # row 6 column 0: Z
+part SW46  KEY                                      # row 6 column 1: C
+part SW47  KEY                                      # row 6 column 2: B
+part SW48  KEY                                      # row 6 column 3: M
+part SW49  KEY                                      # row 6 column 4: ;
+part SW50  KEY                                      # row 6 column 5: RETURN
+part SW51  KEY                                      # row 6 column 6: 1
+part SW52  KEY                                      # row 6 column 7: 3
+part SW53  KEY                                      # row 7 column 0: X
+part SW54  KEY                                      # row 7 column 1: V
+part SW55  KEY                                      # row 7 column 2: N
+part SW56  KEY                                      # row 7 column 3: ,
+part SW57  KEY                                      # row 7 column 4: ?
+part SW58  KEY                                      # row 7 column 6: 2
+part SW59  KEY                                      # row 7 column 7: +
+part SW60  KEY                                      # row 8 column 0: SHIFT L
+part SW61  KEY                                      # row 8 column 1: @
+part SW62  KEY                                      # row 8 column 2: ]
+part SW63  KEY                                      # row 8 column 4: >
+part SW64  KEY                                      # row 8 column 5: SHIFT R
+part SW65  KEY                                      # row 8 column 6: 0
+part SW66  KEY                                      # row 8 column 7: -
+part SW67  KEY                                      # row 9 column 0: RVS
+part SW68  KEY                                      # row 9 column 1: [
+part SW69  KEY                                      # row 9 column 2: SPACE
+part SW70  KEY                                      # row 9 column 3: <
+part SW71  KEY                                      # row 9 column 4: STOP
+part SW72  KEY                                      # row 9 column 6: .
+part SW73  KEY                                      # row 9 column 7: =
+part SW74 KEY                                         # DIAG (PIA1 PA7) to GND
+part U51  POR time=1ms                               # RES_N (the PET's 555)
+part R18  R value=10k                                # PIA1 PB0
+part R19  R value=10k                                # PIA1 PB1
+part R20  R value=10k                                # PIA1 PB2
+part R21  R value=10k                                # PIA1 PB3
+part R22  R value=10k                                # PIA1 PB4
+part R23  R value=10k                                # PIA1 PB5
+part R24  R value=10k                                # PIA1 PB6
+part R25  R value=10k                                # PIA1 PB7
+part R1   R value=3k3                                # RES_N
+part R2   R value=3k3                                # IRQ_N
+part R3   R value=3k3                                # NMI_N
+
+# Clock, reset, interrupts.
+net PHI0     X1.OUT UF3.PHI0
+net PHI2     UF3.PHI2 UG8.PHI2 UB8.PHI2 UA5.PHI2 UG3.1B
+net VCC      UF3.RDY UF3.SO R1.1 R2.1 R3.1
+net RES_N    U51.RST_N R1.2 UF3.RES_N UG8.RES_N UB8.RES_N UA5.RES_N
+net NMI_N    UF3.NMI_N R3.2
+net IRQ_N    UF3.IRQ_N R2.2 UG8.IRQA_N UG8.IRQB_N UB8.IRQA_N UB8.IRQB_N UA5.IRQ_N
+net RETRACE  X2.OUT UG8.CB1 UA5.PB5
+
+# Address bus: A0-A9 to every RAM, ROM and I/O chip that takes them.
+net A0       UF3.A0 UI1.A0 UI2.A0 UI3.A0 UI4.A0 UI5.A0 UI6.A0 UI7.A0 UI8.A0 UJ1.A0 UJ2.A0 UJ3.A0 UJ4.A0 UJ5.A0 UJ6.A0 UJ7.A0 UJ8.A0 UC3.A0 UC4.A0 UH1.A0 UH5.A0 UH2.A0 UH6.A0 UH3.A0 UH4.A0 UH7.A0 UG8.RS0 UB8.RS0 UA5.RS0
+net A1       UF3.A1 UI1.A1 UI2.A1 UI3.A1 UI4.A1 UI5.A1 UI6.A1 UI7.A1 UI8.A1 UJ1.A1 UJ2.A1 UJ3.A1 UJ4.A1 UJ5.A1 UJ6.A1 UJ7.A1 UJ8.A1 UC3.A1 UC4.A1 UH1.A1 UH5.A1 UH2.A1 UH6.A1 UH3.A1 UH4.A1 UH7.A1 UG8.RS1 UB8.RS1 UA5.RS1
+net A2       UF3.A2 UI1.A2 UI2.A2 UI3.A2 UI4.A2 UI5.A2 UI6.A2 UI7.A2 UI8.A2 UJ1.A2 UJ2.A2 UJ3.A2 UJ4.A2 UJ5.A2 UJ6.A2 UJ7.A2 UJ8.A2 UC3.A2 UC4.A2 UH1.A2 UH5.A2 UH2.A2 UH6.A2 UH3.A2 UH4.A2 UH7.A2 UA5.RS2
+net A3       UF3.A3 UI1.A3 UI2.A3 UI3.A3 UI4.A3 UI5.A3 UI6.A3 UI7.A3 UI8.A3 UJ1.A3 UJ2.A3 UJ3.A3 UJ4.A3 UJ5.A3 UJ6.A3 UJ7.A3 UJ8.A3 UC3.A3 UC4.A3 UH1.A3 UH5.A3 UH2.A3 UH6.A3 UH3.A3 UH4.A3 UH7.A3 UA5.RS3
+net A4       UF3.A4 UI1.A4 UI2.A4 UI3.A4 UI4.A4 UI5.A4 UI6.A4 UI7.A4 UI8.A4 UJ1.A4 UJ2.A4 UJ3.A4 UJ4.A4 UJ5.A4 UJ6.A4 UJ7.A4 UJ8.A4 UC3.A4 UC4.A4 UH1.A4 UH5.A4 UH2.A4 UH6.A4 UH3.A4 UH4.A4 UH7.A4 UG8.CS0
+net A5       UF3.A5 UI1.A5 UI2.A5 UI3.A5 UI4.A5 UI5.A5 UI6.A5 UI7.A5 UI8.A5 UJ1.A5 UJ2.A5 UJ3.A5 UJ4.A5 UJ5.A5 UJ6.A5 UJ7.A5 UJ8.A5 UC3.A5 UC4.A5 UH1.A5 UH5.A5 UH2.A5 UH6.A5 UH3.A5 UH4.A5 UH7.A5 UB8.CS0
+net A6       UF3.A6 UI1.A6 UI2.A6 UI3.A6 UI4.A6 UI5.A6 UI6.A6 UI7.A6 UI8.A6 UJ1.A6 UJ2.A6 UJ3.A6 UJ4.A6 UJ5.A6 UJ6.A6 UJ7.A6 UJ8.A6 UC3.A6 UC4.A6 UH1.A6 UH5.A6 UH2.A6 UH6.A6 UH3.A6 UH4.A6 UH7.A6 UA5.CS1
+net A7       UF3.A7 UI1.A7 UI2.A7 UI3.A7 UI4.A7 UI5.A7 UI6.A7 UI7.A7 UI8.A7 UJ1.A7 UJ2.A7 UJ3.A7 UJ4.A7 UJ5.A7 UJ6.A7 UJ7.A7 UJ8.A7 UC3.A7 UC4.A7 UH1.A7 UH5.A7 UH2.A7 UH6.A7 UH3.A7 UH4.A7 UH7.A7
+net A8       UF3.A8 UI1.A8 UI2.A8 UI3.A8 UI4.A8 UI5.A8 UI6.A8 UI7.A8 UI8.A8 UJ1.A8 UJ2.A8 UJ3.A8 UJ4.A8 UJ5.A8 UJ6.A8 UJ7.A8 UJ8.A8 UC3.A8 UC4.A8 UH1.A8 UH5.A8 UH2.A8 UH6.A8 UH3.A8 UH4.A8 UH7.A8
+net A9       UF3.A9 UI1.A9 UI2.A9 UI3.A9 UI4.A9 UI5.A9 UI6.A9 UI7.A9 UI8.A9 UJ1.A9 UJ2.A9 UJ3.A9 UJ4.A9 UJ5.A9 UJ6.A9 UJ7.A9 UJ8.A9 UC3.A9 UC4.A9 UH1.A9 UH5.A9 UH2.A9 UH6.A9 UH3.A9 UH4.A9 UH7.A9
+net A10      UF3.A10 UH1.A10 UH5.A10 UH2.A10 UH6.A10 UH3.A10 UH4.A10 UH7.A10 U50.A
+net A11      UF3.A11 U50.B UG3.2B UH1.CS2 UH5.CS2 UH2.CS2 UH6.CS2 UH3.CS2 UH4.CS2 UH7.CS2
+net A12      UF3.A12 U50.C UG2.A
+net A13      UF3.A13 U50.G2A_N UG2.B
+net A14      UF3.A14 U50.G2B_N UG2.C
+net A15      UF3.A15 UE5.3A UG2.D
+
+# Decoding (UG2): a 4 KB block each; SEL8_N the video RAM, SELC_N-SELF_N the ROMs, SELE_N with A11
+# the I/O ($E800-$EFFF), where UH3 ($E000, CS2 low) is off. U50: the RAM's 1 KB blocks.
+net GND      UG2.G1_N UG2.G2_N
+net A15_N    UE5.3Y U50.G1
+net SEL8_N   UG2.Y8_N UC3.CS_N UC4.CS_N
+net SELC_N   UG2.Y12_N UH1.CS1 UH5.CS1
+net SELD_N   UG2.Y13_N UH2.CS1 UH6.CS1
+net SELE_N   UG2.Y14_N UH3.CS1 UE5.2A
+net SELF_N   UG2.Y15_N UH4.CS1 UH7.CS1
+net SELE     UE5.2Y UG3.2A
+net IO_N     UG3.2Y UG8.CS2_N UB8.CS2_N UA5.CS2_N
+net VCC      UG8.CS1 UB8.CS1 UH1.CS3 UH5.CS3 UH2.CS3 UH6.CS3 UH3.CS3 UH4.CS3 UH7.CS3
+net RAM0_N   U50.Y0_N UI1.CS_N UJ1.CS_N
+net RAM1_N   U50.Y1_N UI2.CS_N UJ2.CS_N
+net RAM2_N   U50.Y2_N UI3.CS_N UJ3.CS_N
+net RAM3_N   U50.Y3_N UI4.CS_N UJ4.CS_N
+net RAM4_N   U50.Y4_N UI5.CS_N UJ5.CS_N
+net RAM5_N   U50.Y5_N UI6.CS_N UJ6.CS_N
+net RAM6_N   U50.Y6_N UI7.CS_N UJ7.CS_N
+net RAM7_N   U50.Y7_N UI8.CS_N UJ8.CS_N
+
+# Read and write: WE_N low while PHI2 is high in a write.
+net RW       UF3.RW UE5.1A UG8.RW UB8.RW UA5.RW
+net RW_N     UE5.1Y UG3.1A
+net WE_N     UG3.1Y UI1.WE_N UI2.WE_N UI3.WE_N UI4.WE_N UI5.WE_N UI6.WE_N UI7.WE_N UI8.WE_N UJ1.WE_N UJ2.WE_N UJ3.WE_N UJ4.WE_N UJ5.WE_N UJ6.WE_N UJ7.WE_N UJ8.WE_N UC3.WE_N UC4.WE_N
+net VCC      UG3.3A UG3.3B UG3.4A UG3.4B
+net GND      UE5.4A UE5.5A UE5.6A
+
+# Data bus: no buffers on the bench (the PET's 74LS244s are P5q's).
+net D0       UF3.D0 UI1.IO1 UI2.IO1 UI3.IO1 UI4.IO1 UI5.IO1 UI6.IO1 UI7.IO1 UI8.IO1 UC3.IO1 UH1.O0 UH5.O0 UH2.O0 UH6.O0 UH3.O0 UH4.O0 UH7.O0 UG8.D0 UB8.D0 UA5.D0
+net D1       UF3.D1 UI1.IO2 UI2.IO2 UI3.IO2 UI4.IO2 UI5.IO2 UI6.IO2 UI7.IO2 UI8.IO2 UC3.IO2 UH1.O1 UH5.O1 UH2.O1 UH6.O1 UH3.O1 UH4.O1 UH7.O1 UG8.D1 UB8.D1 UA5.D1
+net D2       UF3.D2 UI1.IO3 UI2.IO3 UI3.IO3 UI4.IO3 UI5.IO3 UI6.IO3 UI7.IO3 UI8.IO3 UC3.IO3 UH1.O2 UH5.O2 UH2.O2 UH6.O2 UH3.O2 UH4.O2 UH7.O2 UG8.D2 UB8.D2 UA5.D2
+net D3       UF3.D3 UI1.IO4 UI2.IO4 UI3.IO4 UI4.IO4 UI5.IO4 UI6.IO4 UI7.IO4 UI8.IO4 UC3.IO4 UH1.O3 UH5.O3 UH2.O3 UH6.O3 UH3.O3 UH4.O3 UH7.O3 UG8.D3 UB8.D3 UA5.D3
+net D4       UF3.D4 UJ1.IO1 UJ2.IO1 UJ3.IO1 UJ4.IO1 UJ5.IO1 UJ6.IO1 UJ7.IO1 UJ8.IO1 UC4.IO1 UH1.O4 UH5.O4 UH2.O4 UH6.O4 UH3.O4 UH4.O4 UH7.O4 UG8.D4 UB8.D4 UA5.D4
+net D5       UF3.D5 UJ1.IO2 UJ2.IO2 UJ3.IO2 UJ4.IO2 UJ5.IO2 UJ6.IO2 UJ7.IO2 UJ8.IO2 UC4.IO2 UH1.O5 UH5.O5 UH2.O5 UH6.O5 UH3.O5 UH4.O5 UH7.O5 UG8.D5 UB8.D5 UA5.D5
+net D6       UF3.D6 UJ1.IO3 UJ2.IO3 UJ3.IO3 UJ4.IO3 UJ5.IO3 UJ6.IO3 UJ7.IO3 UJ8.IO3 UC4.IO3 UH1.O6 UH5.O6 UH2.O6 UH6.O6 UH3.O6 UH4.O6 UH7.O6 UG8.D6 UB8.D6 UA5.D6
+net D7       UF3.D7 UJ1.IO4 UJ2.IO4 UJ3.IO4 UJ4.IO4 UJ5.IO4 UJ6.IO4 UJ7.IO4 UJ8.IO4 UC4.IO4 UH1.O7 UH5.O7 UH2.O7 UH6.O7 UH3.O7 UH4.O7 UH7.O7 UG8.D7 UB8.D7 UA5.D7
+
+# Keyboard: PIA1 PA0-PA3 choose the row (UG9), PB0-PB7 read the columns, pulled up (R18-R25);
+# a key joins its row to its column.
+net KEYA     UG8.PA0 UG9.A
+net KEYB     UG8.PA1 UG9.B
+net KEYC     UG8.PA2 UG9.C
+net KEYD     UG8.PA3 UG9.D
+net ROW0     UG9.Y0_N SW1.1 SW2.1 SW3.1 SW4.1 SW5.1 SW6.1 SW7.1 SW8.1
+net ROW1     UG9.Y1_N SW9.1 SW10.1 SW11.1 SW12.1 SW13.1 SW14.1 SW15.1
+net ROW2     UG9.Y2_N SW16.1 SW17.1 SW18.1 SW19.1 SW20.1 SW21.1 SW22.1 SW23.1
+net ROW3     UG9.Y3_N SW24.1 SW25.1 SW26.1 SW27.1 SW28.1 SW29.1 SW30.1
+net ROW4     UG9.Y4_N SW31.1 SW32.1 SW33.1 SW34.1 SW35.1 SW36.1 SW37.1
+net ROW5     UG9.Y5_N SW38.1 SW39.1 SW40.1 SW41.1 SW42.1 SW43.1 SW44.1
+net ROW6     UG9.Y6_N SW45.1 SW46.1 SW47.1 SW48.1 SW49.1 SW50.1 SW51.1 SW52.1
+net ROW7     UG9.Y7_N SW53.1 SW54.1 SW55.1 SW56.1 SW57.1 SW58.1 SW59.1
+net ROW8     UG9.Y8_N SW60.1 SW61.1 SW62.1 SW63.1 SW64.1 SW65.1 SW66.1
+net ROW9     UG9.Y9_N SW67.1 SW68.1 SW69.1 SW70.1 SW71.1 SW72.1 SW73.1
+net KIN0     UG8.PB0 R18.2 SW1.2 SW9.2 SW16.2 SW24.2 SW31.2 SW38.2 SW45.2 SW53.2 SW60.2 SW67.2
+net KIN1     UG8.PB1 R19.2 SW2.2 SW10.2 SW17.2 SW25.2 SW32.2 SW39.2 SW46.2 SW54.2 SW61.2 SW68.2
+net KIN2     UG8.PB2 R20.2 SW3.2 SW11.2 SW18.2 SW26.2 SW33.2 SW40.2 SW47.2 SW55.2 SW62.2 SW69.2
+net KIN3     UG8.PB3 R21.2 SW4.2 SW12.2 SW19.2 SW27.2 SW34.2 SW41.2 SW48.2 SW56.2 SW70.2
+net KIN4     UG8.PB4 R22.2 SW5.2 SW13.2 SW20.2 SW28.2 SW35.2 SW42.2 SW49.2 SW57.2 SW63.2 SW71.2
+net KIN5     UG8.PB5 R23.2 SW6.2 SW21.2 SW50.2 SW64.2
+net KIN6     UG8.PB6 R24.2 SW7.2 SW14.2 SW22.2 SW29.2 SW36.2 SW43.2 SW51.2 SW58.2 SW65.2 SW72.2
+net KIN7     UG8.PB7 R25.2 SW8.2 SW15.2 SW23.2 SW30.2 SW37.2 SW44.2 SW52.2 SW59.2 SW66.2 SW73.2
+net VCC      R18.1 R19.1 R20.1 R21.1 R22.1 R23.1 R24.1 R25.1
+
+# DIAG: PIA1 PA7, the PIA's own pull-up; SW74 holds it low.
+net DIAG     UG8.PA7 SW74.1
+net GND      SW74.2
+
+# The bench's result Nets, kept; our firmware leaves PIA2 and the VIA alone. The results: PIA2 PB the pass byte, PA the row-3 columns, CA2 SW2; the VIA's PA the retrace
+# count, PB7 T1's square wave, CB1 and CB2 the shift register.
+net P2PB0    UB8.PB0
+net P2PB1    UB8.PB1
+net P2PB2    UB8.PB2
+net P2PB3    UB8.PB3
+net P2PB4    UB8.PB4
+net P2PB5    UB8.PB5
+net P2PB6    UB8.PB6
+net P2PB7    UB8.PB7
+net P2PA0    UB8.PA0
+net P2PA1    UB8.PA1
+net P2PA2    UB8.PA2
+net P2PA3    UB8.PA3
+net P2PA4    UB8.PA4
+net P2PA5    UB8.PA5
+net P2PA6    UB8.PA6
+net P2PA7    UB8.PA7
+net P2CA2    UB8.CA2
+net VPA0     UA5.PA0
+net VPA1     UA5.PA1
+net VPA2     UA5.PA2
+net VPA3     UA5.PA3
+net VPA4     UA5.PA4
+net VPA5     UA5.PA5
+net VPA6     UA5.PA6
+net VPA7     UA5.PA7
+net VPB7     UA5.PB7
+net VCB1     UA5.CB1
+net VCB2     UA5.CB2

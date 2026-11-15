@@ -24,8 +24,8 @@ The full debug suite runs at phase 1 (the assembler and a Part are shared code) 
 | 3 | Kernel reset and the editor, on a BASIC stub | `279370b` |
 | 4 | Tiny BASIC: the conformance set on the model | `ca72077` |
 | 5 | The monitor | `506c2c9` |
-| 6 | The self-test | this commit |
-| 7 | The minimal netlist | |
+| 6 | The self-test | `92e6e15` |
+| 7 | The minimal netlist | this commit |
 | 8 | Release check, recipes, roadmap | |
 
 ## Phases
@@ -112,3 +112,4 @@ The full debug suite runs at phase 1 (the assembler and a Part are shared code) 
 - Phase 4: BASIC is 3.9 KB, `$C000`–`$C75F` in UH1 and `$C800`–`$CF65` in UH5 (154 bytes spare); UH2 and UH6 stay empty. All 31 sessions passed on the model with no change to P5o, in 31 s of debug time. The deepest 6502 stack use is `$01A6` (90 bytes, session `15_depth`), against the design's estimate of 160–200; the conformance case checks it stays above `$0120`. The editor cases were rewritten for BASIC (`LIST` shows the line handed over) in place of the stub's echo.
 - Phase 5: the monitor is 0.6 KB in UH4. It prints `C*` or `B*` on a fresh row, so it reads the editor's cursor column: `CCOL` moved into `roms/bw2001.inc`.
 - Phase 6: the self-test is 1.4 KB in UH7 (to `$FE10`), its pre-RAM code written out per row, since it may use neither the stack nor any RAM but `$00`–`$01`. A failure keeps its three values in screen cells beyond its row's digits and its row in `S`. Every row reaches the `KEY` row within the cases' 1.2 s window. In the key echo, `putch` first kept `Y` in the key index's byte, which the test caught.
+- Phase 7: `tests/data/bw2001_firmware.bwn` is the bench with our ROMs (`offset=` for UH5 and UH7), SW1–SW73 on the matrix and SW74 on DIAG. Debug: power-on to `READY` 17 s, `27_cls` 124 s, DIAG to the `KEY` row in parallel. Release: all 31 sessions pass on the real Parts in 175 s for 186 s simulated, 1.04–1.07× while typing; idle at `READY` (`bw run … --time 2s`, median of 3) 1.07×. `ctest --preset release -R "bw2001|asm|basic_"` 51/51.
