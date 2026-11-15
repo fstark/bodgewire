@@ -9,7 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "asm/asm6502.hpp"
+#include "asm/assembler.hpp"
 #include "bw2001_harness.hpp"
 #include "bw2001_model.hpp"
 
@@ -71,7 +71,7 @@ std::uint16_t IncValue(const std::string& name) {
 }  // namespace
 
 TEST_CASE("bw2001 model: PIA1 reads the matrix and the retrace interrupts", "[bw2001]") {
-    const auto rom = Assemble6502(kProbe, "probe.asm");
+    const auto rom = Assemble(kProbe, "probe.asm");
     REQUIRE(rom.has_value());
     Bw2001Model model({.seed = 1, .roms = {{0xF800, rom->words}}});
     model.run(20'000);
@@ -94,7 +94,7 @@ TEST_CASE("bw2001 model: PIA1 reads the matrix and the retrace interrupts", "[bw
 }
 
 TEST_CASE("bw2001 model: stuck bits, dead RAM, the RAM's top", "[bw2001]") {
-    const auto rom = Assemble6502(kProbe, "probe.asm");
+    const auto rom = Assemble(kProbe, "probe.asm");
     REQUIRE(rom.has_value());
     Bw2001Model model({.seed = 2, .ramTop = 0x1000, .roms = {{0xF800, rom->words}}});
     model.poke(0x0234, 0x00);

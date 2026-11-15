@@ -1,4 +1,4 @@
-#include "asm/asm6502.hpp"
+#include "asm/assembler.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -22,7 +22,7 @@ constexpr std::string_view kHeader = "  .rom $F000, $1000\n  .org $F000\n";
 
 // The bytes a program assembles to from $F000, up to the last one written.
 std::vector<std::uint8_t> Bytes(std::string_view body) {
-    const auto rom = Assemble6502(std::string(kHeader) + std::string(body), "t.asm");
+    const auto rom = Assemble(std::string(kHeader) + std::string(body), "t.asm");
     if (!rom) {
         FAIL(rom.error());
     }
@@ -34,7 +34,7 @@ std::vector<std::uint8_t> Bytes(std::string_view body) {
 }
 
 std::string Error(std::string_view body) {
-    const auto rom = Assemble6502(std::string(kHeader) + std::string(body), "t.asm");
+    const auto rom = Assemble(std::string(kHeader) + std::string(body), "t.asm");
     REQUIRE_FALSE(rom.has_value());
     return rom.error();
 }
@@ -169,19 +169,36 @@ TEST_CASE("asm: errors name the line", "[asm]") {
     CHECK(Error("  .byte 1 /\n").find("t.asm line 3: missing value") == 0);
     CHECK(Error("  .rom 0, 16\n") == "t.asm line 3: .rom given twice");
     CHECK(Error("  .bogus\n") == "t.asm line 3: unknown directive '.bogus'");
-    const auto noRom = Assemble6502("  .org 0\n  nop\n", "n.asm");
+    const auto noRom = Assemble("  .org 0\n  nop\n", "n.asm");
     REQUIRE_FALSE(noRom.has_value());
     CHECK(noRom.error() == "n.asm line 2: no .rom BASE, SIZE before the first byte");
-    const auto badSize = Assemble6502("  .rom $F000, 1000\n", "n.asm");
+    const auto badSize = Assemble("  .rom $F000, 1000\n", "n.asm");
     REQUIRE_FALSE(badSize.has_value());
     CHECK(badSize.error().find("power of two") != std::string::npos);
 }
 
+TEST_CASE("asm: .cpu chooses the instruction set, the 6502 without it", "[asm]") {
+    const std::string body = "  .org $F000\n  lda #1\n  jmp $F000\n";
+    const auto plain = Assemble("  .rom $F000, $1000\n" + body, "c.asm");
+    const auto given = Assemble("  .cpu 6502\n  .rom $F000, $1000\n" + body, "c.asm");
+    REQUIRE(plain.has_value());
+    REQUIRE(given.has_value());
+    CHECK(plain->words == given->words);
+    CHECK(Error("  .cpu 8080\n") == "t.asm line 3: unknown CPU '8080'");
+    CHECK(Error("  nop\n  .cpu z80\n") == "t.asm line 4: .cpu must come before any instruction");
+    const auto twice = Assemble("  .cpu 6502\n  .cpu z80\n  .rom 0, 16\n", "c.asm");
+    REQUIRE_FALSE(twice.has_value());
+    CHECK(twice.error() == "c.asm line 2: .cpu given twice");
+    const auto z80 = Assemble("  .cpu z80\n  .rom 0, 16\n  .org 0\n  lda #1\n", "c.asm");
+    REQUIRE_FALSE(z80.has_value());
+    CHECK(z80.error() == "c.asm line 4: unknown instruction 'lda'");
+}
+
 TEST_CASE("asm: the .rom text reads back as the same ROM", "[asm]") {
-    const auto rom = Assemble6502(
-        "; a test\n  .rom $FF00, 256\n\n  .org $FF00\nstart: lda #1 ; one\n  jmp start\n"
-        "  .org $FFFC\n  .word start\n",
-        "p.asm");
+    const auto rom =
+        Assemble("; a test\n  .rom $FF00, 256\n\n  .org $FF00\nstart: lda #1 ; one\n  jmp start\n"
+                 "  .org $FFFC\n  .word start\n",
+                 "p.asm");
     REQUIRE(rom.has_value());
     CHECK(rom->base == 0xFF00);
     CHECK(rom->text ==
@@ -200,9 +217,9 @@ TEST_CASE("asm: the .rom text reads back as the same ROM", "[asm]") {
 }
 
 TEST_CASE("asm: .checksum makes the ROM sum to 0", "[asm]") {
-    const auto rom = Assemble6502("  .rom $F000, $400\n  .org $F000\n  lda #$12\n  .checksum\n"
-                                  "  jmp $F000\n  .org $F3FC\n  .word $F000\n",
-                                  "c.asm");
+    const auto rom = Assemble("  .rom $F000, $400\n  .org $F000\n  lda #$12\n  .checksum\n"
+                              "  jmp $F000\n  .org $F3FC\n  .word $F000\n",
+                              "c.asm");
     REQUIRE(rom.has_value());
     unsigned sum = 0;
     for (const std::uint8_t w : rom->words) {
@@ -218,17 +235,17 @@ TEST_CASE("asm: .checksum makes the ROM sum to 0", "[asm]") {
     CHECK(Bytes("  nop\n") == Bytes_{0xEA});
     CHECK(Error("  .checksum 5\n") == "t.asm line 3: .checksum takes nothing or BASE, SIZE");
     CHECK(Error("  .checksum\n  .checksum\n") == "t.asm line 4: .checksum given twice");
-    const auto early = Assemble6502("  .org 0\n  .checksum\n", "n.asm");
+    const auto early = Assemble("  .org 0\n  .checksum\n", "n.asm");
     REQUIRE_FALSE(early.has_value());
     CHECK(early.error() == "n.asm line 2: no .rom BASE, SIZE before the first byte");
 }
 
 TEST_CASE("asm: .checksum BASE, SIZE makes each window sum to 0", "[asm]") {
-    const auto rom = Assemble6502("  .rom $F000, $1000\n  .org $F000\n  lda #$12\n"
-                                  "  .org $F7FF\n  .checksum $F000, $800\n"
-                                  "  .org $F800\n  ldx #$34\n  .checksum $F800, $800\n"
-                                  "  .org $FFFC\n  .word $F800\n",
-                                  "w.asm");
+    const auto rom = Assemble("  .rom $F000, $1000\n  .org $F000\n  lda #$12\n"
+                              "  .org $F7FF\n  .checksum $F000, $800\n"
+                              "  .org $F800\n  ldx #$34\n  .checksum $F800, $800\n"
+                              "  .org $FFFC\n  .word $F800\n",
+                              "w.asm");
     REQUIRE(rom.has_value());
     for (const std::size_t half : {0u, 0x800u}) {
         unsigned sum = 0;
@@ -258,7 +275,7 @@ TEST_CASE("asm: .include", "[asm]") {
     };
     write("b.inc", "VALUE = $42\nroutine: lda #VALUE\n  rts\n");
     write("a.asm", "  .rom $F000, $1000\n  .org $F000\n  .include \"b.inc\"\n  jsr routine\n");
-    const auto rom = Assemble6502File(dir / "a.asm");
+    const auto rom = AssembleFile(dir / "a.asm");
     REQUIRE(rom.has_value());
     CHECK(Bytes("VALUE = $42\nroutine: lda #VALUE\n  rts\n  jsr routine\n") ==
           Bytes_(rom->words.begin(), rom->words.begin() + 6));
@@ -269,22 +286,21 @@ TEST_CASE("asm: .include", "[asm]") {
     write("sub/c.inc", "  .include \"d.inc\"\n");
     write("sub/d.inc", "  nop\n");
     write("n.asm", "  .rom $F000, $1000\n  .org $F000\n  .include \"sub/c.inc\"\n");
-    const auto nested = Assemble6502File(dir / "n.asm");
+    const auto nested = AssembleFile(dir / "n.asm");
     REQUIRE(nested.has_value());
     CHECK(nested->words[0] == 0xEA);
 
     // An error in an included file names that file and its line.
     write("bad.inc", "  nop\n  bogus\n");
     write("e.asm", "  .rom $F000, $1000\n  .org $F000\n  .include \"bad.inc\"\n");
-    const auto bad = Assemble6502File(dir / "e.asm");
+    const auto bad = AssembleFile(dir / "e.asm");
     REQUIRE_FALSE(bad.has_value());
     CHECK(bad.error().starts_with("bad.inc line 2: "));
 
     write("m.asm", "  .include \"missing.inc\"\n");
-    CHECK(Assemble6502File(dir / "m.asm").error() == "m.asm line 1: cannot read 'missing.inc'");
+    CHECK(AssembleFile(dir / "m.asm").error() == "m.asm line 1: cannot read 'missing.inc'");
     write("loop.inc", "  .include \"loop.inc\"\n");
-    CHECK(Assemble6502File(dir / "loop.inc").error() ==
-          "loop.inc line 1: .include nested too deep");
+    CHECK(AssembleFile(dir / "loop.inc").error() == "loop.inc line 1: .include nested too deep");
     CHECK(Error("  .include \"b.inc\"\n") == "t.asm line 3: .include needs a file on disk");
     CHECK(Error("  .include b.inc\n") == "t.asm line 3: .include needs \"file\"");
     std::filesystem::remove_all(dir);
@@ -297,7 +313,7 @@ TEST_CASE("asm: every ROM program matches its committed .rom", "[asm]") {
             continue;
         }
         INFO(entry.path().filename().string());
-        const auto rom = Assemble6502File(entry.path());
+        const auto rom = AssembleFile(entry.path());
         REQUIRE(rom.has_value());
         std::ifstream in(std::filesystem::path(entry.path()).replace_extension(".rom"),
                          std::ios::binary);

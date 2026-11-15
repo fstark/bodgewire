@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 
-#include "asm/asm6502.hpp"
+#include "asm/assembler.hpp"
 #include "board/board_check.hpp"
 #include "board/footprint.hpp"
 #include "board/kicad_board.hpp"
@@ -324,7 +324,7 @@ int AsmCommand(std::span<char*> args) {
         return UsageError("asm needs <file.asm> -o <file.rom>");
     }
     const std::string_view out = args[4];
-    const auto rom = Assemble6502File(args[2]);
+    const auto rom = AssembleFile(args[2]);
     if (!rom) {
         std::println(stderr, "bw: {}", rom.error());
         return kExitNetlistErrors;
