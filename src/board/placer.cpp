@@ -821,7 +821,9 @@ private:
         const Box placed = courtyard(part);
         for (int row = 0; row < kPetRows; ++row) {
             const std::int64_t rowTop = gridOrigin_.y + row * rowPitch_;
-            if (placed.max.y <= rowTop || placed.min.y >= rowTop + rowPitch_) {
+            // Entered: more than a part's gap into the row (snapping may cross an edge by less).
+            if (placed.max.y <= rowTop + kPartGap ||
+                placed.min.y >= rowTop + rowPitch_ - kPartGap) {
                 continue;
             }
             const auto cellIndex = static_cast<std::size_t>(row * kPetColumns + c);
