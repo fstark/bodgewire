@@ -54,8 +54,8 @@ Faulty machine + symptom → run, observe, measure, study the board and the manu
 
 ## Puzzles
 
-- **Procedural**: random logic faults (stuck-at, broken trace, short, bad bit). Candidates are simulated headlessly; symptom-less or trivial ones are rejected.
-- **Authored**: hard, hand-placed faults with diagnostic clues. Timing faults are authored only, never random.
+- **Procedural**: random logic faults (stuck-at, broken trace, short, bad bit). Candidates are simulated headlessly; symptom-less or trivial ones are rejected. In the freezer (ARCHITECTURE.md, P8: after v0.9).
+- **Authored**: hard, hand-placed faults with diagnostic clues. Timing faults are authored only, never random (Timing: P8, after v0.9).
 - Hard because the machine is complex: good. Hard because the player has no reasonable way to find the fault: bug.
 - Timing example: BASIC runs fine, a graphics demo shows vertical artifacts. RAM, counters and address lines look correct on the logic probe; the scope shows the address decoder output switching too late relative to the pixel clock.
 - A part replaced by a slower equivalent can break a working machine.

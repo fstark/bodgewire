@@ -21,7 +21,7 @@ There is a venv environment in venv.
    A step that brings a Machine also writes `docs/machines/NNN-name/NAME.md` (lesson, circuit, when it works, Puzzles) and `NAME_DESIGN.md` (netlist, Board, Puzzle files, manuals).
 3. **Independent review.** A fresh sub-agent gets only the paths of the three docs (and the Machine docs), not your conclusions. It checks the plan against the design and spec, and both against the code: APIs that exist, rules the builder enforces, recipe steps, test timings. Fix every must-fix in the docs, then commit the docs.
 4. **Implement in one go.** Run every phase in order without stopping, one commit per phase, and update the plan's status table and implementation notes as you go. Stop only for what only the user can do. The main one is the KiCad Board layout: export the `.net`, give the layout constraints from the Machine design, and wait.
-5. **Finish.** Release check with screenshots viewed, recipes fixed, ARCHITECTURE row set to done with the date and links, plan cut down to the phase table and notes ("user check pending").
+5. **Finish.** Release check with screenshots viewed, recipes fixed, ARCHITECTURE row set to done with the date and links, plan cut down to the phase table and notes.
 
 A row that says "no new code" (a Machine spec only) skips the plan and the review.
 
