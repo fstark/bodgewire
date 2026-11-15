@@ -3,73 +3,19 @@
 Design: [Z80_DESIGN.md](Z80_DESIGN.md)
 Spec: [Z80.md](Z80.md)
 
-Work on branch `p5s-z80` (worktree `.claude/worktrees/p5s-z80`), P5q running on `main` in parallel; rebased on `main` before the merge back, and the ratios measured again on the rebased tree (P5q may change shared code). Fence test subsets by name (`-R`), never the full debug suite until phase 6. The worktree has no `venv`: the Python scripts are standard library only and run with `python3`.
+Implemented 2026-11-15 on branch `p5s-z80` (a worktree), while P5q ran on `main`; rebased on `main` at P5q's `54d13c3` before the finish.
 
 ## Status
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Docs reviewed | `170f3d2` |
-| 1 | Test data: converter, fetch script, committed subset | `1a8a98d` |
-| 2 | Core: every opcode, the runner, the Harte subset | `707d412` |
-| 3 | Core: interrupts, HALT, reset; hand cases; full Harte, ZEXDOC, ZEXALL in release | `87e1e25` |
-| 4 | `Z80` Part, datasheet, catalogue | `ac34721` |
-| 5 | Bus load with the Z80: ROM, netlist, test, ratios | this commit |
-| 6 | Release check, recipes, roadmap | |
-
-## Phase 1 — Test data
-
-- `tests/data/z80/convert_harte.py`, `fetch.sh`, `README.md` (the Harte and ZEXALL commits from `external/z80/SOURCES`), `LICENSE-harte` (Design, Test data); `fetch.sh --subset` run (1.37 GB, written to `external/z80/` and the 25-case subset).
-
-Fence: `python3 tests/data/z80/convert_harte.py --help` runs; `head -7 tests/data/z80/harte/00.txt` shows the header and an `I`/`F`/`C` case; `ls tests/data/z80/harte | wc -l` is 1604; `du -sh tests/data/z80` under 25 MB; `git status --short` lists only `tests/data/z80/` (`external/` ignored).
-Commit: `z80: Harte's Z80 test data, the converter and fetch script (P5s)`
-
-## Phase 2 — Core, every opcode
-
-- `z80_core.{hpp,cpp}`: the interface (Design), the resumable sequencer, the ALU, flags with X/Y, WZ, Q; the five opcode tables; `HALT` setting the halted state; `EI`/`DI`.
-- `z80_cases.{hpp,cpp}`, `z80_conformance_test.cpp` (the subset case; the full and ZEX cases skip without data).
-- CMake: `z80_core.cpp` in `src/parts/CMakeLists.txt`; `parts/z80_cases.cpp`, `parts/z80_conformance_test.cpp` and the two `BW_Z80_…` definitions in `tests/CMakeLists.txt`.
-- Debug time of the subset measured.
-
-Fence: `cmake --build --preset debug`; `ctest --preset debug -R "Z80 core"`; `clang-format --dry-run --Werror` on the new C++ files.
-Commit: `z80: the instruction core, every opcode, checked on Harte's data (P5s)`
-
-## Phase 3 — Core, interrupts and the full suites
-
-- Interrupts (NMI, IM 0/1/2, the EI shadow, prefixes, `LD A,I` P/V), HALT's halted Fetches, `reset()` (Design, Interrupts and HALT).
-- `z80_core_test.cpp` with the design's hand cases, each with its mutation tried and noted; `parts/z80_core_test.cpp` in `tests/CMakeLists.txt`.
-- `Z80 core: Harte full`, `ZEXDOC`, `ZEXALL` run once each in release by name; times and the ZEX output's last lines recorded.
-
-Fence: `cmake --build --preset debug`; `ctest --preset debug -R "Z80 core"`; `cmake --build --preset release`; `build/release/tests/bw_tests "Z80 core: Harte full"`, `"Z80 core: ZEXDOC"`, `"Z80 core: ZEXALL"` pass.
-Commit: `z80: interrupts, HALT and reset; ZEXDOC, ZEXALL and the full Harte set pass (P5s)`
-
-## Phase 4 — The Part
-
-- `z80.{hpp,cpp}`: pins, the T-state sequencer (Design, Pins), waits, bus grant, reset, power-on. `delays.hpp`: `kZ80Busak`, `kZ80Float` from the AC table, the comment widened; the reset-to-first-fetch count checked against UM0080's Reset figure and written in the notes.
-- Catalogue row, `datasheets/Z80.md`, `catalogue_test.cpp` lists; `z80.cpp` in `src/parts/CMakeLists.txt`, `parts/z80_test.cpp` in `tests/CMakeLists.txt`.
-- `z80_test.cpp` (Design, Tests).
-
-Fence: `cmake --build --preset debug`; `ctest --preset debug -R "Z80|catalogue|manuals|footprint"`.
-Commit: `z80: the Z80 Part, cycle-exact per CLK edge (P5s)`
-
-## Phase 5 — Bus load with the Z80
-
-- `roms/make_bus_load_z80_rom.py` with `--check`; `roms/bus_load_z80.rom`; `netlists/bus_load_z80.bwn`; `bus_load_test.cpp` over both netlists, the ROM per netlist, the RAM copy case.
-- Debug time of the bus load tests measured.
-- Release: the two netlists' ratios (Design, Measurements); `bw_ui` screenshot viewed.
-
-Fence: `python3 roms/make_bus_load_z80_rom.py --check`; `cmake --build --preset debug`; `ctest --preset debug -R "bus load|Z80"`; release measurements in the notes.
-Commit: `bus load: the real Z80 on the P5a circuit, our display program, measured (P5s)`
-
-## Phase 6 — Finish
-
-- Rebase on `main` (P5q's work); build both presets; the full debug suite; the release ratios again on the rebased tree.
-- `docs/recipes/ADD_PART.md`: reference commits for the Z80 core and Part, the M-cycle core variant (a resumable function, Internal cycles); fixes found on the way.
-- ARCHITECTURE: P5s row done with the date, figures and links; Performance gets the ratio.
-- This plan cut to the status table and notes.
-
-Fence: `ctest --preset debug -j 12` passes; `cmake --build --preset release`; screenshots viewed.
-Commit: `docs: P5s implemented`
+| 0 | Docs reviewed | `2ea0360` |
+| 1 | Test data: converter, fetch script, committed subset | `281db54` |
+| 2 | Core: every opcode, the runner, the Harte subset | `7bea0d5` |
+| 3 | Core: interrupts, HALT, reset; hand cases; full Harte, ZEXDOC, ZEXALL in release | `061cd10` |
+| 4 | `Z80` Part, datasheet, catalogue | `f8b9940` |
+| 5 | Bus load with the Z80: ROM, netlist, test, ratios | `ccec7a5` |
+| 6 | Release check, recipes, roadmap | this commit |
 
 ## Notes
 
@@ -83,3 +29,4 @@ Commit: `docs: P5s implemented`
 - Phase 5, the program against the design's first sketch: the handler is on the ZX80's balanced pattern (`DEC C`, `JP NZ`; `POP`, `DEC B`, `RET Z`, `SET 3,C`, or `POP`, `RET Z`, `JR`), 54 T-states on both paths, not 42; so a line has 35 Fetches after `EI` (one halted Fetch on a display line, not four) and A = `$5D`. Border rows are runs of `HALT`s in RAM around the page (a `HALT`'s pushed PC is the next row), so one `JP (HL)` serves both. The design was updated to the program as built. The page came up on the first run, 3.7 µs right of the stub's (71 T-states from HSYNC to the first character, the stub's 59).
 - Phase 5, the TV lock: with the 100 ms cap no locked frame came. The Z80's first VSYNC comes after the POR and the copy (6.2 ms), and the TV (free-running at 21 ms, accepting a vertical sync only 16–21 ms into its frame) falls in step after about 6 frames; the stub's first VSYNC is at once. The Z80 netlist's cap is 250 ms rather than a POR tuned to the TV.
 - Phase 5, debug: `bus load: the TV shows the page` 80 s (both netlists, both seeds), the copy case 1.3 s. Release, `bw run --time 2s`, alternated, 3 runs each: `bus_load` 0.383–0.389× (239 M applied events, 228 M evaluations), `bus_load_z80` 0.428–0.431× (236 M applied events, 221 M evaluations): the real CPU is no dearer than the stub, slightly cheaper (its border lines are halted fetches where the stub played ROM and RAM cycles). `bw_ui netlists/bus_load_z80.bwn --after 1s`: 0.43×, UI 0.0 ms, the page on the TV (screenshot viewed).
+- Phase 6: rebased on `main` at P5q's `54d13c3` with no conflict. Full debug suite: 1,218 of 1,219 pass (770 s); the one failure, `simulator: a strong 0 beats a pull-up pin's 1; its own 0 is strong`, comes from P5q's `3bed4a9` (a port's low now loses to an output's high, the test still expecting X) and touches nothing of P5s's; left to the P5q session. Release on the rebased tree, alternated, 3 runs each: `bus_load` 0.387–0.390×, `bus_load_z80` 0.432–0.436×; `bw_ui netlists/bus_load_z80.bwn --after 1s` 0.43×, UI 0.0 ms, the page (screenshot viewed).
