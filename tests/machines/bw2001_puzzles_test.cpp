@@ -2,6 +2,7 @@
 // power-on, faulty, read as the player reads it (the TV, the video RAM, the self-test's rows),
 // then repaired. Release-only but the first two: debug runs the Machine at about 0.004x.
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -66,6 +67,25 @@ std::string Row(const Running& m, std::size_t row) {
     return row < rows.size() ? rows[row] : "";
 }
 
+// Video RAM cells that are not spaces.
+int Marks(const Running& m) {
+    int marks = 0;
+    for (std::size_t cell = 0; cell < kBw2001Rows * kBw2001Columns; ++cell) {
+        marks += m.screen(cell) != 0x20 ? 1 : 0;
+    }
+    return marks;
+}
+
+// Bad zero page and Wrong chip on `seed`: the screen cleared, a few stray characters, no banner.
+void CheckBlankDead(const Machine& machine, std::uint64_t seed) {
+    INFO("seed " << seed);
+    Running m(seed, Bw2001Built(machine));
+    m.runUntil(1500_ms);
+    CHECK(Marks(m) > 0);
+    CHECK(Marks(m) < 100);
+    CHECK(Bw2001ScreenRows(m) != kBw2001Banner);
+}
+
 const TvFrame& Frame(Running& m) {
     m.runUntil(m.sim->now() + 40_ms);  // two whole frames
     return m.tv->tv().completedFrame();
@@ -93,7 +113,10 @@ TEST_CASE("bw2001: every Puzzle builds", "[machines][slow]") {
         for (const Diagnostic& d : circuit->warnings) {
             UNSCOPED_INFO(Format(d));
         }
-        CHECK(circuit->warnings.empty());
+        // wrong_chip's dry pin is on no Net: the builder says so (the Joint is the Fault).
+        const bool dry = name == std::string("wrong_chip") && circuit->warnings.size() == 1 &&
+                         Format(circuit->warnings[0]).find("2A4") != std::string::npos;
+        CHECK((circuit->warnings.empty() || dry));
     }
 }
 
@@ -337,4 +360,116 @@ TEST_CASE("bw2001: snow", "[machines][slow]") {
     REQUIRE(machine.swap("UH3"));
     Running m(1, Bw2001Built(machine), true);
     CHECK(loop(m) == 0);
+}
+
+TEST_CASE("bw2001: bad_zero_page", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 6 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("bad_zero_page");
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        CheckBlankDead(machine, seed);
+    }
+    const auto rows = SelfTest(machine);
+    REQUIRE(rows.size() >= 3);
+    CHECK(rows[2] == "ZERO PAGE BAD 0001 01");
+    REQUIRE(machine.swap("UI8"));
+    Running m(1, Bw2001Built(machine));
+    CHECK(Banner(m));
+}
+
+TEST_CASE("bw2001: wrong_chip", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 8 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("wrong_chip");
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        CheckBlankDead(machine, seed);
+    }
+    auto rows = SelfTest(machine);
+    REQUIRE(rows.size() >= 3);
+    CHECK(rows[2] == "ZERO PAGE BAD 0001 01");
+    REQUIRE(machine.swap("UI8"));  // the self-test's suspect: no better
+    rows = SelfTest(machine);
+    REQUIRE(rows.size() >= 3);
+    CHECK(rows[2] == "ZERO PAGE BAD 0001 01");
+    REQUIRE(machine.resolder({"UH8", "2A4"}));
+    Running m(1, Bw2001Built(machine));
+    CHECK(Banner(m));
+}
+
+TEST_CASE("bw2001: ghost_letter", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 3 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("ghost_letter");
+    {
+        Running m(1, Bw2001Built(machine));
+        Bw2001Typist typist(m);
+        REQUIRE(typist.waitForLine(1'500'000));
+        auto banner = kBw2001Banner;
+        banner[0] = "*** CW-2001 TINY BASIC ***";
+        CHECK(typist.rows() == banner);
+        CHECK(Bw2001TvRows(Frame(m)) == banner);
+        const auto rows = SelfTest(machine);
+        REQUIRE(rows.size() >= 4);
+        CHECK(rows[0] == "BW-2101 SELF-TEST");  // its own title's 0 shows as 1
+        CHECK(rows[3] == "VIDEO RAM BAD 8004 01");
+    }
+    REQUIRE(machine.swap("UC3"));
+    Running m(1, Bw2001Built(machine));
+    CHECK(Banner(m));
+}
+
+TEST_CASE("bw2001: no_clock", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 1 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("no_clock");
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        INFO("seed " << seed);
+        Running m(seed, Bw2001Built(machine));
+        const NetId clk8 = *PinNet(*m.loaded, "UB2", "CLK");
+        const NetId osc8 = *PinNet(*m.loaded, "X1", "OUT");
+        m.runUntil(200_ms);
+        CHECK_FALSE(m.tv->tv().isLocked());
+        int clk = 0, osc = 0;
+        LogicValue lastClk = m.sim->value(clk8), lastOsc = m.sim->value(osc8);
+        for (int i = 0; i < 200; ++i) {              // 10 us
+            m.sim->runUntil(m.sim->now() + 50'000);  // 50 ns
+            clk += m.sim->value(clk8) != lastClk ? 1 : 0;
+            osc += m.sim->value(osc8) != lastOsc ? 1 : 0;
+            lastClk = m.sim->value(clk8);
+            lastOsc = m.sim->value(osc8);
+        }
+        CHECK(clk == 0);
+        CHECK(osc > 100);
+        const TvFrame& frame = m.tv->tv().completedFrame();
+        CHECK(std::ranges::all_of(frame.cells, [](float c) { return c == 0.0f; }));
+    }
+    REQUIRE(machine.mend(NoClockCrack().layer, NoClockCrack().at));
+    Running m(1, Bw2001Built(machine));
+    CHECK(Banner(m));
+}
+
+TEST_CASE("bw2001: joined_bits", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 6 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("joined_bits");
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        INFO("seed " << seed);
+        Running m(seed, Bw2001Built(machine));
+        m.runUntil(100_ms);
+        const auto atPowerOn = Bw2001ScreenRows(m);
+        m.runUntil(1000_ms);
+        CHECK(Bw2001ScreenRows(m) == atPowerOn);  // never cleared
+        CHECK(Marks(m) > 500);
+        CHECK(m.sim->value(*PinNet(*m.loaded, "UF3", "RES_N")) == LogicValue::One);
+    }
+    const auto rows = SelfTest(machine);
+    CHECK((rows.empty() || rows[0] != "BW-2001 SELF-TEST"));
+    REQUIRE(machine.removeBridge({"UF3", "D0"}, {"UF3", "D1"}));
+    Running m(1, Bw2001Built(machine));
+    CHECK(Banner(m));
 }

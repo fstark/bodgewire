@@ -1,0 +1,5 @@
+# Wrong chip: a dry Joint on UH8 pin 17 (2A4), the RAM buffer's read input from BBD0: it floats high, so bit 0 of every RAM read is 1. The same symptom and self-test code as Bad zero page (ZERO PAGE BAD 0001 01), but swapping UI8 repairs nothing: UH8's leg differs from its pad.
+machine bw2001
+title "Wrong chip"
+brief "The BW-2001 clears its screen at power-on, but no banner ever appears: the screen stays blank but for a few stray characters."
+fault joint UH8.2A4

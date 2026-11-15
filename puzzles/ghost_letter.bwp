@@ -1,0 +1,5 @@
+# Ghost letter: a cell of the video RAM UC3 (word $004, bit 0) reads 1: the screen's fifth cell on the top row always shows a character with bit 0 set (the banner's B as C). The self-test: VIDEO RAM BAD 8004 01.
+machine bw2001
+title "Ghost letter"
+brief "The BW-2001 works, but its banner reads CW-2001 instead of BW-2001, and that place on the screen often shows the wrong letter when something else is printed there."
+fault cell UC3.IO1 $004 1

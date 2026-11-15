@@ -1,0 +1,5 @@
+# Bad zero page: bit 0 of the RAM UI8 ($0000-$03FF, the low nibble) reads 1 in every word: the zero page and the stack are broken. The reset code clears the screen but its RAM sizing walks off past $2000 and the Machine never reaches BASIC: a blank screen with a few stray characters. The self-test: ZERO PAGE BAD 0001 01.
+machine bw2001
+title "Bad zero page"
+brief "The BW-2001 clears its screen at power-on, but no banner ever appears: the screen stays blank but for a few stray characters."
+fault column UI8.IO1 1

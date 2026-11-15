@@ -205,4 +205,9 @@ const Crack& MissingKeysCrack() {
     return crack;
 }
 
+const Crack& NoClockCrack() {
+    static const Crack crack = PuzzleCrack("no_clock");
+    return crack;
+}
+
 }  // namespace bw
