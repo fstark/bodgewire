@@ -141,6 +141,15 @@ private:
             };
             if (const auto* edge = std::get_if<EdgeRule>(&rule.rule)) {
                 std::ranges::for_each(edge->references, mark);
+                // grid pet: a pin header on the back or front edge lies along it, as the PET's
+                // edge connectors do.
+                for (const std::string& reference : edge->references) {
+                    const auto it = index_.find(reference);
+                    if (rules_.petGrid && RunsAcross(edge->edge) && it != index_.end() &&
+                        parts_[it->second].footprint->id.find("PinHeader") != std::string::npos) {
+                        parts_[it->second].angle = 90;
+                    }
+                }
             } else {
                 mark(std::get<NextRule>(rule.rule).reference);
             }
@@ -178,17 +187,16 @@ private:
                 for (const std::string& reference : edge->references) {
                     const std::size_t part = index_.at(reference);
                     const Footprint& fp = *parts_[part].footprint;
+                    const Box cb = Courtyard(fp, {0, 0}, parts_[part].angle);
                     Point& origin = parts_[part].origin;
                     if (RunsAcross(edge->edge)) {
-                        origin.x = cursor - fp.courtyardMin.x;
-                        cursor += fp.courtyardMax.x - fp.courtyardMin.x + kPartGap;
-                        origin.y =
-                            edge->edge == Edge::Front ? -fp.courtyardMax.y : -fp.courtyardMin.y;
+                        origin.x = cursor - cb.min.x;
+                        cursor += cb.max.x - cb.min.x + kPartGap;
+                        origin.y = edge->edge == Edge::Front ? -cb.max.y : -cb.min.y;
                     } else {
-                        origin.y = cursor - fp.courtyardMin.y;
-                        cursor += fp.courtyardMax.y - fp.courtyardMin.y + kPartGap;
-                        origin.x =
-                            edge->edge == Edge::Right ? -fp.courtyardMax.x : -fp.courtyardMin.x;
+                        origin.y = cursor - cb.min.y;
+                        cursor += cb.max.y - cb.min.y + kPartGap;
+                        origin.x = edge->edge == Edge::Right ? -cb.max.x : -cb.min.x;
                     }
                     groupOf[part] = groups_.size();
                     group.members.push_back(part);
@@ -404,6 +412,7 @@ private:
             Point& origin = parts_[part].origin;
             // Snapped along the edge, then stepped back inside the margins if it left them.
             const Footprint& fp = *parts_[part].footprint;
+            const Box cb = Courtyard(fp, {0, 0}, parts_[part].angle);
             const auto inside = [&](std::int64_t v, std::int64_t min, std::int64_t max) {
                 v = SnapNear(v);
                 if (v + min < low) {
@@ -414,11 +423,11 @@ private:
                 return v;
             };
             if (across) {
-                origin.x = inside(origin.x + shift, fp.courtyardMin.x, fp.courtyardMax.x);
+                origin.x = inside(origin.x + shift, cb.min.x, cb.max.x);
                 origin.y =
                     edge == Edge::Front ? SnapDown(origin.y + outer) : SnapUp(origin.y + outer);
             } else {
-                origin.y = inside(origin.y + shift, fp.courtyardMin.y, fp.courtyardMax.y);
+                origin.y = inside(origin.y + shift, cb.min.y, cb.max.y);
                 origin.x =
                     edge == Edge::Right ? SnapDown(origin.x + outer) : SnapUp(origin.x + outer);
             }

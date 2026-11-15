@@ -365,3 +365,17 @@ TEST_CASE("placer: grid pet refusals", "[board]") {
         return m.find("'D1' (LED-5mm) needs a placement rule") != std::string::npos;
     }));
 }
+
+TEST_CASE("placer: grid pet lays a pin header along the back or front edge", "[board]") {
+    const Placement p = Placed(std::string(kPet) + "part J2 USERPORT\nnet PA0 J2.PA0 UA5.PA0\n",
+                               "grid pet\nedge J1 left middle\nedge J2 back middle\n");
+    const PlacedPart& j2 = Part(p, "J2");
+    CHECK(j2.angle == 90);
+    const Box a5 = RotatedCourtyard(p, "UA5");
+    const Footprint& fp = *j2.footprint;
+    // Turned: its 12 pads run along the edge, two rows deep.
+    const std::int64_t deep = (fp.courtyardMax.x - fp.courtyardMin.x);
+    CHECK(deep < 7 * kMm);
+    CHECK(j2.origin.y - fp.courtyardMax.x < a5.min.y);  // above row A
+    CHECK(Part(p, "J1").angle == 0);                    // a KK header on the left stays upright
+}
