@@ -45,7 +45,27 @@ inline constexpr Delays kLs175ClockToQ{20'000, 21'000};
 inline constexpr Delays kLs175Clear{16'000, 20'000};  // Q_N rises, Q falls
 // 74LS138 (TI typicals; rise = output to 1).
 // Assumed typicals: TI gives only 50 ns maximums. Rise is the open collector's release.
-inline constexpr Delays kTtl145{25'000, 20'000};         // A-D → Y_N
+inline constexpr Delays kTtl145{25'000, 20'000};  // A-D → Y_N
+// 74LS145: TI gives only maximums (50 ns both ways, as the 74145); the 74145's assumed typicals.
+inline constexpr Delays kLs145{25'000, 20'000};  // A-D → Y_N
+// 74LS154 (National DM74LS154, typicals).
+inline constexpr Delays kLs154Select{23'000, 23'000};  // A-D → Y_N (3 levels)
+inline constexpr Delays kLs154Enable{19'000, 19'000};  // G1_N, G2_N → Y_N
+// 74177 (TI76 p. 7-262, typicals).
+inline constexpr Delays kTtl177Clk1{8'000, 11'000};    // CLK1 → QA
+inline constexpr Delays kTtl177Qb{11'000, 17'000};     // CLK2 → QB
+inline constexpr Delays kTtl177Qc{27'000, 34'000};     // CLK2 → QC (ripple)
+inline constexpr Delays kTtl177Qd{44'000, 50'000};     // CLK2 → QD (ripple)
+inline constexpr Delays kTtl177Data{19'000, 31'000};   // A-D → Q while loading
+inline constexpr Delays kTtl177Load{29'000, 32'000};   // CT_LOAD_N low → Q
+inline constexpr Delays kTtl177Clear{32'000, 32'000};  // CLR_N low → Q (only fall used)
+// 74100 (TI76 p. 7-114, typicals).
+inline constexpr Delays kTtl100Data{16'000, 14'000};   // D → Q while G is high
+inline constexpr Delays kTtl100Enable{16'000, 7'000};  // G high → Q
+// 7417 (TI SN7417, typicals at RL 110 Ω): open collector, rise = released.
+inline constexpr Delays kTtl17{6'000, 20'000};
+// 74LS21 (TI SDLS139, typicals).
+inline constexpr Delays kLs21{8'000, 10'000};
 inline constexpr Delays kLs138Select{21'000, 21'000};    // A, B, C → Y (3 levels)
 inline constexpr Delays kLs138EnableG2{12'000, 20'000};  // G2A_N, G2B_N → Y
 inline constexpr Delays kLs138EnableG1{17'000, 26'000};  // G1 → Y

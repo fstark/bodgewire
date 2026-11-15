@@ -2,10 +2,12 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "parts/catalogue.hpp"
 #include "parts/delays.hpp"
@@ -31,11 +33,11 @@ struct Bench {
     Circuit circuit;
     std::map<std::string, NetId> nets;
 
-    explicit Bench(std::map<std::string, Input> inputs) {
+    explicit Bench(std::map<std::string, Input> inputs, std::string_view part = "74145") {
         for (const char* pin : {"A", "B", "C", "D"}) {
             inputs.try_emplace(pin, Input{Zero, {}});
         }
-        auto& chip = circuit.add<Ttl145>("U1");
+        auto& chip = *FindPart(part)->create(circuit, "U1", {}).value();
         for (auto& [pin, input] : inputs) {
             const NetId net = circuit.addNet(pin);
             auto& source = circuit.add<Stimulus>("S" + pin, input.initial, std::move(input.steps));
@@ -83,11 +85,14 @@ TEST_CASE("74145: catalogue row and pins", "[parts]") {
 }
 
 TEST_CASE("74145: each code pulls its output low, 10-15 none", "[parts]") {
+    const std::string_view part = GENERATE("74145", "74LS145");
+    INFO(part);
     for (int code = 0; code < 16; ++code) {
         Bench bench({{"A", {Bit(code, 0), {}}},
                      {"B", {Bit(code, 1), {}}},
                      {"C", {Bit(code, 2), {}}},
-                     {"D", {Bit(code, 3), {}}}});
+                     {"D", {Bit(code, 3), {}}}},
+                    part);
         Simulator sim(bench.circuit);
         sim.powerOn(1);
         sim.runUntil(1_us);
@@ -111,17 +116,22 @@ TEST_CASE("74145: an X input makes the outputs it could select X", "[parts]") {
 }
 
 TEST_CASE("74145: delays", "[parts]") {
-    // 3 → 4 at 1 µs: Y3_N released after the rise delay, Y4_N pulled after the fall delay.
+    // 3 → 4 at 1 µs: Y3_N released after the rise delay, Y4_N pulled after the fall delay. The
+    // 74LS145 is the same chip with its own delays.
+    const auto [part, delays] =
+        GENERATE(std::pair{"74145", delays::kTtl145}, std::pair{"74LS145", delays::kLs145});
+    INFO(part);
     Bench bench(
-        {{"A", {One, {{1_us, Zero}}}}, {"B", {One, {{1_us, Zero}}}}, {"C", {Zero, {{1_us, One}}}}});
+        {{"A", {One, {{1_us, Zero}}}}, {"B", {One, {{1_us, Zero}}}}, {"C", {Zero, {{1_us, One}}}}},
+        part);
     Simulator sim(bench.circuit);
     sim.powerOn(1);
-    sim.runUntil(1_us + delays::kTtl145.fall - 1);
+    sim.runUntil(1_us + delays.fall - 1);
     CHECK(sim.value(bench.nets[Y(4)]) == One);
-    sim.runUntil(1_us + delays::kTtl145.fall);
+    sim.runUntil(1_us + delays.fall);
     CHECK(sim.value(bench.nets[Y(4)]) == Zero);
-    sim.runUntil(1_us + delays::kTtl145.rise - 1);
+    sim.runUntil(1_us + delays.rise - 1);
     CHECK(sim.value(bench.nets[Y(3)]) == Zero);
-    sim.runUntil(1_us + delays::kTtl145.rise);
+    sim.runUntil(1_us + delays.rise);
     CHECK(sim.value(bench.nets[Y(3)]) == One);
 }

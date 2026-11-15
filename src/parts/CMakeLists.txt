@@ -7,6 +7,7 @@ add_library(bw_parts STATIC
   led.cpp
   ls107.cpp
   ls138.cpp
+  ls154.cpp
   ls157.cpp
   ls161.cpp
   ls164.cpp
@@ -33,8 +34,10 @@ add_library(bw_parts STATIC
   shift_register_2518.cpp
   shift_register_2524.cpp
   switch.cpp
+  ttl100.cpp
   ttl125.cpp
   ttl145.cpp
+  ttl177.cpp
   z80_stub.cpp
 )
 target_link_libraries(bw_parts PUBLIC bw_sim PRIVATE bw_warnings)

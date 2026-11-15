@@ -25,6 +25,7 @@ struct GatePart {
     int units;
     std::string_view inputs;  // input pin letters; pins are "<unit><letter>", output "<unit>Y"
     Delays delays;
+    bool openCollector = false;  // outputs pulled up on the bench
 };
 
 constexpr GatePart kLs00{"74LS00", GateKind::Nand, 4, "AB", delays::kLs00};
@@ -32,6 +33,8 @@ constexpr GatePart kLs02{"74LS02", GateKind::Nor, 4, "AB", delays::kLs02};
 constexpr GatePart kLs04{"74LS04", GateKind::Not, 6, "A", delays::kLs04};
 constexpr GatePart kLs08{"74LS08", GateKind::And, 4, "AB", delays::kLs08};
 constexpr GatePart kLs20{"74LS20", GateKind::Nand, 2, "ABCD", delays::kLs20};
+constexpr GatePart kLs21{"74LS21", GateKind::And, 2, "ABCD", delays::kLs21};
+constexpr GatePart kTtl17{"7417", GateKind::Buffer, 6, "A", delays::kTtl17, true};
 constexpr GatePart kLs27{"74LS27", GateKind::Nor, 3, "ABC", delays::kLs27};
 constexpr GatePart kLs30{"74LS30", GateKind::Nand, 1, "ABCDEFGH", delays::kLs30};
 constexpr GatePart kLs32{"74LS32", GateKind::Or, 4, "AB", delays::kLs32};
@@ -50,6 +53,7 @@ LogicValue Expected(GateKind kind, unsigned bits, std::size_t inputCount) {
     case GateKind::Nand:
         return FromBool(!all);
     case GateKind::Or:
+    case GateKind::Buffer:
         return FromBool(any);
     case GateKind::Nor:
     case GateKind::Not:
@@ -103,6 +107,9 @@ void CheckTruthTable(const GatePart& part) {
         }
         const std::string pin = PinName(part, unit, "Y");
         outputs.push_back(circuit.addNet(pin));
+        if (part.openCollector) {
+            circuit.tie(outputs.back(), One, DriveStrength::Weak);
+        }
         circuit.connect(chip, pin, outputs.back());
     }
     circuit.finalize();
@@ -137,6 +144,9 @@ void CheckDelays(const GatePart& part) {
         circuit.connect(chip, pin, net);
     }
     const NetId y = circuit.addNet("Y");
+    if (part.openCollector) {
+        circuit.tie(y, One, DriveStrength::Weak);
+    }
     circuit.connect(chip, PinName(part, 0, "Y"), y);
     circuit.finalize();
 
@@ -162,7 +172,9 @@ TEST_CASE("gate package: 74LS02 truth table", "[parts]") { CheckTruthTable(kLs02
 TEST_CASE("gate package: 74LS04 truth table", "[parts]") { CheckTruthTable(kLs04); }
 TEST_CASE("gate package: 74LS08 truth table", "[parts]") { CheckTruthTable(kLs08); }
 TEST_CASE("gate package: 74LS20 truth table", "[parts]") { CheckTruthTable(kLs20); }
+TEST_CASE("gate package: 74LS21 truth table", "[parts]") { CheckTruthTable(kLs21); }
 TEST_CASE("gate package: 74LS27 truth table", "[parts]") { CheckTruthTable(kLs27); }
+TEST_CASE("gate package: 7417 truth table", "[parts]") { CheckTruthTable(kTtl17); }
 TEST_CASE("gate package: 74LS30 truth table", "[parts]") { CheckTruthTable(kLs30); }
 TEST_CASE("gate package: 74LS32 truth table", "[parts]") { CheckTruthTable(kLs32); }
 TEST_CASE("gate package: 74LS86 truth table", "[parts]") { CheckTruthTable(kLs86); }
@@ -172,7 +184,30 @@ TEST_CASE("gate package: 74LS02 delays", "[parts]") { CheckDelays(kLs02); }
 TEST_CASE("gate package: 74LS04 delays", "[parts]") { CheckDelays(kLs04); }
 TEST_CASE("gate package: 74LS08 delays", "[parts]") { CheckDelays(kLs08); }
 TEST_CASE("gate package: 74LS20 delays", "[parts]") { CheckDelays(kLs20); }
+TEST_CASE("gate package: 74LS21 delays", "[parts]") { CheckDelays(kLs21); }
 TEST_CASE("gate package: 74LS27 delays", "[parts]") { CheckDelays(kLs27); }
+TEST_CASE("gate package: 7417 delays", "[parts]") { CheckDelays(kTtl17); }
+
+TEST_CASE("gate package: 7417 releases its 1", "[parts]") {
+    // Open collector: a high input lets the output float; only a pull-up makes it 1.
+    Circuit circuit;
+    Component& chip = *FindPart("7417")->create(circuit, "U1", {}).value();
+    CHECK(chip.pins()[1].kind == PinKind::OpenCollector);  // 1Y
+    CHECK(chip.pins()[0].kind == PinKind::Input);          // 1A
+    const NetId a = circuit.addNet("1A");
+    auto& source = circuit.add<Stimulus>("SA", One, std::vector<Stimulus::Step>{{100_ns, Zero}});
+    circuit.connect(source, Stimulus::kOut, a);
+    circuit.connect(chip, "1A", a);
+    const NetId y = circuit.addNet("1Y");
+    circuit.connect(chip, "1Y", y);
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runUntil(90_ns);
+    CHECK(sim.isFloating(y));
+    sim.runUntil(200_ns);
+    CHECK(sim.value(y) == Zero);
+}
 TEST_CASE("gate package: 74LS30 delays", "[parts]") { CheckDelays(kLs30); }
 TEST_CASE("gate package: 74LS32 delays", "[parts]") { CheckDelays(kLs32); }
 TEST_CASE("gate package: 74LS86 delays", "[parts]") { CheckDelays(kLs86); }

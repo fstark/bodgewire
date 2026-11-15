@@ -48,6 +48,17 @@ constexpr std::array<std::string_view, 14> s_ls20Names{
 constexpr std::array<GateUnit, 2> s_ls20Units{
     {{GateKind::Nand, 6, {1, 2, 4, 5}, 4}, {GateKind::Nand, 8, {9, 10, 12, 13}, 4}}};
 
+constexpr std::array<GateUnit, 2> s_ls21Units{
+    {{GateKind::And, 6, {1, 2, 4, 5}, 4}, {GateKind::And, 8, {9, 10, 12, 13}, 4}}};
+
+// 7417: hex buffer, open collector (the 74LS04's pinout).
+constexpr std::array<GateUnit, 6> s_ttl17Units{{{GateKind::Buffer, 2, {1}, 1},
+                                                {GateKind::Buffer, 4, {3}, 1},
+                                                {GateKind::Buffer, 6, {5}, 1},
+                                                {GateKind::Buffer, 8, {9}, 1},
+                                                {GateKind::Buffer, 10, {11}, 1},
+                                                {GateKind::Buffer, 12, {13}, 1}}};
+
 constexpr std::array<std::string_view, 14> s_ls27Names{"1A", "1B", "2A", "2B", "2C", "2Y", "GND",
                                                        "3Y", "3A", "3B", "3C", "1Y", "1C", "VCC"};
 constexpr std::array<GateUnit, 3> s_ls27Units{{{GateKind::Nor, 12, {1, 2, 13}, 3},
@@ -72,16 +83,18 @@ void EvaluatePackage(EvalContext& ctx) {
     }
 }
 
-constexpr std::array<GatePackageSpec, 9> s_specs{{
+constexpr std::array<GatePackageSpec, 11> s_specs{{
     {"74LS00", 14, s_quadNames, s_ls00Units, &EvaluatePackage<s_ls00Units, delays::kLs00>},
     {"74LS02", 14, s_ls02Names, s_ls02Units, &EvaluatePackage<s_ls02Units, delays::kLs02>},
     {"74LS04", 14, s_ls04Names, s_ls04Units, &EvaluatePackage<s_ls04Units, delays::kLs04>},
     {"74LS08", 14, s_quadNames, s_ls08Units, &EvaluatePackage<s_ls08Units, delays::kLs08>},
     {"74LS20", 14, s_ls20Names, s_ls20Units, &EvaluatePackage<s_ls20Units, delays::kLs20>},
+    {"74LS21", 14, s_ls20Names, s_ls21Units, &EvaluatePackage<s_ls21Units, delays::kLs21>},
     {"74LS27", 14, s_ls27Names, s_ls27Units, &EvaluatePackage<s_ls27Units, delays::kLs27>},
     {"74LS30", 14, s_ls30Names, s_ls30Units, &EvaluatePackage<s_ls30Units, delays::kLs30>},
     {"74LS32", 14, s_quadNames, s_ls32Units, &EvaluatePackage<s_ls32Units, delays::kLs32>},
     {"74LS86", 14, s_quadNames, s_ls86Units, &EvaluatePackage<s_ls86Units, delays::kLs86>},
+    {"7417", 14, s_ls04Names, s_ttl17Units, &EvaluatePackage<s_ttl17Units, delays::kTtl17>, true},
 }};
 
 bool IsUnitOutput(const GatePackageSpec& spec, std::size_t pin) {
@@ -103,7 +116,7 @@ std::vector<PinSpec> PackagePins(const GatePackageSpec& spec) {
         } else if (name.starts_with("NC")) {
             kind = PinKind::NoConnect;
         } else if (IsUnitOutput(spec, i + 1)) {
-            kind = PinKind::Output;
+            kind = spec.openCollector ? PinKind::OpenCollector : PinKind::Output;
         }
         pins.push_back({std::string(name), kind, Family::Ttl});
     }

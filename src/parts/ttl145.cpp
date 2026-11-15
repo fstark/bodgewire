@@ -29,7 +29,8 @@ std::vector<PinSpec> Ttl145Pins() {
 
 }  // namespace
 
-Ttl145::Ttl145(std::string reference) : Component(std::move(reference), Ttl145Pins()) {}
+Ttl145::Ttl145(std::string reference, const Delays& delays)
+    : Component(std::move(reference), Ttl145Pins()), delays_(delays) {}
 
 void Ttl145::evaluate(EvalContext& ctx) {
     // The codes the inputs allow: a known bit fixes it, an X bit allows both (as the 74LS138).
@@ -47,7 +48,7 @@ void Ttl145::evaluate(EvalContext& ctx) {
         if ((k & fixedMask) == fixedValue) {
             y = exact ? Zero : X;
         }
-        ctx.drive(kOutputs[k], y, DelayFor(delays::kTtl145, y));
+        ctx.drive(kOutputs[k], y, DelayFor(delays_, y));
     }
 }
 

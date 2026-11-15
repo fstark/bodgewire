@@ -14,6 +14,7 @@
 #include "parts/led.hpp"
 #include "parts/ls107.hpp"
 #include "parts/ls138.hpp"
+#include "parts/ls154.hpp"
 #include "parts/ls157.hpp"
 #include "parts/ls161.hpp"
 #include "parts/ls164.hpp"
@@ -38,8 +39,10 @@
 #include "parts/shift_register_2518.hpp"
 #include "parts/shift_register_2524.hpp"
 #include "parts/switch.hpp"
+#include "parts/ttl100.hpp"
 #include "parts/ttl125.hpp"
 #include "parts/ttl145.hpp"
+#include "parts/ttl177.hpp"
 #include "parts/z80_stub.hpp"
 
 namespace bw {
@@ -52,6 +55,15 @@ struct PartName {
     constexpr std::string_view view() const { return {chars, N - 1}; }
     char chars[N];
 };
+
+// 74LS145: the 74145 with its own delays.
+std::expected<Component*, std::string> CreateLs145(Circuit& circuit, std::string reference,
+                                                   std::span<const PartParam> params) {
+    if (!params.empty()) {
+        return std::unexpected("74LS145 takes no parameters");
+    }
+    return &circuit.add<Ttl145>(std::move(reference), delays::kLs145);
+}
 
 template <PartName Name>
 std::expected<Component*, std::string> CreateGatePackage(Circuit& circuit, std::string reference,
@@ -357,15 +369,22 @@ constexpr std::array s_parts{
     PartInfo{"6502", "8-bit microprocessor (NMOS)", "DIP-40", Chip, &CreateChip<Mos6502, "6502">},
     PartInfo{"6530", "ROM, RAM, I/O and timer (KIM mask 002 or 003)", "DIP-40", Chip,
              &CreateMos6530},
+    PartInfo{"74100", "8-bit bistable latch", "DIP-24", Chip, &CreateChip<Ttl100, "74100">},
     PartInfo{"74125", "quad bus buffer, tri-state", "DIP-14", Chip, &CreateChip<Ttl125, "74125">},
     PartInfo{"74145", "BCD-to-decimal decoder/driver, open collector", "DIP-16", Chip,
              &CreateChip<Ttl145, "74145">},
+    PartInfo{"7417", "hex buffer, open collector", "DIP-14", Chip, &CreateGatePackage<"7417">},
+    PartInfo{"74177", "presettable binary counter/latch", "DIP-14", Chip,
+             &CreateChip<Ttl177, "74177">},
     PartInfo{"74LS00", "quad 2-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS00">},
     PartInfo{"74LS02", "quad 2-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS02">},
     PartInfo{"74LS04", "hex inverter", "DIP-14", Chip, &CreateGatePackage<"74LS04">},
     PartInfo{"74LS08", "quad 2-input AND", "DIP-14", Chip, &CreateGatePackage<"74LS08">},
     PartInfo{"74LS107", "dual JK flip-flop, clear", "DIP-14", Chip, &CreateChip<Ls107, "74LS107">},
     PartInfo{"74LS138", "3-to-8 line decoder", "DIP-16", Chip, &CreateChip<Ls138, "74LS138">},
+    PartInfo{"74LS145", "BCD-to-decimal decoder/driver, open collector", "DIP-16", Chip,
+             &CreateLs145},
+    PartInfo{"74LS154", "4-to-16 line decoder", "DIP-24", Chip, &CreateChip<Ls154, "74LS154">},
     PartInfo{"74LS157", "quad 2-to-1 multiplexer", "DIP-16", Chip, &CreateChip<Ls157, "74LS157">},
     PartInfo{"74LS161", "synchronous 4-bit binary counter", "DIP-16", Chip,
              &CreateChip<Ls161, "74LS161">},
@@ -375,6 +394,7 @@ constexpr std::array s_parts{
              &CreateChip<Ls165, "74LS165">},
     PartInfo{"74LS175", "quad D flip-flop, clear", "DIP-16", Chip, &CreateChip<Ls175, "74LS175">},
     PartInfo{"74LS20", "dual 4-input NAND", "DIP-14", Chip, &CreateGatePackage<"74LS20">},
+    PartInfo{"74LS21", "dual 4-input AND", "DIP-14", Chip, &CreateGatePackage<"74LS21">},
     PartInfo{"74LS244", "octal buffer, tri-state", "DIP-20", Chip, &CreateChip<Ls244, "74LS244">},
     PartInfo{"74LS27", "triple 3-input NOR", "DIP-14", Chip, &CreateGatePackage<"74LS27">},
     PartInfo{"74LS273", "octal D flip-flop, clear", "DIP-20", Chip, &CreateChip<Ls273, "74LS273">},

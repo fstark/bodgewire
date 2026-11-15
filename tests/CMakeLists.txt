@@ -84,6 +84,7 @@ add_executable(bw_tests
   parts/led_test.cpp
   parts/ls107_test.cpp
   parts/ls138_test.cpp
+  parts/ls154_test.cpp
   parts/ls157_test.cpp
   parts/ls161_test.cpp
   parts/ls164_test.cpp
@@ -112,8 +113,10 @@ add_executable(bw_tests
   parts/shift_register_2518_test.cpp
   parts/shift_register_2524_test.cpp
   parts/switch_test.cpp
+  parts/ttl100_test.cpp
   parts/ttl125_test.cpp
   parts/ttl145_test.cpp
+  parts/ttl177_test.cpp
   parts/z80_stub_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
