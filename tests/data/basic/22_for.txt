@@ -1,0 +1,17 @@
+~ FOR with and without STEP, body at least once, nested loops.
+READY
+|10 FOR I=1 TO 3:PRINT I;:NEXT I
+|20 PRINT
+|30 FOR I=10 TO 1 STEP -4
+|35 PRINT I;" ";:NEXT
+|40 PRINT
+|50 FOR I=5 TO 1:PRINT I:NEXT
+|60 FOR I=1 TO 2:FOR J=1 TO 2
+|70 PRINT I;J;" ";:NEXT J:NEXT I
+|80 PRINT
+|RUN
+123
+10 6 2
+5
+11 12 21 22
+READY

@@ -1,0 +1,10 @@
+~ A loop filling memory and summing it.
+READY
+|10 FOR I=0 TO 9
+|15 POKE {RAM}+I,I*3:NEXT
+|20 S=0:FOR I=0 TO 9
+|30 S=S+PEEK({RAM}+I):NEXT
+|40 PRINT S
+|RUN
+135
+READY

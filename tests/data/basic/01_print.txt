@@ -1,0 +1,20 @@
+~ PRINT: strings, numbers, ';' and the new line it suppresses, PRINT alone.
+READY
+|PRINT "HELLO"
+HELLO
+READY
+|PRINT "A";"B";1;2
+AB12
+READY
+|PRINT
+
+READY
+|PRINT "X";
+X
+READY
+|PRINT 1;:PRINT 2
+12
+READY
+|PRINT "OPEN
+OPEN
+READY

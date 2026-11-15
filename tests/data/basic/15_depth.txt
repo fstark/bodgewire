@@ -1,0 +1,17 @@
+~ The depth: 6 is fine, 7 TOO DEEP; unary operators count.
+READY
+|PRINT ((((((1))))))
+1
+READY
+|PRINT ((((ABS(-2)))));------1
+21
+READY
+|PRINT (((((((1)))))))
+TOO DEEP ERROR
+READY
+|PRINT -(-(-(-1)))
+TOO DEEP ERROR
+READY
+|PRINT -------1
+TOO DEEP ERROR
+READY

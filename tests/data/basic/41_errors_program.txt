@@ -1,0 +1,18 @@
+~ Errors in a program: IN and the line; on a fresh line.
+READY
+|10 PRINT "X";
+|20 PRINT 1/0
+|RUN
+X
+DIVIDE BY ZERO ERROR IN 20
+READY
+|20 FOO
+|RUN
+X
+SYNTAX ERROR IN 20
+READY
+|20 GOTO 70000
+|RUN
+X
+BAD VALUE ERROR IN 20
+READY

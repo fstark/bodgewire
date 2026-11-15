@@ -1,0 +1,15 @@
+~ NEXT stops at a GOSUB entry; FOR of the same variable restarts it.
+READY
+|10 FOR I=1 TO 2:GOSUB 100:NEXT
+|20 END
+|100 NEXT
+|RUN
+NO FOR ERROR IN 100
+READY
+|100
+|10 FOR I=1 TO 3
+|20 FOR I=7 TO 8:PRINT I;:NEXT
+|30 PRINT
+|RUN
+78
+READY

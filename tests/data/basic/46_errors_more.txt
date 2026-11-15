@@ -1,0 +1,11 @@
+~ A statement must end; GOTO 0; what printed before an error stays.
+READY
+|10 PRINT 1 2
+|RUN
+1
+SYNTAX ERROR IN 10
+READY
+|10 GOTO 0
+|RUN
+BAD VALUE ERROR IN 10
+READY

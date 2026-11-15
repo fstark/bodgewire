@@ -1,0 +1,6 @@
+~ CLS clears; BASIC's column restarts.
+READY
+|PRINT "X";:CLS:PRINT "Y",1
+~clear
+Y       1
+READY

@@ -1,0 +1,15 @@
+~ IF: THEN statement, THEN line number, false skips the line.
+READY
+|10 IF 1 THEN PRINT "A":PRINT 2
+|20 IF 0 THEN PRINT "C":PRINT 4
+|30 IF 2 THEN 50
+|40 PRINT "E"
+|50 PRINT "F"
+|RUN
+A
+2
+F
+READY
+|IF 1 PRINT 1
+SYNTAX ERROR
+READY

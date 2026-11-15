@@ -176,6 +176,17 @@ foreach(program ${programs})
                    -P ${CMAKE_CURRENT_SOURCE_DIR}/asm_cli.cmake)
 endforeach()
 
+# The Tiny BASIC conformance sessions on the reference interpreter (P5o).
+find_package(Python3 3.9 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+  file(GLOB sessions CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tests/data/basic/*.txt)
+  set(tiny_basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/tiny_basic.py)
+  add_test(NAME basic_conformance
+           COMMAND ${Python3_EXECUTABLE} -I ${tiny_basic} check ${sessions})
+  add_test(NAME basic_mutation
+           COMMAND ${Python3_EXECUTABLE} -I ${tiny_basic} check --mutate ${sessions})
+endif()
+
 # KiCad's own design rule check on every committed Board; no kicad-cli, no tests.
 find_program(BW_KICAD_CLI kicad-cli PATHS /Applications/KiCad/KiCad.app/Contents/MacOS)
 if(BW_KICAD_CLI)

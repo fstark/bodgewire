@@ -1,0 +1,17 @@
+~ ',' moves to the next multiple of 8, at least one space; separators on their own.
+READY
+|PRINT 1,2,3
+1       2       3
+READY
+|PRINT "ABCDEFGH",1
+ABCDEFGH        1
+READY
+|PRINT "ABCDEFG",1
+ABCDEFG 1
+READY
+|PRINT ,"X";;"Y"
+        XY
+READY
+|PRINT 1,
+1
+READY

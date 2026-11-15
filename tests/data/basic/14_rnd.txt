@@ -1,0 +1,15 @@
+~ RND's sequence from power-on; RUN sets the seed back.
+READY
+|PRINT RND(1000);" ";RND(1000)
+153 609
+READY
+|10 PRINT RND(1000);",";RND(9)
+|RUN
+153,3
+READY
+|PRINT RND(1);" ";RND(32767)
+0 11787
+READY
+|PRINT RND(0)
+BAD VALUE ERROR
+READY

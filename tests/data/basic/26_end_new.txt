@@ -1,0 +1,17 @@
+~ END stops, falling off the last line stops, NEW empties.
+READY
+|10 PRINT "A"
+|20 END
+|30 PRINT "B"
+|RUN
+A
+READY
+|NEW
+READY
+|LIST
+READY
+|RUN
+READY
+|PRINT A
+0
+READY

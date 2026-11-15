@@ -180,10 +180,11 @@ Sessions in `tests/data/basic/`, one file each. Each one starts from power-on, a
 
 - `~ …`: a comment.
 - `~break`: the break key is pressed after the last typed line was entered, while what it started runs, or while the next `INPUT` waits. The line running at that moment must print nothing while it loops (`10 GOTO 10`, `FOR I=0 TO 0 STEP 0:NEXT`), so when the press lands changes nothing.
+- `~clear`: the screen was cleared here (`CLS`). The rows above it were typed, but they are not compared.
 - `~typed`: the session needs keywords typed letter by letter (it lists them back as typed). A harness for an editor with keyword keys may skip it.
 - Anything else, an empty line included, is one screen row as it must look at the end of the session.
   - A `|` splits what BASIC printed (before it) from what the player typed and entered (after it). `|10 PRINT "HI"` is a typed line, `? |5` an `INPUT` answer, `HI` a printed row.
-  - The first row is the `READY` that the harness's `CLS` leaves on the top row.
+  - The first row is the `READY` that the harness's `CLS` leaves on the top row (or, after a `~clear`, whatever comes first).
   - Rows below the last one are blank, and trailing spaces do not count.
 - `{RAM}` anywhere stands for the decimal address of a free RAM byte, at most 5 digits, that neither the ROM nor the session's program uses. Each harness gives its own. `PEEK` and `POKE` cases use it, since the two Machines share no RAM address.
 

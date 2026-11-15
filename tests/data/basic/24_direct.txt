@@ -1,0 +1,14 @@
+~ FOR in a direct line; GOTO from a direct line keeps the variables.
+READY
+|FOR I=1 TO 3:PRINT I*I;:NEXT
+149
+READY
+|10 PRINT A
+|A=7
+READY
+|GOTO 10
+7
+READY
+|RUN
+0
+READY

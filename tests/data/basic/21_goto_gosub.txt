@@ -1,0 +1,13 @@
+~ GOTO with an expression, GOSUB nesting, RETURN to the statement after.
+READY
+|10 GOSUB 100:PRINT "BACK"
+|20 GOTO 10*4
+|30 PRINT "NO"
+|40 END
+|100 PRINT "SUB";:GOSUB 200
+|110 RETURN
+|200 PRINT "2";
+|210 RETURN
+|RUN
+SUB2BACK
+READY

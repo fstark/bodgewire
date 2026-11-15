@@ -40,10 +40,11 @@ One file, four parts, written for reading against the spec:
    - **Parse**:
      - `~ ` comments are dropped.
      - `~break` marks the last typed line before it.
+     - `~clear` marks where the expected screen starts; the rows above it are still typed.
      - `~typed` is noted (nothing to do here).
      - Every other line is a row, split at the first `|` into printed and typed text.
      - `{RAM}` is replaced by `--ram`, by default `16384` (5 digits, as the lint counts).
-   - **Lint** to the spec's rules: row length, row count, the typed characters, the first row `READY`, a `~break` after a typed line. A failure names the file and line. The 256-byte program area makes a larger program fail with `OUT OF MEMORY` in its rows.
+   - **Lint** to the spec's rules: row length, row count, the typed characters, a `~break` after a typed line, no unknown `~` directive. A failure names the file and line. The 256-byte program area makes a larger program fail with `OUT OF MEMORY` in its rows.
    - **Run**: a fresh `Basic` (power-on: `NEW`, then `READY`), then `CLS` typed as the harness does, which leaves `READY` on row 0. The typed lines are then handed out in order, whether BASIC asks for a line at `READY` or for an `INPUT` answer.
    - **Break**: a `~break` arms a press when its typed line is handed out.
      - The press fires at the 1000th poll of `break_pressed()`, so a silent loop reaches it.

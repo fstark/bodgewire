@@ -1,0 +1,21 @@
+~ INPUT: '? ', a prompt, two variables, signs, REDO.
+READY
+|10 INPUT A,B
+|20 INPUT "N";C
+|30 PRINT A+B+C
+|RUN
+? |5
+? |-2
+N? |  +10
+13
+READY
+|RUN
+? |X
+REDO
+? |70000
+REDO
+? |1
+? |65535
+N? |0
+0
+READY

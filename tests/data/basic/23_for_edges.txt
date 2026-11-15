@@ -1,0 +1,16 @@
+~ The loop ends on overflow; NEXT I drops the inner loop.
+READY
+|10 FOR I=32766 TO 32767
+|20 PRINT I
+|30 NEXT
+|40 PRINT "END";I
+|50 FOR I=1 TO 2:FOR J=1 TO 9
+|60 PRINT I;J
+|70 NEXT I
+|RUN
+32766
+32767
+END-32768
+11
+21
+READY

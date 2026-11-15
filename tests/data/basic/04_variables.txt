@@ -1,0 +1,18 @@
+~ LET with and without the word, 26 variables, all 0 at power-on.
+READY
+|LET A=5
+READY
+|B=A*2
+READY
+|PRINT A;" ";B;" ";Z
+5 10 0
+READY
+|Z = A + B
+READY
+|PRINT Z
+15
+READY
+|PRINT AB
+5
+SYNTAX ERROR
+READY

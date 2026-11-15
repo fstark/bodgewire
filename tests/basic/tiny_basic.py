@@ -711,10 +711,14 @@ class Session:
         self.path = path
         self.rows = []      # [printed, typed or None, break after it]
         self.needs_typing = False
+        self.cleared = 0     # rows above a ~clear: typed, then wiped by CLS
         lines = pathlib.Path(path).read_text().splitlines()
         for number, raw in enumerate(lines, 1):
             where = f"{path}:{number}"
             if raw.startswith("~ ") or raw == "~":
+                continue
+            if raw == "~clear":
+                self.cleared = len(self.rows)
                 continue
             if raw == "~typed":
                 self.needs_typing = True
@@ -739,14 +743,13 @@ class Session:
             self.rows.append([printed, typed if bar else None, False])
         if len(self.rows) > ROW_COUNT:
             raise SessionError(f"{path}: more than {ROW_COUNT} rows")
-        if not self.rows or self.rows[0] != ["READY", None, False]:
-            raise SessionError(f"{path}: the first row must be READY")
 
     def expected(self, echo):
+        shown = self.rows[self.cleared:]
         if echo:
-            rows = [p + (t or "") for p, t, _ in self.rows]
+            rows = [p + (t or "") for p, t, _ in shown]
         else:
-            rows = [p for p, t, _ in self.rows if p or t is None]
+            rows = [p for p, t, _ in shown if p or t is None]
         rows = [row.rstrip() for row in rows]
         while rows and not rows[-1]:
             rows.pop()
@@ -796,7 +799,7 @@ class Session:
             last = max(i for i, (p, _, _) in enumerate(self.rows) if p.strip())
             row = self.rows[last][0].rstrip()
             changed = row[:-1] + ("#" if row[-1] != "#" else "%")
-            index = sum(1 for p, t, _ in self.rows[:last] if echo or p or t is None)
+            index = sum(1 for p, t, _ in self.rows[self.cleared:last] if echo or p or t is None)
             expected[index] = changed + (self.rows[last][1] or "" if echo else "")
         actual = self.run(width, echo)
         for i in range(max(len(expected), len(actual))):
