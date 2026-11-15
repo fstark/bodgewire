@@ -471,8 +471,622 @@ irq:    pha
         pla
 nmi:    rti
 
+; --- The self-test (spec "The self-test"; design §4.4) -------------------------------------------
+;
+; Interrupts off. Page 0 is tested with no RAM at all; then $00-$01 (PTR0) are the only RAM used
+; until the whole RAM has passed: no stack, no JSR. Rows are written at fixed screen addresses,
+; as screen codes (AND $3F maps $20-$5F). A RAM or video RAM failure stops on its row with the
+; address and the bad bits; the three values wait in screen cells and the row in S (FAIL).
+; After the RAM, the ROM sums and the key echo use the stack.
+
+PTR0    = $00           ; 2: the test's pointer
+ROWP    = $02           ; 2: after the RAM: a row's address
+SUM     = $04
+KEYIX   = $05
+CHIP    = $06
+PUTY    = $07           ; putch keeps Y here
+
+ROW2    = SCREEN+2*40   ; ZERO PAGE
+ROW3    = SCREEN+3*40   ; VIDEO RAM
+ROW4    = SCREEN+4*40   ; RAM
+ROW11   = SCREEN+11*40  ; KEY
+HEXZP   = ROW2+14-SCREEN ; where each failure's hex digits begin, as an offset in page $80
+HEXVID  = ROW3+14-SCREEN
+HEXRAM  = ROW4+8-SCREEN
+SCRATCH = $14           ; the three values wait here, after the digits: bits, low, high
+
 selftest:
-        jmp selftest
+        sei
+        cld
+        lda #$20        ; a blank screen
+        ldx #0
+@clear: sta SCREEN+$000,x
+        sta SCREEN+$100,x
+        sta SCREEN+$200,x
+        sta SCREEN+$300,x
+        inx
+        bne @clear
+        ldx #0
+@title: lda titletext,x
+        beq @zp
+        and #$3F
+        sta SCREEN,x
+        inx
+        bne @title
+
+; Page 0, by zero page,X: no RAM used.
+@zp:    ldx #0
+@zw1:   txa
+        eor #$A5
+        sta $00,x
+        inx
+        bne @zw1
+@zc1:   txa
+        eor #$A5
+        eor $00,x
+        bne zpfail
+        inx
+        bne @zc1
+@zw2:   txa
+        eor #$5A
+        sta $00,x
+        inx
+        bne @zw2
+@zc2:   txa
+        eor #$5A
+        eor $00,x
+        bne zpfail
+        inx
+        bne @zc2
+        jmp video
+
+zpfail: sta SCREEN+HEXZP+SCRATCH
+        stx SCREEN+HEXZP+SCRATCH+1
+        lda #0
+        sta SCREEN+HEXZP+SCRATCH+2
+        ldy #0
+@label: lda zpbadtext,y
+        beq @go
+        and #$3F
+        sta ROW2,y
+        iny
+        bne @label
+@go:    ldx #HEXZP
+        txs
+        jmp fail
+
+; The video RAM, $8000-$83FF: the whole range written, then compared, twice.
+video:  ldx #0
+@zpok:  lda zpoktext,x
+        beq @pass1
+        and #$3F
+        sta ROW2,x
+        inx
+        bne @zpok
+@pass1: lda #0
+        sta PTR0
+        lda #>SCREEN
+        sta PTR0+1
+@vw1:   ldy #0
+@vw1b:  tya
+        eor PTR0+1
+        eor #$A5
+        sta (PTR0),y
+        iny
+        bne @vw1b
+        inc PTR0+1
+        lda PTR0+1
+        cmp #>SCREEN+4
+        bne @vw1
+        lda #>SCREEN
+        sta PTR0+1
+@vc1:   ldy #0
+@vc1b:  tya
+        eor PTR0+1
+        eor #$A5
+        eor (PTR0),y
+        bne vfail
+        iny
+        bne @vc1b
+        inc PTR0+1
+        lda PTR0+1
+        cmp #>SCREEN+4
+        bne @vc1
+        lda #>SCREEN
+        sta PTR0+1
+@vw2:   ldy #0
+@vw2b:  tya
+        eor PTR0+1
+        eor #$5A
+        sta (PTR0),y
+        iny
+        bne @vw2b
+        inc PTR0+1
+        lda PTR0+1
+        cmp #>SCREEN+4
+        bne @vw2
+        lda #>SCREEN
+        sta PTR0+1
+@vc2:   ldy #0
+@vc2b:  tya
+        eor PTR0+1
+        eor #$5A
+        eor (PTR0),y
+        bne vfail
+        iny
+        bne @vc2b
+        inc PTR0+1
+        lda PTR0+1
+        cmp #>SCREEN+4
+        bne @vc2
+        jmp vpassed
+
+; The bad bits in A, the address PTR0+1:Y. The screen is cleared first (the bits wait in $00,
+; the low byte in X), then the rows written again.
+vfail:  sta PTR0
+        tya
+        tax
+        lda #$20
+        ldy #0
+@clear: sta SCREEN+$000,y
+        sta SCREEN+$100,y
+        sta SCREEN+$200,y
+        sta SCREEN+$300,y
+        iny
+        bne @clear
+        lda PTR0
+        sta SCREEN+HEXVID+SCRATCH
+        stx SCREEN+HEXVID+SCRATCH+1
+        lda PTR0+1
+        sta SCREEN+HEXVID+SCRATCH+2
+        ldy #0
+@title: lda titletext,y
+        beq @zpok
+        and #$3F
+        sta SCREEN,y
+        iny
+        bne @title
+@zpok:  ldy #0
+@zp:    lda zpoktext,y
+        beq @label
+        and #$3F
+        sta ROW2,y
+        iny
+        bne @zp
+@label: ldy #0
+@l:     lda vidbadtext,y
+        beq @go
+        and #$3F
+        sta ROW3,y
+        iny
+        bne @l
+@go:    ldx #HEXVID
+        txs
+        jmp fail
+
+vpassed:
+        lda #$20
+        ldx #0
+@clear: sta SCREEN+$000,x
+        sta SCREEN+$100,x
+        sta SCREEN+$200,x
+        sta SCREEN+$300,x
+        inx
+        bne @clear
+@title: lda titletext,x
+        beq @zp
+        and #$3F
+        sta SCREEN,x
+        inx
+        bne @title
+@zp:    ldx #0
+@zpok:  lda zpoktext,x
+        beq @vid
+        and #$3F
+        sta ROW2,x
+        inx
+        bne @zpok
+@vid:   ldx #0
+@vidok: lda vidoktext,x
+        beq ram
+        and #$3F
+        sta ROW3,x
+        inx
+        bne @vidok
+
+; The RAM, $0002-$1FFF: written whole (page 0 by zero page,X), then compared whole, twice.
+ram:    ldx #2
+@w0a:   txa
+        eor #$A5
+        sta $00,x
+        inx
+        bne @w0a
+        stx PTR0
+        lda #1
+        sta PTR0+1
+@wpa:   ldy #0
+@wba:   tya
+        eor PTR0+1
+        eor #$A5
+        sta (PTR0),y
+        iny
+        bne @wba
+        inc PTR0+1
+        lda PTR0+1
+        cmp #$20
+        bne @wpa
+        ldx #2
+@c0a:   txa
+        eor #$A5
+        eor $00,x
+        beq @c0an
+        jmp rfail0
+@c0an:  inx
+        bne @c0a
+        lda #1
+        sta PTR0+1
+@cpa:   ldy #0
+@cba:   tya
+        eor PTR0+1
+        eor #$A5
+        eor (PTR0),y
+        beq @cban
+        jmp rfail
+@cban:  iny
+        bne @cba
+        inc PTR0+1
+        lda PTR0+1
+        cmp #$20
+        bne @cpa
+
+        ldx #2
+@w0b:   txa
+        eor #$5A
+        sta $00,x
+        inx
+        bne @w0b
+        lda #1
+        sta PTR0+1
+@wpb:   ldy #0
+@wbb:   tya
+        eor PTR0+1
+        eor #$5A
+        sta (PTR0),y
+        iny
+        bne @wbb
+        inc PTR0+1
+        lda PTR0+1
+        cmp #$20
+        bne @wpb
+        ldx #2
+@c0b:   txa
+        eor #$5A
+        eor $00,x
+        beq @c0bn
+        jmp rfail0
+@c0bn:  inx
+        bne @c0b
+        lda #1
+        sta PTR0+1
+@cpb:   ldy #0
+@cbb:   tya
+        eor PTR0+1
+        eor #$5A
+        eor (PTR0),y
+        beq @cbbn
+        jmp rfail
+@cbbn:  iny
+        bne @cbb
+        inc PTR0+1
+        lda PTR0+1
+        cmp #$20
+        bne @cpb
+        jmp rampassed
+
+rfail0: sta SCREEN+HEXRAM+SCRATCH
+        stx SCREEN+HEXRAM+SCRATCH+1
+        lda #0
+        sta SCREEN+HEXRAM+SCRATCH+2
+        jmp rlabel
+rfail:  sta SCREEN+HEXRAM+SCRATCH
+        sty SCREEN+HEXRAM+SCRATCH+1
+        lda PTR0+1
+        sta SCREEN+HEXRAM+SCRATCH+2
+rlabel: ldy #0
+@l:     lda rambadtext,y
+        beq @go
+        and #$3F
+        sta ROW4,y
+        iny
+        bne @l
+@go:    ldx #HEXRAM
+        txs
+        jmp fail
+
+; A failure's row: S its digits' offset in page $80, the bits, low and high bytes waiting in
+; the cells SCRATCH beyond. The digits written, the cells blanked, and here it stays.
+fail:   tsx
+        lda SCREEN+SCRATCH+2,x
+        lsr
+        lsr
+        lsr
+        lsr
+        cmp #10
+        bcc @h1
+        adc #6
+@h1:    adc #'0'
+        and #$3F
+        sta SCREEN,x
+        lda SCREEN+SCRATCH+2,x
+        and #$0F
+        cmp #10
+        bcc @h2
+        adc #6
+@h2:    adc #'0'
+        and #$3F
+        sta SCREEN+1,x
+        lda SCREEN+SCRATCH+1,x
+        lsr
+        lsr
+        lsr
+        lsr
+        cmp #10
+        bcc @h3
+        adc #6
+@h3:    adc #'0'
+        and #$3F
+        sta SCREEN+2,x
+        lda SCREEN+SCRATCH+1,x
+        and #$0F
+        cmp #10
+        bcc @h4
+        adc #6
+@h4:    adc #'0'
+        and #$3F
+        sta SCREEN+3,x
+        lda SCREEN+SCRATCH,x
+        lsr
+        lsr
+        lsr
+        lsr
+        cmp #10
+        bcc @h5
+        adc #6
+@h5:    adc #'0'
+        and #$3F
+        sta SCREEN+5,x
+        lda SCREEN+SCRATCH,x
+        and #$0F
+        cmp #10
+        bcc @h6
+        adc #6
+@h6:    adc #'0'
+        and #$3F
+        sta SCREEN+6,x
+        lda #$20
+        sta SCREEN+SCRATCH,x
+        sta SCREEN+SCRATCH+1,x
+        sta SCREEN+SCRATCH+2,x
+@hang:  jmp @hang
+
+; The RAM is good: the stack and JSR from here.
+rampassed:
+        ldx #$FF
+        txs
+        lda #<ROW4
+        sta ROWP
+        lda #>ROW4
+        sta ROWP+1
+        ldx #<ramoktext
+        ldy #>ramoktext
+        jsr putstr
+        ldx #0
+@chip:  stx CHIP
+        lda romrowlo,x  ; ROWP = row 5 + CHIP
+        sta ROWP
+        lda romrowhi,x
+        sta ROWP+1
+        lda #0
+        sta PTR0
+        sta SUM
+        lda rompages,x
+        sta PTR0+1
+        ldx #8          ; 2048 bytes
+@page:  ldy #0
+@byte:  clc
+        lda SUM
+        adc (PTR0),y
+        sta SUM
+        iny
+        bne @byte
+        inc PTR0+1
+        dex
+        bne @page
+        ldx #<romtext
+        ldy #>romtext
+        jsr putstr
+        ldx CHIP
+        lda rompages,x
+        jsr puthex
+        lda #0
+        jsr puthex
+        lda SUM
+        bne @bad
+        ldx #<oktext
+        ldy #>oktext
+        jsr putstr
+        jmp @next
+@bad:   ldx #<badtext
+        ldy #>badtext
+        jsr putstr
+        lda SUM
+        jsr puthex
+@next:  ldx CHIP
+        inx
+        cpx #ROMCHIPS
+        bne @chip
+
+; The keyboard: the first held key in scan order, its row, column and legend, forever.
+keys:   lda #<ROW11
+        sta ROWP
+        lda #>ROW11
+        sta ROWP+1
+        lda #$FF
+        sta KEYIX
+        ldx #0
+@row:   stx PIA1PA
+        lda PIA1PB
+        ldy #0
+@bit:   lsr
+        bcs @up
+        pha
+        lda KEYIX
+        cmp #$FF
+        bne @have
+        txa
+        asl
+        asl
+        asl
+        sty SUM
+        ora SUM
+        sta KEYIX
+@have:  pla
+@up:    iny
+        cpy #8
+        bne @bit
+        inx
+        cpx #10
+        bne @row
+        lda #$0F
+        sta PIA1PA
+        ldx #<keytext
+        ldy #>keytext
+        jsr putstr
+        lda KEYIX
+        cmp #$FF
+        beq @blank
+        lsr
+        lsr
+        lsr
+        ora #'0'
+        jsr putch
+        lda KEYIX
+        and #7
+        ora #'0'
+        jsr putch
+        lda #' '
+        jsr putch
+        ldx KEYIX
+        lda legends,x
+        bmi @name
+        jsr putch
+        jmp @blank
+@name:  and #$7F
+        tax
+        ldy #0
+@find:  cpx #0
+        beq @print
+@skip:  lda names,y
+        iny
+        cmp #0
+        bne @skip
+        dex
+        jmp @find
+@print: lda names,y
+        beq @blank
+        jsr putch
+        iny
+        bne @print
+@blank: ldx ROWP        ; the rest of the row blank: row 11 lies in page $81 ($81B8-$81DF)
+        lda #$20
+@b:     cpx #<ROW11+20
+        beq @again
+        sta $8100,x
+        inx
+        bne @b
+@again: jmp keys
+
+; The text at X (low), Y (high) at ROWP, ROWP moving on.
+putstr: stx PTR0
+        sty PTR0+1
+        ldy #0
+@loop:  lda (PTR0),y
+        beq @done
+        jsr putch
+        iny
+        bne @loop
+@done:  rts
+
+; A at ROWP as a screen code, ROWP + 1; X, Y kept.
+putch:  sty PUTY
+        ldy #0
+        and #$3F
+        sta (ROWP),y
+        inc ROWP
+        bne @done
+        inc ROWP+1
+@done:  ldy PUTY
+        rts
+
+puthex: pha
+        lsr
+        lsr
+        lsr
+        lsr
+        jsr @nib
+        pla
+        and #$0F
+@nib:   cmp #10
+        bcc @d
+        adc #6
+@d:     adc #'0'
+        jmp putch
+
+ROMCHIPS = 5
+rompages:
+        .byte $C0, $C8, $E0, $F0, $F8
+romrowlo:
+        .byte <(SCREEN+5*40), <(SCREEN+6*40), <(SCREEN+7*40), <(SCREEN+8*40), <(SCREEN+9*40)
+romrowhi:
+        .byte >(SCREEN+5*40), >(SCREEN+6*40), >(SCREEN+7*40), >(SCREEN+8*40), >(SCREEN+9*40)
+
+titletext:
+        .byte "BW-2001 SELF-TEST", 0
+zpoktext:
+        .byte "ZERO PAGE OK", 0
+zpbadtext:
+        .byte "ZERO PAGE BAD ", 0
+vidoktext:
+        .byte "VIDEO RAM OK", 0
+vidbadtext:
+        .byte "VIDEO RAM BAD ", 0
+ramoktext:
+        .byte "RAM OK", 0
+rambadtext:
+        .byte "RAM BAD ", 0
+romtext:
+        .byte "ROM ", 0
+oktext: .byte " OK", 0
+badtext:
+        .byte " BAD ", 0
+keytext:
+        .byte "KEY ", 0
+
+; Each matrix place's legend (spec "The PET it runs on"), row 0 PB0 first: a character, or
+; $80 + a name's index in NAMES, or 0 unused.
+legends:
+        .byte '!', '#', '%', '&', '(', '_', $80+8, $80+7
+        .byte '"', '$', $27, $5C, ')', 0, $80+6, $80+5
+        .byte 'Q', 'E', 'T', 'U', 'O', '^', '7', '9'
+        .byte 'W', 'R', 'Y', 'I', 'P', 0, '8', '/'
+        .byte 'A', 'D', 'G', 'J', 'L', 0, '4', '6'
+        .byte 'S', 'F', 'H', 'K', ':', 0, '5', '*'
+        .byte 'Z', 'C', 'B', 'M', ';', $80+1, '1', '3'
+        .byte 'X', 'V', 'N', ',', '?', 0, '2', '+'
+        .byte $80+3, '@', ']', 0, '>', $80+4, '0', '-'
+        .byte $80+9, '[', $80+0, '<', $80+2, 0, '.', '='
+names:  .byte "SPACE", 0, "RETURN", 0, "STOP", 0, "SHIFT L", 0, "SHIFT R", 0
+        .byte "DEL", 0, "CRSR DN", 0, "CRSR RT", 0, "HOME", 0, "RVS", 0
 
         .org $FFF9
         .checksum $F800, $800

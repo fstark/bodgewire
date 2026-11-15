@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -423,4 +424,92 @@ TEST_CASE("bw2001 monitor: a BRK shows B* and its PC; .G goes on after it", "[bw
     m.enter("G");
     CHECK(m.row(5) == "7");
     CHECK(m.row(6) == "READY");
+}
+
+namespace {
+
+const Rows kSelfTest{"BW-2001 SELF-TEST",
+                     "",
+                     "ZERO PAGE OK",
+                     "VIDEO RAM OK",
+                     "RAM OK",
+                     "ROM C000 OK",
+                     "ROM C800 OK",
+                     "ROM E000 OK",
+                     "ROM F000 OK",
+                     "ROM F800 OK",
+                     "",
+                     "KEY"};
+
+// The self-test's rows after `us` (the KEY row comes at about 0.8 s).
+Rows SelfTest(Bw2001Model& model, std::uint64_t us = 1'200'000) {
+    model.run(us);
+    return Bw2001Typist(model).rows();
+}
+
+}  // namespace
+
+TEST_CASE("bw2001 self-test: DIAG at reset, every row OK, the held key", "[bw2001][slow]") {
+    Bw2001Model model({.diag = true});
+    CHECK(SelfTest(model) == kSelfTest);
+    struct Held {
+        Bw2001Key key;
+        const char* row;
+    };
+    for (const Held h : {Held{kBw2001Return, "KEY 65 RETURN"}, Held{{4, 0}, "KEY 40 A"},
+                         Held{kBw2001ShiftLeft, "KEY 80 SHIFT L"}, Held{kBw2001Stop, "KEY 94 STOP"},
+                         Held{{9, 2}, "KEY 92 SPACE"}}) {
+        model.setKey(h.key, true);
+        CHECK(SelfTest(model, 20'000)[11] == h.row);
+        model.setKey(h.key, false);
+    }
+    CHECK(SelfTest(model, 20'000)[11] == "KEY");
+    CHECK_FALSE(model.touchedUnmodelled());
+}
+
+TEST_CASE("bw2001 self-test: from the monitor's .T", "[bw2001][slow]") {
+    Machine m;
+    m.enter("PRINT USR(61440)");
+    m.typist.enter("T");
+    CHECK(SelfTest(m.model) == kSelfTest);
+}
+
+TEST_CASE("bw2001 self-test: each failure on its row", "[bw2001][slow]") {
+    {
+        Bw2001Model model({.diag = true});
+        model.stick(0x0042, 7, true);  // pass 2 writes $42 ^ $5A = $18
+        model.reset();
+        const Rows rows = SelfTest(model, 100'000);
+        CHECK(rows == Rows{"BW-2001 SELF-TEST", "", "ZERO PAGE BAD 0042 80"});
+    }
+    {
+        Bw2001Model model({.diag = true});
+        model.deadRam();
+        model.reset();
+        CHECK(SelfTest(model, 100'000)[2] == "ZERO PAGE BAD 0000 5A");
+    }
+    {
+        Bw2001Model model({.diag = true});
+        model.stick(0x8123, 3, true);  // pass 1 writes $23 ^ $81 ^ $A5 = $07
+        model.reset();
+        const Rows rows = SelfTest(model, 300'000);
+        CHECK(rows == Rows{"BW-2001 SELF-TEST", "", "ZERO PAGE OK", "VIDEO RAM BAD 8123 08"});
+    }
+    {
+        Bw2001Model model({.diag = true});
+        model.stick(0x1234, 0, false);  // pass 1 writes $34 ^ $12 ^ $A5 = $83
+        model.reset();
+        const Rows rows = SelfTest(model);
+        REQUIRE(rows.size() == 5);
+        CHECK(rows[4] == "RAM BAD 1234 01");
+    }
+    {
+        Bw2001Model model({.diag = true});
+        const std::uint8_t one = static_cast<std::uint8_t>(model.peek(0xC100) + 1);
+        model.patchRom(0xC100, std::span(&one, 1));
+        model.reset();
+        Rows expected = kSelfTest;
+        expected[5] = "ROM C000 BAD 01";
+        CHECK(SelfTest(model) == expected);
+    }
 }
