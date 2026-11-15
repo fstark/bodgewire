@@ -226,7 +226,7 @@ TEST_CASE("kicad pcb writer: a part turned by grid pet reads back with its pads 
           "[board]") {
     const Written w = Write(LoadedFrom("part J1 POWER\npart UC9 74LS93\npart UA5 6522\n"
                                        "net Q UC9.QA UA5.CA1\n"),
-                            "grid pet\nedge J1 left middle\n");
+                            "grid pet\nupright UA5 down\nedge J1 left middle\n");
     const auto board = ReadKicadBoard(w.text, "t.kicad_pcb");
     REQUIRE(board.has_value());
     for (const PlacedPart& part : w.placement.parts) {
@@ -238,7 +238,9 @@ TEST_CASE("kicad pcb writer: a part turned by grid pet reads back with its pads 
         CHECK(it->angle == part.angle);
         for (std::size_t i = 0; i < it->pads.size(); ++i) {
             const Point local = part.footprint->pads[i].position;
-            const Point turned = part.angle == 90 ? Point{local.y, -local.x} : local;
+            const Point turned = part.angle == 90    ? Point{local.y, -local.x}
+                                 : part.angle == 180 ? Point{-local.x, -local.y}
+                                                     : local;
             CHECK(it->pads[i].position ==
                   Point{part.origin.x + turned.x, part.origin.y + turned.y});
         }

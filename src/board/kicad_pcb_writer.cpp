@@ -114,9 +114,9 @@ void WriteFootprint(std::ostream& out, const PlacedPart& part, std::string_view 
             double x = 0, y = 0;
             Check(std::sscanf(std::string(body).c_str(), "(at %lf %lf)", &x, &y) == 2,
                   "footprint " + part.footprint->id + ": bad point " + std::string(body));
-            // Turned with its part: KiCad's +90° maps (x, y) to (y, −x).
-            const double rx = part.angle == 90 ? y : x;
-            const double ry = part.angle == 90 ? -x : y;
+            // Turned with its part: KiCad's +90° maps (x, y) to (y, −x), 180° to (−x, −y).
+            const double rx = part.angle == 90 ? y : part.angle == 180 ? -x : x;
+            const double ry = part.angle == 90 ? -x : part.angle == 180 ? -y : y;
             copy = std::string(line.substr(0, depth)) + "(at " +
                    Millimetres(part.origin.x + std::llround(rx * 1e6)) + ' ' +
                    Millimetres(part.origin.y + std::llround(ry * 1e6)) + ')';

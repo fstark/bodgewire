@@ -322,21 +322,20 @@ Box RotatedCourtyard(const Placement& placement, std::string_view reference) {
 
 TEST_CASE("placer: grid pet puts each chip at its PET location, lying", "[board]") {
     const Placement p = Placed(kPet, "grid pet\nedge J1 left middle\nnext R12 UC8 front\n");
-    CHECK(p.columns == 9);
-    CHECK(p.rows == 10);
-    CHECK(p.grid[2 * 9 + 8] == "UC9");  // row C, column 9
-    CHECK(p.grid[0 * 9 + 4] == "UA5");
+    CHECK(p.columns == 10);              // J to A
+    CHECK(p.rows == 9);                  // 9 (the back) to 1
+    CHECK(p.grid[0 * 10 + 7] == "UC9");  // the top row, the third column from the right
+    CHECK(p.grid[4 * 10 + 9] == "UA5");
     CHECK(Part(p, "UC9").angle == 90);
-    // Row C below row B below row A; column 9 right of column 5.
+    // Row 9 above row 5; column C left of B left of A.
     const Box c9 = RotatedCourtyard(p, "UC9");
     const Box b5 = RotatedCourtyard(p, "UB5");
     const Box a5 = RotatedCourtyard(p, "UA5");
-    CHECK(c9.min.y > b5.max.y);
-    CHECK(b5.min.y > a5.max.y);
-    CHECK(c9.min.x > b5.max.x);
-    // A DIP-40's column is wider: UB5 (DIP-14) sits in UA5's wide column, lying, inside it.
-    CHECK(a5.max.x - a5.min.x > 40 * kMm);
-    CHECK(b5.min.x >= a5.min.x - 2 * kMm);
+    CHECK(c9.max.y < b5.min.y);
+    CHECK(c9.max.x < b5.min.x);
+    CHECK(b5.max.x < a5.min.x);
+    CHECK(std::abs((a5.min.y + a5.max.y) - (b5.min.y + b5.max.y)) < 2 * kMm);  // one row
+    CHECK(a5.max.x - a5.min.x > 40 * kMm);  // a DIP-40 lying: its column is wider
     // R12 just in front of UC8, at 0°.
     const PlacedPart& r12 = Part(p, "R12");
     CHECK(r12.angle == 0);
@@ -351,6 +350,53 @@ TEST_CASE("placer: grid pet puts each chip at its PET location, lying", "[board]
         CHECK(part.origin.x % kSnap == 0);
         CHECK(part.origin.y % kSnap == 0);
     }
+}
+
+namespace {
+
+Box TurnedCourtyard(const Placement& placement, std::string_view reference) {
+    const PlacedPart& part = Part(placement, reference);
+    const Footprint& fp = *part.footprint;
+    if (part.angle == 180) {
+        return {{part.origin.x - fp.courtyardMax.x, part.origin.y - fp.courtyardMax.y},
+                {part.origin.x - fp.courtyardMin.x, part.origin.y - fp.courtyardMin.y}};
+    }
+    if (part.angle == 90) {
+        return RotatedCourtyard(placement, reference);
+    }
+    return Courtyard(placement, reference);
+}
+
+}  // namespace
+
+TEST_CASE("placer: grid pet stands upright chips in their column", "[board]") {
+    // UA5 (a DIP-40) down from row 5 into row 4 (UA4 empty); UC9 (a DIP-14) within its row at 0.
+    const Placement p =
+        Placed(kPet, "grid pet\nupright UA5 down\nupright UC9 in 0\nedge J1 left middle\n");
+    CHECK(Part(p, "UA5").angle == 180);
+    CHECK(Part(p, "UC9").angle == 0);
+    const Box a5 = TurnedCourtyard(p, "UA5");
+    const Box b5 = RotatedCourtyard(p, "UB5");
+    CHECK(a5.max.y - a5.min.y > 50 * kMm);           // standing: the long way down
+    CHECK(a5.max.x - a5.min.x < 20 * kMm);           // and narrow across
+    CHECK(std::abs(a5.min.y - b5.min.y) < 2 * kMm);  // its top level with row 5's chips
+    CHECK(a5.max.y > b5.max.y + 20 * kMm);           // reaching into row 4
+    // Nothing goes to A4: its cell is covered.
+    CHECK(p.grid[5 * 10 + 9].empty());
+    const Box c9 = TurnedCourtyard(p, "UC9");
+    CHECK(c9.max.y - c9.min.y > c9.max.x - c9.min.x);
+}
+
+TEST_CASE("placer: an upright chip may not reach another chip's cell", "[board]") {
+    // UA5 up from row 5 reaches row 6 and beyond: UA6 is there.
+    const auto messages = Errors(std::string(kPet) + "part UA6 74LS04\n",
+                                 "grid pet\nupright UA5 up\nedge J1 left middle\n");
+    CHECK(std::ranges::any_of(messages, [](const std::string& m) {
+        return m.find("'UA5' upright reaches 'UA6''s cell") != std::string::npos;
+    }));
+    CHECK_FALSE(ParsePlaceRules("upright UA5 down\n", "t.place").has_value());  // grid pet first
+    CHECK_FALSE(ParsePlaceRules("grid pet\nupright UA5 sideways\n", "t.place").has_value());
+    CHECK_FALSE(ParsePlaceRules("grid pet\nupright UA5 down 90\n", "t.place").has_value());
 }
 
 TEST_CASE("placer: grid pet refusals", "[board]") {
@@ -371,11 +417,11 @@ TEST_CASE("placer: grid pet lays a pin header along the back or front edge", "[b
                                "grid pet\nedge J1 left middle\nedge J2 back middle\n");
     const PlacedPart& j2 = Part(p, "J2");
     CHECK(j2.angle == 90);
-    const Box a5 = RotatedCourtyard(p, "UA5");
+    const Box c9 = RotatedCourtyard(p, "UC9");  // row 9: the top
     const Footprint& fp = *j2.footprint;
     // Turned: its 12 pads run along the edge, two rows deep.
     const std::int64_t deep = (fp.courtyardMax.x - fp.courtyardMin.x);
     CHECK(deep < 7 * kMm);
-    CHECK(j2.origin.y - fp.courtyardMax.x < a5.min.y);  // above row A
+    CHECK(j2.origin.y - fp.courtyardMax.x < c9.min.y);  // above row 9
     CHECK(Part(p, "J1").angle == 0);                    // a KK header on the left stays upright
 }

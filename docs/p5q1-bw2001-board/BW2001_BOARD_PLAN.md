@@ -8,7 +8,7 @@ Each phase ends with its fence: `cmake --build --preset debug` clean, `clang-for
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | `grid pet` as the PET's, `upright`, angle 180 | |
+| 1 | `grid pet` as the PET's, `upright`, angle 180 | this commit |
 | 2 | `bw2001.place`, the Board placed, routed by the user, checks, docs | |
 
 ### 1. `grid pet` as the PET's, `upright` (design §1, §2, §5)
@@ -21,3 +21,4 @@ Fence: `-R "placer|place|kicad pcb writer|board"`, `place_drc_bw2001` included: 
 
 ## Implementation notes
 - Docs review, fixed: angle 180 was new in the placer's courtyard and pads and the writer's `(point)`, not only an angle the reader takes; ten columns (`I`), nine rows; P5q's resistor chains would hit `UE6` and `UA2` (re-planned); "flush with the cell's edge" defined by the chip band and the row; the drawing has PIA1's notch at the top and the 74LS145 upright (`upright … 0`, `in`); `UA5` covers `UA4` only; `J5` stands inside the board on the PET; `J8` over columns I–H; `R48` left of `R10`; `J1` at 17 %; the phase-1 fence and the routing phase made consistent.
+- Phase 1: green first time but the P5q tests, rewritten for the new direction (the header test now compares with row 9's `UC9`); `place_drc_bw2001` stayed green on the old `.place`. An `upright` naming no PET chip is refused by the placer.

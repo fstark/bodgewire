@@ -71,6 +71,8 @@ public:
             nextRule(words[1], words[2], words[3]);
         } else if (rule == "grid") {
             gridRule(words);
+        } else if (rule == "upright") {
+            uprightRule(words);
         } else {
             error("unknown rule '" + std::string(rule) + "'");
         }
@@ -154,6 +156,34 @@ private:
         if (claim(reference)) {
             rules_.rules.push_back(
                 {line_, NextRule{std::string(reference), std::string(other), *side}});
+        }
+    }
+
+    void uprightRule(const std::vector<std::string_view>& words) {
+        if (words.size() != 3 && words.size() != 4) {
+            return error("expected: upright REF up|down|in [0|180]");
+        }
+        if (!rules_.petGrid) {
+            return error("upright needs grid pet first");
+        }
+        const std::string_view reach = words[2];
+        if (reach != "up" && reach != "down" && reach != "in") {
+            return error("bad reach '" + std::string(reach) + "': up, down or in");
+        }
+        int angle = 180;
+        if (words.size() == 4) {
+            if (words[3] != "0" && words[3] != "180") {
+                return error("bad angle '" + std::string(words[3]) + "': 0 or 180");
+            }
+            angle = words[3] == "0" ? 0 : 180;
+        }
+        const auto [it, added] = rules_.upright.emplace(
+            std::string(words[1]), Upright{reach == "up"     ? UprightReach::Up
+                                           : reach == "down" ? UprightReach::Down
+                                                             : UprightReach::In,
+                                           angle, line_});
+        if (!added) {
+            error("'" + std::string(words[1]) + "' is upright already");
         }
     }
 
