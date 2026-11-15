@@ -49,7 +49,7 @@ private:
         Time changedAt;
         LogicValue value, previous, lastDriven;
         bool floating, dirty;
-        bool switched;  // has a Switched Pin: see External
+        bool networked;  // has a network Pin (Switched or Joined): see External
     };
     static_assert(sizeof(NetState) == 16);
 
@@ -60,7 +60,7 @@ private:
     };
     static_assert(sizeof(OutputState) == 8);
 
-    // A switched Net's drives but its Switched Pin's, and when they last changed (P5i).
+    // A network Net's drives but its network Pin's, and when they last changed (P5i, P5u).
     struct External {
         Resolver drives;
         Time changedAt;
@@ -77,7 +77,7 @@ private:
     std::vector<NetState> nets_;
     std::vector<NetId> pinNet_;  // each Pin's Net, copied from the Circuit: a read is two loads
     std::vector<OutputState> outputs_;
-    std::vector<External> external_;  // per Net; used only where NetState::switched
+    std::vector<External> external_;  // per Net; used only where NetState::networked
     std::vector<std::uint8_t> componentDirty_;
     std::vector<NetId> dirtyNets_;
     std::vector<ComponentId> dirtyComponents_;

@@ -153,6 +153,7 @@ add_executable(bw_tests
   sim/check_test.cpp
   sim/circuit_test.cpp
   sim/event_queue_test.cpp
+  sim/joined_test.cpp
   sim/logic_test.cpp
   sim/primitives_test.cpp
   sim/recorder_test.cpp

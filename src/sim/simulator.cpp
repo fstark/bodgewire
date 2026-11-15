@@ -71,7 +71,7 @@ Simulator::Simulator(Circuit& circuit) : circuit_(circuit) {
                                               LogicValue::Zero, false, false, false});
     external_.resize(circuit.netCount(), External{Resolver{}, -1});
     for (std::uint32_t n = 0; n < nets_.size(); ++n) {
-        nets_[n].switched = circuit.switchPin(NetId{n}) != Circuit::kNoPin;
+        nets_[n].networked = circuit.networkPin(NetId{n}) != Circuit::kNoPin;
     }
     outputs_.resize(circuit.pinCount(), OutputState{0, LogicValue::Zero, LogicValue::Zero, false});
     componentDirty_.resize(circuit.components().size(), 0);
@@ -100,7 +100,7 @@ void Simulator::markComponentDirty(ComponentId component) {
 Resolver Simulator::externalDrives(NetId net) const {
     Resolver resolver;
     resolver.add(circuit_.tieOf(net));
-    const PinId own = circuit_.switchPin(net);
+    const PinId own = circuit_.networkPin(net);
     for (const PinId pin : circuit_.drivers(net)) {
         if (pin != own) {
             const PinInfo& info = circuit_.pinInfo(pin);
@@ -112,9 +112,9 @@ Resolver Simulator::externalDrives(NetId net) const {
 
 Resolution Simulator::resolveNet(NetId net) const {
     const NetState& state = nets_[ToIndex(net)];
-    if (state.switched) {  // external_ is up to date: add the Switched Pin's own drive
+    if (state.networked) {  // external_ is up to date: add the network Pin's own drive
         Resolver resolver = external_[ToIndex(net)].drives;
-        const PinId own = circuit_.switchPin(net);
+        const PinId own = circuit_.networkPin(net);
         const PinInfo& info = circuit_.pinInfo(own);
         resolver.add(DriveOf(info.kind, info.family, outputs_[ToIndex(own)].current));
         return resolver.finish(circuit_.hasTtlInput(net), state.lastDriven);
@@ -165,8 +165,7 @@ void Simulator::powerOn(std::uint64_t seed) {
         OutputState& o = outputs_[p];
         o = {0, LogicValue::Zero, LogicValue::Zero, false};
         const PinKind kind = circuit_.pinInfo(PinId{p}).kind;
-        if (kind == PinKind::Bidirectional || kind == PinKind::Switched ||
-            kind == PinKind::PullUp) {
+        if (kind == PinKind::Bidirectional || IsNetworkPin(kind) || kind == PinKind::PullUp) {
             o.current = LogicValue::Z;  // released until the first evaluation; no random draw
         } else if (IsDriver(kind)) {
             o.current = rng_.nextBit() ? LogicValue::One : LogicValue::Zero;
@@ -182,7 +181,7 @@ void Simulator::powerOn(std::uint64_t seed) {
     for (std::uint32_t n = 0; n < nets_.size(); ++n) {
         NetState& s = nets_[n];
         s.lastDriven = rng_.nextBit() ? LogicValue::One : LogicValue::Zero;
-        if (s.switched) {
+        if (s.networked) {
             external_[n] = {externalDrives(NetId{n}), -1};
         }
         const Resolution r = resolveNet(NetId{n});
@@ -231,13 +230,13 @@ void Simulator::runUntil(Time end) {
 
         for (const NetId net : dirtyNets_) {
             NetState& s = nets_[ToIndex(net)];
-            if (s.switched) {
+            if (s.networked) {
                 // Woken by the other drives only: its own drive never wakes it (no echo).
                 const Resolver drives = externalDrives(net);
                 External& e = external_[ToIndex(net)];
                 if (drives != e.drives) {
                     e = {drives, now_};
-                    markComponentDirty(circuit_.pinInfo(circuit_.switchPin(net)).owner);
+                    markComponentDirty(circuit_.pinInfo(circuit_.networkPin(net)).owner);
                 }
             }
             const Resolution r = resolveNet(net);

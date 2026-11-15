@@ -36,8 +36,8 @@ public:
     inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
     void wakeAfter(Time delay);                // evaluate this Component again at now + delay
     void wake(ComponentId other, Time delay);  // evaluate `other` at now + delay (≥ 1 ps)
-    // Switched Pins only (P5i): the drives on the Pin's Net but its own, and whether they
-    // changed at this timestamp.
+    // Switched and Joined Pins only (P5i, P5u): the drives on the Pin's Net but its own, and
+    // whether they changed at this timestamp.
     inline const Resolver& external(PinIndex pin) const;
     inline bool externalChanged(PinIndex pin) const;
 
