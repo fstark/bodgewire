@@ -46,6 +46,7 @@ add_executable(bw_tests
   machines/bw1_model_test.cpp
   machines/bw1_monitor_test.cpp
   machines/bw1_selftest_test.cpp
+  machines/bw2001_firmware_test.cpp
   machines/bw2001_harness.cpp
   machines/bw2001_model.cpp
   machines/bw2001_model_test.cpp
