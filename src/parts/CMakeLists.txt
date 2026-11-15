@@ -35,6 +35,7 @@ add_library(bw_parts STATIC
   power_on_reset.cpp
   ram2114.cpp
   ram6102.cpp
+  resistor_network.cpp
   rom.cpp
   rom_contents.cpp
   shift_register_2518.cpp

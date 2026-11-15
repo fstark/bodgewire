@@ -125,6 +125,7 @@ add_executable(bw_tests
   parts/power_on_reset_test.cpp
   parts/ram2114_test.cpp
   parts/ram6102_test.cpp
+  parts/resistor_network_test.cpp
   parts/rom_contents_test.cpp
   parts/rom_test.cpp
   parts/shift_register_2518_test.cpp
