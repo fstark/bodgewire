@@ -17,7 +17,7 @@ A type of chip in the catalogue, such as a 74LS161 or a Z80. Parts are what the 
 _Avoid_: Chip type, model
 
 **ROM Contents**:
-The words a ROM Part holds, read from a `.rom` text file in `roms/` that the netlist names with `contents=`. Two ROMs of the same Part with other contents are the same Part.
+The words a ROM Part holds, read from a `.rom` text file in `roms/` that the netlist names with `contents=` (or a chip-sized slice of it, with `offset=`). Two ROMs of the same Part with other contents are the same Part.
 _Avoid_: Firmware, image, dump
 
 **Component**:

@@ -4,7 +4,9 @@
 #include <array>
 #include <cctype>
 #include <cstddef>
+#include <filesystem>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include "parts/connector.hpp"
@@ -101,9 +103,12 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
     const RomSpec& spec = RomSpecOf(name);
     const PartParam* contents = nullptr;
     const PartParam* select = nullptr;
+    const PartParam* offset = nullptr;
     for (const PartParam& param : params) {
         if (param.name == "contents") {
             contents = &param;
+        } else if (param.name == "offset") {
+            offset = &param;
         } else if (param.name == "select" && spec.selectable) {
             select = &param;
         } else {
@@ -130,10 +135,41 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
     if (contents == nullptr) {
         return std::unexpected(name + " needs contents=<file>");
     }
-    auto words = ReadRomContents(contents->value, std::size_t{1} << spec.address.size(),
+    const std::size_t size = std::size_t{1} << spec.address.size();
+    // offset= (P5p): this chip's slice of a larger .rom text, which is read at the full 64K.
+    std::size_t from = 0;
+    if (offset != nullptr) {
+        const std::string& text = offset->value;
+        const bool hex = text.starts_with('$');
+        const std::string digits = hex ? text.substr(1) : text;
+        const bool good = !digits.empty() && digits.size() <= 5 &&
+                          std::all_of(digits.begin(), digits.end(), [hex](char c) {
+                              return hex ? std::isxdigit(static_cast<unsigned char>(c)) != 0
+                                         : std::isdigit(static_cast<unsigned char>(c)) != 0;
+                          });
+        if (!good) {
+            return std::unexpected(name + ": bad offset '" + text + "'");
+        }
+        from = std::stoul(digits, nullptr, hex ? 16 : 10);
+        if (from % size != 0 || from + size > 65536) {
+            return std::unexpected(name + ": offset must be a multiple of " + std::to_string(size) +
+                                   " below 65536");
+        }
+        std::string extension = std::filesystem::path(contents->value).extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (extension == ".bin") {
+            return std::unexpected(name + ": offset= is for .rom text files");
+        }
+    }
+    auto words = ReadRomContents(contents->value, offset != nullptr ? 65536 : size,
                                  static_cast<int>(spec.data.size()));
     if (!words) {
         return std::unexpected(name + ": " + words.error());
+    }
+    if (offset != nullptr) {
+        words->erase(words->begin(), words->begin() + static_cast<std::ptrdiff_t>(from));
+        words->resize(size);
     }
     return &circuit.add<Rom>(std::move(reference), spec, std::move(*words), activeHigh);
 }

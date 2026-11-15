@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -20,14 +21,18 @@ struct AssembledRom {
 // (docs/p5d-rom-programs/ROM_PROGRAMS.md, What is new 1). In short:
 //   label:  @local:  NAME = expr  ; comment
 //   .rom BASE, SIZE (first, once)  .org expr  .byte expr|"text", ...  .word expr, ...
-//   .checksum: one byte making the whole ROM (unwritten 0xFF words too) sum to 0 mod 256, once
+//   .checksum: one byte making the whole ROM (unwritten 0xFF words too) sum to 0 mod 256, once;
+//   .checksum BASE, SIZE: the same for that window (one a chip), windows not overlapping
+//   .include "file": the file's lines here, resolved against the including file's directory
 //   operands: (none) A #e e e,X e,Y (e) (e,X) (e),Y; an operand starting with ( is indirect;
 //   zero page when e is known in the first pass and 0-255, else absolute.
 //   expressions: $hex %bin decimal 'c' symbol * (this statement's address), unary - < > ~,
 //   binary * / + - << >> & ^ | with C's precedence, parentheses.
 // `file` names the source in errors ("<file> line N: <what>") and in the .rom's header.
-std::expected<AssembledRom, std::string> Assemble6502(std::string_view source,
-                                                      std::string_view file);
+// `includeDir` resolves `.include`; without it `.include` is an error (no file on disk).
+std::expected<AssembledRom, std::string>
+Assemble6502(std::string_view source, std::string_view file,
+             std::optional<std::filesystem::path> includeDir = std::nullopt);
 
 // The same from a file; "cannot read '<path>'"; errors name the file's filename.
 std::expected<AssembledRom, std::string> Assemble6502File(const std::filesystem::path& path);

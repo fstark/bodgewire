@@ -49,6 +49,7 @@ public:
         unsigned activeHigh = 0);
     void evaluate(EvalContext& ctx) override;
     std::size_t size() const { return block_.size(); }
+    std::uint8_t word(std::size_t address) const { return block_[address]; }  // as held
 
     std::size_t wordCount(std::size_t memory) const override;
     std::optional<unsigned> dataBit(PinIndex pin) const override;  // index in the spec's data

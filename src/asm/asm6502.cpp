@@ -4,6 +4,8 @@
 #include <array>
 #include <cctype>
 #include <cstddef>
+#include <deque>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <map>
@@ -210,24 +212,10 @@ const Encodings& TheEncodings() {
 
 class Assembler {
 public:
-    Assembler(std::string_view source, std::string_view file) : file_(file) {
-        std::size_t start = 0;
-        while (start <= source.size()) {
-            const std::size_t end = source.find('\n', start);
-            std::string_view line = source.substr(
-                start, end == std::string_view::npos ? std::string_view::npos : end - start);
-            if (!line.empty() && line.back() == '\r') {
-                line.remove_suffix(1);
-            }
-            lines_.push_back(line);
-            if (end == std::string_view::npos) {
-                break;
-            }
-            start = end + 1;
-        }
-        if (!lines_.empty() && lines_.back().empty()) {
-            lines_.pop_back();  // the text's final newline
-        }
+    Assembler(std::string_view source, std::string_view file,
+              std::optional<std::filesystem::path> includeDir)
+        : file_(file) {
+        load(source, file_, includeDir, 0);
         forms_.resize(lines_.size(), None);
     }
 
@@ -237,19 +225,87 @@ public:
         if (!rom_) {
             Fail(std::format("{}: no .rom BASE, SIZE", file_));
         }
-        if (checksumAt_) {
-            // The byte making the whole ROM sum to 0; pass 2 again writes it into the text.
-            unsigned sum = 0;
-            for (std::size_t i = 0; i < words_.size(); ++i) {
-                sum += i == *checksumAt_ ? 0u : words_[i];
+        if (!checksums_.empty()) {
+            // Each byte making its window sum to 0; pass 2 again writes them into the text.
+            for (Checksum& c : checksums_) {
+                unsigned sum = 0;
+                for (std::size_t i = c.base; i < c.base + c.size; ++i) {
+                    sum += i == c.at ? 0u : words_[i];
+                }
+                c.value = static_cast<std::uint8_t>((256u - (sum & 0xFFu)) & 0xFFu);
             }
-            checksum_ = static_cast<std::uint8_t>((256u - (sum & 0xFFu)) & 0xFFu);
             pass(2);
         }
         return {static_cast<std::uint16_t>(base_), std::move(words_), std::move(text_)};
     }
 
 private:
+    // A source line: its text, the file it came from and its number there.
+    struct Line {
+        std::string_view text;
+        std::string_view file;
+        std::size_t number = 0;
+        bool include = false;  // an .include line, already expanded below it
+    };
+
+    // The lines of `source`, each `.include "name"` followed by the named file's lines (resolved
+    // against `dir`, nested up to 8 deep).
+    void load(std::string_view source, std::string_view file,
+              const std::optional<std::filesystem::path>& dir, int depth) {
+        std::vector<std::string_view> lines;
+        std::size_t start = 0;
+        while (start <= source.size()) {
+            const std::size_t end = source.find('\n', start);
+            std::string_view line = source.substr(
+                start, end == std::string_view::npos ? std::string_view::npos : end - start);
+            if (!line.empty() && line.back() == '\r') {
+                line.remove_suffix(1);
+            }
+            lines.push_back(line);
+            if (end == std::string_view::npos) {
+                break;
+            }
+            start = end + 1;
+        }
+        if (!lines.empty() && lines.back().empty()) {
+            lines.pop_back();  // the text's final newline
+        }
+        for (std::size_t i = 0; i < lines.size(); ++i) {
+            const std::string_view code = Trim(StripComment(lines[i]));
+            const bool include = code.size() >= 8 && Upper(code.substr(0, 8)) == ".INCLUDE" &&
+                                 (code.size() == 8 || !IsIdentChar(code[8]));
+            lines_.push_back({lines[i], file, i + 1, include});
+            if (!include) {
+                continue;
+            }
+            const auto where = [&](std::string_view what) {
+                return std::format("{} line {}: {}", file, i + 1, what);
+            };
+            const std::string_view arg = Trim(code.substr(8));
+            if (arg.size() < 2 || !arg.starts_with('"') || !arg.ends_with('"')) {
+                Fail(where(".include needs \"file\""));
+            }
+            if (!dir) {
+                Fail(where(".include needs a file on disk"));
+            }
+            if (depth >= 8) {
+                Fail(where(".include nested too deep"));
+            }
+            const std::string_view name = arg.substr(1, arg.size() - 2);
+            const std::filesystem::path path = *dir / std::string(name);
+            std::ifstream in(path, std::ios::binary);
+            if (!in) {
+                Fail(where(std::format("cannot read '{}'", name)));
+            }
+            std::ostringstream text;
+            text << in.rdbuf();
+            texts_.push_back(text.str());
+            names_.push_back(path.filename().string());
+            std::filesystem::path inner = path.parent_path();
+            load(texts_.back(), names_.back(), inner.empty() ? "." : inner, depth + 1);
+        }
+    }
+
     void pass(int which) {
         pass_ = which;
         pc_.reset();
@@ -260,11 +316,15 @@ private:
             std::fill(written_.begin(), written_.end(), false);
             text_.clear();
         }
+        checksumIndex_ = 0;
         for (line_ = 0; line_ < lines_.size(); ++line_) {
             try {
-                statement(lines_[line_]);
+                if (!lines_[line_].include) {
+                    statement(lines_[line_].text);
+                }
             } catch (const AsmError& error) {
-                Fail(std::format("{} line {}: {}", file_, line_ + 1, error.message));
+                Fail(std::format("{} line {}: {}", lines_[line_].file, lines_[line_].number,
+                                 error.message));
             }
             if (pass_ == 2) {
                 writeLine();
@@ -393,17 +453,52 @@ private:
         }
     }
 
+    // .checksum (the whole .rom window) or .checksum BASE, SIZE (that window): one byte making
+    // the window sum to 0 mod 256. Windows are taken in pass 1; pass 2 emits their values.
     void checksumDirective(std::string_view args) {
-        if (!args.empty()) {
-            Fail(".checksum takes no value");
+        const bool whole = args.empty();
+        const auto parts = whole ? std::vector<std::string_view>{} : SplitArguments(args);
+        if (!whole && parts.size() != 2) {
+            Fail(".checksum takes nothing or BASE, SIZE");
         }
-        if (pass_ == 1 && checksumAt_) {
-            Fail(".checksum given twice");
+        if (pass_ == 2) {
+            emit(checksumIndex_ < checksums_.size() ? checksums_[checksumIndex_++].value : 0);
+            return;
         }
         if (pc_ && rom_) {
-            checksumAt_ = static_cast<std::size_t>(*pc_ - base_);
+            if (whole ? !checksums_.empty()
+                      : std::any_of(checksums_.begin(), checksums_.end(),
+                                    [](const Checksum& c) { return c.whole; })) {
+                Fail(".checksum given twice");
+            }
+            std::int64_t base = base_;
+            std::int64_t size = static_cast<std::int64_t>(words_.size());
+            if (!whole) {
+                const Value b = expression(parts[0]);
+                const Value n = expression(parts[1]);
+                if (!b.known || !n.known) {
+                    Fail(".checksum needs values known here");
+                }
+                base = b.number;
+                size = n.number;
+                if (size < 1 || base < base_ ||
+                    base + size > base_ + static_cast<std::int64_t>(words_.size())) {
+                    Fail(".checksum window outside .rom");
+                }
+                if (*pc_ < base || *pc_ >= base + size) {
+                    Fail(".checksum byte outside its window");
+                }
+            }
+            const auto from = static_cast<std::size_t>(base - base_);
+            const auto count = static_cast<std::size_t>(size);
+            for (const Checksum& c : checksums_) {
+                if (from < c.base + c.size && c.base < from + count) {
+                    Fail(".checksum windows overlap");
+                }
+            }
+            checksums_.push_back({static_cast<std::size_t>(*pc_ - base_), from, count, whole});
         }
-        emit(checksum_);
+        emit(0);
     }
 
     void romDirective(std::string_view args) {
@@ -841,7 +936,7 @@ private:
 
     void writeLine() {
         const std::string_view source =
-            Trim(lines_[line_]).empty() ? std::string_view{} : lines_[line_];
+            Trim(lines_[line_].text).empty() ? std::string_view{} : lines_[line_].text;
         std::string_view shown = source;
         while (!shown.empty() && std::isspace(static_cast<unsigned char>(shown.back()))) {
             shown.remove_suffix(1);
@@ -871,7 +966,9 @@ private:
     }
 
     std::string_view file_;
-    std::vector<std::string_view> lines_;
+    std::vector<Line> lines_;
+    std::deque<std::string> texts_;      // included files' texts, which lines_ views
+    std::deque<std::string> names_;      // their file names
     std::vector<Mos6502Operand> forms_;  // per line, chosen in pass 1
     std::map<std::string, std::int64_t> symbols_;
     int pass_ = 1;
@@ -884,8 +981,15 @@ private:
     int digits_ = 3;
     std::vector<std::uint8_t> words_;
     std::vector<bool> written_;
-    std::optional<std::size_t> checksumAt_;  // offset of the .checksum byte in words_
-    std::uint8_t checksum_ = 0;              // its value: 0 until pass 2 has summed the rest
+    struct Checksum {
+        std::size_t at = 0;    // offset of the byte in words_
+        std::size_t base = 0;  // its window, as offsets in words_
+        std::size_t size = 0;
+        bool whole = false;      // the plain form
+        std::uint8_t value = 0;  // 0 until the windows have been summed
+    };
+    std::vector<Checksum> checksums_;  // in source order
+    std::size_t checksumIndex_ = 0;    // the next one pass 2 emits
 
     std::vector<std::uint8_t> emitted_;  // this line's bytes (pass 2)
     std::int64_t lineAddress_ = 0;
@@ -897,10 +1001,11 @@ private:
 
 }  // namespace
 
-std::expected<AssembledRom, std::string> Assemble6502(std::string_view source,
-                                                      std::string_view file) {
+std::expected<AssembledRom, std::string>
+Assemble6502(std::string_view source, std::string_view file,
+             std::optional<std::filesystem::path> includeDir) {
     try {
-        return Assembler(source, file).run();
+        return Assembler(source, file, std::move(includeDir)).run();
     } catch (const AsmError& error) {
         return std::unexpected(error.message);
     }
@@ -913,7 +1018,8 @@ std::expected<AssembledRom, std::string> Assemble6502File(const std::filesystem:
     }
     std::ostringstream text;
     text << in.rdbuf();
-    return Assemble6502(text.str(), path.filename().string());
+    const std::filesystem::path dir = path.parent_path();
+    return Assemble6502(text.str(), path.filename().string(), dir.empty() ? "." : dir);
 }
 
 }  // namespace bw

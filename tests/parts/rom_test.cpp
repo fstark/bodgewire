@@ -370,6 +370,45 @@ TEST_CASE("rom: the factory reads contents=", "[parts]") {
     CHECK(static_cast<Rom*>(*created)->size() == 512);
 }
 
+TEST_CASE("rom: offset= takes one chip's slice of a larger .rom", "[parts]") {
+    const PartInfo* part = FindPart("2316B");
+    REQUIRE(part != nullptr);
+    // 4 KB: $11 at word 0, $22 at $7FF, $33 at $800, $44 at $FFF.
+    const auto big = TempFile("bw_rom_test_big.rom", "@000 11\n@7FF 22\n@800 33\n@FFF 44\n");
+    Circuit circuit;
+    const auto chip = [&](std::string offset) {
+        std::vector<PartParam> params{{"select", "LLH"}, {"contents", big.string()}};
+        if (!offset.empty()) {
+            params.push_back({"offset", std::move(offset)});
+        }
+        return part->create(circuit, "U1", params);
+    };
+    const auto low = chip("0");
+    REQUIRE(low.has_value());
+    const auto* lowRom = static_cast<Rom*>(*low);
+    CHECK(lowRom->size() == 2048);
+    CHECK(lowRom->word(0) == 0x11);
+    CHECK(lowRom->word(0x7FF) == 0x22);
+    const auto high = chip("$800");
+    REQUIRE(high.has_value());
+    const auto* highRom = static_cast<Rom*>(*high);
+    CHECK(highRom->word(0) == 0x33);
+    CHECK(highRom->word(0x7FF) == 0x44);
+    CHECK(static_cast<Rom*>(*chip("2048"))->word(0) == 0x33);
+    // Past the file's last word: an erased chip.
+    CHECK(static_cast<Rom*>(*chip("$1000"))->word(0) == 0xFF);
+    // Without offset= the file must fit the chip, as before.
+    CHECK(chip("").error().find("past the end") != std::string::npos);
+
+    CHECK(chip("$80G").error() == "2316B: bad offset '$80G'");
+    CHECK(chip("100").error() == "2316B: offset must be a multiple of 2048 below 65536");
+    CHECK(chip("$10000").error() == "2316B: offset must be a multiple of 2048 below 65536");
+    const auto dump = TempFile("bw_rom_test_dump.bin", std::string(2048, '\0'));
+    const std::vector<PartParam> raw{
+        {"select", "LLH"}, {"contents", dump.string()}, {"offset", "0"}};
+    CHECK(part->create(circuit, "U2", raw).error() == "2316B: offset= is for .rom text files");
+}
+
 TEST_CASE("rom: stuck cell and column", "[parts]") {
     {
         // Address 5 holds 35 = 0010 0011; O1 stuck at 0 there gives 33.
