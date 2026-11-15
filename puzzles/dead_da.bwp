@@ -1,0 +1,5 @@
+# DA does nothing: the PA3 Trace is cracked between U17 pin 8 and DA (SW18): the keys past it (DA, A, 3) cannot pull PA3 low; U17 still lights SEG_D.
+machine bw1
+title "DA does nothing"
+brief "DA does nothing: after DA, the hex keys still change the address. The keys 3 and A do nothing either; every other key works."
+fault crack U17.8 SW18.2 50%

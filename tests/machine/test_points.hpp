@@ -46,5 +46,7 @@ LightsOutCrack();           // led_computer LATCH_CLK, U6 pin 13 → U7 pin 11: 
 const Crack& R1VccCrack();  // counter VCC, R1.1 → U1.16: R1's rail side cut off
 const Crack& Sw1GndCrack();       // dice GND, SW1 pad 2 → J1.2: SW1's rail end cut off
 const Crack& HalfSegmentCrack();  // bw1 SEG_A, DS3 pad 7 → DS4 pad 7: puzzles/half_segment.bwp
+const Crack& DeadDaCrack();       // bw1 PA3, U17 pin 8 → SW18 pad 2: puzzles/dead_da.bwp
+const Crack& DeadRowCrack();      // bw1 ROW2, U24 pin 3 → SW20 pad 1: puzzles/dead_row.bwp
 
 }  // namespace bw

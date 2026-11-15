@@ -1,0 +1,5 @@
+# AD and GO dead: the ROW2 Trace is cracked between U24 pin 3 and GO (SW20): the whole top row of the matrix (E, F, AD, DA, +, GO, PC) floats.
+machine bw1
+title "AD and GO dead"
+brief "The BW-1 shows 0200, and 0 to D change the address, but AD, DA, +, GO, PC, E and F do nothing."
+fault crack U24.3 SW20.1 50%

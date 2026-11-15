@@ -25,7 +25,8 @@ Machine LoadPuzzle(const std::string& name) {
 }
 
 // The Puzzles, in BW1.md's order.
-constexpr const char* kPuzzles[] = {"odd_seven", "missing_bar", "half_segment", "bright_mess"};
+constexpr const char* kPuzzles[] = {"odd_seven", "missing_bar", "half_segment", "bright_mess",
+                                    "dead_da",   "dead_row",    "deaf_keypad"};
 
 // Segment masks (bit s: segment 'A' + s), as the 002's TABLE without PA7.
 constexpr std::uint8_t kZero = 0x3F;
@@ -118,4 +119,56 @@ TEST_CASE("bw1: bright_mess", "[machines]") {
     REQUIRE(machine.swap("U24"));
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
+}
+
+TEST_CASE("bw1: dead_da", "[machines][slow]") {
+    Machine machine = LoadPuzzle("dead_da");
+    {
+        Bw1 bw1 = Monitor(machine, 1);
+        bw1.type("456 DA 77");  // DA ignored: the 7s shift into the address
+        CHECK(bw1.display().substr(0, 4) == "5677");
+        bw1.type("AD 1A3B");  // A and 3 ignored
+        CHECK(bw1.display().substr(0, 4) == "771B");
+        CHECK((bw1.segments()[3] & kSegD) != 0);  // the B: U17 still drives SEG_D from PA3
+    }
+    REQUIRE(machine.mend(DeadDaCrack().layer, DeadDaCrack().at));
+    Bw1 bw1 = Monitor(machine, 1);
+    bw1.type("AD 0300 DA A3");
+    CHECK(bw1.display() == "0300A3");
+}
+
+TEST_CASE("bw1: dead_row", "[machines][slow]") {
+    Machine machine = LoadPuzzle("dead_row");
+    {
+        Bw1 bw1 = Monitor(machine, 1);
+        bw1.type("456 EF");  // E and F ignored
+        CHECK(bw1.display().substr(0, 4) == "0456");
+        bw1.type("DA 77 AD 1 GO");  // DA, AD, GO ignored
+        CHECK(bw1.display().substr(0, 4) == "6771");
+    }
+    REQUIRE(machine.mend(DeadRowCrack().layer, DeadRowCrack().at));
+    Bw1 bw1 = Monitor(machine, 1);
+    bw1.type("AD 0300 DA EF");
+    CHECK(bw1.display() == "0300EF");
+}
+
+TEST_CASE("bw1: deaf_keypad", "[machines][slow]") {
+    Machine machine = LoadPuzzle("deaf_keypad");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        const std::string before = bw1.display();
+        CheckShows(before, "0200");
+        bw1.type("AD 0300 DA A9");
+        CHECK(bw1.display() == before);
+    }
+    {
+        Bw1 bw1(Bw1Circuit(machine, true), 1);  // strapped: the self-test's keypad test
+        bw1.runUntil(3200_ms);
+        CHECK(bw1.display() == "PA5512");  // + held, no hand on the keypad
+    }
+    REQUIRE(machine.swap("SW19"));
+    Bw1 bw1 = Monitor(machine, 1);
+    bw1.type("AD 0300 DA A9");
+    CHECK(bw1.display() == "0300A9");
 }

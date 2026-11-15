@@ -170,4 +170,14 @@ const Crack& HalfSegmentCrack() {
     return crack;
 }
 
+const Crack& DeadDaCrack() {
+    static const Crack crack = PuzzleCrack("dead_da");
+    return crack;
+}
+
+const Crack& DeadRowCrack() {
+    static const Crack crack = PuzzleCrack("dead_row");
+    return crack;
+}
+
 }  // namespace bw

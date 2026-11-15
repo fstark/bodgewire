@@ -1,0 +1,5 @@
+# Deaf keypad: the + key (SW19) is stuck closed: the monitor waits for every key to be released before it reads one, so no key works.
+machine bw1
+title "Deaf keypad"
+brief "The BW-1 shows 0200 and a byte, but no key on the keypad does anything. ST and RS still work."
+fault switch SW19 closed
