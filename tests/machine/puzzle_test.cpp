@@ -46,6 +46,7 @@ TEST_CASE("puzzle: valid file", "[machine]") {
     CHECK(p.stuck[0].value == LogicValue::Zero);
     CHECK(p.stuck[1].pin == "11");
     CHECK(p.stuck[1].value == LogicValue::One);
+    CHECK_FALSE(p.stuck[0].input);
     REQUIRE(p.cracks.size() == 2);
     CHECK(p.cracks[0].line == 6);
     CHECK(p.cracks[0].a.reference == "U1");
@@ -70,8 +71,11 @@ TEST_CASE("puzzle: errors", "[machine]") {
           Lines{"2: expected: fault stuck|crack|bridge|joint|cell|column|switch ...",
                 "3: expected: fault stuck|crack|bridge|joint|cell|column|switch ..."});
     CHECK(Errors("machine m\nfault stuck U1.QA\nfault stuck U1 0\nfault stuck U1.QA 2\n") ==
-          Lines{"2: expected: fault stuck REF.PIN 0|1", "3: expected: fault stuck REF.PIN 0|1",
-                "4: expected: fault stuck REF.PIN 0|1"});
+          Lines{"2: expected: fault stuck REF.PIN 0|1 [input]",
+                "3: expected: fault stuck REF.PIN 0|1 [input]",
+                "4: expected: fault stuck REF.PIN 0|1 [input]"});
+    CHECK(Errors("machine m\nfault stuck U1.PB5 0 output\n") ==
+          Lines{"2: expected: fault stuck REF.PIN 0|1 [input]"});
     const std::string expected = "expected: fault crack REF.PIN REF.PIN N%";
     CHECK(Errors("machine m\nfault crack F.Cu 52.30 41.00\nfault crack U1.QA U2.1 50\n"
                  "fault crack U1.QA U2 50%\nfault crack U1.QA 50%\n") ==
@@ -206,4 +210,13 @@ TEST_CASE("puzzle: cell and column in a named memory", "[machine]") {
                  "fault column U2.D0 rom x 1\nfault cell U2.D3 ram $3G 0\n") ==
           Lines{"2: " + cell, "3: " + cell, "4: " + cell, "5: " + column, "6: " + column,
                 "7: bad word '$3G'"});
+}
+
+TEST_CASE("puzzle: a stuck port pin read only", "[machine]") {
+    const auto result = ParsePuzzle("machine m\nfault stuck UA5.PB5 0 input\n", "t.bwp");
+    REQUIRE(result.has_value());
+    REQUIRE(result->stuck.size() == 1);
+    CHECK(result->stuck[0].pin == "PB5");
+    CHECK(result->stuck[0].value == LogicValue::Zero);
+    CHECK(result->stuck[0].input);
 }

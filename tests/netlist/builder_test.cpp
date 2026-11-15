@@ -611,6 +611,34 @@ TEST_CASE("builder: SwitchOf", "[netlist]") {
     CHECK(SwitchOf(**result, "SW9") == nullptr);
 }
 
+TEST_CASE("builder: a stuck input on a port pin leaves its net alone", "[netlist]") {
+    // A 6530's PA0 on a net a 74LS04 drives low (its 1A on VCC). Stuck 1 `input`: the net keeps
+    // the inverter's 0, the chip reads 1 through its own Net (P5r: the VIA's retrace input).
+    const std::string text = "part U1 6530 mask=002 contents=" + std::string(BW_ROOT_DIR) +
+                             "/tests/data/empty.rom\npart U2 74LS04\nnet PA0 U1.PA0 U2.1Y\n"
+                             "net VCC U2.1A\nnet GND U2.3 U2.5 U2.9 U2.11 U2.13\n";
+    const auto netlist = ParseNetlist(text, "t.bwn");
+    REQUIRE(netlist.has_value());
+    const StuckPin stuck[] = {{"U1", Mos6530::kPortA[0], One, true}};
+    const auto result = BuildCircuit(*netlist, stuck);
+    REQUIRE(result.has_value());
+    LoadedCircuit& loaded = **result;
+    const NetId pa0 = loaded.nets.at("PA0");
+    CHECK_FALSE(loaded.circuit.tieOf(pa0).value == One);  // not tied
+    Simulator sim(loaded.circuit);
+    sim.powerOn(1);
+    sim.runUntil(1_us);
+    CHECK(sim.value(pa0) == Zero);
+    std::optional<NetId> own;
+    for (std::uint32_t n = 0; n < loaded.circuit.netCount(); ++n) {
+        if (loaded.circuit.netName(NetId{n}) == "U1.PA0 stuck") {
+            own = NetId{n};
+        }
+    }
+    REQUIRE(own.has_value());
+    CHECK(sim.value(*own) == One);
+}
+
 TEST_CASE("builder: stuck cells reach the memory", "[netlist]") {
     const auto netlist = ParseNetlist("part U1 2114\n", "t.bwn");
     REQUIRE(netlist.has_value());

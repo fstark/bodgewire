@@ -83,7 +83,7 @@ public:
             if (isUnpowered(pin.first)) {
                 // no Driver, no Load: the chip's Pins get private Nets at finalize()
             } else if (const StuckPin* s = stuckAt(pin.first, pin.second)) {
-                if (IsDriver(part.component->pins()[pin.second].kind)) {
+                if (!s->input && IsDriver(part.component->pins()[pin.second].kind)) {
                     circuit.tie(net.net, s->value, DriveStrength::Strong);
                 }  // a stuck input: on its own Net below
             } else if (notConnected_.contains(pin)) {
@@ -94,8 +94,9 @@ public:
             loaded_->connections.push_back({pin.first, pin.second, std::string(net.name)});
         }
         // A stuck input reads its value through a Net of its own, listed or not (a dry Joint). A
-        // stuck bidirectional or pull-up Pin forces its Net above and reads its value here; Supply,
-        // so the chip's own drive onto that Net never fights the tie into X.
+        // stuck bidirectional or pull-up Pin forces its Net above (unless `input`: the Net is left
+        // alone) and reads its value here; Supply, so the chip's own drive onto that Net never
+        // fights the tie into X.
         for (const StuckPin& s : stuck_) {
             const Component& component = *loaded_->components.at(s.reference);
             const PinKind kind = component.pins()[s.pin].kind;

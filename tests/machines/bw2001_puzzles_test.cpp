@@ -352,12 +352,11 @@ TEST_CASE("bw2001: snow", "[machines][slow]") {
     };
     {
         Running m(1, Bw2001Built(machine), true);
-        CHECK(loop(m) > 100);
-        const auto rows = SelfTest(machine);
-        REQUIRE(rows.size() >= 8);
-        CHECK(rows[7] == "ROM E000 BAD E0");
+        CHECK(loop(m) > 1000);
+        // The Net is fine: VIDEO_ON still toggles at the VIA's leg (the retrace interrupt too).
+        CHECK(m.sim->value(*PinNet(*m.loaded, "UA5", "PB5")) != LogicValue::X);
     }
-    REQUIRE(machine.swap("UH3"));
+    REQUIRE(machine.swap("UA5"));
     Running m(1, Bw2001Built(machine), true);
     CHECK(loop(m) == 0);
 }
@@ -408,13 +407,38 @@ TEST_CASE("bw2001: ghost_letter", "[machines][slow]") {
         Bw2001Typist typist(m);
         REQUIRE(typist.waitForLine(1'500'000));
         auto banner = kBw2001Banner;
-        banner[0] = "*** CW-2001 TINY BASIC ***";
+        banner[0] = "*** BW-2001 VINY BASIC ***";
         CHECK(typist.rows() == banner);
         CHECK(Bw2001TvRows(Frame(m)) == banner);
         const auto rows = SelfTest(machine);
         REQUIRE(rows.size() >= 4);
-        CHECK(rows[0] == "BW-2101 SELF-TEST");  // its own title's 0 shows as 1
-        CHECK(rows[3] == "VIDEO RAM BAD 8004 01");
+        CHECK(rows[0] == "BW-2001 SELF/TEST");  // its own title's - shows as /
+        CHECK(rows[3] == "VIDEO RAM BAD 800C 02");
+    }
+    REQUIRE(machine.swap("UC3"));
+    Running m(1, Bw2001Built(machine));
+    CHECK(Banner(m));
+}
+
+TEST_CASE("bw2001: garbled_text", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 3 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("garbled_text");
+    {
+        Running m(1, Bw2001Built(machine));
+        Bw2001Typist typist(m);
+        REQUIRE(typist.waitForLine(1'500'000));
+        const auto rows = Bw2001TvRows(Frame(m));
+        REQUIRE(rows.size() == kBw2001Rows);  // every row full of !
+        CHECK(rows[0] == "+++!CW-3111!UIOY!CASIC!+++!!!!!!!!!!!!!!");
+        for (std::size_t cell = 0; cell < kBw2001Rows * kBw2001Columns; ++cell) {
+            CHECK((m.screen(cell) & 1) == 1);
+        }
+        const auto selfTest = SelfTest(machine);
+        REQUIRE(selfTest.size() >= 4);
+        UNSCOPED_INFO(selfTest[3]);
+        CHECK(selfTest[3].starts_with("WIEEO!SAM!CAE!"));  // the report garbled too
     }
     REQUIRE(machine.swap("UC3"));
     Running m(1, Bw2001Built(machine));

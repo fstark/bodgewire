@@ -14,7 +14,8 @@ Every phase ended with its fence: `cmake --build --preset debug` and `--preset r
 | 2 | Picture Puzzles (1–5) | `7e727dd` |
 | 3 | Computer Puzzles (6–10) | `3409765` |
 | 4 | Self-test and instrument Puzzles (11–15) | `3b7a154` |
-| 5 | Finish | this commit |
+| 5 | Finish | `177cb62` |
+| 6 | Snow by the VIA, Garbled text (2026-11-16) | this commit |
 
 ## Implementation notes
 
@@ -25,3 +26,4 @@ Every phase ended with its fence: `cmake --build --preset debug` and `--preset r
 - Phase 4: Bad zero page and Wrong chip do not keep the random power-on screen: the reset code clears it, then never reaches BASIC; a blank screen with a few stray characters on seeds 1–3 (under 100 cells not spaces), the brief says so. Ghost letter: `$004` bit 0 makes the banner `CW-2001`; the self-test shows `VIDEO RAM BAD 8004 01` and its own title as `BW-2101`. No clock: black and unlocked on seeds 1–3. Joined bits keeps the power-on screen (over 500 cells not spaces) with `RES_N` high, the clue that tells it from Random screen. `every Puzzle builds` 23 s in debug for fifteen, one case kept. Release 2–27 s a case. Debug `bw2001|manuals|puzzle` 74/74 in 149 s; release `bw2001` 63/63 in 193 s.
 - Phase 5: Machine docs (BW2001.md Puzzles, BW2001_DESIGN.md's Puzzle table and the note on `J5`'s columns and `R18`–`R25`); ADD_PUZZLE (a program-ROM cell on one code path, a fault in what the self-test reports through, one-dot glyphs, `stuck` on a port pin drives its Net, no `\"` in a brief, `bw_ui --after` is wall time). Screenshots of all fifteen viewed in their phases. Full debug suite 1255/1255 in 688 s; release `bw2001` 63/63.
 - User check pending: `bw_ui puzzles/<file>.bwp` for a few of each kind: `odd_e` (enlarge the TV window), `snow` (type `FOR I=1 TO 99:PRINT I:NEXT` and watch the top rows while it scrolls), `wrong_chip` (the self-test by a Bodge Wire from `J2` pad 9 to pad 1, then swap `UI8`: the same code; probe `UH8` pin 17's leg and pad), `joined_bits` against `random_screen` (`RES_N`).
+- Phase 6 (2026-11-16, the user's review): `fault stuck REF.PIN 0|1 input` (puzzle parser, `StuckPin::input`, the builder leaves the Net alone and gives the pin its own Net; Machine refuses it on a pin its chip does not read); builder and parser cases. Snow on `UA5.PB5 0 input`: over 1000 screen accesses in the display over the 30-line loop (the ROM cell gave about 100), `VIDEO_ON` defined at the VIA; swap `UA5`. Garbled text (`UC3` column `IO1` 1): the TV's first row `+++!CW-3111!UIOY!CASIC!+++` and `!` to the end, the self-test's row `WIEEO!SAM!CAE!…`. Ghost letter on `$00C` bit 1: `VINY BASIC`, self-test `VIDEO RAM BAD 800C 02`, its title `SELF/TEST`. Full debug suite (shared code: the builder) 1300/1300 in 763 s; release `bw2001` 64/64 in 193 s.

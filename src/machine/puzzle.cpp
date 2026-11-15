@@ -222,8 +222,9 @@ private:
     }
 
     void stuck(std::uint32_t line, const std::vector<std::string_view>& tokens) {
-        const std::string expected = "expected: fault stuck REF.PIN 0|1";
-        if (tokens.size() != 4) {
+        const std::string expected = "expected: fault stuck REF.PIN 0|1 [input]";
+        const bool input = tokens.size() == 5 && tokens[4] == "input";
+        if (tokens.size() != 4 && !input) {
             error(line, expected);
             return;
         }
@@ -235,7 +236,7 @@ private:
         }
         puzzle_.stuck.push_back({line, std::string(tokens[2].substr(0, dot)),
                                  std::string(tokens[2].substr(dot + 1)),
-                                 tokens[3] == "1" ? LogicValue::One : LogicValue::Zero});
+                                 tokens[3] == "1" ? LogicValue::One : LogicValue::Zero, input});
     }
 
     void crack(std::uint32_t line, const std::vector<std::string_view>& tokens) {

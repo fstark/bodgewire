@@ -51,6 +51,9 @@ struct StuckPin {
     std::string reference;
     PinIndex pin;
     LogicValue value;
+    // The chip reads `value` through a Net of its own and the board's Net is left alone (a port
+    // pin whose input has failed): the pin drives nothing. Else a driver's stuck pin ties its Net.
+    bool input = false;
 };
 
 // Stuck cell Fault inside a memory chip (MemoryCells): bit `pin` (a data Pin) of word `word` of

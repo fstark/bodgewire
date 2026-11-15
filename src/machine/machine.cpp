@@ -164,7 +164,12 @@ LoadMachine(const Puzzle& puzzle, const std::filesystem::path& root,
                                  ") is not an output or a chip input");
             continue;
         }
-        machine.stuck_.push_back({decl.reference, *pin, decl.value});
+        if (decl.input && (kindOf(decl.reference) != PartKind::Chip || !IsReader(spec.kind))) {
+            error(decl.line, decl.reference + "." + decl.pin + " (" + spec.name +
+                                 "): input needs a pin its chip reads");
+            continue;
+        }
+        machine.stuck_.push_back({decl.reference, *pin, decl.value, decl.input});
     }
 
     const auto known = [&](std::uint32_t line, const PinRef& pin) {

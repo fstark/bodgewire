@@ -18,7 +18,8 @@ namespace bw {
 struct StuckAtDecl {
     std::uint32_t line;
     std::string reference, pin;
-    LogicValue value;  // Zero or One
+    LogicValue value;    // Zero or One
+    bool input = false;  // `input`: the chip reads the value, its Net left alone (a port pin)
 };
 
 struct CrackDecl {

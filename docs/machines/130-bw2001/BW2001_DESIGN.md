@@ -113,14 +113,15 @@ Debug: a guess of 0.005–0.01× under ASan (0.24× release); phase 8 measures i
 | `missing_keys.bwp` | `fault crack J5.COL0 UG8.PB0 50%` | `QWERTYASDF` types `ERTYDF` | mend |
 | `frozen_cursor.bwp` | `fault stuck UG8.CB1 0` | no blink, no key | swap `UG8` |
 | `random_screen.bwp` | `fault stuck UDE9.RST_N 0` | the power-on screen unchanged; `RES_N` low; no self-test | swap `UDE9` |
-| `snow.bwp` | `fault cell UH3.O5 $0D5 0` | over 100 screen accesses in the display over a 30-line loop; self-test `ROM E000 BAD E0` | swap `UH3` |
+| `snow.bwp` | `fault stuck UA5.PB5 0 input` | over 1000 screen accesses in the display over a 30-line loop; `VIDEO_ON` toggles at `UA5` | swap `UA5` |
 | `bad_zero_page.bwp` | `fault column UI8.IO1 1` | cleared, under 100 stray cells, no banner; self-test `ZERO PAGE BAD 0001 01` | swap `UI8` |
 | `wrong_chip.bwp` | `fault joint UH8.2A4` | as `bad_zero_page`; a `UI8` swap changes nothing | resolder `UH8` pin 17 |
-| `ghost_letter.bwp` | `fault cell UC3.IO1 $004 1` | `*** CW-2001 TINY BASIC ***`; self-test `VIDEO RAM BAD 8004 01` | swap `UC3` |
+| `ghost_letter.bwp` | `fault cell UC3.IO2 $00C 1` | `*** BW-2001 VINY BASIC ***`; self-test `VIDEO RAM BAD 800C 02` | swap `UC3` |
+| `garbled_text.bwp` | `fault column UC3.IO1 1` | TV row 0 `+++!CW-3111!UIOY!CASIC!+++` and `!` everywhere; the self-test's row `WIEEO!SAM!CAE!…` | swap `UC3` |
 | `no_clock.bwp` | `fault crack X1.OUT UE2.2B 50%` | black, unlocked; `CLK8` still, `OSC8` at `X1` running | mend |
 | `joined_bits.bwp` | `fault bridge UF3.D0 UF3.D1` | the power-on screen unchanged; `RES_N` high; no self-test | cut the bridge |
 
 Missing keys depends on two readings the transcription assumed (Netlist above): `J5`'s column order and `R18`–`R25`'s (`R18` on `KIN0`). The service manual has only its Components section, so the note is here: if the real PET differs, the Puzzle still holds on our Board, which is what the player probes.
 
-Snow's specks are brief: a one-frame screenshot rarely shows one; the case's snow watch (screen accesses while the beam draws the text) is the evidence, and `bw_ui` shows them flickering while a long listing scrolls.
+Snow's specks are brief: a one-frame screenshot may miss them (and with no wait, printing is fast); the case's snow watch (screen accesses while the beam draws the text) is the evidence.
 
