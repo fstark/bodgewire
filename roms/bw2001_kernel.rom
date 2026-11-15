@@ -23,6 +23,8 @@
 ; PIA1CRA  = PIA1+1
 ; PIA1PB   = PIA1+2
 ; PIA1CRB  = PIA1+3
+; VIA      = $E840        ; +0 port B: PB5 low while the beam is outside the text (the retrace)
+; VIAPCR   = VIA+$C       ; CA2 (GRAPHIC): low, the character ROM's first half
 
 ; ; Zero page: $00-$3F BASIC, $40-$5F the editor, $60-$7F the kernel, $80-$FF the player's (USR).
 ; WAITING  = $40          ; 1 while the editor waits for keys to make a line (the harness signal)
@@ -405,120 +407,122 @@
 ; ; --- UH7: reset, interrupts, the self-test -------------------------------------------------------
 
 ;         .org $F800
-@800 4C F4 F8  ; F800          jmp selftest
+@800 4C F9 F8  ; F800          jmp selftest
 @803 4C 06 F8  ; F803          jmp reset
 
 @806 78        ; F806  reset:  sei
 @807 D8        ; F807          cld
 @808 A2 FF     ; F808          ldx #$FF
 @80A 9A        ; F80A          txs
-@80B A9 00     ; F80B          lda #0          ; PIA1 port A: PA0-PA3 the keyboard row out, PA4-PA7 in (PA7 DIAG)
-@80D 8D 11 E8  ; F80D          sta PIA1CRA
-@810 A9 0F     ; F810          lda #$0F
-@812 8D 10 E8  ; F812          sta PIA1PA
-@815 A9 04     ; F815          lda #$04
-@817 8D 11 E8  ; F817          sta PIA1CRA
-@81A A9 0F     ; F81A          lda #$0F
-@81C 8D 10 E8  ; F81C          sta PIA1PA      ; no row selected
-@81F A9 00     ; F81F          lda #0          ; port B: the columns in; CB1 on its falling edge, interrupt off
-@821 8D 13 E8  ; F821          sta PIA1CRB
-@824 8D 12 E8  ; F824          sta PIA1PB
-@827 A9 04     ; F827          lda #$04
-@829 8D 13 E8  ; F829          sta PIA1CRB
-@82C AD 10 E8  ; F82C          lda PIA1PA
-@82F 30 03     ; F82F          bmi @basic
-@831 4C F4 F8  ; F831          jmp selftest    ; DIAG low: no RAM touched yet
+@80B A9 0C     ; F80B          lda #$0C        ; VIA CA2 low: the character ROM's first half (upper case), as BASIC 1
+@80D 8D 4C E8  ; F80D          sta VIAPCR
+@810 A9 00     ; F810          lda #0          ; PIA1 port A: PA0-PA3 the keyboard row out, PA4-PA7 in (PA7 DIAG)
+@812 8D 11 E8  ; F812          sta PIA1CRA
+@815 A9 0F     ; F815          lda #$0F
+@817 8D 10 E8  ; F817          sta PIA1PA
+@81A A9 04     ; F81A          lda #$04
+@81C 8D 11 E8  ; F81C          sta PIA1CRA
+@81F A9 0F     ; F81F          lda #$0F
+@821 8D 10 E8  ; F821          sta PIA1PA      ; no row selected
+@824 A9 00     ; F824          lda #0          ; port B: the columns in; CB1 on its falling edge, interrupt off
+@826 8D 13 E8  ; F826          sta PIA1CRB
+@829 8D 12 E8  ; F829          sta PIA1PB
+@82C A9 04     ; F82C          lda #$04
+@82E 8D 13 E8  ; F82E          sta PIA1CRB
+@831 AD 10 E8  ; F831          lda PIA1PA
+@834 30 03     ; F834          bmi @basic
+@836 4C F9 F8  ; F836          jmp selftest    ; DIAG low: no RAM touched yet
 
-@834 A9 00     ; F834  @basic: lda #0
-@836 A2 7F     ; F836          ldx #$7F
-@838 95 00     ; F838  @zp:    sta $00,x
-@83A CA        ; F83A          dex
-@83B 10 FB     ; F83B          bpl @zp
-@83D A2 00     ; F83D          ldx #0
-@83F 9D 00 02  ; F83F  @pages: sta $0200,x
-@842 9D 00 03  ; F842          sta $0300,x
-@845 E8        ; F845          inx
-@846 D0 F7     ; F846          bne @pages
+@839 A9 00     ; F839  @basic: lda #0
+@83B A2 7F     ; F83B          ldx #$7F
+@83D 95 00     ; F83D  @zp:    sta $00,x
+@83F CA        ; F83F          dex
+@840 10 FB     ; F840          bpl @zp
+@842 A2 00     ; F842          ldx #0
+@844 9D 00 02  ; F844  @pages: sta $0200,x
+@847 9D 00 03  ; F847          sta $0300,x
+@84A E8        ; F84A          inx
+@84B D0 F7     ; F84B          bne @pages
 
-@848 A9 00     ; F848          lda #<PROGRAM   ; size the RAM
-@84A 85 62     ; F84A          sta PTR
-@84C A9 04     ; F84C          lda #>PROGRAM
-@84E 85 63     ; F84E          sta PTR+1
-@850 A0 00     ; F850          ldy #0
-@852 A9 55     ; F852  @size:  lda #$55
-@854 91 62     ; F854          sta (PTR),y
-@856 D1 62     ; F856          cmp (PTR),y
-@858 D0 14     ; F858          bne @top
-@85A A9 AA     ; F85A          lda #$AA
-@85C 91 62     ; F85C          sta (PTR),y
-@85E D1 62     ; F85E          cmp (PTR),y
-@860 D0 0C     ; F860          bne @top
-@862 E6 62     ; F862          inc PTR
-@864 D0 EC     ; F864          bne @size
-@866 E6 63     ; F866          inc PTR+1
-@868 A5 63     ; F868          lda PTR+1
-@86A C9 20     ; F86A          cmp #$20
-@86C D0 E4     ; F86C          bne @size
-@86E A5 62     ; F86E  @top:   lda PTR
-@870 85 60     ; F870          sta MEMTOP
-@872 A5 63     ; F872          lda PTR+1
-@874 85 61     ; F874          sta MEMTOP+1
+@84D A9 00     ; F84D          lda #<PROGRAM   ; size the RAM
+@84F 85 62     ; F84F          sta PTR
+@851 A9 04     ; F851          lda #>PROGRAM
+@853 85 63     ; F853          sta PTR+1
+@855 A0 00     ; F855          ldy #0
+@857 A9 55     ; F857  @size:  lda #$55
+@859 91 62     ; F859          sta (PTR),y
+@85B D1 62     ; F85B          cmp (PTR),y
+@85D D0 14     ; F85D          bne @top
+@85F A9 AA     ; F85F          lda #$AA
+@861 91 62     ; F861          sta (PTR),y
+@863 D1 62     ; F863          cmp (PTR),y
+@865 D0 0C     ; F865          bne @top
+@867 E6 62     ; F867          inc PTR
+@869 D0 EC     ; F869          bne @size
+@86B E6 63     ; F86B          inc PTR+1
+@86D A5 63     ; F86D          lda PTR+1
+@86F C9 20     ; F86F          cmp #$20
+@871 D0 E4     ; F871          bne @size
+@873 A5 62     ; F873  @top:   lda PTR
+@875 85 60     ; F875          sta MEMTOP
+@877 A5 63     ; F877          lda PTR+1
+@879 85 61     ; F879          sta MEMTOP+1
 
-@876 20 00 E0  ; F876          jsr EDINIT
-@879 A9 05     ; F879          lda #$05        ; the retrace interrupt on
-@87B 8D 13 E8  ; F87B          sta PIA1CRB
-@87E 58        ; F87E          cli
+@87B 20 00 E0  ; F87B          jsr EDINIT
+@87E A9 05     ; F87E          lda #$05        ; the retrace interrupt on
+@880 8D 13 E8  ; F880          sta PIA1CRB
+@883 58        ; F883          cli
 
-@87F A2 00     ; F87F          ldx #0
-@881 BD AB F8  ; F881  @title: lda banner,x
-@884 F0 06     ; F884          beq @free
-@886 20 03 E0  ; F886          jsr EDPRINT
-@889 E8        ; F889          inx
-@88A D0 F5     ; F88A          bne @title
-@88C 38        ; F88C  @free:  sec             ; MEMTOP - PROGRAM - 2: the bytes free
-@88D A5 60     ; F88D          lda MEMTOP
-@88F E9 02     ; F88F          sbc #<(PROGRAM+2)
-@891 48        ; F891          pha
-@892 A5 61     ; F892          lda MEMTOP+1
-@894 E9 04     ; F894          sbc #>(PROGRAM+2)
-@896 A8        ; F896          tay
-@897 68        ; F897          pla
-@898 20 06 C0  ; F898          jsr NUMOUT
-@89B A2 00     ; F89B          ldx #0
-@89D BD C8 F8  ; F89D  @bytes: lda freetext,x
-@8A0 F0 06     ; F8A0          beq @cold
-@8A2 20 03 E0  ; F8A2          jsr EDPRINT
-@8A5 E8        ; F8A5          inx
-@8A6 D0 F5     ; F8A6          bne @bytes
-@8A8 4C 00 C0  ; F8A8  @cold:  jmp COLD
+@884 A2 00     ; F884          ldx #0
+@886 BD B0 F8  ; F886  @title: lda banner,x
+@889 F0 06     ; F889          beq @free
+@88B 20 03 E0  ; F88B          jsr EDPRINT
+@88E E8        ; F88E          inx
+@88F D0 F5     ; F88F          bne @title
+@891 38        ; F891  @free:  sec             ; MEMTOP - PROGRAM - 2: the bytes free
+@892 A5 60     ; F892          lda MEMTOP
+@894 E9 02     ; F894          sbc #<(PROGRAM+2)
+@896 48        ; F896          pha
+@897 A5 61     ; F897          lda MEMTOP+1
+@899 E9 04     ; F899          sbc #>(PROGRAM+2)
+@89B A8        ; F89B          tay
+@89C 68        ; F89C          pla
+@89D 20 06 C0  ; F89D          jsr NUMOUT
+@8A0 A2 00     ; F8A0          ldx #0
+@8A2 BD CD F8  ; F8A2  @bytes: lda freetext,x
+@8A5 F0 06     ; F8A5          beq @cold
+@8A7 20 03 E0  ; F8A7          jsr EDPRINT
+@8AA E8        ; F8AA          inx
+@8AB D0 F5     ; F8AB          bne @bytes
+@8AD 4C 00 C0  ; F8AD  @cold:  jmp COLD
 
-@8AB 2A 2A 2A 20 42 57 2D 32 30 30 31 20 54 49 4E 59  ; F8AB  banner: .byte "*** BW-2001 TINY BASIC ***", $0D, $0D, 0
-@8BB 20 42 41 53 49 43 20 2A 2A 2A 0D 0D 00
+@8B0 2A 2A 2A 20 42 57 2D 32 30 30 31 20 54 49 4E 59  ; F8B0  banner: .byte "*** BW-2001 TINY BASIC ***", $0D, $0D, 0
+@8C0 20 42 41 53 49 43 20 2A 2A 2A 0D 0D 00
 ; freetext:
-@8C8 20 42 59 54 45 53 20 46 52 45 45 0D 0D 00  ; F8C8          .byte " BYTES FREE", $0D, $0D, 0
+@8CD 20 42 59 54 45 53 20 46 52 45 45 0D 0D 00  ; F8CD          .byte " BYTES FREE", $0D, $0D, 0
 
 ; ; IRQ: a BRK goes to the monitor with this handler's three bytes on the stack; the retrace (PIA1
 ; ; CRB bit 7) runs the editor's scan.
-@8D6 48        ; F8D6  irq:    pha
-@8D7 8A        ; F8D7          txa
-@8D8 48        ; F8D8          pha
-@8D9 98        ; F8D9          tya
-@8DA 48        ; F8DA          pha
-@8DB BA        ; F8DB          tsx
-@8DC BD 04 01  ; F8DC          lda $0104,x     ; the P the 6502 pushed
-@8DF 29 10     ; F8DF          and #$10
-@8E1 F0 03     ; F8E1          beq @retrace
-@8E3 4C 03 F0  ; F8E3          jmp MONBRK
+@8DB 48        ; F8DB  irq:    pha
+@8DC 8A        ; F8DC          txa
+@8DD 48        ; F8DD          pha
+@8DE 98        ; F8DE          tya
+@8DF 48        ; F8DF          pha
+@8E0 BA        ; F8E0          tsx
+@8E1 BD 04 01  ; F8E1          lda $0104,x     ; the P the 6502 pushed
+@8E4 29 10     ; F8E4          and #$10
+@8E6 F0 03     ; F8E6          beq @retrace
+@8E8 4C 03 F0  ; F8E8          jmp MONBRK
 ; @retrace:
-@8E6 AD 13 E8  ; F8E6          lda PIA1CRB
-@8E9 10 03     ; F8E9          bpl @done
-@8EB 20 0F E0  ; F8EB          jsr EDIRQ
-@8EE 68        ; F8EE  @done:  pla
-@8EF A8        ; F8EF          tay
-@8F0 68        ; F8F0          pla
-@8F1 AA        ; F8F1          tax
-@8F2 68        ; F8F2          pla
-@8F3 40        ; F8F3  nmi:    rti
+@8EB AD 13 E8  ; F8EB          lda PIA1CRB
+@8EE 10 03     ; F8EE          bpl @done
+@8F0 20 0F E0  ; F8F0          jsr EDIRQ
+@8F3 68        ; F8F3  @done:  pla
+@8F4 A8        ; F8F4          tay
+@8F5 68        ; F8F5          pla
+@8F6 AA        ; F8F6          tax
+@8F7 68        ; F8F7          pla
+@8F8 40        ; F8F8  nmi:    rti
 
 ; ; --- The self-test (spec "The self-test"; design §4.4) -------------------------------------------
 ; ;
@@ -545,602 +549,602 @@
 ; SCRATCH = $14           ; the three values wait here, after the digits: bits, low, high
 
 ; selftest:
-@8F4 78        ; F8F4          sei
-@8F5 D8        ; F8F5          cld
-@8F6 A9 20     ; F8F6          lda #$20        ; a blank screen
-@8F8 A2 00     ; F8F8          ldx #0
-@8FA 9D 00 80  ; F8FA  @clear: sta SCREEN+$000,x
-@8FD 9D 00 81  ; F8FD          sta SCREEN+$100,x
-@900 9D 00 82  ; F900          sta SCREEN+$200,x
-@903 9D 00 83  ; F903          sta SCREEN+$300,x
-@906 E8        ; F906          inx
-@907 D0 F1     ; F907          bne @clear
-@909 A2 00     ; F909          ldx #0
-@90B BD 15 FD  ; F90B  @title: lda titletext,x
-@90E F0 08     ; F90E          beq @zp
-@910 29 3F     ; F910          and #$3F
-@912 9D 00 80  ; F912          sta SCREEN,x
-@915 E8        ; F915          inx
-@916 D0 F3     ; F916          bne @title
+@8F9 78        ; F8F9          sei
+@8FA D8        ; F8FA          cld
+@8FB A9 20     ; F8FB          lda #$20        ; a blank screen
+@8FD A2 00     ; F8FD          ldx #0
+@8FF 9D 00 80  ; F8FF  @clear: sta SCREEN+$000,x
+@902 9D 00 81  ; F902          sta SCREEN+$100,x
+@905 9D 00 82  ; F905          sta SCREEN+$200,x
+@908 9D 00 83  ; F908          sta SCREEN+$300,x
+@90B E8        ; F90B          inx
+@90C D0 F1     ; F90C          bne @clear
+@90E A2 00     ; F90E          ldx #0
+@910 BD 1A FD  ; F910  @title: lda titletext,x
+@913 F0 08     ; F913          beq @zp
+@915 29 3F     ; F915          and #$3F
+@917 9D 00 80  ; F917          sta SCREEN,x
+@91A E8        ; F91A          inx
+@91B D0 F3     ; F91B          bne @title
 
 ; ; Page 0, by zero page,X: no RAM used.
-@918 A2 00     ; F918  @zp:    ldx #0
-@91A 8A        ; F91A  @zw1:   txa
-@91B 49 A5     ; F91B          eor #$A5
-@91D 95 00     ; F91D          sta $00,x
-@91F E8        ; F91F          inx
-@920 D0 F8     ; F920          bne @zw1
-@922 8A        ; F922  @zc1:   txa
-@923 49 A5     ; F923          eor #$A5
-@925 55 00     ; F925          eor $00,x
-@927 D0 18     ; F927          bne zpfail
-@929 E8        ; F929          inx
-@92A D0 F6     ; F92A          bne @zc1
-@92C 8A        ; F92C  @zw2:   txa
-@92D 49 5A     ; F92D          eor #$5A
-@92F 95 00     ; F92F          sta $00,x
-@931 E8        ; F931          inx
-@932 D0 F8     ; F932          bne @zw2
-@934 8A        ; F934  @zc2:   txa
-@935 49 5A     ; F935          eor #$5A
-@937 55 00     ; F937          eor $00,x
-@939 D0 06     ; F939          bne zpfail
-@93B E8        ; F93B          inx
-@93C D0 F6     ; F93C          bne @zc2
-@93E 4C 61 F9  ; F93E          jmp video
+@91D A2 00     ; F91D  @zp:    ldx #0
+@91F 8A        ; F91F  @zw1:   txa
+@920 49 A5     ; F920          eor #$A5
+@922 95 00     ; F922          sta $00,x
+@924 E8        ; F924          inx
+@925 D0 F8     ; F925          bne @zw1
+@927 8A        ; F927  @zc1:   txa
+@928 49 A5     ; F928          eor #$A5
+@92A 55 00     ; F92A          eor $00,x
+@92C D0 18     ; F92C          bne zpfail
+@92E E8        ; F92E          inx
+@92F D0 F6     ; F92F          bne @zc1
+@931 8A        ; F931  @zw2:   txa
+@932 49 5A     ; F932          eor #$5A
+@934 95 00     ; F934          sta $00,x
+@936 E8        ; F936          inx
+@937 D0 F8     ; F937          bne @zw2
+@939 8A        ; F939  @zc2:   txa
+@93A 49 5A     ; F93A          eor #$5A
+@93C 55 00     ; F93C          eor $00,x
+@93E D0 06     ; F93E          bne zpfail
+@940 E8        ; F940          inx
+@941 D0 F6     ; F941          bne @zc2
+@943 4C 66 F9  ; F943          jmp video
 
-@941 8D 72 80  ; F941  zpfail: sta SCREEN+HEXZP+SCRATCH
-@944 8E 73 80  ; F944          stx SCREEN+HEXZP+SCRATCH+1
-@947 A9 00     ; F947          lda #0
-@949 8D 74 80  ; F949          sta SCREEN+HEXZP+SCRATCH+2
-@94C A0 00     ; F94C          ldy #0
-@94E B9 34 FD  ; F94E  @label: lda zpbadtext,y
-@951 F0 08     ; F951          beq @go
-@953 29 3F     ; F953          and #$3F
-@955 99 50 80  ; F955          sta ROW2,y
-@958 C8        ; F958          iny
-@959 D0 F3     ; F959          bne @label
-@95B A2 5E     ; F95B  @go:    ldx #HEXZP
-@95D 9A        ; F95D          txs
-@95E 4C 3F FB  ; F95E          jmp fail
+@946 8D 72 80  ; F946  zpfail: sta SCREEN+HEXZP+SCRATCH
+@949 8E 73 80  ; F949          stx SCREEN+HEXZP+SCRATCH+1
+@94C A9 00     ; F94C          lda #0
+@94E 8D 74 80  ; F94E          sta SCREEN+HEXZP+SCRATCH+2
+@951 A0 00     ; F951          ldy #0
+@953 B9 39 FD  ; F953  @label: lda zpbadtext,y
+@956 F0 08     ; F956          beq @go
+@958 29 3F     ; F958          and #$3F
+@95A 99 50 80  ; F95A          sta ROW2,y
+@95D C8        ; F95D          iny
+@95E D0 F3     ; F95E          bne @label
+@960 A2 5E     ; F960  @go:    ldx #HEXZP
+@962 9A        ; F962          txs
+@963 4C 44 FB  ; F963          jmp fail
 
 ; ; The video RAM, $8000-$83FF: the whole range written, then compared, twice.
-@961 A2 00     ; F961  video:  ldx #0
-@963 BD 27 FD  ; F963  @zpok:  lda zpoktext,x
-@966 F0 08     ; F966          beq @pass1
-@968 29 3F     ; F968          and #$3F
-@96A 9D 50 80  ; F96A          sta ROW2,x
-@96D E8        ; F96D          inx
-@96E D0 F3     ; F96E          bne @zpok
-@970 A9 00     ; F970  @pass1: lda #0
-@972 85 00     ; F972          sta PTR0
-@974 A9 80     ; F974          lda #>SCREEN
-@976 85 01     ; F976          sta PTR0+1
-@978 A0 00     ; F978  @vw1:   ldy #0
-@97A 98        ; F97A  @vw1b:  tya
-@97B 45 01     ; F97B          eor PTR0+1
-@97D 49 A5     ; F97D          eor #$A5
-@97F 91 00     ; F97F          sta (PTR0),y
-@981 C8        ; F981          iny
-@982 D0 F6     ; F982          bne @vw1b
-@984 E6 01     ; F984          inc PTR0+1
-@986 A5 01     ; F986          lda PTR0+1
-@988 C9 84     ; F988          cmp #>SCREEN+4
-@98A D0 EC     ; F98A          bne @vw1
-@98C A9 80     ; F98C          lda #>SCREEN
-@98E 85 01     ; F98E          sta PTR0+1
-@990 A0 00     ; F990  @vc1:   ldy #0
-@992 98        ; F992  @vc1b:  tya
-@993 45 01     ; F993          eor PTR0+1
-@995 49 A5     ; F995          eor #$A5
-@997 51 00     ; F997          eor (PTR0),y
-@999 D0 40     ; F999          bne vfail
-@99B C8        ; F99B          iny
-@99C D0 F4     ; F99C          bne @vc1b
-@99E E6 01     ; F99E          inc PTR0+1
-@9A0 A5 01     ; F9A0          lda PTR0+1
-@9A2 C9 84     ; F9A2          cmp #>SCREEN+4
-@9A4 D0 EA     ; F9A4          bne @vc1
-@9A6 A9 80     ; F9A6          lda #>SCREEN
-@9A8 85 01     ; F9A8          sta PTR0+1
-@9AA A0 00     ; F9AA  @vw2:   ldy #0
-@9AC 98        ; F9AC  @vw2b:  tya
-@9AD 45 01     ; F9AD          eor PTR0+1
-@9AF 49 5A     ; F9AF          eor #$5A
-@9B1 91 00     ; F9B1          sta (PTR0),y
-@9B3 C8        ; F9B3          iny
-@9B4 D0 F6     ; F9B4          bne @vw2b
-@9B6 E6 01     ; F9B6          inc PTR0+1
-@9B8 A5 01     ; F9B8          lda PTR0+1
-@9BA C9 84     ; F9BA          cmp #>SCREEN+4
-@9BC D0 EC     ; F9BC          bne @vw2
-@9BE A9 80     ; F9BE          lda #>SCREEN
-@9C0 85 01     ; F9C0          sta PTR0+1
-@9C2 A0 00     ; F9C2  @vc2:   ldy #0
-@9C4 98        ; F9C4  @vc2b:  tya
-@9C5 45 01     ; F9C5          eor PTR0+1
-@9C7 49 5A     ; F9C7          eor #$5A
-@9C9 51 00     ; F9C9          eor (PTR0),y
-@9CB D0 0E     ; F9CB          bne vfail
-@9CD C8        ; F9CD          iny
-@9CE D0 F4     ; F9CE          bne @vc2b
-@9D0 E6 01     ; F9D0          inc PTR0+1
-@9D2 A5 01     ; F9D2          lda PTR0+1
-@9D4 C9 84     ; F9D4          cmp #>SCREEN+4
-@9D6 D0 EA     ; F9D6          bne @vc2
-@9D8 4C 32 FA  ; F9D8          jmp vpassed
+@966 A2 00     ; F966  video:  ldx #0
+@968 BD 2C FD  ; F968  @zpok:  lda zpoktext,x
+@96B F0 08     ; F96B          beq @pass1
+@96D 29 3F     ; F96D          and #$3F
+@96F 9D 50 80  ; F96F          sta ROW2,x
+@972 E8        ; F972          inx
+@973 D0 F3     ; F973          bne @zpok
+@975 A9 00     ; F975  @pass1: lda #0
+@977 85 00     ; F977          sta PTR0
+@979 A9 80     ; F979          lda #>SCREEN
+@97B 85 01     ; F97B          sta PTR0+1
+@97D A0 00     ; F97D  @vw1:   ldy #0
+@97F 98        ; F97F  @vw1b:  tya
+@980 45 01     ; F980          eor PTR0+1
+@982 49 A5     ; F982          eor #$A5
+@984 91 00     ; F984          sta (PTR0),y
+@986 C8        ; F986          iny
+@987 D0 F6     ; F987          bne @vw1b
+@989 E6 01     ; F989          inc PTR0+1
+@98B A5 01     ; F98B          lda PTR0+1
+@98D C9 84     ; F98D          cmp #>SCREEN+4
+@98F D0 EC     ; F98F          bne @vw1
+@991 A9 80     ; F991          lda #>SCREEN
+@993 85 01     ; F993          sta PTR0+1
+@995 A0 00     ; F995  @vc1:   ldy #0
+@997 98        ; F997  @vc1b:  tya
+@998 45 01     ; F998          eor PTR0+1
+@99A 49 A5     ; F99A          eor #$A5
+@99C 51 00     ; F99C          eor (PTR0),y
+@99E D0 40     ; F99E          bne vfail
+@9A0 C8        ; F9A0          iny
+@9A1 D0 F4     ; F9A1          bne @vc1b
+@9A3 E6 01     ; F9A3          inc PTR0+1
+@9A5 A5 01     ; F9A5          lda PTR0+1
+@9A7 C9 84     ; F9A7          cmp #>SCREEN+4
+@9A9 D0 EA     ; F9A9          bne @vc1
+@9AB A9 80     ; F9AB          lda #>SCREEN
+@9AD 85 01     ; F9AD          sta PTR0+1
+@9AF A0 00     ; F9AF  @vw2:   ldy #0
+@9B1 98        ; F9B1  @vw2b:  tya
+@9B2 45 01     ; F9B2          eor PTR0+1
+@9B4 49 5A     ; F9B4          eor #$5A
+@9B6 91 00     ; F9B6          sta (PTR0),y
+@9B8 C8        ; F9B8          iny
+@9B9 D0 F6     ; F9B9          bne @vw2b
+@9BB E6 01     ; F9BB          inc PTR0+1
+@9BD A5 01     ; F9BD          lda PTR0+1
+@9BF C9 84     ; F9BF          cmp #>SCREEN+4
+@9C1 D0 EC     ; F9C1          bne @vw2
+@9C3 A9 80     ; F9C3          lda #>SCREEN
+@9C5 85 01     ; F9C5          sta PTR0+1
+@9C7 A0 00     ; F9C7  @vc2:   ldy #0
+@9C9 98        ; F9C9  @vc2b:  tya
+@9CA 45 01     ; F9CA          eor PTR0+1
+@9CC 49 5A     ; F9CC          eor #$5A
+@9CE 51 00     ; F9CE          eor (PTR0),y
+@9D0 D0 0E     ; F9D0          bne vfail
+@9D2 C8        ; F9D2          iny
+@9D3 D0 F4     ; F9D3          bne @vc2b
+@9D5 E6 01     ; F9D5          inc PTR0+1
+@9D7 A5 01     ; F9D7          lda PTR0+1
+@9D9 C9 84     ; F9D9          cmp #>SCREEN+4
+@9DB D0 EA     ; F9DB          bne @vc2
+@9DD 4C 37 FA  ; F9DD          jmp vpassed
 
 ; ; The bad bits in A, the address PTR0+1:Y. The screen is cleared first (the bits wait in $00,
 ; ; the low byte in X), then the rows written again.
-@9DB 85 00     ; F9DB  vfail:  sta PTR0
-@9DD 98        ; F9DD          tya
-@9DE AA        ; F9DE          tax
-@9DF A9 20     ; F9DF          lda #$20
-@9E1 A0 00     ; F9E1          ldy #0
-@9E3 99 00 80  ; F9E3  @clear: sta SCREEN+$000,y
-@9E6 99 00 81  ; F9E6          sta SCREEN+$100,y
-@9E9 99 00 82  ; F9E9          sta SCREEN+$200,y
-@9EC 99 00 83  ; F9EC          sta SCREEN+$300,y
-@9EF C8        ; F9EF          iny
-@9F0 D0 F1     ; F9F0          bne @clear
-@9F2 A5 00     ; F9F2          lda PTR0
-@9F4 8D 9A 80  ; F9F4          sta SCREEN+HEXVID+SCRATCH
-@9F7 8E 9B 80  ; F9F7          stx SCREEN+HEXVID+SCRATCH+1
-@9FA A5 01     ; F9FA          lda PTR0+1
-@9FC 8D 9C 80  ; F9FC          sta SCREEN+HEXVID+SCRATCH+2
-@9FF A0 00     ; F9FF          ldy #0
-@A01 B9 15 FD  ; FA01  @title: lda titletext,y
-@A04 F0 08     ; FA04          beq @zpok
-@A06 29 3F     ; FA06          and #$3F
-@A08 99 00 80  ; FA08          sta SCREEN,y
-@A0B C8        ; FA0B          iny
-@A0C D0 F3     ; FA0C          bne @title
-@A0E A0 00     ; FA0E  @zpok:  ldy #0
-@A10 B9 27 FD  ; FA10  @zp:    lda zpoktext,y
-@A13 F0 08     ; FA13          beq @label
-@A15 29 3F     ; FA15          and #$3F
-@A17 99 50 80  ; FA17          sta ROW2,y
-@A1A C8        ; FA1A          iny
-@A1B D0 F3     ; FA1B          bne @zp
-@A1D A0 00     ; FA1D  @label: ldy #0
-@A1F B9 50 FD  ; FA1F  @l:     lda vidbadtext,y
-@A22 F0 08     ; FA22          beq @go
-@A24 29 3F     ; FA24          and #$3F
-@A26 99 78 80  ; FA26          sta ROW3,y
-@A29 C8        ; FA29          iny
-@A2A D0 F3     ; FA2A          bne @l
-@A2C A2 86     ; FA2C  @go:    ldx #HEXVID
-@A2E 9A        ; FA2E          txs
-@A2F 4C 3F FB  ; FA2F          jmp fail
+@9E0 85 00     ; F9E0  vfail:  sta PTR0
+@9E2 98        ; F9E2          tya
+@9E3 AA        ; F9E3          tax
+@9E4 A9 20     ; F9E4          lda #$20
+@9E6 A0 00     ; F9E6          ldy #0
+@9E8 99 00 80  ; F9E8  @clear: sta SCREEN+$000,y
+@9EB 99 00 81  ; F9EB          sta SCREEN+$100,y
+@9EE 99 00 82  ; F9EE          sta SCREEN+$200,y
+@9F1 99 00 83  ; F9F1          sta SCREEN+$300,y
+@9F4 C8        ; F9F4          iny
+@9F5 D0 F1     ; F9F5          bne @clear
+@9F7 A5 00     ; F9F7          lda PTR0
+@9F9 8D 9A 80  ; F9F9          sta SCREEN+HEXVID+SCRATCH
+@9FC 8E 9B 80  ; F9FC          stx SCREEN+HEXVID+SCRATCH+1
+@9FF A5 01     ; F9FF          lda PTR0+1
+@A01 8D 9C 80  ; FA01          sta SCREEN+HEXVID+SCRATCH+2
+@A04 A0 00     ; FA04          ldy #0
+@A06 B9 1A FD  ; FA06  @title: lda titletext,y
+@A09 F0 08     ; FA09          beq @zpok
+@A0B 29 3F     ; FA0B          and #$3F
+@A0D 99 00 80  ; FA0D          sta SCREEN,y
+@A10 C8        ; FA10          iny
+@A11 D0 F3     ; FA11          bne @title
+@A13 A0 00     ; FA13  @zpok:  ldy #0
+@A15 B9 2C FD  ; FA15  @zp:    lda zpoktext,y
+@A18 F0 08     ; FA18          beq @label
+@A1A 29 3F     ; FA1A          and #$3F
+@A1C 99 50 80  ; FA1C          sta ROW2,y
+@A1F C8        ; FA1F          iny
+@A20 D0 F3     ; FA20          bne @zp
+@A22 A0 00     ; FA22  @label: ldy #0
+@A24 B9 55 FD  ; FA24  @l:     lda vidbadtext,y
+@A27 F0 08     ; FA27          beq @go
+@A29 29 3F     ; FA29          and #$3F
+@A2B 99 78 80  ; FA2B          sta ROW3,y
+@A2E C8        ; FA2E          iny
+@A2F D0 F3     ; FA2F          bne @l
+@A31 A2 86     ; FA31  @go:    ldx #HEXVID
+@A33 9A        ; FA33          txs
+@A34 4C 44 FB  ; FA34          jmp fail
 
 ; vpassed:
-@A32 A9 20     ; FA32          lda #$20
-@A34 A2 00     ; FA34          ldx #0
-@A36 9D 00 80  ; FA36  @clear: sta SCREEN+$000,x
-@A39 9D 00 81  ; FA39          sta SCREEN+$100,x
-@A3C 9D 00 82  ; FA3C          sta SCREEN+$200,x
-@A3F 9D 00 83  ; FA3F          sta SCREEN+$300,x
-@A42 E8        ; FA42          inx
-@A43 D0 F1     ; FA43          bne @clear
-@A45 BD 15 FD  ; FA45  @title: lda titletext,x
-@A48 F0 08     ; FA48          beq @zp
-@A4A 29 3F     ; FA4A          and #$3F
-@A4C 9D 00 80  ; FA4C          sta SCREEN,x
-@A4F E8        ; FA4F          inx
-@A50 D0 F3     ; FA50          bne @title
-@A52 A2 00     ; FA52  @zp:    ldx #0
-@A54 BD 27 FD  ; FA54  @zpok:  lda zpoktext,x
-@A57 F0 08     ; FA57          beq @vid
-@A59 29 3F     ; FA59          and #$3F
-@A5B 9D 50 80  ; FA5B          sta ROW2,x
-@A5E E8        ; FA5E          inx
-@A5F D0 F3     ; FA5F          bne @zpok
-@A61 A2 00     ; FA61  @vid:   ldx #0
-@A63 BD 43 FD  ; FA63  @vidok: lda vidoktext,x
-@A66 F0 08     ; FA66          beq ram
-@A68 29 3F     ; FA68          and #$3F
-@A6A 9D 78 80  ; FA6A          sta ROW3,x
-@A6D E8        ; FA6D          inx
-@A6E D0 F3     ; FA6E          bne @vidok
+@A37 A9 20     ; FA37          lda #$20
+@A39 A2 00     ; FA39          ldx #0
+@A3B 9D 00 80  ; FA3B  @clear: sta SCREEN+$000,x
+@A3E 9D 00 81  ; FA3E          sta SCREEN+$100,x
+@A41 9D 00 82  ; FA41          sta SCREEN+$200,x
+@A44 9D 00 83  ; FA44          sta SCREEN+$300,x
+@A47 E8        ; FA47          inx
+@A48 D0 F1     ; FA48          bne @clear
+@A4A BD 1A FD  ; FA4A  @title: lda titletext,x
+@A4D F0 08     ; FA4D          beq @zp
+@A4F 29 3F     ; FA4F          and #$3F
+@A51 9D 00 80  ; FA51          sta SCREEN,x
+@A54 E8        ; FA54          inx
+@A55 D0 F3     ; FA55          bne @title
+@A57 A2 00     ; FA57  @zp:    ldx #0
+@A59 BD 2C FD  ; FA59  @zpok:  lda zpoktext,x
+@A5C F0 08     ; FA5C          beq @vid
+@A5E 29 3F     ; FA5E          and #$3F
+@A60 9D 50 80  ; FA60          sta ROW2,x
+@A63 E8        ; FA63          inx
+@A64 D0 F3     ; FA64          bne @zpok
+@A66 A2 00     ; FA66  @vid:   ldx #0
+@A68 BD 48 FD  ; FA68  @vidok: lda vidoktext,x
+@A6B F0 08     ; FA6B          beq ram
+@A6D 29 3F     ; FA6D          and #$3F
+@A6F 9D 78 80  ; FA6F          sta ROW3,x
+@A72 E8        ; FA72          inx
+@A73 D0 F3     ; FA73          bne @vidok
 
 ; ; The RAM, $0002-$1FFF: written whole (page 0 by zero page,X), then compared whole, twice.
-@A70 A2 02     ; FA70  ram:    ldx #2
-@A72 8A        ; FA72  @w0a:   txa
-@A73 49 A5     ; FA73          eor #$A5
-@A75 95 00     ; FA75          sta $00,x
-@A77 E8        ; FA77          inx
-@A78 D0 F8     ; FA78          bne @w0a
-@A7A 86 00     ; FA7A          stx PTR0
-@A7C A9 01     ; FA7C          lda #1
-@A7E 85 01     ; FA7E          sta PTR0+1
-@A80 A0 00     ; FA80  @wpa:   ldy #0
-@A82 98        ; FA82  @wba:   tya
-@A83 45 01     ; FA83          eor PTR0+1
-@A85 49 A5     ; FA85          eor #$A5
-@A87 91 00     ; FA87          sta (PTR0),y
-@A89 C8        ; FA89          iny
-@A8A D0 F6     ; FA8A          bne @wba
-@A8C E6 01     ; FA8C          inc PTR0+1
-@A8E A5 01     ; FA8E          lda PTR0+1
-@A90 C9 20     ; FA90          cmp #$20
-@A92 D0 EC     ; FA92          bne @wpa
-@A94 A2 02     ; FA94          ldx #2
-@A96 8A        ; FA96  @c0a:   txa
-@A97 49 A5     ; FA97          eor #$A5
-@A99 55 00     ; FA99          eor $00,x
-@A9B F0 03     ; FA9B          beq @c0an
-@A9D 4C 11 FB  ; FA9D          jmp rfail0
-@AA0 E8        ; FAA0  @c0an:  inx
-@AA1 D0 F3     ; FAA1          bne @c0a
-@AA3 A9 01     ; FAA3          lda #1
-@AA5 85 01     ; FAA5          sta PTR0+1
-@AA7 A0 00     ; FAA7  @cpa:   ldy #0
-@AA9 98        ; FAA9  @cba:   tya
-@AAA 45 01     ; FAAA          eor PTR0+1
-@AAC 49 A5     ; FAAC          eor #$A5
-@AAE 51 00     ; FAAE          eor (PTR0),y
-@AB0 F0 03     ; FAB0          beq @cban
-@AB2 4C 1F FB  ; FAB2          jmp rfail
-@AB5 C8        ; FAB5  @cban:  iny
-@AB6 D0 F1     ; FAB6          bne @cba
-@AB8 E6 01     ; FAB8          inc PTR0+1
-@ABA A5 01     ; FABA          lda PTR0+1
-@ABC C9 20     ; FABC          cmp #$20
-@ABE D0 E7     ; FABE          bne @cpa
+@A75 A2 02     ; FA75  ram:    ldx #2
+@A77 8A        ; FA77  @w0a:   txa
+@A78 49 A5     ; FA78          eor #$A5
+@A7A 95 00     ; FA7A          sta $00,x
+@A7C E8        ; FA7C          inx
+@A7D D0 F8     ; FA7D          bne @w0a
+@A7F 86 00     ; FA7F          stx PTR0
+@A81 A9 01     ; FA81          lda #1
+@A83 85 01     ; FA83          sta PTR0+1
+@A85 A0 00     ; FA85  @wpa:   ldy #0
+@A87 98        ; FA87  @wba:   tya
+@A88 45 01     ; FA88          eor PTR0+1
+@A8A 49 A5     ; FA8A          eor #$A5
+@A8C 91 00     ; FA8C          sta (PTR0),y
+@A8E C8        ; FA8E          iny
+@A8F D0 F6     ; FA8F          bne @wba
+@A91 E6 01     ; FA91          inc PTR0+1
+@A93 A5 01     ; FA93          lda PTR0+1
+@A95 C9 20     ; FA95          cmp #$20
+@A97 D0 EC     ; FA97          bne @wpa
+@A99 A2 02     ; FA99          ldx #2
+@A9B 8A        ; FA9B  @c0a:   txa
+@A9C 49 A5     ; FA9C          eor #$A5
+@A9E 55 00     ; FA9E          eor $00,x
+@AA0 F0 03     ; FAA0          beq @c0an
+@AA2 4C 16 FB  ; FAA2          jmp rfail0
+@AA5 E8        ; FAA5  @c0an:  inx
+@AA6 D0 F3     ; FAA6          bne @c0a
+@AA8 A9 01     ; FAA8          lda #1
+@AAA 85 01     ; FAAA          sta PTR0+1
+@AAC A0 00     ; FAAC  @cpa:   ldy #0
+@AAE 98        ; FAAE  @cba:   tya
+@AAF 45 01     ; FAAF          eor PTR0+1
+@AB1 49 A5     ; FAB1          eor #$A5
+@AB3 51 00     ; FAB3          eor (PTR0),y
+@AB5 F0 03     ; FAB5          beq @cban
+@AB7 4C 24 FB  ; FAB7          jmp rfail
+@ABA C8        ; FABA  @cban:  iny
+@ABB D0 F1     ; FABB          bne @cba
+@ABD E6 01     ; FABD          inc PTR0+1
+@ABF A5 01     ; FABF          lda PTR0+1
+@AC1 C9 20     ; FAC1          cmp #$20
+@AC3 D0 E7     ; FAC3          bne @cpa
 
-@AC0 A2 02     ; FAC0          ldx #2
-@AC2 8A        ; FAC2  @w0b:   txa
-@AC3 49 5A     ; FAC3          eor #$5A
-@AC5 95 00     ; FAC5          sta $00,x
-@AC7 E8        ; FAC7          inx
-@AC8 D0 F8     ; FAC8          bne @w0b
-@ACA A9 01     ; FACA          lda #1
-@ACC 85 01     ; FACC          sta PTR0+1
-@ACE A0 00     ; FACE  @wpb:   ldy #0
-@AD0 98        ; FAD0  @wbb:   tya
-@AD1 45 01     ; FAD1          eor PTR0+1
-@AD3 49 5A     ; FAD3          eor #$5A
-@AD5 91 00     ; FAD5          sta (PTR0),y
-@AD7 C8        ; FAD7          iny
-@AD8 D0 F6     ; FAD8          bne @wbb
-@ADA E6 01     ; FADA          inc PTR0+1
-@ADC A5 01     ; FADC          lda PTR0+1
-@ADE C9 20     ; FADE          cmp #$20
-@AE0 D0 EC     ; FAE0          bne @wpb
-@AE2 A2 02     ; FAE2          ldx #2
-@AE4 8A        ; FAE4  @c0b:   txa
-@AE5 49 5A     ; FAE5          eor #$5A
-@AE7 55 00     ; FAE7          eor $00,x
-@AE9 F0 03     ; FAE9          beq @c0bn
-@AEB 4C 11 FB  ; FAEB          jmp rfail0
-@AEE E8        ; FAEE  @c0bn:  inx
-@AEF D0 F3     ; FAEF          bne @c0b
-@AF1 A9 01     ; FAF1          lda #1
-@AF3 85 01     ; FAF3          sta PTR0+1
-@AF5 A0 00     ; FAF5  @cpb:   ldy #0
-@AF7 98        ; FAF7  @cbb:   tya
-@AF8 45 01     ; FAF8          eor PTR0+1
-@AFA 49 5A     ; FAFA          eor #$5A
-@AFC 51 00     ; FAFC          eor (PTR0),y
-@AFE F0 03     ; FAFE          beq @cbbn
-@B00 4C 1F FB  ; FB00          jmp rfail
-@B03 C8        ; FB03  @cbbn:  iny
-@B04 D0 F1     ; FB04          bne @cbb
-@B06 E6 01     ; FB06          inc PTR0+1
-@B08 A5 01     ; FB08          lda PTR0+1
-@B0A C9 20     ; FB0A          cmp #$20
-@B0C D0 E7     ; FB0C          bne @cpb
-@B0E 4C C0 FB  ; FB0E          jmp rampassed
+@AC5 A2 02     ; FAC5          ldx #2
+@AC7 8A        ; FAC7  @w0b:   txa
+@AC8 49 5A     ; FAC8          eor #$5A
+@ACA 95 00     ; FACA          sta $00,x
+@ACC E8        ; FACC          inx
+@ACD D0 F8     ; FACD          bne @w0b
+@ACF A9 01     ; FACF          lda #1
+@AD1 85 01     ; FAD1          sta PTR0+1
+@AD3 A0 00     ; FAD3  @wpb:   ldy #0
+@AD5 98        ; FAD5  @wbb:   tya
+@AD6 45 01     ; FAD6          eor PTR0+1
+@AD8 49 5A     ; FAD8          eor #$5A
+@ADA 91 00     ; FADA          sta (PTR0),y
+@ADC C8        ; FADC          iny
+@ADD D0 F6     ; FADD          bne @wbb
+@ADF E6 01     ; FADF          inc PTR0+1
+@AE1 A5 01     ; FAE1          lda PTR0+1
+@AE3 C9 20     ; FAE3          cmp #$20
+@AE5 D0 EC     ; FAE5          bne @wpb
+@AE7 A2 02     ; FAE7          ldx #2
+@AE9 8A        ; FAE9  @c0b:   txa
+@AEA 49 5A     ; FAEA          eor #$5A
+@AEC 55 00     ; FAEC          eor $00,x
+@AEE F0 03     ; FAEE          beq @c0bn
+@AF0 4C 16 FB  ; FAF0          jmp rfail0
+@AF3 E8        ; FAF3  @c0bn:  inx
+@AF4 D0 F3     ; FAF4          bne @c0b
+@AF6 A9 01     ; FAF6          lda #1
+@AF8 85 01     ; FAF8          sta PTR0+1
+@AFA A0 00     ; FAFA  @cpb:   ldy #0
+@AFC 98        ; FAFC  @cbb:   tya
+@AFD 45 01     ; FAFD          eor PTR0+1
+@AFF 49 5A     ; FAFF          eor #$5A
+@B01 51 00     ; FB01          eor (PTR0),y
+@B03 F0 03     ; FB03          beq @cbbn
+@B05 4C 24 FB  ; FB05          jmp rfail
+@B08 C8        ; FB08  @cbbn:  iny
+@B09 D0 F1     ; FB09          bne @cbb
+@B0B E6 01     ; FB0B          inc PTR0+1
+@B0D A5 01     ; FB0D          lda PTR0+1
+@B0F C9 20     ; FB0F          cmp #$20
+@B11 D0 E7     ; FB11          bne @cpb
+@B13 4C C5 FB  ; FB13          jmp rampassed
 
-@B11 8D BC 80  ; FB11  rfail0: sta SCREEN+HEXRAM+SCRATCH
-@B14 8E BD 80  ; FB14          stx SCREEN+HEXRAM+SCRATCH+1
-@B17 A9 00     ; FB17          lda #0
-@B19 8D BE 80  ; FB19          sta SCREEN+HEXRAM+SCRATCH+2
-@B1C 4C 2A FB  ; FB1C          jmp rlabel
-@B1F 8D BC 80  ; FB1F  rfail:  sta SCREEN+HEXRAM+SCRATCH
-@B22 8C BD 80  ; FB22          sty SCREEN+HEXRAM+SCRATCH+1
-@B25 A5 01     ; FB25          lda PTR0+1
-@B27 8D BE 80  ; FB27          sta SCREEN+HEXRAM+SCRATCH+2
-@B2A A0 00     ; FB2A  rlabel: ldy #0
-@B2C B9 66 FD  ; FB2C  @l:     lda rambadtext,y
-@B2F F0 08     ; FB2F          beq @go
-@B31 29 3F     ; FB31          and #$3F
-@B33 99 A0 80  ; FB33          sta ROW4,y
-@B36 C8        ; FB36          iny
-@B37 D0 F3     ; FB37          bne @l
-@B39 A2 A8     ; FB39  @go:    ldx #HEXRAM
-@B3B 9A        ; FB3B          txs
-@B3C 4C 3F FB  ; FB3C          jmp fail
+@B16 8D BC 80  ; FB16  rfail0: sta SCREEN+HEXRAM+SCRATCH
+@B19 8E BD 80  ; FB19          stx SCREEN+HEXRAM+SCRATCH+1
+@B1C A9 00     ; FB1C          lda #0
+@B1E 8D BE 80  ; FB1E          sta SCREEN+HEXRAM+SCRATCH+2
+@B21 4C 2F FB  ; FB21          jmp rlabel
+@B24 8D BC 80  ; FB24  rfail:  sta SCREEN+HEXRAM+SCRATCH
+@B27 8C BD 80  ; FB27          sty SCREEN+HEXRAM+SCRATCH+1
+@B2A A5 01     ; FB2A          lda PTR0+1
+@B2C 8D BE 80  ; FB2C          sta SCREEN+HEXRAM+SCRATCH+2
+@B2F A0 00     ; FB2F  rlabel: ldy #0
+@B31 B9 6B FD  ; FB31  @l:     lda rambadtext,y
+@B34 F0 08     ; FB34          beq @go
+@B36 29 3F     ; FB36          and #$3F
+@B38 99 A0 80  ; FB38          sta ROW4,y
+@B3B C8        ; FB3B          iny
+@B3C D0 F3     ; FB3C          bne @l
+@B3E A2 A8     ; FB3E  @go:    ldx #HEXRAM
+@B40 9A        ; FB40          txs
+@B41 4C 44 FB  ; FB41          jmp fail
 
 ; ; A failure's row: S its digits' offset in page $80, the bits, low and high bytes waiting in
 ; ; the cells SCRATCH beyond. The digits written, the cells blanked, and here it stays.
-@B3F BA        ; FB3F  fail:   tsx
-@B40 BD 16 80  ; FB40          lda SCREEN+SCRATCH+2,x
-@B43 4A        ; FB43          lsr
-@B44 4A        ; FB44          lsr
-@B45 4A        ; FB45          lsr
-@B46 4A        ; FB46          lsr
-@B47 C9 0A     ; FB47          cmp #10
-@B49 90 02     ; FB49          bcc @h1
-@B4B 69 06     ; FB4B          adc #6
-@B4D 69 30     ; FB4D  @h1:    adc #'0'
-@B4F 29 3F     ; FB4F          and #$3F
-@B51 9D 00 80  ; FB51          sta SCREEN,x
-@B54 BD 16 80  ; FB54          lda SCREEN+SCRATCH+2,x
-@B57 29 0F     ; FB57          and #$0F
-@B59 C9 0A     ; FB59          cmp #10
-@B5B 90 02     ; FB5B          bcc @h2
-@B5D 69 06     ; FB5D          adc #6
-@B5F 69 30     ; FB5F  @h2:    adc #'0'
-@B61 29 3F     ; FB61          and #$3F
-@B63 9D 01 80  ; FB63          sta SCREEN+1,x
-@B66 BD 15 80  ; FB66          lda SCREEN+SCRATCH+1,x
-@B69 4A        ; FB69          lsr
-@B6A 4A        ; FB6A          lsr
-@B6B 4A        ; FB6B          lsr
-@B6C 4A        ; FB6C          lsr
-@B6D C9 0A     ; FB6D          cmp #10
-@B6F 90 02     ; FB6F          bcc @h3
-@B71 69 06     ; FB71          adc #6
-@B73 69 30     ; FB73  @h3:    adc #'0'
-@B75 29 3F     ; FB75          and #$3F
-@B77 9D 02 80  ; FB77          sta SCREEN+2,x
-@B7A BD 15 80  ; FB7A          lda SCREEN+SCRATCH+1,x
-@B7D 29 0F     ; FB7D          and #$0F
-@B7F C9 0A     ; FB7F          cmp #10
-@B81 90 02     ; FB81          bcc @h4
-@B83 69 06     ; FB83          adc #6
-@B85 69 30     ; FB85  @h4:    adc #'0'
-@B87 29 3F     ; FB87          and #$3F
-@B89 9D 03 80  ; FB89          sta SCREEN+3,x
-@B8C BD 14 80  ; FB8C          lda SCREEN+SCRATCH,x
-@B8F 4A        ; FB8F          lsr
-@B90 4A        ; FB90          lsr
-@B91 4A        ; FB91          lsr
-@B92 4A        ; FB92          lsr
-@B93 C9 0A     ; FB93          cmp #10
-@B95 90 02     ; FB95          bcc @h5
-@B97 69 06     ; FB97          adc #6
-@B99 69 30     ; FB99  @h5:    adc #'0'
-@B9B 29 3F     ; FB9B          and #$3F
-@B9D 9D 05 80  ; FB9D          sta SCREEN+5,x
-@BA0 BD 14 80  ; FBA0          lda SCREEN+SCRATCH,x
-@BA3 29 0F     ; FBA3          and #$0F
-@BA5 C9 0A     ; FBA5          cmp #10
-@BA7 90 02     ; FBA7          bcc @h6
-@BA9 69 06     ; FBA9          adc #6
-@BAB 69 30     ; FBAB  @h6:    adc #'0'
-@BAD 29 3F     ; FBAD          and #$3F
-@BAF 9D 06 80  ; FBAF          sta SCREEN+6,x
-@BB2 A9 20     ; FBB2          lda #$20
-@BB4 9D 14 80  ; FBB4          sta SCREEN+SCRATCH,x
-@BB7 9D 15 80  ; FBB7          sta SCREEN+SCRATCH+1,x
-@BBA 9D 16 80  ; FBBA          sta SCREEN+SCRATCH+2,x
-@BBD 4C BD FB  ; FBBD  @hang:  jmp @hang
+@B44 BA        ; FB44  fail:   tsx
+@B45 BD 16 80  ; FB45          lda SCREEN+SCRATCH+2,x
+@B48 4A        ; FB48          lsr
+@B49 4A        ; FB49          lsr
+@B4A 4A        ; FB4A          lsr
+@B4B 4A        ; FB4B          lsr
+@B4C C9 0A     ; FB4C          cmp #10
+@B4E 90 02     ; FB4E          bcc @h1
+@B50 69 06     ; FB50          adc #6
+@B52 69 30     ; FB52  @h1:    adc #'0'
+@B54 29 3F     ; FB54          and #$3F
+@B56 9D 00 80  ; FB56          sta SCREEN,x
+@B59 BD 16 80  ; FB59          lda SCREEN+SCRATCH+2,x
+@B5C 29 0F     ; FB5C          and #$0F
+@B5E C9 0A     ; FB5E          cmp #10
+@B60 90 02     ; FB60          bcc @h2
+@B62 69 06     ; FB62          adc #6
+@B64 69 30     ; FB64  @h2:    adc #'0'
+@B66 29 3F     ; FB66          and #$3F
+@B68 9D 01 80  ; FB68          sta SCREEN+1,x
+@B6B BD 15 80  ; FB6B          lda SCREEN+SCRATCH+1,x
+@B6E 4A        ; FB6E          lsr
+@B6F 4A        ; FB6F          lsr
+@B70 4A        ; FB70          lsr
+@B71 4A        ; FB71          lsr
+@B72 C9 0A     ; FB72          cmp #10
+@B74 90 02     ; FB74          bcc @h3
+@B76 69 06     ; FB76          adc #6
+@B78 69 30     ; FB78  @h3:    adc #'0'
+@B7A 29 3F     ; FB7A          and #$3F
+@B7C 9D 02 80  ; FB7C          sta SCREEN+2,x
+@B7F BD 15 80  ; FB7F          lda SCREEN+SCRATCH+1,x
+@B82 29 0F     ; FB82          and #$0F
+@B84 C9 0A     ; FB84          cmp #10
+@B86 90 02     ; FB86          bcc @h4
+@B88 69 06     ; FB88          adc #6
+@B8A 69 30     ; FB8A  @h4:    adc #'0'
+@B8C 29 3F     ; FB8C          and #$3F
+@B8E 9D 03 80  ; FB8E          sta SCREEN+3,x
+@B91 BD 14 80  ; FB91          lda SCREEN+SCRATCH,x
+@B94 4A        ; FB94          lsr
+@B95 4A        ; FB95          lsr
+@B96 4A        ; FB96          lsr
+@B97 4A        ; FB97          lsr
+@B98 C9 0A     ; FB98          cmp #10
+@B9A 90 02     ; FB9A          bcc @h5
+@B9C 69 06     ; FB9C          adc #6
+@B9E 69 30     ; FB9E  @h5:    adc #'0'
+@BA0 29 3F     ; FBA0          and #$3F
+@BA2 9D 05 80  ; FBA2          sta SCREEN+5,x
+@BA5 BD 14 80  ; FBA5          lda SCREEN+SCRATCH,x
+@BA8 29 0F     ; FBA8          and #$0F
+@BAA C9 0A     ; FBAA          cmp #10
+@BAC 90 02     ; FBAC          bcc @h6
+@BAE 69 06     ; FBAE          adc #6
+@BB0 69 30     ; FBB0  @h6:    adc #'0'
+@BB2 29 3F     ; FBB2          and #$3F
+@BB4 9D 06 80  ; FBB4          sta SCREEN+6,x
+@BB7 A9 20     ; FBB7          lda #$20
+@BB9 9D 14 80  ; FBB9          sta SCREEN+SCRATCH,x
+@BBC 9D 15 80  ; FBBC          sta SCREEN+SCRATCH+1,x
+@BBF 9D 16 80  ; FBBF          sta SCREEN+SCRATCH+2,x
+@BC2 4C C2 FB  ; FBC2  @hang:  jmp @hang
 
 ; ; The RAM is good: the stack and JSR from here.
 ; rampassed:
-@BC0 A2 FF     ; FBC0          ldx #$FF
-@BC2 9A        ; FBC2          txs
-@BC3 A9 A0     ; FBC3          lda #<ROW4
-@BC5 85 02     ; FBC5          sta ROWP
-@BC7 A9 80     ; FBC7          lda #>ROW4
-@BC9 85 03     ; FBC9          sta ROWP+1
-@BCB A2 5F     ; FBCB          ldx #<ramoktext
-@BCD A0 FD     ; FBCD          ldy #>ramoktext
-@BCF 20 CE FC  ; FBCF          jsr putstr
-@BD2 A2 00     ; FBD2          ldx #0
-@BD4 86 06     ; FBD4  @chip:  stx CHIP
-@BD6 BD 0B FD  ; FBD6          lda romrowlo,x  ; ROWP = row 5 + CHIP
-@BD9 85 02     ; FBD9          sta ROWP
-@BDB BD 10 FD  ; FBDB          lda romrowhi,x
-@BDE 85 03     ; FBDE          sta ROWP+1
-@BE0 A9 00     ; FBE0          lda #0
-@BE2 85 00     ; FBE2          sta PTR0
-@BE4 85 04     ; FBE4          sta SUM
-@BE6 BD 06 FD  ; FBE6          lda rompages,x
-@BE9 85 01     ; FBE9          sta PTR0+1
-@BEB A2 08     ; FBEB          ldx #8          ; 2048 bytes
-@BED A0 00     ; FBED  @page:  ldy #0
-@BEF 18        ; FBEF  @byte:  clc
-@BF0 A5 04     ; FBF0          lda SUM
-@BF2 71 00     ; FBF2          adc (PTR0),y
-@BF4 85 04     ; FBF4          sta SUM
-@BF6 C8        ; FBF6          iny
-@BF7 D0 F6     ; FBF7          bne @byte
-@BF9 E6 01     ; FBF9          inc PTR0+1
-@BFB CA        ; FBFB          dex
-@BFC D0 EF     ; FBFC          bne @page
-@BFE A2 6F     ; FBFE          ldx #<romtext
-@C00 A0 FD     ; FC00          ldy #>romtext
-@C02 20 CE FC  ; FC02          jsr putstr
-@C05 A6 06     ; FC05          ldx CHIP
-@C07 BD 06 FD  ; FC07          lda rompages,x
-@C0A 20 F0 FC  ; FC0A          jsr puthex
-@C0D A9 00     ; FC0D          lda #0
-@C0F 20 F0 FC  ; FC0F          jsr puthex
-@C12 A5 04     ; FC12          lda SUM
-@C14 D0 0A     ; FC14          bne @bad
-@C16 A2 74     ; FC16          ldx #<oktext
-@C18 A0 FD     ; FC18          ldy #>oktext
-@C1A 20 CE FC  ; FC1A          jsr putstr
-@C1D 4C 2C FC  ; FC1D          jmp @next
-@C20 A2 78     ; FC20  @bad:   ldx #<badtext
-@C22 A0 FD     ; FC22          ldy #>badtext
-@C24 20 CE FC  ; FC24          jsr putstr
-@C27 A5 04     ; FC27          lda SUM
-@C29 20 F0 FC  ; FC29          jsr puthex
-@C2C A6 06     ; FC2C  @next:  ldx CHIP
-@C2E E8        ; FC2E          inx
-@C2F E0 05     ; FC2F          cpx #ROMCHIPS
-@C31 D0 A1     ; FC31          bne @chip
+@BC5 A2 FF     ; FBC5          ldx #$FF
+@BC7 9A        ; FBC7          txs
+@BC8 A9 A0     ; FBC8          lda #<ROW4
+@BCA 85 02     ; FBCA          sta ROWP
+@BCC A9 80     ; FBCC          lda #>ROW4
+@BCE 85 03     ; FBCE          sta ROWP+1
+@BD0 A2 64     ; FBD0          ldx #<ramoktext
+@BD2 A0 FD     ; FBD2          ldy #>ramoktext
+@BD4 20 D3 FC  ; FBD4          jsr putstr
+@BD7 A2 00     ; FBD7          ldx #0
+@BD9 86 06     ; FBD9  @chip:  stx CHIP
+@BDB BD 10 FD  ; FBDB          lda romrowlo,x  ; ROWP = row 5 + CHIP
+@BDE 85 02     ; FBDE          sta ROWP
+@BE0 BD 15 FD  ; FBE0          lda romrowhi,x
+@BE3 85 03     ; FBE3          sta ROWP+1
+@BE5 A9 00     ; FBE5          lda #0
+@BE7 85 00     ; FBE7          sta PTR0
+@BE9 85 04     ; FBE9          sta SUM
+@BEB BD 0B FD  ; FBEB          lda rompages,x
+@BEE 85 01     ; FBEE          sta PTR0+1
+@BF0 A2 08     ; FBF0          ldx #8          ; 2048 bytes
+@BF2 A0 00     ; FBF2  @page:  ldy #0
+@BF4 18        ; FBF4  @byte:  clc
+@BF5 A5 04     ; FBF5          lda SUM
+@BF7 71 00     ; FBF7          adc (PTR0),y
+@BF9 85 04     ; FBF9          sta SUM
+@BFB C8        ; FBFB          iny
+@BFC D0 F6     ; FBFC          bne @byte
+@BFE E6 01     ; FBFE          inc PTR0+1
+@C00 CA        ; FC00          dex
+@C01 D0 EF     ; FC01          bne @page
+@C03 A2 74     ; FC03          ldx #<romtext
+@C05 A0 FD     ; FC05          ldy #>romtext
+@C07 20 D3 FC  ; FC07          jsr putstr
+@C0A A6 06     ; FC0A          ldx CHIP
+@C0C BD 0B FD  ; FC0C          lda rompages,x
+@C0F 20 F5 FC  ; FC0F          jsr puthex
+@C12 A9 00     ; FC12          lda #0
+@C14 20 F5 FC  ; FC14          jsr puthex
+@C17 A5 04     ; FC17          lda SUM
+@C19 D0 0A     ; FC19          bne @bad
+@C1B A2 79     ; FC1B          ldx #<oktext
+@C1D A0 FD     ; FC1D          ldy #>oktext
+@C1F 20 D3 FC  ; FC1F          jsr putstr
+@C22 4C 31 FC  ; FC22          jmp @next
+@C25 A2 7D     ; FC25  @bad:   ldx #<badtext
+@C27 A0 FD     ; FC27          ldy #>badtext
+@C29 20 D3 FC  ; FC29          jsr putstr
+@C2C A5 04     ; FC2C          lda SUM
+@C2E 20 F5 FC  ; FC2E          jsr puthex
+@C31 A6 06     ; FC31  @next:  ldx CHIP
+@C33 E8        ; FC33          inx
+@C34 E0 05     ; FC34          cpx #ROMCHIPS
+@C36 D0 A1     ; FC36          bne @chip
 
 ; ; The keyboard: the first held key in scan order, its row, column and legend, forever.
-@C33 A9 B8     ; FC33  keys:   lda #<ROW11
-@C35 85 02     ; FC35          sta ROWP
-@C37 A9 81     ; FC37          lda #>ROW11
-@C39 85 03     ; FC39          sta ROWP+1
-@C3B A9 FF     ; FC3B          lda #$FF
-@C3D 85 05     ; FC3D          sta KEYIX
-@C3F A2 00     ; FC3F          ldx #0
-@C41 8E 10 E8  ; FC41  @row:   stx PIA1PA
-@C44 AD 12 E8  ; FC44          lda PIA1PB
-@C47 A0 00     ; FC47          ldy #0
-@C49 4A        ; FC49  @bit:   lsr
-@C4A B0 12     ; FC4A          bcs @up
-@C4C 48        ; FC4C          pha
-@C4D A5 05     ; FC4D          lda KEYIX
-@C4F C9 FF     ; FC4F          cmp #$FF
-@C51 D0 0A     ; FC51          bne @have
-@C53 8A        ; FC53          txa
-@C54 0A        ; FC54          asl
-@C55 0A        ; FC55          asl
-@C56 0A        ; FC56          asl
-@C57 84 04     ; FC57          sty SUM
-@C59 05 04     ; FC59          ora SUM
-@C5B 85 05     ; FC5B          sta KEYIX
-@C5D 68        ; FC5D  @have:  pla
-@C5E C8        ; FC5E  @up:    iny
-@C5F C0 08     ; FC5F          cpy #8
-@C61 D0 E6     ; FC61          bne @bit
-@C63 E8        ; FC63          inx
-@C64 E0 0A     ; FC64          cpx #10
-@C66 D0 D9     ; FC66          bne @row
-@C68 A9 0F     ; FC68          lda #$0F
-@C6A 8D 10 E8  ; FC6A          sta PIA1PA
-@C6D A2 7E     ; FC6D          ldx #<keytext
-@C6F A0 FD     ; FC6F          ldy #>keytext
-@C71 20 CE FC  ; FC71          jsr putstr
-@C74 A5 05     ; FC74          lda KEYIX
-@C76 C9 FF     ; FC76          cmp #$FF
-@C78 F0 43     ; FC78          beq @blank
-@C7A 4A        ; FC7A          lsr
-@C7B 4A        ; FC7B          lsr
-@C7C 4A        ; FC7C          lsr
-@C7D 09 30     ; FC7D          ora #'0'
-@C7F 20 DF FC  ; FC7F          jsr putch
-@C82 A5 05     ; FC82          lda KEYIX
-@C84 29 07     ; FC84          and #7
-@C86 09 30     ; FC86          ora #'0'
-@C88 20 DF FC  ; FC88          jsr putch
-@C8B A9 20     ; FC8B          lda #' '
-@C8D 20 DF FC  ; FC8D          jsr putch
-@C90 A6 05     ; FC90          ldx KEYIX
-@C92 BD 83 FD  ; FC92          lda legends,x
-@C95 30 06     ; FC95          bmi @name
-@C97 20 DF FC  ; FC97          jsr putch
-@C9A 4C BD FC  ; FC9A          jmp @blank
-@C9D 29 7F     ; FC9D  @name:  and #$7F
-@C9F AA        ; FC9F          tax
-@CA0 A0 00     ; FCA0          ldy #0
-@CA2 E0 00     ; FCA2  @find:  cpx #0
-@CA4 F0 0C     ; FCA4          beq @print
-@CA6 B9 D3 FD  ; FCA6  @skip:  lda names,y
-@CA9 C8        ; FCA9          iny
-@CAA C9 00     ; FCAA          cmp #0
-@CAC D0 F8     ; FCAC          bne @skip
-@CAE CA        ; FCAE          dex
-@CAF 4C A2 FC  ; FCAF          jmp @find
-@CB2 B9 D3 FD  ; FCB2  @print: lda names,y
-@CB5 F0 06     ; FCB5          beq @blank
-@CB7 20 DF FC  ; FCB7          jsr putch
-@CBA C8        ; FCBA          iny
-@CBB D0 F5     ; FCBB          bne @print
-@CBD A6 02     ; FCBD  @blank: ldx ROWP        ; the rest of the row blank: row 11 lies in page $81 ($81B8-$81DF)
-@CBF A9 20     ; FCBF          lda #$20
-@CC1 E0 CC     ; FCC1  @b:     cpx #<ROW11+20
-@CC3 F0 06     ; FCC3          beq @again
-@CC5 9D 00 81  ; FCC5          sta $8100,x
-@CC8 E8        ; FCC8          inx
-@CC9 D0 F6     ; FCC9          bne @b
-@CCB 4C 33 FC  ; FCCB  @again: jmp keys
+@C38 A9 B8     ; FC38  keys:   lda #<ROW11
+@C3A 85 02     ; FC3A          sta ROWP
+@C3C A9 81     ; FC3C          lda #>ROW11
+@C3E 85 03     ; FC3E          sta ROWP+1
+@C40 A9 FF     ; FC40          lda #$FF
+@C42 85 05     ; FC42          sta KEYIX
+@C44 A2 00     ; FC44          ldx #0
+@C46 8E 10 E8  ; FC46  @row:   stx PIA1PA
+@C49 AD 12 E8  ; FC49          lda PIA1PB
+@C4C A0 00     ; FC4C          ldy #0
+@C4E 4A        ; FC4E  @bit:   lsr
+@C4F B0 12     ; FC4F          bcs @up
+@C51 48        ; FC51          pha
+@C52 A5 05     ; FC52          lda KEYIX
+@C54 C9 FF     ; FC54          cmp #$FF
+@C56 D0 0A     ; FC56          bne @have
+@C58 8A        ; FC58          txa
+@C59 0A        ; FC59          asl
+@C5A 0A        ; FC5A          asl
+@C5B 0A        ; FC5B          asl
+@C5C 84 04     ; FC5C          sty SUM
+@C5E 05 04     ; FC5E          ora SUM
+@C60 85 05     ; FC60          sta KEYIX
+@C62 68        ; FC62  @have:  pla
+@C63 C8        ; FC63  @up:    iny
+@C64 C0 08     ; FC64          cpy #8
+@C66 D0 E6     ; FC66          bne @bit
+@C68 E8        ; FC68          inx
+@C69 E0 0A     ; FC69          cpx #10
+@C6B D0 D9     ; FC6B          bne @row
+@C6D A9 0F     ; FC6D          lda #$0F
+@C6F 8D 10 E8  ; FC6F          sta PIA1PA
+@C72 A2 83     ; FC72          ldx #<keytext
+@C74 A0 FD     ; FC74          ldy #>keytext
+@C76 20 D3 FC  ; FC76          jsr putstr
+@C79 A5 05     ; FC79          lda KEYIX
+@C7B C9 FF     ; FC7B          cmp #$FF
+@C7D F0 43     ; FC7D          beq @blank
+@C7F 4A        ; FC7F          lsr
+@C80 4A        ; FC80          lsr
+@C81 4A        ; FC81          lsr
+@C82 09 30     ; FC82          ora #'0'
+@C84 20 E4 FC  ; FC84          jsr putch
+@C87 A5 05     ; FC87          lda KEYIX
+@C89 29 07     ; FC89          and #7
+@C8B 09 30     ; FC8B          ora #'0'
+@C8D 20 E4 FC  ; FC8D          jsr putch
+@C90 A9 20     ; FC90          lda #' '
+@C92 20 E4 FC  ; FC92          jsr putch
+@C95 A6 05     ; FC95          ldx KEYIX
+@C97 BD 88 FD  ; FC97          lda legends,x
+@C9A 30 06     ; FC9A          bmi @name
+@C9C 20 E4 FC  ; FC9C          jsr putch
+@C9F 4C C2 FC  ; FC9F          jmp @blank
+@CA2 29 7F     ; FCA2  @name:  and #$7F
+@CA4 AA        ; FCA4          tax
+@CA5 A0 00     ; FCA5          ldy #0
+@CA7 E0 00     ; FCA7  @find:  cpx #0
+@CA9 F0 0C     ; FCA9          beq @print
+@CAB B9 D8 FD  ; FCAB  @skip:  lda names,y
+@CAE C8        ; FCAE          iny
+@CAF C9 00     ; FCAF          cmp #0
+@CB1 D0 F8     ; FCB1          bne @skip
+@CB3 CA        ; FCB3          dex
+@CB4 4C A7 FC  ; FCB4          jmp @find
+@CB7 B9 D8 FD  ; FCB7  @print: lda names,y
+@CBA F0 06     ; FCBA          beq @blank
+@CBC 20 E4 FC  ; FCBC          jsr putch
+@CBF C8        ; FCBF          iny
+@CC0 D0 F5     ; FCC0          bne @print
+@CC2 A6 02     ; FCC2  @blank: ldx ROWP        ; the rest of the row blank: row 11 lies in page $81 ($81B8-$81DF)
+@CC4 A9 20     ; FCC4          lda #$20
+@CC6 E0 CC     ; FCC6  @b:     cpx #<ROW11+20
+@CC8 F0 06     ; FCC8          beq @again
+@CCA 9D 00 81  ; FCCA          sta $8100,x
+@CCD E8        ; FCCD          inx
+@CCE D0 F6     ; FCCE          bne @b
+@CD0 4C 38 FC  ; FCD0  @again: jmp keys
 
 ; ; The text at X (low), Y (high) at ROWP, ROWP moving on.
-@CCE 86 00     ; FCCE  putstr: stx PTR0
-@CD0 84 01     ; FCD0          sty PTR0+1
-@CD2 A0 00     ; FCD2          ldy #0
-@CD4 B1 00     ; FCD4  @loop:  lda (PTR0),y
-@CD6 F0 06     ; FCD6          beq @done
-@CD8 20 DF FC  ; FCD8          jsr putch
-@CDB C8        ; FCDB          iny
-@CDC D0 F6     ; FCDC          bne @loop
-@CDE 60        ; FCDE  @done:  rts
+@CD3 86 00     ; FCD3  putstr: stx PTR0
+@CD5 84 01     ; FCD5          sty PTR0+1
+@CD7 A0 00     ; FCD7          ldy #0
+@CD9 B1 00     ; FCD9  @loop:  lda (PTR0),y
+@CDB F0 06     ; FCDB          beq @done
+@CDD 20 E4 FC  ; FCDD          jsr putch
+@CE0 C8        ; FCE0          iny
+@CE1 D0 F6     ; FCE1          bne @loop
+@CE3 60        ; FCE3  @done:  rts
 
 ; ; A at ROWP as a screen code, ROWP + 1; X, Y kept.
-@CDF 84 07     ; FCDF  putch:  sty PUTY
-@CE1 A0 00     ; FCE1          ldy #0
-@CE3 29 3F     ; FCE3          and #$3F
-@CE5 91 02     ; FCE5          sta (ROWP),y
-@CE7 E6 02     ; FCE7          inc ROWP
-@CE9 D0 02     ; FCE9          bne @done
-@CEB E6 03     ; FCEB          inc ROWP+1
-@CED A4 07     ; FCED  @done:  ldy PUTY
-@CEF 60        ; FCEF          rts
+@CE4 84 07     ; FCE4  putch:  sty PUTY
+@CE6 A0 00     ; FCE6          ldy #0
+@CE8 29 3F     ; FCE8          and #$3F
+@CEA 91 02     ; FCEA          sta (ROWP),y
+@CEC E6 02     ; FCEC          inc ROWP
+@CEE D0 02     ; FCEE          bne @done
+@CF0 E6 03     ; FCF0          inc ROWP+1
+@CF2 A4 07     ; FCF2  @done:  ldy PUTY
+@CF4 60        ; FCF4          rts
 
-@CF0 48        ; FCF0  puthex: pha
-@CF1 4A        ; FCF1          lsr
-@CF2 4A        ; FCF2          lsr
-@CF3 4A        ; FCF3          lsr
-@CF4 4A        ; FCF4          lsr
-@CF5 20 FB FC  ; FCF5          jsr @nib
-@CF8 68        ; FCF8          pla
-@CF9 29 0F     ; FCF9          and #$0F
-@CFB C9 0A     ; FCFB  @nib:   cmp #10
-@CFD 90 02     ; FCFD          bcc @d
-@CFF 69 06     ; FCFF          adc #6
-@D01 69 30     ; FD01  @d:     adc #'0'
-@D03 4C DF FC  ; FD03          jmp putch
+@CF5 48        ; FCF5  puthex: pha
+@CF6 4A        ; FCF6          lsr
+@CF7 4A        ; FCF7          lsr
+@CF8 4A        ; FCF8          lsr
+@CF9 4A        ; FCF9          lsr
+@CFA 20 00 FD  ; FCFA          jsr @nib
+@CFD 68        ; FCFD          pla
+@CFE 29 0F     ; FCFE          and #$0F
+@D00 C9 0A     ; FD00  @nib:   cmp #10
+@D02 90 02     ; FD02          bcc @d
+@D04 69 06     ; FD04          adc #6
+@D06 69 30     ; FD06  @d:     adc #'0'
+@D08 4C E4 FC  ; FD08          jmp putch
 
 ; ROMCHIPS = 5
 ; rompages:
-@D06 C0 C8 E0 F0 F8  ; FD06          .byte $C0, $C8, $E0, $F0, $F8
+@D0B C0 C8 E0 F0 F8  ; FD0B          .byte $C0, $C8, $E0, $F0, $F8
 ; romrowlo:
-@D0B C8 F0 18 40 68  ; FD0B          .byte <(SCREEN+5*40), <(SCREEN+6*40), <(SCREEN+7*40), <(SCREEN+8*40), <(SCREEN+9*40)
+@D10 C8 F0 18 40 68  ; FD10          .byte <(SCREEN+5*40), <(SCREEN+6*40), <(SCREEN+7*40), <(SCREEN+8*40), <(SCREEN+9*40)
 ; romrowhi:
-@D10 80 80 81 81 81  ; FD10          .byte >(SCREEN+5*40), >(SCREEN+6*40), >(SCREEN+7*40), >(SCREEN+8*40), >(SCREEN+9*40)
+@D15 80 80 81 81 81  ; FD15          .byte >(SCREEN+5*40), >(SCREEN+6*40), >(SCREEN+7*40), >(SCREEN+8*40), >(SCREEN+9*40)
 
 ; titletext:
-@D15 42 57 2D 32 30 30 31 20 53 45 4C 46 2D 54 45 53  ; FD15          .byte "BW-2001 SELF-TEST", 0
-@D25 54 00
+@D1A 42 57 2D 32 30 30 31 20 53 45 4C 46 2D 54 45 53  ; FD1A          .byte "BW-2001 SELF-TEST", 0
+@D2A 54 00
 ; zpoktext:
-@D27 5A 45 52 4F 20 50 41 47 45 20 4F 4B 00  ; FD27          .byte "ZERO PAGE OK", 0
+@D2C 5A 45 52 4F 20 50 41 47 45 20 4F 4B 00  ; FD2C          .byte "ZERO PAGE OK", 0
 ; zpbadtext:
-@D34 5A 45 52 4F 20 50 41 47 45 20 42 41 44 20 00  ; FD34          .byte "ZERO PAGE BAD ", 0
+@D39 5A 45 52 4F 20 50 41 47 45 20 42 41 44 20 00  ; FD39          .byte "ZERO PAGE BAD ", 0
 ; vidoktext:
-@D43 56 49 44 45 4F 20 52 41 4D 20 4F 4B 00  ; FD43          .byte "VIDEO RAM OK", 0
+@D48 56 49 44 45 4F 20 52 41 4D 20 4F 4B 00  ; FD48          .byte "VIDEO RAM OK", 0
 ; vidbadtext:
-@D50 56 49 44 45 4F 20 52 41 4D 20 42 41 44 20 00  ; FD50          .byte "VIDEO RAM BAD ", 0
+@D55 56 49 44 45 4F 20 52 41 4D 20 42 41 44 20 00  ; FD55          .byte "VIDEO RAM BAD ", 0
 ; ramoktext:
-@D5F 52 41 4D 20 4F 4B 00  ; FD5F          .byte "RAM OK", 0
+@D64 52 41 4D 20 4F 4B 00  ; FD64          .byte "RAM OK", 0
 ; rambadtext:
-@D66 52 41 4D 20 42 41 44 20 00  ; FD66          .byte "RAM BAD ", 0
+@D6B 52 41 4D 20 42 41 44 20 00  ; FD6B          .byte "RAM BAD ", 0
 ; romtext:
-@D6F 52 4F 4D 20 00  ; FD6F          .byte "ROM ", 0
-@D74 20 4F 4B 00  ; FD74  oktext: .byte " OK", 0
+@D74 52 4F 4D 20 00  ; FD74          .byte "ROM ", 0
+@D79 20 4F 4B 00  ; FD79  oktext: .byte " OK", 0
 ; badtext:
-@D78 20 42 41 44 20 00  ; FD78          .byte " BAD ", 0
+@D7D 20 42 41 44 20 00  ; FD7D          .byte " BAD ", 0
 ; keytext:
-@D7E 4B 45 59 20 00  ; FD7E          .byte "KEY ", 0
+@D83 4B 45 59 20 00  ; FD83          .byte "KEY ", 0
 
 ; ; Each matrix place's legend (spec "The PET it runs on"), row 0 PB0 first: a character, or
 ; ; $80 + a name's index in NAMES, or 0 unused.
 ; legends:
-@D83 21 23 25 26 28 5F 88 87  ; FD83          .byte '!', '#', '%', '&', '(', '_', $80+8, $80+7
-@D8B 22 24 27 5C 29 00 86 85  ; FD8B          .byte '"', '$', $27, $5C, ')', 0, $80+6, $80+5
-@D93 51 45 54 55 4F 5E 37 39  ; FD93          .byte 'Q', 'E', 'T', 'U', 'O', '^', '7', '9'
-@D9B 57 52 59 49 50 00 38 2F  ; FD9B          .byte 'W', 'R', 'Y', 'I', 'P', 0, '8', '/'
-@DA3 41 44 47 4A 4C 00 34 36  ; FDA3          .byte 'A', 'D', 'G', 'J', 'L', 0, '4', '6'
-@DAB 53 46 48 4B 3A 00 35 2A  ; FDAB          .byte 'S', 'F', 'H', 'K', ':', 0, '5', '*'
-@DB3 5A 43 42 4D 3B 81 31 33  ; FDB3          .byte 'Z', 'C', 'B', 'M', ';', $80+1, '1', '3'
-@DBB 58 56 4E 2C 3F 00 32 2B  ; FDBB          .byte 'X', 'V', 'N', ',', '?', 0, '2', '+'
-@DC3 83 40 5D 00 3E 84 30 2D  ; FDC3          .byte $80+3, '@', ']', 0, '>', $80+4, '0', '-'
-@DCB 89 5B 80 3C 82 00 2E 3D  ; FDCB          .byte $80+9, '[', $80+0, '<', $80+2, 0, '.', '='
-@DD3 53 50 41 43 45 00 52 45 54 55 52 4E 00 53 54 4F  ; FDD3  names:  .byte "SPACE", 0, "RETURN", 0, "STOP", 0, "SHIFT L", 0, "SHIFT R", 0
-@DE3 50 00 53 48 49 46 54 20 4C 00 53 48 49 46 54 20
-@DF3 52 00
-@DF5 44 45 4C 00 43 52 53 52 20 44 4E 00 43 52 53 52  ; FDF5          .byte "DEL", 0, "CRSR DN", 0, "CRSR RT", 0, "HOME", 0, "RVS", 0
-@E05 20 52 54 00 48 4F 4D 45 00 52 56 53 00
+@D88 21 23 25 26 28 5F 88 87  ; FD88          .byte '!', '#', '%', '&', '(', '_', $80+8, $80+7
+@D90 22 24 27 5C 29 00 86 85  ; FD90          .byte '"', '$', $27, $5C, ')', 0, $80+6, $80+5
+@D98 51 45 54 55 4F 5E 37 39  ; FD98          .byte 'Q', 'E', 'T', 'U', 'O', '^', '7', '9'
+@DA0 57 52 59 49 50 00 38 2F  ; FDA0          .byte 'W', 'R', 'Y', 'I', 'P', 0, '8', '/'
+@DA8 41 44 47 4A 4C 00 34 36  ; FDA8          .byte 'A', 'D', 'G', 'J', 'L', 0, '4', '6'
+@DB0 53 46 48 4B 3A 00 35 2A  ; FDB0          .byte 'S', 'F', 'H', 'K', ':', 0, '5', '*'
+@DB8 5A 43 42 4D 3B 81 31 33  ; FDB8          .byte 'Z', 'C', 'B', 'M', ';', $80+1, '1', '3'
+@DC0 58 56 4E 2C 3F 00 32 2B  ; FDC0          .byte 'X', 'V', 'N', ',', '?', 0, '2', '+'
+@DC8 83 40 5D 00 3E 84 30 2D  ; FDC8          .byte $80+3, '@', ']', 0, '>', $80+4, '0', '-'
+@DD0 89 5B 80 3C 82 00 2E 3D  ; FDD0          .byte $80+9, '[', $80+0, '<', $80+2, 0, '.', '='
+@DD8 53 50 41 43 45 00 52 45 54 55 52 4E 00 53 54 4F  ; FDD8  names:  .byte "SPACE", 0, "RETURN", 0, "STOP", 0, "SHIFT L", 0, "SHIFT R", 0
+@DE8 50 00 53 48 49 46 54 20 4C 00 53 48 49 46 54 20
+@DF8 52 00
+@DFA 44 45 4C 00 43 52 53 52 20 44 4E 00 43 52 53 52  ; FDFA          .byte "DEL", 0, "CRSR DN", 0, "CRSR RT", 0, "HOME", 0, "RVS", 0
+@E0A 20 52 54 00 48 4F 4D 45 00 52 56 53 00
 
 ;         .org $FFF9
-@FF9 F6        ; FFF9          .checksum $F800, $800
-@FFA F3 F8 06 F8 D6 F8  ; FFFA          .word nmi, reset, irq
+@FF9 4E        ; FFF9          .checksum $F800, $800
+@FFA F8 F8 06 F8 DB F8  ; FFFA          .word nmi, reset, irq

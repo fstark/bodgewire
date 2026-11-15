@@ -23,6 +23,8 @@
 ; PIA1CRA  = PIA1+1
 ; PIA1PB   = PIA1+2
 ; PIA1CRB  = PIA1+3
+; VIA      = $E840        ; +0 port B: PB5 low while the beam is outside the text (the retrace)
+; VIAPCR   = VIA+$C       ; CA2 (GRAPHIC): low, the character ROM's first half
 
 ; ; Zero page: $00-$3F BASIC, $40-$5F the editor, $60-$7F the kernel, $80-$FF the player's (USR).
 ; WAITING  = $40          ; 1 while the editor waits for keys to make a line (the harness signal)
@@ -86,10 +88,10 @@
 ;         .org $E000
 @000 4C 12 E0  ; E000          jmp init
 @003 4C 2B E0  ; E003          jmp print
-@006 4C 2C E2  ; E006          jmp line
-@009 4C 35 E2  ; E009          jmp input
-@00C 4C 1D E2  ; E00C          jmp break
-@00F 4C 6F E1  ; E00F          jmp irq
+@006 4C 81 E2  ; E006          jmp line
+@009 4C 8A E2  ; E009          jmp input
+@00C 4C 72 E2  ; E00C          jmp break
+@00F 4C BB E1  ; E00F          jmp irq
 
 ; ; --- EDINIT -----------------------------------------------------------------------------------
 
@@ -104,7 +106,7 @@
 @022 A9 FF     ; E022          lda #$FF
 @024 85 49     ; E024          sta LASTKEY
 @026 85 4D     ; E026          sta SROW
-@028 4C 1F E1  ; E028          jmp clear
+@028 4C 49 E1  ; E028          jmp clear
 
 ; ; --- EDPRINT: A ($0D, $0C, $20-$5F); A, X, Y kept ---------------------------------------------
 
@@ -119,11 +121,11 @@
 @036 D0 0A     ; E036          bne @ff
 @038 A9 00     ; E038          lda #0
 @03A 85 43     ; E03A          sta CCOL
-@03C 20 8E E0  ; E03C          jsr nextrow
+@03C 20 97 E0  ; E03C          jsr nextrow
 @03F 4C 57 E0  ; E03F          jmp @done
 @042 C9 0C     ; E042  @ff:    cmp #$0C
 @044 D0 06     ; E044          bne @char
-@046 20 1F E1  ; E046          jsr clear
+@046 20 49 E1  ; E046          jsr clear
 @049 4C 57 E0  ; E049          jmp @done
 @04C C9 20     ; E04C  @char:  cmp #$20
 @04E 90 07     ; E04E          bcc @done
@@ -139,572 +141,629 @@
 
 ; ; Store A ($20-$5F) at the cursor, move right; at the row's end go on into the next row, joined
 ; ; when this row is a logical line's first, else as a new logical line.
-@05D 20 86 E0  ; E05D  putch:  jsr screencode
-@060 A4 43     ; E060          ldy CCOL
-@062 91 44     ; E062          sta (ROWPTR),y
-@064 E6 43     ; E064          inc CCOL
-@066 A5 43     ; E066          lda CCOL
-@068 C9 28     ; E068          cmp #COLUMNS
-@06A D0 19     ; E06A          bne @done
-@06C A9 00     ; E06C          lda #0
-@06E 85 43     ; E06E          sta CCOL
-@070 A6 42     ; E070          ldx CROW
-@072 BD 34 03  ; E072          lda LINKS,x
-@075 D0 0B     ; E075          bne @newline
-@077 20 8E E0  ; E077          jsr nextrow
-@07A A6 42     ; E07A          ldx CROW
-@07C A9 01     ; E07C          lda #1
-@07E 9D 34 03  ; E07E          sta LINKS,x
-@081 60        ; E081          rts
+@05D 20 8F E0  ; E05D  putch:  jsr screencode
+@060 AA        ; E060          tax
+@061 A4 43     ; E061          ldy CCOL
+@063 AD 40 E8  ; E063  @w:     lda VIA         ; wait for the retrace: the screen only while the beam is outside it
+@066 29 20     ; E066          and #$20
+@068 D0 F9     ; E068          bne @w
+@06A 8A        ; E06A          txa
+@06B 91 44     ; E06B          sta (ROWPTR),y
+@06D E6 43     ; E06D          inc CCOL
+@06F A5 43     ; E06F          lda CCOL
+@071 C9 28     ; E071          cmp #COLUMNS
+@073 D0 19     ; E073          bne @done
+@075 A9 00     ; E075          lda #0
+@077 85 43     ; E077          sta CCOL
+@079 A6 42     ; E079          ldx CROW
+@07B BD 34 03  ; E07B          lda LINKS,x
+@07E D0 0B     ; E07E          bne @newline
+@080 20 97 E0  ; E080          jsr nextrow
+@083 A6 42     ; E083          ldx CROW
+@085 A9 01     ; E085          lda #1
+@087 9D 34 03  ; E087          sta LINKS,x
+@08A 60        ; E08A          rts
 ; @newline:
-@082 20 8E E0  ; E082          jsr nextrow
-@085 60        ; E085  @done:  rts
+@08B 20 97 E0  ; E08B          jsr nextrow
+@08E 60        ; E08E  @done:  rts
 
 ; ; A ($20-$5F) as a screen code: $40-$5F are $00-$1F.
 ; screencode:
-@086 C9 40     ; E086          cmp #$40
-@088 90 03     ; E088          bcc @done
-@08A 38        ; E08A          sec
-@08B E9 40     ; E08B          sbc #$40
-@08D 60        ; E08D  @done:  rts
+@08F C9 40     ; E08F          cmp #$40
+@091 90 03     ; E091          bcc @done
+@093 38        ; E093          sec
+@094 E9 40     ; E094          sbc #$40
+@096 60        ; E096  @done:  rts
 
 ; ; The next row, a logical line of its own (its link cleared); scrolls at the bottom.
 ; nextrow:
-@08E E6 42     ; E08E          inc CROW
-@090 A5 42     ; E090          lda CROW
-@092 C9 19     ; E092          cmp #ROWS
-@094 90 07     ; E094          bcc @in
-@096 20 C6 E0  ; E096          jsr scroll
-@099 A9 18     ; E099          lda #ROWS-1
-@09B 85 42     ; E09B          sta CROW
-@09D A6 42     ; E09D  @in:    ldx CROW
-@09F A9 00     ; E09F          lda #0
-@0A1 9D 34 03  ; E0A1          sta LINKS,x
-@0A4 4C B9 E0  ; E0A4          jmp rowaddr
+@097 E6 42     ; E097          inc CROW
+@099 A5 42     ; E099          lda CROW
+@09B C9 19     ; E09B          cmp #ROWS
+@09D 90 07     ; E09D          bcc @in
+@09F 20 CF E0  ; E09F          jsr scroll
+@0A2 A9 18     ; E0A2          lda #ROWS-1
+@0A4 85 42     ; E0A4          sta CROW
+@0A6 A6 42     ; E0A6  @in:    ldx CROW
+@0A8 A9 00     ; E0A8          lda #0
+@0AA 9D 34 03  ; E0AA          sta LINKS,x
+@0AD 4C C2 E0  ; E0AD          jmp rowaddr
 
 ; ; The next row, links kept (cursor down, RETURN); scrolls at the bottom.
 ; downrow:
-@0A7 E6 42     ; E0A7          inc CROW
-@0A9 A5 42     ; E0A9          lda CROW
-@0AB C9 19     ; E0AB          cmp #ROWS
-@0AD 90 07     ; E0AD          bcc @in
-@0AF 20 C6 E0  ; E0AF          jsr scroll
-@0B2 A9 18     ; E0B2          lda #ROWS-1
-@0B4 85 42     ; E0B4          sta CROW
-@0B6 4C B9 E0  ; E0B6  @in:    jmp rowaddr
+@0B0 E6 42     ; E0B0          inc CROW
+@0B2 A5 42     ; E0B2          lda CROW
+@0B4 C9 19     ; E0B4          cmp #ROWS
+@0B6 90 07     ; E0B6          bcc @in
+@0B8 20 CF E0  ; E0B8          jsr scroll
+@0BB A9 18     ; E0BB          lda #ROWS-1
+@0BD 85 42     ; E0BD          sta CROW
+@0BF 4C C2 E0  ; E0BF  @in:    jmp rowaddr
 
 ; ; ROWPTR for CROW.
 ; rowaddr:
-@0B9 A6 42     ; E0B9          ldx CROW
-@0BB BD 33 E4  ; E0BB          lda rowlo,x
-@0BE 85 44     ; E0BE          sta ROWPTR
-@0C0 BD 4C E4  ; E0C0          lda rowhi,x
-@0C3 85 45     ; E0C3          sta ROWPTR+1
-@0C5 60        ; E0C5          rts
+@0C2 A6 42     ; E0C2          ldx CROW
+@0C4 BD B0 E4  ; E0C4          lda rowlo,x
+@0C7 85 44     ; E0C7          sta ROWPTR
+@0C9 BD C9 E4  ; E0C9          lda rowhi,x
+@0CC 85 45     ; E0CC          sta ROWPTR+1
+@0CE 60        ; E0CE          rts
 
-; ; Rows 1-24 up to 0-23, row 24 blank, the links with them. Interrupts stay on (about 8 ms). Each
+; ; Rows 1-24 up to 0-23, row 24 blank, the links with them. Every byte waits for the retrace (about
+; ; nine frames, 0.15 s: the screen is touched only while the beam is outside it). Each
 ; ; page is copied in its own loop, so no row is overwritten before it is read.
-@0C6 A2 00     ; E0C6  scroll: ldx #0
-@0C8 BD 28 80  ; E0C8  @p0:    lda SCREEN+$028,x
-@0CB 9D 00 80  ; E0CB          sta SCREEN+$000,x
-@0CE E8        ; E0CE          inx
-@0CF D0 F7     ; E0CF          bne @p0
-@0D1 BD 28 81  ; E0D1  @p1:    lda SCREEN+$128,x
-@0D4 9D 00 81  ; E0D4          sta SCREEN+$100,x
-@0D7 E8        ; E0D7          inx
-@0D8 D0 F7     ; E0D8          bne @p1
-@0DA BD 28 82  ; E0DA  @p2:    lda SCREEN+$228,x
-@0DD 9D 00 82  ; E0DD          sta SCREEN+$200,x
-@0E0 E8        ; E0E0          inx
-@0E1 D0 F7     ; E0E1          bne @p2
-@0E3 BD 28 83  ; E0E3  @p3:    lda SCREEN+$328,x
-@0E6 9D 00 83  ; E0E6          sta SCREEN+$300,x
-@0E9 E8        ; E0E9          inx
-@0EA E0 C0     ; E0EA          cpx #$C0
-@0EC D0 F5     ; E0EC          bne @p3
-@0EE A9 20     ; E0EE          lda #$20
-@0F0 A2 27     ; E0F0          ldx #COLUMNS-1
-@0F2 9D C0 83  ; E0F2  @blank: sta SCREEN+40*(ROWS-1),x
-@0F5 CA        ; E0F5          dex
-@0F6 10 FA     ; E0F6          bpl @blank
-@0F8 A2 00     ; E0F8          ldx #0
-@0FA BD 35 03  ; E0FA  @links: lda LINKS+1,x
-@0FD 9D 34 03  ; E0FD          sta LINKS,x
-@100 E8        ; E100          inx
-@101 E0 18     ; E101          cpx #ROWS-1
-@103 D0 F5     ; E103          bne @links
-@105 A9 00     ; E105          lda #0
-@107 8D 4C 03  ; E107          sta LINKS+ROWS-1
-@10A 8D 34 03  ; E10A          sta LINKS
-@10D A5 4D     ; E10D          lda SROW
-@10F C9 FF     ; E10F          cmp #$FF
-@111 F0 0B     ; E111          beq @done
-@113 C9 00     ; E113          cmp #0
-@115 D0 05     ; E115          bne @up
-@117 A9 FF     ; E117          lda #$FF
-@119 85 4D     ; E119          sta SROW
-@11B 60        ; E11B          rts
-@11C C6 4D     ; E11C  @up:    dec SROW
-@11E 60        ; E11E  @done:  rts
+@0CF A2 00     ; E0CF  scroll: ldx #0
+@0D1 AD 40 E8  ; E0D1  @p0:    lda VIA         ; the retrace, as every access below
+@0D4 29 20     ; E0D4          and #$20
+@0D6 D0 F9     ; E0D6          bne @p0
+@0D8 BD 28 80  ; E0D8          lda SCREEN+$028,x
+@0DB 9D 00 80  ; E0DB          sta SCREEN+$000,x
+@0DE E8        ; E0DE          inx
+@0DF D0 F0     ; E0DF          bne @p0
+@0E1 AD 40 E8  ; E0E1  @p1:    lda VIA         ; the retrace, as every access below
+@0E4 29 20     ; E0E4          and #$20
+@0E6 D0 F9     ; E0E6          bne @p1
+@0E8 BD 28 81  ; E0E8          lda SCREEN+$128,x
+@0EB 9D 00 81  ; E0EB          sta SCREEN+$100,x
+@0EE E8        ; E0EE          inx
+@0EF D0 F0     ; E0EF          bne @p1
+@0F1 AD 40 E8  ; E0F1  @p2:    lda VIA         ; the retrace, as every access below
+@0F4 29 20     ; E0F4          and #$20
+@0F6 D0 F9     ; E0F6          bne @p2
+@0F8 BD 28 82  ; E0F8          lda SCREEN+$228,x
+@0FB 9D 00 82  ; E0FB          sta SCREEN+$200,x
+@0FE E8        ; E0FE          inx
+@0FF D0 F0     ; E0FF          bne @p2
+@101 AD 40 E8  ; E101  @p3:    lda VIA         ; the retrace, as every access below
+@104 29 20     ; E104          and #$20
+@106 D0 F9     ; E106          bne @p3
+@108 BD 28 83  ; E108          lda SCREEN+$328,x
+@10B 9D 00 83  ; E10B          sta SCREEN+$300,x
+@10E E8        ; E10E          inx
+@10F E0 C0     ; E10F          cpx #$C0
+@111 D0 EE     ; E111          bne @p3
+@113 A9 20     ; E113          lda #$20
+@115 A2 27     ; E115          ldx #COLUMNS-1
+@117 2C 40 E8  ; E117  @blank: bit VIA         ; A = $20: Z while PB5 is low
+@11A D0 FB     ; E11A          bne @blank
+@11C 9D C0 83  ; E11C          sta SCREEN+40*(ROWS-1),x
+@11F CA        ; E11F          dex
+@120 10 F5     ; E120          bpl @blank
+@122 A2 00     ; E122          ldx #0
+@124 BD 35 03  ; E124  @links: lda LINKS+1,x
+@127 9D 34 03  ; E127          sta LINKS,x
+@12A E8        ; E12A          inx
+@12B E0 18     ; E12B          cpx #ROWS-1
+@12D D0 F5     ; E12D          bne @links
+@12F A9 00     ; E12F          lda #0
+@131 8D 4C 03  ; E131          sta LINKS+ROWS-1
+@134 8D 34 03  ; E134          sta LINKS
+@137 A5 4D     ; E137          lda SROW
+@139 C9 FF     ; E139          cmp #$FF
+@13B F0 0B     ; E13B          beq @done
+@13D C9 00     ; E13D          cmp #0
+@13F D0 05     ; E13F          bne @up
+@141 A9 FF     ; E141          lda #$FF
+@143 85 4D     ; E143          sta SROW
+@145 60        ; E145          rts
+@146 C6 4D     ; E146  @up:    dec SROW
+@148 60        ; E148  @done:  rts
 
 ; ; Blank screen, no links, the cursor top left.
-@11F A9 20     ; E11F  clear:  lda #$20
-@121 A2 00     ; E121          ldx #0
-@123 9D 00 80  ; E123  @fill:  sta SCREEN+$000,x
-@126 9D 00 81  ; E126          sta SCREEN+$100,x
-@129 9D 00 82  ; E129          sta SCREEN+$200,x
-@12C 9D 00 83  ; E12C          sta SCREEN+$300,x
-@12F E8        ; E12F          inx
-@130 D0 F1     ; E130          bne @fill
-@132 A9 00     ; E132          lda #0
-@134 A2 18     ; E134          ldx #ROWS-1
-@136 9D 34 03  ; E136  @links: sta LINKS,x
-@139 CA        ; E139          dex
-@13A 10 FA     ; E13A          bpl @links
-@13C A9 00     ; E13C  home:   lda #0
-@13E 85 42     ; E13E          sta CROW
-@140 85 43     ; E140          sta CCOL
-@142 4C B9 E0  ; E142          jmp rowaddr
+@149 A9 20     ; E149  clear:  lda #$20
+@14B A2 00     ; E14B          ldx #0
+@14D 2C 40 E8  ; E14D  @fill:  bit VIA         ; A = $20: Z while PB5 is low (the retrace)
+@150 D0 FB     ; E150          bne @fill
+@152 9D 00 80  ; E152          sta SCREEN+$000,x
+@155 2C 40 E8  ; E155  @f1:    bit VIA
+@158 D0 FB     ; E158          bne @f1
+@15A 9D 00 81  ; E15A          sta SCREEN+$100,x
+@15D 2C 40 E8  ; E15D  @f2:    bit VIA
+@160 D0 FB     ; E160          bne @f2
+@162 9D 00 82  ; E162          sta SCREEN+$200,x
+@165 2C 40 E8  ; E165  @f3:    bit VIA
+@168 D0 FB     ; E168          bne @f3
+@16A 9D 00 83  ; E16A          sta SCREEN+$300,x
+@16D E8        ; E16D          inx
+@16E D0 DD     ; E16E          bne @fill
+@170 A9 00     ; E170          lda #0
+@172 A2 18     ; E172          ldx #ROWS-1
+@174 9D 34 03  ; E174  @links: sta LINKS,x
+@177 CA        ; E177          dex
+@178 10 FA     ; E178          bpl @links
+@17A A9 00     ; E17A  home:   lda #0
+@17C 85 42     ; E17C          sta CROW
+@17E 85 43     ; E17E          sta CCOL
+@180 4C C2 E0  ; E180          jmp rowaddr
 
 ; ; --- The cursor -------------------------------------------------------------------------------
 
 ; ; Out, reversed at once, blinking in the IRQ. Each is one short sei-cli.
 ; showcur:
-@145 78        ; E145          sei
-@146 A4 43     ; E146          ldy CCOL
-@148 B1 44     ; E148          lda (ROWPTR),y
-@14A 29 7F     ; E14A          and #$7F
-@14C 85 46     ; E14C          sta UNDER
-@14E 09 80     ; E14E          ora #$80
-@150 91 44     ; E150          sta (ROWPTR),y
-@152 A9 01     ; E152          lda #1
-@154 85 48     ; E154          sta SHOWN
-@156 85 50     ; E156          sta PHASE
-@158 A9 14     ; E158          lda #BLINKS
-@15A 85 47     ; E15A          sta BLINK
-@15C 58        ; E15C          cli
-@15D 60        ; E15D          rts
+@183 78        ; E183          sei
+@184 A4 43     ; E184          ldy CCOL
+@186 AD 40 E8  ; E186  @w:     lda VIA         ; the retrace
+@189 29 20     ; E189          and #$20
+@18B D0 F9     ; E18B          bne @w
+@18D B1 44     ; E18D          lda (ROWPTR),y
+@18F 29 7F     ; E18F          and #$7F
+@191 85 46     ; E191          sta UNDER
+@193 09 80     ; E193          ora #$80
+@195 91 44     ; E195          sta (ROWPTR),y
+@197 A9 01     ; E197          lda #1
+@199 85 48     ; E199          sta SHOWN
+@19B 85 50     ; E19B          sta PHASE
+@19D A9 14     ; E19D          lda #BLINKS
+@19F 85 47     ; E19F          sta BLINK
+@1A1 58        ; E1A1          cli
+@1A2 60        ; E1A2          rts
 
 ; hidecur:
-@15E 78        ; E15E          sei
-@15F A5 48     ; E15F          lda SHOWN
-@161 F0 0A     ; E161          beq @done
-@163 A4 43     ; E163          ldy CCOL
-@165 A5 46     ; E165          lda UNDER
-@167 91 44     ; E167          sta (ROWPTR),y
-@169 A9 00     ; E169          lda #0
-@16B 85 48     ; E16B          sta SHOWN
-@16D 58        ; E16D  @done:  cli
-@16E 60        ; E16E          rts
+@1A3 78        ; E1A3          sei
+@1A4 A5 48     ; E1A4          lda SHOWN
+@1A6 F0 11     ; E1A6          beq @done
+@1A8 A4 43     ; E1A8          ldy CCOL
+@1AA AD 40 E8  ; E1AA  @w:     lda VIA         ; the retrace
+@1AD 29 20     ; E1AD          and #$20
+@1AF D0 F9     ; E1AF          bne @w
+@1B1 A5 46     ; E1B1          lda UNDER
+@1B3 91 44     ; E1B3          sta (ROWPTR),y
+@1B5 A9 00     ; E1B5          lda #0
+@1B7 85 48     ; E1B7          sta SHOWN
+@1B9 58        ; E1B9  @done:  cli
+@1BA 60        ; E1BA          rts
 
 ; ; --- EDIRQ: the key scan and the blink, at each retrace -----------------------------------------
 
-@16F A9 FF     ; E16F  irq:    lda #$FF
-@171 85 57     ; E171          sta KNOW
-@173 A9 00     ; E173          lda #0
-@175 85 58     ; E175          sta KSHIFT
-@177 85 59     ; E177          sta KROW
-@179 A5 59     ; E179  @row:   lda KROW
-@17B 8D 10 E8  ; E17B          sta PIA1PA
-@17E AD 12 E8  ; E17E          lda PIA1PB      ; the first read also clears the retrace flag
-@181 49 FF     ; E181          eor #$FF
-@183 85 5A     ; E183          sta KBITS
-@185 A5 59     ; E185          lda KROW
-@187 0A        ; E187          asl
-@188 0A        ; E188          asl
-@189 0A        ; E189          asl
-@18A AA        ; E18A          tax             ; X: the matrix index, row * 8 + column
-@18B 46 5A     ; E18B  @bit:   lsr KBITS
-@18D 90 1C     ; E18D          bcc @next
-@18F BD 00 E7  ; E18F          lda KEYTAB,x
-@192 F0 0B     ; E192          beq @shift
-@194 A5 57     ; E194          lda KNOW
-@196 C9 FF     ; E196          cmp #$FF
-@198 D0 11     ; E198          bne @next       ; the first key found counts
-@19A 86 57     ; E19A          stx KNOW
-@19C 4C AB E1  ; E19C          jmp @next
-@19F E0 40     ; E19F  @shift: cpx #8*8+0
-@1A1 F0 04     ; E1A1          beq @isshift
-@1A3 E0 45     ; E1A3          cpx #8*8+5
-@1A5 D0 04     ; E1A5          bne @next
+@1BB A9 FF     ; E1BB  irq:    lda #$FF
+@1BD 85 57     ; E1BD          sta KNOW
+@1BF A9 00     ; E1BF          lda #0
+@1C1 85 58     ; E1C1          sta KSHIFT
+@1C3 85 59     ; E1C3          sta KROW
+@1C5 A5 59     ; E1C5  @row:   lda KROW
+@1C7 8D 10 E8  ; E1C7          sta PIA1PA
+@1CA AD 12 E8  ; E1CA          lda PIA1PB      ; the first read also clears the retrace flag
+@1CD 49 FF     ; E1CD          eor #$FF
+@1CF 85 5A     ; E1CF          sta KBITS
+@1D1 A5 59     ; E1D1          lda KROW
+@1D3 0A        ; E1D3          asl
+@1D4 0A        ; E1D4          asl
+@1D5 0A        ; E1D5          asl
+@1D6 AA        ; E1D6          tax             ; X: the matrix index, row * 8 + column
+@1D7 46 5A     ; E1D7  @bit:   lsr KBITS
+@1D9 90 1C     ; E1D9          bcc @next
+@1DB BD 00 E7  ; E1DB          lda KEYTAB,x
+@1DE F0 0B     ; E1DE          beq @shift
+@1E0 A5 57     ; E1E0          lda KNOW
+@1E2 C9 FF     ; E1E2          cmp #$FF
+@1E4 D0 11     ; E1E4          bne @next       ; the first key found counts
+@1E6 86 57     ; E1E6          stx KNOW
+@1E8 4C F7 E1  ; E1E8          jmp @next
+@1EB E0 40     ; E1EB  @shift: cpx #8*8+0
+@1ED F0 04     ; E1ED          beq @isshift
+@1EF E0 45     ; E1EF          cpx #8*8+5
+@1F1 D0 04     ; E1F1          bne @next
 ; @isshift:
-@1A7 A9 01     ; E1A7          lda #1
-@1A9 85 58     ; E1A9          sta KSHIFT
-@1AB E8        ; E1AB  @next:  inx
-@1AC 8A        ; E1AC          txa
-@1AD 29 07     ; E1AD          and #7
-@1AF D0 DA     ; E1AF          bne @bit
-@1B1 E6 59     ; E1B1          inc KROW
-@1B3 A5 59     ; E1B3          lda KROW
-@1B5 C9 0A     ; E1B5          cmp #10
-@1B7 D0 C0     ; E1B7          bne @row
-@1B9 A9 0F     ; E1B9          lda #$0F        ; no row selected between scans
-@1BB 8D 10 E8  ; E1BB          sta PIA1PA
+@1F3 A9 01     ; E1F3          lda #1
+@1F5 85 58     ; E1F5          sta KSHIFT
+@1F7 E8        ; E1F7  @next:  inx
+@1F8 8A        ; E1F8          txa
+@1F9 29 07     ; E1F9          and #7
+@1FB D0 DA     ; E1FB          bne @bit
+@1FD E6 59     ; E1FD          inc KROW
+@1FF A5 59     ; E1FF          lda KROW
+@201 C9 0A     ; E201          cmp #10
+@203 D0 C0     ; E203          bne @row
+@205 A9 0F     ; E205          lda #$0F        ; no row selected between scans
+@207 8D 10 E8  ; E207          sta PIA1PA
 
-@1BE A5 57     ; E1BE          lda KNOW
-@1C0 C5 49     ; E1C0          cmp LASTKEY
-@1C2 F0 3A     ; E1C2          beq @blink
-@1C4 85 49     ; E1C4          sta LASTKEY
-@1C6 C9 FF     ; E1C6          cmp #$FF
-@1C8 F0 34     ; E1C8          beq @blink
-@1CA AA        ; E1CA          tax
-@1CB BD 00 E7  ; E1CB          lda KEYTAB,x
-@1CE C9 03     ; E1CE          cmp #$03
-@1D0 D0 07     ; E1D0          bne @notstop
-@1D2 A9 01     ; E1D2          lda #1
-@1D4 85 4C     ; E1D4          sta BRKFLAG
-@1D6 4C FE E1  ; E1D6          jmp @blink
+@20A A5 57     ; E20A          lda KNOW
+@20C C5 49     ; E20C          cmp LASTKEY
+@20E F0 3A     ; E20E          beq @blink
+@210 85 49     ; E210          sta LASTKEY
+@212 C9 FF     ; E212          cmp #$FF
+@214 F0 34     ; E214          beq @blink
+@216 AA        ; E216          tax
+@217 BD 00 E7  ; E217          lda KEYTAB,x
+@21A C9 03     ; E21A          cmp #$03
+@21C D0 07     ; E21C          bne @notstop
+@21E A9 01     ; E21E          lda #1
+@220 85 4C     ; E220          sta BRKFLAG
+@222 4C 4A E2  ; E222          jmp @blink
 ; @notstop:
-@1D9 A4 58     ; E1D9          ldy KSHIFT
-@1DB F0 12     ; E1DB          beq @queue
-@1DD C9 11     ; E1DD          cmp #$11        ; CRSR down, right, HOME, DEL: shifted up, left, CLR, INST
-@1DF F0 0C     ; E1DF          beq @shifted
-@1E1 C9 1D     ; E1E1          cmp #$1D
-@1E3 F0 08     ; E1E3          beq @shifted
-@1E5 C9 13     ; E1E5          cmp #$13
-@1E7 F0 04     ; E1E7          beq @shifted
-@1E9 C9 14     ; E1E9          cmp #$14
-@1EB D0 02     ; E1EB          bne @queue
+@225 A4 58     ; E225          ldy KSHIFT
+@227 F0 12     ; E227          beq @queue
+@229 C9 11     ; E229          cmp #$11        ; CRSR down, right, HOME, DEL: shifted up, left, CLR, INST
+@22B F0 0C     ; E22B          beq @shifted
+@22D C9 1D     ; E22D          cmp #$1D
+@22F F0 08     ; E22F          beq @shifted
+@231 C9 13     ; E231          cmp #$13
+@233 F0 04     ; E233          beq @shifted
+@235 C9 14     ; E235          cmp #$14
+@237 D0 02     ; E237          bne @queue
 ; @shifted:
-@1ED 09 80     ; E1ED          ora #$80
-@1EF A6 4A     ; E1EF  @queue: ldx KHEAD
-@1F1 9D F0 02  ; E1F1          sta KEYBUF,x
-@1F4 E8        ; E1F4          inx
-@1F5 8A        ; E1F5          txa
-@1F6 29 07     ; E1F6          and #7
-@1F8 C5 4B     ; E1F8          cmp KTAIL
-@1FA F0 02     ; E1FA          beq @blink      ; full: dropped
-@1FC 85 4A     ; E1FC          sta KHEAD
+@239 09 80     ; E239          ora #$80
+@23B A6 4A     ; E23B  @queue: ldx KHEAD
+@23D 9D F0 02  ; E23D          sta KEYBUF,x
+@240 E8        ; E240          inx
+@241 8A        ; E241          txa
+@242 29 07     ; E242          and #7
+@244 C5 4B     ; E244          cmp KTAIL
+@246 F0 02     ; E246          beq @blink      ; full: dropped
+@248 85 4A     ; E248          sta KHEAD
 
-@1FE A5 48     ; E1FE  @blink: lda SHOWN
-@200 F0 1A     ; E200          beq @done
-@202 C6 47     ; E202          dec BLINK
-@204 D0 16     ; E204          bne @done
-@206 A9 14     ; E206          lda #BLINKS
-@208 85 47     ; E208          sta BLINK
-@20A A5 50     ; E20A          lda PHASE
-@20C 49 01     ; E20C          eor #1
-@20E 85 50     ; E20E          sta PHASE
-@210 A5 46     ; E210          lda UNDER
-@212 A4 50     ; E212          ldy PHASE
-@214 F0 02     ; E214          beq @put
-@216 09 80     ; E216          ora #$80
-@218 A4 43     ; E218  @put:   ldy CCOL
-@21A 91 44     ; E21A          sta (ROWPTR),y
-@21C 60        ; E21C  @done:  rts
+@24A A5 48     ; E24A  @blink: lda SHOWN
+@24C F0 23     ; E24C          beq @done
+@24E C6 47     ; E24E          dec BLINK
+@250 D0 1F     ; E250          bne @done
+@252 A9 14     ; E252          lda #BLINKS
+@254 85 47     ; E254          sta BLINK
+@256 A5 50     ; E256          lda PHASE
+@258 49 01     ; E258          eor #1
+@25A 85 50     ; E25A          sta PHASE
+@25C A5 46     ; E25C          lda UNDER
+@25E A4 50     ; E25E          ldy PHASE
+@260 F0 02     ; E260          beq @put
+@262 09 80     ; E262          ora #$80
+@264 A4 43     ; E264  @put:   ldy CCOL
+@266 AA        ; E266          tax
+@267 AD 40 E8  ; E267  @w:     lda VIA         ; the retrace (here at its start: a few cycles)
+@26A 29 20     ; E26A          and #$20
+@26C D0 F9     ; E26C          bne @w
+@26E 8A        ; E26E          txa
+@26F 91 44     ; E26F          sta (ROWPTR),y
+@271 60        ; E271  @done:  rts
 
 ; ; --- EDBREAK ----------------------------------------------------------------------------------
 
-@21D 78        ; E21D  break:  sei
-@21E A5 4C     ; E21E          lda BRKFLAG
-@220 F0 07     ; E220          beq @no
-@222 A9 00     ; E222          lda #0
-@224 85 4C     ; E224          sta BRKFLAG
-@226 58        ; E226          cli
-@227 38        ; E227          sec
-@228 60        ; E228          rts
-@229 58        ; E229  @no:    cli
-@22A 18        ; E22A          clc
-@22B 60        ; E22B          rts
+@272 78        ; E272  break:  sei
+@273 A5 4C     ; E273          lda BRKFLAG
+@275 F0 07     ; E275          beq @no
+@277 A9 00     ; E277          lda #0
+@279 85 4C     ; E279          sta BRKFLAG
+@27B 58        ; E27B          cli
+@27C 38        ; E27C          sec
+@27D 60        ; E27D          rts
+@27E 58        ; E27E  @no:    cli
+@27F 18        ; E27F          clc
+@280 60        ; E280          rts
 
 ; ; --- EDLINE, EDINPUT --------------------------------------------------------------------------
 
-@22C A9 00     ; E22C  line:   lda #0
-@22E 85 4F     ; E22E          sta MODE
-@230 85 4C     ; E230          sta BRKFLAG
-@232 4C 39 E2  ; E232          jmp read
-@235 A9 01     ; E235  input:  lda #1
-@237 85 4F     ; E237          sta MODE
-@239 A5 4A     ; E239  read:   lda KHEAD       ; keys typed before the read are dropped
-@23B 85 4B     ; E23B          sta KTAIL
-@23D A5 42     ; E23D          lda CROW
-@23F 85 4D     ; E23F          sta SROW
-@241 A5 43     ; E241          lda CCOL
-@243 85 4E     ; E243          sta SCOL
-@245 A9 01     ; E245          lda #1
-@247 85 40     ; E247          sta WAITING
-@249 20 45 E1  ; E249          jsr showcur
-@24C A5 4F     ; E24C  @wait:  lda MODE
-@24E D0 07     ; E24E          bne @input
-@250 A9 00     ; E250          lda #0          ; at a line read, STOP is discarded
-@252 85 4C     ; E252          sta BRKFLAG
-@254 4C 66 E2  ; E254          jmp @key
-@257 A5 4C     ; E257  @input: lda BRKFLAG
-@259 F0 0B     ; E259          beq @key
-@25B A9 00     ; E25B          lda #0
-@25D 85 4C     ; E25D          sta BRKFLAG
-@25F 85 40     ; E25F          sta WAITING
-@261 20 5E E1  ; E261          jsr hidecur
-@264 38        ; E264          sec
-@265 60        ; E265          rts
-@266 A5 4B     ; E266  @key:   lda KTAIL
-@268 C5 4A     ; E268          cmp KHEAD
-@26A F0 E0     ; E26A          beq @wait
-@26C AA        ; E26C          tax
-@26D BD F0 02  ; E26D          lda KEYBUF,x
-@270 48        ; E270          pha
-@271 E8        ; E271          inx
-@272 8A        ; E272          txa
-@273 29 07     ; E273          and #7
-@275 85 4B     ; E275          sta KTAIL
-@277 20 5E E1  ; E277          jsr hidecur
-@27A 68        ; E27A          pla
-@27B C9 0D     ; E27B          cmp #$0D
-@27D F0 09     ; E27D          beq @return
-@27F 20 CA E2  ; E27F          jsr dokey
-@282 20 45 E1  ; E282          jsr showcur
-@285 4C 4C E2  ; E285          jmp @wait
+@281 A9 00     ; E281  line:   lda #0
+@283 85 4F     ; E283          sta MODE
+@285 85 4C     ; E285          sta BRKFLAG
+@287 4C 8E E2  ; E287          jmp read
+@28A A9 01     ; E28A  input:  lda #1
+@28C 85 4F     ; E28C          sta MODE
+@28E A5 4A     ; E28E  read:   lda KHEAD       ; keys typed before the read are dropped
+@290 85 4B     ; E290          sta KTAIL
+@292 A5 42     ; E292          lda CROW
+@294 85 4D     ; E294          sta SROW
+@296 A5 43     ; E296          lda CCOL
+@298 85 4E     ; E298          sta SCOL
+@29A A9 01     ; E29A          lda #1
+@29C 85 40     ; E29C          sta WAITING
+@29E 20 83 E1  ; E29E          jsr showcur
+@2A1 A5 4F     ; E2A1  @wait:  lda MODE
+@2A3 D0 07     ; E2A3          bne @input
+@2A5 A9 00     ; E2A5          lda #0          ; at a line read, STOP is discarded
+@2A7 85 4C     ; E2A7          sta BRKFLAG
+@2A9 4C BB E2  ; E2A9          jmp @key
+@2AC A5 4C     ; E2AC  @input: lda BRKFLAG
+@2AE F0 0B     ; E2AE          beq @key
+@2B0 A9 00     ; E2B0          lda #0
+@2B2 85 4C     ; E2B2          sta BRKFLAG
+@2B4 85 40     ; E2B4          sta WAITING
+@2B6 20 A3 E1  ; E2B6          jsr hidecur
+@2B9 38        ; E2B9          sec
+@2BA 60        ; E2BA          rts
+@2BB A5 4B     ; E2BB  @key:   lda KTAIL
+@2BD C5 4A     ; E2BD          cmp KHEAD
+@2BF F0 E0     ; E2BF          beq @wait
+@2C1 AA        ; E2C1          tax
+@2C2 BD F0 02  ; E2C2          lda KEYBUF,x
+@2C5 48        ; E2C5          pha
+@2C6 E8        ; E2C6          inx
+@2C7 8A        ; E2C7          txa
+@2C8 29 07     ; E2C8          and #7
+@2CA 85 4B     ; E2CA          sta KTAIL
+@2CC 20 A3 E1  ; E2CC          jsr hidecur
+@2CF 68        ; E2CF          pla
+@2D0 C9 0D     ; E2D0          cmp #$0D
+@2D2 F0 09     ; E2D2          beq @return
+@2D4 20 1F E3  ; E2D4          jsr dokey
+@2D7 20 83 E1  ; E2D7          jsr showcur
+@2DA 4C A1 E2  ; E2DA          jmp @wait
 ; @return:
-@288 4C B9 E3  ; E288          jmp enter
+@2DD 4C 2F E4  ; E2DD          jmp enter
 
 ; ; LSTART, NROWS, POS and SRC for the cursor's logical line.
 ; logical:
-@28B A6 42     ; E28B          ldx CROW
-@28D BD 34 03  ; E28D  @up:    lda LINKS,x
-@290 F0 03     ; E290          beq @first
-@292 CA        ; E292          dex
-@293 D0 F8     ; E293          bne @up         ; row 0 never goes on from above
-@295 86 51     ; E295  @first: stx LSTART
-@297 A9 01     ; E297          lda #1
-@299 85 52     ; E299          sta NROWS
-@29B E8        ; E29B          inx
-@29C E0 19     ; E29C          cpx #ROWS
-@29E B0 09     ; E29E          bcs @pos
-@2A0 BD 34 03  ; E2A0          lda LINKS,x
-@2A3 F0 04     ; E2A3          beq @pos
-@2A5 A9 02     ; E2A5          lda #2
-@2A7 85 52     ; E2A7          sta NROWS
-@2A9 A5 42     ; E2A9  @pos:   lda CROW
-@2AB C5 51     ; E2AB          cmp LSTART
-@2AD F0 0A     ; E2AD          beq @row0
-@2AF A9 28     ; E2AF          lda #COLUMNS
-@2B1 18        ; E2B1          clc
-@2B2 65 43     ; E2B2          adc CCOL
-@2B4 85 53     ; E2B4          sta POS
-@2B6 4C BD E2  ; E2B6          jmp @src
-@2B9 A5 43     ; E2B9  @row0:  lda CCOL
-@2BB 85 53     ; E2BB          sta POS
-@2BD A6 51     ; E2BD  @src:   ldx LSTART
-@2BF BD 33 E4  ; E2BF          lda rowlo,x
-@2C2 85 54     ; E2C2          sta SRC
-@2C4 BD 4C E4  ; E2C4          lda rowhi,x
-@2C7 85 55     ; E2C7          sta SRC+1
-@2C9 60        ; E2C9          rts
+@2E0 A6 42     ; E2E0          ldx CROW
+@2E2 BD 34 03  ; E2E2  @up:    lda LINKS,x
+@2E5 F0 03     ; E2E5          beq @first
+@2E7 CA        ; E2E7          dex
+@2E8 D0 F8     ; E2E8          bne @up         ; row 0 never goes on from above
+@2EA 86 51     ; E2EA  @first: stx LSTART
+@2EC A9 01     ; E2EC          lda #1
+@2EE 85 52     ; E2EE          sta NROWS
+@2F0 E8        ; E2F0          inx
+@2F1 E0 19     ; E2F1          cpx #ROWS
+@2F3 B0 09     ; E2F3          bcs @pos
+@2F5 BD 34 03  ; E2F5          lda LINKS,x
+@2F8 F0 04     ; E2F8          beq @pos
+@2FA A9 02     ; E2FA          lda #2
+@2FC 85 52     ; E2FC          sta NROWS
+@2FE A5 42     ; E2FE  @pos:   lda CROW
+@300 C5 51     ; E300          cmp LSTART
+@302 F0 0A     ; E302          beq @row0
+@304 A9 28     ; E304          lda #COLUMNS
+@306 18        ; E306          clc
+@307 65 43     ; E307          adc CCOL
+@309 85 53     ; E309          sta POS
+@30B 4C 12 E3  ; E30B          jmp @src
+@30E A5 43     ; E30E  @row0:  lda CCOL
+@310 85 53     ; E310          sta POS
+@312 A6 51     ; E312  @src:   ldx LSTART
+@314 BD B0 E4  ; E314          lda rowlo,x
+@317 85 54     ; E317          sta SRC
+@319 BD C9 E4  ; E319          lda rowhi,x
+@31C 85 55     ; E31C          sta SRC+1
+@31E 60        ; E31E          rts
 
 ; ; A key while reading: printable, the cursor keys, HOME, CLR, DEL, INST; others do nothing.
-@2CA C9 20     ; E2CA  dokey:  cmp #$20
-@2CC 90 07     ; E2CC          bcc @control
-@2CE C9 60     ; E2CE          cmp #$60
-@2D0 B0 03     ; E2D0          bcs @control
-@2D2 4C 34 E3  ; E2D2          jmp typed
+@31F C9 20     ; E31F  dokey:  cmp #$20
+@321 90 07     ; E321          bcc @control
+@323 C9 60     ; E323          cmp #$60
+@325 B0 03     ; E325          bcs @control
+@327 4C 89 E3  ; E327          jmp typed
 ; @control:
-@2D5 C9 1D     ; E2D5          cmp #$1D
-@2D7 F0 2C     ; E2D7          beq right
-@2D9 C9 9D     ; E2D9          cmp #$9D
-@2DB F0 38     ; E2DB          beq left
-@2DD C9 11     ; E2DD          cmp #$11
-@2DF D0 03     ; E2DF          bne @n1
-@2E1 4C A7 E0  ; E2E1          jmp downrow
-@2E4 C9 91     ; E2E4  @n1:    cmp #$91
-@2E6 F0 42     ; E2E6          beq up
-@2E8 C9 13     ; E2E8          cmp #$13
-@2EA D0 03     ; E2EA          bne @n2
-@2EC 4C 3C E1  ; E2EC          jmp home
-@2EF C9 93     ; E2EF  @n2:    cmp #$93
-@2F1 D0 03     ; E2F1          bne @n3
-@2F3 4C 1F E1  ; E2F3          jmp clear
-@2F6 C9 14     ; E2F6  @n3:    cmp #$14
-@2F8 D0 03     ; E2F8          bne @n4
-@2FA 4C 68 E3  ; E2FA          jmp delete
-@2FD C9 94     ; E2FD  @n4:    cmp #$94
-@2FF D0 03     ; E2FF          bne @n5
-@301 4C 8D E3  ; E301          jmp insert
-@304 60        ; E304  @n5:    rts
+@32A C9 1D     ; E32A          cmp #$1D
+@32C F0 2C     ; E32C          beq right
+@32E C9 9D     ; E32E          cmp #$9D
+@330 F0 38     ; E330          beq left
+@332 C9 11     ; E332          cmp #$11
+@334 D0 03     ; E334          bne @n1
+@336 4C B0 E0  ; E336          jmp downrow
+@339 C9 91     ; E339  @n1:    cmp #$91
+@33B F0 42     ; E33B          beq up
+@33D C9 13     ; E33D          cmp #$13
+@33F D0 03     ; E33F          bne @n2
+@341 4C 7A E1  ; E341          jmp home
+@344 C9 93     ; E344  @n2:    cmp #$93
+@346 D0 03     ; E346          bne @n3
+@348 4C 49 E1  ; E348          jmp clear
+@34B C9 14     ; E34B  @n3:    cmp #$14
+@34D D0 03     ; E34D          bne @n4
+@34F 4C C6 E3  ; E34F          jmp delete
+@352 C9 94     ; E352  @n4:    cmp #$94
+@354 D0 03     ; E354          bne @n5
+@356 4C F7 E3  ; E356          jmp insert
+@359 60        ; E359  @n5:    rts
 
-@305 E6 43     ; E305  right:  inc CCOL
-@307 A5 43     ; E307          lda CCOL
-@309 C9 28     ; E309          cmp #COLUMNS
-@30B D0 07     ; E30B          bne @done
-@30D A9 00     ; E30D          lda #0
-@30F 85 43     ; E30F          sta CCOL
-@311 4C A7 E0  ; E311          jmp downrow
-@314 60        ; E314  @done:  rts
+@35A E6 43     ; E35A  right:  inc CCOL
+@35C A5 43     ; E35C          lda CCOL
+@35E C9 28     ; E35E          cmp #COLUMNS
+@360 D0 07     ; E360          bne @done
+@362 A9 00     ; E362          lda #0
+@364 85 43     ; E364          sta CCOL
+@366 4C B0 E0  ; E366          jmp downrow
+@369 60        ; E369  @done:  rts
 
-@315 A5 43     ; E315  left:   lda CCOL
-@317 F0 03     ; E317          beq @wrap
-@319 C6 43     ; E319          dec CCOL
-@31B 60        ; E31B          rts
-@31C A5 42     ; E31C  @wrap:  lda CROW
-@31E F0 09     ; E31E          beq @done
-@320 C6 42     ; E320          dec CROW
-@322 A9 27     ; E322          lda #COLUMNS-1
-@324 85 43     ; E324          sta CCOL
-@326 4C B9 E0  ; E326          jmp rowaddr
-@329 60        ; E329  @done:  rts
+@36A A5 43     ; E36A  left:   lda CCOL
+@36C F0 03     ; E36C          beq @wrap
+@36E C6 43     ; E36E          dec CCOL
+@370 60        ; E370          rts
+@371 A5 42     ; E371  @wrap:  lda CROW
+@373 F0 09     ; E373          beq @done
+@375 C6 42     ; E375          dec CROW
+@377 A9 27     ; E377          lda #COLUMNS-1
+@379 85 43     ; E379          sta CCOL
+@37B 4C C2 E0  ; E37B          jmp rowaddr
+@37E 60        ; E37E  @done:  rts
 
-@32A A5 42     ; E32A  up:     lda CROW
-@32C F0 05     ; E32C          beq @done
-@32E C6 42     ; E32E          dec CROW
-@330 4C B9 E0  ; E330          jmp rowaddr
-@333 60        ; E333  @done:  rts
+@37F A5 42     ; E37F  up:     lda CROW
+@381 F0 05     ; E381          beq @done
+@383 C6 42     ; E383          dec CROW
+@385 4C C2 E0  ; E385          jmp rowaddr
+@388 60        ; E388  @done:  rts
 
 ; ; A printable key: refused at place 64 of its logical line or later. A wrap from the line's
 ; ; first row goes into the second, joining it (scrolling at the bottom); the 64 limit keeps a
 ; ; second row from wrapping.
-@334 48        ; E334  typed:  pha
-@335 20 8B E2  ; E335          jsr logical
-@338 68        ; E338          pla
-@339 A6 53     ; E339          ldx POS
-@33B E0 40     ; E33B          cpx #MAXLINE
-@33D B0 28     ; E33D          bcs @done
-@33F 20 86 E0  ; E33F          jsr screencode
-@342 A4 43     ; E342          ldy CCOL
-@344 91 44     ; E344          sta (ROWPTR),y
-@346 E6 43     ; E346          inc CCOL
-@348 A5 43     ; E348          lda CCOL
-@34A C9 28     ; E34A          cmp #COLUMNS
-@34C D0 19     ; E34C          bne @done
-@34E A9 00     ; E34E          lda #0
-@350 85 43     ; E350          sta CCOL
-@352 A5 52     ; E352          lda NROWS
-@354 C9 02     ; E354          cmp #2
-@356 D0 05     ; E356          bne @join
-@358 E6 42     ; E358          inc CROW        ; the second row is already joined
-@35A 4C B9 E0  ; E35A          jmp rowaddr
-@35D 20 A7 E0  ; E35D  @join:  jsr downrow
-@360 A6 42     ; E360          ldx CROW
-@362 A9 01     ; E362          lda #1
-@364 9D 34 03  ; E364          sta LINKS,x
-@367 60        ; E367  @done:  rts
+@389 48        ; E389  typed:  pha
+@38A 20 E0 E2  ; E38A          jsr logical
+@38D 68        ; E38D          pla
+@38E A6 53     ; E38E          ldx POS
+@390 E0 40     ; E390          cpx #MAXLINE
+@392 B0 31     ; E392          bcs @done
+@394 20 8F E0  ; E394          jsr screencode
+@397 AA        ; E397          tax
+@398 A4 43     ; E398          ldy CCOL
+@39A AD 40 E8  ; E39A  @w:     lda VIA         ; the retrace
+@39D 29 20     ; E39D          and #$20
+@39F D0 F9     ; E39F          bne @w
+@3A1 8A        ; E3A1          txa
+@3A2 91 44     ; E3A2          sta (ROWPTR),y
+@3A4 E6 43     ; E3A4          inc CCOL
+@3A6 A5 43     ; E3A6          lda CCOL
+@3A8 C9 28     ; E3A8          cmp #COLUMNS
+@3AA D0 19     ; E3AA          bne @done
+@3AC A9 00     ; E3AC          lda #0
+@3AE 85 43     ; E3AE          sta CCOL
+@3B0 A5 52     ; E3B0          lda NROWS
+@3B2 C9 02     ; E3B2          cmp #2
+@3B4 D0 05     ; E3B4          bne @join
+@3B6 E6 42     ; E3B6          inc CROW        ; the second row is already joined
+@3B8 4C C2 E0  ; E3B8          jmp rowaddr
+@3BB 20 B0 E0  ; E3BB  @join:  jsr downrow
+@3BE A6 42     ; E3BE          ldx CROW
+@3C0 A9 01     ; E3C0          lda #1
+@3C2 9D 34 03  ; E3C2          sta LINKS,x
+@3C5 60        ; E3C5  @done:  rts
 
 ; ; DEL: the cell left of the cursor goes, the rest of the logical line moves left. At the line's
 ; ; start it does nothing.
-@368 20 8B E2  ; E368  delete: jsr logical
-@36B A5 53     ; E36B          lda POS
-@36D F0 1D     ; E36D          beq @done
-@36F 20 15 E3  ; E36F          jsr left
-@372 C6 53     ; E372          dec POS
-@374 20 A9 E3  ; E374          jsr length      ; CNT = the line's cells
-@377 A4 53     ; E377          ldy POS
-@379 C8        ; E379  @move:  iny
-@37A C4 56     ; E37A          cpy CNT
-@37C B0 09     ; E37C          bcs @last
-@37E B1 54     ; E37E          lda (SRC),y
-@380 88        ; E380          dey
-@381 91 54     ; E381          sta (SRC),y
-@383 C8        ; E383          iny
-@384 4C 79 E3  ; E384          jmp @move
-@387 88        ; E387  @last:  dey
-@388 A9 20     ; E388          lda #$20
-@38A 91 54     ; E38A          sta (SRC),y
-@38C 60        ; E38C  @done:  rts
+@3C6 20 E0 E2  ; E3C6  delete: jsr logical
+@3C9 A5 53     ; E3C9          lda POS
+@3CB F0 29     ; E3CB          beq @done
+@3CD 20 6A E3  ; E3CD          jsr left
+@3D0 C6 53     ; E3D0          dec POS
+@3D2 20 1F E4  ; E3D2          jsr length      ; CNT = the line's cells
+@3D5 A4 53     ; E3D5          ldy POS
+@3D7 C8        ; E3D7  @move:  iny
+@3D8 C4 56     ; E3D8          cpy CNT
+@3DA B0 10     ; E3DA          bcs @last
+@3DC AD 40 E8  ; E3DC  @w1:    lda VIA         ; the retrace
+@3DF 29 20     ; E3DF          and #$20
+@3E1 D0 F9     ; E3E1          bne @w1
+@3E3 B1 54     ; E3E3          lda (SRC),y
+@3E5 88        ; E3E5          dey
+@3E6 91 54     ; E3E6          sta (SRC),y
+@3E8 C8        ; E3E8          iny
+@3E9 4C D7 E3  ; E3E9          jmp @move
+@3EC 88        ; E3EC  @last:  dey
+@3ED A9 20     ; E3ED          lda #$20
+@3EF 2C 40 E8  ; E3EF  @w2:    bit VIA         ; A = $20: Z while PB5 is low
+@3F2 D0 FB     ; E3F2          bne @w2
+@3F4 91 54     ; E3F4          sta (SRC),y
+@3F6 60        ; E3F6  @done:  rts
 
 ; ; INST: a space at the cursor, the rest moves right, the last cell lost.
-@38D 20 8B E2  ; E38D  insert: jsr logical
-@390 20 A9 E3  ; E390          jsr length
-@393 A4 56     ; E393          ldy CNT
-@395 88        ; E395          dey
-@396 C4 53     ; E396  @move:  cpy POS
-@398 F0 0A     ; E398          beq @space
-@39A 88        ; E39A          dey
-@39B B1 54     ; E39B          lda (SRC),y
-@39D C8        ; E39D          iny
-@39E 91 54     ; E39E          sta (SRC),y
-@3A0 88        ; E3A0          dey
-@3A1 4C 96 E3  ; E3A1          jmp @move
-@3A4 A9 20     ; E3A4  @space: lda #$20
-@3A6 91 54     ; E3A6          sta (SRC),y
-@3A8 60        ; E3A8          rts
+@3F7 20 E0 E2  ; E3F7  insert: jsr logical
+@3FA 20 1F E4  ; E3FA          jsr length
+@3FD A4 56     ; E3FD          ldy CNT
+@3FF 88        ; E3FF          dey
+@400 C4 53     ; E400  @move:  cpy POS
+@402 F0 11     ; E402          beq @space
+@404 88        ; E404          dey
+@405 AD 40 E8  ; E405  @w1:    lda VIA         ; the retrace
+@408 29 20     ; E408          and #$20
+@40A D0 F9     ; E40A          bne @w1
+@40C B1 54     ; E40C          lda (SRC),y
+@40E C8        ; E40E          iny
+@40F 91 54     ; E40F          sta (SRC),y
+@411 88        ; E411          dey
+@412 4C 00 E4  ; E412          jmp @move
+@415 A9 20     ; E415  @space: lda #$20
+@417 2C 40 E8  ; E417  @w2:    bit VIA         ; A = $20: Z while PB5 is low
+@41A D0 FB     ; E41A          bne @w2
+@41C 91 54     ; E41C          sta (SRC),y
+@41E 60        ; E41E          rts
 
-@3A9 A5 52     ; E3A9  length: lda NROWS
-@3AB C9 02     ; E3AB          cmp #2
-@3AD F0 05     ; E3AD          beq @two
-@3AF A9 28     ; E3AF          lda #COLUMNS
-@3B1 85 56     ; E3B1          sta CNT
-@3B3 60        ; E3B3          rts
-@3B4 A9 50     ; E3B4  @two:   lda #2*COLUMNS
-@3B6 85 56     ; E3B6          sta CNT
-@3B8 60        ; E3B8          rts
+@41F A5 52     ; E41F  length: lda NROWS
+@421 C9 02     ; E421          cmp #2
+@423 F0 05     ; E423          beq @two
+@425 A9 28     ; E425          lda #COLUMNS
+@427 85 56     ; E427          sta CNT
+@429 60        ; E429          rts
+@42A A9 50     ; E42A  @two:   lda #2*COLUMNS
+@42C 85 56     ; E42C          sta CNT
+@42E 60        ; E42E          rts
 
 ; ; RETURN: the logical line (from the input read's start, if the cursor is still on its line),
 ; ; cut at 64, trailing spaces trimmed, into LINBUF; the cursor to the row after it.
-@3B9 20 8B E2  ; E3B9  enter:  jsr logical
-@3BC 20 A9 E3  ; E3BC          jsr length
-@3BF A0 00     ; E3BF          ldy #0          ; the first cell taken
-@3C1 A5 4F     ; E3C1          lda MODE
-@3C3 F0 18     ; E3C3          beq @copy
-@3C5 A5 4D     ; E3C5          lda SROW
-@3C7 C5 51     ; E3C7          cmp LSTART
-@3C9 90 12     ; E3C9          bcc @copy
-@3CB 38        ; E3CB          sec
-@3CC E5 51     ; E3CC          sbc LSTART
-@3CE C5 52     ; E3CE          cmp NROWS
-@3D0 B0 0B     ; E3D0          bcs @copy
-@3D2 AA        ; E3D2          tax
-@3D3 A5 4E     ; E3D3          lda SCOL
-@3D5 E0 00     ; E3D5          cpx #0
-@3D7 F0 03     ; E3D7          beq @from
-@3D9 18        ; E3D9          clc
-@3DA 69 28     ; E3DA          adc #COLUMNS
-@3DC A8        ; E3DC  @from:  tay
-@3DD A2 00     ; E3DD  @copy:  ldx #0
-@3DF C4 56     ; E3DF  @next:  cpy CNT
-@3E1 B0 1F     ; E3E1          bcs @cut
-@3E3 E0 40     ; E3E3          cpx #MAXLINE
-@3E5 B0 1B     ; E3E5          bcs @cut
-@3E7 B1 54     ; E3E7          lda (SRC),y
-@3E9 29 7F     ; E3E9          and #$7F
-@3EB C9 40     ; E3EB          cmp #$40
-@3ED 90 05     ; E3ED          bcc @low
-@3EF A9 20     ; E3EF          lda #$20        ; a graphic: nothing BASIC wrote
-@3F1 4C FA E3  ; E3F1          jmp @put
-@3F4 C9 20     ; E3F4  @low:   cmp #$20
-@3F6 B0 02     ; E3F6          bcs @put
-@3F8 09 40     ; E3F8          ora #$40
-@3FA 9D 00 02  ; E3FA  @put:   sta LINBUF,x
-@3FD C8        ; E3FD          iny
-@3FE E8        ; E3FE          inx
-@3FF 4C DF E3  ; E3FF          jmp @next
-@402 E0 00     ; E402  @cut:   cpx #0
-@404 F0 0B     ; E404          beq @end
-@406 BD FF 01  ; E406          lda LINBUF-1,x
-@409 C9 20     ; E409          cmp #$20
-@40B D0 04     ; E40B          bne @end
-@40D CA        ; E40D          dex
-@40E 4C 02 E4  ; E40E          jmp @cut
-@411 A9 00     ; E411  @end:   lda #0
-@413 9D 00 02  ; E413          sta LINBUF,x
-@416 86 56     ; E416          stx CNT
-@418 A5 51     ; E418          lda LSTART
-@41A 18        ; E41A          clc
-@41B 65 52     ; E41B          adc NROWS
-@41D 38        ; E41D          sec
-@41E E9 01     ; E41E          sbc #1
-@420 85 42     ; E420          sta CROW
-@422 A9 00     ; E422          lda #0
-@424 85 43     ; E424          sta CCOL
-@426 20 A7 E0  ; E426          jsr downrow
-@429 A9 00     ; E429          lda #0
-@42B 85 40     ; E42B          sta WAITING
-@42D E6 41     ; E42D          inc LINES
-@42F A6 56     ; E42F          ldx CNT
-@431 18        ; E431          clc
-@432 60        ; E432          rts
+@42F 20 E0 E2  ; E42F  enter:  jsr logical
+@432 20 1F E4  ; E432          jsr length
+@435 A0 00     ; E435          ldy #0          ; the first cell taken
+@437 A5 4F     ; E437          lda MODE
+@439 F0 18     ; E439          beq @copy
+@43B A5 4D     ; E43B          lda SROW
+@43D C5 51     ; E43D          cmp LSTART
+@43F 90 12     ; E43F          bcc @copy
+@441 38        ; E441          sec
+@442 E5 51     ; E442          sbc LSTART
+@444 C5 52     ; E444          cmp NROWS
+@446 B0 0B     ; E446          bcs @copy
+@448 AA        ; E448          tax
+@449 A5 4E     ; E449          lda SCOL
+@44B E0 00     ; E44B          cpx #0
+@44D F0 03     ; E44D          beq @from
+@44F 18        ; E44F          clc
+@450 69 28     ; E450          adc #COLUMNS
+@452 A8        ; E452  @from:  tay
+@453 A2 00     ; E453  @copy:  ldx #0
+@455 C4 56     ; E455  @next:  cpy CNT
+@457 B0 26     ; E457          bcs @cut
+@459 E0 40     ; E459          cpx #MAXLINE
+@45B B0 22     ; E45B          bcs @cut
+@45D AD 40 E8  ; E45D  @w:     lda VIA         ; the retrace
+@460 29 20     ; E460          and #$20
+@462 D0 F9     ; E462          bne @w
+@464 B1 54     ; E464          lda (SRC),y
+@466 29 7F     ; E466          and #$7F
+@468 C9 40     ; E468          cmp #$40
+@46A 90 05     ; E46A          bcc @low
+@46C A9 20     ; E46C          lda #$20        ; a graphic: nothing BASIC wrote
+@46E 4C 77 E4  ; E46E          jmp @put
+@471 C9 20     ; E471  @low:   cmp #$20
+@473 B0 02     ; E473          bcs @put
+@475 09 40     ; E475          ora #$40
+@477 9D 00 02  ; E477  @put:   sta LINBUF,x
+@47A C8        ; E47A          iny
+@47B E8        ; E47B          inx
+@47C 4C 55 E4  ; E47C          jmp @next
+@47F E0 00     ; E47F  @cut:   cpx #0
+@481 F0 0B     ; E481          beq @end
+@483 BD FF 01  ; E483          lda LINBUF-1,x
+@486 C9 20     ; E486          cmp #$20
+@488 D0 04     ; E488          bne @end
+@48A CA        ; E48A          dex
+@48B 4C 7F E4  ; E48B          jmp @cut
+@48E A9 00     ; E48E  @end:   lda #0
+@490 9D 00 02  ; E490          sta LINBUF,x
+@493 86 56     ; E493          stx CNT
+@495 A5 51     ; E495          lda LSTART
+@497 18        ; E497          clc
+@498 65 52     ; E498          adc NROWS
+@49A 38        ; E49A          sec
+@49B E9 01     ; E49B          sbc #1
+@49D 85 42     ; E49D          sta CROW
+@49F A9 00     ; E49F          lda #0
+@4A1 85 43     ; E4A1          sta CCOL
+@4A3 20 B0 E0  ; E4A3          jsr downrow
+@4A6 A9 00     ; E4A6          lda #0
+@4A8 85 40     ; E4A8          sta WAITING
+@4AA E6 41     ; E4AA          inc LINES
+@4AC A6 56     ; E4AC          ldx CNT
+@4AE 18        ; E4AE          clc
+@4AF 60        ; E4AF          rts
 
 ; ; --- Tables -----------------------------------------------------------------------------------
 
-@433 00 28 50 78 A0  ; E433  rowlo:  .byte <(SCREEN+0*40), <(SCREEN+1*40), <(SCREEN+2*40), <(SCREEN+3*40), <(SCREEN+4*40)
-@438 C8 F0 18 40 68  ; E438          .byte <(SCREEN+5*40), <(SCREEN+6*40), <(SCREEN+7*40), <(SCREEN+8*40), <(SCREEN+9*40)
-@43D 90 B8 E0 08  ; E43D          .byte <(SCREEN+10*40), <(SCREEN+11*40), <(SCREEN+12*40), <(SCREEN+13*40)
-@441 30 58 80 A8  ; E441          .byte <(SCREEN+14*40), <(SCREEN+15*40), <(SCREEN+16*40), <(SCREEN+17*40)
-@445 D0 F8 20 48  ; E445          .byte <(SCREEN+18*40), <(SCREEN+19*40), <(SCREEN+20*40), <(SCREEN+21*40)
-@449 70 98 C0  ; E449          .byte <(SCREEN+22*40), <(SCREEN+23*40), <(SCREEN+24*40)
-@44C 80 80 80 80 80  ; E44C  rowhi:  .byte >(SCREEN+0*40), >(SCREEN+1*40), >(SCREEN+2*40), >(SCREEN+3*40), >(SCREEN+4*40)
-@451 80 80 81 81 81  ; E451          .byte >(SCREEN+5*40), >(SCREEN+6*40), >(SCREEN+7*40), >(SCREEN+8*40), >(SCREEN+9*40)
-@456 81 81 81 82  ; E456          .byte >(SCREEN+10*40), >(SCREEN+11*40), >(SCREEN+12*40), >(SCREEN+13*40)
-@45A 82 82 82 82  ; E45A          .byte >(SCREEN+14*40), >(SCREEN+15*40), >(SCREEN+16*40), >(SCREEN+17*40)
-@45E 82 82 83 83  ; E45E          .byte >(SCREEN+18*40), >(SCREEN+19*40), >(SCREEN+20*40), >(SCREEN+21*40)
-@462 83 83 83  ; E462          .byte >(SCREEN+22*40), >(SCREEN+23*40), >(SCREEN+24*40)
+@4B0 00 28 50 78 A0  ; E4B0  rowlo:  .byte <(SCREEN+0*40), <(SCREEN+1*40), <(SCREEN+2*40), <(SCREEN+3*40), <(SCREEN+4*40)
+@4B5 C8 F0 18 40 68  ; E4B5          .byte <(SCREEN+5*40), <(SCREEN+6*40), <(SCREEN+7*40), <(SCREEN+8*40), <(SCREEN+9*40)
+@4BA 90 B8 E0 08  ; E4BA          .byte <(SCREEN+10*40), <(SCREEN+11*40), <(SCREEN+12*40), <(SCREEN+13*40)
+@4BE 30 58 80 A8  ; E4BE          .byte <(SCREEN+14*40), <(SCREEN+15*40), <(SCREEN+16*40), <(SCREEN+17*40)
+@4C2 D0 F8 20 48  ; E4C2          .byte <(SCREEN+18*40), <(SCREEN+19*40), <(SCREEN+20*40), <(SCREEN+21*40)
+@4C6 70 98 C0  ; E4C6          .byte <(SCREEN+22*40), <(SCREEN+23*40), <(SCREEN+24*40)
+@4C9 80 80 80 80 80  ; E4C9  rowhi:  .byte >(SCREEN+0*40), >(SCREEN+1*40), >(SCREEN+2*40), >(SCREEN+3*40), >(SCREEN+4*40)
+@4CE 80 80 81 81 81  ; E4CE          .byte >(SCREEN+5*40), >(SCREEN+6*40), >(SCREEN+7*40), >(SCREEN+8*40), >(SCREEN+9*40)
+@4D3 81 81 81 82  ; E4D3          .byte >(SCREEN+10*40), >(SCREEN+11*40), >(SCREEN+12*40), >(SCREEN+13*40)
+@4D7 82 82 82 82  ; E4D7          .byte >(SCREEN+14*40), >(SCREEN+15*40), >(SCREEN+16*40), >(SCREEN+17*40)
+@4DB 82 82 83 83  ; E4DB          .byte >(SCREEN+18*40), >(SCREEN+19*40), >(SCREEN+20*40), >(SCREEN+21*40)
+@4DF 83 83 83  ; E4DF          .byte >(SCREEN+22*40), >(SCREEN+23*40), >(SCREEN+24*40)
 
 ; ; The PET 2001's matrix (the real 901447-05's table at $E75C, MAME pet.cpp), row 0 PB0 first:
 ; ; the character a key types; $0D RETURN, $03 STOP, $11 CRSR down, $1D CRSR right, $13 HOME,
@@ -722,4 +781,4 @@
 @748 12 5B 20 3C 03 00 2E 3D  ; E748          .byte $12, '[', ' ', '<', $03, 0, '.', '='
 
 ;         .org $E7FF
-@7FF 17        ; E7FF          .checksum $E000, $800
+@7FF 81        ; E7FF          .checksum $E000, $800

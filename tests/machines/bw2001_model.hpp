@@ -15,7 +15,9 @@ namespace bw {
 // The PET 2001 as the BW-2001's firmware sees it (docs/p5p-bw2001-firmware/BW2001_FIRMWARE.md,
 // "The PET it runs on"), around Mos6502Core: one bus cycle a microsecond. Not the netlist: the
 // RAM, the video RAM, the ROM windows, PIA1 (keyboard rows, DIAG, the columns, the retrace on CB1
-// every 16 667 cycles) and the key matrix, modelled. PIA2, the VIA and empty sockets are flagged.
+// at the start of each 16 640-cycle frame), the VIA's PB5 (low during the frame's first 3 840
+// cycles, the 60 blank lines: P5q) and PCR, and the key matrix, modelled. PIA2, the VIA's other
+// registers and empty sockets are flagged.
 class Bw2001Model final : public Bw2001Target {
 public:
     struct Options {
@@ -42,6 +44,9 @@ public:
     void patchRom(std::uint16_t address, std::span<const std::uint8_t> bytes);
 
     bool touchedUnmodelled() const { return touched_; }  // PIA2, the VIA, an empty socket
+    // Reads and writes of the screen ($8000-$8FFF) while the beam draws the text: the PET's snow.
+    std::uint64_t snowAccesses() const { return snow_; }
+    std::uint8_t viaPcr() const { return pcr_; }
     const Mos6502Core& core() const { return core_; }
     std::uint64_t cycles() const { return cycle_; }
     // The lowest stack pointer since power-on, or since the last resetStackMark().
@@ -74,6 +79,10 @@ private:
 
     // PIA1 (R6520, P5n §5.2), as far as the firmware uses it.
     std::uint8_t ora_ = 0, ddra_ = 0, cra_ = 0, orb_ = 0, ddrb_ = 0, crb_ = 0;
+    std::uint8_t pcr_ = 0;    // the VIA's PCR: CA2 (GRAPHIC) by the firmware
+    std::uint64_t snow_ = 0;  // snowAccesses()
+    bool inText() const;      // the beam inside the 40 x 25 text now
+    bool blank() const;       // PB5 low: the 60 lines outside the text
 
     std::uint8_t bus_ = 0;
     std::uint64_t cycle_ = 0;

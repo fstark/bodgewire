@@ -41,6 +41,7 @@ struct Machine {
     void press(Bw2001Key key, bool shift = false) { typist.press(key, shift); }
     void clear() {  // CLR, the cursor top left
         press(kBw2001Home, true);
+        model.run(300'000);  // the clear waits for the retrace: about nine frames (P5q)
     }
 };
 
@@ -126,6 +127,8 @@ TEST_CASE("bw2001 power-on: the banner, READY and the RAM sized", "[bw2001]") {
         CHECK(m.model.peek(0x60) == 0x00);
         CHECK(m.model.peek(0x61) == 0x20);
         CHECK_FALSE(m.model.touchedUnmodelled());
+        CHECK(m.model.viaPcr() == 0x0C);     // CA2 low: the upper-case character set
+        CHECK(m.model.snowAccesses() == 0);  // the screen only in the retrace (P5q)
     }
     Machine small({.ramTop = 0x1800});
     CHECK(small.row(2) == "5118 BYTES FREE");
@@ -295,6 +298,7 @@ TEST_CASE("bw2001 conformance", "[bw2001][slow]") {
             INFO(difference.value_or(""));
             CHECK_FALSE(difference.has_value());
             CHECK_FALSE(model.touchedUnmodelled());
+            CHECK(model.snowAccesses() == 0);  // printing, scrolling, the cursor, RETURN (P5q)
             // BASIC's deepest stack use (design §6.6): about 200 bytes at P5o's depth of 6.
             UNSCOPED_INFO("lowest stack byte written $1" << std::hex << int(model.stackMark()));
             CHECK(model.stackMark() >= 0x20);  // $0120 and above

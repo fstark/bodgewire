@@ -93,7 +93,12 @@ print:  pha
 ; Store A ($20-$5F) at the cursor, move right; at the row's end go on into the next row, joined
 ; when this row is a logical line's first, else as a new logical line.
 putch:  jsr screencode
+        tax
         ldy CCOL
+@w:     lda VIA         ; wait for the retrace: the screen only while the beam is outside it
+        and #$20
+        bne @w
+        txa
         sta (ROWPTR),y
         inc CCOL
         lda CCOL
@@ -155,29 +160,44 @@ rowaddr:
         sta ROWPTR+1
         rts
 
-; Rows 1-24 up to 0-23, row 24 blank, the links with them. Interrupts stay on (about 8 ms). Each
+; Rows 1-24 up to 0-23, row 24 blank, the links with them. Every byte waits for the retrace (about
+; nine frames, 0.15 s: the screen is touched only while the beam is outside it). Each
 ; page is copied in its own loop, so no row is overwritten before it is read.
 scroll: ldx #0
-@p0:    lda SCREEN+$028,x
+@p0:    lda VIA         ; the retrace, as every access below
+        and #$20
+        bne @p0
+        lda SCREEN+$028,x
         sta SCREEN+$000,x
         inx
         bne @p0
-@p1:    lda SCREEN+$128,x
+@p1:    lda VIA         ; the retrace, as every access below
+        and #$20
+        bne @p1
+        lda SCREEN+$128,x
         sta SCREEN+$100,x
         inx
         bne @p1
-@p2:    lda SCREEN+$228,x
+@p2:    lda VIA         ; the retrace, as every access below
+        and #$20
+        bne @p2
+        lda SCREEN+$228,x
         sta SCREEN+$200,x
         inx
         bne @p2
-@p3:    lda SCREEN+$328,x
+@p3:    lda VIA         ; the retrace, as every access below
+        and #$20
+        bne @p3
+        lda SCREEN+$328,x
         sta SCREEN+$300,x
         inx
         cpx #$C0
         bne @p3
         lda #$20
         ldx #COLUMNS-1
-@blank: sta SCREEN+40*(ROWS-1),x
+@blank: bit VIA         ; A = $20: Z while PB5 is low
+        bne @blank
+        sta SCREEN+40*(ROWS-1),x
         dex
         bpl @blank
         ldx #0
@@ -203,9 +223,17 @@ scroll: ldx #0
 ; Blank screen, no links, the cursor top left.
 clear:  lda #$20
         ldx #0
-@fill:  sta SCREEN+$000,x
+@fill:  bit VIA         ; A = $20: Z while PB5 is low (the retrace)
+        bne @fill
+        sta SCREEN+$000,x
+@f1:    bit VIA
+        bne @f1
         sta SCREEN+$100,x
+@f2:    bit VIA
+        bne @f2
         sta SCREEN+$200,x
+@f3:    bit VIA
+        bne @f3
         sta SCREEN+$300,x
         inx
         bne @fill
@@ -225,6 +253,9 @@ home:   lda #0
 showcur:
         sei
         ldy CCOL
+@w:     lda VIA         ; the retrace
+        and #$20
+        bne @w
         lda (ROWPTR),y
         and #$7F
         sta UNDER
@@ -243,6 +274,9 @@ hidecur:
         lda SHOWN
         beq @done
         ldy CCOL
+@w:     lda VIA         ; the retrace
+        and #$20
+        bne @w
         lda UNDER
         sta (ROWPTR),y
         lda #0
@@ -343,6 +377,11 @@ irq:    lda #$FF
         beq @put
         ora #$80
 @put:   ldy CCOL
+        tax
+@w:     lda VIA         ; the retrace (here at its start: a few cycles)
+        and #$20
+        bne @w
+        txa
         sta (ROWPTR),y
 @done:  rts
 
@@ -511,7 +550,12 @@ typed:  pha
         cpx #MAXLINE
         bcs @done
         jsr screencode
+        tax
         ldy CCOL
+@w:     lda VIA         ; the retrace
+        and #$20
+        bne @w
+        txa
         sta (ROWPTR),y
         inc CCOL
         lda CCOL
@@ -542,6 +586,9 @@ delete: jsr logical
 @move:  iny
         cpy CNT
         bcs @last
+@w1:    lda VIA         ; the retrace
+        and #$20
+        bne @w1
         lda (SRC),y
         dey
         sta (SRC),y
@@ -549,6 +596,8 @@ delete: jsr logical
         jmp @move
 @last:  dey
         lda #$20
+@w2:    bit VIA         ; A = $20: Z while PB5 is low
+        bne @w2
         sta (SRC),y
 @done:  rts
 
@@ -560,12 +609,17 @@ insert: jsr logical
 @move:  cpy POS
         beq @space
         dey
+@w1:    lda VIA         ; the retrace
+        and #$20
+        bne @w1
         lda (SRC),y
         iny
         sta (SRC),y
         dey
         jmp @move
 @space: lda #$20
+@w2:    bit VIA         ; A = $20: Z while PB5 is low
+        bne @w2
         sta (SRC),y
         rts
 
@@ -605,6 +659,9 @@ enter:  jsr logical
         bcs @cut
         cpx #MAXLINE
         bcs @cut
+@w:     lda VIA         ; the retrace
+        and #$20
+        bne @w
         lda (SRC),y
         and #$7F
         cmp #$40

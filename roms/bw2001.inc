@@ -11,6 +11,8 @@ PIA1PA   = PIA1
 PIA1CRA  = PIA1+1
 PIA1PB   = PIA1+2
 PIA1CRB  = PIA1+3
+VIA      = $E840        ; +0 port B: PB5 low while the beam is outside the text (the retrace)
+VIAPCR   = VIA+$C       ; CA2 (GRAPHIC): low, the character ROM's first half
 
 ; Zero page: $00-$3F BASIC, $40-$5F the editor, $60-$7F the kernel, $80-$FF the player's (USR).
 WAITING  = $40          ; 1 while the editor waits for keys to make a line (the harness signal)

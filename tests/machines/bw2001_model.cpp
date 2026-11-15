@@ -13,7 +13,12 @@ namespace bw {
 
 namespace {
 
-constexpr std::uint64_t kRetraceCycles = 16'667;  // 60 Hz at 1 MHz
+// The PET's frame (P5q): 260 lines of 64 cycles. The retrace edge (VIDEO ON falling, PIA1 CB1)
+// starts it; the 60 blank lines follow (VIA PB5 low), then 200 text lines, each drawing its 40
+// characters from cycle 23 to 62 of the line (DIS ON rises 23 characters after VIDEO ON does).
+constexpr std::uint64_t kRetraceCycles = 16'640;
+constexpr std::uint64_t kBlankCycles = 60 * 64;
+constexpr std::uint64_t kTextFirst = 23, kTextLast = 62;
 constexpr std::uint8_t kCrbFlag = 0x80, kCrbEnable = 0x01, kSelectOr = 0x04;
 
 std::vector<std::uint8_t> LoadRom(std::string_view name, std::size_t size) {
@@ -99,6 +104,14 @@ void Bw2001Model::cycle() {
     ++cycle_;
 }
 
+bool Bw2001Model::blank() const { return cycle_ % kRetraceCycles < kBlankCycles; }
+
+bool Bw2001Model::inText() const {
+    const std::uint64_t frame = cycle_ % kRetraceCycles;
+    const std::uint64_t line = frame % 64;
+    return frame >= kBlankCycles && line >= kTextFirst && line <= kTextLast;
+}
+
 void Bw2001Model::setKey(Bw2001Key key, bool held) {
     if (key.row < 0 || key.row > 9 || key.column < 0 || key.column > 7) {
         throw std::invalid_argument("Bw2001Model::setKey: row 0-9, column 0-7");
@@ -152,6 +165,9 @@ std::uint8_t Bw2001Model::peek(std::uint16_t address) const {
         return videoRead(address);
     }
     if (address >= 0xE800 && address < 0xF000) {
+        if ((address & 0x70) == 0x40 && (address & 0x0F) == 0) {
+            return blank() ? 0xDF : 0xFF;  // the VIA's port B: PB5 the retrace, the rest high
+        }
         if ((address & 0x10) != 0) {
             switch (address & 3) {
             case 0:
@@ -173,9 +189,13 @@ std::uint8_t Bw2001Model::peek(std::uint16_t address) const {
 }
 
 std::uint8_t Bw2001Model::read(std::uint16_t address) {
+    if (address >= 0x8000 && address < 0x9000 && inText()) {
+        ++snow_;
+    }
     if (address >= 0xE800 && address < 0xF000) {
-        if ((address & 0x60) != 0) {
-            touched_ = true;  // PIA2 ($E820) or the VIA ($E840)
+        const bool orb = (address & 0x70) == 0x40 && (address & 0x0F) == 0;  // the VIA's PB5
+        if ((address & 0x60) != 0 && !orb) {
+            touched_ = true;  // PIA2 ($E820) or the VIA ($E840) but its port B
         }
         if ((address & 0x10) != 0 && (address & 3) == 2 && (crb_ & kSelectOr) != 0) {
             const std::uint8_t value = peek(address);
@@ -201,10 +221,17 @@ void Bw2001Model::write(std::uint16_t address, std::uint8_t value) {
         return;
     }
     if (address >= 0x8000 && address < 0x9000) {
+        if (inText()) {
+            ++snow_;
+        }
         video_[address & 0x3FF] = value;
         return;
     }
     if (address >= 0xE800 && address < 0xF000) {
+        if ((address & 0x70) == 0x40 && (address & 0x0F) == 0x0C) {
+            pcr_ = value;  // the VIA's PCR (the character set)
+            return;
+        }
         if ((address & 0x60) != 0) {
             touched_ = true;
         }

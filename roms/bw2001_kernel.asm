@@ -364,6 +364,8 @@ reset:  sei
         cld
         ldx #$FF
         txs
+        lda #$0C        ; VIA CA2 low: the character ROM's first half (upper case), as BASIC 1
+        sta VIAPCR
         lda #0          ; PIA1 port A: PA0-PA3 the keyboard row out, PA4-PA7 in (PA7 DIAG)
         sta PIA1CRA
         lda #$0F
