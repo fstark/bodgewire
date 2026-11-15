@@ -49,7 +49,7 @@ struct PullUpButton {
         auto& network = circuit.add<SwitchNetwork>(nets);
         circuit.connect(network, 0, rail);
         circuit.connect(network, 1, signal);
-        network.add(*button, 1, 0);
+        network.add(button->contact(), 1, 0);
         if (withOutputHigh) {
             auto& out = circuit.add<Stimulus>("U1", One, std::vector<Stimulus::Step>{});
             circuit.connect(out, Stimulus::kOut, signal);
@@ -242,8 +242,8 @@ TEST_CASE("switch: a press lands at the switch's wake, whatever else wakes the n
     circuit.connect(network, 0, gnd);
     circuit.connect(network, 1, a);
     circuit.connect(network, 2, b);
-    network.add(joinsAB, 1, 2);
-    network.add(grounds, 0, 2);
+    network.add(joinsAB.contact(), 1, 2);
+    network.add(grounds.contact(), 0, 2);
     circuit.finalize();
     Simulator sim(circuit);
     sim.powerOn(1);

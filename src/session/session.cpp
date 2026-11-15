@@ -67,8 +67,14 @@ std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> 
     const auto video = ConnectorNet(*live->circuit, "VIDEO", "VIDEO");
     const auto syncN = ConnectorNet(*live->circuit, "VIDEO", "SYNC_N");
     std::vector<Consumer*> consumers;
+    const auto videoN = ConnectorNet(*live->circuit, "MONITOR", "VIDEO_N");
+    const auto hdrive = ConnectorNet(*live->circuit, "MONITOR", "HDRIVE");
+    const auto vdrive = ConnectorNet(*live->circuit, "MONITOR", "VDRIVE");
     if (video && syncN) {
         live->tv.emplace(*video, *syncN);
+        consumers.push_back(&*live->tv);
+    } else if (videoN && hdrive && vdrive) {
+        live->tv.emplace(SeparateDrives{*videoN, *hdrive, *vdrive});
         consumers.push_back(&*live->tv);
     }
     if (machine_) {
@@ -147,9 +153,20 @@ void Session::powerOff() {
         }
     }
     pressed_.clear();
+    for (const auto& [reference, key] : matrixHeld_) {
+        if (MatrixKeyboard* matrix = MatrixKeyboardOf(*live_->circuit, reference)) {
+            matrix->setHeld(key, false);
+        }
+    }
+    matrixHeld_.clear();
     for (const std::string& reference : keyboards()) {
         if (Keyboard* keyboard = KeyboardOf(*live_->circuit, reference)) {
             keyboard->dropWaiting();
+        }
+    }
+    for (const std::string& reference : matrixKeyboards()) {
+        if (MatrixKeyboard* matrix = MatrixKeyboardOf(*live_->circuit, reference)) {
+            matrix->dropWaiting();
         }
     }
     live_->runner->powerOff();
@@ -619,8 +636,53 @@ std::vector<std::string> Session::keyboards() const {
 }
 
 bool Session::type(std::string_view reference, char32_t key) {
+    if (MatrixKeyboard* matrix = MatrixKeyboardOf(*live_->circuit, reference)) {
+        if (!powered_ || !matrix->type(key)) {
+            return false;
+        }
+        live_->runner->wake(matrix->id(), PressJitter());
+        return true;
+    }
     const auto code = KeyboardCode(key);
     return code && typeCode(reference, *code);
+}
+
+std::vector<std::string> Session::matrixKeyboards() const {
+    std::vector<std::string> references;
+    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
+    for (const LoadedPart& part : circuit.parts) {
+        if (part.info->name == "MATRIXKB") {
+            references.push_back(part.reference);
+        }
+    }
+    return references;
+}
+
+void Session::setMatrixKeyHeld(std::string_view reference, std::size_t key, bool held) {
+    MatrixKeyboard* matrix = MatrixKeyboardOf(*live_->circuit, reference);
+    if (!powered_ || matrix == nullptr || key >= Bw2001Keys().size() ||
+        held == matrixKeyHeld(reference, key)) {
+        return;
+    }
+    if (held) {
+        matrixHeld_.emplace(std::string(reference), key);
+    } else {
+        matrixHeld_.erase({std::string(reference), key});
+    }
+    matrix->setHeld(key, held);
+    live_->runner->wake(matrix->id(), PressJitter());
+}
+
+bool Session::matrixKeyHeld(std::string_view reference, std::size_t key) const {
+    return matrixHeld_.contains({std::string(reference), key});
+}
+
+bool Session::matrixKeyDown(std::string_view reference, std::size_t key) const {
+    if (matrixKeyHeld(reference, key)) {
+        return true;
+    }
+    const MatrixKeyboard* matrix = MatrixKeyboardOf(*live_->circuit, reference);
+    return powered_ && matrix != nullptr && matrix->scripted(key);
 }
 
 bool Session::typeCode(std::string_view reference, std::uint8_t code) {

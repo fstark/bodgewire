@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "sim/ids.hpp"
 #include "sim/logic.hpp"
 #include "sim/time.hpp"
 
@@ -27,9 +28,22 @@ struct TvFrameStats {
     int syncedLines = 0;          // of which on an accepted horizontal sync
 };
 
-// Monitor on a VIDEO connector (TV.md). Time only moves forward; at t = 0 both inputs are Z.
+// How a Tv takes its sync: one composite SYNC_N (the VIDEO connector), or separate horizontal and
+// vertical drives (the MONITOR connector, the PET 2001's built-in monitor, P5q).
+enum class TvSync : std::uint8_t { Composite, Separate };
+
+// The Nets of a MONITOR connector: the dot lit while `videoN` is low, a line at each rise of
+// `hdrive`, a frame at each fall of `vdrive`.
+struct SeparateDrives {
+    NetId videoN, hdrive, vdrive;
+};
+
+// Monitor on a VIDEO or MONITOR connector (TV.md). Time only moves forward; at t = 0 every input
+// is Z.
 class Tv {
 public:
+    explicit Tv(TvSync sync = TvSync::Composite) : sync_(sync) {}
+
     static constexpr Time kColumnTime = 125'000;           // ps
     static constexpr Time kLineFreeRun = 66'000'000;       // ps
     static constexpr Time kLineAccept = 56'000'000;        // ps
@@ -38,7 +52,10 @@ public:
     static constexpr Time kVerticalSyncLow = 16'000'000;   // ps
 
     void setVideo(Time time, LogicValue value);
-    void setSyncN(Time time, LogicValue value);
+    void setSyncN(Time time, LogicValue value);            // Composite only
+    void setHorizontalDrive(Time time, LogicValue value);  // Separate: a line at an accepted rise
+    void setVerticalDrive(Time time, LogicValue value);    // Separate: a frame at an accepted fall
+    TvSync sync() const { return sync_; }
     void advanceTo(Time time);  // runs deflection and paints up to `time`
     const TvFrame& completedFrame() const { return completed_; }  // black before the first
     const TvFrameStats& completedStats() const { return completedStats_; }
@@ -50,7 +67,9 @@ private:
     void startLine(Time time, bool synced);
     void startFrame(Time time, bool synced);
 
+    TvSync sync_;
     LogicValue video_ = LogicValue::Z, syncN_ = LogicValue::Z;
+    LogicValue hdrive_ = LogicValue::Z, vdrive_ = LogicValue::Z;
     Time lowSince_ = 0;             // last 1 → 0 of SYNC_N
     bool verticalSyncSeen_ = true;  // current low period already produced a vertical sync
     Time now_ = 0;                  // painted up to here

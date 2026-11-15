@@ -12,6 +12,7 @@
 
 #include "parts/catalogue.hpp"
 #include "parts/connector.hpp"
+#include "parts/matrix_keyboard.hpp"
 #include "parts/memory_cells.hpp"
 #include "parts/switch.hpp"
 #include "sim/check.hpp"
@@ -324,7 +325,7 @@ private:
     // random draws); the SwitchNetwork gets a Switched Pin on every Net a leg is listed on.
     void wireSwitches() {
         struct Legs {
-            Switch* member;
+            SwitchContact* member;
             std::array<std::optional<NetId>, 2> nets;
         };
         std::vector<Legs> switches;
@@ -343,7 +344,7 @@ private:
                                          " is already " + it->second + "'s");
                 }
             }
-            Legs legs{&sw, {}};
+            Legs legs{&sw.contact(), {}};
             for (PinIndex leg = 0; leg < 2; ++leg) {
                 if (const auto it = pinNet_.find({decl.reference, leg}); it != pinNet_.end()) {
                     legs.nets[leg] = it->second.net;
@@ -355,6 +356,25 @@ private:
             };
             notConnected_.insert({decl.reference, !onRail(0) || onRail(1) ? 1u : 0u});
             switches.push_back(legs);
+        }
+        // A MATRIXKB's keys (P5q): each a contact between its row and column Pins' Nets.
+        for (const PartDecl& decl : netlist_.parts) {
+            const PlacedPart& part = placed_.find(decl.reference)->second;
+            if (part.info == nullptr || part.info->name != "MATRIXKB" ||
+                part.component == nullptr) {
+                continue;
+            }
+            auto& keyboard = static_cast<MatrixKeyboard&>(*part.component);
+            const auto netOf = [&](PinIndex pin) -> std::optional<NetId> {
+                const auto it = pinNet_.find({decl.reference, pin});
+                return it == pinNet_.end() ? std::nullopt : std::optional(it->second.net);
+            };
+            const auto keys = Bw2001Keys();
+            for (std::size_t k = 0; k < keys.size(); ++k) {
+                switches.push_back({&keyboard.contact(k),
+                                    {netOf(MatrixKeyboard::kRow0 + keys[k].row),
+                                     netOf(MatrixKeyboard::kColumn0 + keys[k].column)}});
+            }
         }
         std::vector<NetId> nets;
         for (const Legs& legs : switches) {
@@ -515,6 +535,16 @@ Paddle* PaddleOf(const LoadedCircuit& loaded, std::string_view reference) {
     }
     const auto component = loaded.components.find(reference);
     return component == loaded.components.end() ? nullptr : static_cast<Paddle*>(component->second);
+}
+
+MatrixKeyboard* MatrixKeyboardOf(const LoadedCircuit& loaded, std::string_view reference) {
+    const auto part = std::ranges::find(loaded.parts, reference, &LoadedPart::reference);
+    if (part == loaded.parts.end() || part->info->name != "MATRIXKB") {
+        return nullptr;
+    }
+    const auto component = loaded.components.find(reference);
+    return component == loaded.components.end() ? nullptr
+                                                : static_cast<MatrixKeyboard*>(component->second);
 }
 
 Keyboard* KeyboardOf(const LoadedCircuit& loaded, std::string_view reference) {

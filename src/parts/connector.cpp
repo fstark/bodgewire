@@ -67,6 +67,29 @@ std::vector<PinSpec> ConnectorPins(std::string_view part) {
         pins.push_back({"GND", PinKind::Power, Family::Ttl});
         return pins;
     }
+    if (part == "MONITOR") {
+        // The PET 2001's J7: signals as VIDEO's, the grounds plain loads on GND, pad 6 unused.
+        const auto in = [](const char* name) { return PinSpec{name, PinKind::Input, Family::Ttl}; };
+        const auto ground = [](const char* name) {
+            return PinSpec{name, PinKind::Input, Family::Mos, false, true};
+        };
+        return {in("VIDEO_N"),  ground("GND1"), in("VDRIVE"),
+                ground("GND2"), in("HDRIVE"),   {"NC6", PinKind::NoConnect, Family::Ttl},
+                ground("GND3")};
+    }
+    if (part == "MATRIXKB") {
+        std::vector<PinSpec> pins;
+        for (int row = 0; row < 10; ++row) {
+            pins.push_back({"ROW" + std::to_string(row), PinKind::Input, Family::Mos, false, true});
+        }
+        for (int column = 0; column < 8; ++column) {
+            pins.push_back(
+                {"COL" + std::to_string(column), PinKind::Input, Family::Mos, false, true});
+        }
+        pins.push_back({"NC19", PinKind::NoConnect, Family::Ttl});
+        pins.push_back({"NC20", PinKind::NoConnect, Family::Ttl});
+        return pins;
+    }
     if (part == "IEEE488" || part == "USERPORT" || part == "CASSETTE") {
         return PassivePins(part);
     }

@@ -91,6 +91,7 @@ add_executable(bw_tests
   parts/ls107_test.cpp
   parts/ls138_test.cpp
   parts/ls139_test.cpp
+  parts/matrix_keyboard_test.cpp
   parts/mc3446_test.cpp
   parts/ls154_test.cpp
   parts/ls157_test.cpp
@@ -138,6 +139,7 @@ add_executable(bw_tests
   runner/scope_consumer_test.cpp
   runner/spsc_ring_test.cpp
   runner/triple_buffer_test.cpp
+  runner/tv_consumer_test.cpp
   session/session_test.cpp
   sim/check_test.cpp
   sim/circuit_test.cpp
@@ -153,6 +155,7 @@ add_executable(bw_tests
   view/board_scene_test.cpp
   view/digit_shape_test.cpp
   view/keyboard_layout_test.cpp
+  view/matrix_keyboard_layout_test.cpp
   view/time_text_test.cpp
   view/time_view_test.cpp
   view/viewport_test.cpp

@@ -115,3 +115,30 @@ TEST_CASE("connector: a cassette port on the rails gives no warning", "[parts]")
     REQUIRE(loaded.has_value());
     CHECK((*loaded)->warnings.empty());
 }
+
+TEST_CASE("connector: MONITOR pins", "[parts]") {
+    Circuit circuit;
+    const PartInfo* info = FindPart("MONITOR");
+    REQUIRE(info != nullptr);
+    CHECK(info->kind == PartKind::Connector);
+    CHECK(info->package == "HDR-1x07");
+    const auto created = info->create(circuit, "J7", {});
+    REQUIRE(created.has_value());
+    const auto pins = (*created)->pins();
+    REQUIRE(pins.size() == 7);
+    CHECK(pins[0].name == "VIDEO_N");
+    CHECK(pins[2].name == "VDRIVE");
+    CHECK(pins[4].name == "HDRIVE");
+    CHECK(pins[5].kind == PinKind::NoConnect);
+    CHECK(pins[1].kind == PinKind::Input);
+    CHECK_FALSE(ConnectorPowersDevice("MONITOR"));
+}
+
+TEST_CASE("connector: a MONITOR on its Nets gives no warning", "[parts]") {
+    const auto loaded = LoadNetlist("part J1 POWER\npart X1 OSC freq=1MHz\npart J7 MONITOR\n"
+                                    "net V X1.OUT J7.VIDEO_N J7.HDRIVE J7.VDRIVE\n"
+                                    "net GND J7.GND1 J7.GND2 J7.GND3\n",
+                                    "t.bwn");
+    REQUIRE(loaded.has_value());
+    CHECK((*loaded)->warnings.empty());
+}

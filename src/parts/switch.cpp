@@ -44,12 +44,18 @@ Switch::Switch(std::string reference, std::string legend, std::string pcKey)
 void Switch::powerOn(PowerOnContext& ctx) {
     ctx.setOutput(0, LogicValue::Z);
     ctx.setOutput(1, LogicValue::Z);
-    closed_ = fault_ == SwitchFault::StuckClosed;
+    contact_.reset(fault_ == SwitchFault::StuckClosed);
 }
 
 void Switch::evaluate(EvalContext& ctx) {
     const bool closed =
         fault_ == SwitchFault::StuckClosed || (fault_ != SwitchFault::NeverCloses && pressed());
+    contact_.set(ctx, closed);
+}
+
+// --- SwitchContact ---
+
+void SwitchContact::set(EvalContext& ctx, bool closed) {
     if (closed == closed_) {
         return;
     }
@@ -67,7 +73,7 @@ SwitchNetwork::SwitchNetwork(std::span<const std::string> netNames)
       order_(netNames.size()), start_(netNames.size() + 1), size_(netNames.size()),
       grouped_(netNames.size()), groupOf_(netNames.size()), cursor_(netNames.size()) {}
 
-void SwitchNetwork::add(Switch& member, PinIndex a, PinIndex b) {
+void SwitchNetwork::add(SwitchContact& member, PinIndex a, PinIndex b) {
     Check(a != b && a < pins().size() && b < pins().size(), "switch network: bad legs");
     Check(member.network_ == nullptr, "switch network: switch added twice");
     member.network_ = this;

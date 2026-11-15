@@ -501,6 +501,15 @@ int Run(std::span<char*> args) {
         edges.push_back({press.up, sw->id(), [sw] { sw->setPressed(false); }});
     }
     for (const Typing& typing : options.type) {
+        if (MatrixKeyboard* matrix = MatrixKeyboardOf(loaded, typing.reference)) {
+            // The matrix paces its own presses (40 ms down, 40 ms up): all queued at the start.
+            edges.push_back({typing.start, matrix->id(), [matrix, keys = typing.keys] {
+                                 for (const std::uint8_t code : keys) {
+                                     (void)matrix->type(code == 0x08 ? kKeyDel : code);
+                                 }
+                             }});
+            continue;
+        }
         Keyboard* keyboard = KeyboardOf(loaded, typing.reference);
         if (keyboard == nullptr) {
             return UsageError("'" + typing.reference + "' is not a keyboard");
@@ -547,12 +556,15 @@ int Run(std::span<char*> args) {
     }
 
     std::ofstream tvFile;
-    std::optional<NetId> tvVideo, tvSyncN;
+    std::optional<NetId> tvVideo, tvSyncN, tvVideoN, tvHdrive, tvVdrive;
     if (!options.tv.empty()) {
         tvVideo = ConnectorNet(loaded, "VIDEO", "VIDEO");
         tvSyncN = ConnectorNet(loaded, "VIDEO", "SYNC_N");
-        if (!tvVideo || !tvSyncN) {
-            std::println(stderr, "bw: netlist has no VIDEO connector");
+        tvVideoN = ConnectorNet(loaded, "MONITOR", "VIDEO_N");
+        tvHdrive = ConnectorNet(loaded, "MONITOR", "HDRIVE");
+        tvVdrive = ConnectorNet(loaded, "MONITOR", "VDRIVE");
+        if (!(tvVideo && tvSyncN) && !(tvVideoN && tvHdrive && tvVdrive)) {
+            std::println(stderr, "bw: netlist has no VIDEO or MONITOR connector");
             return kExitNetlistErrors;
         }
         tvFile.open(options.tv, std::ios::binary);
@@ -568,7 +580,9 @@ int Run(std::span<char*> args) {
     }
     std::unique_ptr<TvInput> tv;
     if (tvFile.is_open()) {
-        tv = std::make_unique<TvInput>(sim, *tvVideo, *tvSyncN);
+        tv = tvVideo && tvSyncN
+                 ? std::make_unique<TvInput>(sim, *tvVideo, *tvSyncN)
+                 : std::make_unique<TvInput>(sim, SeparateDrives{*tvVideoN, *tvHdrive, *tvVdrive});
     }
     std::vector<LogicProbe> probes;
     for (const NetId net : probed) {

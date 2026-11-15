@@ -30,6 +30,7 @@
 #include "parts/ls74.hpp"
 #include "parts/ls90.hpp"
 #include "parts/ls93.hpp"
+#include "parts/matrix_keyboard.hpp"
 #include "parts/mc3446.hpp"
 #include "parts/mos6502.hpp"
 #include "parts/mos6520.hpp"
@@ -286,6 +287,14 @@ std::expected<Component*, std::string> CreatePowerOnReset(Circuit& circuit, std:
     return &circuit.add<PowerOnReset>(std::move(reference), *hold);
 }
 
+std::expected<Component*, std::string> CreateMatrixKeyboard(Circuit& circuit, std::string reference,
+                                                            std::span<const PartParam> params) {
+    if (!params.empty()) {
+        return std::unexpected("MATRIXKB takes no parameters");
+    }
+    return &circuit.add<MatrixKeyboard>(std::move(reference));
+}
+
 std::expected<Component*, std::string> CreateKeyboard(Circuit& circuit, std::string reference,
                                                       std::span<const PartParam> params) {
     Time strobe = kKeyboardStrobe;
@@ -466,8 +475,12 @@ constexpr std::array s_parts{
     PartInfo{"KEY", "key switch", "MX-1U", Switch, &CreateSwitch<"KEY">},
     PartInfo{"KEYBOARD", "ASCII keyboard connector", "KK-10", Connector, &CreateKeyboard},
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
+    PartInfo{"MATRIXKB", "BW-2001 keyboard (10 x 8 key matrix)", "HDR-1x20", Connector,
+             &CreateMatrixKeyboard},
     PartInfo{"MC3446", "quad IEEE-488 bus transceiver", "DIP-16", Chip,
              &CreateChip<Mc3446, "MC3446">},
+    PartInfo{"MONITOR", "monitor connector, separate drives", "HDR-1x07", Connector,
+             &CreateConnector<"MONITOR">},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
     PartInfo{"PADDLE", "paddle controller connector", "KK-4", Connector, &CreatePaddle},
     PartInfo{"POR", "power-on reset", "DIP-8", Chip, &CreatePowerOnReset},

@@ -14,6 +14,7 @@
 #include "netlist/diagnostic.hpp"
 #include "netlist/parser.hpp"
 #include "parts/keyboard.hpp"
+#include "parts/matrix_keyboard.hpp"
 #include "parts/paddle.hpp"
 #include "parts/switch.hpp"
 #include "sim/circuit.hpp"
@@ -104,6 +105,9 @@ Switch* SwitchOf(const LoadedCircuit& loaded, std::string_view reference);
 
 // The PADDLE Part `reference` of this build; nullptr if none (unknown or not a PADDLE).
 Paddle* PaddleOf(const LoadedCircuit& loaded, std::string_view reference);
+
+// The MATRIXKB `reference` of this build; nullptr if none.
+MatrixKeyboard* MatrixKeyboardOf(const LoadedCircuit& loaded, std::string_view reference);
 
 // The KEYBOARD Part `reference` of this build; nullptr if none (unknown or not a KEYBOARD).
 Keyboard* KeyboardOf(const LoadedCircuit& loaded, std::string_view reference);

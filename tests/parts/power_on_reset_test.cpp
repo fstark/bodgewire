@@ -64,7 +64,7 @@ TEST_CASE("POR: low from power-on for its time, then released to the pull-up", "
     auto& network = circuit.add<SwitchNetwork>(nets);
     circuit.connect(network, 0, gnd);
     circuit.connect(network, 1, rst);
-    network.add(button, 0, 1);
+    network.add(button.contact(), 0, 1);
     circuit.finalize();
     for (const std::uint64_t seed : {1u, 2u, 3u}) {
         Simulator sim(circuit);

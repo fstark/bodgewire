@@ -1,0 +1,26 @@
+# MATRIXKB — the BW-2001 keyboard
+
+## Function
+
+The BW-2001's keyboard, the PET 2001's 73 keys on their own board, joined to the main board by a 20-way cable. There are no chips on it: each key is a switch between one of ten row wires and one of eight column wires. The main board scans it: a 74LS145 pulls one row low at a time, and PIA1 reads the eight columns, each held high by a pull-up. A held key carries its row's low to its column. Three keys held at the corners of a rectangle also join the fourth corner's row and column (ghosting), as on any plain key matrix.
+
+| Row | `COL7` | `COL6` | `COL5` | `COL4` | `COL3` | `COL2` | `COL1` | `COL0` |
+|---|---|---|---|---|---|---|---|---|
+| 0 | CRSR → | HOME | ← | ( | & | % | # | ! |
+| 1 | DEL | CRSR ↓ | | ) | \ | ' | $ | " |
+| 2 | 9 | 7 | ↑ | O | U | T | E | Q |
+| 3 | / | 8 | | P | I | Y | R | W |
+| 4 | 6 | 4 | | L | J | G | D | A |
+| 5 | * | 5 | | : | K | H | F | S |
+| 6 | 3 | 1 | RETURN | ; | M | B | C | Z |
+| 7 | + | 2 | | ? | , | N | V | X |
+| 8 | - | 0 | SHIFT (right) | > | | ] | @ | SHIFT (left) |
+| 9 | = | . | | STOP | < | SPACE | [ | RVS |
+
+The keyboard is drawn in its own window. Keys are pressed with the mouse or typed on the PC's keyboard by character.
+
+## Pins
+
+- `ROW0`–`ROW9`: row wires (pads 1–10), each low while scanned
+- `COL0`–`COL7`: column wires (pads 11–18), pulled up on the main board
+- `NC19`, `NC20`: not connected (pads 19, 20)

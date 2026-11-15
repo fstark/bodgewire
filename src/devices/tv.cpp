@@ -13,6 +13,7 @@ void Tv::setVideo(Time time, LogicValue value) {
 }
 
 void Tv::setSyncN(Time time, LogicValue value) {
+    assert(sync_ == TvSync::Composite);
     advanceTo(time);
     if (syncN_ == LogicValue::One && value == LogicValue::Zero) {
         lowSince_ = time;
@@ -22,6 +23,26 @@ void Tv::setSyncN(Time time, LogicValue value) {
         }
     }
     syncN_ = value;
+}
+
+void Tv::setHorizontalDrive(Time time, LogicValue value) {
+    assert(sync_ == TvSync::Separate);
+    advanceTo(time);
+    if (hdrive_ == LogicValue::Zero && value == LogicValue::One &&
+        time - lineStart_ >= kLineAccept) {
+        startLine(time, true);
+    }
+    hdrive_ = value;
+}
+
+void Tv::setVerticalDrive(Time time, LogicValue value) {
+    assert(sync_ == TvSync::Separate);
+    advanceTo(time);
+    if (vdrive_ == LogicValue::One && value == LogicValue::Zero &&
+        time - frameStart_ >= kFrameAccept) {
+        startFrame(time, true);
+    }
+    vdrive_ = value;
 }
 
 // Internal events strictly before `time`: an input change at `time` comes first (TV_DESIGN §5.1).

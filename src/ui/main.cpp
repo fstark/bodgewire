@@ -34,6 +34,7 @@
 #include "ui/keyboard_window.hpp"
 #include "ui/loaded.hpp"
 #include "ui/manual_view.hpp"
+#include "ui/matrix_keyboard_window.hpp"
 #include "ui/meter_window.hpp"
 #include "ui/scope_window.hpp"
 #include "ui/side_panel.hpp"
@@ -378,8 +379,14 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         capture.reference = keyboards.front();
     }
     KeyboardWindow keyboardWindow(legends);
-    BoardKeyCapture boardKeys;  // only without a KEYBOARD: that one takes the typing
-    if (capture.reference.empty()) {
+    MatrixCapture matrixCapture;  // the BW-2001 keyboard (P5q)
+    if (const auto matrices = session.matrixKeyboards(); !matrices.empty()) {
+        matrixCapture.reference = matrices.front();
+    }
+    MatrixKeyboardWindow matrixWindow(legends);
+    bool matrixOpen = !matrixCapture.reference.empty();
+    BoardKeyCapture boardKeys;  // only without a keyboard: that one takes the typing
+    if (capture.reference.empty() && matrixCapture.reference.empty()) {
         boardKeys.keys = session.switchKeys();
     }
     boardView.setLegendFont(legends);
@@ -415,7 +422,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         const auto frameStart = std::chrono::steady_clock::now();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (capture.handle(event, session) || boardKeys.handle(event)) {
+            if (capture.handle(event, session) || matrixCapture.handle(event, session) ||
+                boardKeys.handle(event)) {
                 continue;
             }
             ImGui_ImplSDL3_ProcessEvent(&event);
@@ -686,8 +694,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     while (typedKeys[t] < typing.keys.size() &&
                            typing.at(typedKeys[t]) <= status.simTime) {
                         const std::uint8_t code = typing.keys[typedKeys[t]++];
-                        if (session.typeCode(typing.reference, code) &&
-                            typing.reference == capture.reference) {
+                        if (typing.reference == matrixCapture.reference) {
+                            // The matrix paces its own presses: queued as they come, 100 ms apart.
+                            session.type(typing.reference, code == 0x08 ? kKeyDel : code);
+                        } else if (session.typeCode(typing.reference, code) &&
+                                   typing.reference == capture.reference) {
                             keyboardWindow.flash(code);
                         }
                     }
@@ -738,14 +749,17 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         // Also without a Board (a netlist-only Session, the bench).
         keyboardWindow.draw(keyboardOpen, session, capture);
         capture.sync(window);
+        matrixWindow.draw(matrixOpen, session, matrixCapture);
+        matrixCapture.sync(window);
         if (!boardKeys.keys.empty() && !boardKeys.on && !ImGui::GetIO().WantTextInput &&
             ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
             boardKeys.on = true;
         }
         boardKeys.sync();
-        toolbar.typing = capture.on     ? capture.reference
-                         : boardKeys.on ? std::string("Board keys")
-                                        : std::string();
+        toolbar.typing = capture.on         ? capture.reference
+                         : matrixCapture.on ? matrixCapture.reference
+                         : boardKeys.on     ? std::string("Board keys")
+                                            : std::string();
         if (const auto picked = boardView.takePicked()) {
             wireStart.reset();
             toolbar.analyzerOpen |= *picked == Tool::Clip;
@@ -907,7 +921,8 @@ int main(int argc, char** argv) {
         }
     }
     for (const Typing& typing : options->type) {
-        if (!std::ranges::contains(session.keyboards(), typing.reference)) {
+        if (!std::ranges::contains(session.keyboards(), typing.reference) &&
+            !std::ranges::contains(session.matrixKeyboards(), typing.reference)) {
             std::println(stderr, "bw_ui: '{}' is not a keyboard", typing.reference);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;

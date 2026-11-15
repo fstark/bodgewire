@@ -187,8 +187,19 @@ public:
     // False, nothing sent: not powered, not a KEYBOARD, a code it does not send, or
     // kKeyboardWaiting keys already waiting. Keys still waiting at power-off are dropped.
     bool typeCode(std::string_view reference, std::uint8_t code);
-    // typeCode with the character's KeyboardCode (text, --type).
+    // typeCode with the character's KeyboardCode (text, --type); on a MATRIXKB, the press that
+    // types `key` (MatrixKeyFor, kKey… for the named keys), queued in simulation time (40 ms down,
+    // 40 ms up). False, nothing sent: not powered, no such keyboard, no key for it, queue full.
     bool type(std::string_view reference, char32_t key);
+
+    // Every MATRIXKB Part (the BW-2001 keyboard, P5q), in netlist order.
+    std::vector<std::string> matrixKeyboards() const;
+    // Holds or releases key `key` (index in Bw2001Keys()) of MATRIXKB `reference`; ignored while
+    // unpowered; every held key is released at power-off, as switch presses are.
+    void setMatrixKeyHeld(std::string_view reference, std::size_t key, bool held);
+    bool matrixKeyHeld(std::string_view reference, std::size_t key) const;
+    // Held, or pressed now by typing (Session::type, --type, paste): drawn down.
+    bool matrixKeyDown(std::string_view reference, std::size_t key) const;
     // The codes sent to `reference` since power-on, the last kTypedShown.
     std::string typed(std::string_view reference) const;
     static constexpr std::size_t kTypedShown = 16;
@@ -231,9 +242,10 @@ private:
     bool blackNext_ = false;
     std::optional<bool> connected_;    // red_ and black_ on one island of the current Copper
     std::optional<double> meterRail_;  // RailVolts of the meter's Net
-    std::set<std::string, std::less<>> pressed_;             // Buttons held down
-    std::map<std::string, double, std::less<>> knobs_;       // PADDLE turns, 0..1
-    std::map<std::string, std::string, std::less<>> typed_;  // codes sent, per KEYBOARD
+    std::set<std::string, std::less<>> pressed_;                // Buttons held down
+    std::set<std::pair<std::string, std::size_t>> matrixHeld_;  // MATRIXKB keys held
+    std::map<std::string, double, std::less<>> knobs_;          // PADDLE turns, 0..1
+    std::map<std::string, std::string, std::less<>> typed_;     // codes sent, per KEYBOARD
 };
 
 }  // namespace bw
