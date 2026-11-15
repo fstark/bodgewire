@@ -72,25 +72,7 @@ Pads: the table's numbers are the PET's (1–12, then its letters A B C D E F H 
 
 ## Board
 
-`boards/bw2001/bw2001.place`:
-
-```
-grid pet                       # every U<row><column> chip at its PET location (P5q)
-edge J3 back 10%
-edge J2 back 40%
-edge J1 back 75%
-edge J6 left back
-edge J7 left 60%
-edge J5 front middle
-edge J8 right front
-edge DS1 right 30%              # the diagnostic LED
-next R28 UE3 front             # then a chain: next R29 R28 right, …
-…                              # each resistor beside the chip it serves
-```
-
-`grid pet` (P5q): rows A (back) to J (front), columns 1 (left) to 9 (right), every chip lying horizontally with pin 1 at the left, as on the PET's board; a column is as wide as its longest chip (the DIP-40s in columns 3, 5 and 8), a row as tall as a DIP-24 is wide plus a resistor's gap. `UDE9` between rows D and E in column 9, as its name says. `X1` (a DIP-14 oscillator) at `UD9`'s free side: placed by annealing into a free cell, as the resistors that have no `next`. About 370 × 230 mm. The user routes it (two layers; it is the biggest Board so far: about 90 chips and 400 Nets).
-
-Each resistor's `next` from the transcription, chained along a row where several serve one chip (`next` centres a part on its other): `R28`–`R33` in front of `UE3` and `R34`–`R38` in front of `UE4` (address pull-ups; 11 resistors of 10.2 mm courtyard in two chip widths: checked when placing), `R18`–`R25` beside `UG8` (keyboard columns), `R10`, `R48` beside `UA9`, `R12`, `R27`, `R39`, `R40`, `R41`, `R43`, `R44`, `R45`, `R46` beside the chip whose input they hold (SHEET3.md), `R13`, `R14`, `R17`, `R26`, `R99` beside `UF3`/`UG3`. Any that does not fit is left to annealing into a free cell.
+`boards/bw2001/bw2001.place` (P5q1, [BW2001_BOARD.md](../../p5q1-bw2001-board/BW2001_BOARD.md)): laid out after PET-Shack's "PET CPU BOARD" drawing of a PET 2001 board. `grid pet`: every chip at its PET location, columns J (left) to A (right), rows 9 (the back) to 1 (the front), lying with the notch at the left; eight upright as drawn (`UF3`, `UB8`, `UA5`, `UG2`, `UE6`, `UA2` notch at the bottom; `UG8`, `UG9` at the top). IEEE-488 (`J1`), user port (`J2`) and cassette #2 (`J3`) down the right edge; power (`J8`), cassette #1 (`J6`), the keyboard (`J5`: inside the board on the PET), `DS1` and the monitor (`J7`) along the back. Pull-ups beside their chips, chained along the resistor bands away from the upright chips; `X1`, `UDE9` and `R99` in the empty cells nearest their Nets. 293 × 269 mm, 35.2 m of wire; routed by the user on two layers (P5q's first Board, on a guessed grid, is `1f8e110`).
 
 ## Manuals
 
