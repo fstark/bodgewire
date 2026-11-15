@@ -1,5 +1,7 @@
 #include "parts/rom_contents.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <format>
 #include <fstream>
@@ -185,7 +187,21 @@ ReadRomContents(const std::filesystem::path& path, std::size_t size, int width) 
         return std::unexpected("cannot read '" + path.string() + "'");
     }
     const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
-    return ParseRomContents(text, path.filename().string(), size, width);
+    const std::string file = path.filename().string();
+    std::string extension = path.extension().string();
+    std::ranges::transform(extension, extension.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (extension != ".bin") {
+        return ParseRomContents(text, file, size, width);
+    }
+    // A raw dump (P5n): one byte a word, exactly the ROM's size.
+    if (width != 8) {
+        return std::unexpected(file + ": a .bin holds 8-bit words");
+    }
+    if (text.size() != size) {
+        return std::unexpected(std::format("{}: {} bytes, expected {}", file, text.size(), size));
+    }
+    return std::vector<std::uint8_t>(text.begin(), text.end());
 }
 
 }  // namespace bw

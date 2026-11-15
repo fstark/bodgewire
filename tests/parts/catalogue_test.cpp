@@ -39,6 +39,9 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         if (part.name == "6530") {
             params.push_back({"mask", "002"});
         }
+        if (const RomSpec* rom = FindRomSpec(part.name); rom != nullptr && rom->selectable) {
+            params.push_back({"select", "LLH"});
+        }
         if (FindRomSpec(part.name) != nullptr || part.name == "6530") {
             params.push_back({"contents", std::string(BW_ROOT_DIR) + "/tests/data/empty.rom"});
         }

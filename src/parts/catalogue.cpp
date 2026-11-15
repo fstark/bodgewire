@@ -84,23 +84,44 @@ template <PartName Name>
 std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string reference,
                                                  std::span<const PartParam> params) {
     const std::string name(Name.view());
+    const RomSpec& spec = RomSpecOf(name);
     const PartParam* contents = nullptr;
+    const PartParam* select = nullptr;
     for (const PartParam& param : params) {
-        if (param.name != "contents") {
+        if (param.name == "contents") {
+            contents = &param;
+        } else if (param.name == "select" && spec.selectable) {
+            select = &param;
+        } else {
             return std::unexpected(name + ": unknown parameter '" + param.name + "'");
         }
-        contents = &param;
+    }
+    // select= (2316B): one letter a chip select, CS1 first; H active high, L active low.
+    unsigned activeHigh = 0;
+    if (spec.selectable) {
+        if (select == nullptr) {
+            return std::unexpected(name + " needs select=<CS1 CS2 CS3: L or H each>, e.g. "
+                                          "select=LLH");
+        }
+        const std::string& letters = select->value;
+        bool good = letters.size() == spec.enables.size();
+        for (std::size_t i = 0; good && i < letters.size(); ++i) {
+            good = letters[i] == 'L' || letters[i] == 'H';
+            activeHigh |= (letters[i] == 'H' ? 1u : 0u) << i;
+        }
+        if (!good) {
+            return std::unexpected(name + ": bad select '" + letters + "' (three of L or H)");
+        }
     }
     if (contents == nullptr) {
         return std::unexpected(name + " needs contents=<file>");
     }
-    const RomSpec& spec = RomSpecOf(name);
     auto words = ReadRomContents(contents->value, std::size_t{1} << spec.address.size(),
                                  static_cast<int>(spec.data.size()));
     if (!words) {
         return std::unexpected(name + ": " + words.error());
     }
-    return &circuit.add<Rom>(std::move(reference), spec, std::move(*words));
+    return &circuit.add<Rom>(std::move(reference), spec, std::move(*words), activeHigh);
 }
 
 std::expected<Component*, std::string> CreateMos6530(Circuit& circuit, std::string reference,
@@ -323,6 +344,8 @@ using enum PartKind;
 // Sorted by name.
 constexpr std::array s_parts{
     PartInfo{"2114", "1K x 4 static RAM", "DIP-18", Chip, &CreateChip<Ram2114, "2114">},
+    PartInfo{"2316B", "2K x 8 mask ROM, mask-set chip selects", "DIP-24", Chip,
+             &CreateRom<"2316B">},
     PartInfo{"2513", "64-character 5 x 7 character generator ROM", "DIP-24", Chip,
              &CreateRom<"2513">},
     PartInfo{"2518", "hex 32-bit static shift register", "DIP-16", Chip,

@@ -58,6 +58,10 @@ inline constexpr Time k2716Access = 450'000;        // address → O
 inline constexpr Time k2716ChipEnable = 450'000;    // CE_N → O
 inline constexpr Time k2716OutputEnable = 120'000;  // OE_N → O
 inline constexpr Time k2716Float = 100'000;         // CE_N or OE_N high → O off
+// 2316B mask ROM (Synertek SY2316B, p. 2-3): maximums, no typicals published.
+inline constexpr Time k2316Access = 450'000;  // address → O (tACC)
+inline constexpr Time k2316Select = 120'000;  // CS active → O (tCO)
+inline constexpr Time k2316Float = 100'000;   // CS inactive → O off (tDF)
 // 74LS244 (rise = from/to 1, fall = from/to 0).
 inline constexpr Delays kLs244Data{12'000, 12'000};     // A → Y
 inline constexpr Delays kLs244Enable{15'000, 20'000};   // OE_N low → Y (tPZH, tPZL)

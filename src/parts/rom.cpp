@@ -45,14 +45,15 @@ unsigned KnownBits(std::span<const std::uint8_t> words, std::size_t base, std::s
 }
 
 template <const auto& L>
-void EvaluateRom(EvalContext& ctx, std::span<const std::uint8_t> words) {
+void EvaluateRom(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned activeHigh) {
     bool off = false;
     bool unknownEnable = false;
     bool enableChanged = false;
     Time enableDelay = 0;
-    for (const RomEnable& enable : L.enables) {
+    for (std::size_t i = 0; i < L.enables.size(); ++i) {
+        const RomEnable& enable = L.enables[i];
         const LogicValue v = ctx.read(enable.pin);
-        off |= v == One;
+        off |= v == ((activeHigh >> i) & 1u ? Zero : One);
         unknownEnable |= v != One && v != Zero;
         if (v != ctx.readBefore(enable.pin)) {
             enableChanged = true;
@@ -132,7 +133,21 @@ constexpr std::array<RomEnable, 1> s_2513Enables{{{10, delays::k2513ChipEnable}}
 constexpr RomLayout s_2513Layout{s_2513Address, s_2513AddressDelay, s_2513Data, s_2513Enables,
                                  delays::k2513ChipEnable};
 
-const std::array<RomSpec, 2> s_specs{{
+// 2316B: 2K x 8 mask ROM (MOS 2316 p. 1; Synertek SY2316B), the 2716's pinout with three chip
+// selects whose polarities are set in the mask (select=). Enables listed CS1, CS2, CS3.
+constexpr std::array<std::string_view, 24> s_2316Names{
+    "A7", "A6", "A5", "A4", "A3", "A2",  "A1",  "A0",  "O0",  "O1", "O2", "GND",
+    "O3", "O4", "O5", "O6", "O7", "CS2", "A10", "CS1", "CS3", "A9", "A8", "VCC"};
+constexpr std::array<Time, 11> s_2316AddressDelay{
+    delays::k2316Access, delays::k2316Access, delays::k2316Access, delays::k2316Access,
+    delays::k2316Access, delays::k2316Access, delays::k2316Access, delays::k2316Access,
+    delays::k2316Access, delays::k2316Access, delays::k2316Access};
+constexpr std::array<RomEnable, 3> s_2316Enables{
+    {{19, delays::k2316Select}, {17, delays::k2316Select}, {20, delays::k2316Select}}};
+constexpr RomLayout s_2316Layout{s_2716Address, s_2316AddressDelay, s_2716Data, s_2316Enables,
+                                 delays::k2316Float};
+
+const std::array<RomSpec, 3> s_specs{{
     {"2513",
      s_2513Names,
      s_2513Address,
@@ -144,6 +159,16 @@ const std::array<RomSpec, 2> s_specs{{
      &EvaluateRom<s_2513Layout>},
     {"2716", s_2716Names, s_2716Address, s_2716AddressDelay, s_2716Data, s_2716Enables, s_2716Other,
      delays::k2716Float, &EvaluateRom<s_2716Layout>},
+    {"2316B",
+     s_2316Names,
+     s_2716Address,
+     s_2316AddressDelay,
+     s_2716Data,
+     s_2316Enables,
+     {},
+     delays::k2316Float,
+     &EvaluateRom<s_2316Layout>,
+     true},
 }};
 
 bool Listed(std::span<const PinIndex> pins, PinIndex pin) {
@@ -186,12 +211,14 @@ const RomSpec& RomSpecOf(std::string_view part) {
     return *spec;
 }
 
-Rom::Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> words)
-    : Component(std::move(reference), RomPins(spec)), spec_(spec), block_(std::move(words)) {
+Rom::Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> words,
+         unsigned activeHigh)
+    : Component(std::move(reference), RomPins(spec)), spec_(spec), block_(std::move(words)),
+      activeHigh_(activeHigh) {
     Check(block_.size() == std::size_t{1} << spec.address.size(), "rom: wrong number of words");
 }
 
-void Rom::evaluate(EvalContext& ctx) { spec_.evaluate(ctx, block_.words()); }
+void Rom::evaluate(EvalContext& ctx) { spec_.evaluate(ctx, block_.words(), activeHigh_); }
 
 std::size_t Rom::wordCount(std::size_t memory) const {
     Check(memory == 0, "rom: one memory");

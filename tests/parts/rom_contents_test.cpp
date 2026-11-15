@@ -1,6 +1,8 @@
 #include "parts/rom_contents.hpp"
 
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -81,6 +83,41 @@ TEST_CASE("rom contents: missing file", "[parts]") {
     const auto words = ReadRomContents("/nonexistent/x.rom", 4, 8);
     REQUIRE_FALSE(words.has_value());
     CHECK(words.error() == "cannot read '/nonexistent/x.rom'");
+}
+
+namespace {
+
+std::filesystem::path WriteBytes(const std::string& name, std::size_t count) {
+    const auto path = std::filesystem::temp_directory_path() / name;
+    std::ofstream out(path, std::ios::binary);
+    for (std::size_t i = 0; i < count; ++i) {
+        out.put(static_cast<char>((i * 7 + 3) & 0xFF));
+    }
+    return path;
+}
+
+}  // namespace
+
+TEST_CASE("rom contents: a .bin is a raw dump", "[parts]") {
+    const auto path = WriteBytes("bw_rom_contents_test.bin", 2048);
+    const auto words = ReadRomContents(path, 2048, 8);
+    REQUIRE(words.has_value());
+    REQUIRE(words->size() == 2048);
+    for (std::size_t i = 0; i < words->size(); ++i) {
+        REQUIRE((*words)[i] == ((i * 7 + 3) & 0xFF));
+    }
+    const auto upper = WriteBytes("bw_rom_contents_test.BIN", 16);
+    CHECK(ReadRomContents(upper, 16, 8).has_value());
+}
+
+TEST_CASE("rom contents: a .bin of the wrong size or width", "[parts]") {
+    const auto path = WriteBytes("bw_rom_contents_short.bin", 2047);
+    const auto words = ReadRomContents(path, 2048, 8);
+    REQUIRE_FALSE(words.has_value());
+    CHECK(words.error() == "bw_rom_contents_short.bin: 2047 bytes, expected 2048");
+    const auto narrow = ReadRomContents(path, 2047, 5);
+    REQUIRE_FALSE(narrow.has_value());
+    CHECK(narrow.error() == "bw_rom_contents_short.bin: a .bin holds 8-bit words");
 }
 
 TEST_CASE("rom contents: the Machine files parse", "[parts]") {

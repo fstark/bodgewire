@@ -16,11 +16,12 @@
 namespace bw {
 
 struct RomEnable {
-    PinIndex pin;  // active low: every enable low drives the outputs, else they float
+    PinIndex pin;  // active low unless the Part's select= says otherwise (2316B): every enable
+                   // active drives the outputs, else they float
     Time delay;    // enable to output, ps
 };
 
-// One ROM Part of the catalogue (2716, 2513): its pins and timing.
+// One ROM Part of the catalogue (2716, 2513, 2316B): its pins and timing.
 struct RomSpec {
     std::string_view part;                    // "2716"
     std::span<const std::string_view> names;  // index = pin - 1
@@ -30,8 +31,10 @@ struct RomSpec {
     std::span<const RomEnable> enables;
     std::span<const PinIndex> otherInputs;  // inputs with no function in a read ("VPP")
     Time offDelay;                          // enable high to outputs off, ps
-    // EvaluateRom<its layout>: evaluation specialised on these pins at compile time (rom.cpp)
-    void (*evaluate)(EvalContext& ctx, std::span<const std::uint8_t> words);
+    // EvaluateRom<its layout>: evaluation specialised on these pins at compile time (rom.cpp).
+    // activeHigh: bit i set when enable i is active high (2316B select=); 0 otherwise.
+    void (*evaluate)(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned activeHigh);
+    bool selectable = false;  // select= sets each enable's polarity, required (2316B)
 };
 
 const RomSpec* FindRomSpec(std::string_view part);  // nullptr unless a ROM Part
@@ -42,7 +45,8 @@ const RomSpec& RomSpecOf(std::string_view part);    // Check()s
 // (MemoryCells) changes the contents.
 class Rom final : public Component, public MemoryCells {
 public:
-    Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> words);
+    Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> words,
+        unsigned activeHigh = 0);
     void evaluate(EvalContext& ctx) override;
     std::size_t size() const { return block_.size(); }
 
@@ -53,6 +57,7 @@ public:
 private:
     const RomSpec& spec_;
     RomBlock block_;
+    unsigned activeHigh_;
 };
 
 }  // namespace bw

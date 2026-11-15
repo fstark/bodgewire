@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/generators/catch_generators_range.hpp>
 
 #include "parts/catalogue.hpp"
 #include "parts/delays.hpp"
@@ -45,8 +47,9 @@ struct Bench {
     const RomSpec& spec;
     Rom* rom = nullptr;
 
-    Bench(std::string_view part, std::map<std::string, Input> inputs) : spec(RomSpecOf(part)) {
-        auto& chip = circuit.add<Rom>("U1", spec, Pattern(spec));
+    Bench(std::string_view part, std::map<std::string, Input> inputs, unsigned activeHigh = 0)
+        : spec(RomSpecOf(part)) {
+        auto& chip = circuit.add<Rom>("U1", spec, Pattern(spec), activeHigh);
         rom = &chip;
         const auto drive = [&](PinIndex pin) {
             const std::string name(spec.names[pin]);
@@ -223,6 +226,98 @@ TEST_CASE("rom: enables float the outputs", "[parts]") {
         sim.runUntil(2_us + delays::k2513ChipEnable);
         CHECK(b.word(sim) == 7);
     }
+}
+
+TEST_CASE("rom: 2316B selects at the levels select= sets", "[parts]") {
+    // Every select= mask against every level of CS1-CS3: on only where each select is active.
+    const unsigned mask = GENERATE(range(0u, 8u));
+    INFO("activeHigh " << mask);
+    for (unsigned levels = 0; levels < 8; ++levels) {
+        INFO("levels " << levels);
+        const auto level = [&](unsigned i) { return (levels >> i) & 1u ? One : Zero; };
+        Bench b("2316B",
+                {{"A0", {One, {}}},
+                 {"CS1", {level(0), {}}},
+                 {"CS2", {level(1), {}}},
+                 {"CS3", {level(2), {}}}},
+                mask);
+        Simulator sim(b.circuit);
+        sim.powerOn(1);
+        sim.runUntil(1_us);
+        if (levels == mask) {
+            CHECK(b.word(sim) == 7);
+        } else {
+            CHECK(sim.isFloating(b.nets.at("O0")));
+        }
+    }
+}
+
+TEST_CASE("rom: 2316B delays and X select", "[parts]") {
+    SECTION("access, select and float") {
+        // select=LHH: CS1 low, CS2 and CS3 high select it.
+        Bench b("2316B",
+                {{"A0", {Zero, {{3_us, One}}}},
+                 {"CS1", {Zero, {{1_us, One}, {2_us, Zero}}}},
+                 {"CS2", {One, {}}},
+                 {"CS3", {One, {}}}},
+                0b110);
+        Simulator sim(b.circuit);
+        sim.powerOn(1);
+        sim.runUntil(900_ns);
+        CHECK(b.word(sim) == 0);
+        sim.runUntil(1_us + delays::k2316Float - 1);
+        CHECK(b.word(sim) == 0);
+        sim.runUntil(1_us + delays::k2316Float);
+        CHECK(sim.isFloating(b.nets.at("O0")));
+        sim.runUntil(2_us + delays::k2316Select - 1);
+        CHECK(sim.isFloating(b.nets.at("O0")));
+        sim.runUntil(2_us + delays::k2316Select);
+        CHECK(b.word(sim) == 0);
+        sim.runUntil(3_us + delays::k2316Access - 1);
+        CHECK(b.word(sim) == 0);
+        sim.runUntil(3_us + delays::k2316Access);
+        CHECK(b.word(sim) == 7);
+    }
+    SECTION("an X select: every data bit X") {
+        Bench b("2316B", {{"CS2", {X, {}}}}, 0);
+        Simulator sim(b.circuit);
+        sim.powerOn(1);
+        sim.runUntil(1_us);
+        CHECK(b.bit(sim, 0) == X);
+        CHECK(b.bit(sim, 7) == X);
+    }
+}
+
+TEST_CASE("rom: 2316B select= parameter", "[parts]") {
+    const PartInfo* part = FindPart("2316B");
+    REQUIRE(part != nullptr);
+    CHECK(part->package == "DIP-24");
+    const std::string empty = std::string(BW_ROOT_DIR) + "/tests/data/empty.rom";
+    Circuit circuit;
+    const auto make = [&](std::vector<PartParam> params) {
+        return part->create(circuit, "U1", params);
+    };
+    CHECK(make({{"contents", empty}}).error() ==
+          "2316B needs select=<CS1 CS2 CS3: L or H each>, e.g. select=LLH");
+    CHECK(make({{"select", "LX"}, {"contents", empty}}).error() ==
+          "2316B: bad select 'LX' (three of L or H)");
+    CHECK(make({{"select", "LLHH"}, {"contents", empty}}).error() ==
+          "2316B: bad select 'LLHH' (three of L or H)");
+    CHECK(make({{"select", "LLH"}}).error() == "2316B needs contents=<file>");
+    REQUIRE(make({{"select", "HLH"}, {"contents", empty}}).has_value());
+    const std::vector<PartParam> onEprom{{"select", "LLH"}, {"contents", empty}};
+    CHECK(FindPart("2716")->create(circuit, "U2", onEprom).error() ==
+          "2716: unknown parameter 'select'");
+
+    const RomSpec& spec = RomSpecOf("2316B");
+    Rom rom("U3", spec, Pattern(spec));
+    const auto pins = rom.pins();
+    REQUIRE(pins.size() == 24);
+    CHECK(pins[17].name == "CS2");
+    CHECK(pins[19].name == "CS1");
+    CHECK(pins[20].name == "CS3");
+    CHECK(pins[20].kind == PinKind::Input);
+    CHECK(pins[18].name == "A10");
 }
 
 TEST_CASE("rom: X inputs", "[parts]") {
