@@ -221,3 +221,26 @@ TEST_CASE("kicad pcb writer: tennis", "[board][slow]") {
     CHECK(board->components.size() == w.circuit->parts.size());
     CheckPadNets(w);
 }
+
+TEST_CASE("kicad pcb writer: a part turned by grid pet reads back with its pads turned",
+          "[board]") {
+    const Written w = Write(LoadedFrom("part J1 POWER\npart UC9 74LS93\npart UA5 6522\n"
+                                       "net Q UC9.QA UA5.CA1\n"),
+                            "grid pet\nedge J1 left middle\n");
+    const auto board = ReadKicadBoard(w.text, "t.kicad_pcb");
+    REQUIRE(board.has_value());
+    for (const PlacedPart& part : w.placement.parts) {
+        INFO(part.reference);
+        const auto it =
+            std::ranges::find(board->components, part.reference, &BoardComponent::reference);
+        REQUIRE(it != board->components.end());
+        CHECK(it->position == part.origin);
+        CHECK(it->angle == part.angle);
+        for (std::size_t i = 0; i < it->pads.size(); ++i) {
+            const Point local = part.footprint->pads[i].position;
+            const Point turned = part.angle == 90 ? Point{local.y, -local.x} : local;
+            CHECK(it->pads[i].position ==
+                  Point{part.origin.x + turned.x, part.origin.y + turned.y});
+        }
+    }
+}

@@ -114,14 +114,28 @@ void WriteFootprint(std::ostream& out, const PlacedPart& part, std::string_view 
             double x = 0, y = 0;
             Check(std::sscanf(std::string(body).c_str(), "(at %lf %lf)", &x, &y) == 2,
                   "footprint " + part.footprint->id + ": bad point " + std::string(body));
+            // Turned with its part: KiCad's +90° maps (x, y) to (y, −x).
+            const double rx = part.angle == 90 ? y : x;
+            const double ry = part.angle == 90 ? -x : y;
             copy = std::string(line.substr(0, depth)) + "(at " +
-                   Millimetres(part.origin.x + std::llround(x * 1e6)) + ' ' +
-                   Millimetres(part.origin.y + std::llround(y * 1e6)) + ')';
+                   Millimetres(part.origin.x + std::llround(rx * 1e6)) + ' ' +
+                   Millimetres(part.origin.y + std::llround(ry * 1e6)) + ')';
+        } else if (part.angle != 0 && !pad.empty() && depth == 2 && body.starts_with("(at ")) {
+            // A pad's angle is the Board's: the footprint's added to the pad's own.
+            double x = 0, y = 0, a = 0;
+            const int n = std::sscanf(std::string(body).c_str(), "(at %lf %lf %lf)", &x, &y, &a);
+            Check(n >= 2, "footprint " + part.footprint->id + ": bad pad " + std::string(body));
+            copy = std::string(line.substr(0, depth)) + "(at " +
+                   Millimetres(std::llround(x * 1e6)) + ' ' + Millimetres(std::llround(y * 1e6)) +
+                   ' ' + std::to_string(static_cast<int>(std::lround(a)) + part.angle) + ')';
         }
         out << '\t' << copy << '\n';
         if (!placed && depth == 1 && body == "(layer \"F.Cu\")") {
-            out << "\t\t(at " << Millimetres(part.origin.x) << ' ' << Millimetres(part.origin.y)
-                << ")\n";
+            out << "\t\t(at " << Millimetres(part.origin.x) << ' ' << Millimetres(part.origin.y);
+            if (part.angle != 0) {
+                out << ' ' << part.angle;
+            }
+            out << ")\n";
             out << "\t\t(path " << KicadQuote("/" + KicadUuid(part.reference)) << ")\n";
             placed = true;
         }

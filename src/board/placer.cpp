@@ -5,6 +5,8 @@
 #include <map>
 #include <optional>
 #include <random>
+#include <set>
+#include <string_view>
 #include <utility>
 #include <variant>
 
@@ -30,10 +32,27 @@ struct Box {
     Point min, max;
 };
 
-Box Courtyard(const Footprint& footprint, Point origin) {
+Box Courtyard(const Footprint& footprint, Point origin, int angle = 0) {
+    if (angle == 90) {  // KiCad's +90°: (x, y) → (y, −x), as kicad_board.cpp reads it
+        return {{origin.x + footprint.courtyardMin.y, origin.y - footprint.courtyardMax.x},
+                {origin.x + footprint.courtyardMax.y, origin.y - footprint.courtyardMin.x}};
+    }
     return {{origin.x + footprint.courtyardMin.x, origin.y + footprint.courtyardMin.y},
             {origin.x + footprint.courtyardMax.x, origin.y + footprint.courtyardMax.y}};
 }
+
+Point Rotated(Point p, int angle) { return angle == 90 ? Point{p.y, -p.x} : p; }
+
+// A PET 2001 location (grid pet, P5q): "U" + row A-J + column 1-9 → (row, column) from 0.
+std::optional<std::pair<int, int>> PetCell(std::string_view reference) {
+    if (reference.size() != 3 || reference[0] != 'U' || reference[1] < 'A' || reference[1] > 'J' ||
+        reference[2] < '1' || reference[2] > '9') {
+        return std::nullopt;
+    }
+    return std::pair{reference[1] - 'A', reference[2] - '1'};
+}
+
+constexpr int kPetRows = 10, kPetColumns = 9;
 
 bool Overlap(const Box& a, const Box& b) {
     return a.min.x < b.max.x && b.min.x < a.max.x && a.min.y < b.max.y && b.min.y < a.max.y;
@@ -78,6 +97,9 @@ public:
         : loaded_(loaded), rules_(rules), file_(file), footprints_(footprints), options_(options) {}
 
     std::expected<Placement, std::vector<Diagnostic>> run() {
+        if (rules_.petGrid) {
+            return runPet();
+        }
         sortParts();
         if (errors_.empty()) {
             buildGroups();
@@ -128,7 +150,13 @@ private:
                 continue;
             }
             const std::string_view package = loaded_.parts[i].info->package;
-            if (!IsGridPackage(package)) {
+            if (rules_.petGrid && PetCell(parts_[i].reference)) {
+                parts_[i].angle = 90;
+                petParts_.push_back(i);
+            } else if (rules_.petGrid && IsGridPackage(package)) {
+                parts_[i].angle = 90;
+                freeParts_.push_back(i);
+            } else if (!IsGridPackage(package)) {
                 error(0, "'" + parts_[i].reference + "' (" + std::string(package) +
                              ") needs a placement rule");
             } else {
@@ -138,7 +166,7 @@ private:
     }
 
     Box courtyard(std::size_t part) const {
-        return Courtyard(*parts_[part].footprint, parts_[part].origin);
+        return Courtyard(*parts_[part].footprint, parts_[part].origin, parts_[part].angle);
     }
 
     void buildGroups() {
@@ -171,6 +199,10 @@ private:
             const auto& next = std::get<NextRule>(rule.rule);
             const std::size_t part = index_.at(next.reference);
             const std::size_t other = index_.at(next.other);
+            if (rules_.petGrid && !groupOf.contains(other)) {
+                deferred_.push_back(&rule);  // beside a grid chip: once the grid is placed
+                continue;
+            }
             const std::size_t g = groupOf.at(other);
             const Footprint& fp = *parts_[part].footprint;
             const Box o = courtyard(other);
@@ -417,7 +449,8 @@ private:
             Net& net = byName[c.net];
             for (const FootprintPad& pad : parts_[it->second].footprint->pads) {
                 if (pad.number == number) {
-                    net.pins.emplace_back(it->second, pad.position);
+                    net.pins.emplace_back(it->second,
+                                          Rotated(pad.position, parts_[it->second].angle));
                 }
             }
         }
@@ -586,6 +619,260 @@ private:
         }
         return placement;
     }
+
+    // --- grid pet (P5q) ---
+
+    std::expected<Placement, std::vector<Diagnostic>> runPet() {
+        sortParts();
+        if (errors_.empty()) {
+            buildGroups();
+        }
+        if (errors_.empty()) {
+            layOutPet();
+        }
+        if (errors_.empty()) {
+            placeDeferred();
+        }
+        if (errors_.empty()) {
+            placeFree();
+        }
+        if (errors_.empty()) {
+            checkOverlaps();
+        }
+        if (!errors_.empty()) {
+            return std::unexpected(std::move(errors_));
+        }
+        buildNets();
+        columns_ = kPetColumns;
+        rows_ = kPetRows;
+        return result();
+    }
+
+    void layOutPet() {
+        std::vector<std::vector<std::size_t>> cells(kPetRows * kPetColumns);
+        for (const std::size_t part : petParts_) {
+            const auto [r, c] = *PetCell(parts_[part].reference);
+            cells[static_cast<std::size_t>(r * kPetColumns + c)].push_back(part);
+        }
+        for (std::size_t cell = 0; cell < cells.size(); ++cell) {
+            if (cells[cell].size() > 1) {
+                error(0, "'" + parts_[cells[cell][0]].reference + "' and '" +
+                             parts_[cells[cell][1]].reference + "' are in one PET cell");
+            }
+        }
+        if (!errors_.empty()) {
+            return;
+        }
+        // Column widths: the longest chip lying in it (a DIP-14's at least); rows: the widest
+        // chip across, then a band for a resistor beside it.
+        const auto rotated = [&](std::size_t part) {
+            return Courtyard(*parts_[part].footprint, {0, 0}, 90);
+        };
+        std::int64_t narrowest = 0, chipHeight = 0;
+        for (const std::size_t part : petParts_) {
+            const Box b = rotated(part);
+            narrowest = narrowest == 0 ? b.max.x - b.min.x : std::min(narrowest, b.max.x - b.min.x);
+            chipHeight = std::max(chipHeight, b.max.y - b.min.y);
+        }
+        for (const std::size_t part : freeParts_) {
+            const Box b = rotated(part);
+            chipHeight = std::max(chipHeight, b.max.y - b.min.y);
+        }
+        std::int64_t resistor = 0;
+        for (std::size_t p = 0; p < parts_.size(); ++p) {
+            if (loaded_.parts[p].info->package == "axial") {
+                const Box b = Courtyard(*parts_[p].footprint, {0, 0});
+                resistor = std::max(resistor, b.max.y - b.min.y);
+            }
+        }
+        columnX_.assign(kPetColumns + 1, 0);
+        for (int c = 0; c < kPetColumns; ++c) {
+            std::int64_t width = narrowest;
+            for (int r = 0; r < kPetRows; ++r) {
+                for (const std::size_t part :
+                     cells[static_cast<std::size_t>(r * kPetColumns + c)]) {
+                    const Box b = rotated(part);
+                    width = std::max(width, b.max.x - b.min.x);
+                }
+            }
+            columnX_[static_cast<std::size_t>(c) + 1] =
+                columnX_[static_cast<std::size_t>(c)] + SnapUp(width + 2 * kPartGap);
+        }
+        chipHeight_ = SnapUp(chipHeight + kPartGap);
+        rowPitch_ = chipHeight_ + SnapUp(resistor + 2 * kPartGap);
+
+        // Bands, as layOut.
+        std::int64_t band[4]{kBareMargin, kBareMargin, kBareMargin, kBareMargin};
+        bool used[4]{};
+        for (const Group& group : groups_) {
+            const auto e = static_cast<std::size_t>(group.edge);
+            const std::int64_t d = kEdgeMargin + depth(group) + kBandGap;
+            band[e] = used[e] ? std::max(band[e], d) : d;
+            used[e] = true;
+        }
+        std::int64_t left = band[static_cast<std::size_t>(Edge::Left)];
+        std::int64_t right = band[static_cast<std::size_t>(Edge::Right)];
+        const std::int64_t back = band[static_cast<std::size_t>(Edge::Back)];
+        const std::int64_t front = band[static_cast<std::size_t>(Edge::Front)];
+        const std::int64_t width = columnX_.back();
+        const std::int64_t height = kPetRows * rowPitch_;
+        for (const Edge edge : {Edge::Back, Edge::Front}) {
+            std::int64_t need = 2 * kEdgeMargin;
+            bool first = true;
+            for (const Group& group : groups_) {
+                if (group.edge == edge) {
+                    const Extent e = extent(group);
+                    need += e.groupMax - e.groupMin + (first ? 0 : kPartGap);
+                    first = false;
+                }
+            }
+            const std::int64_t extra = need - (left + width + right);
+            if (!first && extra > 0) {
+                const std::int64_t half = SnapUp(extra / 2);
+                left += half;
+                right += std::max<std::int64_t>(extra - half, 0);
+            }
+        }
+        gridOrigin_ = {SnapUp(kOrigin.x + left), SnapUp(kOrigin.y + back)};
+        const Box grid{gridOrigin_, {gridOrigin_.x + width, gridOrigin_.y + height}};
+        outline_ = {kOrigin, {grid.max.x + right, grid.max.y + front}};
+        for (const Group& group : groups_) {
+            placeGroup(group, grid);
+        }
+        grid_.assign(kPetRows * kPetColumns, "");
+        for (const std::size_t part : petParts_) {
+            const auto [r, c] = *PetCell(parts_[part].reference);
+            putInCell(part, r, c);
+        }
+    }
+
+    Box cellBox(int r, int c) const {
+        const Point min{gridOrigin_.x + columnX_[static_cast<std::size_t>(c)],
+                        gridOrigin_.y + r * rowPitch_};
+        return {min,
+                {gridOrigin_.x + columnX_[static_cast<std::size_t>(c) + 1], min.y + chipHeight_}};
+    }
+
+    // Centred in the cell's chip band, snapped so its pads are on the routing grid.
+    void putInCell(std::size_t part, int r, int c) {
+        const Box cell = cellBox(r, c);
+        const Box b = Courtyard(*parts_[part].footprint, {0, 0}, parts_[part].angle);
+        parts_[part].origin = {SnapNear((cell.min.x + cell.max.x) / 2 - (b.min.x + b.max.x) / 2),
+                               SnapNear((cell.min.y + cell.max.y) / 2 - (b.min.y + b.max.y) / 2)};
+        grid_[static_cast<std::size_t>(r * kPetColumns + c)] = parts_[part].reference;
+        filled_.insert(part);
+    }
+
+    // `next` beside a grid chip (or a part placed so), in file order; the part keeps 0°.
+    void placeDeferred() {
+        for (const PlaceRule* rule : deferred_) {
+            const auto& next = std::get<NextRule>(rule->rule);
+            const std::size_t part = index_.at(next.reference);
+            const std::size_t other = index_.at(next.other);
+            if (!filled_.contains(other)) {
+                error(rule->line,
+                      "'" + next.other + "' is not placed before '" + next.reference + "'");
+                continue;
+            }
+            const Footprint& fp = *parts_[part].footprint;
+            const Box o = courtyard(other);
+            const std::int64_t centreX = (o.min.x + o.max.x) / 2;
+            const std::int64_t centreY = (o.min.y + o.max.y) / 2;
+            const std::int64_t halfX = (fp.courtyardMin.x + fp.courtyardMax.x) / 2;
+            const std::int64_t halfY = (fp.courtyardMin.y + fp.courtyardMax.y) / 2;
+            Point origin{};
+            switch (next.side) {
+            case Edge::Left:
+                origin = {o.min.x - kPartGap - fp.courtyardMax.x, centreY - halfY};
+                break;
+            case Edge::Right:
+                origin = {o.max.x + kPartGap - fp.courtyardMin.x, centreY - halfY};
+                break;
+            case Edge::Back:
+                origin = {centreX - halfX, o.min.y - kPartGap - fp.courtyardMax.y};
+                break;
+            case Edge::Front:
+                origin = {centreX - halfX, o.max.y + kPartGap - fp.courtyardMin.y};
+                break;
+            }
+            parts_[part].angle = 0;
+            parts_[part].origin = {SnapNear(origin.x), SnapNear(origin.y)};
+            filled_.insert(part);
+        }
+    }
+
+    // The rest into empty cells: each, in netlist order, into the free cell nearest the parts
+    // already placed that share its Nets.
+    void placeFree() {
+        std::map<std::string_view, std::vector<std::size_t>> partsOn;
+        std::vector<std::vector<std::string_view>> netsOfPart(parts_.size());
+        for (const Connection& c : loaded_.connections) {
+            if (IsRail(c.net)) {
+                continue;
+            }
+            if (const auto it = index_.find(c.reference); it != index_.end()) {
+                partsOn[c.net].push_back(it->second);
+                netsOfPart[it->second].push_back(c.net);
+            }
+        }
+        std::vector<std::pair<int, int>> free;
+        for (int r = 0; r < kPetRows; ++r) {
+            for (int c = 0; c < kPetColumns; ++c) {
+                if (grid_[static_cast<std::size_t>(r * kPetColumns + c)].empty()) {
+                    free.emplace_back(r, c);
+                }
+            }
+        }
+        for (const std::size_t part : freeParts_) {
+            if (free.empty()) {
+                return error(0, "no empty PET cell left for '" + parts_[part].reference + "'");
+            }
+            double sx = 0, sy = 0, n = 0;
+            for (const std::string_view net : netsOfPart[part]) {
+                for (const std::size_t other : partsOn[net]) {
+                    if (other != part && filled_.contains(other)) {
+                        const Box b = courtyard(other);
+                        sx += static_cast<double>(b.min.x + b.max.x) / 2;
+                        sy += static_cast<double>(b.min.y + b.max.y) / 2;
+                        n += 1;
+                    }
+                }
+            }
+            std::size_t best = 0;
+            if (n > 0) {
+                double bestDistance = 0;
+                for (std::size_t i = 0; i < free.size(); ++i) {
+                    const Box cell = cellBox(free[i].first, free[i].second);
+                    const double dx = static_cast<double>(cell.min.x + cell.max.x) / 2 - sx / n;
+                    const double dy = static_cast<double>(cell.min.y + cell.max.y) / 2 - sy / n;
+                    const double d = dx * dx + dy * dy;
+                    if (i == 0 || d < bestDistance) {
+                        bestDistance = d;
+                        best = i;
+                    }
+                }
+            }
+            putInCell(part, free[best].first, free[best].second);
+            free.erase(free.begin() + static_cast<std::ptrdiff_t>(best));
+        }
+    }
+
+    void checkOverlaps() {
+        for (std::size_t i = 0; i < parts_.size(); ++i) {
+            for (std::size_t j = i + 1; j < parts_.size(); ++j) {
+                if (Overlap(courtyard(i), courtyard(j))) {
+                    error(0,
+                          "'" + parts_[i].reference + "' overlaps '" + parts_[j].reference + "'");
+                }
+            }
+        }
+    }
+
+    std::vector<std::size_t> petParts_, freeParts_;  // grid pet: at a PET cell; in an empty one
+    std::vector<const PlaceRule*> deferred_;         // grid pet: next beside a grid part
+    std::vector<std::int64_t> columnX_;              // grid pet: column left edges, from the grid
+    std::int64_t chipHeight_ = 0, rowPitch_ = 0;
+    std::set<std::size_t> filled_;  // grid pet: placed in the grid or beside it
 
     const LoadedCircuit& loaded_;
     const PlaceRules& rules_;

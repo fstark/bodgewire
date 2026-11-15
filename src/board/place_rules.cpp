@@ -144,7 +144,11 @@ private:
         if (!side) {
             return error("unknown side '" + std::string(sideWord) + "'");
         }
-        if (!placed_.contains(other)) {
+        // Under grid pet a chip at a PET location ("UC8") is placed by the grid itself.
+        const bool petChip = rules_.petGrid && other.size() == 3 && other[0] == 'U' &&
+                             other[1] >= 'A' && other[1] <= 'J' && other[2] >= '1' &&
+                             other[2] <= '9';
+        if (!placed_.contains(other) && !petChip) {
             return error("'" + std::string(other) + "' is not placed by an earlier rule");
         }
         if (claim(reference)) {
@@ -154,10 +158,17 @@ private:
     }
 
     void gridRule(const std::vector<std::string_view>& words) {
-        if (words.size() != 3) {
-            return error("expected: grid COLUMNS ROWS");
+        if (words.size() == 2 && words[1] == "pet") {
+            if (rules_.grid || rules_.petGrid) {
+                return error("grid given twice");
+            }
+            rules_.petGrid = true;
+            return;
         }
-        if (rules_.grid) {
+        if (words.size() != 3) {
+            return error("expected: grid COLUMNS ROWS, or grid pet");
+        }
+        if (rules_.grid || rules_.petGrid) {
             return error("grid given twice");
         }
         std::int32_t size[2]{};

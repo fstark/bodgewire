@@ -17,7 +17,8 @@ namespace bw {
 struct PlacedPart {
     std::string reference;
     const Footprint* footprint;
-    Point origin;  // the footprint's (at), 0°
+    Point origin;   // the footprint's (at)
+    int angle = 0;  // degrees, 0 or 90 (grid pet: chips lie horizontally, pin 1 bottom left)
 };
 
 struct Placement {
@@ -34,7 +35,9 @@ struct PlaceOptions {
 };
 
 // Panel parts (those with a rule) by their rules, in bands along the edges; every other part
-// (DIPs, resistors) into a grid of slots, by annealing on wire length. Diagnostics name
+// (DIPs, resistors) into a grid of slots, by annealing on wire length. With `grid pet`, chips named
+// by a PET 2001 location go to that cell instead, turned 90°, and the parts left over into the
+// empty cells, each beside the parts it shares the most Nets with. Diagnostics name
 // `rulesFile`. `footprints` must hold every package of `loaded`.
 std::expected<Placement, std::vector<Diagnostic>>
 PlaceBoard(const LoadedCircuit& loaded, const PlaceRules& rules, std::string_view rulesFile,

@@ -1,5 +1,6 @@
 #include "board/placer.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <string>
@@ -289,4 +290,78 @@ TEST_CASE("placer: tennis", "[board][slow]") {
     CHECK(Courtyard(*p, "J2").max.x > p->outlineMax.x - kMm - kSnap);
     CHECK(p->wireLength < 12'000 * kMm);
     WARN("tennis wire length " << static_cast<double>(p->wireLength) / 1e9 << " m");
+}
+
+namespace {
+
+// A few chips at PET locations, a resistor beside one, a resistor and an oscillator with no rule.
+constexpr std::string_view kPet = "part J1 POWER\n"
+                                  "part UC9 74LS93\n"
+                                  "part UC8 74LS107\n"
+                                  "part UA5 6522\n"
+                                  "part UB5 74LS93\n"
+                                  "part UD9 74LS04\n"
+                                  "part X1 OSC freq=8MHz\n"
+                                  "part R12 R value=1k\n"
+                                  "part R13 R value=1k\n"
+                                  "net CLK X1.OUT UC9.CKB UC8.1CLK\n"
+                                  "net QA UC9.QA UB5.CKA UA5.CA1\n"
+                                  "net P UD9.1Y R12.2 UC8.1J\n"
+                                  "net Q UD9.2Y R13.2 UB5.CKB\n"
+                                  "net VCC R12.1 R13.1\n";
+
+Box RotatedCourtyard(const Placement& placement, std::string_view reference) {
+    const PlacedPart& part = Part(placement, reference);
+    const Footprint& fp = *part.footprint;
+    REQUIRE(part.angle == 90);
+    return {{part.origin.x + fp.courtyardMin.y, part.origin.y - fp.courtyardMax.x},
+            {part.origin.x + fp.courtyardMax.y, part.origin.y - fp.courtyardMin.x}};
+}
+
+}  // namespace
+
+TEST_CASE("placer: grid pet puts each chip at its PET location, lying", "[board]") {
+    const Placement p = Placed(kPet, "grid pet\nedge J1 left middle\nnext R12 UC8 front\n");
+    CHECK(p.columns == 9);
+    CHECK(p.rows == 10);
+    CHECK(p.grid[2 * 9 + 8] == "UC9");  // row C, column 9
+    CHECK(p.grid[0 * 9 + 4] == "UA5");
+    CHECK(Part(p, "UC9").angle == 90);
+    // Row C below row B below row A; column 9 right of column 5.
+    const Box c9 = RotatedCourtyard(p, "UC9");
+    const Box b5 = RotatedCourtyard(p, "UB5");
+    const Box a5 = RotatedCourtyard(p, "UA5");
+    CHECK(c9.min.y > b5.max.y);
+    CHECK(b5.min.y > a5.max.y);
+    CHECK(c9.min.x > b5.max.x);
+    // A DIP-40's column is wider: UB5 (DIP-14) sits in UA5's wide column, lying, inside it.
+    CHECK(a5.max.x - a5.min.x > 40 * kMm);
+    CHECK(b5.min.x >= a5.min.x - 2 * kMm);
+    // R12 just in front of UC8, at 0°.
+    const PlacedPart& r12 = Part(p, "R12");
+    CHECK(r12.angle == 0);
+    const Box r = Courtyard(p, "R12");
+    const Box c8 = RotatedCourtyard(p, "UC8");
+    CHECK(r.min.y >= c8.max.y);
+    CHECK(r.min.y - c8.max.y < 4 * kMm);
+    // R13 and X1 in empty cells.
+    CHECK(std::ranges::count(p.grid, std::string("R13")) == 1);
+    CHECK(std::ranges::count(p.grid, std::string("X1")) == 1);
+    for (const PlacedPart& part : p.parts) {
+        CHECK(part.origin.x % kSnap == 0);
+        CHECK(part.origin.y % kSnap == 0);
+    }
+}
+
+TEST_CASE("placer: grid pet refusals", "[board]") {
+    // next beside a part no rule places; next beside a PET chip before grid pet; grid twice.
+    CHECK_FALSE(ParsePlaceRules("grid pet\nnext R12 R13 front\n", "t.place").has_value());
+    CHECK_FALSE(ParsePlaceRules("next R12 UC8 front\ngrid pet\n", "t.place").has_value());
+    CHECK_FALSE(ParsePlaceRules("grid pet\ngrid 3 3\n", "t.place").has_value());
+    // A part of another package with no rule.
+    const auto messages =
+        Errors("part J1 POWER\npart UC9 74LS93\npart D1 LED\nnet A UC9.QA D1.A\n", "grid pet\n");
+    CHECK(std::ranges::any_of(messages, [](const std::string& m) {
+        return m.find("'D1' (LED-5mm) needs a placement rule") != std::string::npos;
+    }));
 }

@@ -41,6 +41,9 @@ struct PlaceRule {
 struct PlaceRules {
     std::vector<PlaceRule> rules;                               // file order
     std::optional<std::pair<std::int32_t, std::int32_t>> grid;  // columns, rows
+    // `grid pet` (P5q): chips named U<row A-J><column 1-9> at their PET 2001 location, lying
+    // horizontally; `next` may then name such a chip.
+    bool petGrid = false;
 };
 
 std::expected<PlaceRules, std::vector<Diagnostic>> ParsePlaceRules(std::string_view text,
