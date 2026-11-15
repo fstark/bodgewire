@@ -79,17 +79,34 @@ TEST_CASE("logic: DriveOf bidirectional is a tri-state output", "[sim]") {
     CHECK(Same(DriveOf(PinKind::Bidirectional, f, Z), Mos(Z, None)));
 }
 
-TEST_CASE("logic: DriveOf pull-up drives 0 strongly and 1 weakly", "[sim]") {
+TEST_CASE("logic: DriveOf pull-up drives 0 at port strength and 1 weakly", "[sim]") {
     const Family f = Family::Mos;
-    CHECK(Same(DriveOf(PinKind::PullUp, f, Zero), Mos(Zero)));
+    CHECK(Same(DriveOf(PinKind::PullUp, f, Zero), Mos(Zero, Port)));
     CHECK(Same(DriveOf(PinKind::PullUp, f, One), Mos(One, Weak)));
-    CHECK(Same(DriveOf(PinKind::PullUp, f, X), Mos(X)));
+    CHECK(Same(DriveOf(PinKind::PullUp, f, X), Mos(X, Port)));
     CHECK(Same(DriveOf(PinKind::PullUp, f, Z), Mos(Z, None)));
     // Its 1 loses to any strong 0 and reads 1 alone, not floating.
     CHECK(Resolve({DriveOf(PinKind::PullUp, f, One), Ttl(Zero)}).value == Zero);
     const Resolution alone = Resolve({DriveOf(PinKind::PullUp, f, One)});
     CHECK(alone.value == One);
     CHECK_FALSE(alone.floating);
+}
+
+TEST_CASE("resolve: a port's 0 loses to an output's 1", "[sim]") {
+    const Drive port0 = DriveOf(PinKind::PullUp, Family::Mos, Zero);
+    CHECK(Resolve({port0, Ttl(One)}).value == One);
+    CHECK(Resolve({port0, Mos(One)}).value == One);
+    CHECK(Resolve({DriveOf(PinKind::PullUp, Family::Mos, X), Ttl(One)}).value == One);
+    CHECK(Resolve({port0, Ttl(Zero)}).value == Zero);
+}
+
+TEST_CASE("resolve: a port's 0 beats a pull-up and another port's 1", "[sim]") {
+    const Drive port0 = DriveOf(PinKind::PullUp, Family::Mos, Zero);
+    const Drive port1 = DriveOf(PinKind::PullUp, Family::Mos, One);
+    CHECK(Resolve({port0, Ttl(One, Weak)}).value == Zero);
+    CHECK(Resolve({port0, port1}).value == Zero);
+    CHECK(Resolve({port1, port0, port1}).value == Zero);
+    CHECK(Resolve({port0, port0}).value == Zero);
 }
 
 TEST_CASE("logic: DriveOf power and no-connect is None", "[sim]") {

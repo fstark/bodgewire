@@ -5,11 +5,14 @@
 namespace bw {
 
 enum class LogicValue : std::uint8_t { Zero, One, Z, X };  // Z only as a drive (S1)
-enum class DriveStrength : std::uint8_t { None, Weak, Strong, Supply };
+// Port: an NMOS port's low output (P5q): beats a pull-up and loses to any output's high, as an
+// LS output's high (tens of mA) beats a 6520/6522/6530 port's sink (about 2 mA).
+enum class DriveStrength : std::uint8_t { None, Weak, Port, Strong, Supply };
 enum class Family : std::uint8_t { Ttl, Mos };
 // Switched: a Pin of the switch network (P5i): drives its Net at Supply strength, reads nothing
 // through the Net's value; its Component is woken when the Net's other drives change.
-// PullUp: an NMOS port pin (6530, P5j): drives 0 Strong, 1 Weak (its own pull-up); reads its Net.
+// PullUp: an NMOS port pin (6530, P5j): drives 0 and X at Port strength, 1 Weak (its own pull-up);
+// reads its Net.
 enum class PinKind : std::uint8_t {
     Input,
     Output,
@@ -63,7 +66,7 @@ constexpr char ToChar(LogicValue value) {
 }
 
 // Output Pin value → its Drive: totem-pole Z → None; open collector 1/Z → None; switched: Supply;
-// pull-up: 1 Weak, Z → None.
+// pull-up: 0 and X Port, 1 Weak, Z → None.
 constexpr Drive DriveOf(PinKind kind, Family family, LogicValue value) {
     switch (kind) {
     case PinKind::Output:
@@ -77,7 +80,7 @@ constexpr Drive DriveOf(PinKind kind, Family family, LogicValue value) {
         if (value == LogicValue::Z) {
             return {value, DriveStrength::None, family};
         }
-        return {value, value == LogicValue::One ? DriveStrength::Weak : DriveStrength::Strong,
+        return {value, value == LogicValue::One ? DriveStrength::Weak : DriveStrength::Port,
                 family};
     case PinKind::OpenCollector:
         if (value == LogicValue::Zero || value == LogicValue::X) {
