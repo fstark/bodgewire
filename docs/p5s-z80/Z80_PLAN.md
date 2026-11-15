@@ -13,8 +13,8 @@ Work on branch `p5s-z80` (worktree `.claude/worktrees/p5s-z80`), P5q running on 
 | 1 | Test data: converter, fetch script, committed subset | `1a8a98d` |
 | 2 | Core: every opcode, the runner, the Harte subset | `707d412` |
 | 3 | Core: interrupts, HALT, reset; hand cases; full Harte, ZEXDOC, ZEXALL in release | `87e1e25` |
-| 4 | `Z80` Part, datasheet, catalogue | this commit |
-| 5 | Bus load with the Z80: ROM, netlist, test, ratios | |
+| 4 | `Z80` Part, datasheet, catalogue | `ac34721` |
+| 5 | Bus load with the Z80: ROM, netlist, test, ratios | this commit |
 | 6 | Release check, recipes, roadmap | |
 
 ## Phase 1 — Test data
@@ -80,3 +80,6 @@ Commit: `docs: P5s implemented`
 - Release, phase 3: `Z80 core: Harte full` 4.7 s; `ZEXDOC` and `ZEXALL` "Tests complete" with every test OK, 46,734,977,142 T-states each, 44 s and 46 s.
 - Phase 4: `kZ80Float` 90 ns and `kZ80Busak` 100 ns are the Z80A's usual published maxima, not read from a scan of UM0080 here (said in `delays.hpp`). The reset-to-first-fetch count was not checked against UM0080's Reset figure either: the model starts T1 of the fetch at `$0000` at the second rising edge after `RESET_N` goes high (the first sees it high). Both are open for a check against the manual.
 - Phase 4, the bench: a write ends at the first of its strobes to rise (`WR_N` before `MREQ_N`, `IORQ_N` before `WR_N` by the data sheet's delays), so `BenchMemory` stores at `WR_N`'s rise and records an `OUT` at `IORQ_N`'s. "Reads before the edge" probes the timing on the same circuit as it measures (a Stimulus on the data, its step far away): a tied bus draws other power-on bits, so other timing. Debug: `ctest -R "Z80|catalogue|manuals|footprint"` 80 tests, 4.3 s with `-j 12`.
+- Phase 5, the program against the design's first sketch: the handler is on the ZX80's balanced pattern (`DEC C`, `JP NZ`; `POP`, `DEC B`, `RET Z`, `SET 3,C`, or `POP`, `RET Z`, `JR`), 54 T-states on both paths, not 42; so a line has 35 Fetches after `EI` (one halted Fetch on a display line, not four) and A = `$5D`. Border rows are runs of `HALT`s in RAM around the page (a `HALT`'s pushed PC is the next row), so one `JP (HL)` serves both. The design was updated to the program as built. The page came up on the first run, 3.7 µs right of the stub's (71 T-states from HSYNC to the first character, the stub's 59).
+- Phase 5, the TV lock: with the 100 ms cap no locked frame came. The Z80's first VSYNC comes after the POR and the copy (6.2 ms), and the TV (free-running at 21 ms, accepting a vertical sync only 16–21 ms into its frame) falls in step after about 6 frames; the stub's first VSYNC is at once. The Z80 netlist's cap is 250 ms rather than a POR tuned to the TV.
+- Phase 5, debug: `bus load: the TV shows the page` 80 s (both netlists, both seeds), the copy case 1.3 s. Release, `bw run --time 2s`, alternated, 3 runs each: `bus_load` 0.383–0.389× (239 M applied events, 228 M evaluations), `bus_load_z80` 0.428–0.431× (236 M applied events, 221 M evaluations): the real CPU is no dearer than the stub, slightly cheaper (its border lines are halted fetches where the stub played ROM and RAM cycles). `bw_ui netlists/bus_load_z80.bwn --after 1s`: 0.43×, UI 0.0 ms, the page on the TV (screenshot viewed).

@@ -13,6 +13,7 @@
 #include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
+#include "parts/ram2114.hpp"
 #include "parts/rom_contents.hpp"
 #include "parts/z80_stub.hpp"
 #include "sim/simulator.hpp"
@@ -28,10 +29,11 @@ constexpr int kCellDots = 8, kCellLines = 8;
 constexpr int kPageDots = Z80Stub::kColumns * kCellDots;  // 256
 constexpr int kPageLines = Z80Stub::kRows * kCellLines;   // 192
 
-// The page as dots, through the ROM's glyphs, D7 inverting: [line][dot], true = ink (black).
-std::vector<std::vector<bool>> ExpectedPage() {
+// The page as dots, through the glyphs of the netlist's ROM, D7 inverting: [line][dot], true =
+// ink (black).
+std::vector<std::vector<bool>> ExpectedPage(const char* romFile) {
     const auto rom =
-        ReadRomContents(std::filesystem::path(BW_ROOT_DIR) / "roms" / "bus_load.rom", 2048, 8);
+        ReadRomContents(std::filesystem::path(BW_ROOT_DIR) / "roms" / romFile, 2048, 8);
     REQUIRE(rom.has_value());
     const auto& page = Z80Stub::Page();
     std::vector<std::vector<bool>> dots(kPageLines, std::vector<bool>(kPageDots, false));
@@ -92,8 +94,20 @@ std::optional<std::pair<double, int>> FindPage(const TvFrame& frame,
     return std::nullopt;
 }
 
-std::unique_ptr<LoadedCircuit> Load() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "bus_load.bwn");
+// The stub's netlist (P5a) and the real Z80's (P5s), with their ROMs.
+struct BusLoad {
+    const char* file;
+    const char* rom;
+    // Time to 3 locked frames. The stub's first VSYNC comes at once; the Z80's after the POR
+    // and the page copy (6 ms), and the TV, free-running at 21 ms, accepts it only 16-21 ms into
+    // its own frame: about 6 frames to fall in step.
+    Time cap;
+};
+constexpr BusLoad kStub{"bus_load.bwn", "bus_load.rom", 100'000'000'000};
+constexpr BusLoad kZ80{"bus_load_z80.bwn", "bus_load_z80.rom", 250'000'000'000};
+
+std::unique_ptr<LoadedCircuit> Load(const BusLoad& netlist) {
+    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / netlist.file);
     if (!result) {
         for (const Diagnostic& d : result.error()) {
             UNSCOPED_INFO(Format(d));
@@ -106,7 +120,9 @@ std::unique_ptr<LoadedCircuit> Load() {
 }  // namespace
 
 TEST_CASE("bus load: netlist loads without warnings", "[machines]") {
-    const auto loaded = Load();
+    const BusLoad netlist = GENERATE(kStub, kZ80);
+    INFO(netlist.file);
+    const auto loaded = Load(netlist);
     for (const Diagnostic& d : loaded->warnings) {
         UNSCOPED_INFO(Format(d));
     }
@@ -114,16 +130,17 @@ TEST_CASE("bus load: netlist loads without warnings", "[machines]") {
 }
 
 TEST_CASE("bus load: the TV shows the page", "[machines][slow]") {
+    const BusLoad netlist = GENERATE(kStub, kZ80);
     const std::uint64_t seed = GENERATE(1, 2);
-    INFO("seed " << seed);
-    const auto loaded = Load();
+    INFO(netlist.file << ", seed " << seed);
+    const auto loaded = Load(netlist);
     Simulator sim(loaded->circuit);
     sim.powerOn(seed);
     TvInput tv(sim, loaded->nets.at("VIDEO"), loaded->nets.at("SYNC_N"));
     std::vector<TvFrame> frames;
     std::vector<TvFrameStats> stats;
     std::uint64_t completed = 0;
-    while (sim.now() < 100_ms && frames.size() < 3) {
+    while (sim.now() < netlist.cap && frames.size() < 3) {
         sim.runFor(1_ms);
         tv.update();
         sim.trimRecordings();
@@ -144,9 +161,25 @@ TEST_CASE("bus load: the TV shows the page", "[machines][slow]") {
         CHECK(stats[i].lines <= Z80Stub::kFrameLines);
         CHECK(stats[i].syncedLines * 10 >= stats[i].lines * 9);
     }
-    const auto page = ExpectedPage();
+    const auto page = ExpectedPage(netlist.rom);
     const auto at = FindPage(frames[1], page);
     REQUIRE(at.has_value());
     INFO("left " << at->first << ", top " << at->second);
     CHECK(Matches(frames[2], page, at->first, at->second));
+}
+
+TEST_CASE("bus load: the Z80 program copies the page", "[machines]") {
+    const auto loaded = Load(kZ80);
+    Simulator sim(loaded->circuit);
+    sim.powerOn(1);
+    sim.runFor(10_ms);  // the POR's 1 ms, then the copy (about 5 ms)
+    // RAM at $4000: 6 border HALTs, then the page; U4 holds the low nibble, U5 the high.
+    const auto& low = static_cast<const Ram2114&>(*loaded->components.at("U4"));
+    const auto& high = static_cast<const Ram2114&>(*loaded->components.at("U5"));
+    const auto& page = Z80Stub::Page();
+    for (std::size_t i = 0; i < page.size(); ++i) {
+        INFO("page byte " << i);
+        const unsigned value = static_cast<unsigned>(high.word(6 + i)) << 4 | low.word(6 + i);
+        CHECK(value == page[i]);
+    }
 }
