@@ -11,7 +11,7 @@ On branch `p5t-z80-asm` (a worktree), while P5q1 runs on `main`.
 |-------|-------------|--------|
 | 0 | Docs reviewed | `3aadd06` |
 | 1 | Front end apart from the 6502; `Assemble`, `.cpu` | `733124e` |
-| 2 | Z80 instructions; hand table, disassembler round trip, core lengths | |
+| 2 | Z80 instructions; hand table, disassembler round trip, core lengths | `77c6a80` |
 | 3 | `roms/bus_load_z80.asm`, the script retired | |
 | 4 | Release check, recipes, roadmap | |
 
@@ -55,3 +55,4 @@ Fence: release check done, full suite passes (or its failures shown not P5t's). 
 - Phase 1 was written while the review ran, then checked against it.
 - Phase 2: the form table needs no separate `(HL)`/`(XY+d)` rows: one pattern `M` (`r`, `(HL)` as code 6, `(XY+d)` as 6 behind its prefix) covers each 8-bit row, a memory-to-memory pair refused; `LD r,r'` is `LD M,M`. The opcode list's operand bytes: after DD/FD, nn is `$5AFD` (d and n read as one word). A first count of 698: the unprefixed loop fed `DD 34 12` and `FD 34 12` as plain opcodes (decoded as `INC (IX+18)`); the loop now skips the four prefix bytes. Mutations, each failing cases: the `DD CB d op` order swapped (3 cases), `JP cc`'s condition shifted to bit 4 (3), `JR`'s offset from the instruction's start (5). Debug: `ctest -R asm` 29 tests, 0.6 s.
 - The `.rom` listing's comment column is padded for three bytes (the 6502's longest); a 4-byte Z80 instruction pushes its comment right. Left so: widening it would change every committed 6502 `.rom`.
+- Phase 3: the data sections of `roms/bus_load_z80.asm` (the image's `.byte` rows, one comment a text row; the glyphs as `.byte %0xxxxx00`, one comment a code) were written by a throwaway script from the old script's own functions, the program by hand. Words check: a throwaway Catch case read the old `.rom` (from the commit before) and the new with `ReadRomContents`: all 2,048 words equal. Debug: `ctest -R "asm|bus load"` 33 tests, 75 s (the TV case 75 s).
