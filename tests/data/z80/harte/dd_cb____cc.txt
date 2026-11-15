@@ -1,0 +1,103 @@
+# Z80 SingleStepTests (Tom Harte, MIT licence), dd cb __ cc
+# source: https://github.com/SingleStepTests/z80 v1 @ ebe1875d48f374bcfd4b505d8eb8ee751568b5f7
+# 25 cases; written by tests/data/z80/convert_harte.py
+# DD CB __ CC 0000
+I e6d3 ada9 9d 3b 6c fa dd e4 69 f5 e9 1f 64a4 6393 b4ef d2f0 4922 7cb0 32a3 1 0 1 0 0 0 64fa:7d e6d3:dd e6d4:cb e6d5:56 e6d6:cc
+F e6d7 ada9 9d 3b 6c fa dd e4 7f f5 e9 21 64a4 6393 64fa d2f0 4922 7cb0 32a3 1 0 1 0 0 0 64fa:7f e6d3:dd e6d4:cb e6d5:56 e6d6:cc
+C e6d3:-:---- e6d3:-:r-m- e91f:dd:---- e91f:-:---- e6d4:-:---- e6d4:-:r-m- e920:cb:---- e920:-:---- e6d5:-:---- e6d5:-:r-m- e6d5:56:---- e6d6:-:---- e6d6:-:r-m- e6d6:cc:---- e6d6:-:---- e6d6:-:---- 64fa:-:---- 64fa:-:r-m- 64fa:7d:---- 64fa:-:---- 64fa:-:---- 64fa:7f:-wm- 64fa:-:----
+# DD CB __ CC 0001
+I e563 74ad 46 49 ce 6b 39 86 40 70 d8 29 93df f9a5 1ef5 ba01 c2d7 58c3 ae3f 1 0 1 0 0 0 942d:76 e563:dd e564:cb e565:4e e566:cc
+F e567 74ad 46 49 ce 6b 39 86 76 70 d8 2b 93df f9a5 942d ba01 c2d7 58c3 ae3f 1 0 1 0 0 0 942d:76 e563:dd e564:cb e565:4e e566:cc
+C e563:-:---- e563:-:r-m- d829:dd:---- d829:-:---- e564:-:---- e564:-:r-m- d82a:cb:---- d82a:-:---- e565:-:---- e565:-:r-m- e565:4e:---- e566:-:---- e566:-:r-m- e566:cc:---- e566:-:---- e566:-:---- 942d:-:---- 942d:-:r-m- 942d:76:---- 942d:-:---- 942d:-:---- 942d:76:-wm- 942d:-:----
+# DD CB __ CC 0002
+I e789 6aea 42 c1 2 7b 72 1e 13 8d ff 20 9526 47a7 5825 6dae b639 945c b3f1 1 1 0 0 0 c1 94eb:55 e789:dd e78a:cb e78b:c5 e78c:cc
+F e78d 6aea 42 c1 2 7b 72 1e 57 8d ff 22 9526 47a7 94eb 6dae b639 945c b3f1 1 1 0 0 0 0 94eb:57 e789:dd e78a:cb e78b:c5 e78c:cc
+C e789:-:---- e789:-:r-m- ff20:dd:---- ff20:-:---- e78a:-:---- e78a:-:r-m- ff21:cb:---- ff21:-:---- e78b:-:---- e78b:-:r-m- e78b:c5:---- e78c:-:---- e78c:-:r-m- e78c:cc:---- e78c:-:---- e78c:-:---- 94eb:-:---- 94eb:-:r-m- 94eb:55:---- 94eb:-:---- 94eb:-:---- 94eb:57:-wm- 94eb:-:----
+# DD CB __ CC 0003
+I 1634 dd99 9d 1d 4d 66 2 89 1a 70 c8 49 7e91 477e bf9c 177 a036 5950 ab1d 1 0 0 1 1 0 1634:dd 1635:cb 1636:ec 1637:cc 7e7d:6e
+F 1638 dd99 9d 1d 4d 66 2 89 6e 70 c8 4b 7e91 477e 7e7d 177 a036 5950 ab1d 1 0 0 0 0 0 1634:dd 1635:cb 1636:ec 1637:cc 7e7d:6e
+C 1634:-:---- 1634:-:r-m- c849:dd:---- c849:-:---- 1635:-:---- 1635:-:r-m- c84a:cb:---- c84a:-:---- 1636:-:---- 1636:-:r-m- 1636:ec:---- 1637:-:---- 1637:-:r-m- 1637:cc:---- 1637:-:---- 1637:-:---- 7e7d:-:---- 7e7d:-:r-m- 7e7d:6e:---- 7e7d:-:---- 7e7d:-:---- 7e7d:6e:-wm- 7e7d:-:----
+# DD CB __ CC 0004
+I 70c3 293e ac 82 dc 43 b4 e1 9a 53 6 56 452a a22 aa0b bb6a 338d bda5 27a2 0 1 1 0 1 0 455c:92 70c3:dd 70c4:cb 70c5:32 70c6:cc
+F 70c7 293e ac 82 dc 43 b4 e1 92 53 6 58 452a a22 455c bb6a 338d bda5 27a2 0 1 1 0 0 0 455c:92 70c3:dd 70c4:cb 70c5:32 70c6:cc
+C 70c3:-:---- 70c3:-:r-m- 656:dd:---- 656:-:---- 70c4:-:---- 70c4:-:r-m- 657:cb:---- 657:-:---- 70c5:-:---- 70c5:-:r-m- 70c5:32:---- 70c6:-:---- 70c6:-:r-m- 70c6:cc:---- 70c6:-:---- 70c6:-:---- 455c:-:---- 455c:-:r-m- 455c:92:---- 455c:-:---- 455c:-:---- 455c:92:-wm- 455c:-:----
+# DD CB __ CC 0005
+I df08 ee2a 74 43 37 43 8f f5 c2 cc 11 0 ac90 2e84 ab79 e51d 1be9 a3fa 3b80 2 1 0 1 0 43 acc6:e6 df08:dd df09:cb df0a:36 df0b:cc
+F df0c ee2a 74 43 37 43 8f f5 e6 cc 11 2 ac90 2e84 acc6 e51d 1be9 a3fa 3b80 2 1 0 0 0 0 acc6:e6 df08:dd df09:cb df0a:36 df0b:cc
+C df08:-:---- df08:-:r-m- 1100:dd:---- 1100:-:---- df09:-:---- df09:-:r-m- 1101:cb:---- 1101:-:---- df0a:-:---- df0a:-:r-m- df0a:36:---- df0b:-:---- df0b:-:r-m- df0b:cc:---- df0b:-:---- df0b:-:---- acc6:-:---- acc6:-:r-m- acc6:e6:---- acc6:-:---- acc6:-:---- acc6:e6:-wm- acc6:-:----
+# DD CB __ CC 0006
+I ab4b 16c4 af f1 e9 11 8b a9 16 7 a7 14 fed5 6a07 4198 988b a2b4 25ab 20b8 1 1 1 1 1 f1 ab4b:dd ab4c:cb ab4d:7b ab4e:cc ff50:15
+F ab4f 16c4 af f1 e9 11 8b a9 17 7 a7 16 fed5 6a07 ff50 988b a2b4 25ab 20b8 1 1 1 0 0 0 ab4b:dd ab4c:cb ab4d:7b ab4e:cc ff50:17
+C ab4b:-:---- ab4b:-:r-m- a714:dd:---- a714:-:---- ab4c:-:---- ab4c:-:r-m- a715:cb:---- a715:-:---- ab4d:-:---- ab4d:-:r-m- ab4d:7b:---- ab4e:-:---- ab4e:-:r-m- ab4e:cc:---- ab4e:-:---- ab4e:-:---- ff50:-:---- ff50:-:r-m- ff50:15:---- ff50:-:---- ff50:-:---- ff50:17:-wm- ff50:-:----
+# DD CB __ CC 0007
+I 5f4 4a7d e6 54 b3 7 37 9e 1 cd b5 21 3ef2 817c b599 d304 48f6 e1a9 89fb 0 1 0 1 1 54 5f4:dd 5f5:cb 5f6:f7 5f7:cc 3ee9:29
+F 5f8 4a7d e6 54 b3 7 37 9e 2b cd b5 23 3ef2 817c 3ee9 d304 48f6 e1a9 89fb 0 1 0 0 0 0 5f4:dd 5f5:cb 5f6:f7 5f7:cc 3ee9:2b
+C 5f4:-:---- 5f4:-:r-m- b521:dd:---- b521:-:---- 5f5:-:---- 5f5:-:r-m- b522:cb:---- b522:-:---- 5f6:-:---- 5f6:-:r-m- 5f6:f7:---- 5f7:-:---- 5f7:-:r-m- 5f7:cc:---- 5f7:-:---- 5f7:-:---- 3ee9:-:---- 3ee9:-:r-m- 3ee9:29:---- 3ee9:-:---- 3ee9:-:---- 3ee9:2b:-wm- 3ee9:-:----
+# DD CB __ CC 0008
+I ffef f923 b8 a2 ab 1d a4 36 2b ba dd 68 e3b9 3898 4bfa 29de 2d20 7cbb ff41 1 0 0 1 0 a2 e402:13 ffef:dd fff0:cb fff1:49 fff2:cc
+F fff3 f923 b8 a2 ab 1d a4 36 13 ba dd 6a e3b9 3898 e402 29de 2d20 7cbb ff41 1 0 0 0 0 0 e402:13 ffef:dd fff0:cb fff1:49 fff2:cc
+C ffef:-:---- ffef:-:r-m- dd68:dd:---- dd68:-:---- fff0:-:---- fff0:-:r-m- dd69:cb:---- dd69:-:---- fff1:-:---- fff1:-:r-m- fff1:49:---- fff2:-:---- fff2:-:r-m- fff2:cc:---- fff2:-:---- fff2:-:---- e402:-:---- e402:-:r-m- e402:13:---- e402:-:---- e402:-:---- e402:13:-wm- e402:-:----
+# DD CB __ CC 0009
+I 415 3db5 d1 4 8b b0 16 9f 25 3e 7d 4e de72 7121 efe5 c588 7f27 c0b4 7ca8 1 0 0 0 0 0 415:dd 416:cb 417:8b 418:cc ddfd:2f
+F 419 3db5 d1 4 8b b0 16 9f 2f 3e 7d 50 de72 7121 ddfd c588 7f27 c0b4 7ca8 1 0 0 0 0 0 415:dd 416:cb 417:8b 418:cc ddfd:2f
+C 415:-:---- 415:-:r-m- 7d4e:dd:---- 7d4e:-:---- 416:-:---- 416:-:r-m- 7d4f:cb:---- 7d4f:-:---- 417:-:---- 417:-:r-m- 417:8b:---- 418:-:---- 418:-:r-m- 418:cc:---- 418:-:---- 418:-:---- ddfd:-:---- ddfd:-:r-m- ddfd:2f:---- ddfd:-:---- ddfd:-:---- ddfd:2f:-wm- ddfd:-:----
+# DD CB __ CC 000A
+I e592 f18f 1a 8 7e 58 4e aa db 58 48 55 30d2 7970 3e70 f341 3e84 9287 fd3b 1 1 0 0 0 0 30cb:23 e592:dd e593:cb e594:f9 e595:cc
+F e596 f18f 1a 8 7e 58 4e aa 23 58 48 57 30d2 7970 30cb f341 3e84 9287 fd3b 1 1 0 0 0 0 30cb:23 e592:dd e593:cb e594:f9 e595:cc
+C e592:-:---- e592:-:r-m- 4855:dd:---- 4855:-:---- e593:-:---- e593:-:r-m- 4856:cb:---- 4856:-:---- e594:-:---- e594:-:r-m- e594:f9:---- e595:-:---- e595:-:r-m- e595:cc:---- e595:-:---- e595:-:---- 30cb:-:---- 30cb:-:r-m- 30cb:23:---- 30cb:-:---- 30cb:-:---- 30cb:23:-wm- 30cb:-:----
+# DD CB __ CC 000B
+I df6c 539d bb 35 24 72 db c0 b4 e 25 43 dca6 d5d4 d3aa 82c 2b4 25fc adc3 0 1 0 1 1 0 dcfe:1b df6c:dd df6d:cb df6e:58 df6f:cc
+F df70 539d bb 35 24 72 db c0 1b e 25 45 dca6 d5d4 dcfe 82c 2b4 25fc adc3 0 1 0 0 0 0 dcfe:1b df6c:dd df6d:cb df6e:58 df6f:cc
+C df6c:-:---- df6c:-:r-m- 2543:dd:---- 2543:-:---- df6d:-:---- df6d:-:r-m- 2544:cb:---- 2544:-:---- df6e:-:---- df6e:-:r-m- df6e:58:---- df6f:-:---- df6f:-:r-m- df6f:cc:---- df6f:-:---- df6f:-:---- dcfe:-:---- dcfe:-:r-m- dcfe:1b:---- dcfe:-:---- dcfe:-:---- dcfe:1b:-wm- dcfe:-:----
+# DD CB __ CC 000C
+I 2086 3155 c 44 9f 20 2e 4c 51 91 89 6f c63f 11fa aaa8 b86 ece4 526b ef3f 2 0 1 0 1 0 2086:dd 2087:cb 2088:5e 2089:cc c69d:a1
+F 208a 3155 c 44 9f 20 2e 4c a3 91 89 71 c63f 11fa c69d b86 ece4 526b ef3f 2 0 1 0 0 0 2086:dd 2087:cb 2088:5e 2089:cc c69d:a3
+C 2086:-:---- 2086:-:r-m- 896f:dd:---- 896f:-:---- 2087:-:---- 2087:-:r-m- 8970:cb:---- 8970:-:---- 2088:-:---- 2088:-:r-m- 2088:5e:---- 2089:-:---- 2089:-:r-m- 2089:cc:---- 2089:-:---- 2089:-:---- c69d:-:---- c69d:-:r-m- c69d:a1:---- c69d:-:---- c69d:-:---- c69d:a3:-wm- c69d:-:----
+# DD CB __ CC 000D
+I 562 e62f 4e 70 67 45 ef f0 25 6e 64 47 59e4 46c0 3983 51e5 a768 f4a0 9b79 0 0 0 0 0 70 562:dd 563:cb 564:bb 565:cc 599f:bf
+F 566 e62f 4e 70 67 45 ef f0 bf 6e 64 49 59e4 46c0 599f 51e5 a768 f4a0 9b79 0 0 0 0 0 0 562:dd 563:cb 564:bb 565:cc 599f:bf
+C 562:-:---- 562:-:r-m- 6447:dd:---- 6447:-:---- 563:-:---- 563:-:r-m- 6448:cb:---- 6448:-:---- 564:-:---- 564:-:r-m- 564:bb:---- 565:-:---- 565:-:r-m- 565:cc:---- 565:-:---- 565:-:---- 599f:-:---- 599f:-:r-m- 599f:bf:---- 599f:-:---- 599f:-:---- 599f:bf:-wm- 599f:-:----
+# DD CB __ CC 000E
+I fa6 5eac 14 d5 e1 4c fd c6 85 d3 a8 61 90f6 c91d fadf d187 e137 d48e 77cf 2 0 1 0 1 d5 fa6:dd fa7:cb fa8:30 fa9:cc 9126:e8
+F faa 5eac 14 d5 e1 4c fd c6 ea d3 a8 63 90f6 c91d 9126 d187 e137 d48e 77cf 2 0 1 0 0 0 fa6:dd fa7:cb fa8:30 fa9:cc 9126:ea
+C fa6:-:---- fa6:-:r-m- a861:dd:---- a861:-:---- fa7:-:---- fa7:-:r-m- a862:cb:---- a862:-:---- fa8:-:---- fa8:-:r-m- fa8:30:---- fa9:-:---- fa9:-:r-m- fa9:cc:---- fa9:-:---- fa9:-:---- 9126:-:---- 9126:-:r-m- 9126:e8:---- 9126:-:---- 9126:-:---- 9126:ea:-wm- 9126:-:----
+# DD CB __ CC 000F
+I 562b 7048 5c 54 f2 cf 5d 6a e6 8f 74 4a f75f accc 19dc c39f 5d25 b0c0 908 1 1 1 1 0 54 562b:dd 562c:cb 562d:a3 562e:cc f702:fe
+F 562f 7048 5c 54 f2 cf 5d 6a fe 8f 74 4c f75f accc f702 c39f 5d25 b0c0 908 1 1 1 0 0 0 562b:dd 562c:cb 562d:a3 562e:cc f702:fe
+C 562b:-:---- 562b:-:r-m- 744a:dd:---- 744a:-:---- 562c:-:---- 562c:-:r-m- 744b:cb:---- 744b:-:---- 562d:-:---- 562d:-:r-m- 562d:a3:---- 562e:-:---- 562e:-:r-m- 562e:cc:---- 562e:-:---- 562e:-:---- f702:-:---- f702:-:r-m- f702:fe:---- f702:-:---- f702:-:---- f702:fe:-wm- f702:-:----
+# DD CB __ CC 0010
+I dde8 809a e8 95 53 ac 84 51 c5 53 89 31 eb34 efd4 e4e3 65a2 8068 8a9a 8f28 0 0 1 1 1 0 dde8:dd dde9:cb ddea:27 ddeb:cc eb5b:89
+F ddec 809a e8 95 53 ac 84 51 8b 53 89 33 eb34 efd4 eb5b 65a2 8068 8a9a 8f28 0 0 1 0 0 0 dde8:dd dde9:cb ddea:27 ddeb:cc eb5b:8b
+C dde8:-:---- dde8:-:r-m- 8931:dd:---- 8931:-:---- dde9:-:---- dde9:-:r-m- 8932:cb:---- 8932:-:---- ddea:-:---- ddea:-:r-m- ddea:27:---- ddeb:-:---- ddeb:-:r-m- ddeb:cc:---- ddeb:-:---- ddeb:-:---- eb5b:-:---- eb5b:-:r-m- eb5b:89:---- eb5b:-:---- eb5b:-:---- eb5b:8b:-wm- eb5b:-:----
+# DD CB __ CC 0011
+I b61f c93c e1 b7 ad 5b b1 50 15 38 84 f f853 6984 da0e 5b3 5ddb 9afd 549 0 0 0 1 1 b7 b61f:dd b620:cb b621:be b622:cc f811:20
+F b623 c93c e1 b7 ad 5b b1 50 22 38 84 11 f853 6984 f811 5b3 5ddb 9afd 549 0 0 0 0 0 0 b61f:dd b620:cb b621:be b622:cc f811:22
+C b61f:-:---- b61f:-:r-m- 840f:dd:---- 840f:-:---- b620:-:---- b620:-:r-m- 8410:cb:---- 8410:-:---- b621:-:---- b621:-:r-m- b621:be:---- b622:-:---- b622:-:r-m- b622:cc:---- b622:-:---- b622:-:---- f811:-:---- f811:-:r-m- f811:20:---- f811:-:---- f811:-:---- f811:22:-wm- f811:-:----
+# DD CB __ CC 0012
+I b4e6 5873 87 9a b7 55 ba cd 5f 35 2d 62 3d22 fcd0 9a85 c31c ab45 bbae 420d 1 1 0 0 1 9a 3d95:c3 b4e6:dd b4e7:cb b4e8:73 b4e9:cc
+F b4ea 5873 87 9a b7 55 ba cd c3 35 2d 64 3d22 fcd0 3d95 c31c ab45 bbae 420d 1 1 0 0 0 0 3d95:c3 b4e6:dd b4e7:cb b4e8:73 b4e9:cc
+C b4e6:-:---- b4e6:-:r-m- 2d62:dd:---- 2d62:-:---- b4e7:-:---- b4e7:-:r-m- 2d63:cb:---- 2d63:-:---- b4e8:-:---- b4e8:-:r-m- b4e8:73:---- b4e9:-:---- b4e9:-:r-m- b4e9:cc:---- b4e9:-:---- b4e9:-:---- 3d95:-:---- 3d95:-:r-m- 3d95:c3:---- 3d95:-:---- 3d95:-:---- 3d95:c3:-wm- 3d95:-:----
+# DD CB __ CC 0013
+I 8630 dacd be af c5 98 52 af 94 86 df 33 2fa 97cc ebc7 a262 d6f3 33de aea4 2 0 0 1 0 0 32c:c3 8630:dd 8631:cb 8632:32 8633:cc
+F 8634 dacd be af c5 98 52 af c3 86 df 35 2fa 97cc 32c a262 d6f3 33de aea4 2 0 0 0 0 0 32c:c3 8630:dd 8631:cb 8632:32 8633:cc
+C 8630:-:---- 8630:-:r-m- df33:dd:---- df33:-:---- 8631:-:---- 8631:-:r-m- df34:cb:---- df34:-:---- 8632:-:---- 8632:-:r-m- 8632:32:---- 8633:-:---- 8633:-:r-m- 8633:cc:---- 8633:-:---- 8633:-:---- 32c:-:---- 32c:-:r-m- 32c:c3:---- 32c:-:---- 32c:-:---- 32c:c3:-wm- 32c:-:----
+# DD CB __ CC 0014
+I 7131 ae72 b2 82 e b 7 ff 13 4 e7 50 57da 229e 6ed6 4b13 103b 7650 85d1 1 1 1 0 0 0 5832:ff 7131:dd 7132:cb 7133:58 7134:cc
+F 7135 ae72 b2 82 e b 7 ff ff 4 e7 52 57da 229e 5832 4b13 103b 7650 85d1 1 1 1 0 0 0 5832:ff 7131:dd 7132:cb 7133:58 7134:cc
+C 7131:-:---- 7131:-:r-m- e750:dd:---- e750:-:---- 7132:-:---- 7132:-:r-m- e751:cb:---- e751:-:---- 7133:-:---- 7133:-:r-m- 7133:58:---- 7134:-:---- 7134:-:r-m- 7134:cc:---- 7134:-:---- 7134:-:---- 5832:-:---- 5832:-:r-m- 5832:ff:---- 5832:-:---- 5832:-:---- 5832:ff:-wm- 5832:-:----
+# DD CB __ CC 0015
+I 8cd9 6a77 4f f2 c2 b0 c4 29 a1 4a 7d 31 c7e6 aa59 79a4 af59 8202 98b3 33a9 2 0 0 0 1 f2 8cd9:dd 8cda:cb 8cdb:f6 8cdc:cc c7dc:aa
+F 8cdd 6a77 4f f2 c2 b0 c4 29 aa 4a 7d 33 c7e6 aa59 c7dc af59 8202 98b3 33a9 2 0 0 0 0 0 8cd9:dd 8cda:cb 8cdb:f6 8cdc:cc c7dc:aa
+C 8cd9:-:---- 8cd9:-:r-m- 7d31:dd:---- 7d31:-:---- 8cda:-:---- 8cda:-:r-m- 7d32:cb:---- 7d32:-:---- 8cdb:-:---- 8cdb:-:r-m- 8cdb:f6:---- 8cdc:-:---- 8cdc:-:r-m- 8cdc:cc:---- 8cdc:-:---- 8cdc:-:---- c7dc:-:---- c7dc:-:r-m- c7dc:aa:---- c7dc:-:---- c7dc:-:---- c7dc:aa:-wm- c7dc:-:----
+# DD CB __ CC 0016
+I 7bd0 20b4 43 e2 a2 99 7d 70 7d 7a 35 5b 2b06 ed04 55bf ec98 6db9 299c 802 0 1 0 1 1 0 2a97:e7 7bd0:dd 7bd1:cb 7bd2:91 7bd3:cc
+F 7bd4 20b4 43 e2 a2 99 7d 70 e7 7a 35 5d 2b06 ed04 2a97 ec98 6db9 299c 802 0 1 0 0 0 0 2a97:e7 7bd0:dd 7bd1:cb 7bd2:91 7bd3:cc
+C 7bd0:-:---- 7bd0:-:r-m- 355b:dd:---- 355b:-:---- 7bd1:-:---- 7bd1:-:r-m- 355c:cb:---- 355c:-:---- 7bd2:-:---- 7bd2:-:r-m- 7bd2:91:---- 7bd3:-:---- 7bd3:-:r-m- 7bd3:cc:---- 7bd3:-:---- 7bd3:-:---- 2a97:-:---- 2a97:-:r-m- 2a97:e7:---- 2a97:-:---- 2a97:-:---- 2a97:e7:-wm- 2a97:-:----
+# DD CB __ CC 0017
+I 689 6661 78 c8 31 59 c3 35 cd 2b c7 22 dbe2 bea2 6977 5a20 77f3 c79c 7118 1 0 1 1 0 c8 689:dd 68a:cb 68b:1a 68c:cc dbfc:b1
+F 68d 6661 78 c8 31 59 c3 35 b3 2b c7 24 dbe2 bea2 dbfc 5a20 77f3 c79c 7118 1 0 1 0 0 0 689:dd 68a:cb 68b:1a 68c:cc dbfc:b3
+C 689:-:---- 689:-:r-m- c722:dd:---- c722:-:---- 68a:-:---- 68a:-:r-m- c723:cb:---- c723:-:---- 68b:-:---- 68b:-:r-m- 68b:1a:---- 68c:-:---- 68c:-:r-m- 68c:cc:---- 68c:-:---- 68c:-:---- dbfc:-:---- dbfc:-:r-m- dbfc:b1:---- dbfc:-:---- dbfc:-:---- dbfc:b3:-wm- dbfc:-:----
+# DD CB __ CC 0018
+I 6f3c 62fd 5d 45 49 c 3f 17 fe 26 31 b eee7 5671 f95 2c1b ff57 90f c44f 2 1 0 0 1 45 6f3c:dd 6f3d:cb 6f3e:c4 6f3f:cc eeab:85
+F 6f40 62fd 5d 45 49 c 3f 17 87 26 31 d eee7 5671 eeab 2c1b ff57 90f c44f 2 1 0 0 0 0 6f3c:dd 6f3d:cb 6f3e:c4 6f3f:cc eeab:87
+C 6f3c:-:---- 6f3c:-:r-m- 310b:dd:---- 310b:-:---- 6f3d:-:---- 6f3d:-:r-m- 310c:cb:---- 310c:-:---- 6f3e:-:---- 6f3e:-:r-m- 6f3e:c4:---- 6f3f:-:---- 6f3f:-:r-m- 6f3f:cc:---- 6f3f:-:---- 6f3f:-:---- eeab:-:---- eeab:-:r-m- eeab:85:---- eeab:-:---- eeab:-:---- eeab:87:-wm- eeab:-:----
