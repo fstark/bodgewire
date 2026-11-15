@@ -89,6 +89,11 @@ TEST_CASE("boards: bw1 matches its netlist", "[board]") {
     CHECK(CheckBoard(*bw1.circuit, bw1.board).empty());
 }
 
+TEST_CASE("boards: bw2001 matches its netlist", "[board]") {
+    const Loaded bw2001 = Load("bw2001");
+    CHECK(CheckBoard(*bw2001.circuit, bw2001.board).empty());
+}
+
 TEST_CASE("boards: heartbeat matches its netlist", "[board]") {
     const Loaded heartbeat = Load("heartbeat");
     CHECK(CheckBoard(*heartbeat.circuit, heartbeat.board).empty());
@@ -130,7 +135,7 @@ bool InPolygon(const std::vector<Point>& polygon, Point p) {
 TEST_CASE("boards: every Component has a courtyard around its pads", "[board]") {
     for (const std::string name :
          {"counter", "test_pattern", "chaser", "dice", "stopwatch", "ball", "knob", "tennis",
-          "message", "typewriter", "heartbeat", "led_computer", "bw1"}) {
+          "message", "typewriter", "heartbeat", "led_computer", "bw1", "bw2001"}) {
         const Loaded loaded = Load(name);
         for (const BoardComponent& component : loaded.board.components) {
             INFO(name << " " << component.reference);

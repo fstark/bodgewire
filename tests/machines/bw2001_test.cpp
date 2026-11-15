@@ -98,6 +98,15 @@ std::unique_ptr<LoadedCircuit> Basic1Circuit() {
     return VariantCircuit(out);
 }
 
+// The Circuit built from the Board's Copper, with no Faults.
+std::unique_ptr<LoadedCircuit> BoardCircuit() {
+    auto machine = LoadNetlistMachine(NetlistPath());
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
+}
+
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
     auto result = LoadNetlistFile(NetlistPath());
     if (!result) {
@@ -157,7 +166,7 @@ struct Running final : Bw2001Target {
     const Ram2114* videoHigh = nullptr;
     std::vector<const Ram2114*> low, high;
 
-    explicit Running(std::uint64_t seed, std::unique_ptr<LoadedCircuit> circuit = DesignCircuit(),
+    explicit Running(std::uint64_t seed, std::unique_ptr<LoadedCircuit> circuit = BoardCircuit(),
                      bool watchSnow = false)
         : loaded(std::move(circuit)) {
         sim = std::make_unique<Simulator>(loaded->circuit);
@@ -285,7 +294,7 @@ TEST_CASE("bw2001 machine: stage 1, the picture is the video RAM", "[machines][s
 }
 
 TEST_CASE("bw2001 machine: stage 2, our firmware's banner on the TV, no snow", "[machines][slow]") {
-    Running m(1, DesignCircuit(), true);
+    Running m(1, BoardCircuit(), true);
     const NetId led = m.loaded->nets.at("DIAG_LED_N");
     Bw2001Typist typist(m);
     REQUIRE(typist.waitForLine(3'000'000));
@@ -353,7 +362,7 @@ TEST_CASE("bw2001 machine: stage 3, a scrolling screen without snow", "[machines
 #ifndef NDEBUG
     SKIP("about 6 s simulated: runs in the release build");
 #endif
-    Running m(3, DesignCircuit(), true);
+    Running m(3, BoardCircuit(), true);
     Bw2001Typist typist(m);
     REQUIRE(typist.waitForLine());
     Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");

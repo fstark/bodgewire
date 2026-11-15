@@ -751,6 +751,45 @@ TEST_CASE("session: bw1 with every instrument", "[session][slow]") {
     session.powerOff();
 }
 
+TEST_CASE("session: bw2001 with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "bw2001.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    REQUIRE(session.tv() != nullptr);  // the MONITOR connector, separate drives
+    CHECK(session.matrixKeyboards() == std::vector<std::string>{"J5"});
+    REQUIRE(session.leds().size() == 1);  // DS1
+
+    // The 6502's address and data buses and its control pins: 32 Clips.
+    REQUIRE(session.clipGroup("UF3", "A0").has_value());
+    REQUIRE(session.clipGroup("UF3", "D0").has_value());
+    for (const char* pin : {"RW", "PHI2", "RES_N", "IRQ_N", "NMI_N", "SYNC", "RDY", "SO"}) {
+        REQUIRE(session.clip("UF3", pin).has_value());
+    }
+    CHECK(std::ranges::all_of(session.clips(), [](const auto& c) { return c.has_value(); }));
+    REQUIRE(session.hook("UC9", "QD").has_value());  // CLK1M
+    REQUIRE(session.hook("UC5", "2Q").has_value());  // DIS_ON
+    REQUIRE(session.hook("UC6", "3Y").has_value());  // VIDEO_ON
+    REQUIRE(session.hook("UE5", "4Y").has_value());  // SEL8
+    const auto dot = session.padLead("UB2", "QH");
+    const auto vcc = session.padLead("UB2", "VCC");
+    REQUIRE(dot.has_value());
+    REQUIRE(vcc.has_value());
+    session.touch(ProbeTip{dot->at, Layer::Front});
+    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+
+    // The TV locks on the power-on picture within about 100 ms.
+    session.powerOn(1, 150_ms);
+    session.runner().waitIdle();
+    TvConsumer* tv = session.tv();
+    REQUIRE(tv != nullptr);
+    tv->pictures().update();
+    CHECK(tv->pictures().front().locked);
+    session.powerOff();
+}
+
 TEST_CASE("session: ball with every instrument", "[session][slow]") {
     auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
     REQUIRE(machine.has_value());
