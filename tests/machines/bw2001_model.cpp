@@ -85,6 +85,9 @@ void Bw2001Model::cycle() {
     }
     core_.setIrq((crb_ & kCrbFlag) != 0 && (crb_ & kCrbEnable) != 0);
     const Mos6502Bus bus = core_.bus();
+    if (!bus.read && (bus.address >> 8) == 0x01) {  // a stack write
+        stackMark_ = std::min(stackMark_, static_cast<std::uint8_t>(bus.address & 0xFF));
+    }
     if (bus.read) {
         bus_ = read(bus.address);
         core_.step(bus_);

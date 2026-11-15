@@ -136,94 +136,199 @@ TEST_CASE("bw2001 power-on: the banner, READY and the RAM sized", "[bw2001]") {
     CHECK(typist.rows()[2] == "3634 BYTES FREE");
 }
 
-TEST_CASE("bw2001 editor: typed text echoes, RETURN hands the line over", "[bw2001]") {
+TEST_CASE("bw2001 editor: typed text echoes, RETURN hands the line to BASIC", "[bw2001]") {
     Machine m;
     m.clear();
-    m.enter("HELLO, 12+3");
-    CHECK(m.rows() == Rows{"HELLO, 12+3", "=HELLO, 12+3"});
+    m.enter("PRINT 12+3");
+    CHECK(m.rows() == Rows{"PRINT 12+3", "15", "READY"});
     // STOP while the editor waits for a line is discarded.
     m.press(kBw2001Stop);
-    m.enter("A");
-    CHECK(m.row(3) == "=A");
+    m.enter("PRINT 1");
+    CHECK(m.row(4) == "1");
+    CHECK(m.row(5) == "READY");
 }
 
 TEST_CASE("bw2001 editor: the cursor keys move without changing anything", "[bw2001]") {
     Machine m;
     m.clear();
-    m.typist.type("ABC");
+    m.typist.type("10 ABC");
     m.press(kBw2001CursorRight, true);  // left
     m.press(kBw2001CursorRight, true);
     m.typist.type("X");
     m.enter("");
-    CHECK(m.row(0) == "AXC");
-    CHECK(m.row(1) == "=AXC");
-    // Up onto the first row, right to its end: RETURN enters that row again.
-    m.press(kBw2001CursorDown, true);  // up, to row 1
-    m.press(kBw2001CursorDown, true);  // row 0
+    m.enter("LIST");
+    CHECK(m.rows() == Rows{"10 AXC", "LIST", "10 AXC", "READY"});
+    // Up onto row 0, right, down past it: nothing changes; RETURN there stores it again.
+    for (int i = 0; i < 4; ++i) {
+        m.press(kBw2001CursorDown, true);
+    }
     m.press(kBw2001CursorRight);
+    m.press(kBw2001CursorRight);
+    m.press(kBw2001CursorDown);
+    m.press(kBw2001CursorDown, true);
+    CHECK(m.rows() == Rows{"10 AXC", "LIST", "10 AXC", "READY"});
     m.enter("");
-    CHECK(m.row(1) == "=AXC");  // the row after row 0 is written over
-    CHECK(m.row(0) == "AXC");
+    m.press(kBw2001Home, true);
+    m.enter("LIST");
+    CHECK(m.rows() == Rows{"LIST", "10 AXC", "READY"});
 }
 
 TEST_CASE("bw2001 editor: DEL and INST", "[bw2001]") {
     Machine m;
     m.clear();
-    m.typist.type("ABCD");
+    m.typist.type("10 ABCD");
     m.press(kBw2001CursorRight, true);
     m.press(kBw2001CursorRight, true);  // on C
     m.press(kBw2001Del);                // B goes
-    CHECK(m.row(0) == "ACD");
+    CHECK(m.row(0) == "10 ACD");
     m.press(kBw2001Del, true);  // INST at C
-    CHECK(m.row(0) == "A CD");
+    CHECK(m.row(0) == "10 A CD");
     m.typist.type("X");
     m.enter("");
-    CHECK(m.row(1) == "=AXCD");
+    m.enter("LIST");
+    CHECK(m.row(2) == "10 AXCD");
     // DEL at the start of a line does nothing.
     m.press(kBw2001Del);
-    m.enter("Q");
-    CHECK(m.row(2) == "Q");
+    m.enter("PRINT 7");
+    CHECK(m.row(4) == "PRINT 7");
+    CHECK(m.row(5) == "7");
 }
 
-TEST_CASE("bw2001 editor: a long line joins two rows; 64 characters at most", "[bw2001]") {
+TEST_CASE("bw2001 editor: a long line joins two rows; 64 characters at most", "[bw2001][slow]") {
     Machine m;
     m.clear();
-    const std::string fifty = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMN";
+    const std::string fifty = "10 REM ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFG";
+    REQUIRE(fifty.size() == 50);
     m.enter(fifty);
     CHECK(m.row(0) == fifty.substr(0, 40));
     CHECK(m.row(1) == fifty.substr(40));
-    CHECK(m.row(2) == "=" + fifty.substr(0, 39));
-    CHECK(m.row(3) == fifty.substr(39));
-    // Up into the first row of the typed line: RETURN takes both rows.
-    for (int i = 0; i < 4; ++i) {
+    m.enter("LIST");
+    CHECK(m.row(3) == fifty.substr(0, 40));
+    CHECK(m.row(4) == fifty.substr(40));
+    // RETURN on the second row of a listed line takes both rows: a change there is stored.
+    for (int i = 0; i < 2; ++i) {
         m.press(kBw2001CursorDown, true);
     }
+    m.typist.type("Z");
     m.enter("");
-    CHECK(m.row(2) == "=" + fifty.substr(0, 39));
+    m.press(kBw2001Home, true);
+    m.enter("LIST");
+    CHECK(m.row(1) == fifty.substr(0, 40));
+    CHECK(m.row(2) == "Z" + fifty.substr(41));
     m.clear();
-    const std::string seventy = fifty + "OPQRSTUVWXYZ01234567";
+    const std::string seventy = "20 REM " + std::string(63, 'Q');
     m.enter(seventy);
     CHECK(m.row(0) == seventy.substr(0, 40));
     CHECK(m.row(1) == seventy.substr(40, 24));
-    CHECK(m.row(2) == "=" + seventy.substr(0, 39));
-    CHECK(m.row(3) == seventy.substr(39, 25));
+    m.enter("LIST 20");
+    CHECK(m.row(3) == seventy.substr(0, 40));
+    CHECK(m.row(4) == seventy.substr(40, 24));
 }
 
 TEST_CASE("bw2001 editor: the screen scrolls; HOME and CLR", "[bw2001][slow]") {
     Machine m;
     for (int i = 10; i < 25; ++i) {
-        m.enter(std::to_string(i));
+        m.enter("PRINT " + std::to_string(i));
     }
-    // 5 banner rows, 15 lines and 15 echoes, the cursor's row: 36 rows, so 11 scrolled away.
+    // 5 banner rows, 15 entries of 3 rows, the cursor's row: 51 rows, so 26 scrolled away.
     const Rows rows = m.rows();
     REQUIRE(rows.size() == 24);
-    CHECK(rows[0] == "13");
+    CHECK(rows[0] == "PRINT 17");
+    CHECK(rows[21] == "PRINT 24");
     CHECK(rows[22] == "24");
-    CHECK(rows[23] == "=24");
+    CHECK(rows[23] == "READY");
     m.press(kBw2001Home);
-    m.enter("H");
-    CHECK(m.row(0) == "H3");
-    CHECK(m.row(1) == "=H3");
+    m.enter("PRINT 9");  // over "PRINT 17": the row is "PRINT 97"
+    CHECK(m.row(0) == "PRINT 97");
+    CHECK(m.row(1) == "97");
+    CHECK(m.row(2) == "READY");
     m.clear();
     CHECK(m.rows().empty());
+}
+
+TEST_CASE("bw2001 editor: a listing scrolls with its links", "[bw2001][slow]") {
+    Machine m;
+    // 14 lines of two rows each: the listing scrolls the screen.
+    for (int n = 1; n <= 14; ++n) {
+        m.enter(std::to_string(n * 10 + 100) + " REM " +
+                std::string(40, static_cast<char>('A' + n)));
+    }
+    m.clear();
+    m.enter("LIST");
+    // The last line listed (240) is on the two rows above READY; edit its second row in place.
+    const Rows rows = m.rows();
+    REQUIRE(rows.size() >= 3);
+    CHECK(rows[rows.size() - 1] == "READY");
+    CHECK(rows[rows.size() - 3] == "240 REM " + std::string(32, 'O'));
+    CHECK(rows[rows.size() - 2] == std::string(8, 'O'));
+    m.press(kBw2001CursorDown, true);
+    m.press(kBw2001CursorDown, true);
+    m.typist.type("X");
+    m.enter("");
+    m.clear();
+    m.enter("LIST 240");
+    CHECK(m.row(1) == "240 REM " + std::string(32, 'O'));
+    CHECK(m.row(2) == "X" + std::string(7, 'O'));
+}
+
+TEST_CASE("bw2001 editor: INPUT takes only what is right of its prompt", "[bw2001]") {
+    Machine m;
+    m.clear();
+    m.enter("10 INPUT \"N\";A");
+    m.enter("20 PRINT A*2");
+    m.enter("RUN");
+    CHECK(m.row(3) == "N?");
+    m.enter("21");
+    CHECK(m.row(3) == "N? 21");
+    CHECK(m.row(4) == "42");
+    CHECK(m.row(5) == "READY");
+}
+
+TEST_CASE("bw2001 conformance", "[bw2001][slow]") {
+    for (const std::filesystem::path& path : Bw2001Sessions()) {
+        DYNAMIC_SECTION(path.filename().string()) {
+            Bw2001Model model({});
+            REQUIRE(Bw2001Typist(model).waitForLine());
+            model.resetStackMark();  // the kernel's reset is not BASIC's
+            const auto difference = RunBw2001Session(model, path);
+            INFO(difference.value_or(""));
+            CHECK_FALSE(difference.has_value());
+            CHECK_FALSE(model.touchedUnmodelled());
+            // BASIC's deepest stack use (design §6.6): about 200 bytes at P5o's depth of 6.
+            UNSCOPED_INFO("lowest stack byte written $1" << std::hex << int(model.stackMark()));
+            CHECK(model.stackMark() >= 0x20);  // $0120 and above
+        }
+    }
+}
+
+TEST_CASE("bw2001 basic: USR, OUT OF MEMORY", "[bw2001][slow]") {
+    {
+        Machine m;
+        m.clear();
+        m.enter("POKE 1008,169:POKE 1009,52:POKE 1010,160");
+        m.enter("POKE 1011,18:POKE 1012,96");
+        m.clear();
+        m.enter("PRINT USR(1008)");
+        CHECK(m.rows() == Rows{"PRINT USR(1008)", "4660", "READY"});
+    }
+    Machine m({.ramTop = 0x0500});
+    CHECK(m.row(2) == "254 BYTES FREE");
+    m.clear();
+    // Each a 36-byte record: 7 fit in 254 bytes, the 8th does not.
+    for (int n = 1; n <= 7; ++n) {
+        m.enter(std::to_string(n * 10) + " REM " + std::string(30, 'A'));
+    }
+    m.clear();
+    m.enter("80 REM " + std::string(30, 'B'));
+    CHECK(m.rows() == Rows{"80 REM " + std::string(30, 'B'), "OUT OF MEMORY ERROR", "READY"});
+    // A longer text for an existing line: refused, the old one kept.
+    m.clear();
+    m.enter("10 REM " + std::string(34, 'C'));  // 41 characters: two rows
+    CHECK(m.row(2) == "OUT OF MEMORY ERROR");
+    m.clear();
+    m.enter("LIST 10");
+    CHECK(m.row(1) == "10 REM " + std::string(30, 'A'));
+    m.clear();
+    m.enter("LIST 80");
+    CHECK(m.rows() == Rows{"LIST 80", "READY"});
 }

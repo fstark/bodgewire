@@ -44,6 +44,9 @@ public:
     bool touchedUnmodelled() const { return touched_; }  // PIA2, the VIA, an empty socket
     const Mos6502Core& core() const { return core_; }
     std::uint64_t cycles() const { return cycle_; }
+    // The lowest stack pointer since power-on, or since the last resetStackMark().
+    std::uint8_t stackMark() const { return stackMark_; }
+    void resetStackMark() { stackMark_ = 0xFF; }
 
 private:
     struct Window {
@@ -74,6 +77,7 @@ private:
 
     std::uint8_t bus_ = 0;
     std::uint64_t cycle_ = 0;
+    std::uint8_t stackMark_ = 0xFF;
 };
 
 }  // namespace bw

@@ -18,11 +18,11 @@ The full debug suite runs at phase 1 (the assembler and a Part are shared code) 
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Docs reviewed | |
-| 1 | `.include`, `.checksum BASE, SIZE`, `offset=` | |
-| 2 | The model and the harness | |
-| 3 | Kernel reset and the editor, on a BASIC stub | |
-| 4 | Tiny BASIC: the conformance set on the model | |
+| 0 | Docs reviewed | `2b125f6` |
+| 1 | `.include`, `.checksum BASE, SIZE`, `offset=` | `54b0246` |
+| 2 | The model and the harness | `7a7ece0` |
+| 3 | Kernel reset and the editor, on a BASIC stub | `279370b` |
+| 4 | Tiny BASIC: the conformance set on the model | this commit |
 | 5 | The monitor | |
 | 6 | The self-test | |
 | 7 | The minimal netlist | |
@@ -106,3 +106,8 @@ The full debug suite runs at phase 1 (the assembler and a Part are shared code) 
 
 ## Notes
 - Review (before code), fixed in the docs: `offset=` reads the file at 64K (`ParseRomContents` refuses words past its size); the monitor runs below the saved SP instead of resetting `S`, and does `cli` after `BRK`; the model takes its ROMs in `Options::roms`, so phase 2 needs no firmware; the self-test's RAM passes rewrite page 0 before comparing it, and a page-0 failure is `ZERO PAGE BAD` on its own row; `.checksum` with one value has its own error (the old expectation changes); `.include` with a bare file name resolves against `.`; `OUT OF MEMORY` also checks a replaced line keeping its old text; the editor cuts at 64 before trimming, clears `LINKS[0]` and moves `SROW` on a scroll, and keeps `sei` short; `INPUT` answers past 5 digits are `REDO`; the real expression stack figure; keys 30 ms held and 30 ms released; `LINES` read before RETURN; the timings from P5n's bench; the netlist test renamed `bw2001_netlist_test.cpp`; CMake and `-R bw2001` names; the release `bw` rebuilt before use.
+- Phase 1: the full debug suite gave 1121/1122. The one failure was the `roms/*.asm` glob meeting phase 3's sources, written while the suite ran; it passed with them moved aside. `Rom::word()` was added for the `offset=` test.
+- Phase 2: the model's probe first read port B in its main loop, which clears the retrace flag before the IRQ is taken (the P5n bench note). Keys are read only in the interrupt, as the editor does.
+- Phase 3: the editor is 1.3 KB with `KEYTAB`. The model runs about 4× real time in debug, so the editor cases take about 3 s.
+- Phase 4: BASIC is 3.9 KB, `$C000`–`$C75F` in UH1 and `$C800`–`$CF65` in UH5 (154 bytes spare); UH2 and UH6 stay empty. All 31 sessions passed on the model with no change to P5o, in 31 s of debug time. The deepest 6502 stack use is `$01A6` (90 bytes, session `15_depth`), against the design's estimate of 160–200; the conformance case checks it stays above `$0120`. The editor cases were rewritten for BASIC (`LIST` shows the line handed over) in place of the stub's echo.
+
