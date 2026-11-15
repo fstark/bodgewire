@@ -3,62 +3,20 @@
 Design: [BW80_CHIPS_DESIGN.md](BW80_CHIPS_DESIGN.md)
 Spec: [BW80_CHIPS.md](BW80_CHIPS.md)
 
-Worked in the worktree `../bodgewire-p5u`, branch `p5u-bw80-chips` (another agent works on `main`), merged at the end.
+Implemented 2026-11-15, in the worktree `../bodgewire-p5u`, branch `p5u-bw80-chips` (another agent worked on `main`).
 
 ## Status
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Docs reviewed | |
-| 1 | Kernel: Joined Pin, network Nets | |
-| 2 | `ResistorNetwork`, `ParseOhms`, builder | |
-| 3 | Board: electrical netlist, Net panel, `R` datasheet, glossary | |
-| 4 | `2332`, `74LS05`, `74LS10`, `74LS365`, `74LS373` | |
-| 5 | Bench, its program and test | |
-| 5b | A key on a joined Net; `value=` on every resistor (the user, after the review) | |
-| 6 | Release check, recipes, roadmap | |
-
-## Phases
-
-### 1. Kernel (design §1)
-
-`PinKind::Joined`, `IsNetworkPin`, `DriveOf`; `networkPin` and `networked` in place of `switchPin` and `switched`; Joined released at power-on; `tests/sim/joined_test.cpp`.
-
-Fence: debug build; `ctest --preset debug -j 12 -R "simulator|switched|joined|circuit|logic|resolve"`; then the full debug suite (kernel change). Commit: `sim: Joined Pins; the switched Net becomes a network Net (P5u)`.
-
-### 2. Resistor network and builder (design §2, §3)
-
-`src/parts/resistor_network.{hpp,cpp}` (CMake sorted); `ParseOhms` in `units`; `wireResistors` (kinds, errors, pulls on joined Nets to the network, the switch check). Tests: `tests/parts/resistor_network_test.cpp` (built through small netlists with `LoadNetlist`: each Spec case of the series resistor, the 1 ps follow, a chain of three, no source, X), `tests/netlist/units_test.cpp` (`ParseOhms`), `tests/netlist/builder_test.cpp` (the "resistor errors" case rewritten for §3.2's messages, a new "series resistor errors" case for §3.2–3.3; every netlist under `netlists/` still builds, which the existing netlist tests cover).
-
-Fence: `ctest --preset debug -j 12 -R "resistor network|units|builder|switch"`; the full debug suite (builder change: every Machine). Commit: `parts: ResistorNetwork, series resistors in the builder (P5u)`.
-
-### 3. Board (design §4, §7 glossary)
-
-`ElectricalNetlist` keeps series resistors; `PinRole::Series`; `tests/data/series_bench.bwn`; electrical and net-pins tests; `datasheets/R.md`; `docs/GLOSSARY.md`.
-
-Fence: `ctest --preset debug -j 12 -R "electrical|net pins|net drivers|manual|board|machine"`. Commit: `machine: series resistors on the Board and in the Net panel (P5u)`.
-
-### 4. Parts (design §5)
-
-`2332` row, delays, datasheet, rom tests; `74LS05`, `74LS10` gate rows; `ls365.{hpp,cpp}`, `ls373.{hpp,cpp}`; catalogue rows; datasheets; tests. Data sheet values checked where a sheet can be fetched (MOS2332 on 6502.org); otherwise the design's, said so in the commit.
-
-Fence: `ctest --preset debug -j 12 -R "gate package|74LS365|74LS373|rom|catalogue|manual|footprint"`. Commit: `parts: 2332, 74LS05, 74LS10, 74LS365, 74LS373 (P5u)`.
-
-### 5. Bench (design §6)
-
-`tests/data/bw80_bench.bwn`, `roms/bw80_bench.asm` and its `.rom` (`bw asm`), `tests/netlist/bw80_bench_test.cpp`; `kDone` measured and set.
-
-Fence: `ctest --preset debug -j 12 -R "bw80|asm"`. Commit: `tests: the BW-80 chips bench (P5u)`.
-
-### 5b. No repair may stop the game (design §1.2–1.3, §3.2–3.3)
-
-Asked by the user after the review (2026-11-15): a Net holds a Switched and a Joined Pin, each with its own view of the Net; the builder's switch check goes; every resistor needs `value=`.
-
-Fence: the full debug suite (kernel). Commit: `sim: a key on a joined Net; every resistor needs value= (P5u)`.
-
-### 6. Finish
-
-Release build: the bench's headless ratio; the four baselines again, side by side with a worktree of the commit before phase 1; `bw_ui` on `netlists/bus_load_z80.bwn` with a screenshot viewed (unchanged picture). Recipes (design §7), ARCHITECTURE row done with the date and links, this plan cut down to the table and notes. Full debug suite. Commit: `docs: P5u implemented`. Then merge into `main`.
+| 0 | Docs reviewed | `832126a` |
+| 1 | Kernel: Joined Pin, network Nets | `293af8b` |
+| 2 | `ResistorNetwork`, `ParseOhms`, builder | `5a4186c` |
+| 3 | Board: electrical netlist, Net panel, `R` datasheet, glossary | `0a3eda5` |
+| 4 | `2332`, `74LS05`, `74LS10`, `74LS365`, `74LS373` | `fc82ed1` |
+| 5 | Bench, its program and test | `443d5ec` |
+| 5b | A key on a joined Net; `value=` on every resistor (the user, after the review) | `f9dac00` |
+| 6 | Release check, recipes, roadmap | this commit |
 
 ## Notes
 
@@ -66,3 +24,9 @@ Release build: the bench's headless ratio; the four baselines again, side by sid
 - Phase 1–4 code was written while the review ran, then checked against its findings (`powerOn`, the select messages and `JR *` were already as the review asks).
 - Baselines: taken side by side at phase 6 against a worktree of the commit before phase 1 (the release build here had started after the kernel edit).
 
+- Phases 1–5 were written together and tested together (full debug suite 1280/1280 in 958 s), then committed one by one by staging each phase's files and its own version of the shared CMake lists; the intermediate commits were not built one by one.
+- The user, after the review's note that a builder error is reachable by a repair and stops the Session (2026-11-15): no repair may stop the game. Phase 5b: a Net holds a Switched and a Joined Pin, each with its own view; every resistor needs `value=` (eight test strings gained one; every netlist in the repo had one). Full debug suite after it, with `external/` linked into the worktree: 1280/1280 in 813 s.
+- Bench, against the design: it passed at once on seeds 1–3. `STATUS` is `$55` before 53 ms (seed 1); `kDone` 56 ms. A mutation to the 2114's 450 ns grade still passes (the model times the output from `CS_N`, as the review said): the NOP margin is P5v's. Debug: ≈ 21 s for the three-seed case.
+- Release, headless, base (`e89ba4c` in a worktree) against P5u, alternated, three runs each: `bus_load` 0.330–0.387 vs 0.308–0.389, `bus_load_z80` 0.342–0.350 vs 0.337–0.351, 110 4.45–4.57 vs 4.54–4.57, BW-1 2.10–2.15 vs 2.18–2.21, BW-2001 0.204–0.227 vs 0.209–0.232: no change. The bench 0.46× (100 ms).
+- Release-only tests: `bw2001 machine: stage 3, a scrolling screen without snow` fails (`snow->accesses` 1, expected 0) on P5u and on the base commit alike: an existing failure on `main`, not P5u's. The other release-only BW-2001 cases pass.
+- `bw_ui` release, `netlists/bus_load_z80.bwn`: the page on the TV as before, 0.43×, UI 0.0 ms; screenshot viewed.
