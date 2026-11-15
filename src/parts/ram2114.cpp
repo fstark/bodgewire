@@ -27,7 +27,8 @@ std::vector<PinSpec> Ram2114Pins() {
 
 }  // namespace
 
-Ram2114::Ram2114(std::string reference) : Component(std::move(reference), Ram2114Pins()) {}
+Ram2114::Ram2114(std::string reference, Time access)
+    : Component(std::move(reference), Ram2114Pins()), access_(access) {}
 
 void Ram2114::powerOn(PowerOnContext& ctx) { cells_.powerOn(ctx); }
 
@@ -86,13 +87,13 @@ void Ram2114::evaluate(EvalContext& ctx) {
     Time delay = 0;
     if (std::ranges::any_of(kAddress,
                             [&](PinIndex pin) { return ctx.read(pin) != ctx.readBefore(pin); })) {
-        delay = delays::k2114Address;
+        delay = access_;
     }
     if (ctx.read(kCsN) != ctx.readBefore(kCsN) || ctx.read(kWeN) != ctx.readBefore(kWeN)) {
         delay = std::max(delay, delays::k2114Select);
     }
     if (delay == 0) {
-        delay = delays::k2114Address;  // power-on, or only the data pins moved
+        delay = access_;  // power-on, or only the data pins moved
     }
     for (std::size_t i = 0; i < kData.size(); ++i) {
         ctx.drive(kData[i], (cells_[address] >> i) & 1 ? One : Zero, delay);

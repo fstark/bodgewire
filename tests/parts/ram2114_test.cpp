@@ -289,3 +289,53 @@ TEST_CASE("2114: a stuck column sticks every word", "[parts]") {
     CHECK(bench.ram->word(1) == 0b1110);
     CHECK(bench.word(sim) == 0b1110);
 }
+
+TEST_CASE("2114: access= sets the speed grade", "[parts]") {
+    Circuit circuit;
+    const PartInfo* part = FindPart("2114");
+    const std::vector<PartParam> fast{{"access", "300ns"}};
+    REQUIRE(part->create(circuit, "U1", fast).has_value());
+    const std::vector<PartParam> odd{{"access", "250ns"}};
+    const auto refused = part->create(circuit, "U2", odd);
+    REQUIRE_FALSE(refused.has_value());
+    CHECK(refused.error() == "2114: access= is 450ns, 300ns or 200ns (the 2114, 2114-3, 2114-2)");
+    const std::vector<PartParam> other{{"speed", "300ns"}};
+    CHECK(part->create(circuit, "U3", other).error() == "2114: unknown parameter 'speed'");
+
+    // A 2114-3 answers an address change 300 ns later (the bench's 2114 is replaced by one).
+    Circuit c;
+    auto& ram = c.add<Ram2114>("U1", 300'000);
+    std::vector<NetId> a;
+    for (const char* pin :
+         {"A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "CS_N", "WE_N"}) {
+        const NetId net = c.addNet(pin);
+        const bool moves = std::string(pin) == "A0";
+        auto& source =
+            c.add<Stimulus>(std::string("S") + pin, std::string(pin) == "WE_N" ? One : Zero,
+                            moves ? Steps{{1000_ns, One}} : Steps{});
+        c.connect(source, Stimulus::kOut, net);
+        c.connect(ram, pin, net);
+    }
+    std::array<NetId, 4> data{};
+    for (std::size_t b = 0; b < 4; ++b) {
+        data[b] = c.addNet("IO" + std::to_string(b + 1));
+        c.connect(ram, Ram2114::kData[b], data[b]);
+    }
+    c.finalize();
+    Simulator sim(c);
+    sim.powerOn(1);
+    sim.runUntil(900_ns);
+    const auto word = [&] {
+        int v = 0;
+        for (std::size_t b = 0; b < 4; ++b) {
+            v |= (sim.value(data[b]) == One ? 1 : 0) << b;
+        }
+        return v;
+    };
+    const int at0 = word();
+    CHECK(at0 == ram.word(0));
+    sim.runUntil(1000_ns + 300_ns - 1);
+    CHECK(word() == at0);
+    sim.runUntil(1000_ns + 300_ns);
+    CHECK(word() == ram.word(1));
+}

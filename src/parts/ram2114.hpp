@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 
+#include "parts/delays.hpp"
 #include "parts/memory_block.hpp"
 #include "parts/memory_cells.hpp"
 #include "sim/component.hpp"
@@ -17,10 +18,11 @@ namespace bw {
 // 17 A7, 18 VCC. CS_N low, WE_N high: IO1-IO4 drive the word at A0-A9. CS_N and WE_N low: the
 // word is written from IO1-IO4 (floating); the address and data held just before the write ends
 // are kept. CS_N high: IO1-IO4 float. Inputs read X as a random bit. Stuck cells (MemoryCells)
-// hold their value through writes and power-on.
+// hold their value through writes and power-on. `access` the speed grade's address access time
+// (P5q: the 2114 450 ns, the 2114-3 300 ns, the 2114-2 200 ns).
 class Ram2114 final : public Component, public MemoryCells {
 public:
-    explicit Ram2114(std::string reference);
+    explicit Ram2114(std::string reference, Time access = delays::k2114Address);
     static constexpr PinIndex kCsN = 7, kWeN = 9;
     static constexpr std::array<PinIndex, 10> kAddress{4, 5, 6, 3, 2, 1, 0, 16, 15, 14};  // A0..A9
     static constexpr std::array<PinIndex, 4> kData{13, 12, 11, 10};  // IO1..IO4
@@ -35,6 +37,7 @@ public:
 
 private:
     RamBlock cells_{1024, 4};
+    Time access_;
 };
 
 }  // namespace bw

@@ -287,6 +287,24 @@ std::expected<Component*, std::string> CreatePowerOnReset(Circuit& circuit, std:
     return &circuit.add<PowerOnReset>(std::move(reference), *hold);
 }
 
+// access=450ns (the 2114, default), 300ns (2114-3) or 200ns (2114-2): the speed grade.
+std::expected<Component*, std::string> CreateRam2114(Circuit& circuit, std::string reference,
+                                                     std::span<const PartParam> params) {
+    Time access = delays::k2114Address;
+    for (const PartParam& param : params) {
+        if (param.name != "access") {
+            return std::unexpected("2114: unknown parameter '" + param.name + "'");
+        }
+        const auto time = DurationFromText(param.value);
+        if (!time || (*time != 450'000 && *time != 300'000 && *time != 200'000)) {
+            return std::unexpected(
+                "2114: access= is 450ns, 300ns or 200ns (the 2114, 2114-3, 2114-2)");
+        }
+        access = *time;
+    }
+    return &circuit.add<Ram2114>(std::move(reference), access);
+}
+
 std::expected<Component*, std::string> CreateMatrixKeyboard(Circuit& circuit, std::string reference,
                                                             std::span<const PartParam> params) {
     if (!params.empty()) {
@@ -404,7 +422,7 @@ using enum PartKind;
 
 // Sorted by name.
 constexpr std::array s_parts{
-    PartInfo{"2114", "1K x 4 static RAM", "DIP-18", Chip, &CreateChip<Ram2114, "2114">},
+    PartInfo{"2114", "1K x 4 static RAM", "DIP-18", Chip, &CreateRam2114},
     PartInfo{"2316B", "2K x 8 mask ROM, mask-set chip selects", "DIP-24", Chip,
              &CreateRom<"2316B">},
     PartInfo{"2513", "64-character 5 x 7 character generator ROM", "DIP-24", Chip,

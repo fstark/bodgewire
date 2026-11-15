@@ -52,6 +52,8 @@ add_executable(bw_tests
   machines/bw2001_model_test.cpp
   machines/bodge_wire_test.cpp
   machines/ball_test.cpp
+  machines/bw2001_screen.cpp
+  machines/bw2001_test.cpp
   machines/chaser_test.cpp
   machines/counter_test.cpp
   machines/dice_test.cpp
