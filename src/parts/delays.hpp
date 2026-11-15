@@ -146,5 +146,13 @@ inline constexpr Time kMos6520DataHold = 10'000;  // PHI2 fall → D released (t
 inline constexpr Time kMos6520Port = 1'000'000;   // PHI2 fall → PA, PB valid (tPDW, max)
 inline constexpr Time kMos6520Control = 400'000;  // PHI2 edge → CA2, CB2 (assumed)
 inline constexpr Time kMos6520Irq = 200'000;      // deciding PHI2 edge → IRQ_N (assumed)
+// 6522 VIA at 1 MHz (MCS6522 p. 22). The control and IRQ delays are assumed, as the 6520's; CB1
+// and PB7 take the CB2 shift-out delay (assumed).
+inline constexpr Time kMos6522DataOut = 395'000;  // PHI2 rise → D valid (max)
+inline constexpr Time kMos6522DataHold = 10'000;  // PHI2 fall → D released
+inline constexpr Time kMos6522Port = 1'000'000;   // PHI2 fall → PA, PB valid (max)
+inline constexpr Time kMos6522Shift = 300'000;    // PHI2 fall → CB2 shift data (max); CB1, PB7
+inline constexpr Time kMos6522Control = 400'000;  // PHI2 edge → CA2, CB2 strobes (assumed)
+inline constexpr Time kMos6522Irq = 200'000;      // deciding PHI2 edge → IRQ_N (assumed)
 
 }  // namespace bw::delays
