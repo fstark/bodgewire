@@ -9,7 +9,8 @@
 
 namespace bw {
 
-// Wire-to-board header; passive: Pins are loads (Input) or power, no behaviour. The PADDLE and
+// Wire-to-board header; passive: Pins are loads (Input) or power, no behaviour. The PET's edge
+// connectors and cassette ports (IEEE488, USERPORT, CASSETTE) have only sampled MOS Inputs. The PADDLE and
 // KEYBOARD connectors are the devices behind them (Paddle, Keyboard), not Connectors.
 class Connector final : public Component {
 public:
@@ -17,7 +18,7 @@ public:
     void evaluate(EvalContext& ctx) override;
 };
 
-// "POWER", "VIDEO", "PADDLE", "KEYBOARD"; Check()s the name.
+// "POWER", "VIDEO", "PADDLE", "KEYBOARD", "IEEE488", "USERPORT", "CASSETTE"; Check()s the name.
 std::vector<PinSpec> ConnectorPins(std::string_view part);
 
 // True when the device behind connector `part` runs on the Board's power through the connector's

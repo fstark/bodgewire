@@ -69,6 +69,13 @@ inline constexpr Delays kLs21{8'000, 10'000};
 inline constexpr Delays kLs138Select{21'000, 21'000};    // A, B, C → Y (3 levels)
 inline constexpr Delays kLs138EnableG2{12'000, 20'000};  // G2A_N, G2B_N → Y
 inline constexpr Delays kLs138EnableG1{17'000, 26'000};  // G1 → Y
+// 74LS139 (TI SN74LS139A, typicals; the select figures are the 2-level ones).
+inline constexpr Delays kLs139Select{13'000, 22'000};  // A, B → Y
+inline constexpr Delays kLs139Enable{16'000, 21'000};  // G_N → Y
+// MC3446A (Motorola 1979, p. 5-55, maximums; no typicals published; rise = bus or output to 1).
+inline constexpr Delays kMc3446Driver{40'000, 50'000};    // D → bus
+inline constexpr Delays kMc3446Enable{50'000, 50'000};    // enable → bus
+inline constexpr Delays kMc3446Receiver{50'000, 40'000};  // bus → R
 // 74LS273 (TI typicals).
 inline constexpr Delays kLs273ClockToQ{17'000, 18'000};
 inline constexpr Delays kLs273Clear{18'000, 18'000};  // Q falls

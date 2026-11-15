@@ -90,6 +90,8 @@ add_executable(bw_tests
   parts/led_test.cpp
   parts/ls107_test.cpp
   parts/ls138_test.cpp
+  parts/ls139_test.cpp
+  parts/mc3446_test.cpp
   parts/ls154_test.cpp
   parts/ls157_test.cpp
   parts/ls161_test.cpp

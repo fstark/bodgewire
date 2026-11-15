@@ -7,6 +7,7 @@ add_library(bw_parts STATIC
   led.cpp
   ls107.cpp
   ls138.cpp
+  ls139.cpp
   ls154.cpp
   ls157.cpp
   ls161.cpp
@@ -20,6 +21,7 @@ add_library(bw_parts STATIC
   ls74.cpp
   ls90.cpp
   ls93.cpp
+  mc3446.cpp
   memory_block.cpp
   mos6502.cpp
   mos6502_core.cpp

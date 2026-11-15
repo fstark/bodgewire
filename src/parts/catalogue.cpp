@@ -16,6 +16,7 @@
 #include "parts/led.hpp"
 #include "parts/ls107.hpp"
 #include "parts/ls138.hpp"
+#include "parts/ls139.hpp"
 #include "parts/ls154.hpp"
 #include "parts/ls157.hpp"
 #include "parts/ls161.hpp"
@@ -29,6 +30,7 @@
 #include "parts/ls74.hpp"
 #include "parts/ls90.hpp"
 #include "parts/ls93.hpp"
+#include "parts/mc3446.hpp"
 #include "parts/mos6502.hpp"
 #include "parts/mos6520.hpp"
 #include "parts/mos6522.hpp"
@@ -424,6 +426,7 @@ constexpr std::array s_parts{
     PartInfo{"74LS08", "quad 2-input AND", "DIP-14", Chip, &CreateGatePackage<"74LS08">},
     PartInfo{"74LS107", "dual JK flip-flop, clear", "DIP-14", Chip, &CreateChip<Ls107, "74LS107">},
     PartInfo{"74LS138", "3-to-8 line decoder", "DIP-16", Chip, &CreateChip<Ls138, "74LS138">},
+    PartInfo{"74LS139", "dual 2-to-4 line decoder", "DIP-16", Chip, &CreateChip<Ls139, "74LS139">},
     PartInfo{"74LS145", "BCD-to-decimal decoder/driver, open collector", "DIP-16", Chip,
              &CreateLs145},
     PartInfo{"74LS154", "4-to-16 line decoder", "DIP-24", Chip, &CreateChip<Ls154, "74LS154">},
@@ -452,19 +455,27 @@ constexpr std::array s_parts{
     PartInfo{"74LS90", "decade counter", "DIP-14", Chip, &CreateChip<Ls90, "74LS90">},
     PartInfo{"74LS93", "4-bit binary counter", "DIP-14", Chip, &CreateChip<Ls93, "74LS93">},
     PartInfo{"BUTTON", "push button", "TACT-6x3.5", Switch, &CreateSwitch<"BUTTON">},
+    PartInfo{"CASSETTE", "cassette port connector", "HDR-1x06", Connector,
+             &CreateConnector<"CASSETTE">},
     PartInfo{"DIGIT", "red 0.56-inch 7-segment digit, common anode", "DIGIT-0.56", Led,
              &CreateDigit<DigitCommon::Anode>, kDigitLamps},
     PartInfo{"DIGITCC", "red 0.56-inch 7-segment digit, common cathode", "DIGIT-0.56", Led,
              &CreateDigit<DigitCommon::Cathode>, kDigitCcLamps},
+    PartInfo{"IEEE488", "IEEE-488 edge connector", "HDR-2x12", Connector,
+             &CreateConnector<"IEEE488">},
     PartInfo{"KEY", "key switch", "MX-1U", Switch, &CreateSwitch<"KEY">},
     PartInfo{"KEYBOARD", "ASCII keyboard connector", "KK-10", Connector, &CreateKeyboard},
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
+    PartInfo{"MC3446", "quad IEEE-488 bus transceiver", "DIP-16", Chip,
+             &CreateChip<Mc3446, "MC3446">},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
     PartInfo{"PADDLE", "paddle controller connector", "KK-4", Connector, &CreatePaddle},
     PartInfo{"POR", "power-on reset", "DIP-8", Chip, &CreatePowerOnReset},
     PartInfo{"POWER", "5 V power connector", "KK-2", Connector, &CreateConnector<"POWER">},
     PartInfo{"R", "resistor", "axial", Resistor, nullptr},
     PartInfo{"SLIDE", "slide switch", "SLIDE-1", Switch, &CreateSwitch<"SLIDE">},
+    PartInfo{"USERPORT", "user port edge connector", "HDR-2x12", Connector,
+             &CreateConnector<"USERPORT">},
     PartInfo{"VIDEO", "TTL monitor connector", "KK-3", Connector, &CreateConnector<"VIDEO">},
     PartInfo{"Z80STUB", "Z80 stub playing a ZX80 frame (benchmark)", "DIP-40", Chip,
              &CreateChip<Z80Stub, "Z80STUB">},

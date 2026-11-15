@@ -69,3 +69,49 @@ TEST_CASE("connector: POWER pins are on VCC and GND without net lines", "[parts]
     }
     CHECK(connections == std::vector<std::string>{"J1.1 VCC", "J1.2 GND"});
 }
+
+TEST_CASE("connector: the PET's edge connectors and cassette port are sampled loads", "[parts]") {
+    const auto pins = [](std::string_view part) {
+        Circuit circuit;
+        const PartInfo* info = FindPart(part);
+        REQUIRE(info != nullptr);
+        CHECK(info->kind == PartKind::Connector);
+        const auto created = info->create(circuit, "J1", {});
+        REQUIRE(created.has_value());
+        std::vector<std::string> names;
+        for (const PinSpec& pin : (*created)->pins()) {
+            names.push_back(pin.name);
+            CHECK(pin.kind == PinKind::Input);
+            CHECK(pin.family == Family::Mos);
+            CHECK(pin.sampled);
+        }
+        return names;
+    };
+    const auto ieee = pins("IEEE488");
+    REQUIRE(ieee.size() == 24);
+    // Pad 2n-1 is the PET's pin n, pad 2k its k-th letter: DIO5 (A) faces DIO1 (1).
+    CHECK(ieee[0] == "DIO1");
+    CHECK(ieee[1] == "DIO5");
+    CHECK(ieee[8] == "EOI_N");
+    CHECK(ieee[20] == "ATN_N");
+    const auto user = pins("USERPORT");
+    REQUIRE(user.size() == 24);
+    CHECK(user[8] == "DIAG");   // pin 5
+    CHECK(user[5] == "PA0");    // C
+    CHECK(user[21] == "CB2");   // M
+    CHECK(user[2] == "VIDEO");  // pin 2
+    CHECK(pins("CASSETTE") ==
+          std::vector<std::string>{"GND", "VCC", "MOTOR", "READ", "WRITE", "SENSE"});
+    CHECK(FindPart("IEEE488")->package == "HDR-2x12");
+    CHECK(FindPart("USERPORT")->package == "HDR-2x12");
+    CHECK(FindPart("CASSETTE")->package == "HDR-1x06");
+    CHECK_FALSE(ConnectorPowersDevice("CASSETTE"));
+}
+
+TEST_CASE("connector: a cassette port on the rails gives no warning", "[parts]") {
+    const auto loaded = LoadNetlist("part J1 POWER\npart J3 CASSETTE\nnet VCC J3.VCC\n"
+                                    "net GND J3.GND\n",
+                                    "t.bwn");
+    REQUIRE(loaded.has_value());
+    CHECK((*loaded)->warnings.empty());
+}
