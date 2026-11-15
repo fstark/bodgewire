@@ -26,12 +26,12 @@ The switch network (P5i) already gives one Component a Pin on each of its Nets t
 
 ### 1.2 Circuit — `circuit.{hpp,cpp}`
 
-- `netSwitchPin_` → `netNetworkPin_`, `switchPin(net)` → `networkPin(net)`: the Net's Switched or Joined Pin, at most one. `buildTables` tests `IsNetworkPin(info.kind)`; the `Check` reads "circuit: two network pins on one net". The builder refuses a switch on a joined Net before this (§3.3), so the `Check` stays an internal error.
+- `netSwitchPin_` → `netNetworkPin_`, `switchPin(net)` → `networkPin(net)`, and `netNetworkPin2_`, `secondNetworkPin(net)`: a Net holds at most one Switched and one Joined Pin (a key on a joined Net: the user's rule, Spec). `buildTables` tests `IsNetworkPin(info.kind)`; two of one kind on a Net `Check`s "circuit: two network pins of one kind on one net".
 
 ### 1.3 Simulator — `simulator.{hpp,cpp}`, `component.hpp`
 
-- `NetState::switched` → `networked`; `External`'s comment says "a network Net's drives but its network Pin's".
-- `externalDrives`, `resolveNet`, `runUntil`: `switchPin` → `networkPin`, `switched` → `networked`. No other change: the waking rule (other drives only, no echo) is the same for both kinds.
+- `NetState::switched` → `networked`; `External` becomes per network Pin: `external_` for a Net's first, `external2_` for its second, each the Net's drives but that Pin's own. `EvalContext::external` and `externalChanged` pick by the Pin (`secondNetworkPin(net) == pin`).
+- `externalDrives(net, own)` leaves out `own` only; `runUntil` updates each network Pin's view through `updateExternal`, waking its owner when that view changed (other drives only, no echo; on a Net with both, each wakes on the other's drive, and they settle in one exchange: the switch network passes the merged strong drive, the resistor network then sees a source there and drives Z). `resolveNet` keeps its fast path for a Net with one network Pin and takes the general path (every Driver) for a Net with two.
 - `powerOn`: `Joined` is released at power-on like `Switched` (no random draw).
 - `EvalContext::external`, `externalChanged` (`component.hpp`): "Switched and Joined Pins only".
 - `tests/sim/switched_test.cpp` keeps its cases; a new `tests/sim/joined_test.cpp` checks `DriveOf(Joined, …)` (Weak, None at Z), `IsDriver`, `!IsReader`, `IsNetworkPin`, and that a Joined Pin's own drive does not wake its Component while another driver's does (the P5i wake test, copied with the kind changed).
@@ -110,15 +110,15 @@ The old message ("only pull-up/pull-down resistors are supported…") goes.
 
 A Net that a series resistor touches is **joined**. Then:
 
-- every series resistor and every pull on a joined Net needs `value=`, parsed by `ParseOhms`: errors `"R5: a series resistor needs value= (ohms)"`, `"R28: a pull resistor on joined net D6' needs value= (ohms)"`, and `"R5: <ParseOhms error>"`;
+- every resistor needs `value=`, parsed by `ParseOhms`: errors `"R5: a resistor needs value= (ohms)"` and `"R5: <ParseOhms error>"` (every netlist in the repo has one; eight test strings gain one);
 - a pull on a joined Net is not tied (`circuit.tie`): it goes to the network as `pull(pin, One or Zero, ohms)`, so the network sees every weak source of its Nets;
 - one `ResistorNetwork` is added (`circuit.add<ResistorNetwork>(names)`), a Joined Pin connected to each joined Net in NetId order (as `wireSwitches`), then `join` per series resistor.
 
-Pulls on Nets that are not joined are tied as today; their `value=` stays optional and unparsed (no existing netlist changes behaviour).
+Pulls on Nets that are not joined are tied as today.
 
 ### 3.3 Switches on joined Nets
 
-`wireSwitches` runs before `wireResistors` and keeps the set of Nets it gave a Switched Pin. A joined Net in that set is an error: `"R5: net KB0 has a switch; a series resistor on it is not supported"`. (The ZX80 has none: its keys sit on the address lines and the 74LS365's inputs, its series resistors on the data bus, the RAM select and HSYNC.)
+Allowed (§1.2): `wireSwitches` and `wireResistors` each add their Pin to the Net. Test in `tests/parts/resistor_network_test.cpp`: a key joins an inverter's 0 to a Net that a 1k joins to a 47k-pulled Net; key up both read 1, key down both 0, up again 1.
 
 ### 3.4 Loaded parts
 
@@ -251,4 +251,4 @@ Headless ratio of the bench (`bw run --time 100ms`, release, median of 3); `bus_
 
 - `docs/GLOSSARY.md`: **Series resistor** — "A resistor between two signal Nets (the ZX80's data bus): a Net that nothing else drives takes the other's value through it, weakly; a Net with a driver keeps its own. One resistor network resolves them all; less resistance wins between weak values." **Driver** and **Tie** mention the series resistor; **Joined Pin** — "the resistor network's Pin on a joined Net (P5u), as a Switched Pin is the switch network's."
 - `docs/ARCHITECTURE.md` (finish): the Pins, nets, drivers paragraph on resistors points to this step; the P5u row.
-- `docs/recipes/ADD_PART.md` (finish): reference commits (2332 as a ROM row; 74LS05 as an open-collector gate row; 74LS373; 74LS365). `docs/recipes/ADD_MACHINE.md`: a series resistor needs `value=`; a switch on a joined Net is refused.
+- `docs/recipes/ADD_PART.md` (finish): reference commits (2332 as a ROM row; 74LS05 as an open-collector gate row; 74LS373; 74LS365). `docs/recipes/ADD_MACHINE.md`: every resistor needs `value=`; a series resistor joins two signal Nets.

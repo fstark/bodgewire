@@ -304,13 +304,13 @@ private:
     // ResistorNetwork, which also takes the pulls of joined Nets (they decide weak fights there).
     void wireResistors() {
         struct Pull {
-            const PlacedPart* part;
             NetId signal;
             LogicValue value;
+            std::uint32_t ohms;
         };
         struct Series {
-            const PlacedPart* part;
             NetId a, b;
+            std::uint32_t ohms;
         };
         std::vector<Pull> pulls;
         std::vector<Series> series;
@@ -326,6 +326,16 @@ private:
                 error(decl.line, decl.reference + ": a resistor needs both pins connected");
                 continue;
             }
+            const auto value = std::ranges::find(decl.params, "value", &PartParam::name);
+            if (value == decl.params.end()) {
+                error(decl.line, decl.reference + ": a resistor needs value= (ohms)");
+                continue;
+            }
+            const auto ohms = ParseOhms(value->value);
+            if (!ohms) {
+                error(decl.line, decl.reference + ": " + ohms.error());
+                continue;
+            }
             const bool railA = IsRail(a->second.name), railB = IsRail(b->second.name);
             if (a->second.net == b->second.net) {
                 error(decl.line,
@@ -336,70 +346,26 @@ private:
                 const NetOfPin& rail = railA ? a->second : b->second;
                 const NetOfPin& signal = railA ? b->second : a->second;
                 pulls.push_back(
-                    {&part, signal.net, rail.name == "VCC" ? LogicValue::One : LogicValue::Zero});
+                    {signal.net, rail.name == "VCC" ? LogicValue::One : LogicValue::Zero, *ohms});
             } else {
-                series.push_back({&part, a->second.net, b->second.net});
+                series.push_back({a->second.net, b->second.net, *ohms});
                 joined.insert(a->second.net);
                 joined.insert(b->second.net);
             }
         }
+        Circuit& circuit = loaded_->circuit;
         for (const Pull& pull : pulls) {
             if (!joined.contains(pull.signal)) {
-                loaded_->circuit.tie(pull.signal, pull.value, DriveStrength::Weak);
+                circuit.tie(pull.signal, pull.value, DriveStrength::Weak);
             }
         }
         if (joined.empty()) {
             return;
         }
-        Circuit& circuit = loaded_->circuit;
         const std::vector<NetId> nets(joined.begin(), joined.end());  // NetId order
         const auto pinOf = [&](NetId net) {
             return static_cast<PinIndex>(std::ranges::lower_bound(nets, net) - nets.begin());
         };
-        const auto ohmsOf = [&](const PlacedPart& part,
-                                const std::string& what) -> std::optional<std::uint32_t> {
-            for (const PartParam& param : part.decl->params) {
-                if (param.name == "value") {
-                    auto ohms = ParseOhms(param.value);
-                    if (!ohms) {
-                        error(part.decl->line, part.decl->reference + ": " + ohms.error());
-                        return std::nullopt;
-                    }
-                    return *ohms;
-                }
-            }
-            error(part.decl->line, part.decl->reference + ": " + what + " needs value= (ohms)");
-            return std::nullopt;
-        };
-        bool ok = true;
-        for (const NetId net : nets) {
-            if (switchedNets_.contains(net)) {
-                const auto it = std::ranges::find_if(
-                    series, [&](const Series& s) { return s.a == net || s.b == net; });
-                error(it->part->decl->line, it->part->decl->reference + ": net " +
-                                                std::string(circuit.netName(net)) +
-                                                " has a switch; a series resistor on it is not "
-                                                "supported");
-                ok = false;
-            }
-        }
-        std::vector<std::uint32_t> seriesOhms, pullOhms;
-        for (const Series& s : series) {
-            const auto ohms = ohmsOf(*s.part, "a series resistor");
-            ok &= ohms.has_value();
-            seriesOhms.push_back(ohms.value_or(0));
-        }
-        for (const Pull& pull : pulls) {
-            if (joined.contains(pull.signal)) {
-                const auto ohms = ohmsOf(*pull.part, "a pull resistor on joined net " +
-                                                         std::string(circuit.netName(pull.signal)));
-                ok &= ohms.has_value();
-                pullOhms.push_back(ohms.value_or(0));
-            }
-        }
-        if (!ok) {
-            return;
-        }
         std::vector<std::string> names;
         for (const NetId net : nets) {
             names.emplace_back(circuit.netName(net));
@@ -408,13 +374,12 @@ private:
         for (PinIndex p = 0; p < nets.size(); ++p) {
             circuit.connect(network, p, nets[p]);
         }
-        for (std::size_t i = 0; i < series.size(); ++i) {
-            network.join(pinOf(series[i].a), pinOf(series[i].b), seriesOhms[i]);
+        for (const Series& s : series) {
+            network.join(pinOf(s.a), pinOf(s.b), s.ohms);
         }
-        std::size_t k = 0;
         for (const Pull& pull : pulls) {
             if (joined.contains(pull.signal)) {
-                network.pull(pinOf(pull.signal), pull.value, pullOhms[k++]);
+                network.pull(pinOf(pull.signal), pull.value, pull.ohms);
             }
         }
     }
@@ -484,7 +449,6 @@ private:
         }
         std::ranges::sort(nets);
         nets.erase(std::unique(nets.begin(), nets.end()), nets.end());
-        switchedNets_.insert(nets.begin(), nets.end());
         if (nets.empty()) {
             return;
         }
@@ -535,7 +499,6 @@ private:
     std::map<std::string, PlacedPart, std::less<>> placed_;  // by reference
     std::map<std::pair<std::string, PinIndex>, NetOfPin> pinNet_;
     std::set<std::pair<std::string, PinIndex>> notConnected_;
-    std::set<NetId> switchedNets_;  // Nets with a Switched Pin (wireSwitches)
     std::vector<Diagnostic> errors_;
 };
 

@@ -64,6 +64,7 @@ void Circuit::buildTables() {
     std::vector<std::vector<FanOut>> fanOut(netCount);
     netHasTtlInput_.assign(netCount, 0);
     netNetworkPin_.assign(netCount, kNoPin);
+    netNetworkPin2_.assign(netCount, kNoPin);
     for (std::uint32_t p = 0; p < pins_.size(); ++p) {
         const PinInfo& info = pins_[p];
         const std::uint32_t n = ToIndex(info.net);
@@ -71,8 +72,14 @@ void Circuit::buildTables() {
             drivers[n].push_back(PinId{p});
         }
         if (IsNetworkPin(info.kind)) {
-            Check(netNetworkPin_[n] == kNoPin, "circuit: two network pins on one net");
-            netNetworkPin_[n] = PinId{p};
+            if (netNetworkPin_[n] == kNoPin) {
+                netNetworkPin_[n] = PinId{p};
+            } else {
+                Check(netNetworkPin2_[n] == kNoPin &&
+                          pins_[ToIndex(netNetworkPin_[n])].kind != info.kind,
+                      "circuit: two network pins of one kind on one net");
+                netNetworkPin2_[n] = PinId{p};
+            }
         }
         if (!IsReader(info.kind)) {
             continue;

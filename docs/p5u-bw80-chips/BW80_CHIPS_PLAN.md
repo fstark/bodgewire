@@ -15,6 +15,7 @@ Worked in the worktree `../bodgewire-p5u`, branch `p5u-bw80-chips` (another agen
 | 3 | Board: electrical netlist, Net panel, `R` datasheet, glossary | |
 | 4 | `2332`, `74LS05`, `74LS10`, `74LS365`, `74LS373` | |
 | 5 | Bench, its program and test | |
+| 5b | A key on a joined Net; `value=` on every resistor (the user, after the review) | |
 | 6 | Release check, recipes, roadmap | |
 
 ## Phases
@@ -48,6 +49,12 @@ Fence: `ctest --preset debug -j 12 -R "gate package|74LS365|74LS373|rom|catalogu
 `tests/data/bw80_bench.bwn`, `roms/bw80_bench.asm` and its `.rom` (`bw asm`), `tests/netlist/bw80_bench_test.cpp`; `kDone` measured and set.
 
 Fence: `ctest --preset debug -j 12 -R "bw80|asm"`. Commit: `tests: the BW-80 chips bench (P5u)`.
+
+### 5b. No repair may stop the game (design §1.2–1.3, §3.2–3.3)
+
+Asked by the user after the review (2026-11-15): a Net holds a Switched and a Joined Pin, each with its own view of the Net; the builder's switch check goes; every resistor needs `value=`.
+
+Fence: the full debug suite (kernel). Commit: `sim: a key on a joined Net; every resistor needs value= (P5u)`.
 
 ### 6. Finish
 

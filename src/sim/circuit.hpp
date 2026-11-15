@@ -79,8 +79,10 @@ public:
     bool hasTtlInput(NetId net) const { return netHasTtlInput_[ToIndex(net)] != 0; }
     // The Net's only Driver if it is a totem-pole Output and the Net is untied, else kNoPin.
     PinId singleDriver(NetId net) const { return netSingleDriver_[ToIndex(net)]; }
-    // The Net's network Pin, Switched or Joined (at most one), else kNoPin.
+    // The Net's network Pins (P5i, P5u): at most one Switched and one Joined; the first found,
+    // else kNoPin, and the second, else kNoPin.
     PinId networkPin(NetId net) const { return netNetworkPin_[ToIndex(net)]; }
+    PinId secondNetworkPin(NetId net) const { return netNetworkPin2_[ToIndex(net)]; }
 
     static constexpr PinId kNoPin{UINT32_MAX};
 
@@ -98,6 +100,7 @@ private:
     std::vector<std::uint8_t> netHasTtlInput_;
     std::vector<PinId> netSingleDriver_;
     std::vector<PinId> netNetworkPin_;
+    std::vector<PinId> netNetworkPin2_;
     // CSR: drivers (output PinIds) and fan-out (one entry per Component with an input on the Net)
     std::vector<std::uint32_t> driverStart_, fanOutStart_;  // size netCount + 1
     std::vector<PinId> drivers_;

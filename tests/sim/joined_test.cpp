@@ -123,7 +123,7 @@ TEST_CASE("joined: woken by the other drives only, never by its own", "[sim]") {
     CHECK(sim.value(bench.b) == Zero);
 }
 
-TEST_CASE("joined: one network Pin a Net", "[sim]") {
+TEST_CASE("joined: one network Pin of each kind a Net", "[sim]") {
     Circuit circuit;
     const NetId a = circuit.addNet("A");
     Copier& copier = circuit.add<Copier>();

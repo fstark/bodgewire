@@ -194,7 +194,7 @@ TEST_CASE("builder: simulates", "[netlist]") {
 TEST_CASE("builder: pull-up", "[netlist]") {
     // P: pull-up and an input only. Y: pull-up overridden by an output driving 0.
     const auto result = LoadNetlist("part R1 R value=4k7\n"
-                                    "part R2 R\n"
+                                    "part R2 R value=1k\n"
                                     "part U1 74LS04\n"
                                     "net VCC R1.1 R2.2 U1.1A\n"
                                     "net P R1.2 U1.3A\n"
@@ -212,8 +212,8 @@ TEST_CASE("builder: pull-up", "[netlist]") {
 }
 
 TEST_CASE("builder: pull-down", "[netlist]") {
-    const auto result = LoadNetlist("part R1 R\n"
-                                    "part R2 R\n"
+    const auto result = LoadNetlist("part R1 R value=1k\n"
+                                    "part R2 R value=1k\n"
                                     "part U1 74LS04\n"
                                     "net GND R1.1 R2.2 U1.1A\n"
                                     "net P R1.2 U1.3A\n"
@@ -229,35 +229,23 @@ TEST_CASE("builder: pull-down", "[netlist]") {
 }
 
 TEST_CASE("builder: resistor errors", "[netlist]") {
-    CHECK(Errors("part R1 R\nnet VCC R1.1\nnet GND R1.2\n") ==
-          Lines{"1: R1: a resistor between two rails"});
-    CHECK(Errors("part R1 R\nnet VCC R1.1\n") ==
-          Lines{"1: R1: a resistor needs both pins connected"});
-    CHECK(Errors("part R1 R value=1k\npart U1 74LS04\nnet A R1.1 R1.2 U1.1A\n") ==
-          Lines{"1: R1: both ends on net A"});
-    CHECK(Errors("part R1 R\nnet VCC R1.1\nnet A R1.2 R1.3\n") == Lines{"3: R1 (R) has no pin 3"});
-    CHECK(Errors("part R1 R ohms=10\nnet VCC R1.1\n") == Lines{"1: R1: unknown parameter 'ohms'"});
-}
-
-TEST_CASE("builder: series resistor errors", "[netlist]") {
     const std::string chip = "part U1 74LS04\n";
-    // A series resistor and the pulls of its Nets need a value in ohms.
+    CHECK(Errors("part R1 R value=1k\nnet VCC R1.1\nnet GND R1.2\n") ==
+          Lines{"1: R1: a resistor between two rails"});
+    CHECK(Errors("part R1 R value=1k\nnet VCC R1.1\n") ==
+          Lines{"1: R1: a resistor needs both pins connected"});
+    CHECK(Errors("part R1 R value=1k\n" + chip + "net A R1.1 R1.2 U1.1A\n") ==
+          Lines{"1: R1: both ends on net A"});
+    CHECK(Errors("part R1 R value=1k\nnet VCC R1.1\nnet A R1.2 R1.3\n") ==
+          Lines{"3: R1 (R) has no pin 3"});
+    CHECK(Errors("part R1 R ohms=10\nnet VCC R1.1\n") == Lines{"1: R1: unknown parameter 'ohms'"});
+    // Every resistor needs a value in ohms (P5u): a pull-up, a series resistor.
+    CHECK(Errors("part R1 R\n" + chip + "net VCC R1.1\nnet A R1.2 U1.1A\n") ==
+          Lines{"1: R1: a resistor needs value= (ohms)"});
     CHECK(Errors("part R1 R\n" + chip + "net A R1.1 U1.1Y\nnet B R1.2 U1.3A\n") ==
-          Lines{"1: R1: a series resistor needs value= (ohms)"});
+          Lines{"1: R1: a resistor needs value= (ohms)"});
     CHECK(Errors("part R1 R value=1q\n" + chip + "net A R1.1 U1.1Y\nnet B R1.2 U1.3A\n") ==
           Lines{"1: R1: bad resistance '1q': expected e.g. 470, 1k, 4k7 or 1M"});
-    CHECK(Errors("part R1 R value=1k\npart R2 R\n" + chip +
-                 "net A R1.1 U1.1Y\nnet B R1.2 R2.1 U1.3A\nnet VCC R2.2\n") ==
-          Lines{"2: R2: a pull resistor on joined net B needs value= (ohms)"});
-    // A pull on a Net that is not joined keeps its value optional.
-    CHECK(LoadNetlist("part R1 R value=1k\npart R2 R\n" + chip +
-                          "net A R1.1 U1.1Y\nnet B R1.2 U1.3A\nnet C R2.1 U1.5A\nnet VCC R2.2\n",
-                      "t.bwn")
-              .has_value());
-    // A switch and a series resistor on one Net.
-    CHECK(Errors("part R1 R value=1k\npart SW1 BUTTON\n" + chip +
-                 "net A R1.1 U1.1Y\nnet B R1.2 SW1.1 U1.3A\nnet GND SW1.2\n") ==
-          Lines{"1: R1: net B has a switch; a series resistor on it is not supported"});
 }
 
 TEST_CASE("builder: unconnected input warning", "[netlist]") {
@@ -506,8 +494,8 @@ TEST_CASE("builder: parts in netlist order with values", "[netlist]") {
 }
 
 TEST_CASE("builder: connections include implicit power and resistor pins", "[netlist]") {
-    const auto result =
-        LoadNetlist("part U1 74LS04\npart R1 R\nnet VCC R1.1\nnet A R1.2 U1.1A U1.3\n", "t.bwn");
+    const auto result = LoadNetlist(
+        "part U1 74LS04\npart R1 R value=1k\nnet VCC R1.1\nnet A R1.2 U1.1A U1.3\n", "t.bwn");
     REQUIRE(result.has_value());
     std::vector<std::string> connections;
     for (const Connection& c : (*result)->connections) {

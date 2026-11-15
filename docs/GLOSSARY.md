@@ -116,7 +116,7 @@ _Avoid_: Constant Driver
 A resistor between two signal Nets (the ZX80's data bus, P5u): a Net that nothing else drives takes the other's value through it, weakly, while a Net with a Driver of its own keeps it. One resistor network resolves them all; between two weak values on a Net, the one through less resistance wins (a pull-up on a joined Net counts as one of them, not as a Tie).
 
 **Joined Pin**:
-The resistor network's Pin on a Net that a Series Resistor touches (P5u), as the switch network has one on each Net a Switch is on: it drives the Net weakly and is woken only by the Net's other Drivers.
+The resistor network's Pin on a Net that a Series Resistor touches (P5u), as the switch network has one on each Net a Switch is on (a Net may have both): it drives the Net weakly and is woken only by the Net's other Drivers.
 
 **Floating**:
 The state of a Net with no Driver.

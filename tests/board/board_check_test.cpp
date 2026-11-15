@@ -15,8 +15,8 @@ using Lines = std::vector<std::string>;
 
 constexpr std::int64_t kMm = 1'000'000;
 
-constexpr std::string_view kNetlist = "part R1 R\n"
-                                      "part R2 R\n"
+constexpr std::string_view kNetlist = "part R1 R value=1k\n"
+                                      "part R2 R value=1k\n"
                                       "part X1 OSC freq=1MHz\n"
                                       "net VCC R1.1 R2.1\n"
                                       "net A R1.2 X1.OUT\n"

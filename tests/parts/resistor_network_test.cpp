@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "netlist/builder.hpp"
+#include "parts/switch.hpp"
 #include "sim/circuit.hpp"
 #include "sim/primitives.hpp"
 #include "sim/simulator.hpp"
@@ -179,4 +180,36 @@ TEST_CASE("resistor network: built from a netlist with the pulls of joined Nets"
     CHECK(sim.value((*loaded)->nets.at("A")) == Zero);
     CHECK(sim.value((*loaded)->nets.at("B")) == Zero);
     CHECK_FALSE(sim.isFloating((*loaded)->nets.at("B")));
+}
+
+TEST_CASE("resistor network: a key on a joined Net", "[parts]") {
+    // U1's first inverter drives A low; K1 joins A to B while pressed; R1 joins B to C, which R2
+    // pulls up. Key up: B and C read R2's 1. Key down: A's 0 reaches B through the key and C
+    // through R1 (1k beats 47k). The Net B has the switch network's Pin and the resistor
+    // network's.
+    const auto loaded = LoadNetlist("part J1 POWER\npart U1 74LS04\npart K1 KEY legend=1\n"
+                                    "part R1 R value=1k\npart R2 R value=47k\n"
+                                    "net VCC U1.1A R2.1\nnet A U1.1Y K1.1\nnet B K1.2 R1.1\n"
+                                    "net C R1.2 R2.2 U1.2A\nnet GND U1.3A U1.4A U1.5A U1.6A\n",
+                                    "t.bwn");
+    REQUIRE(loaded.has_value());
+    Simulator sim((*loaded)->circuit);
+    sim.powerOn(1);
+    sim.runFor(1'000'000);
+    const auto value = [&](const char* net) { return sim.value((*loaded)->nets.at(net)); };
+    CHECK(value("A") == Zero);
+    CHECK(value("B") == One);
+    CHECK(value("C") == One);
+    Switch* key = SwitchOf(**loaded, "K1");
+    REQUIRE(key != nullptr);
+    key->setPressed(true);
+    sim.wake(key->id());
+    sim.runFor(1'000'000);
+    CHECK(value("B") == Zero);
+    CHECK(value("C") == Zero);
+    key->setPressed(false);
+    sim.wake(key->id());
+    sim.runFor(1'000'000);
+    CHECK(value("B") == One);
+    CHECK(value("C") == One);
 }
