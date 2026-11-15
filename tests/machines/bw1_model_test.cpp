@@ -8,7 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "asm/asm6502.hpp"
+#include "asm/assembler.hpp"
 
 using namespace bw;
 
@@ -16,10 +16,10 @@ namespace {
 
 // `body` at $1C00 with the three vectors: RESET $1C00, NMI and IRQ $1F00 (`inc $20`, `rti`).
 void Load(Bw1Model& model, const std::string& body) {
-    const auto rom = Assemble6502("  .rom $1C00, $400\n  .org $1C00\n" + body +
-                                      "\n  .org $1F00\nnmi: inc $20\n  rti\n"
-                                      "  .org $1FFA\n  .word nmi, $1C00, nmi\n",
-                                  "model.asm");
+    const auto rom = Assemble("  .rom $1C00, $400\n  .org $1C00\n" + body +
+                                  "\n  .org $1F00\nnmi: inc $20\n  rti\n"
+                                  "  .org $1FFA\n  .word nmi, $1C00, nmi\n",
+                              "model.asm");
     REQUIRE(rom.has_value());
     model.patchRom(0x1C00, rom->words);
     model.reset();

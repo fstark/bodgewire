@@ -1,6 +1,6 @@
 # Bus load with the real Z80 (P5s, docs/p5s-z80/Z80_DESIGN.md, Bus load): P5a's circuit
 # (netlists/bus_load.bwn, docs/p5a-bus-load/BUS_LOAD.md) with a Z80 (U2) in place of the Z80STUB,
-# running our display program (roms/bus_load_z80.rom, from roms/make_bus_load_z80_rom.py) at
+# running our display program (roms/bus_load_z80.rom, from roms/bus_load_z80.asm by bw asm) at
 # 3.25 MHz: 312 lines of 207 T-states, 24 text rows of 32 characters executed from the display
 # file's mirror at $C000, the characters forced to NOPs as in the stub's netlist. What differs:
 # INT_N is on A6, as on the ZX80, so the CPU's own refresh address (I:R, R counting each fetch)
