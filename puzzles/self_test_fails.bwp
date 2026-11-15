@@ -1,0 +1,5 @@
+# Self-test fails: U3's RAM word $15 ($1795) has bit 2 stuck at 1. Nothing but the self-test uses U3's RAM: the BW-1 works, and the self-test stops on 379504.
+machine bw1
+title "Self-test fails"
+brief "The BW-1 seems to work, but its self-test fails."
+fault cell U3.D2 ram $15 1

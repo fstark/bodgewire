@@ -1,0 +1,5 @@
+# No stop: U2's RAM word $3A ($17FA, NMIV's low byte) has bit 0 stuck at 1: reset writes $1C00 there but it reads $1C01, so ST and SST jump into the middle of SAVE's first instruction and show nonsense. BRK uses IRQV ($17FE) and still stops. The self-test shows 27FA01.
+machine bw1
+title "No stop"
+brief "Programs run, and a BRK stops them as it should, but ST does not: a loop at 0200 stopped by ST shows a meaningless address instead of where the loop was. The keys still work afterwards."
+fault cell U2.D0 ram $3A 1

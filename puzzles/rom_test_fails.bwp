@@ -1,0 +1,5 @@
+# ROM test fails: U3's ROM word $380 (in the $FF fill after the checksum byte) has bit 0 stuck at 0: nothing runs or reads it but the sum, so the BW-1 works and the self-test stops on 5800FF.
+machine bw1
+title "ROM test fails"
+brief "The BW-1 seems to work, but its self-test stops after the RAM tests."
+fault cell U3.D0 rom $380 0

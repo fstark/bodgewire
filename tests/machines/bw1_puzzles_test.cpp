@@ -267,3 +267,51 @@ TEST_CASE("bw1: aliased_page", "[machines][slow]") {
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
+
+TEST_CASE("bw1: self_test_fails", "[machines][slow]") {
+    Machine machine = LoadPuzzle("self_test_fails");
+    {
+        Bw1 bw1 = Monitor(machine, 1);
+        bw1.type("AD 0300 DA A9");
+        CHECK(bw1.display() == "0300A9");
+    }
+    CHECK(SelfTest(machine, 150_ms) == "379504");  // test 3, $1795, bit 2
+    REQUIRE(machine.swap("U3"));
+    CHECK(SelfTest(machine, 300_ms) == "888888");  // tests 1-5 passed
+}
+
+TEST_CASE("bw1: no_stop", "[machines][slow]") {
+    Machine machine = LoadPuzzle("no_stop");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        bw1.type("DA 00 AD 0200 GO");  // BRK
+        CheckShows(bw1.display(), "0202");
+        bw1.type("AD 0200 DA 4C + 00 + 02 AD 0200 GO");  // JMP $0200
+        bw1.run(50_ms);
+        bw1.press("ST");
+        const std::string stopped = bw1.display();
+        CHECK(stopped.substr(0, 3) != "020");  // not stopped in the loop
+        bw1.type("AD 0300");
+        CheckShows(bw1.display(), "0300");  // the monitor still answers
+    }
+    CHECK(SelfTest(machine, 150_ms) == "27FA01");
+    REQUIRE(machine.swap("U2"));
+    Bw1 bw1 = Monitor(machine, 1);
+    bw1.type("DA 4C + 00 + 02 AD 0200 GO");
+    bw1.run(50_ms);
+    bw1.press("ST");
+    CHECK(bw1.display() == "02004C");
+}
+
+TEST_CASE("bw1: rom_test_fails", "[machines][slow]") {
+    Machine machine = LoadPuzzle("rom_test_fails");
+    {
+        Bw1 bw1 = Monitor(machine, 1);
+        bw1.type("AD 0300 DA A9");
+        CHECK(bw1.display() == "0300A9");
+    }
+    CHECK(SelfTest(machine, 150_ms) == "5800FF");  // test 5: U3's ROM sums to FF
+    REQUIRE(machine.swap("U3"));
+    CHECK(SelfTest(machine, 300_ms) == "888888");
+}
