@@ -133,6 +133,7 @@ add_executable(bw_tests
   parts/ttl177_test.cpp
   parts/z80_cases.cpp
   parts/z80_conformance_test.cpp
+  parts/z80_core_test.cpp
   parts/z80_stub_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
