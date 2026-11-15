@@ -1,0 +1,5 @@
+# Odd E: a cell of the character ROM UA2 (the glyph of E, screen code 5: word $2A, its third line, O2) reads 1: every E on the screen has a stray dot in its upper half. The video RAM holds the right codes.
+machine bw2001
+title "Odd E"
+brief "The BW-2001 starts and works, but every E on the screen has a stray dot inside it, between its top and middle bars. Every other letter is fine."
+fault cell UA2.O2 $2A 1

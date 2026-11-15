@@ -1,0 +1,5 @@
+# Striped screen: the CD3 Trace from the character ROM UA2 (O3) to the dot shift register UB2 (D) is cracked; UB2's TTL input floats high, so the same dot of every line of every character is lit, spaces too.
+machine bw2001
+title "Striped screen"
+brief "The BW-2001 starts and its text is there, but thin vertical lines run through the whole text area, one through every character position, blank ones too."
+fault crack UA2.O3 UB2.D 50%

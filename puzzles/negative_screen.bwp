@@ -1,0 +1,5 @@
+# Negative screen: the reverse-video flip-flop UC1's first output REV_D is stuck at 1; REV and REV_N follow it, so every character is drawn reversed.
+machine bw2001
+title "Negative"
+brief "The BW-2001 starts, but its text area is a bright block with the letters cut out in black, like a photographic negative."
+fault stuck UC1.1Q 1

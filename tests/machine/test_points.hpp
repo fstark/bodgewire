@@ -50,5 +50,9 @@ const Crack& DeadDaCrack();        // bw1 PA3, U17 pin 8 → SW18 pad 2: puzzles
 const Crack& DeadRowCrack();       // bw1 ROW2, U24 pin 3 → SW20 pad 1: puzzles/dead_row.bwp
 const Crack& WrongSuspectCrack();  // bw1 DOUT3, U9 pin 12 → U13 pin 9: puzzles/wrong_suspect.bwp
 const Crack& HalfByteCrack();      // bw1 BUF_N, U14 pin 1 → U13 pin 4: puzzles/half_byte.bwp
+const Crack&
+StripedScreenCrack();  // bw2001 CD3, UA2 pin 13 → UB2 pin 14: puzzles/striped_screen.bwp
+const Crack&
+RollingTextCrack();  // bw2001 VERT_DRIVE, J7 pad 3 → UD8 pin 11: puzzles/rolling_text.bwp
 
 }  // namespace bw

@@ -1,0 +1,5 @@
+# Rolling text: the VERT_DRIVE Trace from UD8 to the monitor connector J7 (pad 3, an end of the Trace) is cracked; the monitor gets no vertical drive and never locks.
+machine bw2001
+title "Rolling text"
+brief "The BW-2001's text is there, but the picture will not hold still: it drifts up the screen and never settles."
+fault crack J7.VDRIVE UD8.4Y 50%

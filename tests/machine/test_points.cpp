@@ -190,4 +190,14 @@ const Crack& HalfByteCrack() {
     return crack;
 }
 
+const Crack& StripedScreenCrack() {
+    static const Crack crack = PuzzleCrack("striped_screen");
+    return crack;
+}
+
+const Crack& RollingTextCrack() {
+    static const Crack crack = PuzzleCrack("rolling_text");
+    return crack;
+}
+
 }  // namespace bw

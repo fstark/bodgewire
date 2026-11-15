@@ -8,8 +8,8 @@ Every phase ends with its fence: `cmake --build --preset debug` and `--preset re
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Rig | this commit |
-| 2 | Picture Puzzles (1–5) | |
+| 1 | Rig | `5e810e6` |
+| 2 | Picture Puzzles (1–5) | this commit |
 | 3 | Computer Puzzles (6–10) | |
 | 4 | Self-test and instrument Puzzles (11–15) | |
 | 5 | Finish | |
@@ -54,3 +54,4 @@ Commit: `docs: P5r done, BW-2001 Puzzles`
 
 - Docs review (before the docs commit), fixed: a video RAM column garbles the self-test's own report, so `garbled_text` became `ghost_letter`, one stuck cell; `wrong_chip`'s dry Joint gives an expected build warning; `SnowWatch`'s pins (`UE5.4Y`, `UC6.3Y`, `UC5.2Q`); `short_memory` on `IO1` (`RAM BAD 0C00 01`); the dead Puzzles' pictures measured on seeds 1–3, `no_clock` too; the cursor cell left out of the stripe check; the service manual note `missing_keys` needs; no empty Puzzle list; timings.
 - Phase 1: `bw2001_rig.{hpp,cpp}` as designed (names prefixed `Bw2001`: they leave the anonymous namespace). The release case `a scrolling screen without snow` failed before any change (1 access): at power-on, before reset ends, the 6502's random address selects the screen for a moment on seed 3 (the draws changed when P5q2 fitted `UH2`, `UH6`); the case now counts from the banner, as it means to. Debug `bw2001|manuals|puzzle` 57/57 in 205 s; release `bw2001` 46/46 in 197 s.
+- Phase 2: all five as designed but `odd_e`'s dot: the stem's dot of the middle line (`$2B` `O6` 0) cannot be seen on `bw_ui`'s TV (the lit dots above and below hide the gap); a lit dot in the empty upper half (`$2A` `O2` 1) shows when the TV window is enlarged, as small as the BW-1's one segment. `stutter`'s first row is `**  WW2200  IIYYBBSSCC****` on the TV; the odd video RAM cells are never written (the 6502's writes land on the even ones too), so the case compares drawn pairs, not RAM pairs. `bw_ui --after` is wall time: 3.5 s reaches about 0.5 s simulated, past the banner. Release cases 9–16 s each; `every Puzzle builds` 16 s in debug for five. Debug `bw2001|manuals|puzzle` 64/64 in 147 s; release `bw2001` 53/53 in 252 s.

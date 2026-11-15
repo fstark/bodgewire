@@ -1,0 +1,5 @@
+# Stutter: the video address multiplexer UD2's output SA0 (video RAM A0) is stuck at 0. The video draws each even cell twice; the 6502's own screen writes land on even cells too, so every other character is lost.
+machine bw2001
+title "Stutter"
+brief "The BW-2001 starts, but its text stutters: every character appears twice and every other one is missing, so the banner is unreadable."
+fault stuck UD2.3Y 0
