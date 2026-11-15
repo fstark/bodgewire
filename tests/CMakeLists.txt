@@ -81,6 +81,7 @@ add_executable(bw_tests
   netlist/net_pins_test.cpp
   netlist/parser_test.cpp
   netlist/ram_bench_test.cpp
+  netlist/rom_directory_test.cpp
   netlist/sample_test.cpp
   netlist/switch_bench_test.cpp
   netlist/units_test.cpp

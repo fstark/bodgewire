@@ -13,6 +13,7 @@
 #include "board/kicad_board.hpp"
 #include "machine/crack.hpp"
 #include "machine/electrical.hpp"
+#include "netlist/rom_directory.hpp"
 #include "parts/memory_cells.hpp"
 
 namespace bw {
@@ -84,8 +85,9 @@ std::expected<StuckCell, std::string> ResolveCell(const CellDecl& decl, const Co
                      index};
 }
 
-std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle,
-                                                            const std::filesystem::path& root) {
+std::expected<Machine, std::vector<Diagnostic>>
+LoadMachine(const Puzzle& puzzle, const std::filesystem::path& root,
+            const std::optional<std::filesystem::path>& roms) {
     std::vector<Diagnostic> errors;
     const auto error = [&](std::uint32_t line, std::string message) {
         errors.push_back({puzzle.file, line, Severity::Error, std::move(message)});
@@ -108,6 +110,11 @@ std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle
         return std::unexpected(std::move(design.error()));
     }
     ResolveContentsPaths(*design, netlistPath.parent_path());
+    if (roms) {
+        if (const auto applied = ApplyRomDirectory(*design, *roms); !applied) {
+            return fail(puzzle.machineLine, applied.error());
+        }
+    }
     machine.design_ = std::move(*design);
     auto designCircuit = BuildCircuit(machine.design_);
     if (!designCircuit) {
@@ -540,12 +547,14 @@ std::expected<Puzzle, std::vector<Diagnostic>> ReadPuzzleFile(const std::filesys
     return ParsePuzzle(*text, std::move(file));
 }
 
-std::expected<Machine, std::vector<Diagnostic>> LoadPuzzleFile(const std::filesystem::path& path) {
+std::expected<Machine, std::vector<Diagnostic>>
+LoadPuzzleFile(const std::filesystem::path& path,
+               const std::optional<std::filesystem::path>& roms) {
     const auto puzzle = ReadPuzzleFile(path);
     if (!puzzle) {
         return std::unexpected(puzzle.error());
     }
-    return LoadMachine(*puzzle, MachineRoot(path));
+    return LoadMachine(*puzzle, MachineRoot(path), roms);
 }
 
 bool HasBoard(const std::filesystem::path& netlist) {
@@ -557,10 +566,11 @@ bool HasBoard(const std::filesystem::path& netlist) {
 }
 
 std::expected<Machine, std::vector<Diagnostic>>
-LoadNetlistMachine(const std::filesystem::path& netlist) {
+LoadNetlistMachine(const std::filesystem::path& netlist,
+                   const std::optional<std::filesystem::path>& roms) {
     const auto path = std::filesystem::absolute(netlist);
     return LoadMachine(Puzzle{.file = path.filename().string(), .machine = path.stem().string()},
-                       MachineRoot(path));
+                       MachineRoot(path), roms);
 }
 
 }  // namespace bw

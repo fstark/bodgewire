@@ -1,5 +1,6 @@
 add_library(bw_netlist STATIC
   builder.cpp
+  rom_directory.cpp
   diagnostic.cpp
   net_pins.cpp
   parser.cpp

@@ -28,8 +28,9 @@ struct WireEnds {
 };
 
 // root/netlists/<machine>.bwn + root/boards/<machine>/<machine>.kicad_pcb; all semantic errors.
-std::expected<Machine, std::vector<Diagnostic>> LoadMachine(const Puzzle& puzzle,
-                                                            const std::filesystem::path& root);
+std::expected<Machine, std::vector<Diagnostic>>
+LoadMachine(const Puzzle& puzzle, const std::filesystem::path& root,
+            const std::optional<std::filesystem::path>& roms = std::nullopt);
 
 // Design netlist + Board + Faults. Repairs edit it; build() makes the Circuit for one power-on.
 class Machine {
@@ -83,7 +84,8 @@ private:
     // The dry pin whose pad covers `at`, read as its leg: only with F.Cu active.
     std::optional<PinRef> dryLegAt(Layer layer, Point at) const;
     friend std::expected<Machine, std::vector<Diagnostic>>
-    LoadMachine(const Puzzle&, const std::filesystem::path&);
+    LoadMachine(const Puzzle&, const std::filesystem::path&,
+                const std::optional<std::filesystem::path>&);
 
     Netlist design_;
     std::string name_;
@@ -113,12 +115,16 @@ std::filesystem::path MachineRoot(const std::filesystem::path& file);
 std::expected<Puzzle, std::vector<Diagnostic>> ReadPuzzleFile(const std::filesystem::path& path);
 
 // ReadPuzzleFile + LoadMachine with root = MachineRoot(path).
-std::expected<Machine, std::vector<Diagnostic>> LoadPuzzleFile(const std::filesystem::path& path);
+// `roms`: a ROM directory (ApplyRomDirectory, P5q2), applied to the design before it is built.
+std::expected<Machine, std::vector<Diagnostic>>
+LoadPuzzleFile(const std::filesystem::path& path,
+               const std::optional<std::filesystem::path>& roms = std::nullopt);
 
 // root/netlists/<stem>.bwn whose root/boards/<stem>/<stem>.kicad_pcb exists.
 bool HasBoard(const std::filesystem::path& netlist);
 // The fault-free Machine of such a netlist.
 std::expected<Machine, std::vector<Diagnostic>>
-LoadNetlistMachine(const std::filesystem::path& netlist);
+LoadNetlistMachine(const std::filesystem::path& netlist,
+                   const std::optional<std::filesystem::path>& roms = std::nullopt);
 
 }  // namespace bw

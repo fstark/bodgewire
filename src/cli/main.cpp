@@ -33,6 +33,8 @@
 #include "machine/repair.hpp"
 #include "machine/typing.hpp"
 #include "netlist/builder.hpp"
+#include "netlist/parser.hpp"
+#include "netlist/rom_directory.hpp"
 #include "netlist/units.hpp"
 #include "sim/simulator.hpp"
 #include "sim/vcd.hpp"
@@ -51,7 +53,7 @@ constexpr std::string_view kUsage =
     "[--tv FILE.bmp] [--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,"
     "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
     "[--probe REF.PIN,...] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
-    "[--type REF:START:TEXT]\n"
+    "[--type REF:START:TEXT] [--roms DIR]\n"
     "       bw export-kicad <file.bwn> -o <file.net>\n"
     "       bw check-board <file.bwn> <file.kicad_pcb>\n"
     "       bw place <file.bwn> <file.place> -o <file.kicad_pcb> [--seed 1] [--tries 4] "
@@ -71,6 +73,7 @@ struct Options {
     std::vector<ButtonPress> press;
     std::vector<KnobSetting> knob;
     std::vector<Typing> type;
+    std::optional<std::string> roms;  // --roms DIR: ROM files named by reference (P5q2)
 };
 
 int UsageError(std::string_view message) {
@@ -111,14 +114,16 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
         }
         if (arg != "--time" && arg != "--seed" && arg != "--record" && arg != "--vcd" &&
             arg != "--tv" && arg != "--repair" && arg != "--probe" && arg != "--press" &&
-            arg != "--knob" && arg != "--type") {
+            arg != "--knob" && arg != "--type" && arg != "--roms") {
             return "unknown option " + std::string(arg);
         }
         if (i + 1 >= args.size()) {
             return std::string(arg) + " needs a value";
         }
         const std::string_view value = args[++i];
-        if (arg == "--time") {
+        if (arg == "--roms") {
+            options.roms = std::string(value);
+        } else if (arg == "--time") {
             const auto time = ParseDuration(value);
             if (!time) {
                 return time.error();
@@ -176,9 +181,31 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
     return std::nullopt;
 }
 
-// Diagnostics printed; nullptr on errors.
-std::unique_ptr<LoadedCircuit> Load(const std::string& file) {
-    auto result = LoadNetlistFile(file);
+// Diagnostics printed; nullptr on errors. `roms`: a ROM directory (ApplyRomDirectory).
+std::unique_ptr<LoadedCircuit> Load(const std::string& file,
+                                    const std::optional<std::string>& roms = std::nullopt) {
+    LoadResult result = std::unexpected(std::vector<Diagnostic>{});
+    if (!roms) {
+        result = LoadNetlistFile(file);
+    } else {
+        std::ifstream in(file, std::ios::binary);
+        std::stringstream text;
+        text << in.rdbuf();
+        auto netlist = ParseNetlist(text.str(), std::filesystem::path(file).filename().string());
+        if (!in || !netlist) {
+            result = std::unexpected(
+                netlist ? std::vector<Diagnostic>{{file, 0, Severity::Error, "cannot read file"}}
+                        : netlist.error());
+        } else {
+            ResolveContentsPaths(*netlist, std::filesystem::absolute(file).parent_path());
+            if (const auto applied = ApplyRomDirectory(*netlist, *roms); !applied) {
+                result = std::unexpected(
+                    std::vector<Diagnostic>{{netlist->file, 0, Severity::Error, applied.error()}});
+            } else {
+                result = BuildCircuit(*netlist);
+            }
+        }
+    }
     if (!result) {
         for (const Diagnostic& d : result.error()) {
             std::println(stderr, "{}", Format(d));
@@ -232,7 +259,7 @@ std::optional<std::string> Repair(Machine& machine, std::string_view repair) {
 // Diagnostics printed; nullptr on errors (`usage` set for a bad --repair).
 std::unique_ptr<LoadedCircuit> LoadPuzzle(const Options& options,
                                           std::optional<std::string>& usage) {
-    auto machine = LoadPuzzleFile(options.file);
+    auto machine = LoadPuzzleFile(options.file, options.roms);
     if (!machine) {
         for (const Diagnostic& d : machine.error()) {
             std::println(stderr, "{}", Format(d));
@@ -464,7 +491,8 @@ int Run(std::span<char*> args) {
     }
 
     std::optional<std::string> usage;
-    const auto result = IsPuzzle(options.file) ? LoadPuzzle(options, usage) : Load(options.file);
+    const auto result =
+        IsPuzzle(options.file) ? LoadPuzzle(options, usage) : Load(options.file, options.roms);
     if (usage) {
         return UsageError(*usage);
     }

@@ -5,11 +5,13 @@
 #include <deque>
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <memory>
 #include <optional>
 #include <print>
 #include <set>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -25,6 +27,8 @@
 #include "machine/typing.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
+#include "netlist/parser.hpp"
+#include "netlist/rom_directory.hpp"
 #include "netlist/units.hpp"
 #include "parts/catalogue.hpp"
 #include "session/session.hpp"
@@ -58,7 +62,7 @@ constexpr std::string_view kUsage =
     "[--view 1us[:+20us]] [--marker +2us] [--cursor +3.7us] "
     "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
-    "[--type REF:START:TEXT] [--manual user] [--screenshot OUT.png [--after 1s]]";
+    "[--type REF:START:TEXT] [--roms DIR] [--manual user] [--screenshot OUT.png [--after 1s]]";
 
 struct Options {
     std::filesystem::path file;
@@ -78,6 +82,7 @@ struct Options {
     std::optional<Time> delay;         // Oscilloscope Trigger delay, ps
     std::vector<ButtonPress> press;
     std::vector<KnobSetting> knob;
+    std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
     std::vector<Typing> type;
     bool userManual = false;
 };
@@ -137,7 +142,9 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
         if (i + 1 >= argc) {
             return std::nullopt;
         }
-        if (arg == "--screenshot") {
+        if (arg == "--roms") {
+            options.roms = argv[++i];
+        } else if (arg == "--screenshot") {
             options.screenshot = argv[++i];
         } else if (arg == "--after") {
             const auto duration = ParseDuration(argv[++i]);
@@ -235,7 +242,7 @@ void Print(std::span<const Diagnostic> diagnostics) {
 }
 
 // Diagnostics printed; no session on errors.
-Loaded Load(const std::filesystem::path& file) {
+Loaded Load(const std::filesystem::path& file, const std::optional<std::filesystem::path>& roms) {
     std::expected<Machine, std::vector<Diagnostic>> machine =
         std::unexpected(std::vector<Diagnostic>{});
     std::string title, brief;
@@ -247,11 +254,27 @@ Loaded Load(const std::filesystem::path& file) {
         }
         title = puzzle->title;
         brief = puzzle->brief;
-        machine = LoadMachine(*puzzle, MachineRoot(file));
+        machine = LoadMachine(*puzzle, MachineRoot(file), roms);
     } else if (HasBoard(file)) {
-        machine = LoadNetlistMachine(file);
+        machine = LoadNetlistMachine(file, roms);
     } else {
-        auto result = LoadNetlistFile(file);
+        LoadResult result = LoadNetlistFile(file);
+        if (roms) {
+            std::ifstream in(file, std::ios::binary);
+            std::stringstream text;
+            text << in.rdbuf();
+            auto netlist = ParseNetlist(text.str(), file.filename().string());
+            if (!netlist) {
+                Print(netlist.error());
+                return {};
+            }
+            ResolveContentsPaths(*netlist, std::filesystem::absolute(file).parent_path());
+            if (const auto applied = ApplyRomDirectory(*netlist, *roms); !applied) {
+                std::println(stderr, "bw_ui: {}", applied.error());
+                return {};
+            }
+            result = BuildCircuit(*netlist);
+        }
         if (!result) {
             Print(result.error());
             return {};
@@ -798,7 +821,7 @@ int main(int argc, char** argv) {
         std::println(stderr, "{}", kUsage);
         return kExitUsage;
     }
-    Loaded loaded = Load(options->file);
+    Loaded loaded = Load(options->file, options->roms);
     if (!loaded.session) {
         return kExitErrors;
     }
