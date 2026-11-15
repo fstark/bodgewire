@@ -2,48 +2,33 @@
 
 Implements [BW2001_ROMS.md](BW2001_ROMS.md). Recipes: [ADD_MACHINE.md](../recipes/ADD_MACHINE.md) §2 (netlist, manuals), §3 (Board).
 
-## 1. ROM overrides — `src/netlist/rom_override.{hpp,cpp}` (bw_netlist)
+## 1. A ROM directory — `src/netlist/rom_directory.{hpp,cpp}` (bw_netlist)
 
 ```cpp
-// A ROM socket's contents chosen at run time (P5q2): the Board unchanged.
-struct RomOverride {
-    std::string reference;          // "UH1"
-    std::filesystem::path contents; // a .rom or .bin, absolute or relative to the current directory
-};
-
-// "UH1=path,UH5=path" → overrides; error text otherwise.
-std::expected<std::vector<RomOverride>, std::string> ParseRomOverrides(std::string_view text);
-
-// A named ROM set ("pet-basic1": the seven BASIC 1 files of external/roms/pet/ by socket,
-// tests/data/pet_roms.md) under `root` (the repository: MachineRoot). Error naming the set's
-// missing files, or an unknown name.
-std::expected<std::vector<RomOverride>, std::string> RomSet(std::string_view name,
-                                                            const std::filesystem::path& root);
-
-// Replaces each named Part's contents= (and drops its offset=) in a parsed netlist, after
-// ResolveContentsPaths. Errors: unknown reference; a Part without contents= (not a ROM).
-std::expected<void, std::string> ApplyRomOverrides(Netlist& netlist,
-                                                   std::span<const RomOverride> overrides);
+// Replaces the contents= of each ROM Part (a Part with contents=) that has a file named after
+// its reference in `directory` (UH1.bin or UH1.rom), and drops its offset= (P5q2). The
+// directory is made absolute here: the files are read again at every build. Errors: the
+// directory missing; a file matching no ROM Part; two files for one Part.
+std::expected<void, std::string> ApplyRomDirectory(Netlist& netlist,
+                                                   const std::filesystem::path& directory);
 ```
 
-The file is read by the Part when the netlist is built, as any `contents=` (size and format checked there: a `.bin` of the wrong size gives the existing error). The BASIC 1 table moves from `tests/netlist/external_rom.hpp` (`kPetBasic1`) to `rom_override.cpp` (`RomSet`); the test header keeps `ExternalRom` and uses the table through the new header.
+Called after `ResolveContentsPaths`, before `BuildCircuit`. The file is read by the Part, as any `contents=`: a `.bin` of the wrong size or a `.rom` past one chip gives the existing errors (`rom_contents.cpp:197`; `CreateRom` refuses `offset=` with a `.bin`, so `offset=` must go). Only file names `REF.bin` / `REF.rom` count; other files are ignored (a README may sit there).
 
 ## 2. Loading — `src/machine/machine.{hpp,cpp}`, `src/cli/main.cpp`, `src/ui/main.cpp`
 
-- `LoadNetlistMachine(path, std::span<const RomOverride> roms = {})`: `LoadMachine` gains the overrides and applies them to the parsed design after `ResolveContentsPaths`, before `BuildCircuit`. The Machine keeps the overridden design, so every rebuild (power-on after a repair) has the same ROMs. The Board check is unchanged (it compares Nets, not contents).
-- `bw run` and `bw_ui`: `--rom REF=FILE,…` and `--roms NAME`; the set first, then each `--rom`. `bw run` (netlist only) applies them in its own load (`LoadNetlistFile` becomes parse + resolve + apply + build there); `bw_ui` passes them to `LoadNetlistMachine`, or applies them on its board-less path. Usage lines and their errors as the other options'.
-- `.bwp` Puzzle files: no ROM line (not needed by P5r yet).
+- `LoadMachine(puzzle, root, std::optional<std::filesystem::path> roms = {})` applies it to the parsed design after `ResolveContentsPaths` (the `friend` declaration in `machine.hpp:85` updated); `LoadNetlistMachine(path, roms)` and `LoadPuzzleFile(path, roms)` pass it. The Machine keeps the changed design, so every rebuild (power-on after a repair: `Machine::build`, `machine.cpp:441`, from `design_`) has the same ROMs.
+- `bw run` and `bw_ui`: `--roms DIR` for a `.bwn` and a `.bwp` alike; `bw run` on a netlist parses, resolves, applies and builds (in place of `LoadNetlistFile`); `bw_ui` passes it to `LoadNetlistMachine` / `LoadMachine`, or applies it on its board-less path. Usage lines; an error from `ApplyRomDirectory` is a usage error (exit 2) with its message.
 
 ## 3. Netlist, Board, manuals
 
-- `netlists/bw2001.bwn`: `part UH2 2316B select=LLH contents=../roms/empty.rom`, `part UH6 2316B select=LHH contents=../roms/empty.rom`, on the Nets of `UH1` and `UH5` but their `CS1` on `SELD_N` (as the transcription: SHEET2.md). `roms/empty.rom`: a copy of `tests/data/empty.rom` (every word `$FF`), committed for Machines.
-- Board: `bw export-kicad netlists/bw2001.bwn -o …/bw2001.net`; **the user** imports it into the routed `bw2001.kicad_pcb` (KiCad: File → Import → Netlist, or Tools → Update PCB from Netlist), places `UH2` in cell H2 and `UH6` in cell H6 lying as their neighbours (90°), and routes them. `boards/bw2001/bw2001.place` needs no change (`grid pet` places every PET chip; `place_drc_bw2001` then has the two).
-- Manuals: service manual `UH2` "ROM socket $D000–$D7FF: empty with our firmware, BASIC 1's 901447-03 with Commodore's", `UH6` likewise `$D800`; the user manual: how to run Commodore's ROMs (`--roms pet-basic1`, the files in `external/roms/pet/`).
-- `docs/machines/130-bw2001/BW2001.md`, `BW2001_DESIGN.md`: the sockets and the ROM choice.
+- `netlists/bw2001.bwn`: `part UH2 2316B select=LLH contents=../roms/empty.rom`, `part UH6 2316B select=LHH contents=../roms/empty.rom`, on the Nets of `UH1` and `UH5`, their `CS1` on `SELD_N` (sheet2.bwn:31–32, 46–74; `SELD_N` exists: `UG2.Y13_N UG4.2C`). `roms/empty.rom`: a copy of `tests/data/empty.rom` (every word `$FF`). Our firmware never reads `$D000`–`$DFFF`.
+- Board: `bw export-kicad netlists/bw2001.bwn -o <scratch>/bw2001.net` (not committed). **The user**: in KiCad's PCB editor File → Import → Netlist, with "Replace footprints with ones from the netlist" and "Delete footprints with no symbols" unchecked (the existing footprints match by reference and timestamp: `kicad_netlist.cpp:86`, `kicad_pcb_writer.cpp:139`, so only `UH2`, `UH6` are added); place `UH2` in cell H2, `UH6` in H6, lying as their neighbours (90°); rip up and reroute the tracks now crossing those cells (about 21 segments and a via at H2, 29 segments at H6, measured by the review), then route the two chips; DRC 0 errors. `boards/bw2001/bw2001.place` needs no change (`grid pet` places every PET chip).
+- Manuals: the service manual's `UH2` "ROM socket $D000–$D7FF: empty with our firmware (BASIC 1's 901447-03 in Commodore's set)", `UH6` likewise; the user manual: running Commodore's ROMs (`--roms DIR`, files named `UH1.bin` …).
+- `tests/data/pet_roms.md`: the `pet-basic1` directory of links (`cd external/roms && mkdir pet-basic1 && ln -s ../pet/rom-1-c000.901447-01.bin pet-basic1/UH1.bin` …, one per socket).
+- Docs: BW2001.md and BW2001_DESIGN.md (the "left out" row for `UH2`, `UH6` flipped); ADD_MACHINE: every chip location of a real board kept, and running a Machine on other ROMs; ARCHITECTURE: the P7 row's ROM directory.
 
 ## 4. Tests
 
-- `tests/netlist/rom_override_test.cpp`: parse (one, several, a missing `=`, an empty file); apply (contents replaced, `offset=` dropped, unknown reference, not a ROM); `RomSet("pet-basic1")` (seven, by socket; a missing file named, with the files absent: a temporary root); unknown set.
-- `tests/cli/…` (where `bw run`'s options are tested): `--rom`, `--roms` accepted and refused.
-- `tests/machines/bw2001_test.cpp`: `Basic1Circuit` becomes `LoadNetlistMachine(path, RomSet("pet-basic1"))->build()` (skipped without the files); the P5q cases unchanged.
-- `tests/data/bw2001_firmware.bwn`, `bw2001_bench_test.cpp`: unchanged (the bench keeps its own replacement, or uses `ApplyRomOverrides`).
+- `tests/netlist/rom_directory_test.cpp` (a temporary directory, small ROM Parts): replaced by `.bin` and by `.rom`, `offset=` dropped, a Part without a file unchanged, a missing directory, a stray `UX9.bin`, `UH1.bin` with `UH1.rom`, a README ignored. No test of `bw run`'s option parsing exists (`src/cli` has none); the option is a thin call of this function, checked by hand in the release check.
+- `tests/machines/bw2001_test.cpp`, after the Board has `UH2`/`UH6` (phase 2's end): `Basic1Circuit` makes a temporary directory of links named by socket to `kPetBasic1`'s files (`tests/netlist/external_rom.hpp`, unchanged: `external_rom_test`, the bench and this test use it), then `LoadNetlistMachine(path, dir)` and `build()` (SKIP without the files); the netlist-text copy (`VariantCircuit` for BASIC 1) goes.

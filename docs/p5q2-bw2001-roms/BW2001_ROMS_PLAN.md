@@ -8,20 +8,17 @@ Each phase ends with its fence: `cmake --build --preset debug` clean, `clang-for
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | ROM overrides, `--rom`, `--roms` | |
-| 2 | `UH2`, `UH6` in the netlist and manuals; the Board's import (user routes) | |
-| 3 | The Board, BASIC 1 on it, release check, docs | |
+| 1 | `ApplyRomDirectory`, `--roms DIR` | |
+| 2 | `UH2`, `UH6`: netlist, Board (user routes), BASIC 1 on the Board, docs | |
 
-### 1. ROM overrides, `--rom`, `--roms` (design §1, §2, §4)
+### 1. `ApplyRomDirectory`, `--roms DIR` (design §1, §2, §4 first item)
 
-Fence: `-R "rom|cli|machine|bw2001 bench|external"`. Commit `machines: ROMs chosen at run time, --rom and --roms (P5q2)`.
+Fence: `-R "rom|machine|external"`; by hand in release: `bw run netlists/bw2001.bwn --roms <a directory with a bad file>` exits 2 with the message. Commit `machines: ROMs chosen at run time from a directory, --roms (P5q2)`.
 
-### 2. `UH2`, `UH6` in the netlist and manuals; the Board's import (design §3)
+### 2. `UH2`, `UH6`: netlist, Board, BASIC 1 on the Board, docs (design §3, §4 second item)
 
-The netlist, `roms/empty.rom`, the manuals; the KiCad netlist exported. Nothing committed until the Board matches (the Board loops and `drc_bw2001` are red meanwhile). **Stop for the user**: import, place `UH2`/`UH6` at H2/H6, route them.
-
-### 3. The Board, BASIC 1 on it, release check, docs
-
-`check-board`; `-R "bw2001|boards|electrical|scene|session|drc|manuals|place"`; the release-only BASIC 1 case on the Board; `bw_ui netlists/bw2001.bwn --roms pet-basic1` screenshot; ADD_MACHINE (running a Machine on other ROMs), BW2001 docs, ARCHITECTURE row. Commit `bw2001: UH2 and UH6, Commodore's ROMs on the Board (P5q2)`.
+The netlist, `roms/empty.rom`, the manuals; the KiCad netlist exported to a scratch path. **Stop for the user** (import, place, reroute, route; design §3). Nothing is committed during the stop (the Board loops and `drc_bw2001` are red until the routing). Then `check-board`; `-R "bw2001|boards|electrical|scene|session|drc|manuals|place|rom"`; the release-only BASIC 1 case on the Board; `bw_ui netlists/bw2001.bwn --roms external/roms/pet-basic1` screenshot; the docs (design §3). Commit `bw2001: UH2 and UH6, Commodore's ROMs on the Board (P5q2)`.
 
 ## Implementation notes
+
+- Docs review (after the first docs commit, which went in before it: fixed here), with the user's `--roms DIR` design (2026-11-15, files named by reference) replacing `--rom`/`--roms NAME`: the BASIC 1 case changes only once the Board has `UH2`/`UH6`; no `bw run` option tests exist (the function is tested); the BASIC 1 table stays in the test header; `.bwp` takes the flag too; a `.rom` holds one chip; the directory made absolute (re-read at every build); KiCad 10's import is File → Import → Netlist, its two replace/delete options off, and the tracks through H2 and H6 rerouted; the routing stop inside one phase.
