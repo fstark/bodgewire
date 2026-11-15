@@ -14,6 +14,8 @@ The BW-2001 is two machines on one board: the video (counters, video RAM, charac
 
 ## The Puzzles
 
+As built (2026-11-15): all fifteen kept; the tables below are as planned. Changed when run: Odd E's dot is a lit one in the glyph's upper half (`$2A` `O2`), a gap in the stem cannot be seen; Snow's cell is in the scroll's first loop (`$E0D5`): `putch`'s wait gave only a few specks, and the brief says "whenever the screen scrolls"; Bad zero page and Wrong chip clear the screen and stop, a blank screen with a few stray characters on seeds 1–3, not the random one. Symptoms as measured: [BW2001.md](../machines/130-bw2001/BW2001.md#puzzles) and the plan's notes.
+
 Faults tried on the Board's circuit before writing this (`bw run … --tv`, seed 1); the codes and counts marked "measured" are to be confirmed by the tests, the others are from the trials.
 
 **A. The picture**

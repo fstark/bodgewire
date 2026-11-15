@@ -17,6 +17,9 @@ Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice), `b1c73bc` 
 - A self-test points at a place, not a part: pair a Puzzle where the swap it suggests repairs it with one where that swap fails (BW-1 `dead_machine` and `wrong_suspect`: the same bad bit, a chip and a cracked Trace).
 - A stuck cell shows only against what the program writes there: a vector written `$00` needs a stuck 1; a ROM's unused fill is `$FF`, so a cell there needs a stuck 0. A fault on the CPU's bus also breaks the ROM fetches, so a self-test in ROM cannot run either.
 - A wandering CPU is not always seed-dependent: a few faults land on the same wrong state every seed (BW-1 `aliased_page` starts on `1D27`, `half_byte` on `PA55`). Run seeds 1–3 before writing "random" into a brief.
+- A program-ROM cell can break one code path exactly (BW-2001 `snow`: one bit of a wait's `and #$20` makes the scroll stop waiting for the retrace), where a random cell only crashes the program. Pick the path whose failure shows most (the scroll's wait, not one character's), and let the self-test's ROM sum be the second clue.
+- A memory fault in what the self-test reports through (a video RAM column) garbles the report too: use one cell away from the report's rows (BW-2001 `ghost_letter`).
+- A character ROM cell changes one dot: a lit dot in a glyph's empty space shows; a gap in a stroke is hidden by its lit neighbours on the TV (BW-2001 `odd_e`).
 - Pin Faults (stuck input, dry Joint) show nothing on the Board: the clue is the leg against the pad (a touch on a chip pad reads the leg with F.Cu active, the pad with B.Cu). A stuck input's leg reads the right signal while the chip acts wrong; a dry Joint's leg differs from its pad.
 
 ## File: `puzzles/<name>.bwp`
@@ -45,6 +48,9 @@ fault crack R6.2 D5.2 51%
 - Check it loads and shows the symptom: `./build/debug/src/cli/bw run puzzles/<name>.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`). `--probe` reads the leg (the pin's own Net).
 - `bw_ui --press` is read once per UI frame: hold a scripted press at least 100 ms (`--press SW1:50ms:200ms`), or it may be missed. `bw run --tv x.bmp` writes the last TV frame alone, quicker to read than a cropped screenshot. Convert it to view it (`sips -s format png x.bmp --out x.png`).
 - A crack or dry Joint leaves a TTL input high, but a Net with only MOS inputs (2513, 2518, 2524) reads X, a random bit at every read: on a data or control input that gives noise, not a symptom. Cut a MOS clock (it never rises: a 2524 fades), or use `stuck` on a MOS input (typewriter `lookalikes`, `copies`).
+- `stuck` on a 6520/6522 port pin drives its Net (the port is bidirectional), unlike a plain input; a port pin cracked off reads high (its pull-up). A stuck input that leaves the Net alone needs an input-only pin (a 6520's `CB1`).
+- A brief is one quoted string: no `\"` inside (write "the double quote").
+- `bw_ui --after` is wall time: on a slow Machine (BW-2001 0.15× in `bw_ui`) 3.5 s reaches about 0.5 s simulated; `bw run --tv` is quicker for trying Faults.
 - A short Trace stub at a large pad may have no crackable point: pick other pads or another `%`.
 - A crack only cuts one pad off alone if that pad is at an end of the routed Trace. Read the routing order first (the `segment`s of the Net in the `.kicad_pcb`); with the pad in the middle, crack on the other side and write the Symptom for the pads that float together (stopwatch `nineteen`).
 
