@@ -9,7 +9,8 @@
 
 namespace bw {
 
-enum class PinRole : std::uint8_t { Output, PullUp, PullDown, Supply, Load };
+// Series: a resistor end whose other end is on a signal Net (P5u).
+enum class PinRole : std::uint8_t { Output, PullUp, PullDown, Series, Supply, Load };
 
 struct NetPin {
     std::string reference;  // "U6"
@@ -23,7 +24,7 @@ struct NetPin {
 struct NetPins {
     std::string net;
     bool rail = false;            // GND or VCC
-    std::vector<NetPin> drivers;  // Output, PullUp, PullDown, Supply
+    std::vector<NetPin> drivers;  // Output, PullUp, PullDown, Series, Supply
     std::vector<NetPin> loads;    // everything else
 };
 

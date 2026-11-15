@@ -57,6 +57,17 @@ TEST_CASE("net pins: pull-up", "[netlist]") {
                                                         "U5 pin 1 CLR_N"});
 }
 
+TEST_CASE("net pins: series resistor on both its Nets", "[netlist]") {
+    auto result =
+        LoadNetlistFile(std::filesystem::path(BW_ROOT_DIR) / "tests/data/series_bench.bwn");
+    REQUIRE(result.has_value());
+    const NetPins a = DescribeNet(**result, "A");
+    CHECK(Texts(a.drivers) == std::vector<std::string>{"R1 pin 1 \u00b7 1k series", "U1 pin 2 1Y"});
+    const NetPins b = DescribeNet(**result, "B");
+    CHECK(Texts(b.drivers) ==
+          std::vector<std::string>{"R1 pin 2 \u00b7 1k series", "R2 pin 2 \u00b7 47k pull-up"});
+}
+
 TEST_CASE("net pins: rail", "[netlist]") {
     const auto design = Load("counter");
     const NetPins pins = DescribeNet(*design, "VCC");

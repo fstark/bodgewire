@@ -55,8 +55,11 @@ NetPins DescribeNet(const LoadedCircuit& design, std::string_view net) {
             pin.value = part.value;
             if (!result.rail) {
                 const Connection* other = FindConnection(design, c.reference, 1 - c.pin);
-                pin.role =
-                    other != nullptr && other->net == "VCC" ? PinRole::PullUp : PinRole::PullDown;
+                if (other == nullptr || !IsRail(other->net)) {
+                    pin.role = PinRole::Series;
+                } else {
+                    pin.role = other->net == "VCC" ? PinRole::PullUp : PinRole::PullDown;
+                }
             }
         } else {
             const PinSpec& spec = design.components.at(c.reference)->pins()[c.pin];
@@ -102,6 +105,8 @@ std::string FormatNetPin(const NetPin& pin) {
         return text + std::format(" \u00b7 {} pull-up", pin.value);
     case PinRole::PullDown:
         return text + std::format(" \u00b7 {} pull-down", pin.value);
+    case PinRole::Series:
+        return text + std::format(" \u00b7 {} series", pin.value);
     case PinRole::Supply:
         return text + " \u00b7 supply";
     case PinRole::Output:

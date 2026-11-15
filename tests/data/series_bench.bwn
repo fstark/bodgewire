@@ -1,0 +1,14 @@
+# Series resistor (P5u, docs/p5u-bw80-chips/BW80_CHIPS_DESIGN.md §4.3): U1's first inverter
+# drives A; R1 (1k) joins A to B, the second inverter's input; R2 (47k) pulls B up. B reads A
+# through R1 (1k beats 47k); with nothing on A, both read R2's 1.
+
+part J1 POWER
+part U1 74LS04
+part R1 R value=1k
+part R2 R value=47k
+
+net VCC U1.1A R2.1
+net A   U1.1Y R1.1
+net B   R1.2 R2.2 U1.2A
+net B_N U1.2Y
+net GND U1.3A U1.4A U1.5A U1.6A

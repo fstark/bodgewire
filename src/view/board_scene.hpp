@@ -64,7 +64,8 @@ public:
     std::optional<NetId> traceNet(std::size_t trace) const { return traceNets_[trace]; }
     std::optional<NetId> netOf(const Hit& hit) const;  // Component → nullopt
     std::string_view netName(NetId net) const;
-    // Pads of the design Net's Drivers (outputs, pull resistors, supply), in DescribeNet order.
+    // Pads of the design Net's Drivers (outputs, pull and series resistors, supply), in DescribeNet
+    // order.
     std::span<const ScenePad> drivers(NetId net) const;
 
     // Snapping (S8): pads within reach.pad or half their pitch, then vias, then Traces within
