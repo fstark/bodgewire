@@ -86,9 +86,9 @@ private:
     std::vector<Diagnostic> list_;
 };
 
-// A Title first, then exactly `required` headings, in order.
-void CheckShape(const Markdown& doc, Problems& problems,
-                std::span<const std::string_view> required) {
+// A Title first, then exactly `required` headings, in order; with `more`, any headings after them.
+void CheckShape(const Markdown& doc, Problems& problems, std::span<const std::string_view> required,
+                bool more = false) {
     if (doc.blocks.empty() || doc.blocks.front().kind != BlockKind::Title) {
         problems.add(doc.blocks.empty() ? 0 : doc.blocks.front().line, "must start with a # title");
     }
@@ -102,8 +102,11 @@ void CheckShape(const Markdown& doc, Problems& problems,
     for (const std::string_view name : required) {
         expected += (expected.empty() ? "" : ", ") + std::string(name);
     }
-    bool ok = headings.size() == required.size();
-    for (std::size_t i = 0; ok && i < headings.size(); ++i) {
+    if (more) {
+        expected += ", then any";
+    }
+    bool ok = more ? headings.size() >= required.size() : headings.size() == required.size();
+    for (std::size_t i = 0; ok && i < required.size(); ++i) {
         ok = headings[i].first == required[i];
     }
     if (!ok) {
@@ -162,8 +165,8 @@ std::vector<Diagnostic> CheckUserManual(const Markdown& doc, std::string_view fi
 std::vector<Diagnostic> CheckServiceManual(const Markdown& doc, std::string_view file,
                                            const LoadedCircuit& design) {
     Problems problems(file);
-    constexpr std::string_view kSections[] = {"Components"};
-    CheckShape(doc, problems, kSections);
+    constexpr std::string_view kSections[] = {"Components"};  // then a Machine's own (Self-test)
+    CheckShape(doc, problems, kSections, true);
     CheckReferences(doc, problems, design);
 
     std::uint32_t headingLine = 0;
