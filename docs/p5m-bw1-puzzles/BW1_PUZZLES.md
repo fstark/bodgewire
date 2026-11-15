@@ -16,7 +16,7 @@ The BW-1 is the most complex Machine so far, and its Puzzles show it: a fault ca
 
 ## The Puzzles
 
-Symptoms are predictions from the circuit until their phase runs them; only Dead machine is seen (seed 1, dark digits). A Puzzle whose fault shows nothing, or shows differently by seed where the brief cannot cover it, is changed or dropped and the plan says why (ADD_PUZZLE design rules).
+As built (2026-11-15): all nineteen kept; Two bits is in group C (it stops the self-test too); the symptoms as found, which corrected several below (Aliased page works but with wrong addresses, Half a byte shows `PA55`, No stop's address changes with what ran), are in [BW1.md](../machines/120-bw1/BW1.md#puzzles) and the plan's notes. The table below is as planned. Symptoms were predictions from the circuit until their phase ran them; only Dead machine is seen (seed 1, dark digits). A Puzzle whose fault shows nothing, or shows differently by seed where the brief cannot cover it, is changed or dropped and the plan says why (ADD_PUZZLE design rules).
 
 **A. Seen in normal use**
 

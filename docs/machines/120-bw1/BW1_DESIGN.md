@@ -12,7 +12,8 @@ roms/bw1_002.asm, .rom; roms/bw1_003.asm, .rom the two 6530 masks (P5k, unchange
 boards/bw1/bw1.place                           panel parts (bw place rules)
 boards/bw1/bw1.kicad_pcb, bw1.kicad_pro        Board (placed by bw place, routed by the user)
 manuals/bw1/user.md, service.md
-tests/machines/bw1_test.cpp
+tests/machines/bw1_test.cpp, bw1_puzzles_test.cpp, bw1_rig.{hpp,cpp}
+puzzles/*.bwp                                  19 Puzzles (P5m)
 ```
 
 ## Memory map
@@ -209,10 +210,40 @@ The other 16 chips, `X1` and the 7 resistors fill the chip grid by annealing. A 
 
 Layout constraints for the user: the parts as placed (no rotation); F.Cu/B.Cu, DRC 0 errors, 0 unconnected. `U24` pad 4 (`STRAP`) stays a bare pad with no track, reachable for the strap's Bodge Wire. Optional: the keypad's `ROW0`–`ROW2` and `PA0`–`PA6` routed as a visible matrix under the keys, the data and address buses grouped.
 
+## Puzzles
+
+`machine bw1` in each file (BW1.md, Puzzles). Each Fault was tried on seeds 1–3, the monitor and strapped, before its brief was written (P5m plan notes).
+
+| File | Fault line | Symptom (seed 1; seeds 1–3 the same unless said) | Repair |
+|---|---|---|---|
+| `odd_seven.bwp` | `fault cell U2.D3 rom $3EE 1` | `AD 0277`: the 7s are a, b, c, d; self-test `4C00xx` | swap `U2` |
+| `missing_bar.bwp` | `fault stuck U17.2Y3 0` | no `SEG_G` on any digit | swap `U17` |
+| `half_segment.bwp` | `fault crack DS3.A DS4.A 50%` | `DS4`–`DS6` without `SEG_A` | mend |
+| `bright_mess.bwp` | `fault stuck U24.Y6_N 0` | `DS3` lit with every digit: `0x7F` | swap `U24` |
+| `dead_da.bwp` | `fault crack U17.8 SW18.2 50%` | DA, `A`, `3` dead (`456 DA 77` shows `5677`); `SEG_D` still lit | mend |
+| `dead_row.bwp` | `fault crack U24.3 SW20.1 50%` | E, F, AD, DA, `+`, GO, PC dead | mend |
+| `deaf_keypad.bwp` | `fault switch SW19 closed` | `0200 xx`, no key; self-test `PA5512` | swap `SW19` |
+| `bad_byte.bwp` | `fault cell U5.DOUT $300 1` | `AD 0300 DA 00` shows `030080`; self-test `130080` | swap `U5` |
+| `aliased_page.bwp` | `fault stuck U7.A8 0` | `1D2746` at power-on, `AD 0300` shows `0320`; self-test `100020` | swap `U7` |
+| `no_stop.bwp` | `fault cell U2.D0 ram $3A 1` | `BRK` stops, ST shows a wrong address (it changes with what ran); self-test `27FA01` | swap `U2` |
+| `self_test_fails.bwp` | `fault cell U3.D2 ram $15 1` | works; self-test `379504` (75 ms) | swap `U3` |
+| `rom_test_fails.bwp` | `fault cell U3.D0 rom $380 0` | works; self-test `5800FF` (100 ms) | swap `U3` |
+| `dead_machine.bwp` | `fault column U9.DOUT 0` | dark; self-test `110008` | swap `U9` |
+| `wrong_suspect.bwp` | `fault crack U9.DOUT U13.3A 50%` | a few frozen characters by seed (`18F` seed 1); self-test `100008`, also after a `U9` swap | mend |
+| `half_byte.bwp` | `fault crack U14.1 U13.4 50%` | `PA55` at power-on, keys ignored; self-test `11000E` | mend |
+| `wrong_block.bwp` | `fault stuck U4.A 0` | dark, strapped too; `K5`, `K7` never low; `U4` pin 15 high while `K6` low | swap `U4` |
+| `held_reset.bwp` | `fault switch SW23 closed` | dark, strapped too; `RES_N` low | swap `SW23` |
+| `sst_kills.bwp` | `fault stuck U15.3B 1` | SST at ON: one digit lit, no key; at OFF `1C0085` | swap `U15` |
+| `two_bits.bwp` | `fault bridge U1.31 U1.30` | dark or one frozen digit by seed, strapped too; `D2` = `D3` | cut the bridge |
+
+Self-test codes are read through a Bodge Wire from `U24` pad 4 to `U2` pad 2 (`Bw1Circuit(machine, true)` in `bw1_rig`); the self-test writes before it reads, so its codes are checked on seed 1. A repair is checked by the monitor's `0200`, or for a Puzzle the monitor does not show, the self-test's `888888` at 300 ms (tests 1–5 passed); only `deaf_keypad` runs to `PA55` (3.2 s simulated, about 2 min in debug).
+
+Not used: a cell or Trace the monitor never reads with no self-test test over it (`U3`'s port pins); a crack on `PA0`–`PA6` before `U17` (the segment floats lit, not a key fault); `NMIV` bits 1, 4, 6 stuck (they land on working instructions: ST still stops); `TABLE` bit 7 (`PA7` unconnected); ghosting (two keys held).
+
 ## Manuals
 
 - `manuals/bw1/user.md`: power `J1`; the display shows an address and the byte there; AD, DA, `+`, GO, PC, ST, RS and SST as BW1.md, When it works; typing a program at `$0200` and running it; the PC keys.
-- `manuals/bw1/service.md`: Components, one bullet per reference in netlist order (`X1`, `J1`, each `U5`–`U12`, `DS1`–`DS6`, `SW1`–`SW24`, `R1`–`R7` its own): `U4` address decoder (`A10`–`A12` to `K0`, `K5`, `K6`, `K7`); `U2` the monitor at $1C00–$1FFF, RAM at $17C0, ports at $1740, `PA0`–`PA6` segments and keypad columns, `PB1`–`PB4` to `U24`; `U3` the self-test at $1800, RAM at $1780, ports at $1700 (unused); `U24` display and keypad scanner, "output 3 (pad 4) is the self-test strap: joined to `PA0`, reset runs the self-test"; `U17` segment driver; `SW24` "SST: on, `NMI_N` follows `SST_N`".
+- `manuals/bw1/service.md`: Components and Self-test (P5m: how to strap it, the tests' numbers, reading a failure, which chip holds which bit), one bullet per reference in netlist order (`X1`, `J1`, each `U5`–`U12`, `DS1`–`DS6`, `SW1`–`SW24`, `R1`–`R7` its own): `U4` address decoder (`A10`–`A12` to `K0`, `K5`, `K6`, `K7`); `U2` the monitor at $1C00–$1FFF, RAM at $17C0, ports at $1740, `PA0`–`PA6` segments and keypad columns, `PB1`–`PB4` to `U24`; `U3` the self-test at $1800, RAM at $1780, ports at $1700 (unused); `U24` display and keypad scanner, "output 3 (pad 4) is the self-test strap: joined to `PA0`, reset runs the self-test"; `U17` segment driver; `SW24` "SST: on, `NMI_N` follows `SST_N`".
 
 ## Per-Machine checks
 

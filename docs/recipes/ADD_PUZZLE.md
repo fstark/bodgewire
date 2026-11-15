@@ -2,7 +2,7 @@
 
 A hand-placed fault on an existing Machine. Content work: no new code.
 
-Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice). Crack syntax and placement: [CRACK_PLACEMENT.md](../p4e-crack-placement/CRACK_PLACEMENT.md).
+Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice), `b1c73bc` (BW-1 RAM Puzzles, the self-test as a symptom). Crack syntax and placement: [CRACK_PLACEMENT.md](../p4e-crack-placement/CRACK_PLACEMENT.md).
 
 ## Design rules
 
@@ -13,6 +13,10 @@ Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice). Crack synt
 - A memory Fault belongs where the Machine shows the memory (a character or message ROM, video RAM): in program memory it mostly crashes the program, which only tells the player "swap". Check which words the program really uses: an address line that aliases unused words shows nothing.
 - On a CPU's bus a cut data line keeps its bus charge (the last value driven or pulled): where only resistors drive it (100 Heartbeat) a crack shows nothing; use `stuck` on the CPU's pin. A Fault that sends a CPU wandering through the open bus and random RAM depends on the power-on seed. `bw_ui` always powers on with seed 1 (another only from the Debug panel), so the brief describes seed 1; run other seeds too (`bw run --seed N`) as a robustness check, note what they do in the Machine design and test a seed of each kind (110 `blackout`).
 - Each Puzzle on a Machine should teach something different (stuck output, stuck input, broken trace, bridge, dead rail, dry Joint).
+- Showing a fault may take an action the manuals document: pressing a button, typing, running a self-test (BW-1: "it works, but the self-test fails" is a Puzzle). The Service Manual then says how to run it and read it (a Machine's own sections after Components: BW-1 `Self-test`).
+- A self-test points at a place, not a part: pair a Puzzle where the swap it suggests repairs it with one where that swap fails (BW-1 `dead_machine` and `wrong_suspect`: the same bad bit, a chip and a cracked Trace).
+- A stuck cell shows only against what the program writes there: a vector written `$00` needs a stuck 1; a ROM's unused fill is `$FF`, so a cell there needs a stuck 0. A fault on the CPU's bus also breaks the ROM fetches, so a self-test in ROM cannot run either.
+- A wandering CPU is not always seed-dependent: a few faults land on the same wrong state every seed (BW-1 `aliased_page` starts on `1D27`, `half_byte` on `PA55`). Run seeds 1–3 before writing "random" into a brief.
 - Pin Faults (stuck input, dry Joint) show nothing on the Board: the clue is the leg against the pad (a touch on a chip pad reads the leg with F.Cu active, the pad with B.Cu). A stuck input's leg reads the right signal while the chip acts wrong; a dry Joint's leg differs from its pad.
 
 ## File: `puzzles/<name>.bwp`
@@ -54,6 +58,8 @@ A Fault can be tested before its Puzzle file exists: `InlinePuzzle("machine led_
   2. repair (`machine.swap("U5")`, `machine.mend(XCrack().layer, XCrack().at)`, `machine.removeBridge({"U5","3"},{"U5","4"})`, `machine.resolder({"U15","13"})`), check the fault-free behaviour is back.
 - On a damaged Board the Nets are named from the Copper, not the netlist: check a fault by comparing pin Nets (`*PinNet(*loaded, "U12", "C") == *PinNet(*loaded, "U12", "LT_N")`), not `loaded->nets.at("L2")`.
 - A crack Puzzle: add a cached `const Crack& XCrack()` (`static const Crack crack = PuzzleCrack("<name>");`) to `tests/machine/test_points.{hpp,cpp}`, with a comment naming the Net, pads and Puzzle file.
+
+- Multiplexed digits (BW-1): read a digit while it alone is selected, and its segments by its own pins, not by Net name (`tests/machines/bw1_rig.hpp`: `display()`, `segments()`); a digit stuck selected is read by `segments()`.
 
 ## Docs
 
