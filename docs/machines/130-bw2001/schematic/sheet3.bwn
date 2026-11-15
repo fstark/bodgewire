@@ -1,0 +1,197 @@
+# PET 2001 main logic board 320137, sheet 3 of 3 (drawing #320135): video logic.
+# Transcribed from hp-3.png (320137.pdf p.3), checked against 320137-3.gif and the older board's
+# sheet (320081-3.gif). Pin numbers from the schematic mapped to the project's pin names
+# (datasheets/, src/parts/*). See sheet3_notes.md for the pin check-list, uncertain readings and
+# the timing derived from this wiring.
+#
+# Not in the netlist (notes only): resistors R7 R8 (470, crystal bias), R12 R27 R39 R40 R41 R43
+# R44 R45 R46 (1K pull-ups to +5V), the 2200 ohm load on VERT DRIVE, C3 22pF, C4 10pF, crystal
+# Y1, test points. The pulled-up Nets below have no driver: PU_Rnn = 'pulled up by Rnn'.
+# The 8 MHz crystal oscillator (crystal + two 74LS04 sections, 11->10 and 9->8, most likely D9)
+# is replaced by Y1, an OSC part driving the node the second inverter's output (pin 8) drove.
+
+# --- Parts (30 chips, the oscillator, the video connector)
+part Y1   OSC freq=8MHz                              # stands in for crystal Y1 + 74LS04 (D9?) pins 11-10, 9-8
+part UE2  74LS08                                     # gate 2 (4,5->6) clock gate; gate 1 (1,2->3) pixel; gates 3,4 not on this sheet
+part UC9  74LS93                                     # dot/character divider: /8 on CLK8 (QB QC QD), QA = H0
+part UB5  74LS93                                     # horizontal character counter H1-H4
+part UA1  74LS93                                     # scan line within a character row (QB QC QD = RA0-RA2), clocked by DIS.ON
+part UC8  74LS107                                    # FF1 load pulse, FF2 phi0 synchroniser
+part UC7  74LS107                                    # FF1 vertical step pulse, FF2 H5 (horizontal bit 5)
+part UC5  74LS107                                    # FF1 horizontal drive, FF2 DIS.ON (display enable)
+part UB6  74LS107                                    # vertical state (2-bit Johnson counter)
+part UD5  74LS107                                    # video address bits TA0 TA1
+part UD8  74LS00                                     # four gates
+part UC6  74LS08                                     # four gates
+part UC2  74LS00                                     # four gates
+part UB1  74LS20                                     # gate 2 (9,10,12,13->8) only; gate 1 not on this sheet
+part UE8  74LS20                                     # both gates
+part UE9  74LS20                                     # gate 1 (1,2,4,5->6) only; gate 2 not on this sheet
+part UD9  74LS04                                     # 3->4, 5->6 here (+ oscillator 9->8, 11->10, replaced by Y1)
+part UE5  74LS04                                     # 13->12, 11->10 here (location read 'E5'); others not on this sheet
+part UB2  74LS165                                    # dot shift register
+part UA2  2316B select=LLH                           # character ROM (CS1 pin 20, CS2 pin 18 to GND, CS3 pin 21 to +5V); contents left to the Machine
+part UC1  74LS74                                     # reverse-video bit pipeline (SD7)
+part UD6  74177                                      # video address TA2-TA5
+part UD7  74177                                      # video address TA6-TA9
+part UE6  74100                                      # row start latch LA2-LA9
+part UD2  74LS157                                    # SA0 SA1, video RAM R/W
+part UD3  74LS157                                    # SA2-SA5
+part UD4  74LS157                                    # SA6-SA9
+part UC3  2114                                       # video RAM SD0-SD3 ($8000, 1 KB)
+part UC4  2114                                       # video RAM SD4-SD7
+part UB3  74LS244                                    # SD0-SD3 <-> BD0-BD3
+part UB4  74LS244                                    # SD4-SD7 <-> BD4-BD7
+part J7   ?VIDEO_CONNECTOR                           # monitor connector, pins by number (1 video, 3 vert drive, 5 horz drive, 2 4 7 GND)
+
+# --- Dot clock and character clock
+net OSC8      Y1.OUT UE2.2B                          # E2 pin 5; on the board the 74LS04 pin 8 output (crystal oscillator)
+net PU_R46    UE2.2A                                 # E2 pin 4: R46 1K to +5V, TP5-1 (clock enable; pull low to stop the clock)
+net CLK8      UE2.2Y UC9.CKB UC8.2CLK UD8.3A UB2.CLK # 8 MHz dot clock: E2 pin 6 -> C9 pin 1, C8 pin 9, D8 pin 9, B2 pin 2
+net CLK2M     UC9.QC UC7.1CLK                        # C9 pin 8 -> C7 pin 12 (2 MHz)
+net CLK1M     UC9.QD UC9.CKA UC8.1CLK UC8.2J UD9.2A  # C9 pin 11 -> C9 pin 14, C8 pins 12 and 8, D9 pin 3 (1 MHz character clock)
+net CLK1M_N   UD9.2Y UC8.2K                          # D9 pin 4 -> C8 pin 11
+net PHI0      UC8.2Q_N                               # C8 pin 6: off-sheet arrow 'phi0' to the CPU (label also carries 'VERT DRIVE' text, see notes)
+net PHI0_N    UC8.2Q UC1.1CLK                        # C8 pin 5 -> C1 pin 3
+net CHLOAD    UC8.1Q UD8.3B UD5.2CLK UC1.2CLK        # C8 pin 3 -> D8 pin 10, D5 pin 9, C1 pin 11: short pulse after CLK1M falls
+net CHLOAD_N  UC8.1Q_N UB2.SH_LD_N                   # C8 pin 2 -> B2 pin 1 (TP3-5)
+net CHLOAD_CLR_N UD8.3Y UC8.1CLR_N                   # D8 pin 8 -> C8 pin 13
+net PU_R12    UC8.1J UC8.2CLR_N UC7.1K UC7.1CLR_N UC7.2J UC7.2K UC7.2CLR_N UD9.3A   # R12 1K to +5V, TP3-2
+net HCNT_CLR  UD9.3Y UC9.R01 UC9.R02 UB5.R01 UB5.R02 # D9 pin 6 -> C9 pins 2,3 and B5 pins 2,3 (low unless TP3-2 is grounded)
+
+# --- Horizontal character counter: H0 = C9 QA, H1-H4 = B5 QA-QD, H5 = C7 FF2 Q (64 characters a line)
+net H0        UC9.QA UB5.CKA UC5.2CLK                # C9 pin 12 -> B5 pin 14, C5 pin 9
+net H1        UB5.QA UB5.CKB                         # B5 pin 12 -> B5 pin 1
+net H2        UB5.QB UC5.1CLK                        # B5 pin 9 -> C5 pin 12
+net H3        UB5.QC UC6.2B                          # B5 pin 8 -> C6 pin 5
+net H4        UB5.QD UC7.2CLK UC6.1B                 # B5 pin 11 -> C7 pin 9, C6 pin 2
+net H5        UC7.2Q UC6.2A                          # C7 pin 5 -> C6 pin 4
+net H5_N      UC7.2Q_N UC6.1A                        # C7 pin 6 -> C6 pin 1
+net DISON_SET UC6.2Y UC5.2J                          # C6 pin 6 -> C5 pin 8 (H3 and H5)
+net DISON_CLR UC6.1Y UC5.2K                          # C6 pin 3 -> C5 pin 11 (H4 and not H5)
+net DIS_ON    UC5.2Q UC5.1J UA1.CKB UB1.2D UE9.1D UD5.1CLR_N UD5.2CLR_N UD6.CT_LOAD_N UD7.CT_LOAD_N   # 'DIS. ON': C5 pin 5 -> C5 pin 1, A1 pin 1, B1 pin 13, E9 pin 5, D5 pins 13 and 10, D6 pin 1, D7 pin 1
+net DIS_OFF   UC5.2Q_N UC5.1K UC6.4A                 # 'DIS. OFF': C5 pin 6 -> C5 pin 4, C6 pin 12
+net PU_R39    UC5.1CLR_N UC5.2CLR_N UD5.1J UD5.1K UD5.2J UD5.2K   # R39 1K to +5V, TP3-1
+net HORZ_DRIVE UC5.1Q_N J7.5                         # 'HORZ. DRIVE': C5 pin 2 -> J7 pin 5 (C5 pin 3 unused)
+
+# --- Vertical: scan line counter, state machine, end detection
+net RA0       UA1.QB UA2.A0 UB1.2B                   # A1 pin 9 -> A2 pin 8, B1 pin 10
+net RA1       UA1.QC UA2.A1 UB1.2C                   # A1 pin 8 -> A2 pin 7, B1 pin 12
+net RA2       UA1.QD UA2.A2 UB1.2A UE8.2C            # A1 pin 11 -> A2 pin 6, B1 pin 9, E8 pin 12
+net PU_R43    UA1.R02                                # A1 pin 3: R43 1K to +5V (A1 pin 14 CKA and pin 12 QA unconnected)
+net ROW7_N    UB1.2Y UC2.3B                          # B1 pin 8 -> C2 pin 10: low while DIS.ON on scan line 7
+net VSTEP     UC7.1Q UB6.1CLK UB6.2CLK UA1.R01       # C7 pin 3 -> B6 pins 12 and 9, A1 pin 2 (TP3-3)
+net VSTEP_N   UC7.1Q_N UD6.CLR_N UD7.CLR_N UC2.3A    # C7 pin 2 -> D6 pin 13, D7 pin 13, C2 pin 9
+net VSTEP_J   UC6.4Y UC7.1J                          # C6 pin 11 -> C7 pin 1
+net VEND      UD8.2Y UC6.4B                          # D8 pin 6 -> C6 pin 13: end of the current vertical state
+net PU_R41    UB6.1CLR_N UB6.2CLR_N                  # B6 pins 13, 10: R41 1K to +5V, TP3-4
+net VS0       UB6.1Q UB6.2J UC6.3A                   # B6 pin 3 -> B6 pin 8, C6 pin 9 (legend's right bit)
+net VS0_N     UB6.1Q_N UB6.2K UD8.4B                 # B6 pin 2 -> B6 pin 11, D8 pin 13
+net VS1       UB6.2Q UB6.1K UC6.3B                   # B6 pin 5 -> B6 pin 4, C6 pin 10 (legend's left bit)
+net VS1_N     UB6.2Q_N UB6.1J UD8.4A                 # B6 pin 6 -> B6 pin 1, D8 pin 12
+net VERT_DRIVE UD8.4Y J7.3                           # D8 pin 11 -> J7 pin 3 (2200 ohm to GND); low in state 00
+net SYNC      UC6.3Y UE9.1B UE5.6A                   # C6 pin 8 = VIDEO ON (state 11) -> E9 pin 2, E5 pin 13; off-sheet arrow 'SYNC' (out)
+net SYNC_N    UE5.6Y UE8.2D                          # E5 pin 12 -> E8 pin 13
+net PU_R27    UE8.2A                                 # E8 pin 9: R27 1K to +5V
+net BLKEND_N  UE8.2Y UD8.2B                          # E8 pin 8 -> D8 pin 5: blank state over (TA6, RA2, not VIDEO ON)
+net LAT_HI_N  UE8.1Y UE5.5A                          # E8 pin 6 -> E5 pin 11: LA6-LA9 all high
+net LAT_HI    UE5.5Y UD8.1B                          # E5 pin 10 -> D8 pin 2
+net END25_N   UD8.1Y UD8.2A                          # D8 pin 3 -> D8 pin 4: row start latch = 1000 (end of 25 rows)
+net LATCH_G   UC2.3Y UE6.1G UE6.2G                   # C2 pin 8 -> E6 pins 23, 12
+
+# --- Video address counter (TA = this sheet's name for the video side of the 157s)
+net TA0       UD5.2Q UD5.1CLK UD2.3A                 # D5 pin 5 -> D5 pin 12, D2 pin 11 (D5 pin 6 unused)
+net TA1       UD5.1Q UD6.CLK1 UD2.4A                 # D5 pin 3 -> D6 pin 8, D2 pin 14 (D5 pin 2 unused)
+net TA2       UD6.QA UD6.CLK2 UD3.1A UE6.1D1         # D6 pin 5 -> D6 pin 6, D3 pin 2, E6 pin 2
+net TA3       UD6.QB UD3.2A UE6.1D2                  # D6 pin 9 -> D3 pin 5, E6 pin 3
+net TA4       UD6.QC UD3.3A UE6.1D3                  # D6 pin 2 -> D3 pin 11, E6 pin 22
+net TA5       UD6.QD UD7.CLK1 UD3.4A UE6.1D4         # D6 pin 12 -> D7 pin 8, D3 pin 14, E6 pin 21
+net TA6       UD7.QA UD7.CLK2 UD4.1A UE6.2D1 UE8.2B  # D7 pin 5 -> D7 pin 6, D4 pin 2, E6 pin 11, E8 pin 10
+net TA7       UD7.QB UD4.2A UE6.2D2                  # D7 pin 9 -> D4 pin 5, E6 pin 10
+net TA8       UD7.QC UD4.3A UE6.2D3                  # D7 pin 2 -> D4 pin 11, E6 pin 15
+net TA9       UD7.QD UD4.4A UE6.2D4                  # D7 pin 12 -> D4 pin 14, E6 pin 16
+net LA2       UE6.1Q1 UD6.A                          # E6 pin 5 -> D6 pin 4
+net LA3       UE6.1Q2 UD6.B UD8.1A                   # E6 pin 4 -> D6 pin 10, D8 pin 1
+net LA4       UE6.1Q3 UD6.C                          # E6 pin 19 -> D6 pin 3
+net LA5       UE6.1Q4 UD6.D                          # E6 pin 20 -> D6 pin 11
+net LA6       UE6.2Q1 UD7.A UE8.1C                   # E6 pin 8 -> D7 pin 4, E8 pin 4
+net LA7       UE6.2Q2 UD7.B UE8.1D                   # E6 pin 9 -> D7 pin 10, E8 pin 5
+net LA8       UE6.2Q3 UD7.C UE8.1B                   # E6 pin 18 -> D7 pin 3, E8 pin 2
+net LA9       UE6.2Q4 UD7.D UE8.1A                   # E6 pin 17 -> D7 pin 11, E8 pin 1
+
+# --- CPU / video address multiplexer: S = SEL8 (high = CPU address BA, low = video TA)
+net SEL8      UC2.4A UD2.S UD3.S UD4.S               # off-sheet 'SEL8' (in); C2 pin 12, D2 D3 D4 pin 1
+net PU_R40    UD2.1A UD2.1B UD2.2A                   # D2 pins 2, 3, 5: R40 1K to +5V, TP4-1 (D2 pin 4, 1Y, unused)
+net RW_RAM    UD2.2B                                 # off-sheet 'R/W RAM' (in, from sheet 2): D2 pin 6
+net VRW_N     UD2.2Y UC3.WE_N UC4.WE_N UB3.2OE_N UB4.2OE_N   # D2 pin 7 -> C3 pin 10, C4 pin 10, B3 pin 19, B4 pin 19 ('R/W' at the 2114s)
+net BA0       UD2.3B                                 # D2 pin 10 (off-sheet, in)
+net BA1       UD2.4B                                 # D2 pin 13
+net BA2       UD3.1B                                 # D3 pin 3
+net BA3       UD3.2B                                 # D3 pin 6
+net BA4       UD3.3B                                 # D3 pin 10
+net BA5       UD3.4B                                 # D3 pin 13
+net BA6       UD4.1B                                 # D4 pin 3
+net BA7       UD4.2B                                 # D4 pin 6
+net BA8       UD4.3B                                 # D4 pin 10
+net BA9       UD4.4B                                 # D4 pin 13
+net SA0       UD2.3Y UC3.A0 UC4.A0                   # D2 pin 9 -> 2114 pin 5
+net SA1       UD2.4Y UC3.A1 UC4.A1                   # D2 pin 12 -> 2114 pin 6
+net SA2       UD3.1Y UC3.A2 UC4.A2                   # D3 pin 4 -> 2114 pin 7
+net SA3       UD3.2Y UC3.A3 UC4.A3                   # D3 pin 7 -> 2114 pin 4
+net SA4       UD3.3Y UC3.A4 UC4.A4                   # D3 pin 9 -> 2114 pin 3
+net SA5       UD3.4Y UC3.A5 UC4.A5                   # D3 pin 12 -> 2114 pin 2
+net SA6       UD4.1Y UC3.A6 UC4.A6                   # D4 pin 4 -> 2114 pin 1
+net SA7       UD4.2Y UC3.A7 UC4.A7                   # D4 pin 7 -> 2114 pin 17
+net SA8       UD4.3Y UC3.A8 UC4.A8                   # D4 pin 9 -> 2114 pin 16
+net SA9       UD4.4Y UC3.A9 UC4.A9                   # D4 pin 12 -> 2114 pin 15
+
+# --- Video RAM data SD0-SD7 (drawn as the bus 'SD7-0 (8)') and the CPU data buffers
+net SD0       UC3.IO1 UA2.A3 UB3.1A1 UB3.2Y4         # C3 pin 14, A2 pin 5, B3 pins 2,3
+net SD1       UC3.IO2 UA2.A4 UB3.1A2 UB3.2Y3         # C3 pin 13, A2 pin 4, B3 pins 4,5
+net SD2       UC3.IO3 UA2.A5 UB3.1A3 UB3.2Y2         # C3 pin 12, A2 pin 3, B3 pins 6,7
+net SD3       UC3.IO4 UA2.A6 UB3.1A4 UB3.2Y1         # C3 pin 11, A2 pin 2, B3 pins 8,9
+net SD4       UC4.IO1 UA2.A7 UB4.1A1 UB4.2Y4         # C4 pin 14, A2 pin 1, B4 pins 2,3
+net SD5       UC4.IO2 UA2.A8 UB4.1A2 UB4.2Y3         # C4 pin 13, A2 pin 23, B4 pins 4,5
+net SD6       UC4.IO3 UA2.A9 UB4.1A3 UB4.2Y2         # C4 pin 12, A2 pin 22, B4 pins 6,7
+net SD7       UC4.IO4 UC1.1D UB4.1A4 UB4.2Y1         # C4 pin 11, C1 pin 2, B4 pins 8,9 (reverse-video bit)
+net BD0       UB3.1Y1 UB3.2A4                        # B3 pins 18,17 (off-sheet, both ways)
+net BD1       UB3.1Y2 UB3.2A3                        # B3 pins 16,15
+net BD2       UB3.1Y3 UB3.2A2                        # B3 pins 14,13
+net BD3       UB3.1Y4 UB3.2A1                        # B3 pins 12,11
+net BD4       UB4.1Y1 UB4.2A4                        # B4 pins 18,17
+net BD5       UB4.1Y2 UB4.2A3                        # B4 pins 16,15
+net BD6       UB4.1Y3 UB4.2A2                        # B4 pins 14,13
+net BD7       UB4.1Y4 UB4.2A1                        # B4 pins 12,11
+net RW_E      UC2.4B                                 # off-sheet 'R/W.E' with a bar over E (in): C2 pin 13 (sheet 2's RW_E)
+net VREAD_N   UC2.4Y UB3.1OE_N UB4.1OE_N             # C2 pin 11 -> B3 pin 1, B4 pin 1: CPU reads video RAM
+
+# --- Character ROM and dot shifter
+net GRAPHIC   UA2.A10                                # off-sheet 'GRAPHIC' (in): A2 pin 19
+net CD0       UA2.O0 UB2.A                           # A2 pin 9 -> B2 pin 11
+net CD1       UA2.O1 UB2.B                           # A2 pin 10 -> B2 pin 12
+net CD2       UA2.O2 UB2.C                           # A2 pin 11 -> B2 pin 13
+net CD3       UA2.O3 UB2.D                           # A2 pin 13 -> B2 pin 14
+net CD4       UA2.O4 UB2.E                           # A2 pin 14 -> B2 pin 3
+net CD5       UA2.O5 UB2.F                           # A2 pin 15 -> B2 pin 4
+net CD6       UA2.O6 UB2.G                           # A2 pin 16 -> B2 pin 5
+net CD7       UA2.O7 UB2.H                           # A2 pin 17 -> B2 pin 6 (shifted out first)
+net DOT       UB2.QH UC2.1B                          # B2 pin 9 -> C2 pin 2
+net DOT_N     UB2.QH_N UC2.2B                        # B2 pin 7 -> C2 pin 5
+net REV_D     UC1.1Q UC1.2D                          # C1 pin 5 -> C1 pin 12 (C1 pin 6 unused)
+net REV       UC1.2Q UC2.1A                          # C1 pin 9 -> C2 pin 1
+net REV_N     UC1.2Q_N UC2.2A                        # C1 pin 8 -> C2 pin 4
+net PU_R44    UC1.1PRE_N UC1.2PRE_N                  # C1 pins 4, 10: R44 1K to +5V, TP4-2
+net PU_R45    UC1.1CLR_N UC1.2CLR_N                  # C1 pins 1, 13: R45 1K to +5V, TP4-3
+net PIX_A_N   UC2.1Y UE2.1B                          # C2 pin 3 -> E2 pin 2
+net PIX_B_N   UC2.2Y UE2.1A                          # C2 pin 6 -> E2 pin 1
+net PIXEL     UE2.1Y UE9.1A                          # E2 pin 3 -> E9 pin 1: DOT xor REV
+net BLANKTV   UE9.1C                                 # off-sheet 'BLANK TV' (in): E9 pin 4
+net TV_VIDEO  UE9.1Y J7.1                            # 'TV VIDEO DRIVE': E9 pin 6 -> J7 pin 1
+
+# --- Ties drawn on the sheet
+net GND       UC8.1K UB2.SER UB2.CLK_INH UA2.CS1 UA2.CS2 UD2.G_N UD3.G_N UD4.G_N UC3.CS_N UC4.CS_N J7.2 J7.4 J7.7
+net VCC       UA2.CS3
+
+# --- Power pins (drawn only for A2 12/24, 2114 9/18, 157 8/16 implied; the rest on the obvious rails)
+net VCC       Y1.VCC UE2.VCC UC9.VCC UB5.VCC UA1.VCC UC8.VCC UC7.VCC UC5.VCC UB6.VCC UD5.VCC UD8.VCC UC6.VCC UC2.VCC UB1.VCC UE8.VCC UE9.VCC UD9.VCC UE5.VCC UB2.VCC UA2.VCC UC1.VCC UD6.VCC UD7.VCC UE6.VCC UD2.VCC UD3.VCC UD4.VCC UC3.VCC UC4.VCC UB3.VCC UB4.VCC
+net GND       Y1.GND UE2.GND UC9.GND UB5.GND UA1.GND UC8.GND UC7.GND UC5.GND UB6.GND UD5.GND UD8.GND UC6.GND UC2.GND UB1.GND UE8.GND UE9.GND UD9.GND UE5.GND UB2.GND UA2.GND UC1.GND UD6.GND UD7.GND UE6.GND UD2.GND UD3.GND UD4.GND UC3.GND UC4.GND UB3.GND UB4.GND

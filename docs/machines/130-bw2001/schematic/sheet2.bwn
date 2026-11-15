@@ -1,0 +1,118 @@
+# PET 2001 main logic board 320137, sheet 2 of 3 (drawing 320135): memory section.
+# Transcribed from hp-2.png (320137.pdf p.2), checked against 320137-2.gif. Pin numbers from the
+# schematic mapped to the project's pin names (datasheets/, src/parts/*). Built as the 8K machine:
+# all sixteen 2114s (the * ones are 8K only) and the 'JUMPER FOR 8K ONLY' closed. Not simulated
+# here: R12 10K pull-up (G3 pin 2 to +5V, TP5-2), the power section (J8 connector, CR1-CR3,
+# VR3-VR6, capacitors): see sheet2_notes.md.
+
+# RAM: 16 x 2114, 1 KB a pair. I = low nibble (BBD0-BBD3), J = high nibble (BBD4-BBD7).
+part UI8  2114                                      # $0000-$03FF BBD0-BBD3
+part UI7  2114                                      # $0400-$07FF BBD0-BBD3
+part UI6  2114                                      # $0800-$0BFF BBD0-BBD3
+part UI5  2114                                      # $0C00-$0FFF BBD0-BBD3
+part UI4  2114                                      # $1000-$13FF BBD0-BBD3 (8K only, *)
+part UI3  2114                                      # $1400-$17FF BBD0-BBD3 (8K only, *)
+part UI2  2114                                      # $1800-$1BFF BBD0-BBD3 (8K only, *)
+part UI1  2114                                      # $1C00-$1FFF BBD0-BBD3 (8K only, *)
+part UJ8  2114                                      # $0000-$03FF BBD4-BBD7
+part UJ7  2114                                      # $0400-$07FF BBD4-BBD7
+part UJ6  2114                                      # $0800-$0BFF BBD4-BBD7
+part UJ5  2114                                      # $0C00-$0FFF BBD4-BBD7
+part UJ4  2114                                      # $1000-$13FF BBD4-BBD7 (8K only, *)
+part UJ3  2114                                      # $1400-$17FF BBD4-BBD7 (8K only, *)
+part UJ2  2114                                      # $1800-$1BFF BBD4-BBD7 (8K only, *)
+part UJ1  2114                                      # $1C00-$1FFF BBD4-BBD7 (8K only, *)
+
+# ROM sockets: 7 x 2316B. Every socket wired alike: CS1 (pin 20) = its SELx_N, CS2 (pin 18) = BA11,
+# CS3 (pin 21) = +5V. The mask polarity (select=, CS1 CS2 CS3) picks the half of the 4 KB block:
+# LLH lower 2 KB (BA11 low), LHH upper 2 KB (BA11 high). contents= left to the Machine.
+part UH1  2316B select=LLH                             # $C000-$C7FF
+part UH5  2316B select=LHH                             # $C800-$CFFF
+part UH2  2316B select=LLH                             # $D000-$D7FF
+part UH6  2316B select=LHH                             # $D800-$DFFF
+part UH3  2316B select=LLH                             # $E000-$E7FF
+part UH4  2316B select=LLH                             # $F000-$F7FF
+part UH7  2316B select=LHH                             # $F800-$FFFF
+
+# Decode, buffers, R/W
+part UI9  ?74LS139                                   # dual 2-to-4 decoder, RAM 1 KB blocks (no datasheet: pins by number)
+part UH8  74LS244                                    # RAM data buffer, BD0-BD3 <-> BBD0-BBD3
+part UH9  74LS244                                    # RAM data buffer, BD4-BD7 <-> BBD4-BBD7
+part UJ9  74LS00                                     # gates 1, 2 here (pins 1-6): RW_RAM; gates 3, 4 not on this sheet
+part UG3  74LS00                                     # gates 1, 2 here (pins 1-6): RAM select, read buffer enable; gates 3, 4 not on this sheet
+
+# --- Address bus (from sheet 1, buffered BA). BA0-BA9 to every 2114 and 2316B; BA10 to the 2316Bs
+# and I9 A; BA11 to every 2316B CS2 and I9 B.
+net BA0   UI8.A0 UI7.A0 UI6.A0 UI5.A0 UI4.A0 UI3.A0 UI2.A0 UI1.A0 UJ8.A0 UJ7.A0 UJ6.A0 UJ5.A0 UJ4.A0 UJ3.A0 UJ2.A0 UJ1.A0 UH1.A0 UH5.A0 UH2.A0 UH6.A0 UH3.A0 UH4.A0 UH7.A0
+net BA1   UI8.A1 UI7.A1 UI6.A1 UI5.A1 UI4.A1 UI3.A1 UI2.A1 UI1.A1 UJ8.A1 UJ7.A1 UJ6.A1 UJ5.A1 UJ4.A1 UJ3.A1 UJ2.A1 UJ1.A1 UH1.A1 UH5.A1 UH2.A1 UH6.A1 UH3.A1 UH4.A1 UH7.A1
+net BA2   UI8.A2 UI7.A2 UI6.A2 UI5.A2 UI4.A2 UI3.A2 UI2.A2 UI1.A2 UJ8.A2 UJ7.A2 UJ6.A2 UJ5.A2 UJ4.A2 UJ3.A2 UJ2.A2 UJ1.A2 UH1.A2 UH5.A2 UH2.A2 UH6.A2 UH3.A2 UH4.A2 UH7.A2
+net BA3   UI8.A3 UI7.A3 UI6.A3 UI5.A3 UI4.A3 UI3.A3 UI2.A3 UI1.A3 UJ8.A3 UJ7.A3 UJ6.A3 UJ5.A3 UJ4.A3 UJ3.A3 UJ2.A3 UJ1.A3 UH1.A3 UH5.A3 UH2.A3 UH6.A3 UH3.A3 UH4.A3 UH7.A3
+net BA4   UI8.A4 UI7.A4 UI6.A4 UI5.A4 UI4.A4 UI3.A4 UI2.A4 UI1.A4 UJ8.A4 UJ7.A4 UJ6.A4 UJ5.A4 UJ4.A4 UJ3.A4 UJ2.A4 UJ1.A4 UH1.A4 UH5.A4 UH2.A4 UH6.A4 UH3.A4 UH4.A4 UH7.A4
+net BA5   UI8.A5 UI7.A5 UI6.A5 UI5.A5 UI4.A5 UI3.A5 UI2.A5 UI1.A5 UJ8.A5 UJ7.A5 UJ6.A5 UJ5.A5 UJ4.A5 UJ3.A5 UJ2.A5 UJ1.A5 UH1.A5 UH5.A5 UH2.A5 UH6.A5 UH3.A5 UH4.A5 UH7.A5
+net BA6   UI8.A6 UI7.A6 UI6.A6 UI5.A6 UI4.A6 UI3.A6 UI2.A6 UI1.A6 UJ8.A6 UJ7.A6 UJ6.A6 UJ5.A6 UJ4.A6 UJ3.A6 UJ2.A6 UJ1.A6 UH1.A6 UH5.A6 UH2.A6 UH6.A6 UH3.A6 UH4.A6 UH7.A6
+net BA7   UI8.A7 UI7.A7 UI6.A7 UI5.A7 UI4.A7 UI3.A7 UI2.A7 UI1.A7 UJ8.A7 UJ7.A7 UJ6.A7 UJ5.A7 UJ4.A7 UJ3.A7 UJ2.A7 UJ1.A7 UH1.A7 UH5.A7 UH2.A7 UH6.A7 UH3.A7 UH4.A7 UH7.A7
+net BA8   UI8.A8 UI7.A8 UI6.A8 UI5.A8 UI4.A8 UI3.A8 UI2.A8 UI1.A8 UJ8.A8 UJ7.A8 UJ6.A8 UJ5.A8 UJ4.A8 UJ3.A8 UJ2.A8 UJ1.A8 UH1.A8 UH5.A8 UH2.A8 UH6.A8 UH3.A8 UH4.A8 UH7.A8
+net BA9   UI8.A9 UI7.A9 UI6.A9 UI5.A9 UI4.A9 UI3.A9 UI2.A9 UI1.A9 UJ8.A9 UJ7.A9 UJ6.A9 UJ5.A9 UJ4.A9 UJ3.A9 UJ2.A9 UJ1.A9 UH1.A9 UH5.A9 UH2.A9 UH6.A9 UH3.A9 UH4.A9 UH7.A9
+net BA10  UH1.A10 UH5.A10 UH2.A10 UH6.A10 UH3.A10 UH4.A10 UH7.A10 UI9.2 UI9.14   # I9 1A (AY) and 2A (AZ)
+net BA11  UH1.CS2 UH5.CS2 UH2.CS2 UH6.CS2 UH3.CS2 UH4.CS2 UH7.CS2 UI9.3 UI9.13   # I9 1B (BY) and 2B (BZ)
+
+# --- CPU data bus D0-D7 (sheet 1): ROM outputs only
+net D0    UH1.O0 UH5.O0 UH2.O0 UH6.O0 UH3.O0 UH4.O0 UH7.O0
+net D1    UH1.O1 UH5.O1 UH2.O1 UH6.O1 UH3.O1 UH4.O1 UH7.O1
+net D2    UH1.O2 UH5.O2 UH2.O2 UH6.O2 UH3.O2 UH4.O2 UH7.O2
+net D3    UH1.O3 UH5.O3 UH2.O3 UH6.O3 UH3.O3 UH4.O3 UH7.O3
+net D4    UH1.O4 UH5.O4 UH2.O4 UH6.O4 UH3.O4 UH4.O4 UH7.O4
+net D5    UH1.O5 UH5.O5 UH2.O5 UH6.O5 UH3.O5 UH4.O5 UH7.O5
+net D6    UH1.O6 UH5.O6 UH2.O6 UH6.O6 UH3.O6 UH4.O6 UH7.O6
+net D7    UH1.O7 UH5.O7 UH2.O7 UH6.O7 UH3.O7 UH4.O7 UH7.O7
+
+# --- ROM chip selects (from sheet 1's 74LS154, active low), CS3 tied high
+net SELC_N  UH1.CS1 UH5.CS1
+net SELD_N  UH2.CS1 UH6.CS1
+net SELE_N  UH3.CS1
+net SELF_N  UH4.CS1 UH7.CS1
+net VCC     UH1.CS3 UH5.CS3 UH2.CS3 UH6.CS3 UH3.CS3 UH4.CS3 UH7.CS3
+
+# --- RAM block select: G3 makes RAMSEL ($0000-$1FFF), I9 splits SEL0_N/SEL1_N into 1 KB blocks
+net SEL0_N  UG3.1A UI9.1            # I9 1G (GY): $0000-$0FFF
+net SEL1_N  UG3.1B UI9.15           # I9 2G (GZ): $1000-$1FFF; to G3 pin 2 through the 8K jumper (closed), R12 10K pull-up and TP5-2 on G3 pin 2
+net RAMSEL  UG3.1Y UG3.2A           # G3 pin 3 -> pin 4: high when SEL0_N or SEL1_N is low
+net RAM0_N  UI9.4 UI8.CS_N UJ8.CS_N      # I9 1Y0 (Y0): $0000
+net RAM1_N  UI9.5 UI7.CS_N UJ7.CS_N      # I9 1Y1 (Y1): $0400
+net RAM2_N  UI9.6 UI6.CS_N UJ6.CS_N      # I9 1Y2 (Y2): $0800
+net RAM3_N  UI9.7 UI5.CS_N UJ5.CS_N      # I9 1Y3 (Y3): $0C00
+net RAM4_N  UI9.12 UI4.CS_N UJ4.CS_N      # I9 2Y0 (Z0): $1000
+net RAM5_N  UI9.11 UI3.CS_N UJ3.CS_N      # I9 2Y1 (Z1): $1400
+net RAM6_N  UI9.10 UI2.CS_N UJ2.CS_N      # I9 2Y2 (Z2): $1800
+net RAM7_N  UI9.9 UI1.CS_N UJ1.CS_N      # I9 2Y3 (Z3): $1C00
+
+# --- R/W: RW_RAM = NAND(BPHI2, NOT RW_E): low only in a write's phase 2
+net RW_E     UJ9.1A UJ9.1B UG3.2B   # 'R/W.E' from sheet 1; J9 gate 1 is an inverter; G3 pin 5
+net RW_E_N   UJ9.1Y UJ9.2A          # J9 pin 3 -> pin 4
+net BPHI2    UJ9.2B                 # 'BO2' (B phi 2) from sheet 1, J9 pin 5
+net RW_RAM   UJ9.2Y UI8.WE_N UI7.WE_N UI6.WE_N UI5.WE_N UI4.WE_N UI3.WE_N UI2.WE_N UI1.WE_N UJ8.WE_N UJ7.WE_N UJ6.WE_N UJ5.WE_N UJ4.WE_N UJ3.WE_N UJ2.WE_N UJ1.WE_N UH8.1OE_N UH9.1OE_N   # J9 pin 6; also off-sheet (arrow left, to sheet 3)
+net RAM_READ_N UG3.2Y UH8.2OE_N UH9.2OE_N   # G3 pin 6: low = RAM read, BBD -> BD
+
+# --- RAM data: each 244 has group 1 BD -> BBD (write, 1OE_N = RW_RAM) and group 2 BBD -> BD
+# (read, 2OE_N = RAM_READ_N). Schematic pins per bit: BDn on 1A (pins 8/6/4/2) and 2Y (9/7/5/3),
+# BBDn on 1Y (12/14/16/18) and 2A (11/13/15/17). 2114 D0-D3 (pins 14 13 12 11) = IO1-IO4.
+net BD3    UH8.1A4 UH8.2Y1          # from/to sheet 1
+net BD2    UH8.1A3 UH8.2Y2          # from/to sheet 1
+net BD1    UH8.1A2 UH8.2Y3          # from/to sheet 1
+net BD0    UH8.1A1 UH8.2Y4          # from/to sheet 1
+net BBD3   UH8.1Y4 UH8.2A1 UI8.IO4 UI7.IO4 UI6.IO4 UI5.IO4 UI4.IO4 UI3.IO4 UI2.IO4 UI1.IO4
+net BBD2   UH8.1Y3 UH8.2A2 UI8.IO3 UI7.IO3 UI6.IO3 UI5.IO3 UI4.IO3 UI3.IO3 UI2.IO3 UI1.IO3
+net BBD1   UH8.1Y2 UH8.2A3 UI8.IO2 UI7.IO2 UI6.IO2 UI5.IO2 UI4.IO2 UI3.IO2 UI2.IO2 UI1.IO2
+net BBD0   UH8.1Y1 UH8.2A4 UI8.IO1 UI7.IO1 UI6.IO1 UI5.IO1 UI4.IO1 UI3.IO1 UI2.IO1 UI1.IO1
+net BD7    UH9.1A4 UH9.2Y1          # from/to sheet 1
+net BD6    UH9.1A3 UH9.2Y2          # from/to sheet 1
+net BD5    UH9.1A2 UH9.2Y3          # from/to sheet 1
+net BD4    UH9.1A1 UH9.2Y4          # from/to sheet 1
+net BBD7   UH9.1Y4 UH9.2A1 UJ8.IO4 UJ7.IO4 UJ6.IO4 UJ5.IO4 UJ4.IO4 UJ3.IO4 UJ2.IO4 UJ1.IO4
+net BBD6   UH9.1Y3 UH9.2A2 UJ8.IO3 UJ7.IO3 UJ6.IO3 UJ5.IO3 UJ4.IO3 UJ3.IO3 UJ2.IO3 UJ1.IO3
+net BBD5   UH9.1Y2 UH9.2A3 UJ8.IO2 UJ7.IO2 UJ6.IO2 UJ5.IO2 UJ4.IO2 UJ3.IO2 UJ2.IO2 UJ1.IO2
+net BBD4   UH9.1Y1 UH9.2A4 UJ8.IO1 UJ7.IO1 UJ6.IO1 UJ5.IO1 UJ4.IO1 UJ3.IO1 UJ2.IO1 UJ1.IO1
+
+# --- Power pins (not drawn for the 74LS parts; 2114 18/9, 2316B 24/12, I9 16/8 drawn)
+net VCC     UI8.VCC UI7.VCC UI6.VCC UI5.VCC UI4.VCC UI3.VCC UI2.VCC UI1.VCC UJ8.VCC UJ7.VCC UJ6.VCC UJ5.VCC UJ4.VCC UJ3.VCC UJ2.VCC UJ1.VCC UH1.VCC UH5.VCC UH2.VCC UH6.VCC UH3.VCC UH4.VCC UH7.VCC UH8.VCC UH9.VCC UJ9.VCC UG3.VCC UI9.16
+net GND     UI8.GND UI7.GND UI6.GND UI5.GND UI4.GND UI3.GND UI2.GND UI1.GND UJ8.GND UJ7.GND UJ6.GND UJ5.GND UJ4.GND UJ3.GND UJ2.GND UJ1.GND UH1.GND UH5.GND UH2.GND UH6.GND UH3.GND UH4.GND UH7.GND UH8.GND UH9.GND UJ9.GND UG3.GND UI9.8
