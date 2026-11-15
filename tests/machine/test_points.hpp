@@ -54,5 +54,7 @@ const Crack&
 StripedScreenCrack();  // bw2001 CD3, UA2 pin 13 → UB2 pin 14: puzzles/striped_screen.bwp
 const Crack&
 RollingTextCrack();  // bw2001 VERT_DRIVE, J7 pad 3 → UD8 pin 11: puzzles/rolling_text.bwp
+// bw2001 KIN0, J5 pad 11 → UG8 pin 10: puzzles/missing_keys.bwp
+const Crack& MissingKeysCrack();
 
 }  // namespace bw

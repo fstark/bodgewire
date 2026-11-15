@@ -1,0 +1,5 @@
+# Snow: a cell of the editor ROM UH3 ($E0D5, bit 5) reads 0: the scroll's first loop waits for the retrace with "and #$00", so it copies the top six rows up at once, also while the beam draws the text (as after the killer poke). The self-test: ROM E000 BAD E0.
+machine bw2001
+title "Snow"
+brief "The BW-2001 works, but whenever the screen scrolls, white specks flicker over the top of the text, as if someone had typed the old POKE 59458,62."
+fault cell UH3.O5 $0D5 0

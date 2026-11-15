@@ -1,0 +1,5 @@
+# Missing keys: the KIN0 Trace from the keyboard connector J5 (pad 11, an end of the Trace) to PIA1 UG8 (PB0) is cracked. PB0 keeps R18's pull-up, so the keyboard's column 0 never reads pressed: Q W A S Z X ! " RVS and the left SHIFT.
+machine bw2001
+title "Missing keys"
+brief "The BW-2001 works, but some keys do nothing: Q, W, A, S, Z and X never appear, and neither do ! and the double quote. The left SHIFT does nothing either."
+fault crack J5.COL0 UG8.PB0 50%

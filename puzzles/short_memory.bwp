@@ -1,0 +1,5 @@
+# Short memory: bit 0 of the RAM UI5 ($0C00-$0FFF, the low nibble) reads 0 in every word. The reset code sizes the RAM from $0400 by writing $55 and reading it back: it stops at $0C00, so BASIC gets 2 KB. The self-test: RAM BAD 0C00 01.
+machine bw2001
+title "Short memory"
+brief "The BW-2001 starts and BASIC works, but the banner says 2046 BYTES FREE instead of 7166."
+fault column UI5.IO1 0

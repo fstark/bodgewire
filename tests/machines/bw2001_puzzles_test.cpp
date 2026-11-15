@@ -32,7 +32,7 @@ Machine LoadPuzzle(const std::string& name) {
 
 // The self-test by the user manual's wire (user port DIAG to a ground pin of J2), from power-on
 // with `seed`: the video RAM's rows at 1.5 s (a working Machine reaches KEY by then).
-[[maybe_unused]] std::vector<std::string> SelfTest(Machine& machine, std::uint64_t seed = 1) {
+std::vector<std::string> SelfTest(Machine& machine, std::uint64_t seed = 1) {
     REQUIRE(machine.addWire({"J2", "DIAG"}, {"J2", "1"}));
     auto circuit = Bw2001Built(machine);
     REQUIRE(machine.removeWire({"J2", "DIAG"}, {"J2", "1"}));
@@ -42,14 +42,15 @@ Machine LoadPuzzle(const std::string& name) {
 }
 
 // The banner and READY by 1.5 s: the fault-free check after a repair.
-[[maybe_unused]] bool Banner(Running& m) {
+bool Banner(Running& m) {
     Bw2001Typist typist(m);
     return typist.waitForLine(1'500'000) && typist.rows() == kBw2001Banner;
 }
 
 // The Puzzles, in BW2001.md's order.
-constexpr std::array kPuzzles{"odd_e", "striped_screen", "rolling_text", "stutter",
-                              "negative_screen"};
+constexpr std::array kPuzzles{
+    "odd_e",        "striped_screen", "rolling_text",  "stutter",       "negative_screen",
+    "short_memory", "missing_keys",   "frozen_cursor", "random_screen", "snow"};
 
 // The Puzzle's Machine powered on with `seed`, run to `until`; the snow watch on if asked.
 Running Run(const Machine& machine, std::uint64_t seed = 1, Time until = 700_ms,
@@ -57,6 +58,12 @@ Running Run(const Machine& machine, std::uint64_t seed = 1, Time until = 700_ms,
     Running m(seed, Bw2001Built(machine), watchSnow);
     m.runUntil(until);
     return m;
+}
+
+// The video RAM's row `row`, "" past the last.
+std::string Row(const Running& m, std::size_t row) {
+    const auto rows = Bw2001ScreenRows(m);
+    return row < rows.size() ? rows[row] : "";
 }
 
 const TvFrame& Frame(Running& m) {
@@ -205,4 +212,129 @@ TEST_CASE("bw2001: negative_screen", "[machines][slow]") {
     const TvFrame& frame = Frame(m);
     CHECK(Bw2001TvRows(frame) == kBw2001Banner);
     CHECK(Bw2001CellDots(frame, blank) == dark);
+}
+
+TEST_CASE("bw2001: short_memory", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 2 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("short_memory");
+    {
+        Running m(1, Bw2001Built(machine));
+        Bw2001Typist typist(m);
+        REQUIRE(typist.waitForLine(1'500'000));
+        auto banner = kBw2001Banner;
+        banner[2] = "2046 BYTES FREE";
+        CHECK(typist.rows() == banner);
+        const auto rows = SelfTest(machine);
+        REQUIRE(rows.size() >= 5);
+        CHECK(rows[4] == "RAM BAD 0C00 01");
+    }
+    REQUIRE(machine.swap("UI5"));
+    Running m(1, Bw2001Built(machine));
+    CHECK(Banner(m));
+}
+
+TEST_CASE("bw2001: missing_keys", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 2 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("missing_keys");
+    {
+        Running m(1, Bw2001Built(machine));
+        REQUIRE(Banner(m));
+        Bw2001Type(m, "QWERTYASDF");
+        CHECK(Row(m, 5) == "ERTYDF");
+    }
+    REQUIRE(machine.mend(MissingKeysCrack().layer, MissingKeysCrack().at));
+    Running m(1, Bw2001Built(machine));
+    REQUIRE(Banner(m));
+    Bw2001Type(m, "QWERTYASDF");
+    CHECK(Row(m, 5) == "QWERTYASDF");
+}
+
+TEST_CASE("bw2001: frozen_cursor", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 3 s simulated: runs in the release build");
+#endif
+    constexpr std::size_t kCursor = 5 * kBw2001Columns;  // under READY
+    Machine machine = LoadPuzzle("frozen_cursor");
+    {
+        Running m(1, Bw2001Built(machine));
+        REQUIRE(Banner(m));
+        m.runUntil(m.sim->now() + 50_ms);  // the editor puts the cursor out once itself
+        const std::uint8_t first = m.screen(kCursor);
+        for (int i = 0; i < 6; ++i) {  // a second
+            m.runUntil(m.sim->now() + 170_ms);
+            CHECK(m.screen(kCursor) == first);
+        }
+        Bw2001Type(m, "PRINT 2+2\r");
+        m.runUntil(m.sim->now() + 200_ms);
+        CHECK(Bw2001ScreenRows(m) == kBw2001Banner);
+    }
+    REQUIRE(machine.swap("UG8"));
+    Running m(1, Bw2001Built(machine));
+    REQUIRE(Banner(m));
+    bool blinked = false;
+    const std::uint8_t first = m.screen(kCursor);
+    for (int i = 0; i < 6; ++i) {
+        m.runUntil(m.sim->now() + 170_ms);
+        blinked = blinked || m.screen(kCursor) != first;
+    }
+    CHECK(blinked);
+    Bw2001Type(m, "PRINT 2+2\r");
+    Bw2001Typist typist(m);
+    REQUIRE(typist.waitForLine());
+    CHECK(Row(m, 6) == "4");
+}
+
+TEST_CASE("bw2001: random_screen", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 6 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("random_screen");
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        INFO("seed " << seed);
+        Running m(seed, Bw2001Built(machine));
+        m.runUntil(100_ms);
+        const auto atPowerOn = Bw2001ScreenRows(m);
+        m.runUntil(1000_ms);
+        CHECK(Bw2001ScreenRows(m) == atPowerOn);  // nothing writes the screen
+        CHECK(Bw2001ScreenRows(m) != kBw2001Banner);
+        CHECK(m.sim->value(*PinNet(*m.loaded, "UF3", "RES_N")) == LogicValue::Zero);
+        const auto selfTest = SelfTest(machine, seed);
+        CHECK((selfTest.empty() || selfTest[0] != "BW-2001 SELF-TEST"));
+    }
+    REQUIRE(machine.swap("UDE9"));
+    Running m(1, Bw2001Built(machine));
+    CHECK(Banner(m));
+}
+
+TEST_CASE("bw2001: snow", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 8 s simulated: runs in the release build");
+#endif
+    Machine machine = LoadPuzzle("snow");
+    const auto loop = [](Running& m) {
+        Bw2001Typist typist(m);
+        REQUIRE(typist.waitForLine(1'500'000));
+        const int before = m.snow->accesses;  // from the banner (the power-on address)
+        Bw2001Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");
+        REQUIRE(typist.waitForLine(10'000'000));
+        const auto rows = typist.rows();
+        REQUIRE(rows.size() == 24);
+        CHECK(rows[22] == "30");
+        CHECK(rows[23] == "READY");
+        return m.snow->accesses - before;
+    };
+    {
+        Running m(1, Bw2001Built(machine), true);
+        CHECK(loop(m) > 100);
+        const auto rows = SelfTest(machine);
+        REQUIRE(rows.size() >= 8);
+        CHECK(rows[7] == "ROM E000 BAD E0");
+    }
+    REQUIRE(machine.swap("UH3"));
+    Running m(1, Bw2001Built(machine), true);
+    CHECK(loop(m) == 0);
 }

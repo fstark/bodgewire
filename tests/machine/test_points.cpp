@@ -200,4 +200,9 @@ const Crack& RollingTextCrack() {
     return crack;
 }
 
+const Crack& MissingKeysCrack() {
+    static const Crack crack = PuzzleCrack("missing_keys");
+    return crack;
+}
+
 }  // namespace bw

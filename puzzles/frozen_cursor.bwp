@@ -1,0 +1,5 @@
+# Frozen cursor: PIA1 UG8 reads its CB1 input (VIDEO_ON, the retrace) as 0, so the retrace interrupt never comes: the keyboard is scanned and the cursor blinked only in that interrupt. The banner still prints (the editor polls the VIA for the retrace).
+machine bw2001
+title "Frozen cursor"
+brief "The BW-2001 prints its banner, but the cursor never blinks and nothing typed on the keyboard appears."
+fault stuck UG8.CB1 0
