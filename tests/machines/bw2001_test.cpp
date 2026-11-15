@@ -61,41 +61,24 @@ std::unique_ptr<LoadedCircuit> Basic1Circuit() {
             return nullptr;
         }
     }
-    std::istringstream in(NetlistText());
-    std::string out, line;
-    while (std::getline(in, line)) {
-        std::string extra;
-        std::istringstream words(line.substr(0, line.find('#')));
-        std::string word;
-        words >> word;
-        if (word == "net") {
-            words >> word;  // the Net's name
-            while (words >> word) {
-                for (const auto& [from, to] :
-                     {std::pair{"UH1.", "UH2."}, std::pair{"UH5.", "UH6."}}) {
-                    if (word.starts_with(from) && word != std::string(from) + "CS1") {
-                        extra += " " + std::string(to) + word.substr(4);
-                    }
-                }
-            }
-        }
-        out += line.substr(0, line.find('#')) + extra + "\n";
-    }
-    out += "part UH2 2316B select=LLH contents=x.bin\npart UH6 2316B select=LHH contents=x.bin\n"
-           "net SELD_N UH2.CS1 UH6.CS1\n";
+    // A ROM directory as --roms takes it (P5q2): a link per socket, named by its reference.
+    const auto dir = std::filesystem::temp_directory_path() / "bw2001_basic1_roms";
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
     for (const PetRom& rom : kPetBasic1) {
-        const std::string socket(rom.socket);
-        const std::size_t at = out.find("part " + socket + " ");
-        REQUIRE(at != std::string::npos);
-        const std::size_t contents = out.find("contents=", at);
-        const std::size_t end = out.find_first_of(" \n", contents);
-        out.replace(contents, end - contents, "contents=" + ExternalRom(rom.file)->string());
+        std::filesystem::create_symlink(*ExternalRom(rom.file),
+                                        dir / (std::string(rom.socket) + ".bin"));
     }
-    // offset= belonged to our ROM files.
-    for (std::size_t at; (at = out.find(" offset=")) != std::string::npos;) {
-        out.erase(at, out.find_first_of(" \n", at + 1) - at);
+    auto machine = LoadNetlistMachine(NetlistPath(), dir);  // on the Board
+    if (!machine) {
+        for (const Diagnostic& d : machine.error()) {
+            UNSCOPED_INFO(Format(d));
+        }
     }
-    return VariantCircuit(out);
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    return std::move(*built);
 }
 
 // The Circuit built from the Board's Copper, with no Faults.

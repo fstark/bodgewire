@@ -43,7 +43,7 @@ As P5p's ([BW2001_FIRMWARE.md](../../p5p-bw2001-firmware/BW2001_FIRMWARE.md#the-
 | sheet 2's `R12` 10K on `SEL1_N` past the 8K jumper (the same reference as sheet 3's 1K `R12`) | left out, the jumper closed | the 8K machine; `R12` stays sheet 3's |
 | cassette motor transistors (`Q1`–`Q6`, `VR1`, `VR2`, …) | `CASS1_MOTOR` = PIA1 `CB2` straight to `J6` pin 3, `CASS2_MOTOR` = VIA `PB4` to `J3` pin 3 | logic-only equivalents (GAME_DESIGN): the control level, not the 9 V |
 | `UF3.SO` not drawn | on `VCC` | as on P5n's bench |
-| `UH2`, `UH6` (empty sockets) | left out | no chip in them; a test fits them for BASIC 1 |
+| `UH2`, `UH6` | `contents=../roms/empty.rom` (every word `$FF`) | our firmware leaves them empty; Commodore's BASIC 1 fills them (`--roms`, P5q2). P5q left them out, against the board: fitted again in P5q2 |
 | the 2114s | `access=300ns` (the 2114-3) | at 450 ns the video path misses every 64th character (P5q plan, phase 8) |
 | spare gate inputs | tied to `VCC` or `GND` | loads without warnings |
 
@@ -73,6 +73,8 @@ Pads: the table's numbers are the PET's (1–12, then its letters A B C D E F H 
 ## Board
 
 `boards/bw2001/bw2001.place` (P5q1, [BW2001_BOARD.md](../../p5q1-bw2001-board/BW2001_BOARD.md)): laid out after PET-Shack's "PET CPU BOARD" drawing of a PET 2001 board. `grid pet`: every chip at its PET location, columns J (left) to A (right), rows 9 (the back) to 1 (the front), lying with the notch at the left; eight upright as drawn (`UF3`, `UB8`, `UA5`, `UG2`, `UE6`, `UA2` notch at the bottom; `UG8`, `UG9` at the top). IEEE-488 (`J1`), user port (`J2`) and cassette #2 (`J3`) down the right edge; power (`J8`), cassette #1 (`J6`), the keyboard (`J5`: inside the board on the PET), `DS1` and the monitor (`J7`) along the back. Pull-ups beside their chips, chained along the resistor bands away from the upright chips; `X1`, `UDE9` and `R99` in the empty cells nearest their Nets. 293 × 269 mm, 35.2 m of wire; routed by the user on two layers (P5q's first Board, on a guessed grid, is `1f8e110`).
+
+Running other ROMs (P5q2): `--roms DIR`, the files named by socket (`UH1.bin` …); Commodore's BASIC 1 as `external/roms/pet-basic1/` (tests/data/pet_roms.md). `UH2` and `UH6` were imported into the routed Board and routed by the user; the two connections that rerouting broke (`BD_TO_D_N`, `CASS_WRITE`) were routed by a script on a 0.1 mm grid (P5q2 plan).
 
 ## Manuals
 

@@ -101,6 +101,8 @@
 - `UJ1` RAM: the high 4 bits of each byte at $1C00, on `BBD4`–`BBD7`, as `UI1`
 - `UH1` ROM: BASIC, $C000–$C7FF
 - `UH5` ROM: BASIC, $C800–$CFFF
+- `UH2` ROM socket: $D000–$D7FF, an empty ROM with our firmware (Commodore's BASIC 1 has 901447-03 here)
+- `UH6` ROM socket: $D800–$DFFF, an empty ROM with our firmware (901447-04 in BASIC 1)
 - `UH3` ROM: the screen editor and keyboard, $E000–$E7FF
 - `UH4` ROM: the machine-code monitor, $F000–$F7FF
 - `UH7` ROM: reset, interrupts and the self-test, $F800–$FFFF (the 6502's vectors)

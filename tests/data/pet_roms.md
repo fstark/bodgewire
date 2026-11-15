@@ -19,3 +19,20 @@ There is no ROM at `$E800`–`$EFFF`: that range is the I/O (PIA1 `$E810`, PIA2 
 The character ROM is the exception: 901447-08 (UA2, SHA1 `3e067cc621e4beafca2b90cb8f6dba975df2855b`) ships with the BW-2001 as `roms/901447-08.bin` (decided 2026-11-15), since every screen of the Machine goes through it.
 
 They are used by `tests/netlist/external_rom_test.cpp` and by the BASIC 1 boot on the bench (`tests/netlist/bw2001_bench_test.cpp`).
+
+## Running the BW-2001 on them (P5q2)
+
+`--roms DIR` (`bw run`, `bw_ui`) takes a directory whose files are named after the sockets. Make one of links to the files above:
+
+```
+cd external/roms && mkdir pet-basic1
+ln -s ../pet/rom-1-c000.901447-01.bin pet-basic1/UH1.bin
+ln -s ../pet/rom-1-c800.901447-02.bin pet-basic1/UH5.bin
+ln -s ../pet/rom-1-d000.901447-03.bin pet-basic1/UH2.bin
+ln -s ../pet/rom-1-d800.901447-04.bin pet-basic1/UH6.bin
+ln -s ../pet/rom-1-e000.901447-05.bin pet-basic1/UH3.bin
+ln -s ../pet/rom-1-f000.901447-06.bin pet-basic1/UH4.bin
+ln -s ../pet/rom-1-f800.901447-07.bin pet-basic1/UH7.bin
+```
+
+then `bw_ui netlists/bw2001.bwn --roms external/roms/pet-basic1`: Commodore's PET 2001 on the BW-2001's Board. The tests make the same links in a temporary directory.

@@ -16,6 +16,8 @@ with a blinking square under `READY`: the cursor. Type a line on the keyboard an
 
 The keyboard is the PET 2001's: the letters and the top row's symbols on the left, the digits and `/ * + - = .` on the pad at the right. On a PC keyboard, click the keyboard's window (or press F2): each PC key types the BW-2001 key with the same character; Return is RETURN, Backspace DEL, Escape STOP, Home HOME, the arrows the cursor keys. Cmd+V (Ctrl+V) pastes text, typed one key at a time.
 
+The BW-2001 also runs Commodore's own PET 2001 ROMs, if you have them: put the seven ROM files in a directory, each named after its socket (`UH1.bin` for $C000, `UH5.bin` $C800, `UH2.bin` $D000, `UH6.bin` $D800, `UH3.bin` $E000, `UH4.bin` $F000, `UH7.bin` $F800), and start with `--roms` and that directory.
+
 `PRINT USR(61440)` enters the machine-code monitor (`C*`): `.M 0400 0420` shows memory, `.X` goes back to BASIC.
 
 The screen is written only while the beam is outside the text, so printing is slow and the picture stays clean. On the original PET 2001, `POKE 59458,62` stopped that wait: the screen became fast and filled with white specks (snow) while it printed. It does the same here.
