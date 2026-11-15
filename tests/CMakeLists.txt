@@ -135,6 +135,7 @@ add_executable(bw_tests
   parts/z80_conformance_test.cpp
   parts/z80_core_test.cpp
   parts/z80_stub_test.cpp
+  parts/z80_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
   runner/led_consumer_test.cpp

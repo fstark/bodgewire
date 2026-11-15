@@ -12,8 +12,8 @@ Work on branch `p5s-z80` (worktree `.claude/worktrees/p5s-z80`), P5q running on 
 | 0 | Docs reviewed | `170f3d2` |
 | 1 | Test data: converter, fetch script, committed subset | `1a8a98d` |
 | 2 | Core: every opcode, the runner, the Harte subset | `707d412` |
-| 3 | Core: interrupts, HALT, reset; hand cases; full Harte, ZEXDOC, ZEXALL in release | this commit |
-| 4 | `Z80` Part, datasheet, catalogue | |
+| 3 | Core: interrupts, HALT, reset; hand cases; full Harte, ZEXDOC, ZEXALL in release | `87e1e25` |
+| 4 | `Z80` Part, datasheet, catalogue | this commit |
 | 5 | Bus load with the Z80: ROM, netlist, test, ratios | |
 | 6 | Release check, recipes, roadmap | |
 
@@ -78,3 +78,5 @@ Commit: `docs: P5s implemented`
 - Phase 2: the core was written whole (interrupts, HALT and `reset()` included); phase 3 adds their hand cases. Debug: the Harte subset 2.7 s (the estimate of 60–90 s was far off: the runner reuses its RAM and the core is small per cycle).
 - Phase 3 mutations of the core, each failing a hand case: the EI shadow ignored; IM 0 counting PC; NMI on its level (the first try survived: the case gave NMI once, not at every cycle as the Part does; fixed); no P/V loss; R's bit 7 counted; a halted fetch counting PC; `DD ED` keeping the `DD` (the first try survived: `ED 4B` loads BC whatever the prefix; now `ED 6B`); an `ED` hole running `NEG`; an interrupt taken after a prefix; IM 2 clearing the vector's bit 0.
 - Release, phase 3: `Z80 core: Harte full` 4.7 s; `ZEXDOC` and `ZEXALL` "Tests complete" with every test OK, 46,734,977,142 T-states each, 44 s and 46 s.
+- Phase 4: `kZ80Float` 90 ns and `kZ80Busak` 100 ns are the Z80A's usual published maxima, not read from a scan of UM0080 here (said in `delays.hpp`). The reset-to-first-fetch count was not checked against UM0080's Reset figure either: the model starts T1 of the fetch at `$0000` at the second rising edge after `RESET_N` goes high (the first sees it high). Both are open for a check against the manual.
+- Phase 4, the bench: a write ends at the first of its strobes to rise (`WR_N` before `MREQ_N`, `IORQ_N` before `WR_N` by the data sheet's delays), so `BenchMemory` stores at `WR_N`'s rise and records an `OUT` at `IORQ_N`'s. "Reads before the edge" probes the timing on the same circuit as it measures (a Stimulus on the data, its step far away): a tied bus draws other power-on bits, so other timing. Debug: `ctest -R "Z80|catalogue|manuals|footprint"` 80 tests, 4.3 s with `-j 12`.

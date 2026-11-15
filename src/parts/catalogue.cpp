@@ -50,6 +50,7 @@
 #include "parts/ttl125.hpp"
 #include "parts/ttl145.hpp"
 #include "parts/ttl177.hpp"
+#include "parts/z80.hpp"
 #include "parts/z80_stub.hpp"
 
 namespace bw {
@@ -508,6 +509,7 @@ constexpr std::array s_parts{
     PartInfo{"USERPORT", "user port edge connector", "HDR-2x12", Connector,
              &CreateConnector<"USERPORT">},
     PartInfo{"VIDEO", "TTL monitor connector", "KK-3", Connector, &CreateConnector<"VIDEO">},
+    PartInfo{"Z80", "8-bit microprocessor (NMOS)", "DIP-40", Chip, &CreateChip<Z80, "Z80">},
     PartInfo{"Z80STUB", "Z80 stub playing a ZX80 frame (benchmark)", "DIP-40", Chip,
              &CreateChip<Z80Stub, "Z80STUB">},
 };

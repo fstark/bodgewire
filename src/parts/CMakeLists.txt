@@ -44,6 +44,7 @@ add_library(bw_parts STATIC
   ttl125.cpp
   ttl145.cpp
   ttl177.cpp
+  z80.cpp
   z80_core.cpp
   z80_stub.cpp
 )

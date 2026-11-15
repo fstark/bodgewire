@@ -119,7 +119,8 @@ inline constexpr Time k2524ClockToOutput = 100'000;  // tA+, PHI1 → OUT
 inline constexpr Time k2524Hold = 10'000'000'000;
 
 // Z80A (4 MHz), Zilog datasheet AC characteristics: maxima, the only figures given. Used by the
-// Z80STUB benchmark Part (P5a).
+// Z80 Part (P5s) and the Z80STUB benchmark Part (P5a). kZ80Float and kZ80Busak are the Z80A's
+// usual published maxima (tF, tDL(BA)/tDH(BA)), not checked against a scan in P5s.
 inline constexpr Time kZ80Address = 110'000;  // tD(AD), CLK rise → A0-A15
 inline constexpr Time kZ80Mreq = 85'000;      // CLK → MREQ_N, both ways
 inline constexpr Time kZ80Rd = 85'000;        // CLK → RD_N, both ways
@@ -129,6 +130,8 @@ inline constexpr Time kZ80M1 = 100'000;       // CLK rise → M1_N, both ways
 inline constexpr Time kZ80Rfsh = 130'000;     // CLK rise → RFSH_N, both ways
 inline constexpr Time kZ80Halt = 300'000;     // CLK → HALT_N
 inline constexpr Time kZ80Data = 150'000;     // CLK → D0-D7 valid, or floating
+inline constexpr Time kZ80Float = 90'000;     // tF: CLK → address, data, strobes floating
+inline constexpr Time kZ80Busak = 100'000;    // CLK rise → BUSAK_N, both ways
 
 // MOS 6502, 1 MHz (MOS 6500 data sheet, Nov. 1985, p. 5), from the PHI0 edge: the data sheet
 // measures from PHI2 (out), whose delay from PHI0 it does not publish (30 ns assumed; PHI1 rises
