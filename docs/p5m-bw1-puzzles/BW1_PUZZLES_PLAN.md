@@ -27,7 +27,7 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 |-------|-------------|--------|
 | 1 | Manuals and rig | `3ee64bd` |
 | 2 | Display Puzzles | `1f4b472` |
-| 3 | Keypad Puzzles | |
+| 3 | Keypad Puzzles | `17da469` |
 | 4 | Main RAM Puzzles | |
 | 5 | RIOT and ROM Puzzles | |
 | 6 | Instrument Puzzles | |
@@ -39,3 +39,4 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 - Phase 1: a service manual allowed only `## Components`; the check now takes any sections after it (`CheckServiceManual`, shared code: the full suite at the end). Codes in the manual are plain text, not backticked (`PA55` would read as an unknown reference).
 - Phase 2: all four passed first time; `bright_mess` reads `DS3` as `0x7F` (lit with every digit). Screenshots: Odd seven's 7s and Half a segment's open tops show; Missing bar's middle bar is hidden under the digit's reference (the P5n known issue), so the screenshot cannot show it.
 - Phase 3: the monitor starts in address mode, so with DA dead the typed bytes shift into the address (`456 DA 77` shows `5677`): the brief says so. Deaf keypad uses `+` (`SW19`): the self-test shows `PA5512` with no key held (118 s in debug, the only case run to `PA55`).
+- Phase 4: every fault tried monitor and strapped on seeds 1–3 first. Half a byte: the crack `U14.1`–`U13.4` cuts `U13` alone (`U15.6`–`U13.1` cut both buffers: `1100FE`); unstrapped the monitor wanders into the self-test's keypad loop and shows `PA55` on every seed; strapped `11000E` (bit 0 happens to match the bus charge). Aliased page is not dead: it starts on `1D27 46` (every seed) and the keys work, but bit 5 of the address comes from the stack (`AD 0300` shows `0320`). Wrong suspect: a few frozen characters that change with the seed (`18F` on seed 1), the brief says "a meaningless pattern". Two bits (`U1` `D2`–`D3`) is dark with the self-test too: moved to phase 6.

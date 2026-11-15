@@ -180,4 +180,14 @@ const Crack& DeadRowCrack() {
     return crack;
 }
 
+const Crack& WrongSuspectCrack() {
+    static const Crack crack = PuzzleCrack("wrong_suspect");
+    return crack;
+}
+
+const Crack& HalfByteCrack() {
+    static const Crack crack = PuzzleCrack("half_byte");
+    return crack;
+}
+
 }  // namespace bw

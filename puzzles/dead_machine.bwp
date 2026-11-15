@@ -1,0 +1,5 @@
+# Dead machine: U9 (bit 3 of main RAM) reads 0 in every word: the monitor's zero page and stack are broken and it never lights a digit. The self-test shows 110008 ($0000 is written 00 and reads right; $0100 is written FF and reads F7).
+machine bw1
+title "Dead machine"
+brief "The BW-1 powers on, but its digits stay dark, and RS changes nothing."
+fault column U9.DOUT 0

@@ -36,6 +36,13 @@ constexpr std::uint8_t kSegA = 0x01;
 constexpr std::uint8_t kSegD = 0x08;
 constexpr std::uint8_t kSegG = 0x40;
 
+// The self-test's failure, strapped: test 1 fails within 150 ms of power-on.
+std::string SelfTest(Machine& machine, Time until) {
+    Bw1 bw1(Bw1Circuit(machine, true), 1);
+    bw1.runUntil(until);
+    return bw1.display();
+}
+
 // The Puzzle's Machine powered on with `seed`, the monitor started.
 Bw1 Monitor(Machine& machine, std::uint64_t seed) { return Started(Bw1Circuit(machine), seed); }
 
@@ -171,4 +178,92 @@ TEST_CASE("bw1: deaf_keypad", "[machines][slow]") {
     Bw1 bw1 = Monitor(machine, 1);
     bw1.type("AD 0300 DA A9");
     CHECK(bw1.display() == "0300A9");
+}
+
+TEST_CASE("bw1: bad_byte", "[machines][slow]") {
+    Machine machine = LoadPuzzle("bad_byte");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        bw1.type("AD 0300 DA 00");
+        CHECK(bw1.display() == "030080");
+    }
+    CHECK(SelfTest(machine, 150_ms) == "130080");
+    REQUIRE(machine.swap("U5"));
+    Bw1 bw1 = Monitor(machine, 1);
+    bw1.type("AD 0300 DA 00");
+    CHECK(bw1.display() == "030000");
+}
+
+TEST_CASE("bw1: dead_machine", "[machines]") {
+    Machine machine = LoadPuzzle("dead_machine");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        bw1.runUntil(200_ms);
+        CHECK(bw1.display() == "      ");
+        bw1.press("RS");
+        bw1.run(100_ms);
+        CHECK(bw1.display() == "      ");
+    }
+    CHECK(SelfTest(machine, 150_ms) == "110008");
+    REQUIRE(machine.swap("U9"));
+    Bw1 bw1 = Monitor(machine, 1);
+    CheckShows(bw1.display(), "0200");
+}
+
+TEST_CASE("bw1: wrong_suspect", "[machines][slow]") {
+    Machine machine = LoadPuzzle("wrong_suspect");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        bw1.runUntil(200_ms);
+        const std::string shown = bw1.display();
+        CHECK(shown.substr(0, 4) != "0200");
+        CHECK(shown.back() == ' ');
+        bw1.type("AD 0300");
+        CHECK(bw1.display() == shown);
+    }
+    CHECK(SelfTest(machine, 150_ms) == "100008");
+    REQUIRE(machine.swap("U9"));  // the suspect is innocent
+    CHECK(SelfTest(machine, 150_ms) == "100008");
+    REQUIRE(machine.mend(WrongSuspectCrack().layer, WrongSuspectCrack().at));
+    Bw1 bw1 = Monitor(machine, 1);
+    CheckShows(bw1.display(), "0200");
+}
+
+TEST_CASE("bw1: half_byte", "[machines][slow]") {
+    Machine machine = LoadPuzzle("half_byte");
+    {
+        Bw1 bw1 = Monitor(machine, 1);
+        CHECK(*PinNet(bw1.loaded(), "U13", "1OE_N") != *PinNet(bw1.loaded(), "U15", "2Y"));
+        CHECK(*PinNet(bw1.loaded(), "U13", "4OE_N") == *PinNet(bw1.loaded(), "U13", "1OE_N"));
+        CHECK(*PinNet(bw1.loaded(), "U14", "1OE_N") == *PinNet(bw1.loaded(), "U15", "2Y"));
+    }
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        CHECK(bw1.display() == "PA55  ");
+        bw1.type("AD 0300");
+        CHECK(bw1.display() == "PA55  ");
+    }
+    CHECK(SelfTest(machine, 150_ms) == "11000E");
+    REQUIRE(machine.mend(HalfByteCrack().layer, HalfByteCrack().at));
+    Bw1 bw1 = Monitor(machine, 1);
+    CheckShows(bw1.display(), "0200");
+}
+
+TEST_CASE("bw1: aliased_page", "[machines][slow]") {
+    Machine machine = LoadPuzzle("aliased_page");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        CHECK(bw1.display() == "1D2746");
+        bw1.type("AD 0300");
+        CHECK(bw1.display().substr(0, 4) == "0320");  // bit 5 of POINTL from the stack
+    }
+    CHECK(SelfTest(machine, 150_ms) == "100020");
+    REQUIRE(machine.swap("U7"));
+    Bw1 bw1 = Monitor(machine, 1);
+    CheckShows(bw1.display(), "0200");
 }

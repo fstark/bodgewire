@@ -1,0 +1,5 @@
+# Bad byte: U5 (bit 7 of main RAM) has its cell at $300 stuck at 1: the monitor works, but $0300 always reads with bit 7 set. The self-test shows 130080.
+machine bw1
+title "Bad byte"
+brief "The BW-1 works, but one byte will not hold what is typed: AD 0300 DA 00 shows 0300 80, and DA 12 there shows 92."
+fault cell U5.DOUT $300 1
