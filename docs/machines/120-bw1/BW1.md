@@ -52,7 +52,7 @@ As on the KIM, from the top:
 
 ## Puzzles
 
-Nineteen Puzzles (P5m), in three kinds. The self-test (Service Manual, Self-test) is a fair way to show a fault, as pressing the dice's button is: a Puzzle may only show there.
+Nineteen Puzzles (P5m), in three kinds. The self-test (User Manual) is a fair way to show a fault, as pressing the dice's button is: a Puzzle may only show there.
 
 Seen in use:
 

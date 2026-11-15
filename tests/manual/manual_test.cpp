@@ -120,10 +120,7 @@ TEST_CASE("manual: checks", "[manual]") {
     CHECK(CheckServiceManual(ParseMarkdown(kGoodService), "s.md", *design).empty());
     CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## How it works\n## Components\n"),
                                       "s.md", *design))
-              .front() == "2: sections must be: Components, then any");
-    CHECK(CheckServiceManual(ParseMarkdown(std::string(kGoodService) + "## Self-test\nx\n"), "s.md",
-                             *design)
-              .empty());
+              .front() == "2: sections must be: Components");
 
     std::string service(kGoodService);
     const std::string u5 = "- `U5` counter: bits 16-19\n";
