@@ -9,9 +9,9 @@ Work on branch `p5s-z80` (worktree `.claude/worktrees/p5s-z80`), P5q running on 
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Docs reviewed | |
-| 1 | Test data: converter, fetch script, committed subset | |
-| 2 | Core: every opcode, the runner, the Harte subset | |
+| 0 | Docs reviewed | `170f3d2` |
+| 1 | Test data: converter, fetch script, committed subset | `1a8a98d` |
+| 2 | Core: every opcode, the runner, the Harte subset | this commit |
 | 3 | Core: interrupts, HALT, reset; hand cases; full Harte, ZEXDOC, ZEXALL in release | |
 | 4 | `Z80` Part, datasheet, catalogue | |
 | 5 | Bus load with the Z80: ROM, netlist, test, ratios | |
@@ -75,3 +75,4 @@ Commit: `docs: P5s implemented`
 
 - Review (before commit of the docs), fixed in them: `step()` and the INT sampling made one rule (inputs at the cycle's last rising edge, `step()` there or at the later data edge), internal T-states as their own cycles, bus request and reset in the Part only; `RFSH_N` not tri-state, reset floats only A and D with the controls high; power pins `Ttl`; `NMI_N` read at every rising edge; RAM read with `Ram2114::word`; the pulse rule per pin; file names with `_`; Harte's sampling written in; hand cases for the prefix chains and `ED` holes Harte lacks; the bus-load tail invariant and `--check`; the wake test in the 6502's shape; the CMake work in its phases; `python3` for the scripts.
 - The core, the runner and the data were written while the review ran (phases 1–2 code), then checked against its findings. Release: the Harte subset passes (0.5 s); the full Harte set passes (1,604,000 cases, 4.7 s); ZEXDOC and ZEXALL pass, 46,734,977,142 T-states each, 44 s and 46 s. Fixes found by the data: Q cleared by a `DD`/`FD` prefix (`dd 37`), WZ = PC + 1 on a repeating `INIR`/`OTIR` family (`ed b2`).
+- Phase 2: the core was written whole (interrupts, HALT and `reset()` included); phase 3 adds their hand cases. Debug: the Harte subset 2.7 s (the estimate of 60–90 s was far off: the runner reuses its RAM and the core is small per cycle).

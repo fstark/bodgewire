@@ -131,6 +131,8 @@ add_executable(bw_tests
   parts/ttl125_test.cpp
   parts/ttl145_test.cpp
   parts/ttl177_test.cpp
+  parts/z80_cases.cpp
+  parts/z80_conformance_test.cpp
   parts/z80_stub_test.cpp
   runner/analyzer_consumer_test.cpp
   runner/dispatcher_test.cpp
@@ -172,7 +174,9 @@ target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR
                                            BW_ROOT_DIR="${PROJECT_SOURCE_DIR}"
                                            BW_ROM_DIR="${PROJECT_SOURCE_DIR}/roms"
                                            BW_6502_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data/6502"
-                                           BW_6502_EXTERNAL_DIR="${PROJECT_SOURCE_DIR}/external/6502")
+                                           BW_6502_EXTERNAL_DIR="${PROJECT_SOURCE_DIR}/external/6502"
+                                           BW_Z80_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data/z80"
+                                           BW_Z80_EXTERNAL_DIR="${PROJECT_SOURCE_DIR}/external/z80")
 
 include(Catch)
 catch_discover_tests(bw_tests)
