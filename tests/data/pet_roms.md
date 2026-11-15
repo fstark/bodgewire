@@ -14,6 +14,8 @@ Put the files in `external/roms/pet/`, which is git-ignored, either as copies or
 | `rom-1-f000.901447-06.bin` | UH4 | `$F000` | `960717282878e7de893d87242ddf9d1512be162e` |
 | `rom-1-f800.901447-07.bin` | UH7 | `$F800` | `d440f2510bc52e20c3d6bc8b9ded9cea7f462a9c` |
 
-There is no ROM at `$E800`–`$EFFF`: that range is the I/O (PIA1 `$E810`, PIA2 `$E820`, VIA `$E840`). The character ROM, 901447-08, comes with the video in P5q.
+There is no ROM at `$E800`–`$EFFF`: that range is the I/O (PIA1 `$E810`, PIA2 `$E820`, VIA `$E840`).
+
+The character ROM is the exception: 901447-08 (UA2, SHA1 `3e067cc621e4beafca2b90cb8f6dba975df2855b`) ships with the BW-2001 as `roms/901447-08.bin` (decided 2026-11-15), since every screen of the Machine goes through it.
 
 They are used by `tests/netlist/external_rom_test.cpp` and by the BASIC 1 boot on the bench (`tests/netlist/bw2001_bench_test.cpp`).

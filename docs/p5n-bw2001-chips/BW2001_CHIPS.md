@@ -30,6 +30,7 @@ Asked at the start of the step (2026-11-15):
 - **Board revision 320137**: 2316B ROMs and 2114 RAMs. The 2114 is already in the catalogue with its Faults, and the 2316B fits the DIP-24 package.
 - **The PET's own chips** for the glue and the video circuit: 74LS154, 74177, 74100, 7417, 74LS21 and 74LS145, so that the BW-2001 is the PET's schematic, as the BW-1 is the KIM's.
 - **The whole datasheet** for the 6520 and the 6522: every register and mode. On the VIA that includes both timers, the shift register (PET programs make sound on `CB2` with it), input latching and the handshakes.
+- **The PET's own character ROM ships with the BW-2001** (asked during the step, 2026-11-15): `roms/901447-08.bin`, the user's dump of the 2316B-08 (SHA1 `3e067cc6…`, MAME's), committed in git, since every screen of the Machine goes through it. Offered instead: our own font in the PET's screen-code layout, or deciding at P5q. The program ROMs stay outside the repo.
 - **BASIC 1 boots to its banner** on the bench: raw 2 KB `.bin` dumps (901447-01 to -07, the user's own) in git-ignored `external/roms/pet/`, read by `contents=`. The test is skipped without them.
 
 ## New
