@@ -1,0 +1,5 @@
+# SST kills it: U15's input on K7 (pin 10) is stuck at 1 inside the chip, as if the 6502 were always outside the monitor: with SST at ON, every opcode fetch pulls NMI_N low, the monitor's own too, so it stops inside itself over and over. Back at OFF it shows 1C00, where it stopped.
+machine bw1
+title "SST kills it"
+brief "The BW-1 works until SST is slid to ON: then every digit but one goes dark and no key answers. Slid back to OFF, it shows 1C00 85."
+fault stuck U15.3B 1

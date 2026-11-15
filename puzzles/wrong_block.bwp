@@ -1,0 +1,5 @@
+# Wrong block: U4's input A (A10) is stuck at 0 inside the chip: $1400-$17FF decodes as K4 and $1C00-$1FFF as K6, so K5 and K7 never fall: no ports, no RIOT RAM, no monitor ROM; the 6502's vectors come from U3's empty $1BFA. Its reset vector reads $FFFF and it stalls in that block: A10 stays high at U4 pin 15, yet U4 selects K6. Dead, strapped or not.
+machine bw1
+title "Wrong block"
+brief "The BW-1 powers on with every digit dark. RS changes nothing, and the self-test strap changes nothing either."
+fault stuck U4.A 0

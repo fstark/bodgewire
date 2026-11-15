@@ -29,7 +29,7 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 | 2 | Display Puzzles | `1f4b472` |
 | 3 | Keypad Puzzles | `17da469` |
 | 4 | Main RAM Puzzles | `b1c73bc` |
-| 5 | RIOT and ROM Puzzles | |
+| 5 | RIOT and ROM Puzzles | `e530d3a` |
 | 6 | Instrument Puzzles | |
 | 7 | Finish | |
 
@@ -41,3 +41,4 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 - Phase 3: the monitor starts in address mode, so with DA dead the typed bytes shift into the address (`456 DA 77` shows `5677`): the brief says so. Deaf keypad uses `+` (`SW19`): the self-test shows `PA5512` with no key held (118 s in debug, the only case run to `PA55`).
 - Phase 4: every fault tried monitor and strapped on seeds 1–3 first. Half a byte: the crack `U14.1`–`U13.4` cuts `U13` alone (`U15.6`–`U13.1` cut both buffers: `1100FE`); unstrapped the monitor wanders into the self-test's keypad loop and shows `PA55` on every seed; strapped `11000E` (bit 0 happens to match the bus charge). Aliased page is not dead: it starts on `1D27 46` (every seed) and the keys work, but bit 5 of the address comes from the stack (`AD 0300` shows `0320`). Wrong suspect: a few frozen characters that change with the seed (`18F` on seed 1), the brief says "a meaningless pattern". Two bits (`U1` `D2`–`D3`) is dark with the self-test too: moved to phase 6.
 - Phase 5: `NMIV` bits 1, 4 and 6 stuck at 1 still stop correctly (they land on instructions that work); bit 0 (`$1C01`) lands mid-instruction and shows a wrong address, which changes with what ran before (`00207B`, `3F24FF`): the brief says "a meaningless address", and the keys still work after it. Self-test codes: `379504` at 75 ms, `5800FF` at 100 ms. `no_stop` is the slowest case after `deaf_keypad` (137 s in debug, seeds 1–3).
+- Phase 6: Wrong block with `A10` stuck 0 (stuck 1 is dark too, and its clue weaker: `K7` selected for both ROMs): the 6502 never runs, so the clue is not a moving `A10` but a still one: `U4`'s leg reads `A10` high while `U4` selects `K6`. SST kills it: one digit stays lit, which one depends on timing (the test counts lit digits); back at OFF the monitor shows `1C0085`, stopped in its own SAVE. Two bits (`U1` `D2`–`D3` bridged): dark or one frozen digit by seed, strapped too.

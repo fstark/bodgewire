@@ -1,0 +1,5 @@
+# Held reset: the RS key (SW23) is stuck closed: RES_N is held low, so the 6502 and both 6530s stay in reset.
+machine bw1
+title "Held reset"
+brief "The BW-1 powers on with every digit dark, and nothing on the keypad changes it. The self-test strap does not help."
+fault switch SW23 closed

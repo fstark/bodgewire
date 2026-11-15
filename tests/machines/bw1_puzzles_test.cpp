@@ -1,6 +1,7 @@
 // Machine 120 BW-1 Puzzles (docs/machines/120-bw1/BW1_DESIGN.md, Puzzles): each from power-on,
 // faulty, read as the player reads it (the digits, the self-test's code), then repaired.
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -41,6 +42,27 @@ std::string SelfTest(Machine& machine, Time until) {
     Bw1 bw1(Bw1Circuit(machine, true), 1);
     bw1.runUntil(until);
     return bw1.display();
+}
+
+// Over `window`, whether the Net of `reference`.`pin` was ever low, and how often it changed.
+struct Activity {
+    bool low = false;
+    int changes = 0;
+};
+Activity Watch(Bw1& bw1, std::string_view reference, std::string_view pin, Time window) {
+    const auto net = PinNet(bw1.loaded(), reference, pin);
+    REQUIRE(net.has_value());
+    Activity seen;
+    LogicValue last = bw1.sim().value(*net);
+    const Time end = bw1.now() + window;
+    while (bw1.now() < end) {
+        bw1.run(1_us);
+        const LogicValue value = bw1.sim().value(*net);
+        seen.low = seen.low || value == LogicValue::Zero;
+        seen.changes += value != last ? 1 : 0;
+        last = value;
+    }
+    return seen;
 }
 
 // The Puzzle's Machine powered on with `seed`, the monitor started.
@@ -314,4 +336,83 @@ TEST_CASE("bw1: rom_test_fails", "[machines][slow]") {
     CHECK(SelfTest(machine, 150_ms) == "5800FF");  // test 5: U3's ROM sums to FF
     REQUIRE(machine.swap("U3"));
     CHECK(SelfTest(machine, 300_ms) == "888888");
+}
+
+TEST_CASE("bw1: wrong_block", "[machines][slow]") {
+    Machine machine = LoadPuzzle("wrong_block");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        CHECK(bw1.display() == "      ");
+        CHECK_FALSE(Watch(bw1, "U2", "RS0", 5_ms).low);    // K7: the monitor's ROM never selected
+        CHECK_FALSE(Watch(bw1, "U2", "CS1", 5_ms).low);    // K5: nor its ports
+        const Activity a10 = Watch(bw1, "U4", "A", 5_ms);  // the 6502 is stuck on $xFFF
+        CHECK_FALSE(a10.low);                              // the leg reads A10 high...
+        CHECK(Watch(bw1, "U3", "RS0", 5_ms).low);          // ...but U4 selects K6
+    }
+    CHECK(SelfTest(machine, 150_ms) == "      ");
+    REQUIRE(machine.swap("U4"));
+    Bw1 bw1 = Monitor(machine, 1);
+    CheckShows(bw1.display(), "0200");
+}
+
+TEST_CASE("bw1: held_reset", "[machines]") {
+    Machine machine = LoadPuzzle("held_reset");
+    {
+        Bw1 bw1 = Monitor(machine, 1);
+        CHECK(bw1.display() == "      ");
+        const Activity reset = Watch(bw1, "U1", "RES_N", 5_ms);
+        CHECK(reset.low);
+        CHECK(reset.changes == 0);
+    }
+    CHECK(SelfTest(machine, 150_ms) == "      ");
+    REQUIRE(machine.swap("SW23"));
+    Bw1 bw1 = Monitor(machine, 1);
+    CheckShows(bw1.display(), "0200");
+}
+
+TEST_CASE("bw1: sst_kills", "[machines][slow]") {
+    Machine machine = LoadPuzzle("sst_kills");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        bw1.type("AD 0300");
+        CheckShows(bw1.display(), "0300");
+        bw1.setSst(true);
+        bw1.run(20_ms);
+        const auto lit = [](const std::string& shown) {
+            return std::ranges::count_if(shown, [](char c) { return c != ' '; });
+        };
+        const std::string on = bw1.display();
+        CHECK(lit(on) == 1);  // every digit dark but one
+        bw1.type("AD 0400");
+        CHECK(bw1.display() == on);
+        bw1.setSst(false);
+        bw1.run(20_ms);
+        CHECK(bw1.display() == "1C0085");  // stopped in the monitor's SAVE
+    }
+    REQUIRE(machine.swap("U15"));
+    Bw1 bw1 = Monitor(machine, 1);
+    bw1.type("DA A9 + 11 + A9 + 22 AD 0200");  // LDA #$11, LDA #$22
+    bw1.setSst(true);
+    bw1.type("GO");
+    CHECK(bw1.display() == "0202A9");
+}
+
+TEST_CASE("bw1: two_bits", "[machines][slow]") {
+    Machine machine = LoadPuzzle("two_bits");
+    for (const std::uint64_t seed : {1, 2, 3}) {
+        INFO("seed " << seed);
+        Bw1 bw1 = Monitor(machine, seed);
+        CHECK(*PinNet(bw1.loaded(), "U1", "D2") == *PinNet(bw1.loaded(), "U1", "D3"));
+        const std::string shown = bw1.display();
+        CHECK(shown.substr(0, 4) != "0200");
+        bw1.press("RS");
+        bw1.run(50_ms);
+        CHECK(bw1.display().substr(0, 4) != "0200");
+    }
+    CHECK(SelfTest(machine, 150_ms).substr(0, 4) != "1   ");
+    REQUIRE(machine.removeBridge({"U1", "31"}, {"U1", "30"}));
+    Bw1 bw1 = Monitor(machine, 1);
+    CheckShows(bw1.display(), "0200");
 }
