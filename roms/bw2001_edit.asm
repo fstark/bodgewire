@@ -11,7 +11,6 @@
         .include "bw2001.inc"
 
 CROW    = $42           ; the cursor's row 0-24
-CCOL    = $43           ; and column 0-39
 ROWPTR  = $44           ; 2: SCREEN + 40 * CROW
 UNDER   = $46           ; the screen code under the cursor while it is out
 BLINK   = $47           ; retraces to the next blink

@@ -22,8 +22,8 @@ The full debug suite runs at phase 1 (the assembler and a Part are shared code) 
 | 1 | `.include`, `.checksum BASE, SIZE`, `offset=` | `54b0246` |
 | 2 | The model and the harness | `7a7ece0` |
 | 3 | Kernel reset and the editor, on a BASIC stub | `279370b` |
-| 4 | Tiny BASIC: the conformance set on the model | this commit |
-| 5 | The monitor | |
+| 4 | Tiny BASIC: the conformance set on the model | `ca72077` |
+| 5 | The monitor | this commit |
 | 6 | The self-test | |
 | 7 | The minimal netlist | |
 | 8 | Release check, recipes, roadmap | |
@@ -110,4 +110,4 @@ The full debug suite runs at phase 1 (the assembler and a Part are shared code) 
 - Phase 2: the model's probe first read port B in its main loop, which clears the retrace flag before the IRQ is taken (the P5n bench note). Keys are read only in the interrupt, as the editor does.
 - Phase 3: the editor is 1.3 KB with `KEYTAB`. The model runs about 4× real time in debug, so the editor cases take about 3 s.
 - Phase 4: BASIC is 3.9 KB, `$C000`–`$C75F` in UH1 and `$C800`–`$CF65` in UH5 (154 bytes spare); UH2 and UH6 stay empty. All 31 sessions passed on the model with no change to P5o, in 31 s of debug time. The deepest 6502 stack use is `$01A6` (90 bytes, session `15_depth`), against the design's estimate of 160–200; the conformance case checks it stays above `$0120`. The editor cases were rewritten for BASIC (`LIST` shows the line handed over) in place of the stub's echo.
-
+- Phase 5: the monitor is 0.6 KB in UH4. It prints `C*` or `B*` on a fresh row, so it reads the editor's cursor column: `CCOL` moved into `roms/bw2001.inc`.

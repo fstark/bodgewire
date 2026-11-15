@@ -27,6 +27,7 @@
 ; ; Zero page: $00-$3F BASIC, $40-$5F the editor, $60-$7F the kernel, $80-$FF the player's (USR).
 ; WAITING  = $40          ; 1 while the editor waits for keys to make a line (the harness signal)
 ; LINES    = $41          ; lines handed over, modulo 256
+; CCOL     = $43          ; the editor's cursor column (the monitor reads it for a fresh row)
 ; MEMTOP   = $60          ; 2: the top of the program area that reset found
 ; PTR      = $62          ; 2: the kernel's pointer
 
@@ -56,18 +57,350 @@
 ; SELFTEST = $F800        ; kernel: the self-test
 ; RESET    = $F803        ; kernel: the reset vector's target
 
-; ; --- UH4: the monitor ---------------------------------------------------------------------------
+; ; --- UH4: the monitor (spec "The monitor"; design §4.3) --------------------------------------
+; ;
+; ; TIM's commands: .M aaaa bbbb, .: aaaa bb..., .R, .; pppp ss aa xx yy ss, .G [aaaa], .X, and .T
+; ; for the self-test. Entered by USR(61440) (C*) or a BRK (B*, from the IRQ handler). It runs on
+; ; the stack below the saved SP, so .G goes back to the caller's frames; only .X and .T reset S.
+
+; MADDR   = $64           ; 2: an address parsed or dumped
+; MEND    = $66           ; 2: .M's end
+; MBYTE   = $68           ; HEX2's value
+; MX      = $69           ; the place in LINBUF
+; MREGS   = $6A           ; 7: a .; line's fields before they are kept
+; MTMP    = $71           ; scratch
 
 ;         .org $F000
 @000 4C 06 F0  ; F000          jmp monitor
-@003 4C 07 F0  ; F003          jmp monbrk
+@003 4C 2A F0  ; F003          jmp monbrk
 
+; ; USR(61440): JSR'd from BASIC. The saved PC is the return address + 1, the SP after it.
 ; monitor:
-@006 60        ; F006          rts
-@007 4C 03 C0  ; F007  monbrk: jmp WARM
+@006 08        ; F006          php
+@007 8D 53 03  ; F007          sta SAVED+3
+@00A 8E 54 03  ; F00A          stx SAVED+4
+@00D 8C 55 03  ; F00D          sty SAVED+5
+@010 68        ; F010          pla
+@011 8D 52 03  ; F011          sta SAVED+2
+@014 68        ; F014          pla
+@015 18        ; F015          clc
+@016 69 01     ; F016          adc #1
+@018 8D 50 03  ; F018          sta SAVED
+@01B 68        ; F01B          pla
+@01C 69 00     ; F01C          adc #0
+@01E 8D 51 03  ; F01E          sta SAVED+1
+@021 BA        ; F021          tsx
+@022 8E 56 03  ; F022          stx SAVED+6
+@025 A9 43     ; F025          lda #'C'
+@027 4C 49 F0  ; F027          jmp mentry
+
+; ; A BRK: the IRQ handler's Y, X, A, then the 6502's P and PC (the BRK + 2).
+@02A 68        ; F02A  monbrk: pla
+@02B 8D 55 03  ; F02B          sta SAVED+5
+@02E 68        ; F02E          pla
+@02F 8D 54 03  ; F02F          sta SAVED+4
+@032 68        ; F032          pla
+@033 8D 53 03  ; F033          sta SAVED+3
+@036 68        ; F036          pla
+@037 8D 52 03  ; F037          sta SAVED+2
+@03A 68        ; F03A          pla
+@03B 8D 50 03  ; F03B          sta SAVED
+@03E 68        ; F03E          pla
+@03F 8D 51 03  ; F03F          sta SAVED+1
+@042 BA        ; F042          tsx
+@043 8E 56 03  ; F043          stx SAVED+6
+@046 D8        ; F046          cld
+@047 A9 42     ; F047          lda #'B'
+@049 58        ; F049  mentry: cli             ; the editor's keys come from the retrace interrupt
+@04A 48        ; F04A          pha
+@04B A5 43     ; F04B          lda CCOL
+@04D F0 05     ; F04D          beq @fresh
+@04F A9 0D     ; F04F          lda #$0D
+@051 20 03 E0  ; F051          jsr EDPRINT
+@054 68        ; F054  @fresh: pla
+@055 20 03 E0  ; F055          jsr EDPRINT
+@058 A9 2A     ; F058          lda #'*'
+@05A 20 03 E0  ; F05A          jsr EDPRINT
+@05D A9 0D     ; F05D          lda #$0D
+@05F 20 03 E0  ; F05F          jsr EDPRINT
+@062 20 BB F1  ; F062          jsr regs
+@065 A9 2E     ; F065  mloop:  lda #'.'
+@067 20 03 E0  ; F067          jsr EDPRINT
+@06A 20 06 E0  ; F06A          jsr EDLINE
+@06D A2 00     ; F06D          ldx #0
+@06F 86 69     ; F06F          stx MX
+@071 20 11 F2  ; F071          jsr mspace
+@074 BD 00 02  ; F074          lda LINBUF,x
+@077 C9 2E     ; F077          cmp #'.'
+@079 D0 01     ; F079          bne @cmd
+@07B E8        ; F07B          inx
+@07C BD 00 02  ; F07C  @cmd:   lda LINBUF,x
+@07F F0 E4     ; F07F          beq mloop       ; an empty command
+@081 E8        ; F081          inx
+@082 86 69     ; F082          stx MX
+@084 C9 4D     ; F084          cmp #'M'
+@086 F0 3A     ; F086          beq mdump
+@088 C9 3A     ; F088          cmp #':'
+@08A D0 03     ; F08A          bne @n1
+@08C 4C 2F F1  ; F08C          jmp mstore
+@08F C9 52     ; F08F  @n1:    cmp #'R'
+@091 D0 06     ; F091          bne @n2
+@093 20 BB F1  ; F093          jsr regs
+@096 4C 65 F0  ; F096          jmp mloop
+@099 C9 3B     ; F099  @n2:    cmp #';'
+@09B D0 03     ; F09B          bne @n3
+@09D 4C 53 F1  ; F09D          jmp msetregs
+@0A0 C9 47     ; F0A0  @n3:    cmp #'G'
+@0A2 D0 03     ; F0A2          bne @n4
+@0A4 4C 86 F1  ; F0A4          jmp mgo
+@0A7 C9 58     ; F0A7  @n4:    cmp #'X'
+@0A9 D0 03     ; F0A9          bne @n5
+@0AB 4C 03 C0  ; F0AB          jmp WARM
+@0AE C9 54     ; F0AE  @n5:    cmp #'T'
+@0B0 D0 03     ; F0B0          bne mbad
+@0B2 4C 00 F8  ; F0B2          jmp SELFTEST
+@0B5 A9 3F     ; F0B5  mbad:   lda #'?'
+@0B7 20 03 E0  ; F0B7          jsr EDPRINT
+@0BA A9 0D     ; F0BA          lda #$0D
+@0BC 20 03 E0  ; F0BC          jsr EDPRINT
+@0BF 4C 65 F0  ; F0BF          jmp mloop
+
+; ; .M aaaa bbbb: rows of 8 from aaaa & $FFF8 while the row's start is not past bbbb; STOP ends.
+@0C2 20 20 F2  ; F0C2  mdump:  jsr hex4
+@0C5 B0 EE     ; F0C5          bcs mbad
+@0C7 A5 64     ; F0C7          lda MADDR
+@0C9 29 F8     ; F0C9          and #$F8
+@0CB 85 62     ; F0CB          sta PTR
+@0CD A5 65     ; F0CD          lda MADDR+1
+@0CF 85 63     ; F0CF          sta PTR+1
+@0D1 20 20 F2  ; F0D1          jsr hex4
+@0D4 B0 56     ; F0D4          bcs @bad
+@0D6 A5 64     ; F0D6          lda MADDR
+@0D8 85 66     ; F0D8          sta MEND
+@0DA A5 65     ; F0DA          lda MADDR+1
+@0DC 85 67     ; F0DC          sta MEND+1
+@0DE A5 66     ; F0DE  @row:   lda MEND        ; PTR > MEND: done
+@0E0 C5 62     ; F0E0          cmp PTR
+@0E2 A5 67     ; F0E2          lda MEND+1
+@0E4 E5 63     ; F0E4          sbc PTR+1
+@0E6 90 41     ; F0E6          bcc @done
+@0E8 20 0C E0  ; F0E8          jsr EDBREAK
+@0EB B0 3C     ; F0EB          bcs @done
+@0ED A9 2E     ; F0ED          lda #'.'
+@0EF 20 03 E0  ; F0EF          jsr EDPRINT
+@0F2 A9 3A     ; F0F2          lda #':'
+@0F4 20 03 E0  ; F0F4          jsr EDPRINT
+@0F7 A9 20     ; F0F7          lda #' '
+@0F9 20 03 E0  ; F0F9          jsr EDPRINT
+@0FC A5 63     ; F0FC          lda PTR+1
+@0FE 20 77 F2  ; F0FE          jsr hexout
+@101 A5 62     ; F101          lda PTR
+@103 20 77 F2  ; F103          jsr hexout
+@106 A0 00     ; F106          ldy #0
+@108 A9 20     ; F108  @byte:  lda #' '
+@10A 20 03 E0  ; F10A          jsr EDPRINT
+@10D B1 62     ; F10D          lda (PTR),y
+@10F 20 77 F2  ; F10F          jsr hexout
+@112 C8        ; F112          iny
+@113 C0 08     ; F113          cpy #8
+@115 D0 F1     ; F115          bne @byte
+@117 A9 0D     ; F117          lda #$0D
+@119 20 03 E0  ; F119          jsr EDPRINT
+@11C 18        ; F11C          clc
+@11D A5 62     ; F11D          lda PTR
+@11F 69 08     ; F11F          adc #8
+@121 85 62     ; F121          sta PTR
+@123 90 B9     ; F123          bcc @row
+@125 E6 63     ; F125          inc PTR+1
+@127 D0 B5     ; F127          bne @row        ; past $FFFF: done
+@129 4C 65 F0  ; F129  @done:  jmp mloop
+@12C 4C B5 F0  ; F12C  @bad:   jmp mbad
+
+; ; .: aaaa bb ...: up to 8 bytes, each written as it is read; it stops at the first that is not
+; ; one (the rest of an edited dump row).
+@12F 20 20 F2  ; F12F  mstore: jsr hex4
+@132 B0 1C     ; F132          bcs @bad
+@134 20 32 F2  ; F134          jsr hex2
+@137 B0 17     ; F137          bcs @bad
+@139 A0 00     ; F139          ldy #0
+@13B A5 68     ; F13B  @byte:  lda MBYTE
+@13D 91 64     ; F13D          sta (MADDR),y
+@13F C8        ; F13F          iny
+@140 C0 08     ; F140          cpy #8
+@142 F0 09     ; F142          beq @done
+@144 84 66     ; F144          sty MEND
+@146 20 32 F2  ; F146          jsr hex2
+@149 A4 66     ; F149          ldy MEND
+@14B 90 EE     ; F14B          bcc @byte
+@14D 4C 65 F0  ; F14D  @done:  jmp mloop
+@150 4C B5 F0  ; F150  @bad:   jmp mbad
+
+; ; .; pppp ss aa xx yy ss: all six fields, then kept.
+; msetregs:
+@153 20 20 F2  ; F153          jsr hex4
+@156 B0 2B     ; F156          bcs @bad
+@158 A5 64     ; F158          lda MADDR
+@15A 85 6A     ; F15A          sta MREGS
+@15C A5 65     ; F15C          lda MADDR+1
+@15E 85 6B     ; F15E          sta MREGS+1
+@160 A0 02     ; F160          ldy #2
+@162 84 66     ; F162  @field: sty MEND
+@164 20 32 F2  ; F164          jsr hex2
+@167 B0 1A     ; F167          bcs @bad
+@169 A4 66     ; F169          ldy MEND
+@16B A5 68     ; F16B          lda MBYTE
+@16D 99 6A 00  ; F16D          sta MREGS,y
+@170 C8        ; F170          iny
+@171 C0 07     ; F171          cpy #7
+@173 D0 ED     ; F173          bne @field
+@175 A0 06     ; F175          ldy #6
+@177 B9 6A 00  ; F177  @keep:  lda MREGS,y
+@17A 99 50 03  ; F17A          sta SAVED,y
+@17D 88        ; F17D          dey
+@17E 10 F7     ; F17E          bpl @keep
+@180 4C 65 F0  ; F180          jmp mloop
+@183 4C B5 F0  ; F183  @bad:   jmp mbad
+
+; ; .G [aaaa]: the saved registers and SP, then RTI to the PC.
+@186 20 11 F2  ; F186  mgo:    jsr mspace
+@189 BD 00 02  ; F189          lda LINBUF,x
+@18C F0 0F     ; F18C          beq @go
+@18E 20 20 F2  ; F18E          jsr hex4
+@191 B0 25     ; F191          bcs @bad
+@193 A5 64     ; F193          lda MADDR
+@195 8D 50 03  ; F195          sta SAVED
+@198 A5 65     ; F198          lda MADDR+1
+@19A 8D 51 03  ; F19A          sta SAVED+1
+@19D 78        ; F19D  @go:    sei
+@19E AE 56 03  ; F19E          ldx SAVED+6
+@1A1 9A        ; F1A1          txs
+@1A2 AD 51 03  ; F1A2          lda SAVED+1
+@1A5 48        ; F1A5          pha
+@1A6 AD 50 03  ; F1A6          lda SAVED
+@1A9 48        ; F1A9          pha
+@1AA AD 52 03  ; F1AA          lda SAVED+2
+@1AD 48        ; F1AD          pha
+@1AE AC 55 03  ; F1AE          ldy SAVED+5
+@1B1 AE 54 03  ; F1B1          ldx SAVED+4
+@1B4 AD 53 03  ; F1B4          lda SAVED+3
+@1B7 40        ; F1B7          rti
+@1B8 4C B5 F0  ; F1B8  @bad:   jmp mbad
+
+; ; The header and the .; row.
+@1BB A2 00     ; F1BB  regs:   ldx #0
+@1BD BD FA F1  ; F1BD  @head:  lda regtext,x
+@1C0 F0 06     ; F1C0          beq @row
+@1C2 20 03 E0  ; F1C2          jsr EDPRINT
+@1C5 E8        ; F1C5          inx
+@1C6 D0 F5     ; F1C6          bne @head
+@1C8 A9 2E     ; F1C8  @row:   lda #'.'
+@1CA 20 03 E0  ; F1CA          jsr EDPRINT
+@1CD A9 3B     ; F1CD          lda #';'
+@1CF 20 03 E0  ; F1CF          jsr EDPRINT
+@1D2 A9 20     ; F1D2          lda #' '
+@1D4 20 03 E0  ; F1D4          jsr EDPRINT
+@1D7 AD 51 03  ; F1D7          lda SAVED+1
+@1DA 20 77 F2  ; F1DA          jsr hexout
+@1DD AD 50 03  ; F1DD          lda SAVED
+@1E0 20 77 F2  ; F1E0          jsr hexout
+@1E3 A2 02     ; F1E3          ldx #2
+@1E5 A9 20     ; F1E5  @reg:   lda #' '
+@1E7 20 03 E0  ; F1E7          jsr EDPRINT
+@1EA BD 50 03  ; F1EA          lda SAVED,x
+@1ED 20 77 F2  ; F1ED          jsr hexout
+@1F0 E8        ; F1F0          inx
+@1F1 E0 07     ; F1F1          cpx #7
+@1F3 D0 F0     ; F1F3          bne @reg
+@1F5 A9 0D     ; F1F5          lda #$0D
+@1F7 4C 03 E0  ; F1F7          jmp EDPRINT
+
+; regtext:
+@1FA 20 20 20 50 43 20 20 53 52 20 41 43 20 58 52 20  ; F1FA          .byte "   PC  SR AC XR YR SP", $0D, 0
+@20A 59 52 20 53 50 0D 00
+
+; ; Spaces in LINBUF from MX skipped; X = MX.
+@211 A6 69     ; F211  mspace: ldx MX
+@213 BD 00 02  ; F213  @loop:  lda LINBUF,x
+@216 C9 20     ; F216          cmp #' '
+@218 D0 03     ; F218          bne @done
+@21A E8        ; F21A          inx
+@21B D0 F6     ; F21B          bne @loop
+@21D 86 69     ; F21D  @done:  stx MX
+@21F 60        ; F21F          rts
+
+; ; Exactly 4 hex digits after spaces into MADDR (high first): carry set if not.
+@220 20 32 F2  ; F220  hex4:   jsr hex2
+@223 B0 0C     ; F223          bcs @bad
+@225 A5 68     ; F225          lda MBYTE
+@227 85 65     ; F227          sta MADDR+1
+@229 20 3D F2  ; F229          jsr digits      ; the low byte follows with no space
+@22C B0 03     ; F22C          bcs @bad
+@22E 85 64     ; F22E          sta MADDR
+@230 18        ; F230          clc
+@231 60        ; F231  @bad:   rts
+
+; ; Exactly 2 hex digits after spaces into MBYTE: carry set if not.
+@232 20 11 F2  ; F232  hex2:   jsr mspace
+@235 20 3D F2  ; F235          jsr digits
+@238 B0 02     ; F238          bcs @bad
+@23A 85 68     ; F23A          sta MBYTE
+@23C 60        ; F23C  @bad:   rts
+
+; ; Two hex digits at MX into A, MX past them; carry set if not.
+@23D A6 69     ; F23D  digits: ldx MX
+@23F BD 00 02  ; F23F          lda LINBUF,x
+@242 20 5D F2  ; F242          jsr nibble
+@245 B0 15     ; F245          bcs @bad
+@247 0A        ; F247          asl
+@248 0A        ; F248          asl
+@249 0A        ; F249          asl
+@24A 0A        ; F24A          asl
+@24B 85 71     ; F24B          sta MTMP
+@24D E8        ; F24D          inx
+@24E BD 00 02  ; F24E          lda LINBUF,x
+@251 20 5D F2  ; F251          jsr nibble
+@254 B0 06     ; F254          bcs @bad
+@256 05 71     ; F256          ora MTMP
+@258 E8        ; F258          inx
+@259 86 69     ; F259          stx MX
+@25B 18        ; F25B          clc
+@25C 60        ; F25C  @bad:   rts
+
+@25D C9 30     ; F25D  nibble: cmp #'0'
+@25F 90 14     ; F25F          bcc @bad
+@261 C9 3A     ; F261          cmp #'9'+1
+@263 90 0C     ; F263          bcc @digit
+@265 C9 41     ; F265          cmp #'A'
+@267 90 0C     ; F267          bcc @bad
+@269 C9 47     ; F269          cmp #'F'+1
+@26B B0 08     ; F26B          bcs @bad
+@26D E9 36     ; F26D          sbc #'A'-10-1   ; carry clear here
+@26F 18        ; F26F          clc
+@270 60        ; F270          rts
+@271 29 0F     ; F271  @digit: and #$0F
+@273 18        ; F273          clc
+@274 60        ; F274          rts
+@275 38        ; F275  @bad:   sec
+@276 60        ; F276          rts
+
+; ; A as two hex digits.
+@277 48        ; F277  hexout: pha
+@278 4A        ; F278          lsr
+@279 4A        ; F279          lsr
+@27A 4A        ; F27A          lsr
+@27B 4A        ; F27B          lsr
+@27C 20 82 F2  ; F27C          jsr @nib
+@27F 68        ; F27F          pla
+@280 29 0F     ; F280          and #$0F
+@282 C9 0A     ; F282  @nib:   cmp #10
+@284 90 05     ; F284          bcc @d
+@286 69 36     ; F286          adc #'A'-10-1   ; carry set here
+@288 4C 03 E0  ; F288          jmp EDPRINT
+@28B 09 30     ; F28B  @d:     ora #'0'
+@28D 4C 03 E0  ; F28D          jmp EDPRINT
 
 ;         .org $F7FF
-@7FF 01        ; F7FF          .checksum $F000, $800
+@7FF 29        ; F7FF          .checksum $F000, $800
 
 ; ; --- UH7: reset, interrupts, the self-test -------------------------------------------------------
 

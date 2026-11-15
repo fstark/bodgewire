@@ -332,3 +332,95 @@ TEST_CASE("bw2001 basic: USR, OUT OF MEMORY", "[bw2001][slow]") {
     m.enter("LIST 80");
     CHECK(m.rows() == Rows{"LIST 80", "READY"});
 }
+
+namespace {
+
+// The fields of the monitor's ".; pppp ss aa xx yy ss" row.
+std::vector<std::string> Registers(const std::string& row) {
+    std::vector<std::string> fields;
+    std::size_t at = 3;
+    while (at < row.size()) {
+        const std::size_t end = row.find(' ', at);
+        fields.push_back(row.substr(at, end == std::string::npos ? std::string::npos : end - at));
+        at = end == std::string::npos ? row.size() : end + 1;
+    }
+    return fields;
+}
+
+}  // namespace
+
+TEST_CASE("bw2001 monitor: USR(61440), the registers, .G returning a value", "[bw2001]") {
+    Machine m;
+    m.clear();
+    m.enter("PRINT USR(61440)");
+    Rows rows = m.rows();
+    REQUIRE(rows.size() == 5);
+    CHECK(rows[1] == "C*");
+    CHECK(rows[2] == "   PC  SR AC XR YR SP");
+    REQUIRE(rows[3].starts_with(".; "));
+    CHECK(rows[4] == ".");
+    const auto fields = Registers(rows[3]);
+    REQUIRE(fields.size() == 6);
+    // AC and YR set to $34 and $12: USR returns $1234.
+    m.enter("; " + fields[0] + " " + fields[1] + " 34 " + fields[3] + " 12 " + fields[5]);
+    m.enter("R");
+    CHECK(m.row(7) ==
+          ".; " + fields[0] + " " + fields[1] + " 34 " + fields[3] + " 12 " + fields[5]);
+    m.enter("G");
+    rows = m.rows();
+    REQUIRE(rows.size() >= 2);
+    CHECK(rows[rows.size() - 2] == "4660");
+    CHECK(rows.back() == "READY");
+    // A bad command.
+    m.clear();
+    m.enter("PRINT USR(61440)");
+    m.enter("Q");
+    CHECK(m.row(5) == "?");
+    CHECK(m.row(6) == ".");
+}
+
+TEST_CASE("bw2001 monitor: .M dumps, a dump row edited in place, .:, .X keeps the program",
+          "[bw2001][slow]") {
+    Machine m;
+    m.clear();
+    m.enter("10 PRINT A");
+    m.enter("PRINT USR(61440)");
+    m.enter("M 0400 0407");
+    CHECK(m.row(6) == ".: 0400 0A 00 07 80 20 41 00 00");
+    m.enter("M 03F0 03F0");
+    CHECK(m.row(8) == ".: 03F0 00 00 00 00 00 00 00 00");
+    // Up onto the dump row, right to its first byte, overtype it, RETURN.
+    m.press(kBw2001CursorDown, true);
+    for (int i = 0; i < 7; ++i) {
+        m.press(kBw2001CursorRight);
+    }
+    m.typist.type("AB");
+    m.enter("");
+    m.enter(": 03F1 CD EF");
+    m.enter("X");
+    m.clear();
+    m.enter("PRINT PEEK(1008);PEEK(1009);PEEK(1010)");
+    CHECK(m.row(1) == "171205239");
+    m.enter("LIST");
+    CHECK(m.row(4) == "10 PRINT A");
+}
+
+TEST_CASE("bw2001 monitor: a BRK shows B* and its PC; .G goes on after it", "[bw2001]") {
+    Machine m;
+    m.clear();
+    // LDA #7, BRK, (its pad), LDY #0, RTS at 1008 ($03F0).
+    m.enter("POKE 1008,169:POKE 1009,7:POKE 1010,0");
+    m.enter("POKE 1011,234:POKE 1012,160:POKE 1013,0:POKE 1014,96");
+    m.clear();
+    m.enter("PRINT USR(1008)");
+    const Rows rows = m.rows();
+    REQUIRE(rows.size() == 5);
+    CHECK(rows[1] == "B*");
+    const auto fields = Registers(rows[3]);
+    REQUIRE(fields.size() == 6);
+    CHECK(fields[0] == "03F4");
+    CHECK(fields[2] == "07");
+    m.enter("G");
+    CHECK(m.row(5) == "7");
+    CHECK(m.row(6) == "READY");
+}

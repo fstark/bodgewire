@@ -27,6 +27,7 @@
 ; ; Zero page: $00-$3F BASIC, $40-$5F the editor, $60-$7F the kernel, $80-$FF the player's (USR).
 ; WAITING  = $40          ; 1 while the editor waits for keys to make a line (the harness signal)
 ; LINES    = $41          ; lines handed over, modulo 256
+; CCOL     = $43          ; the editor's cursor column (the monitor reads it for a fresh row)
 ; MEMTOP   = $60          ; 2: the top of the program area that reset found
 ; PTR      = $62          ; 2: the kernel's pointer
 
