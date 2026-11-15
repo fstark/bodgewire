@@ -147,7 +147,22 @@ constexpr std::array<RomEnable, 3> s_2316Enables{
 constexpr RomLayout s_2316Layout{s_2716Address, s_2316AddressDelay, s_2716Data, s_2316Enables,
                                  delays::k2316Float};
 
-const std::array<RomSpec, 3> s_specs{{
+// 2332: 4K x 8 mask ROM (MOS 2332; the ZX80's IC2, "8332"), the 2316B's pins with A11 on pin 18
+// and two chip selects whose polarities are set in the mask (select=). Enables listed CS1, CS2.
+constexpr std::array<std::string_view, 24> s_2332Names{
+    "A7", "A6", "A5", "A4", "A3", "A2",  "A1",  "A0",  "O0",  "O1", "O2", "GND",
+    "O3", "O4", "O5", "O6", "O7", "A11", "A10", "CS1", "CS2", "A9", "A8", "VCC"};
+constexpr std::array<PinIndex, 12> s_2332Address{7, 6, 5, 4, 3, 2, 1, 0, 22, 21, 18, 17};
+constexpr std::array<Time, 12> s_2332AddressDelay{
+    delays::k2332Access, delays::k2332Access, delays::k2332Access, delays::k2332Access,
+    delays::k2332Access, delays::k2332Access, delays::k2332Access, delays::k2332Access,
+    delays::k2332Access, delays::k2332Access, delays::k2332Access, delays::k2332Access};
+constexpr std::array<RomEnable, 2> s_2332Enables{
+    {{19, delays::k2332Select}, {20, delays::k2332Select}}};
+constexpr RomLayout s_2332Layout{s_2332Address, s_2332AddressDelay, s_2716Data, s_2332Enables,
+                                 delays::k2332Float};
+
+const std::array<RomSpec, 4> s_specs{{
     {"2513",
      s_2513Names,
      s_2513Address,
@@ -168,6 +183,16 @@ const std::array<RomSpec, 3> s_specs{{
      {},
      delays::k2316Float,
      &EvaluateRom<s_2316Layout>,
+     true},
+    {"2332",
+     s_2332Names,
+     s_2332Address,
+     s_2332AddressDelay,
+     s_2716Data,
+     s_2332Enables,
+     {},
+     delays::k2332Float,
+     &EvaluateRom<s_2332Layout>,
      true},
 }};
 

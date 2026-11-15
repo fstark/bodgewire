@@ -31,7 +31,9 @@ struct GatePart {
 constexpr GatePart kLs00{"74LS00", GateKind::Nand, 4, "AB", delays::kLs00};
 constexpr GatePart kLs02{"74LS02", GateKind::Nor, 4, "AB", delays::kLs02};
 constexpr GatePart kLs04{"74LS04", GateKind::Not, 6, "A", delays::kLs04};
+constexpr GatePart kLs05{"74LS05", GateKind::Not, 6, "A", delays::kLs05, true};
 constexpr GatePart kLs08{"74LS08", GateKind::And, 4, "AB", delays::kLs08};
+constexpr GatePart kLs10{"74LS10", GateKind::Nand, 3, "ABC", delays::kLs10};
 constexpr GatePart kLs20{"74LS20", GateKind::Nand, 2, "ABCD", delays::kLs20};
 constexpr GatePart kLs21{"74LS21", GateKind::And, 2, "ABCD", delays::kLs21};
 constexpr GatePart kTtl17{"7417", GateKind::Buffer, 6, "A", delays::kTtl17, true};
@@ -170,7 +172,9 @@ void CheckDelays(const GatePart& part) {
 TEST_CASE("gate package: 74LS00 truth table", "[parts]") { CheckTruthTable(kLs00); }
 TEST_CASE("gate package: 74LS02 truth table", "[parts]") { CheckTruthTable(kLs02); }
 TEST_CASE("gate package: 74LS04 truth table", "[parts]") { CheckTruthTable(kLs04); }
+TEST_CASE("gate package: 74LS05 truth table", "[parts]") { CheckTruthTable(kLs05); }
 TEST_CASE("gate package: 74LS08 truth table", "[parts]") { CheckTruthTable(kLs08); }
+TEST_CASE("gate package: 74LS10 truth table", "[parts]") { CheckTruthTable(kLs10); }
 TEST_CASE("gate package: 74LS20 truth table", "[parts]") { CheckTruthTable(kLs20); }
 TEST_CASE("gate package: 74LS21 truth table", "[parts]") { CheckTruthTable(kLs21); }
 TEST_CASE("gate package: 74LS27 truth table", "[parts]") { CheckTruthTable(kLs27); }
@@ -182,7 +186,9 @@ TEST_CASE("gate package: 74LS86 truth table", "[parts]") { CheckTruthTable(kLs86
 TEST_CASE("gate package: 74LS00 delays", "[parts]") { CheckDelays(kLs00); }
 TEST_CASE("gate package: 74LS02 delays", "[parts]") { CheckDelays(kLs02); }
 TEST_CASE("gate package: 74LS04 delays", "[parts]") { CheckDelays(kLs04); }
+TEST_CASE("gate package: 74LS05 delays", "[parts]") { CheckDelays(kLs05); }
 TEST_CASE("gate package: 74LS08 delays", "[parts]") { CheckDelays(kLs08); }
+TEST_CASE("gate package: 74LS10 delays", "[parts]") { CheckDelays(kLs10); }
 TEST_CASE("gate package: 74LS20 delays", "[parts]") { CheckDelays(kLs20); }
 TEST_CASE("gate package: 74LS21 delays", "[parts]") { CheckDelays(kLs21); }
 TEST_CASE("gate package: 74LS27 delays", "[parts]") { CheckDelays(kLs27); }
@@ -196,6 +202,25 @@ TEST_CASE("gate package: 7417 releases its 1", "[parts]") {
     CHECK(chip.pins()[0].kind == PinKind::Input);          // 1A
     const NetId a = circuit.addNet("1A");
     auto& source = circuit.add<Stimulus>("SA", One, std::vector<Stimulus::Step>{{100_ns, Zero}});
+    circuit.connect(source, Stimulus::kOut, a);
+    circuit.connect(chip, "1A", a);
+    const NetId y = circuit.addNet("1Y");
+    circuit.connect(chip, "1Y", y);
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runUntil(90_ns);
+    CHECK(sim.isFloating(y));
+    sim.runUntil(200_ns);
+    CHECK(sim.value(y) == Zero);
+}
+TEST_CASE("gate package: 74LS05 releases its 1", "[parts]") {
+    // Open collector: a low input lets the output float; only a pull-up makes it 1.
+    Circuit circuit;
+    Component& chip = *FindPart("74LS05")->create(circuit, "U1", {}).value();
+    CHECK(chip.pins()[1].kind == PinKind::OpenCollector);  // 1Y
+    const NetId a = circuit.addNet("1A");
+    auto& source = circuit.add<Stimulus>("SA", Zero, std::vector<Stimulus::Step>{{100_ns, One}});
     circuit.connect(source, Stimulus::kOut, a);
     circuit.connect(chip, "1A", a);
     const NetId y = circuit.addNet("1Y");

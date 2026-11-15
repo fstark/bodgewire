@@ -320,6 +320,81 @@ TEST_CASE("rom: 2316B select= parameter", "[parts]") {
     CHECK(pins[18].name == "A10");
 }
 
+TEST_CASE("rom: 2332 selects at the levels select= sets", "[parts]") {
+    const unsigned mask = GENERATE(range(0u, 4u));
+    INFO("activeHigh " << mask);
+    for (unsigned levels = 0; levels < 4; ++levels) {
+        INFO("levels " << levels);
+        const auto level = [&](unsigned i) { return (levels >> i) & 1u ? One : Zero; };
+        Bench b("2332", {{"A0", {One, {}}}, {"CS1", {level(0), {}}}, {"CS2", {level(1), {}}}},
+                mask);
+        Simulator sim(b.circuit);
+        sim.powerOn(1);
+        sim.runUntil(1_us);
+        if (levels == mask) {
+            CHECK(b.word(sim) == 7);
+        } else {
+            CHECK(sim.isFloating(b.nets.at("O0")));
+        }
+    }
+}
+
+TEST_CASE("rom: 2332 delays and its twelve address bits", "[parts]") {
+    // select=LL; A11 high at 3 us: word $800, (0x800 * 7) & 0xFF = 0.
+    Bench b("2332",
+            {{"A0", {One, {}}},
+             {"A11", {Zero, {{3_us, One}}}},
+             {"CS1", {Zero, {{1_us, One}, {2_us, Zero}}}},
+             {"CS2", {Zero, {}}}},
+            0);
+    Simulator sim(b.circuit);
+    sim.powerOn(1);
+    sim.runUntil(900_ns);
+    CHECK(b.word(sim) == 7);
+    sim.runUntil(1_us + delays::k2332Float - 1);
+    CHECK(b.word(sim) == 7);
+    sim.runUntil(1_us + delays::k2332Float);
+    CHECK(sim.isFloating(b.nets.at("O0")));
+    sim.runUntil(2_us + delays::k2332Select - 1);
+    CHECK(sim.isFloating(b.nets.at("O0")));
+    sim.runUntil(2_us + delays::k2332Select);
+    CHECK(b.word(sim) == 7);
+    sim.runUntil(3_us + delays::k2332Access - 1);
+    CHECK(b.word(sim) == 7);
+    sim.runUntil(3_us + delays::k2332Access);
+    CHECK(b.word(sim) == ((0x801 * 7) & 0xFF));
+}
+
+TEST_CASE("rom: 2332 pins and select= parameter", "[parts]") {
+    const PartInfo* part = FindPart("2332");
+    REQUIRE(part != nullptr);
+    CHECK(part->package == "DIP-24");
+    const std::string empty = std::string(BW_ROOT_DIR) + "/tests/data/empty.rom";
+    Circuit circuit;
+    const auto make = [&](std::vector<PartParam> params) {
+        return part->create(circuit, "U1", params);
+    };
+    CHECK(make({{"contents", empty}}).error() ==
+          "2332 needs select=<CS1 CS2: L or H each>, e.g. select=LH");
+    CHECK(make({{"select", "LLH"}, {"contents", empty}}).error() ==
+          "2332: bad select 'LLH' (two of L or H)");
+    CHECK(make({{"select", "LX"}, {"contents", empty}}).error() ==
+          "2332: bad select 'LX' (two of L or H)");
+    REQUIRE(make({{"select", "LL"}, {"contents", empty}}).has_value());
+
+    const RomSpec& spec = RomSpecOf("2332");
+    CHECK(spec.address.size() == 12);
+    Rom rom("U3", spec, Pattern(spec));
+    const auto pins = rom.pins();
+    REQUIRE(pins.size() == 24);
+    CHECK(pins[17].name == "A11");
+    CHECK(pins[18].name == "A10");
+    CHECK(pins[19].name == "CS1");
+    CHECK(pins[20].name == "CS2");
+    CHECK(pins[21].name == "A9");
+    CHECK(pins[22].name == "A8");
+}
+
 TEST_CASE("rom: X inputs", "[parts]") {
     SECTION("an X address bit: data bits where both words agree stay known") {
         // A0 at X: words 0 and 7 (0b00000111) differ in bits 0-2 only.

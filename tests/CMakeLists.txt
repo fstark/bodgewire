@@ -106,6 +106,8 @@ add_executable(bw_tests
   parts/ls175_test.cpp
   parts/ls244_test.cpp
   parts/ls273_test.cpp
+  parts/ls365_test.cpp
+  parts/ls373_test.cpp
   parts/ls47_test.cpp
   parts/ls48_test.cpp
   parts/ls74_test.cpp

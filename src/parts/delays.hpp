@@ -8,7 +8,9 @@ namespace bw::delays {
 inline constexpr Delays kLs00{9'000, 10'000};
 inline constexpr Delays kLs02{10'000, 10'000};
 inline constexpr Delays kLs04{9'000, 10'000};
+inline constexpr Delays kLs05{17'000, 15'000};  // open collector, R_L = 2 kΩ
 inline constexpr Delays kLs08{8'000, 10'000};
+inline constexpr Delays kLs10{9'000, 10'000};
 inline constexpr Delays kLs20{9'000, 10'000};
 inline constexpr Delays kLs27{10'000, 10'000};
 inline constexpr Delays kLs30{8'000, 13'000};
@@ -89,6 +91,10 @@ inline constexpr Time k2716Float = 100'000;         // CE_N or OE_N high → O o
 inline constexpr Time k2316Access = 450'000;  // address → O (tACC)
 inline constexpr Time k2316Select = 120'000;  // CS active → O (tCO)
 inline constexpr Time k2316Float = 100'000;   // CS inactive → O off (tDF)
+// 2332 (P5u): MOS 2332 maximums, the 2316B's family.
+inline constexpr Time k2332Access = 450'000;  // address → O (tACC)
+inline constexpr Time k2332Select = 120'000;  // CS active → O (tCO)
+inline constexpr Time k2332Float = 100'000;   // CS inactive → O off (tDF)
 // 74LS244 (rise = from/to 1, fall = from/to 0).
 inline constexpr Delays kLs244Data{12'000, 12'000};     // A → Y
 inline constexpr Delays kLs244Enable{15'000, 20'000};   // OE_N low → Y (tPZH, tPZL)
@@ -97,6 +103,14 @@ inline constexpr Delays kLs244Disable{10'000, 15'000};  // OE_N high → Y off (
 inline constexpr Delays kTtl125Data{8'000, 12'000};     // A → Y
 inline constexpr Delays kTtl125Enable{14'000, 16'000};  // OE_N low → Y (tPZH, tPZL)
 inline constexpr Delays kTtl125Disable{5'000, 7'000};   // OE_N high → Y off (tPHZ, tPLZ)
+// 74LS365 and 74LS373 (P5u).
+inline constexpr Delays kLs365Data{10'000, 9'000};      // A → Y
+inline constexpr Delays kLs365Enable{19'000, 24'000};   // G1_N, G2_N low → Y (tPZH, tPZL)
+inline constexpr Delays kLs365Disable{15'000, 20'000};  // G1_N or G2_N high → Y off (tPHZ, tPLZ)
+inline constexpr Delays kLs373Data{12'000, 12'000};     // D → Q while LE is high
+inline constexpr Delays kLs373Latch{20'000, 18'000};    // LE high → Q
+inline constexpr Delays kLs373Enable{15'000, 25'000};   // OE_N low → Q (tPZH, tPZL)
+inline constexpr Delays kLs373Disable{15'000, 12'000};  // OE_N high → Q off (tPHZ, tPLZ)
 // MOS 6102 (500 ns grade, the KIM-1 parts list): maximums. Access from the KIM's list; chip
 // enable as the 2102 family's (equal to access) and output off as the 2114's: assumed.
 inline constexpr Time k6102Access = 500'000;  // address → DOUT

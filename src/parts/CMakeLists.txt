@@ -16,6 +16,8 @@ add_library(bw_parts STATIC
   ls175.cpp
   ls244.cpp
   ls273.cpp
+  ls365.cpp
+  ls373.cpp
   ls47.cpp
   ls48.cpp
   ls74.cpp
