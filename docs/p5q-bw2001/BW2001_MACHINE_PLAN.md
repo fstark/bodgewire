@@ -15,8 +15,8 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 | 5 | The keyboard window, capture, paste | `a0d2ab3` |
 | 6 | `grid pet` in `bw place` | `42cd116` |
 | 7 | The editor's retrace wait | `45ad97d` |
-| 8 | Netlist stage 1: video | this commit |
-| 9 | Netlist stage 2: computer | |
+| 8 | Netlist stage 1: video | `96e754b` |
+| 9 | Netlist stage 2: computer | this commit |
 | 10 | Netlist stage 3: edges, BASIC 1, manuals | |
 | 11 | Board (user routes) | |
 | 12 | Board tests, Session test, release check | |
@@ -111,3 +111,4 @@ Commit `docs: P5q done (P5q)`.
 - Phase 6: `next` beside a PET chip is accepted by the parser once `grid pet` is given; free parts go to the empty cell nearest the parts sharing their Nets (greedy, not annealed); `UDE9` (not a cell) is such a free part.
 - Phase 7: `clear()` in the firmware test waits 300 ms of model time after CLR (a clear is now about nine frames). Release: the P5p netlist's whole conformance set green in 3 min 11 s.
 - Phase 8: the netlist is generated from the transcribed sheets with the Machine design's changes (the script stayed in the session's scratch; the netlist's header names its sources). `UH2`/`UH6` left out (empty sockets: no chip). The first cases showed every cell at a multiple of 64 (not a row start) drawn as the cell before: the carry through `UD5`, `UD6`, `UD7` (about 100 ns), a 450 ns 2114 and a 450 ns 2316B miss the next character load by about 50 ns. The real board works, so its 2114s are faster than the 450 ns grade: `2114 access=` (450, 300 or 200 ns: the 2114, -3, -2) added, the BW-2001's 2114s at 300 ns (a choice to confirm with the user). The TV needs about 100 ms after power-on to lock (the vertical state starts at random); the cases look at 150 ms. Debug ratio about 0.004× (3 × 150 ms in 72 s). Release: **0.49×** headless (`bw run --time 2s`), **0.51×** in `bw_ui` without a Board. The text sits right of centre on the TV (TV columns 144–463 of 512).
+- Phase 9: sheets 1 and 2 joined, our ROMs: the banner and `READY` on the TV at 399 ms (seed 1), first time; no screen access during the display over the boot (1073 accesses, all in the retrace); the stage-1 cases unchanged (at 150 ms the reset code is still sizing the RAM, the screen still the power-on bytes). `UJ9` gates 3–4 tied. Release: **0.24×** headless, **0.23×** in `bw_ui` without a Board. Debug: the four Machine cases in 4 min.
