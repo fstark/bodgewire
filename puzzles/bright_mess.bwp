@@ -1,0 +1,5 @@
+# Bright mess: U24's output 6 (DIG3) is stuck low: DS3 is selected with every digit and lights all their segments.
+machine bw1
+title "Bright mess"
+brief "The third digit shows a bright jumble of segments, nearly an 8; the other five read 0200 and a byte as they should."
+fault stuck U24.Y6_N 0

@@ -1,0 +1,5 @@
+# Odd seven: U2's ROM word $3EE (TABLE + 7, the glyph of 7) has bit 3 (segment d) stuck at 1: every 7 is drawn with a bottom bar.
+machine bw1
+title "Odd seven"
+brief "Every 7 the BW-1 shows has a bar along its bottom. AD 0277 shows it twice; the other digits look right."
+fault cell U2.D3 rom $3EE 1

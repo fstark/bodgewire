@@ -44,6 +44,7 @@ const Crack& FifteenCrack();     // heartbeat A14, U1 pin 24 → U3 pin 6: puzzl
 const Crack&
 LightsOutCrack();           // led_computer LATCH_CLK, U6 pin 13 → U7 pin 11: puzzles/lights_out.bwp
 const Crack& R1VccCrack();  // counter VCC, R1.1 → U1.16: R1's rail side cut off
-const Crack& Sw1GndCrack();  // dice GND, SW1 pad 2 → J1.2: SW1's rail end cut off
+const Crack& Sw1GndCrack();       // dice GND, SW1 pad 2 → J1.2: SW1's rail end cut off
+const Crack& HalfSegmentCrack();  // bw1 SEG_A, DS3 pad 7 → DS4 pad 7: puzzles/half_segment.bwp
 
 }  // namespace bw

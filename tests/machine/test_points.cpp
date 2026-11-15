@@ -165,4 +165,9 @@ const Crack& Sw1GndCrack() {
     return crack;
 }
 
+const Crack& HalfSegmentCrack() {
+    static const Crack crack = PuzzleCrack("half_segment");
+    return crack;
+}
+
 }  // namespace bw

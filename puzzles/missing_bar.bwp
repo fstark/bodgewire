@@ -1,0 +1,5 @@
+# Missing bar: U17's output to SEG_G is stuck at 0: no digit ever lights its middle bar.
+machine bw1
+title "Missing bar"
+brief "The BW-1 starts, but the 2 of 0200 has no middle bar, and neither does any other digit."
+fault stuck U17.2Y3 0

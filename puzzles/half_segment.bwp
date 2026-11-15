@@ -1,0 +1,5 @@
+# Half a segment: the SEG_A Trace is cracked between DS3 and DS4: the digits past the crack lose their top bar.
+machine bw1
+title "Half a segment"
+brief "Some digits have no top bar, the others do: 0200 reads with its last digits open at the top."
+fault crack DS3.A DS4.A 50%
