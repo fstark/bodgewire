@@ -1,0 +1,182 @@
+# Bus load with the real Z80 (P5s, docs/p5s-z80/Z80_DESIGN.md, Bus load): P5a's circuit
+# (netlists/bus_load.bwn, docs/p5a-bus-load/BUS_LOAD.md) with a Z80 (U2) in place of the Z80STUB,
+# running our display program (roms/bus_load_z80.rom, from roms/make_bus_load_z80_rom.py) at
+# 3.25 MHz: 312 lines of 207 T-states, 24 text rows of 32 characters executed from the display
+# file's mirror at $C000, the characters forced to NOPs as in the stub's netlist. What differs:
+# INT_N is on A6, as on the ZX80, so the CPU's own refresh address (I:R, R counting each fetch)
+# ends each line with the interrupt that starts HSYNC; a power-on reset (U27, R1) on RESET_N
+# starts the program at $0000; the ROM is the program's. Everything else is P5a's: the ROM (U3)
+# at A14 low, the RAM (U4, U5) at A14 high with MREQ, the data bus behind 74LS244s (U6 reads,
+# U7 the forced NOP, U8 writes), the character latch (U9, U10), the refresh-multiplexed ROM
+# address (U11-U13), the 74LS165 (U14), the line counter (U15), HSYNC (U1, U16) from the
+# interrupt acknowledge, VSYNC (U26) set by IN from port FE and cleared by OUT.
+
+part X1  OSC freq=6.5MHz
+part U1  74LS74     # CPU clock, HSYNC
+part U2  Z80
+part U3  2716 contents=../roms/bus_load_z80.rom
+part U4  2114       # RAM, MD0-MD3
+part U5  2114       # RAM, MD4-MD7
+part U6  74LS244    # memory reads to the CPU
+part U7  74LS244    # forced NOP
+part U8  74LS244    # CPU writes to memory
+part U9  74LS175    # CH0-CH3
+part U10 74LS175    # CH4, CH5, INV, DISP
+part U11 74LS157    # RA0-RA3
+part U12 74LS157    # RA4-RA7
+part U13 74LS157    # RA8
+part U14 74LS165    # dots out
+part U15 74LS93     # line counter
+part U16 74LS161    # HSYNC length
+part U17 74LS04     # M1, MREQ, MD6_N, WR, RCO_N
+part U18 74LS04     # NOP_FORCE, RFSH
+part U19 74LS32     # RD_EN_N, NOP_EN_N, INTACK_N, VS_CLR_N
+part U20 74LS32     # IORD_N, VS_SET_N
+part U21 74LS00     # RAM_CS_N
+part U22 74LS20     # NOP_FORCE_N, LOAD_N
+part U23 74LS74     # INV_SHOWN, REFRESH_END
+part U24 74LS02     # INV_ON, SYNC_N
+part U25 74LS86     # VIDEO_D
+part U26 74LS74     # VSYNC, video register
+part J1  POWER
+part J2  VIDEO
+part U27 POR time=1ms   # power-on reset
+part R1  R value=3k3    # RESET_N pull-up
+
+# Clocks: 6.5 MHz dots, 3.25 MHz CPU.
+net DOT         X1.OUT U1.1CLK U14.CLK U26.2CLK
+net CLK_N       U1.1Q_N U1.1D
+net CLK         U1.1Q U2.CLK U16.CLK
+net VCC         U1.1PRE_N U1.1CLR_N
+
+# CPU: the power-on reset; NMI, WAIT and bus request unused.
+net RESET_N     U2.RESET_N U27.RST_N R1.2
+net VCC         R1.1
+net VCC         U2.NMI_N U2.WAIT_N U2.BUSRQ_N
+
+# Address bus.
+net A0          U2.A0 U4.A0 U5.A0 U11.1B U20.2B
+net A1          U2.A1 U4.A1 U5.A1 U11.2B
+net A2          U2.A2 U4.A2 U5.A2 U11.3B
+net A3          U2.A3 U4.A3 U5.A3 U11.4B
+net A4          U2.A4 U4.A4 U5.A4 U12.1B
+net A5          U2.A5 U4.A5 U5.A5 U12.2B
+net A6          U2.A6 U4.A6 U5.A6 U12.3B U2.INT_N   # INT_N on A6, as the ZX80
+net A7          U2.A7 U4.A7 U5.A7 U12.4B
+net A8          U2.A8 U4.A8 U5.A8 U13.1B
+net A9          U2.A9 U4.A9 U5.A9 U3.A9
+net A10         U2.A10 U3.A10
+net A14         U2.A14 U3.CE_N U21.1A
+net A15         U2.A15 U22.1B
+
+# Control lines.
+net M1_N        U2.M1_N U17.1A U19.3A U9.CLK U10.CLK
+net M1          U17.1Y U22.1A
+net MREQ_N      U2.MREQ_N U17.2A U23.2CLK
+net MREQ        U17.2Y U21.1B
+net RD_N        U2.RD_N U19.1A U19.2A U20.1A
+net WR_N        U2.WR_N U4.WE_N U5.WE_N U8.1OE_N U8.2OE_N U17.4A U19.4B
+net WR          U17.4Y U3.OE_N
+net IORQ_N      U2.IORQ_N U19.3B U19.4A U20.1B
+net RFSH_N      U2.RFSH_N U11.S U12.S U13.S U18.2A U23.1CLK
+net HALT_N      U2.HALT_N U22.1D
+
+# Decoding: RAM at A14 high; a character fetch forces a NOP onto the CPU's data bus.
+net RAM_CS_N    U21.1Y U4.CS_N U5.CS_N
+net MD6_N       U17.3Y U22.1C
+net NOP_FORCE_N U22.1Y U18.1A U19.2B U10.4D
+net NOP_FORCE   U18.1Y U19.1B
+net RD_EN_N     U19.1Y U6.1OE_N U6.2OE_N
+net NOP_EN_N    U19.2Y U7.1OE_N U7.2OE_N
+net GND         U7.1A1 U7.1A2 U7.1A3 U7.1A4 U7.2A1 U7.2A2 U7.2A3 U7.2A4
+
+# CPU data bus (D) and memory data bus (MD).
+net D0          U2.D0 U6.1Y1 U7.1Y1 U8.1A1
+net D1          U2.D1 U6.1Y2 U7.1Y2 U8.1A2
+net D2          U2.D2 U6.1Y3 U7.1Y3 U8.1A3
+net D3          U2.D3 U6.1Y4 U7.1Y4 U8.1A4
+net D4          U2.D4 U6.2Y1 U7.2Y1 U8.2A1
+net D5          U2.D5 U6.2Y2 U7.2Y2 U8.2A2
+net D6          U2.D6 U6.2Y3 U7.2Y3 U8.2A3
+net D7          U2.D7 U6.2Y4 U7.2Y4 U8.2A4
+net MD0         U3.O0 U4.IO1 U6.1A1 U8.1Y1 U9.1D U14.A
+net MD1         U3.O1 U4.IO2 U6.1A2 U8.1Y2 U9.2D U14.B
+net MD2         U3.O2 U4.IO3 U6.1A3 U8.1Y3 U9.3D U14.C
+net MD3         U3.O3 U4.IO4 U6.1A4 U8.1Y4 U9.4D U14.D
+net MD4         U3.O4 U5.IO1 U6.2A1 U8.2Y1 U10.1D U14.E
+net MD5         U3.O5 U5.IO2 U6.2A2 U8.2Y2 U10.2D U14.F
+net MD6         U3.O6 U5.IO3 U6.2A3 U8.2Y3 U17.3A U14.G
+net MD7         U3.O7 U5.IO4 U6.2A4 U8.2Y4 U10.3D U14.H
+
+# ROM: off while writing (OE_N), so an OUT never fights it.
+net VCC         U3.VPP
+
+# Character latch, clocked at the end of each M1.
+net VCC         U9.CLR_N U10.CLR_N
+net CH0         U9.1Q U11.4A
+net CH1         U9.2Q U12.1A
+net CH2         U9.3Q U12.2A
+net CH3         U9.4Q U12.3A
+net CH4         U10.1Q U12.4A
+net CH5         U10.2Q U13.1A
+net INV_N       U10.3Q_N U24.1A
+net DISP_N      U10.4Q U24.1B
+net DISP        U10.4Q_N U22.2C
+
+# ROM address: the CPU's A0-A8, or during refresh the glyph line and the character code.
+net GND         U11.G_N U12.G_N U13.G_N U13.2A U13.2B U13.3A U13.3B U13.4A U13.4B
+net RA0         U11.1Y U3.A0
+net RA1         U11.2Y U3.A1
+net RA2         U11.3Y U3.A2
+net RA3         U11.4Y U3.A3
+net RA4         U12.1Y U3.A4
+net RA5         U12.2Y U3.A5
+net RA6         U12.3Y U3.A6
+net RA7         U12.4Y U3.A7
+net RA8         U13.1Y U3.A8
+
+# Line counter: counts HSYNCs, held at 0 by VSYNC.
+net LC0         U15.QA U15.CKB U11.1A
+net LC1         U15.QB U11.2A
+net LC2         U15.QC U11.3A
+
+# HSYNC: set by the interrupt acknowledge, cleared 15 CPU clocks later.
+net INTACK_N    U19.3Y U1.2PRE_N
+net GND         U1.2D U1.2CLK
+net HSYNC       U1.2Q U16.CLR_N U15.CKA U24.2A
+net VCC         U16.ENP U16.ENT U16.LOAD_N
+net GND         U16.A U16.B U16.C U16.D
+net RCO         U16.RCO U17.5A
+net RCO_N       U17.5Y U1.2CLR_N
+
+# VSYNC: IN from port FE (A0 low) sets it, OUT clears it.
+net IORD_N      U20.1Y U20.2A
+net VS_SET_N    U20.2Y U26.1PRE_N
+net VS_CLR_N    U19.4Y U26.1CLR_N
+net GND         U26.1D U26.1CLK
+net VSYNC       U26.1Q U15.R01 U15.R02 U24.2B
+
+# Dots: loaded from the end of a character's refresh strobe (MREQ_N rising with RFSH: U23) to
+# the end of the refresh, shifted at 6.5 MHz; the inverse bit applies from the end of the refresh.
+net RFSH        U18.2Y U22.2A U23.2D
+net REFRESH_END U23.2Q U22.2B
+net VCC         U22.2D
+net LOAD_N      U22.2Y U14.SH_LD_N
+net GND         U14.CLK_INH U14.SER
+net PIX_N       U14.QH_N U25.1A
+net INV_ON      U24.1Y U23.1D
+net VCC         U23.1PRE_N U23.1CLR_N U23.2PRE_N U23.2CLR_N
+net INV_SHOWN   U23.1Q U25.1B
+net VIDEO_D     U25.1Y U26.2D
+net VCC         U26.2PRE_N U26.2CLR_N
+
+# Outputs.
+net VIDEO       U26.2Q J2.VIDEO
+net SYNC_N      U24.2Y J2.SYNC_N
+
+# Spare gates.
+net GND         U17.6A U18.3A U18.4A U18.5A U18.6A
+net GND         U20.3A U20.3B U20.4A U20.4B
+net GND         U21.2A U21.2B U21.3A U21.3B U21.4A U21.4B
+net GND         U24.3A U24.3B U24.4A U24.4B
+net GND         U25.2A U25.2B U25.3A U25.3B U25.4A U25.4B
