@@ -37,7 +37,7 @@ fault crack R6.2 D5.2 51%
   - `fault joint U15.13`: dry Joint on a chip signal pin: the pin is off its pad's Net (an input floats high, an output drives only its leg); repaired by resoldering, not by a swap;
   - `fault crack A B N%`: Broken Trace on the Copper between pads A and B, `N%` along its crackable straight stretches; repaired by mending;
   - `fault bridge U5.3 U5.4`: solder bridge between neighbouring pins; repaired by the Cut tool.
-  - `fault cell U3.IO2 $1FF 0`: inside a RAM or ROM (2114, 2716, 2513, 6102, 6530), bit `IO2` of word `$1FF` (the chip's own address: its `A` pins, bit 0 first; `$` hex or decimal) always reads 0; writes do not change it; repaired by swapping the chip;
+  - `fault cell U3.IO2 $1FF 0`: inside a RAM or ROM (2114, 2716, 2513, 2316B, 6102, 6530), bit `IO2` of word `$1FF` (the chip's own address: its `A` pins, bit 0 first; `$` hex or decimal) always reads 0; writes do not change it; repaired by swapping the chip;
   - `fault column U15.O1 0`: the same bit stuck in every word, inside the chip: the pin is fine while another chip drives the line; repaired by swapping;
   - `fault cell U2.D3 ram $3F 0`, `fault column U2.D0 rom 1`: a chip with several memories (the 6530's `rom` and `ram`) needs the memory's name before the word; the word is that memory's own address (`ram` `$00`–`$3F`); a chip with one memory takes no name;
   - an internal address line (the chip ignores `A0`, words pair up) is a stuck input: `fault stuck U3.A0 0`;
