@@ -1,19 +1,23 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../netlist/external_rom.hpp"
 #include "bw2001_harness.hpp"
 #include "bw2001_screen.hpp"
 #include "devices/tv_input.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
+#include "netlist/parser.hpp"
 #include "parts/matrix_keyboard.hpp"
 #include "parts/ram2114.hpp"
 #include "sim/simulator.hpp"
@@ -24,6 +28,75 @@ using namespace bw::literals;
 namespace {
 
 std::filesystem::path NetlistPath() { return std::filesystem::path(BW_NETLIST_DIR) / "bw2001.bwn"; }
+
+std::string NetlistText() {
+    std::ifstream in(NetlistPath());
+    REQUIRE(in);
+    std::stringstream text;
+    text << in.rdbuf();
+    return text.str();
+}
+
+// The netlist edited as text (a test's variant: DIAG grounded, BASIC 1 in the sockets), built.
+std::unique_ptr<LoadedCircuit> VariantCircuit(const std::string& text) {
+    auto netlist = ParseNetlist(text, "bw2001.bwn");
+    REQUIRE(netlist.has_value());
+    ResolveContentsPaths(*netlist, NetlistPath().parent_path());
+    auto result = BuildCircuit(*netlist);
+    if (!result) {
+        for (const Diagnostic& d : result.error()) {
+            UNSCOPED_INFO(Format(d));
+        }
+    }
+    REQUIRE(result.has_value());
+    CHECK((*result)->warnings.empty());
+    return std::move(*result);
+}
+
+// Commodore's BASIC 1 in the seven sockets, the empty UH2 and UH6 fitted as UH1 and UH5 are
+// (their selects on SELD_N); nullptr without the user's ROMs.
+std::unique_ptr<LoadedCircuit> Basic1Circuit() {
+    for (const PetRom& rom : kPetBasic1) {
+        if (!ExternalRom(rom.file)) {
+            return nullptr;
+        }
+    }
+    std::istringstream in(NetlistText());
+    std::string out, line;
+    while (std::getline(in, line)) {
+        std::string extra;
+        std::istringstream words(line.substr(0, line.find('#')));
+        std::string word;
+        words >> word;
+        if (word == "net") {
+            words >> word;  // the Net's name
+            while (words >> word) {
+                for (const auto& [from, to] :
+                     {std::pair{"UH1.", "UH2."}, std::pair{"UH5.", "UH6."}}) {
+                    if (word.starts_with(from) && word != std::string(from) + "CS1") {
+                        extra += " " + std::string(to) + word.substr(4);
+                    }
+                }
+            }
+        }
+        out += line.substr(0, line.find('#')) + extra + "\n";
+    }
+    out += "part UH2 2316B select=LLH contents=x.bin\npart UH6 2316B select=LHH contents=x.bin\n"
+           "net SELD_N UH2.CS1 UH6.CS1\n";
+    for (const PetRom& rom : kPetBasic1) {
+        const std::string socket(rom.socket);
+        const std::size_t at = out.find("part " + socket + " ");
+        REQUIRE(at != std::string::npos);
+        const std::size_t contents = out.find("contents=", at);
+        const std::size_t end = out.find_first_of(" \n", contents);
+        out.replace(contents, end - contents, "contents=" + ExternalRom(rom.file)->string());
+    }
+    // offset= belonged to our ROM files.
+    for (std::size_t at; (at = out.find(" offset=")) != std::string::npos;) {
+        out.erase(at, out.find_first_of(" \n", at + 1) - at);
+    }
+    return VariantCircuit(out);
+}
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
     auto result = LoadNetlistFile(NetlistPath());
@@ -224,4 +297,144 @@ TEST_CASE("bw2001 machine: stage 2, our firmware's banner on the TV, no snow", "
     CHECK(m.snow->all > 1000);     // the clear (1000 bytes) and the banner: the watch sees them
     CHECK(m.snow->accesses == 0);  // the editor touches the screen only in the retrace
     CHECK(m.sim->value(led) == LogicValue::One);  // DS1 dark: no software selects row 11
+}
+
+namespace {
+
+// The video RAM as text rows, as typist.rows() (P5p's screen codes; BASIC 1 uses the same).
+std::vector<std::string> ScreenRows(const Running& m) {
+    std::vector<std::string> rows;
+    for (int row = 0; row < kBw2001Rows; ++row) {
+        std::string text;
+        for (int column = 0; column < kBw2001Columns; ++column) {
+            text.push_back(Bw2001ScreenChar(m.screen(static_cast<std::size_t>(row * 40 + column))));
+        }
+        text.erase(text.find_last_not_of(' ') + 1);
+        rows.push_back(text);
+    }
+    while (!rows.empty() && rows.back().empty()) {
+        rows.pop_back();
+    }
+    return rows;
+}
+
+// Types `text` on J5 (40 ms down, 40 ms up a character) and runs until it is all typed.
+void Type(Running& m, std::string_view text) {
+    MatrixKeyboard* keyboard = MatrixKeyboardOf(*m.loaded, "J5");
+    REQUIRE(keyboard != nullptr);
+    for (const char c : text) {
+        REQUIRE(keyboard->type(static_cast<unsigned char>(c)));
+    }
+    m.sim->wake(keyboard->id());
+    m.runUntil(m.sim->now() + static_cast<Time>(text.size()) * (kMatrixHold + kMatrixGap) + 20_ms);
+}
+
+}  // namespace
+
+TEST_CASE("bw2001 machine: stage 3, typing through the keyboard connector", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 1.3 s simulated: minutes in debug; runs in the release build");
+#endif
+    Running m(2);
+    Bw2001Typist typist(m);
+    REQUIRE(typist.waitForLine());
+    Type(m, "PRINT 2+2\r");
+    REQUIRE(typist.waitForLine());
+    const auto rows = typist.rows();
+    REQUIRE(rows.size() >= 3);
+    CHECK(rows[rows.size() - 3] == "PRINT 2+2");
+    CHECK(rows[rows.size() - 2] == "4");
+    CHECK(rows[rows.size() - 1] == "READY");
+    m.runUntil(m.sim->now() + 40_ms);
+    CHECK(Bw2001TvRows(m.tv->tv().completedFrame()) == rows);
+}
+
+TEST_CASE("bw2001 machine: stage 3, a scrolling screen without snow", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 6 s simulated: runs in the release build");
+#endif
+    Running m(3, DesignCircuit(), true);
+    Bw2001Typist typist(m);
+    REQUIRE(typist.waitForLine());
+    Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");
+    REQUIRE(typist.waitForLine(10'000'000));
+    const auto rows = typist.rows();
+    REQUIRE(rows.size() == 24);  // scrolled: the cursor's row is the 25th
+    CHECK(rows[21] == "29");
+    CHECK(rows[22] == "30");
+    CHECK(rows[23] == "READY");
+    CHECK(m.snow->all > 5000);  // ten scrolls of 1000 bytes and more
+    CHECK(m.snow->accesses == 0);
+}
+
+TEST_CASE("bw2001 machine: stage 3, the self-test by DIAG on the user port", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 1.3 s simulated: runs in the release build");
+#endif
+    std::string text = NetlistText();
+    const std::size_t at = text.find("net DIAG ");
+    REQUIRE(at != std::string::npos);
+    text.replace(at, 9, "net GND ");  // a wire from user port pin 5 to ground
+    Running m(1, VariantCircuit(text));
+    m.runUntil(1500_ms);
+    const auto rows = ScreenRows(m);
+    REQUIRE(rows.size() >= 12);
+    CHECK(rows[0] == "BW-2001 SELF-TEST");
+    for (std::size_t r = 2; r <= 9; ++r) {
+        INFO(rows[r]);
+        CHECK(rows[r].ends_with(" OK"));
+    }
+    CHECK(rows[11] == "KEY");
+}
+
+TEST_CASE("bw2001 machine: the real BASIC 1 and its killer poke", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("seconds simulated: runs in the release build");
+#endif
+    auto circuit = Basic1Circuit();
+    if (!circuit) {
+        SKIP(kNoPetRoms);
+    }
+    Running m(1, std::move(circuit), true);
+    m.runUntil(1500_ms);
+    auto rows = ScreenRows(m);
+    REQUIRE(rows.size() >= 5);
+    CHECK(rows[0] == "*** COMMODORE BASIC ***");
+    CHECK(rows[2] == " 7167 BYTES FREE");
+    CHECK(rows[4] == "READY.");
+    m.runUntil(m.sim->now() + 40_ms);
+    CHECK(Bw2001TvRows(m.tv->tv().completedFrame()) == rows);
+
+    // Its editor waits for the retrace before each screen store: printing makes no snow.
+    const int before = m.snow->accesses;
+    Type(m, "PRINT 12\r");
+    m.runUntil(m.sim->now() + 300_ms);
+    CHECK(m.snow->accesses == before);
+
+    // POKE 59458,62: PB5 an output, its 0 against the video's gate. The wait reads 0 at once and
+    // printing snows; the gate wins the line, so the retrace interrupt and the keyboard go on.
+    Type(m, "POKE 59458,62\r");
+    Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");
+    m.runUntil(m.sim->now() + 1500_ms);
+    CHECK(m.snow->accesses > before + 100);
+    CHECK(m.sim->value(m.loaded->nets.at("VIDEO_ON")) != LogicValue::X);
+    Type(m, "PRINT 777\r");
+    m.runUntil(m.sim->now() + 500_ms);
+    rows = ScreenRows(m);
+    REQUIRE(rows.size() >= 4);  // BASIC 1 leaves a blank row before READY.
+    CHECK(rows[rows.size() - 4] == "PRINT 777");
+    CHECK(rows[rows.size() - 3] == " 777");
+    CHECK(rows[rows.size() - 2].empty());
+    CHECK(rows[rows.size() - 1] == "READY.");
+}
+
+TEST_CASE("bw2001 machine: stage 3, a P5o session on the Machine", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("tens of seconds simulated: runs in the release build");
+#endif
+    Running m(2);
+    const auto difference =
+        RunBw2001Session(m, std::filesystem::path(BW_ROOT_DIR) / "tests/data/basic/27_cls.txt");
+    INFO(difference.value_or(""));
+    CHECK_FALSE(difference.has_value());
 }

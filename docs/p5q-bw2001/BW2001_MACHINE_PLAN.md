@@ -16,8 +16,8 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 | 6 | `grid pet` in `bw place` | `42cd116` |
 | 7 | The editor's retrace wait | `45ad97d` |
 | 8 | Netlist stage 1: video | `96e754b` |
-| 9 | Netlist stage 2: computer | this commit |
-| 10 | Netlist stage 3: edges, BASIC 1, manuals | |
+| 9 | Netlist stage 2: computer | `c245d61` |
+| 10 | Netlist stage 3: edges, BASIC 1, manuals | this commit |
 | 11 | Board (user routes) | |
 | 12 | Board tests, Session test, release check | |
 | 13 | Recipes, docs, full suite | |
@@ -112,3 +112,4 @@ Commit `docs: P5q done (P5q)`.
 - Phase 7: `clear()` in the firmware test waits 300 ms of model time after CLR (a clear is now about nine frames). Release: the P5p netlist's whole conformance set green in 3 min 11 s.
 - Phase 8: the netlist is generated from the transcribed sheets with the Machine design's changes (the script stayed in the session's scratch; the netlist's header names its sources). `UH2`/`UH6` left out (empty sockets: no chip). The first cases showed every cell at a multiple of 64 (not a row start) drawn as the cell before: the carry through `UD5`, `UD6`, `UD7` (about 100 ns), a 450 ns 2114 and a 450 ns 2316B miss the next character load by about 50 ns. The real board works, so its 2114s are faster than the 450 ns grade: `2114 access=` (450, 300 or 200 ns: the 2114, -3, -2) added, the BW-2001's 2114s at 300 ns (a choice to confirm with the user). The TV needs about 100 ms after power-on to lock (the vertical state starts at random); the cases look at 150 ms. Debug ratio about 0.004× (3 × 150 ms in 72 s). Release: **0.49×** headless (`bw run --time 2s`), **0.51×** in `bw_ui` without a Board. The text sits right of centre on the TV (TV columns 144–463 of 512).
 - Phase 9: sheets 1 and 2 joined, our ROMs: the banner and `READY` on the TV at 399 ms (seed 1), first time; no screen access during the display over the boot (1073 accesses, all in the retrace); the stage-1 cases unchanged (at 150 ms the reset code is still sizing the RAM, the screen still the power-on bytes). `UJ9` gates 3–4 tied. Release: **0.24×** headless, **0.23×** in `bw_ui` without a Board. Debug: the four Machine cases in 4 min.
+- Phase 10: the edges joined; every case passed first time but one expectation (BASIC 1 leaves a blank row before `READY.`). Release cases: typing through `J5` (`PRINT 2+2`), a 30-line `FOR … PRINT` scrolling ten times without a screen access in the display, the self-test by `DIAG` grounded (the netlist's `DIAG` line rewritten), session `27_cls` on the Machine, and the real BASIC 1 (the empty `UH2`, `UH6` fitted by the test): its banner on the TV, no snow while it prints, then `POKE 59458,62`: over 100 screen accesses in the display while a loop prints (snow), `VIDEO_ON` never X, and a line typed afterwards echoes and runs (the port's `Port` strength: the retrace interrupt goes on). The manuals checker takes one section a manual: the self-test is in "What it does", the service notes went to BW2001.md. Debug fence (`bw2001|manuals`) 44/44 in 147 s.

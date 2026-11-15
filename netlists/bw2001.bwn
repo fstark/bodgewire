@@ -5,7 +5,6 @@
 # rows; the count addresses the video RAM, whose byte and the scan line address the character ROM,
 # whose dots a 74LS165 shifts out. The 6502 runs off the same clock and reaches the video RAM
 # through 74LS157s that hand it the RAM's address lines on every $8000 access: the PET's snow.
-# Stage 2 of 3.
 
 part X1   OSC freq=8MHz                              # the crystal Y1 and two 74LS04 gates of UD9 (9-8, 11-10)
 part J8   POWER
@@ -53,7 +52,15 @@ part UA5  6522                                          # VIA $E840: user port, 
 part UG8  6520                                          # PIA1 $E810: keyboard, cassette sense, EOI, DIAG, retrace
 part UG9  74LS145                                       # keyboard rows
 part UDE9 POR time=1ms                                  # replaces the LM555 (real hold ~1.1 s: R15 1M x C5 1uF)
+part UA7  MC3446                                        # IEEE transceiver DIO1-DIO4
+part UA8  MC3446                                        # IEEE transceiver DIO5-DIO8
+part UA9  MC3446                                        # IEEE transceiver DAV NRFD NDAC ATN
 part DS1  LED                                           # diagnostic LED (series R9 470 ohm not modelled)
+part J1   IEEE488                                       # IEEE-488 edge connector (24 pins: 1-12, A-N)
+part J2   USERPORT                                      # parallel user port (24 pins: 1-12, A-N)
+part J3   CASSETTE                                      # cassette #2 (pins A-1 .. F-6 as 1-6)
+part J5   MATRIXKB                                      # keyboard (1-10 rows, A-J columns)
+part J6   CASSETTE                                      # cassette #1 (pins A1 .. F6 as 1-6)
 part R13  R value=1k                                    # NMI_N pull-up
 part R14  R value=1k                                    # RDY pull-up
 part R17  R value=3k3                                   # IRQ_N pull-up
@@ -142,6 +149,7 @@ net DIS_ON     UC5.2Q UC5.1J UA1.CKB UB1.2D UE9.1D UD5.1CLR_N UD5.2CLR_N UD6.CT_
 net DIS_OFF    UC5.2Q_N UC5.1K UC6.4A                            # 'DIS. OFF': C5 pin 6 -> C5 pin 4, C6 pin 12
 net PU_R39     UC5.1CLR_N UC5.2CLR_N UD5.1J UD5.1K UD5.2J UD5.2K R39.2 # R39 1K to +5V, TP3-1
 net HORZ_DRIVE UC5.1Q_N J7.HDRIVE                                # 'HORZ. DRIVE': C5 pin 2 -> J7 pin 5 (C5 pin 3 unused)
+net HORZ_DRIVE J2.HORZ                                           # from sheet 3 by label ("HORZ", overline uncertain)
 net RA0        UA1.QB UA2.A0 UB1.2B                              # A1 pin 9 -> A2 pin 8, B1 pin 10
 net RA1        UA1.QC UA2.A1 UB1.2C                              # A1 pin 8 -> A2 pin 7, B1 pin 12
 net RA2        UA1.QD UA2.A2 UB1.2A UE8.2C                       # A1 pin 11 -> A2 pin 6, B1 pin 9, E8 pin 12
@@ -157,6 +165,7 @@ net VS0_N      UB6.1Q_N UB6.2K UD8.4B                            # B6 pin 2 -> B
 net VS1        UB6.2Q UB6.1K UC6.3B                              # B6 pin 5 -> B6 pin 4, C6 pin 10 (legend's left bit)
 net VS1_N      UB6.2Q_N UB6.1J UD8.4A                            # B6 pin 6 -> B6 pin 1, D8 pin 12
 net VERT_DRIVE UD8.4Y J7.VDRIVE                                  # D8 pin 11 -> J7 pin 3 (2200 ohm to GND); low in state 00
+net VERT_DRIVE J2.VERT                                           # from sheet 3 by label ("VERT", overline uncertain)
 net VIDEO_ON   UC6.3Y UE9.1B UE5.6A                              # C6 pin 8 = VIDEO ON (state 11) -> E9 pin 2, E5 pin 13; off-sheet arrow 'SYNC' (out)
 net VIDEO_ON   UA5.PB5 UG8.CB1                                   # in from sheet 3 (arrow "SYNC")
 net SYNC_N     UE5.6Y UE8.2D                                     # E5 pin 12 -> E8 pin 13
@@ -289,10 +298,12 @@ net PIXEL      UE2.1Y UE9.1A                                     # E2 pin 3 -> E
 net BLANK_TV   UE9.1C                                            # off-sheet 'BLANK TV' (in): E9 pin 4
 net BLANK_TV   UG8.CA2 UE3.1A                                    # off-sheet arrow "BLANK TV", also EOI out (labelled EOI)
 net TV_VIDEO   UE9.1Y J7.VIDEO_N                                 # 'TV VIDEO DRIVE': E9 pin 6 -> J7 pin 1
+net TV_VIDEO   J2.VIDEO                                          # from sheet 3 by label
 net GND        UC8.1K UB2.SER UB2.CLK_INH UA2.CS1 UA2.CS2 UD2.G_N UD3.G_N UD4.G_N UC3.CS_N UC4.CS_N J7.GND1 J7.GND2 J7.GND3
 net GND        X1.GND UE2.GND UC9.GND UB5.GND UA1.GND UC8.GND UC7.GND UC5.GND UB6.GND UD5.GND UD8.GND UC6.GND UC2.GND UB1.GND UE8.GND UE9.GND UD9.GND UE5.GND UB2.GND UA2.GND UC1.GND UD6.GND UD7.GND UE6.GND UD2.GND UD3.GND UD4.GND UC3.GND UC4.GND UB3.GND UB4.GND
-net GND        UF3.GND UF3.GND2 UE5.GND UE4.GND UE3.GND UE2.GND UG2.GND UG4.GND UG3.GND UG5.GND UG6.GND UB8.GND UA5.GND UG8.GND UG9.GND UE9.GND UD9.GND UDE9.GND
-net GND        UG2.G1_N UG2.G2_N UD9.1A
+net GND        UF3.GND UF3.GND2 UE5.GND UE4.GND UE3.GND UE2.GND UG2.GND UG4.GND UG3.GND UG5.GND UG6.GND UB8.GND UA5.GND UG8.GND UG9.GND UE9.GND UD9.GND UDE9.GND UA7.GND UA8.GND UA9.GND
+net GND        UG2.G1_N UG2.G2_N UA7.ENABC_N UA7.END_N UA8.ENABC_N UA8.END_N UA9.ENABC_N UA9.END_N UD9.1A
+net GND        J1.REN J1.GND1 J1.GND2 J1.GND3 J1.GND4 J1.GND5 J1.GND6 J1.GND7 J2.GND1 J2.GND2 J2.GND3 J2.GND4 J2.GND5 J3.GND J6.GND
 net GND        UI8.GND UI7.GND UI6.GND UI5.GND UI4.GND UI3.GND UI2.GND UI1.GND UJ8.GND UJ7.GND UJ6.GND UJ5.GND UJ4.GND UJ3.GND UJ2.GND UJ1.GND UH1.GND UH5.GND UH3.GND UH4.GND UH7.GND UH8.GND UH9.GND UJ9.GND UG3.GND UI9.GND
 net GND        UD9.4A UD9.5A                                     # UD9 9-8, 11-10: the crystal oscillator, replaced by X1
 net GND        UB1.1A UB1.1B UB1.1C UB1.1D                       # UB1 gate 1: unused
@@ -300,13 +311,14 @@ net GND        UJ9.3A UJ9.3B UJ9.4A UJ9.4B                       # UJ9 gates 3, 
 net GND        X1.GND J8.GND
 net VCC        UA2.CS3
 net VCC        X1.VCC UE2.VCC UC9.VCC UB5.VCC UA1.VCC UC8.VCC UC7.VCC UC5.VCC UB6.VCC UD5.VCC UD8.VCC UC6.VCC UC2.VCC UB1.VCC UE8.VCC UE9.VCC UD9.VCC UE5.VCC UB2.VCC UA2.VCC UC1.VCC UD6.VCC UD7.VCC UE6.VCC UD2.VCC UD3.VCC UD4.VCC UC3.VCC UC4.VCC UB3.VCC UB4.VCC
-net VCC        UF3.VCC UE5.VCC UE4.VCC UE3.VCC UE2.VCC UG2.VCC UG4.VCC UG3.VCC UG5.VCC UG6.VCC UB8.VCC UA5.VCC UG8.VCC UG9.VCC UE9.VCC UD9.VCC UDE9.VCC
+net VCC        UF3.VCC UE5.VCC UE4.VCC UE3.VCC UE2.VCC UG2.VCC UG4.VCC UG3.VCC UG5.VCC UG6.VCC UB8.VCC UA5.VCC UG8.VCC UG9.VCC UE9.VCC UD9.VCC UDE9.VCC UA7.VCC UA8.VCC UA9.VCC
 net VCC        R13.1 R14.1 R17.1 R26.1 R28.1 R29.1 R30.1 R31.1 R32.1 R33.1 R34.1 R35.1 R36.1 R37.1 R38.1 R10.1 R48.1 R18.1 R19.1 R20.1 R21.1 R22.1 R23.1 R24.1 R25.1 R99.1
-net VCC        UF3.SO DS1.A                                      # SO not drawn (tied high here); J3/J6 B: +5V
+net VCC        UF3.SO DS1.A J3.VCC J6.VCC                        # SO not drawn (tied high here); J3/J6 B: +5V
 net VCC        UH1.CS3 UH5.CS3 UH3.CS3 UH4.CS3 UH7.CS3
 net VCC        UI8.VCC UI7.VCC UI6.VCC UI5.VCC UI4.VCC UI3.VCC UI2.VCC UI1.VCC UJ8.VCC UJ7.VCC UJ6.VCC UJ5.VCC UJ4.VCC UJ3.VCC UJ2.VCC UJ1.VCC UH1.VCC UH5.VCC UH3.VCC UH4.VCC UH7.VCC UH8.VCC UH9.VCC UJ9.VCC UG3.VCC UI9.VCC
 net VCC        UA1.CKA                                           # UA1 pin 14: unconnected on the board (floats high)
 net VCC        X1.VCC J8.VCC R46.1 R12.1 R39.1 R43.1 R41.1 R27.1 R40.1 R44.1 R45.1
+net CHASSIS    J1.CHASSIS                                        # chassis ground symbol
 net PHI2       UF3.PHI2 UB8.PHI2 UA5.PHI2 UG8.PHI2 UG3.4B
 net G3_11      UG3.4Y UG3.3B
 net BPHI2      UG3.3Y                                            # "B02": off-sheet arrow; PHI2 through two NANDs
@@ -378,75 +390,89 @@ net D6         UF3.D6 UB8.D6 UA5.D6 UG8.D6 UG6.1A3 UG6.2Y2
 net D6         UH1.O6 UH5.O6 UH3.O6 UH4.O6 UH7.O6
 net D7         UF3.D7 UB8.D7 UA5.D7 UG8.D7 UG6.1A4 UG6.2Y1
 net D7         UH1.O7 UH5.O7 UH3.O7 UH4.O7 UH7.O7
-net DI1        UB8.PA0
-net DI2        UB8.PA1
-net DI3        UB8.PA2
-net DI4        UB8.PA3
-net DI5        UB8.PA4
-net DI6        UB8.PA5
-net DI7        UB8.PA6
-net DI8        UB8.PA7
-net DO1        UB8.PB0
-net DO2        UB8.PB1
-net DO3        UB8.PB2
-net DO4        UB8.PB3
-net DO5        UB8.PB4
-net DO6        UB8.PB5
-net DO7        UB8.PB6
-net DO8        UB8.PB7
-net ATN_IN_N   UB8.CA1
-net NDAC_OUT_N UB8.CA2
-net SRQ_N      UB8.CB1                                           # "SRQ IN" at the PIA; no transceiver, no pull-up on this sheet
-net DAV_OUT_N  UB8.CB2
-net DAV_IN_N   UA5.PB7
-net NRFD_IN_N  UA5.PB6
-net NDAC_IN_N  UA5.PB0
-net NRFD_OUT_N UA5.PB1
-net ATN_OUT_N  UA5.PB2
-net IFC_N      UE4.6Y R10.2                                      # RES_N through 7417; R11 5.1k to GND
-net EOI_N      UE3.1Y R48.2 UG8.PA6                              # "EOI IN" at PIA1 PA6; R47 5.1k to GND
-net USR_CA1    UA5.CA1                                           # "CA1"
-net PA0        UA5.PA0                                           # user port "PA0-PA7" ("C-L")
-net PA1        UA5.PA1
-net PA2        UA5.PA2
-net PA3        UA5.PA3
-net PA4        UA5.PA4
-net PA5        UA5.PA5
-net PA6        UA5.PA6
-net PA7        UA5.PA7
-net CASS_WRITE UA5.PB3
+net DI1        UB8.PA0 UA7.RA
+net DI2        UB8.PA1 UA7.RB
+net DI3        UB8.PA2 UA7.RC
+net DI4        UB8.PA3 UA7.RD
+net DI5        UB8.PA4 UA8.RA
+net DI6        UB8.PA5 UA8.RB
+net DI7        UB8.PA6 UA8.RC
+net DI8        UB8.PA7 UA8.RD
+net DO1        UB8.PB0 UA7.DA
+net DO2        UB8.PB1 UA7.DB
+net DO3        UB8.PB2 UA7.DC
+net DO4        UB8.PB3 UA7.DD
+net DO5        UB8.PB4 UA8.DA
+net DO6        UB8.PB5 UA8.DB
+net DO7        UB8.PB6 UA8.DC
+net DO8        UB8.PB7 UA8.DD
+net DIO1       UA7.BUSA J1.DIO1
+net DIO2       UA7.BUSB J1.DIO2
+net DIO3       UA7.BUSC J1.DIO3
+net DIO4       UA7.BUSD J1.DIO4
+net DIO5       UA8.BUSA J1.DIO5
+net DIO6       UA8.BUSB J1.DIO6
+net DIO7       UA8.BUSC J1.DIO7
+net DIO8       UA8.BUSD J1.DIO8
+net ATN_IN_N   UB8.CA1 UA9.RD
+net NDAC_OUT_N UB8.CA2 UA9.DC
+net SRQ_N      UB8.CB1 J1.SRQ_N J2.SRQ_N                         # "SRQ IN" at the PIA; no transceiver, no pull-up on this sheet
+net DAV_OUT_N  UB8.CB2 UA9.DA
+net DAV_IN_N   UA5.PB7 UA9.RA
+net NRFD_IN_N  UA5.PB6 UA9.RB
+net NDAC_IN_N  UA5.PB0 UA9.RC
+net NRFD_OUT_N UA5.PB1 UA9.DB
+net ATN_OUT_N  UA5.PB2 UA9.DD
+net DAV_N      UA9.BUSA J1.DAV_N
+net NRFD_N     UA9.BUSB J1.NRFD_N
+net NDAC_N     UA9.BUSC J1.NDAC_N
+net ATN_N      UA9.BUSD J1.ATN_N
+net IFC_N      UE4.6Y R10.2 J1.IFC_N                             # RES_N through 7417; R11 5.1k to GND
+net EOI_N      UE3.1Y R48.2 UG8.PA6 J1.EOI_N J2.EOI_N            # "EOI IN" at PIA1 PA6; R47 5.1k to GND
+net USR_CA1    UA5.CA1 J2.CA1                                    # "CA1"
+net PA0        UA5.PA0 J2.PA0                                    # user port "PA0-PA7" ("C-L")
+net PA1        UA5.PA1 J2.PA1
+net PA2        UA5.PA2 J2.PA2
+net PA3        UA5.PA3 J2.PA3
+net PA4        UA5.PA4 J2.PA4
+net PA5        UA5.PA5 J2.PA5
+net PA6        UA5.PA6 J2.PA6
+net PA7        UA5.PA7 J2.PA7
+net CASS_WRITE UA5.PB3 J2.WRITE J3.WRITE J6.WRITE
 net CASS2_MOTOR UA5.PB4                                          # "#2 CASS MOTOR": R3 1k -> Q3 base (motor driver, notes)
-net CASS2_READ UA5.CB1                                           # "#2 CASS READ"
-net USR_CB2    UA5.CB2                                           # "CB2"
+net CASS2_MOTOR J3.MOTOR                                         # Q1 (TIP29) emitter, "#2 CASS MOTOR"
+net CASS2_READ UA5.CB1 J2.READ2 J3.READ                          # "#2 CASS READ"
+net USR_CB2    UA5.CB2 J2.CB2                                    # "CB2"
 net KEY_A      UG8.PA0 UG9.A UE9.2D
 net KEY_B      UG8.PA1 UG9.B UE9.2C
 net KEY_C      UG8.PA2 UG9.C UD9.6A
 net KEY_D      UG8.PA3 UG9.D UE9.2B
 net KEY_C_N    UD9.6Y UE9.2A
 net DIAG_LED_N UE9.2Y DS1.K                                      # TP2-2; lit for row value 11 (PA3-PA0 = 1011)
-net CASS1_SWITCH UG8.PA4                                         # "#1 CASS SWITCH" (PA4 pull-up inside the 6520)
-net CASS2_SWITCH UG8.PA5                                         # "#2 CASS SWITCH" (PA5 pull-up inside the 6520)
-net DIAG       UG8.PA7                                           # "DIG JUMPER" at the PIA, "DIAG" on J2
-net CASS1_READ UG8.CA1                                           # "#1 CASS READ"
+net CASS1_SWITCH UG8.PA4 J6.SENSE                                # "#1 CASS SWITCH" (PA4 pull-up inside the 6520)
+net CASS2_SWITCH UG8.PA5 J3.SENSE                                # "#2 CASS SWITCH" (PA5 pull-up inside the 6520)
+net DIAG       UG8.PA7 J2.DIAG                                   # "DIG JUMPER" at the PIA, "DIAG" on J2
+net CASS1_READ UG8.CA1 J2.READ1 J6.READ                          # "#1 CASS READ"
 net CASS1_MOTOR UG8.CB2                                          # "#1 CASS MOTOR": R5 1k -> Q6 base (motor driver, notes)
-net KIN0       UG8.PB0 R18.2
-net KIN1       UG8.PB1 R19.2
-net KIN2       UG8.PB2 R20.2
-net KIN3       UG8.PB3 R21.2
-net KIN4       UG8.PB4 R22.2
-net KIN5       UG8.PB5 R23.2
-net KIN6       UG8.PB6 R24.2
-net KIN7       UG8.PB7 R25.2
-net ROW0       UG9.Y0_N                                          # rows: unlabelled on the sheet
-net ROW1       UG9.Y1_N
-net ROW2       UG9.Y2_N
-net ROW3       UG9.Y3_N
-net ROW4       UG9.Y4_N
-net ROW5       UG9.Y5_N
-net ROW6       UG9.Y6_N
-net ROW7       UG9.Y7_N
-net ROW8       UG9.Y8_N
-net ROW9       UG9.Y9_N
+net CASS1_MOTOR J6.MOTOR                                         # Q4 (TIP29) emitter, "#1 CASS MOTOR"
+net KIN0       UG8.PB0 R18.2 J5.COL0
+net KIN1       UG8.PB1 R19.2 J5.COL1
+net KIN2       UG8.PB2 R20.2 J5.COL2
+net KIN3       UG8.PB3 R21.2 J5.COL3
+net KIN4       UG8.PB4 R22.2 J5.COL4
+net KIN5       UG8.PB5 R23.2 J5.COL5
+net KIN6       UG8.PB6 R24.2 J5.COL6
+net KIN7       UG8.PB7 R25.2 J5.COL7
+net ROW0       UG9.Y0_N J5.ROW0                                  # rows: unlabelled on the sheet
+net ROW1       UG9.Y1_N J5.ROW1
+net ROW2       UG9.Y2_N J5.ROW2
+net ROW3       UG9.Y3_N J5.ROW3
+net ROW4       UG9.Y4_N J5.ROW4
+net ROW5       UG9.Y5_N J5.ROW5
+net ROW6       UG9.Y6_N J5.ROW6
+net ROW7       UG9.Y7_N J5.ROW7
+net ROW8       UG9.Y8_N J5.ROW8
+net ROW9       UG9.Y9_N J5.ROW9
 net RAMSEL     UG3.1Y UG3.2A                                     # G3 pin 3 -> pin 4: high when SEL0_N or SEL1_N is low
 net RAM0_N     UI9.1Y0_N UI8.CS_N UJ8.CS_N                       # I9 1Y0 (Y0): $0000
 net RAM1_N     UI9.1Y1_N UI7.CS_N UJ7.CS_N                       # I9 1Y1 (Y1): $0400

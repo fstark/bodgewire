@@ -1,0 +1,120 @@
+# BW-2001 — Service Manual
+
+## Components
+
+- `X1` clock: 8 MHz crystal oscillator, through `UE2` (a test point there stops it) to `CLK8`, the dot clock
+- `J8` power connector: +5 V and 0 V for the whole board
+- `UE2` gates: `CLK8` (the clock gate); the dot XOR the reverse-video bit (`PIXEL`); `BA0` from A0; the VIA's select from `BA6` and `BA11`
+- `UC9` character divider: `CLK8` divided by 8 into 2 MHz (`CLK2M`) and 1 MHz (`CLK1M`, one character); its `QA` is `H0`, the lowest bit of the character count
+- `UB5` character counter: `H1`–`H4`, counting `H0`; with `UC7` the 64 characters of a line
+- `UA1` scan-line counter: `RA0`–`RA2`, the line inside a character row, stepped at the end of each line's text (`DIS_ON` falling), cleared at each vertical step
+- `UC8` flip-flops: `PHI0` for the 6502 (`CLK1M` one dot later); the character load pulse `CHLOAD`, once a character
+- `UC7` flip-flops: `H5`, the top bit of the character count; the vertical step pulse `VSTEP`
+- `UC5` flip-flops: `DIS_ON`, high during the 40 characters of text of a line; `HORZ_DRIVE`, the monitor's horizontal drive (high 24 µs of every 64)
+- `UB6` vertical state: `VS0`, `VS1` step through vertical drive, top blank, video on (200 lines) and bottom blank, 20 + 20 + 200 + 20 = 260 lines a frame
+- `UD5` video address bits `TA0`, `TA1`, counting `CHLOAD`, cleared outside the text
+- `UD8` gates: the load pulse's clear; the end of 25 rows (`END25_N`); the end of a blank state (`VEND`); `VERT_DRIVE`, low while the state is vertical drive
+- `UC6` gates: `VIDEO_ON` (the state video on, also the retrace signal to PIA1 and the VIA); the horizontal decodes that set and clear `DIS_ON`; the vertical step's enable
+- `UC2` gates: the row-start latch's enable (`LATCH_G`); the dot and reverse-video halves of the XOR; `VREAD_N`, low while the 6502 reads the video RAM
+- `UB1` gate: `ROW7_N`, low during the text of a row's last scan line, when `UE6` takes the next row's start
+- `UE8` gates: `LAT_HI_N` (the latched row start's top bits); `BLKEND_N`, the end of a blank state
+- `UE9` gates: `TV_VIDEO` (a dot, low when lit, while `VIDEO_ON`, `DIS_ON` and `BLANK_TV` are all high); the diagnostic LED's decode (`DIAG_LED_N`)
+- `UD9` inverters: `CLK1M_N`; the counters' clear (`HCNT_CLR`, low unless a test point grounds `R12`); a keyboard row bit for the LED; two gates of the PET's crystal oscillator, unused here
+- `UE5` inverters: `BA11_N`, `BA11`; `SEL8` from `SEL8_N`; the data buffers' direction; `LAT_HI`; `SYNC_N`
+- `UB2` dot shift register: loads the character ROM's 8 dots at each `CHLOAD_N`, shifts them out at 8 MHz on `DOT`, leftmost first
+- `UA2` character ROM: 901447-08, the PET's 128 characters (and their second set on `GRAPHIC` high); address = the screen code on `SD0`–`SD6` and the scan line `RA0`–`RA2`
+- `UC1` flip-flops: carry the reverse-video bit `SD7` in step with its character's dots (`REV`)
+- `UD6` video address counter: `TA2`–`TA5`; while `DIS_ON` is low it holds the row start from `UE6`
+- `UD7` video address counter: `TA6`–`TA9`, as `UD6`
+- `UE6` row-start latch: `LA2`–`LA9`, the address where the next character row starts (+40 at each row)
+- `UD2` multiplexer: `SA0`, `SA1` from the video counters, or `BA0`, `BA1` while `SEL8` is high (a 6502 access to $8000: the video then draws the byte the 6502 touches, a white speck, snow, if the beam is in the text); the video RAM's write enable (`VRW_N`) from `RW_RAM`
+- `UD3` multiplexer: `SA2`–`SA5`, as `UD2`
+- `UD4` multiplexer: `SA6`–`SA9`, as `UD2`
+- `UC3` video RAM: the low 4 bits of each screen code, $8000–$83FF (and repeated to $8FFF), on `SD0`–`SD3`
+- `UC4` video RAM: the high 4 bits, `SD4`–`SD7`
+- `UB3` video RAM buffer: `SD0`–`SD3` to `BD0`–`BD3` while the 6502 reads the screen (`VREAD_N`), the other way while it writes (`VRW_N`)
+- `UB4` video RAM buffer: `SD4`–`SD7`, as `UB3`
+- `J7` monitor connector: `TV_VIDEO` (low for a lit dot), `VERT_DRIVE`, `HORZ_DRIVE`
+- `UF3` processor: a 6502 at 1 MHz (`PHI0` from `UC8`); `RES_N` from `UDE9`, `IRQ_N` from the PIAs and the VIA
+- `UE4` address buffer: A6–A10 onto `BA6`–`BA10`, open collector, pulled up by `R34`–`R38`; also `IFC_N` from `RES_N`
+- `UE3` address buffer: A1–A5 onto `BA1`–`BA5`, open collector, pulled up by `R29`–`R33`; also `EOI_N` from `BLANK_TV`
+- `UG2` address decoder: A12–A15 select one 4 KB block, `SEL0_N`–`SELF_N`: 0–1 the RAM, 8 the screen, C–F the ROMs and the I/O
+- `UG4` gates: `RW_E` (a read outside $E000–$EFFF) and the data buffers' direction
+- `UG3` gates: `BPHI2` (the buffered φ2); the RAM select from `SEL0_N`, `SEL1_N`; the RAM buffers' read enable
+- `UG5` data buffer: `D0`–`D3` and `BD0`–`BD3`, towards the 6502 for a read outside $C000–$FFFF, else away from it
+- `UG6` data buffer: `D4`–`D7` and `BD4`–`BD7`, as `UG5`
+- `UB8` PIA2 at $E820: the IEEE-488 data bytes in (port A) and out (port B) through `UA7`, `UA8`; `ATN_IN_N`, `NDAC_OUT_N`, `SRQ_N`, `DAV_OUT_N`
+- `UA5` VIA at $E840: the user port (`PA0`–`PA7`, `USR_CA1`, `USR_CB2`); the IEEE handshake; cassette write and #2 motor; `VIDEO_ON` on PB5 (the retrace the editor waits for); `GRAPHIC` on CA2
+- `UG8` PIA1 at $E810: the keyboard row on PA0–PA3 (to `UG9`), the columns `KIN0`–`KIN7` on port B; the cassette switches; `EOI_N` in; `DIAG` on PA7; `BLANK_TV` on CA2; `VIDEO_ON` on CB1, the retrace interrupt
+- `UG9` keyboard row decoder: PA0–PA3 pull one of `ROW0`–`ROW9` low
+- `UDE9` power-on reset: holds `RES_N` low for 1 ms after power-on (the PET's 555 held it about a second)
+- `UA7` IEEE-488 transceiver: data lines 1–4 between PIA2 and `J1`
+- `UA8` IEEE-488 transceiver: data lines 5–8
+- `UA9` IEEE-488 transceiver: `DAV_N`, `NRFD_N`, `NDAC_N`, `ATN_N` between PIA2, the VIA and `J1`
+- `DS1` diagnostic LED: lit while software selects keyboard row 11 (`DIAG_LED_N` low)
+- `J1` IEEE-488 connector: the bus lines, from `UA7`–`UA9`, `UE3`, `UE4` and PIA2
+- `J2` user port: VIA PA0–PA7, CA1 and CB2 on its letter side; `DIAG` (pad 9), the cassette read and write lines, `SRQ_N`, `EOI_N` and the video signals on its number side
+- `J3` cassette #2: +5 V, `CASS2_MOTOR` (VIA PB4: the PET's motor transistors are not fitted), `CASS2_READ`, `CASS_WRITE`, `CASS2_SWITCH`
+- `J5` keyboard connector: `ROW0`–`ROW9` out, `KIN0`–`KIN7` back
+- `J6` cassette #1: as `J3`, with `CASS1_MOTOR` (PIA1 CB2), `CASS1_READ`, `CASS1_SWITCH`
+- `R13` pull-up: `NMI_N`
+- `R14` pull-up: `RDY`
+- `R17` pull-up: `IRQ_N`
+- `R26` pull-up: spare gate inputs of `UG3`, `UG4`
+- `R28` pull-up: `BA0`
+- `R29` pull-up: `BA1`
+- `R30` pull-up: `BA2`
+- `R31` pull-up: `BA3`
+- `R32` pull-up: `BA4`
+- `R33` pull-up: `BA5`
+- `R34` pull-up: `BA6`
+- `R35` pull-up: `BA7`
+- `R36` pull-up: `BA8`
+- `R37` pull-up: `BA9`
+- `R38` pull-up: `BA10`
+- `R10` pull-up: `IFC_N`
+- `R48` pull-up: `EOI_N`
+- `R18` pull-up: `KIN0`, a keyboard column
+- `R19` pull-up: `KIN1`, a keyboard column
+- `R20` pull-up: `KIN2`, a keyboard column
+- `R21` pull-up: `KIN3`, a keyboard column
+- `R22` pull-up: `KIN4`, a keyboard column
+- `R23` pull-up: `KIN5`, a keyboard column
+- `R24` pull-up: `KIN6`, a keyboard column
+- `R25` pull-up: `KIN7`, a keyboard column
+- `R99` pull-up: `RES_N` (not on the PET: its 555 drove the line)
+- `UI8` RAM: the low 4 bits of each byte at $0000–$03FF, on `BBD0`–`BBD3`
+- `UI7` RAM: the low 4 bits of each byte at $0400–$07FF, on `BBD0`–`BBD3`
+- `UI6` RAM: the low 4 bits of each byte at $0800–$0BFF, on `BBD0`–`BBD3`
+- `UI5` RAM: the low 4 bits of each byte at $0C00–$0FFF, on `BBD0`–`BBD3`
+- `UI4` RAM: the low 4 bits of each byte at $1000–$13FF, on `BBD0`–`BBD3`
+- `UI3` RAM: the low 4 bits of each byte at $1400–$17FF, on `BBD0`–`BBD3`
+- `UI2` RAM: the low 4 bits of each byte at $1800–$1BFF, on `BBD0`–`BBD3`
+- `UI1` RAM: the low 4 bits of each byte at $1C00–$1FFF, on `BBD0`–`BBD3`
+- `UJ8` RAM: the high 4 bits of each byte at $0000, on `BBD4`–`BBD7`, as `UI8`
+- `UJ7` RAM: the high 4 bits of each byte at $0400, on `BBD4`–`BBD7`, as `UI7`
+- `UJ6` RAM: the high 4 bits of each byte at $0800, on `BBD4`–`BBD7`, as `UI6`
+- `UJ5` RAM: the high 4 bits of each byte at $0C00, on `BBD4`–`BBD7`, as `UI5`
+- `UJ4` RAM: the high 4 bits of each byte at $1000, on `BBD4`–`BBD7`, as `UI4`
+- `UJ3` RAM: the high 4 bits of each byte at $1400, on `BBD4`–`BBD7`, as `UI3`
+- `UJ2` RAM: the high 4 bits of each byte at $1800, on `BBD4`–`BBD7`, as `UI2`
+- `UJ1` RAM: the high 4 bits of each byte at $1C00, on `BBD4`–`BBD7`, as `UI1`
+- `UH1` ROM: BASIC, $C000–$C7FF
+- `UH5` ROM: BASIC, $C800–$CFFF
+- `UH3` ROM: the screen editor and keyboard, $E000–$E7FF
+- `UH4` ROM: the machine-code monitor, $F000–$F7FF
+- `UH7` ROM: reset, interrupts and the self-test, $F800–$FFFF (the 6502's vectors)
+- `UI9` RAM decoder: `SEL0_N`, `SEL1_N`, `BA10`, `BA11` select one 1 KB pair of RAM chips
+- `UH8` RAM buffer: `BD0`–`BD3` and the RAM's `BBD0`–`BBD3`, each way
+- `UH9` RAM buffer: `BD4`–`BD7` and `BBD4`–`BBD7`, each way
+- `UJ9` gates: `RW_RAM`, low while `BPHI2` is high in a write
+- `R46` pull-up: the clock gate's enable (a test point there stops the clock)
+- `R12` pull-up: the flip-flops' J, K and clear inputs; grounded, it stops the character counters
+- `R39` pull-up: `UC5`'s clears, `UD5`'s J and K
+- `R43` pull-up: `UA1`'s second clear input
+- `R41` pull-up: `UB6`'s clears
+- `R27` pull-up: a spare input of `UE8`
+- `R40` pull-up: `UD2`'s unused half (the video RAM read when the 6502 is not writing)
+- `R44` pull-up: `UC1`'s presets
+- `R45` pull-up: `UC1`'s clears
+
