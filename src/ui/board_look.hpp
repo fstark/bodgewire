@@ -45,5 +45,8 @@ void DrawUseParts(ImDrawList& list, const LookMap& map, const BoardScene& scene,
                   const std::vector<bool>& own, std::optional<std::size_t> xray, float alpha);
 // The references, beside each part: above everything else on the Board.
 void DrawUseReferences(ImDrawList& list, const LookMap& map, const BoardScene& scene);
+// The selected part's box, in gold: what stays marked while the mouse hovers elsewhere.
+void DrawUseSelection(ImDrawList& list, const LookMap& map, const BoardScene& scene,
+                      std::size_t component, ImU32 colour);
 
 }  // namespace bw

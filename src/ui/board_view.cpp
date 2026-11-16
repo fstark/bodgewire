@@ -682,9 +682,12 @@ void BoardView::draw(ImVec2 size) {
     }
     if (real) {
         DrawUseReferences(list, look, *scene_);
+        if (selected_) {
+            DrawUseSelection(list, look, *scene_, *selected_, kHighlight);
+        }
     }
     for (std::size_t k = 0; k < board.components.size() && !real; ++k) {
-        const bool outlined = hoverTarget_ && hoverTarget_->component == k && !hoverTarget_->pad;
+        const bool outlined = selected_ == k;  // the selection's box; a hover has none
         const bool keycap =
             legendFont_ != nullptr && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
                 return t.look != SwitchLook::Button && t.component == k;

@@ -570,6 +570,13 @@ void DrawUseParts(ImDrawList& list, const LookMap& map, const BoardScene& scene,
     }
 }
 
+void DrawUseSelection(ImDrawList& list, const LookMap& map, const BoardScene& scene,
+                      std::size_t component, ImU32 colour) {
+    if (const auto box = SilkBox(scene, component)) {
+        RectOutline(list, map, *box, colour, 2.0f, 0.3f);
+    }
+}
+
 void DrawUseReferences(ImDrawList& list, const LookMap& map, const BoardScene& scene) {
     const float size = std::clamp(map.pixels(1'400'000), 0.0f, 22.0f);
     if (size < 6) {
