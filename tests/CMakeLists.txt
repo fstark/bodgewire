@@ -41,6 +41,7 @@ add_executable(bw_tests
   machines/board_probe_test.cpp
   machines/board_repair_test.cpp
   machines/bus_load_test.cpp
+  machines/bw80_rig.cpp
   machines/bw80_screen.cpp
   machines/bw80_test.cpp
   machines/bw1_model.cpp
