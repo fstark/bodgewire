@@ -8,7 +8,7 @@ FetchContent_Declare(SDL3
 )
 FetchContent_Declare(imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui.git
-  GIT_TAG v1.93.0
+  GIT_TAG v1.93.0-docking  # docking inside the one window (P6 spike)
 )
 FetchContent_MakeAvailable(SDL3 imgui)
 

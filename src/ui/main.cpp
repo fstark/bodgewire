@@ -20,6 +20,7 @@
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
+#include <imgui_internal.h>  // DockBuilder (P6 spike)
 
 #include "machine/knob_setting.hpp"
 #include "machine/machine.hpp"
@@ -87,6 +88,55 @@ struct Options {
     std::vector<Typing> type;
     bool userManual = false;
     bool plainLook = false;  // --look plain: the specialist's Board, no parts drawn (P6)
+};
+
+// The default arrangement of the docked windows (P6 spike): the Board large at the left; at the
+// right the TV, the keyboard under it, the Panel under them; the instruments as tabs under the
+// Board, that area made when the first opens and gone when the last closes.
+struct DockLayout {
+    bool built = false;
+    ImGuiID board = 0, bottom = 0;
+
+    void build(ImGuiID dock, ImVec2 size, bool video, bool keyboard) {
+        ImGui::DockBuilderRemoveNode(dock);
+        ImGui::DockBuilderAddNode(dock, ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dock, size);
+        board = dock;
+        ImGuiID right = ImGui::DockBuilderSplitNode(board, ImGuiDir_Right, keyboard ? 0.42f : 0.30f,
+                                                    nullptr, &board);
+        if (video) {
+            const ImGuiID tv =
+                ImGui::DockBuilderSplitNode(right, ImGuiDir_Up, 0.45f, nullptr, &right);
+            ImGui::DockBuilderDockWindow("TV", tv);
+        }
+        if (keyboard) {
+            const ImGuiID keys =
+                ImGui::DockBuilderSplitNode(right, ImGuiDir_Up, 0.55f, nullptr, &right);
+            ImGui::DockBuilderDockWindow("Keyboard", keys);
+            ImGui::DockBuilderDockWindow("###matrix keyboard", keys);
+        }
+        ImGui::DockBuilderDockWindow("Panel", right);
+        ImGui::DockBuilderDockWindow("Board", board);
+        ImGui::DockBuilderFinish(dock);
+        built = true;
+    }
+
+    void instruments(ImGuiID dock, bool analyzer, bool scope, bool meter) {
+        const bool any = analyzer || scope || meter;
+        if (!any) {
+            bottom = 0;  // its area went with its last window
+            return;
+        }
+        if (bottom != 0) {
+            return;
+        }
+        bottom = ImGui::DockBuilderSplitNode(board, ImGuiDir_Down, 0.40f, nullptr, &board);
+        ImGui::DockBuilderDockWindow("Board", board);
+        for (const char* name : {"Logic Analyzer", "Oscilloscope", "Multimeter"}) {
+            ImGui::DockBuilderDockWindow(name, bottom);
+        }
+        ImGui::DockBuilderFinish(dock);
+    }
 };
 
 std::vector<std::string> SplitCommas(std::string_view list) {
@@ -394,6 +444,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     TvView view(renderer);
     Toolbar toolbar;
     SidePanel sidePanel;
+    sidePanel.showTv = false;  // the TV has its own window (P6 spike)
+    DockLayout layout;
     const Machine* machine = session.machine();
     BoardView boardView(machine ? std::optional<BoardScene>(std::in_place, *session.drawnBoard(),
                                                             machine->pristineBoard(),
@@ -482,7 +534,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         ImGui::SetNextWindowSize(viewport->WorkSize);
         ImGui::Begin("Bodgewire", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
-                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                         ImGuiWindowFlags_NoDocking);
 
         // Tab: the real Board or the specialist's plain one (P6 prototype).
         if (!ImGui::GetIO().WantTextInput && !capture.on && !matrixCapture.on && !boardKeys.on &&
@@ -490,8 +543,23 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             boardView.setPlainLook(!boardView.plainLook());
         }
         toolbar.draw(session, boardView, speed, seed);
-        const ImVec2 available = ImGui::GetContentRegionAvail();
-        boardView.draw({available.x * kBoardShare, available.y});
+        // P6 docking spike: everything else docks into the rest of the window.
+        const ImGuiID dockId = ImGui::GetID("dock");
+        const ImVec2 dockSize = ImGui::GetContentRegionAvail();
+        if (!layout.built) {
+            layout.build(dockId, dockSize, session.tv() != nullptr, keyboardOpen || matrixOpen);
+        }
+        ImGui::DockSpace(dockId, dockSize);
+        ImGui::End();
+        layout.instruments(dockId, toolbar.analyzerOpen, toolbar.scopeOpen, toolbar.meterOpen);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+        ImGui::Begin("Board", nullptr,
+                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                         ImGuiWindowFlags_NoCollapse);
+        ImGui::PopStyleVar();
+        boardView.draw(ImGui::GetContentRegionAvail());
+        ImGui::End();
         // Esc in an instrument window clears its marker; it is not the Board's.
         if (boardView.takeEscape() && !analyzerWindow.focused() && !scopeWindow.focused()) {
             if (boardView.tool() == Tool::Meter) {
@@ -774,8 +842,17 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         }
         boardView.setWireStart(wireStart ? std::optional(wireStartAt) : std::nullopt);
         toolbar.wireStarted = wireStart.has_value();
-        ImGui::SameLine();
-        ImGui::BeginChild("side", {0, available.y});
+        if (tv) {
+            // The TV's picture, 4:3, as large as its window allows.
+            ImGui::Begin("TV", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse);
+            const ImVec2 room = ImGui::GetContentRegionAvail();
+            const float width = std::min(room.x, room.y * 4 / 3);
+            ImGui::SetCursorPos({ImGui::GetCursorPosX() + (room.x - width) / 2,
+                                 ImGui::GetCursorPosY() + (room.y - width * 3 / 4) / 2});
+            view.draw({width, width * 3 / 4});
+            ImGui::End();
+        }
+        ImGui::Begin("Panel", nullptr, ImGuiWindowFlags_NoCollapse);
         const std::string_view lock =
             !tv ? "no video" : (tv->pictures().front().locked ? "locked" : "no lock");
         const DebugStats stats{static_cast<double>(status.simTime) /
@@ -786,7 +863,6 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                                lock,
                                StateName(status.state)};
         sidePanel.draw(session, view, boardView, loaded, stats, seed);
-        ImGui::EndChild();
         ImGui::End();
         manualWindows.draw(toolbar.userManualOpen, loaded.manuals.manuals, boardView,
                            DesignOf(session));
@@ -1002,6 +1078,7 @@ int main(int argc, char** argv) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::GetIO().IniFilename = nullptr;
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // P6 spike
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
     // The UI font first, as NewFrame would pick it lazily (13 px at the framebuffer scale: vector

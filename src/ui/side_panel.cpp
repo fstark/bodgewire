@@ -133,7 +133,7 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
         }
     }
 
-    if (ImGui::CollapsingHeader("TV", open)) {
+    if (showTv && ImGui::CollapsingHeader("TV", open)) {
         const float width = ImGui::GetContentRegionAvail().x;
         const ImVec2 size{width, width * 0.75f};
         if (session.tv()) {

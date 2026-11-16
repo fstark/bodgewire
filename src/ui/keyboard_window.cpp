@@ -86,9 +86,8 @@ void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
     ImGui::PushStyleColor(ImGuiCol_WindowBg, kSurround);
     const bool visible =
         ImGui::Begin("Keyboard", &open,
-                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar |
-                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse |
-                         ImGuiWindowFlags_NoFocusOnAppearing);
+                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing);
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     if (!visible || !open) {

@@ -104,7 +104,7 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     ImGui::SetNextWindowPos(
         {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 700, viewport->WorkPos.y + 230},
         ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Oscilloscope", &open, ImGuiWindowFlags_NoSavedSettings)) {
+    if (!ImGui::Begin("Oscilloscope", &open)) {
         ImGui::End();
         return;
     }

@@ -178,7 +178,7 @@ void AnalyzerWindow::draw(bool& open, Session& session, BoardView& board) {
     ImGui::SetNextWindowPos(
         {viewport->WorkPos.x + 20, viewport->WorkPos.y + viewport->WorkSize.y - 460},
         ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Logic Analyzer", &open, ImGuiWindowFlags_NoSavedSettings)) {
+    if (!ImGui::Begin("Logic Analyzer", &open)) {
         ImGui::End();
         return;
     }

@@ -19,6 +19,7 @@ struct DebugStats {
 // pinout hits to the Board.
 class SidePanel {
 public:
+    bool showTv = true;  // false when the TV has its own window (P6 docking spike)
     void draw(Session& session, TvView& tv, BoardView& board, const Loaded& loaded,
               DebugStats stats, std::uint64_t& seed);
 

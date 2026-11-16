@@ -203,9 +203,8 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     const std::string title = "Keyboard " + capture.reference + "###matrix keyboard";
     const bool visible =
         ImGui::Begin(title.c_str(), &open,
-                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar |
-                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse |
-                         ImGuiWindowFlags_NoFocusOnAppearing);
+                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing);
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     if (!visible || !open) {

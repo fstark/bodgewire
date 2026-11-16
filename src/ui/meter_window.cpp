@@ -34,7 +34,7 @@ void MeterWindow::draw(bool& open, Session& session, BoardView& board) {
     ImGui::SetNextWindowPos(
         {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 340, viewport->WorkPos.y + 130},
         ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Multimeter", &open, ImGuiWindowFlags_NoSavedSettings)) {
+    if (!ImGui::Begin("Multimeter", &open)) {
         ImGui::End();
         return;
     }
