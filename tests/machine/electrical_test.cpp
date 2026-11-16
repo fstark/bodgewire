@@ -231,16 +231,11 @@ Point Mm(double x, double y) {
     return {static_cast<std::int64_t>(x * kMm), static_cast<std::int64_t>(y * kMm)};
 }
 
-// tests/data/series_bench.bwn on a Board drawn here (no KiCad layout): each Net a row of round
-// pads at y = 0, 10, 20 … mm, 10 mm apart, joined by one front Trace.
-Board SeriesBoard() {
-    const std::vector<std::vector<std::pair<std::string, std::string>>> rows{
-        {{"J1", "1"}, {"U1", "1"}, {"R2", "1"}, {"U1", "14"}},                             // VCC
-        {{"J1", "2"}, {"U1", "5"}, {"U1", "7"}, {"U1", "9"}, {"U1", "11"}, {"U1", "13"}},  // GND
-        {{"U1", "2"}, {"R1", "1"}},                                                        // A
-        {{"R1", "2"}, {"R2", "2"}, {"U1", "3"}},                                           // B
-        {{"U1", "4"}},                                                                     // B_N
-    };
+using Rows = std::vector<std::vector<std::pair<std::string, std::string>>>;
+
+// A small netlist on a Board drawn here (no KiCad layout): each Net a row of round pads at
+// y = 0, 10, 20 … mm, 10 mm apart, joined by one front Trace.
+Board RowBoard(const Rows& rows) {
     Board board;
     std::map<std::string, std::size_t> component;
     for (std::size_t y = 0; y < rows.size(); ++y) {
@@ -271,16 +266,45 @@ Board SeriesBoard() {
     return board;
 }
 
+// tests/data/series_bench.bwn.
+Board SeriesBoard() {
+    return RowBoard({
+        {{"J1", "1"}, {"U1", "1"}, {"R2", "1"}, {"U1", "14"}},                             // VCC
+        {{"J1", "2"}, {"U1", "5"}, {"U1", "7"}, {"U1", "9"}, {"U1", "11"}, {"U1", "13"}},  // GND
+        {{"U1", "2"}, {"R1", "1"}},                                                        // A
+        {{"R1", "2"}, {"R2", "2"}, {"U1", "3"}},                                           // B
+        {{"U1", "4"}},                                                                     // B_N
+    });
+}
+
+// tests/data/capacitor_bench.bwn (P5v).
+Board CapacitorBoard() {
+    return RowBoard({
+        {{"J1", "1"}, {"U1", "14"}},  // VCC
+        {{"J1", "2"},
+         {"R1", "2"},
+         {"U1", "1"},
+         {"U1", "5"},
+         {"U1", "7"},
+         {"U1", "9"},  // GND
+         {"U1", "11"},
+         {"U1", "13"}},
+        {{"U1", "2"}, {"C1", "1"}},               // A
+        {{"C1", "2"}, {"R1", "1"}, {"U1", "3"}},  // B
+        {{"U1", "4"}},                            // B_N
+    });
+}
+
 struct SeriesDesign {
     Netlist netlist;
     std::unique_ptr<LoadedCircuit> circuit;
 };
 
-SeriesDesign LoadSeries() {
-    const auto path = std::filesystem::path(BW_ROOT_DIR) / "tests/data/series_bench.bwn";
+SeriesDesign LoadSeries(const std::string& file = "series_bench.bwn") {
+    const auto path = std::filesystem::path(BW_ROOT_DIR) / "tests/data" / file;
     std::ifstream in(path);
     const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
-    auto netlist = ParseNetlist(text, "series_bench.bwn");
+    auto netlist = ParseNetlist(text, file);
     REQUIRE(netlist.has_value());
     auto circuit = BuildCircuit(*netlist);
     REQUIRE(circuit.has_value());
@@ -308,5 +332,25 @@ TEST_CASE("electrical: a series resistor bridged across is left out", "[machine]
     }
     CHECK(NetOf(netlist, "R1.1").empty());
     CHECK(NetOf(netlist, "U1.2") == NetOf(netlist, "U1.3"));  // A and B are one island now
+    CHECK(BuildCircuit(netlist).has_value());
+}
+
+TEST_CASE("electrical: a capacitor stays between its two islands", "[machine]") {
+    const SeriesDesign design = LoadSeries("capacitor_bench.bwn");
+    const Netlist netlist = ElectricalNetlist(design.netlist, *design.circuit, CapacitorBoard());
+    CHECK(NetOf(netlist, "C1.1") == "A");
+    CHECK(NetOf(netlist, "C1.2") == "B");
+    CHECK(BuildCircuit(netlist).has_value());
+}
+
+TEST_CASE("electrical: a capacitor bridged across is left out", "[machine]") {
+    const SeriesDesign design = LoadSeries("capacitor_bench.bwn");
+    Board board = CapacitorBoard();
+    board.bodgeWires.push_back({Mm(10, 20), Mm(0, 30)});  // C1.1 to C1.2: a Solder Bridge
+    const Netlist netlist = ElectricalNetlist(design.netlist, *design.circuit, board);
+    for (const PartDecl& part : netlist.parts) {
+        CHECK(part.reference != "C1");
+    }
+    CHECK(NetOf(netlist, "C1.1").empty());
     CHECK(BuildCircuit(netlist).has_value());
 }

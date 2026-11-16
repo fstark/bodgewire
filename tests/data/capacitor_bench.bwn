@@ -1,0 +1,13 @@
+# Capacitor (P5v, docs/p5v-bw80-video/BW80_VIDEO_DESIGN.md §2): U1's first inverter drives A;
+# C1 (47p) couples A to B, which R1 (470) pulls down: each rise of A is a 22 ns high pulse on B,
+# the second inverter's input.
+
+part J1 POWER
+part U1 74LS04
+part C1 C value=47p
+part R1 R value=470
+
+net A   U1.1Y C1.1
+net B   C1.2 R1.1 U1.2A
+net B_N U1.2Y
+net GND R1.2 U1.1A U1.3A U1.4A U1.5A U1.6A

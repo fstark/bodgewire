@@ -41,6 +41,20 @@ const Connection* FindConnection(const LoadedCircuit& design, std::string_view r
     return it == design.connections.end() ? nullptr : &*it;
 }
 
+// A pull resistor on `net`: a resistor with this end on it and the other on a rail.
+bool HasPull(const LoadedCircuit& design, std::string_view net) {
+    for (const Connection& c : design.connections) {
+        if (c.net != net || FindLoadedPart(design, c.reference).info->kind != PartKind::Resistor) {
+            continue;
+        }
+        const Connection* other = FindConnection(design, c.reference, 1 - c.pin);
+        if (other != nullptr && IsRail(other->net)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace
 
 NetPins DescribeNet(const LoadedCircuit& design, std::string_view net) {
@@ -51,6 +65,13 @@ NetPins DescribeNet(const LoadedCircuit& design, std::string_view net) {
         }
         const LoadedPart& part = FindLoadedPart(design, c.reference);
         NetPin pin{c.reference, c.pin, "", PinRole::Load, ""};
+        if (part.info->kind == PartKind::Capacitor) {
+            pin.value = part.value;
+            pin.role = PinRole::Capacitor;
+            const bool pulsed = !result.rail && HasPull(design, net);
+            (pulsed ? result.drivers : result.loads).push_back(std::move(pin));
+            continue;
+        }
         if (part.info->kind == PartKind::Resistor) {
             pin.value = part.value;
             if (!result.rail) {
@@ -107,6 +128,8 @@ std::string FormatNetPin(const NetPin& pin) {
         return text + std::format(" \u00b7 {} pull-down", pin.value);
     case PinRole::Series:
         return text + std::format(" \u00b7 {} series", pin.value);
+    case PinRole::Capacitor:
+        return text + std::format(" \u00b7 {} capacitor", pin.value);
     case PinRole::Supply:
         return text + " \u00b7 supply";
     case PinRole::Output:

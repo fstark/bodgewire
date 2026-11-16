@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "netlist/units.hpp"
+#include "parts/capacitor.hpp"
 #include "parts/catalogue.hpp"
 #include "parts/connector.hpp"
 #include "parts/matrix_keyboard.hpp"
@@ -43,6 +44,13 @@ bool IsResistor(const PlacedPart& part) {
     return part.info != nullptr && part.info->kind == PartKind::Resistor;
 }
 
+bool IsCapacitor(const PlacedPart& part) {
+    return part.info != nullptr && part.info->kind == PartKind::Capacitor;
+}
+
+// A passive Part (resistor, capacitor): pins 1 and 2, only value=, no Component of its own.
+bool IsPassive(const PlacedPart& part) { return IsResistor(part) || IsCapacitor(part); }
+
 void SortByLine(std::vector<Diagnostic>& diagnostics) {
     std::stable_sort(diagnostics.begin(), diagnostics.end(),
                      [](const Diagnostic& a, const Diagnostic& b) { return a.line < b.line; });
@@ -65,6 +73,7 @@ public:
         addImplicitPower();
         wireSwitches();
         wireResistors();
+        wireCapacitors();
         if (!errors_.empty()) {
             SortByLine(errors_);
             return std::unexpected(std::move(errors_));
@@ -113,7 +122,7 @@ public:
         for (const PartDecl& decl : netlist_.parts) {
             const PlacedPart& part = placed_.find(decl.reference)->second;
             std::string value = decl.part;
-            if (IsResistor(part)) {
+            if (IsPassive(part)) {
                 for (const PartParam& param : decl.params) {
                     value = param.value;  // only "value" is accepted
                 }
@@ -192,7 +201,7 @@ private:
                 error(decl.line, "unknown part '" + decl.part + "'");
                 continue;
             }
-            if (part.info->kind == PartKind::Resistor) {
+            if (IsPassive(part)) {
                 for (const PartParam& param : decl.params) {
                     if (param.name != "value") {
                         error(decl.line,
@@ -215,7 +224,7 @@ private:
 
     std::optional<PinIndex> resolvePin(const PlacedPart& part, const PinRef& ref,
                                        std::uint32_t line) {
-        if (IsResistor(part)) {
+        if (IsPassive(part)) {
             if (ref.pin == "1" || ref.pin == "2") {
                 return static_cast<PinIndex>(ref.pin[0] - '1');
             }
@@ -251,7 +260,7 @@ private:
                     continue;
                 }
                 const PlacedPart& part = it->second;
-                const bool resistor = IsResistor(part);
+                const bool resistor = IsPassive(part);
                 if (!resistor && part.component == nullptr) {
                     continue;  // already reported at its part line
                 }
@@ -355,6 +364,12 @@ private:
         }
         Circuit& circuit = loaded_->circuit;
         for (const Pull& pull : pulls) {
+            const auto [it, inserted] = pullOhms_.try_emplace(pull.signal, pull.ohms);
+            if (!inserted) {
+                it->second = std::min(it->second, pull.ohms);
+            }
+        }
+        for (const Pull& pull : pulls) {
             if (!joined.contains(pull.signal)) {
                 circuit.tie(pull.signal, pull.value, DriveStrength::Weak);
             }
@@ -381,6 +396,60 @@ private:
             if (joined.contains(pull.signal)) {
                 network.pull(pinOf(pull.signal), pull.value, pull.ohms);
             }
+        }
+    }
+
+    // Capacitors (P5v): one between a signal Net with no pull (its input) and a signal Net with a
+    // pull resistor (its output) couples each edge into the output for one time constant, the
+    // pull's ohms times its own farads. Anywhere else it adds nothing (decoupling across the
+    // rails, no pull, pulls on both sides): no error, as a repair can put it anywhere.
+    void wireCapacitors() {
+        for (const PartDecl& decl : netlist_.parts) {
+            const PlacedPart& part = placed_.find(decl.reference)->second;
+            if (!IsCapacitor(part)) {
+                continue;
+            }
+            const auto a = pinNet_.find({decl.reference, 0});
+            const auto b = pinNet_.find({decl.reference, 1});
+            if (a == pinNet_.end() || b == pinNet_.end()) {
+                error(decl.line, decl.reference + ": a capacitor needs both pins connected");
+                continue;
+            }
+            const auto value = std::ranges::find(decl.params, "value", &PartParam::name);
+            if (value == decl.params.end()) {
+                error(decl.line, decl.reference + ": a capacitor needs value= (farads)");
+                continue;
+            }
+            const auto picofarads = ParseFarads(value->value);
+            if (!picofarads) {
+                error(decl.line, decl.reference + ": " + picofarads.error());
+                continue;
+            }
+            if (a->second.net == b->second.net) {
+                error(decl.line,
+                      decl.reference + ": both ends on net " + std::string(a->second.name));
+                continue;
+            }
+            const auto pullOf = [&](const NetOfPin& net) -> std::optional<std::uint32_t> {
+                if (IsRail(net.name)) {
+                    return std::nullopt;
+                }
+                const auto it = pullOhms_.find(net.net);
+                return it == pullOhms_.end() ? std::nullopt : std::optional(it->second);
+            };
+            const auto pullA = pullOf(a->second), pullB = pullOf(b->second);
+            if (IsRail(a->second.name) || IsRail(b->second.name) ||
+                pullA.has_value() == pullB.has_value()) {
+                continue;
+            }
+            const PinIndex input = pullA ? 1 : 0;
+            const NetId inputNet = pullA ? b->second.net : a->second.net;
+            const NetId outputNet = pullA ? a->second.net : b->second.net;
+            const Time width = static_cast<Time>(*(pullA ? pullA : pullB) * *picofarads);
+            Circuit& circuit = loaded_->circuit;
+            auto& capacitor = circuit.add<Capacitor>(decl.reference, input, width);
+            circuit.connect(capacitor, input, inputNet);
+            circuit.connect(capacitor, 1 - input, outputNet);
         }
     }
 
@@ -499,6 +568,7 @@ private:
     std::map<std::string, PlacedPart, std::less<>> placed_;  // by reference
     std::map<std::pair<std::string, PinIndex>, NetOfPin> pinNet_;
     std::set<std::pair<std::string, PinIndex>> notConnected_;
+    std::map<NetId, std::uint32_t> pullOhms_;  // signal Net → its smallest pull (wireResistors)
     std::vector<Diagnostic> errors_;
 };
 

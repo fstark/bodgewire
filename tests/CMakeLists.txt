@@ -90,6 +90,7 @@ add_executable(bw_tests
   netlist/sample_test.cpp
   netlist/switch_bench_test.cpp
   netlist/units_test.cpp
+  parts/capacitor_test.cpp
   parts/catalogue_test.cpp
   parts/connector_test.cpp
   parts/digit_test.cpp

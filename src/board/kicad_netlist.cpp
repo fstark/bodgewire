@@ -12,7 +12,7 @@ namespace bw {
 
 namespace {
 
-constexpr std::array<std::pair<std::string_view, std::string_view>, 21> kFootprints{{
+constexpr std::array<std::pair<std::string_view, std::string_view>, 22> kFootprints{{
     {"DIP-8", "Package_DIP:DIP-8_W7.62mm"},
     {"DIP-14", "Package_DIP:DIP-14_W7.62mm"},
     {"DIP-16", "Package_DIP:DIP-16_W7.62mm"},
@@ -29,6 +29,7 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 21> kFootpri
     {"HDR-1x20", "Connector_PinHeader_2.54mm:PinHeader_1x20_P2.54mm_Vertical"},
     {"HDR-2x12", "Connector_PinHeader_2.54mm:PinHeader_2x12_P2.54mm_Vertical"},
     {"axial", "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal"},
+    {"disc", "Capacitor_THT:C_Disc_D3.0mm_W1.6mm_P2.50mm"},
     {"LED-5mm", "LED_THT:LED_D5.0mm"},
     {"DIGIT-0.56", "Display_7Segment:7SegmentLED_LTS6760_LTS6780"},
     {"TACT-6x3.5", "Button_Switch_THT:SW_PUSH_1P1T_6x3.5mm_H5.0_APEM_MJTP1250"},

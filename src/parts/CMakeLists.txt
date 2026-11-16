@@ -1,4 +1,5 @@
 add_library(bw_parts STATIC
+  capacitor.cpp
   catalogue.cpp
   connector.cpp
   digit.cpp
