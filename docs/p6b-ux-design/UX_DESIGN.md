@@ -6,6 +6,21 @@ Roadmap step P6b ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)). No new code: t
 
 **Realism for how things look, never for how they behave** (decided 2026-11-16). The Board, its parts and the Machine's devices look like the real things, because the player reads them as the machine. What the player does stays abstract, precise and in fixed places: a cursor, readouts where the eye learns to look, flags on pins. No drawn probes following the mouse, no clip leads, no dangling wires.
 
+## Focus
+
+The screen's main concept (decided 2026-11-16). **Focus is what a click on a pin does**, and exactly one thing owns it:
+
+- a Board tool from the shelf (probe, chip puller, soldering iron, cutters, wire), or
+- an instrument on the bench: the logic analyzer (a click on a pin places a clip), the oscilloscope (a hook), the multimeter (a lead).
+
+Clicking an instrument gives it the focus; taking a Board tool from the shelf takes it back. The owner has a **gold frame**, on its object and on its shelf drawing, whatever is in front: the datasheet or the TV can cover the scope while the scope keeps the focus. So the instruments have no lead buttons, and the shelf no clips, hooks or leads: there is no reason to clip on an instrument the player cannot see.
+
+- Leads go on pins only (as today): with an instrument focused, a click on a chip's body still selects it and a click on bare board still deselects.
+- The probe is the resting state: `Esc` gives it the focus back, and so does putting the focused instrument away.
+- The keyboard's gold is another focus, where keys go, and may be shown at the same time as an instrument's (typing on the BW-2001 while the scope is ready to hook a pin). If the two golds confuse in play, the keyboard's changes colour.
+
+## One window
+
 One window, possibly large, holds everything. No docked or tiled panels: panels at arbitrary sizes suit an IDE, not a game aiming at a little skeuomorphism (tried as a spike, branch `p6-docking-spike`, rejected 2026-11-16). No extra desktop windows.
 
 ## The Board (done, P6 prototype)
@@ -26,8 +41,8 @@ Left for later: the Board's devices (buttons, slide switch, digits; see Issues).
 Today's toolbar and side panel give way to one **shelf** along the bottom of the window (decided 2026-11-16; the user did not mind where, and one strip is simpler than two). It holds small drawings of everything the player can use, in three groups, left to right:
 
 1. **Controls**: actions, no object. The power switch drawn as a toggle showing its own position, the current-limit LED beside it, run/pause, speed. Never "selected": they are in a position.
-2. **Tools**: one in use at a time. Probe, chip puller (swap), soldering iron (mend, resolder), cutters, wire, clips, hooks, meter leads. The tool in use is drawn as taken off the shelf (its slot an empty outline). The mouse keeps a cursor, perhaps one per tool, never a drawn tool (decided 2026-11-16: a slippery road). The logic probe's three lamps are on its shelf drawing, a fixed place, not near the tip where they would hide pins.
-3. **Equipment**: objects brought out onto the bench or put away, several at once. TV, keyboard, logic analyzer, oscilloscope, multimeter, the manuals binder, a paddle's knob. One that is out is drawn differently on the shelf (switched on: a lit screen, a pilot lamp). Some tools belong to equipment: taking the clips brings out the analyzer, the hooks the scope, the leads the meter, as today.
+2. **Tools**: the Board's own. Probe, chip puller (swap), soldering iron (mend, resolder), cutters, wire. The one with the focus has the gold frame. The mouse keeps a cursor, perhaps one per tool or instrument, never a drawn tool (decided 2026-11-16: a slippery road). The logic probe's three lamps are on its shelf drawing, a fixed place, not near the tip where they would hide pins.
+3. **Equipment**: objects brought out onto the bench or put away, several at once. TV, keyboard, logic analyzer, oscilloscope, multimeter, the manuals binder, a paddle's knob. One that is out is drawn differently on the shelf (switched on: a lit screen, a pilot lamp); the instrument with the focus also has the gold frame. The keys `C`, `O`, `V` give the analyzer, scope and meter the focus, bringing them out if they were away.
 
 The shelf is the same on every Machine, each item in the same place, for muscle memory. An item that does not apply is **grayed, not hidden** (the TV on the counter). Graying can later mean other things (an instrument not yet unlocked), though unlocking is not wanted for now (P7).
 
