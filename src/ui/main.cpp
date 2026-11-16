@@ -405,6 +405,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     MatrixCapture matrixCapture;  // the BW-2001 keyboard (P5q)
     if (const auto matrices = session.matrixKeyboards(); !matrices.empty()) {
         matrixCapture.reference = matrices.front();
+        matrixCapture.kind = session.matrixKind(matrices.front()).value_or(KeyMatrixKind::Bw2001);
     }
     MatrixKeyboardWindow matrixWindow(legends);
     bool matrixOpen = !matrixCapture.reference.empty();

@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "parts/ram2114.hpp"
+#include "parts/zx80_keys.hpp"
 
 #include "../machine/test_points.hpp"
 #include "machine/crack.hpp"
@@ -876,6 +877,34 @@ unsigned LitSegments(const Session& session, std::string_view digit) {
 }
 
 }  // namespace
+
+TEST_CASE("session: typing on a MEMBRANEKB, the text queued whole", "[session]") {
+    // A netlist-only Session (no Board), as bw_ui runs a bench.
+    auto loaded = LoadNetlistFile(std::filesystem::path(BW_ROOT_DIR) / "tests/data/bw80_keys.bwn");
+    REQUIRE(loaded.has_value());
+    Session session(std::nullopt, std::move(*loaded));
+    session.setSpeed(Speed::Max);
+    CHECK(session.matrixKeyboards() == std::vector<std::string>{"J3"});
+    CHECK(session.matrixKind("J3") == KeyMatrixKind::Bw80);
+    CHECK_FALSE(session.matrixKind("J1").has_value());
+    CHECK_FALSE(session.typeText("J3", U"A"));  // not powered
+
+    // "LIST" at a line's start is the A key alone (row 1, low on the bench): held 60 ms, so
+    // still down when the run pauses at 30 ms.
+    session.powerOn(1, 30_ms);
+    CHECK(session.typeText("J3", U"LIST"));
+    session.runner().waitIdle();
+    CHECK(session.runner().status().simTime >= 30_ms);
+    CHECK(session.matrixKeyDown("J3", *Zx80KeyAt(1, 0)));
+    CHECK_FALSE(session.matrixKeyDown("J3", *Zx80KeyAt(1, 1)));
+    // A held key through the Session, and all released at power-off.
+    session.setMatrixKeyHeld("J3", *Zx80KeyAt(1, 1), true);
+    CHECK(session.matrixKeyHeld("J3", *Zx80KeyAt(1, 1)));
+    session.setMatrixKeyHeld("J3", 99, true);  // no such key: ignored
+    CHECK_FALSE(session.matrixKeyHeld("J3", 99));
+    session.powerOff();
+    CHECK_FALSE(session.matrixKeyHeld("J3", *Zx80KeyAt(1, 1)));
+}
 
 TEST_CASE("session: typewriter with every instrument", "[session][slow]") {
     auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "typewriter.bwn");

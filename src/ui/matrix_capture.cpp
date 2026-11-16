@@ -34,12 +34,16 @@ std::u32string DecodeUtf8(std::string_view text) {
 
 }  // namespace
 
+std::optional<MatrixPress> MatrixCapture::pressFor(char32_t c) const {
+    return kind == KeyMatrixKind::Bw80 ? Zx80KeyFor(c) : MatrixKeyFor(c);
+}
+
 void MatrixCapture::send(Session& session, SDL_Scancode scancode, char32_t c) {
     session.type(reference, c);  // refused with the power off: the caps still move
     if (scancode == SDL_SCANCODE_UNKNOWN) {
         return;
     }
-    if (const auto press = MatrixKeyFor(c)) {
+    if (const auto press = pressFor(c)) {
         held_[scancode] = *press;
     }
 }
@@ -74,22 +78,23 @@ bool MatrixCapture::handle(const SDL_Event& event, Session& session) {
             }
             return true;
         }
+        const bool bw80 = kind == KeyMatrixKind::Bw80;
         switch (event.key.key) {
         case SDLK_F2:
             stop = true;
             return true;
         case SDLK_RETURN:
         case SDLK_KP_ENTER:
-            send(session, scancode, '\r');
+            send(session, scancode, bw80 && shift ? kKeyEdit : U'\r');
             return true;
         case SDLK_BACKSPACE:
-            send(session, scancode, shift ? kKeyInst : kKeyDel);
+            send(session, scancode, shift && !bw80 ? kKeyInst : kKeyDel);
             return true;
         case SDLK_ESCAPE:
-            send(session, scancode, kKeyStop);
+            send(session, scancode, bw80 ? kKeyBreak : kKeyStop);
             return true;
         case SDLK_HOME:
-            send(session, scancode, shift ? kKeyClr : kKeyHome);
+            send(session, scancode, shift && !bw80 ? kKeyClr : kKeyHome);
             return true;
         case SDLK_UP:
             send(session, scancode, kKeyUp);

@@ -1,0 +1,17 @@
+# The BW-80 keyboard's bench (P5x): the membrane keyboard on J3, its five columns pulled up by
+# 47k as on the ZX80, the rows A8-A15 on ties (A9 low: the row of A S D F G; the others high), so
+# a key on row 1 reads on its column. For the Session's typing case and the window's screenshot.
+part J1 POWER
+part J3 MEMBRANEKB
+part R13 R value=47k
+part R14 R value=47k
+part R15 R value=47k
+part R16 R value=47k
+part R17 R value=47k
+net KB0 J3.KB0 R13.1
+net KB1 J3.KB1 R14.1
+net KB2 J3.KB2 R15.1
+net KB3 J3.KB3 R16.1
+net KB4 J3.KB4 R17.1
+net VCC R13.2 R14.2 R15.2 R16.2 R17.2 J3.A8 J3.A10 J3.A11 J3.A12 J3.A13 J3.A14 J3.A15
+net GND J3.A9
