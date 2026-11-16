@@ -120,6 +120,12 @@ private:
 
 inline LogicValue EvalContext::read(PinIndex pin) const { return sim_.netOfPin(pinId(pin)).value; }
 
+inline bool EvalContext::readChanged(PinIndex pin, LogicValue& value) const {
+    const auto& s = sim_.netOfPin(pinId(pin));
+    value = s.value;
+    return s.changedAt == sim_.now_;
+}
+
 inline Time EvalContext::lastChange(PinIndex pin) const {
     return sim_.netOfPin(pinId(pin)).changedAt;
 }

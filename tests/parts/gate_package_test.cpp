@@ -1,6 +1,7 @@
 #include "parts/gate_package.hpp"
 
 #include <bit>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -9,6 +10,8 @@
 
 #include "parts/catalogue.hpp"
 #include "parts/delays.hpp"
+#include "sim/circuit.hpp"
+#include "sim/primitives.hpp"
 #include "sim/simulator.hpp"
 
 using namespace bw;
@@ -271,4 +274,55 @@ TEST_CASE("gate package: X input propagates", "[parts]") {
     CHECK(sim.value(y) == X);
     sim.runUntil(150_ns);
     CHECK(sim.value(y) == One);
+}
+
+TEST_CASE("gate package: the power-on evaluation drives every unit, nothing having changed",
+          "[parts]") {
+    // 74LS04, every input held at 1 from power-on: every output 0 whatever it started at.
+    for (std::uint64_t seed = 1; seed <= 8; ++seed) {
+        Circuit circuit;
+        Component& chip = *FindPart("74LS04")->create(circuit, "U1", {}).value();
+        std::vector<NetId> outputs;
+        for (int unit = 1; unit <= 6; ++unit) {
+            const std::string a = std::to_string(unit) + "A";
+            const NetId in = circuit.addNet(a);
+            circuit.connect(circuit.add<Stimulus>("S" + a, One, std::vector<Stimulus::Step>{}),
+                            Stimulus::kOut, in);
+            circuit.connect(chip, a, in);
+            outputs.push_back(circuit.addNet(std::to_string(unit) + "Y"));
+            circuit.connect(chip, std::to_string(unit) + "Y", outputs.back());
+        }
+        circuit.finalize();
+        Simulator sim(circuit);
+        sim.powerOn(seed);
+        sim.runUntil(100_ns);
+        for (const NetId y : outputs) {
+            INFO("seed " << seed);
+            CHECK(sim.value(y) == Zero);
+        }
+    }
+}
+
+TEST_CASE("gate package: a unit's pending change survives another unit's input change", "[parts]") {
+    // A regression guard: 74LS04 unit 1 input rises at 100 ns (its output falls kLs04.fall
+    // later); unit 2's input moves at 101 ns, waking the chip before unit 1's output changes.
+    Circuit circuit;
+    Component& chip = *FindPart("74LS04")->create(circuit, "U1", {}).value();
+    const NetId a1 = circuit.addNet("1A");
+    const NetId a2 = circuit.addNet("2A");
+    const NetId y1 = circuit.addNet("1Y");
+    circuit.connect(circuit.add<Stimulus>("S1", Zero, std::vector<Stimulus::Step>{{100_ns, One}}),
+                    Stimulus::kOut, a1);
+    circuit.connect(circuit.add<Stimulus>("S2", Zero, std::vector<Stimulus::Step>{{101_ns, One}}),
+                    Stimulus::kOut, a2);
+    circuit.connect(chip, "1A", a1);
+    circuit.connect(chip, "2A", a2);
+    circuit.connect(chip, "1Y", y1);
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runUntil(100_ns + delays::kLs04.fall - 1);
+    CHECK(sim.value(y1) == One);
+    sim.runUntil(100_ns + delays::kLs04.fall);
+    CHECK(sim.value(y1) == Zero);
 }

@@ -17,7 +17,7 @@ A dropped idea is reverted before the next, its row still logged.
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 0 | Docs reviewed | done |
-| 1 | A: gate packages unit by unit | |
+| 1 | A: gate packages unit by unit | done: kept |
 | 2 | B: 74LS93 and 74LS107 fast paths | |
 | 3 | C: quiet D on the 74LS373 | |
 | 4 | Finish | |
@@ -59,7 +59,8 @@ A dropped idea is reverted before the next, its row still logged.
 
 | # | Idea | bw2001 ratio | Instr./event | Cycles/event | Eval./event | bw80 | bw80 evaluations (1 s) | bus_load | Lines | Kept | Commit |
 |---|------|--------------|--------------|--------------|-------------|------|------------------------|----------|-------|------|--------|
-| 0 | P5z's end (`f010fb8`) | 0.362× | 509 | 95 | 1.07 | 0.246× | | 0.411× | — | — | `f010fb8` |
+| 0 | P5z's end (`f010fb8`), measured again before A | 0.368× | 509 | 95 | 1.07 | 0.248× (499 instr., 90 cycles) | 180.2 M | 0.419× | — | — | `f010fb8` |
+| A | gate packages evaluate only the units with an input changed now (`readChanged`), all at power-on | 0.372–0.373× | 503 | 93 | 1.07 | 0.252–0.255× (496 instr., 88–89 cycles) | 180.2 M | 0.417× | +15 in `gate_package`, +6 `readChanged` | yes: small (BW-2001 −2 % cycles, BW-80 −1…2 %) for a few plain lines | this row's commit |
 
 ## Implementation notes
 
@@ -73,3 +74,8 @@ A dropped idea is reverted before the next, its row still logged.
   - `measure.sh` output paths;
   - `LE`/`OE_N` loud;
   - one Net read per input (`readChanged`), not `read` and `readBefore`.
+- Phase 1, A (2026-11-16):
+  - Far below the estimate (BW-80 8–15 %): most package wakes come from a unit whose own input moved, so there is little to skip. The BW-80's evaluation count is unchanged by construction (a skipped unit is inside one evaluation).
+  - Kept under the new rule: steady over two runs, and about twenty plain lines.
+  - Traces identical.
+  - Full debug suite 1376/1376 in 622 s; release `bw2001|bw80|bw1|bus load|typewriter` 178/178.

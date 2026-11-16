@@ -32,10 +32,13 @@ public:
     Time now() const;
     inline LogicValue read(PinIndex pin) const;        // Net value now
     inline LogicValue readBefore(PinIndex pin) const;  // Net value before this timestamp (S3)
-    inline bool rose(PinIndex pin) const;              // Net went 0 → 1 at this timestamp
-    inline bool fell(PinIndex pin) const;              // Net went 1 → 0 at this timestamp
-    bool readBit(PinIndex pin);                        // X → seeded random bit (MOS inputs, S4)
-    bool readBitBefore(PinIndex pin);                  // readBefore, X → seeded random bit
+    // The Net's value now in `value`; true if it changed at this timestamp (P5z2: one read of
+    // the Net for both).
+    inline bool readChanged(PinIndex pin, LogicValue& value) const;
+    inline bool rose(PinIndex pin) const;  // Net went 0 → 1 at this timestamp
+    inline bool fell(PinIndex pin) const;  // Net went 1 → 0 at this timestamp
+    bool readBit(PinIndex pin);            // X → seeded random bit (MOS inputs, S4)
+    bool readBitBefore(PinIndex pin);      // readBefore, X → seeded random bit
     inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
     // While a Pin is quiet, its Net's changes do not wake this Component; what the Pin reads
     // and drives is unchanged. Every Pin is loud at power-on (P5z: a deselected memory).

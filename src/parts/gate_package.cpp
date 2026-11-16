@@ -79,12 +79,17 @@ constexpr std::array<GateUnit, 1> s_ls30Units{{{GateKind::Nand, 8, {1, 2, 3, 4, 
 
 // The units and delays of one Part, known at compile time: the loops unroll and each gate becomes
 // its own few instructions (its kind, its Pins and its delays are constants).
+// A unit none of whose inputs changed now would drive what it drives or has pending: skipped.
 template <const auto& Units, const Delays& PartDelays>
-void EvaluatePackage(EvalContext& ctx) {
+void EvaluatePackage(EvalContext& ctx, bool all) {
     for (const GateUnit& unit : Units) {
         std::array<LogicValue, 8> inputs;
+        bool moved = all;
         for (std::uint8_t i = 0; i < unit.inputCount; ++i) {
-            inputs[i] = ctx.read(unit.inputs[i] - 1u);
+            moved |= ctx.readChanged(unit.inputs[i] - 1u, inputs[i]);
+        }
+        if (!moved) {
+            continue;
         }
         const LogicValue value = GateFunction(unit.kind, std::span(inputs.data(), unit.inputCount));
         ctx.drive(unit.output - 1u, value, DelayFor(PartDelays, value));
@@ -150,6 +155,11 @@ GatePackage::GatePackage(std::string reference, const GatePackageSpec& spec)
     Check(spec.names.size() == spec.pinCount, "gate package: pin names do not match pin count");
 }
 
-void GatePackage::evaluate(EvalContext& ctx) { spec_.evaluate(ctx); }
+void GatePackage::powerOn(PowerOnContext& /*ctx*/) { first_ = true; }
+
+void GatePackage::evaluate(EvalContext& ctx) {
+    spec_.evaluate(ctx, first_);
+    first_ = false;
+}
 
 }  // namespace bw
