@@ -207,4 +207,4 @@ Shared code (the kernel's drive kinds untouched; the Session, CLI, window, place
 - GLOSSARY: **Membrane Keyboard**, **Key Matrix** (if missing), **Keyword Entry**.
 - GAME_DESIGN: ladder row 140 (BW-80: TV, ZX80 keyboard floating, the Z80 making the picture).
 - ARCHITECTURE: the P5x row done with the date, the measured ratios and the links; the Machine list if any.
-- Release: `bw run netlists/bw80.bwn --time 2s` (median of 3; P5v: 0.245×); `bw_ui netlists/bw80.bwn` on the Board with every instrument (32 Clips on `A0`–`A15`, `D0`–`D7`, the strobes; 4 Hooks; probe; meter): ratio and UI ms; `--type J3:1s:"PRINT 2+2\n"` screenshots at 1 s and 3 s viewed (the `K` cursor, then `4` and `0/0`), the keyboard window viewed and tuned.
+- Release: `bw run netlists/bw80.bwn --time 2s` (median of 3; P5v: 0.245×); `bw_ui netlists/bw80.bwn` on the Board with every instrument (32 Clips on `A0`–`A15`, `D0`–`D7`, the strobes; 4 Hooks; probe; meter): ratio and UI ms; `--type J3:1s:"PRINT 2+2\n"` screenshots at 1 s and 3 s viewed (the `K` cursor, then `4` and `0/-2`), the keyboard window viewed and tuned.
