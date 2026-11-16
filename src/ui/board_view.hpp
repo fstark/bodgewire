@@ -108,6 +108,10 @@ public:
     Layer activeLayer() const { return active_; }
     void toggleLayer() { active_ = active_ == Layer::Front ? Layer::Back : Layer::Front; }
     void fit() { needFit_ = true; }
+    // The plain look (P6 prototype): copper, pads and outlines only, for specialists; else the
+    // parts drawn as the real ones, out of the way where the player works.
+    void setPlainLook(bool on) { plainLook_ = on; }
+    bool plainLook() const { return plainLook_; }
     std::optional<BoardClick> takeClick();  // released without dragging
     bool takeEscape();                      // Esc pressed since the last call
     std::optional<std::size_t> chip() const { return hovered_ ? hovered_ : selected_; }
@@ -157,6 +161,7 @@ private:
     std::optional<BoardScene> scene_;
     Viewport viewport_;
     Layer active_ = Layer::Front;
+    bool plainLook_ = false;
     Tool tool_ = Tool::Probe;
     std::optional<Tool> picked_;
     bool needFit_ = true;  // first draw knows the panel size

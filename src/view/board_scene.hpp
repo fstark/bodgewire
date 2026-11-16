@@ -78,6 +78,8 @@ public:
     std::string hoverText(const Hit& hit) const;  // "U1 pin 14 QA · H0", "H0", "U5 74LS161"
 
     std::string_view partName(std::size_t component) const;  // "74LS20", "R", "" if unknown
+    // A resistor's value ("4k7"), else the Part name; "" if unknown.
+    std::string_view value(std::size_t component) const { return info_[component].value; }
     std::string_view pinName(std::size_t component, std::size_t pad) const;  // "" if unknown
     bool powerPin(std::size_t component, std::size_t pad) const;             // PinKind::Power
     bool chip(std::size_t component) const;  // a PartKind::Chip of the design

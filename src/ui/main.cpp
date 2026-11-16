@@ -62,7 +62,8 @@ constexpr std::string_view kUsage =
     "[--view 1us[:+20us]] [--marker +2us] [--cursor +3.7us] "
     "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
-    "[--type REF:START:TEXT] [--roms DIR] [--manual user] [--screenshot OUT.png [--after 1s]]";
+    "[--type REF:START:TEXT] [--roms DIR] [--manual user] [--look real|plain] "
+    "[--screenshot OUT.png [--after 1s]]";
 
 struct Options {
     std::filesystem::path file;
@@ -85,6 +86,7 @@ struct Options {
     std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
     std::vector<Typing> type;
     bool userManual = false;
+    bool plainLook = false;  // --look plain: the specialist's Board, no parts drawn (P6)
 };
 
 std::vector<std::string> SplitCommas(std::string_view list) {
@@ -160,6 +162,12 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
             options.userManual = true;
+        } else if (arg == "--look") {
+            const std::string_view look = argv[++i];
+            if (look != "real" && look != "plain") {
+                return std::nullopt;
+            }
+            options.plainLook = look == "plain";
         } else if (arg == "--repair") {
             options.repair = SplitCommas(argv[++i]);
         } else if (arg == "--clip") {
@@ -424,6 +432,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     }
     Speed speed = Speed::RealTime;
     toolbar.userManualOpen = options.userManual;
+    boardView.setPlainLook(options.plainLook);
     toolbar.analyzerOpen = !options.clip.empty() || !options.group.empty();
     toolbar.meterOpen = options.meter.has_value();
     toolbar.scopeOpen = !options.hook.empty();
@@ -475,6 +484,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
+        // Tab: the real Board or the specialist's plain one (P6 prototype).
+        if (!ImGui::GetIO().WantTextInput && !capture.on && !matrixCapture.on && !boardKeys.on &&
+            ImGui::IsKeyPressed(ImGuiKey_Tab, false)) {
+            boardView.setPlainLook(!boardView.plainLook());
+        }
         toolbar.draw(session, boardView, speed, seed);
         const ImVec2 available = ImGui::GetContentRegionAvail();
         boardView.draw({available.x * kBoardShare, available.y});

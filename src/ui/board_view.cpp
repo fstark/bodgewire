@@ -1,5 +1,7 @@
 #include "ui/board_view.hpp"
 
+#include "ui/board_look.hpp"
+
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
@@ -23,6 +25,7 @@ constexpr ImU32 kBoardGreen = IM_COL32(18, 66, 38, 255);
 constexpr ImU32 kFrontCopper = IM_COL32(200, 125, 60, 255);
 constexpr ImU32 kBackCopper = IM_COL32(70, 120, 200, 255);
 constexpr ImU32 kPadTin = IM_COL32(200, 200, 185, 255);
+constexpr ImU32 kPadGlow = IM_COL32(150, 255, 175, 255);  // a pin on the hovered chip's wiring
 constexpr ImU32 kHole = IM_COL32(12, 12, 12, 255);
 constexpr ImU32 kCourtyard = IM_COL32(190, 190, 190, 150);
 constexpr ImU32 kReference = IM_COL32(230, 230, 230, 200);
@@ -430,28 +433,103 @@ void BoardView::draw(ImVec2 size) {
     }
 
     const Mapper map(viewport_, origin, panel);
+    const LookMap look{viewport_, origin};
     const Board& board = scene_->board();
+    const bool real = !plainLook_;
     std::vector<ImVec2> outline;
     for (const Point p : scene_->outline()) {
         outline.push_back(map(p));
     }
-    list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), kBoardGreen);
-
     const std::optional<NetId> lit = highlight_;
-    const auto drawTraces = [&](Layer layer, float alpha, float litAlpha) {
+    const auto drawTraces = [&](Layer layer, float alpha, float litAlpha, bool litOnly) {
         const ImU32 colour = WithAlpha(layer == Layer::Front ? kFrontCopper : kBackCopper, alpha);
         const ImU32 litColour = WithAlpha(kHighlight, litAlpha);
         for (std::size_t t = 0; t < board.traces.size(); ++t) {
             const Trace& trace = board.traces[t];
             if (trace.layer == layer) {
                 const bool on = lit && scene_->traceNet(t) == lit;
-                DrawTrace(list, map, trace, on ? litColour : colour);
+                if (on || !litOnly) {
+                    DrawTrace(list, map, trace, on ? litColour : colour);
+                }
             }
         }
     };
     const Layer inactive = active_ == Layer::Front ? Layer::Back : Layer::Front;
-    drawTraces(inactive, kInactiveAlpha, kInactiveHighlightAlpha);
-    drawTraces(active_, 1.0f, 1.0f);
+    // The chip under the cursor, while no single Net is: its Nets glow but its power rails, the
+    // pins at both ends of them marked, and its own power pins marked when connected (P6
+    // prototype).
+    const std::optional<std::size_t> wired = real && !lit ? chip() : std::nullopt;
+    std::vector<NetId> glowing;
+    std::vector<bool> used;    // [pad] of `wired`: on a Net that reaches another pad (rails)
+    std::vector<NetId> rails;  // Nets a power pin is on: VCC and GND, never glowing
+    if (wired) {
+        for (std::size_t k = 0; k < board.components.size(); ++k) {
+            for (std::size_t q = 0; q < board.components[k].pads.size(); ++q) {
+                const auto net = scene_->padNet(k, q);
+                if (net && scene_->powerPin(k, q) && !std::ranges::contains(rails, *net)) {
+                    rails.push_back(*net);
+                }
+            }
+        }
+        const auto& pads = board.components[*wired].pads;
+        used.assign(pads.size(), false);
+        for (std::size_t p = 0; p < pads.size(); ++p) {
+            const auto net = scene_->padNet(*wired, p);
+            if (!net) {
+                continue;
+            }
+            for (std::size_t k = 0; k < board.components.size() && !used[p]; ++k) {
+                for (std::size_t q = 0; q < board.components[k].pads.size(); ++q) {
+                    if ((k != *wired || q != p) && scene_->padNet(k, q) == net) {
+                        used[p] = true;
+                        break;
+                    }
+                }
+            }
+            // A Net that reaches no other pad (a named spare output) is no wiring.
+            if (used[p] && !std::ranges::contains(rails, *net) &&
+                !std::ranges::contains(glowing, *net)) {
+                glowing.push_back(*net);
+            }
+        }
+    }
+    const auto drawPads = [&] {
+        for (std::size_t k = 0; k < board.components.size(); ++k) {
+            const auto& pads = board.components[k].pads;
+            for (std::size_t p = 0; p < pads.size(); ++p) {
+                const auto net = scene_->padNet(k, p);
+                const bool on = lit && net == lit;
+                const bool marked = (net && std::ranges::contains(glowing, *net)) ||
+                                    (k == wired && scene_->powerPin(k, p) && used[p]);
+                DrawPad(list, map, pads[p], on ? kHighlight : marked ? kPadGlow : kPadTin);
+            }
+        }
+        for (std::size_t v = 0; v < board.vias.size(); ++v) {
+            const bool on = lit && scene_->viaNet(v) == lit;
+            if (on || !real) {
+                DrawVia(list, map, board.vias[v], on ? kHighlight : kPadTin);
+            }
+        }
+    };
+    if (real) {
+        // The Board as the real one; the Net under the cursor lit over the mask.
+        DrawUseBase(list, look, *scene_, active_, glowing);
+        drawTraces(inactive, kInactiveAlpha, kInactiveHighlightAlpha, true);
+        drawTraces(active_, 1.0f, 1.0f, true);
+        drawPads();
+        std::vector<bool> own(board.components.size(), false);
+        for (const LedTag& led : leds_) {
+            own[led.component] = true;
+        }
+        for (const SwitchTag& button : switches_) {
+            own[button.component] = true;
+        }
+        DrawUseParts(list, look, *scene_, own, chip(), 1.0f);
+    } else {
+        list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), kBoardGreen);
+        drawTraces(inactive, kInactiveAlpha, kInactiveHighlightAlpha, false);
+        drawTraces(active_, 1.0f, 1.0f, false);
+    }
 
     for (const LedTag& led : leds_) {
         if (led.shape != LampShape::Round) {
@@ -472,6 +550,15 @@ void BoardView::draw(ImVec2 size) {
                                  WithAlpha(kLedLit, kLedHaloAlpha * glow));
         }
         list.AddCircleFilled(centre, radius, Lerp(kLedDark, kLedLit, glow));
+        if (!plainLook_) {
+            // A dome: its rim, and the light caught on its top left.
+            list.AddCircle(centre, radius, Lerp(IM_COL32(60, 12, 12, 255), kLedLit, glow), 0,
+                           std::max(1.0f, radius * 0.12f));
+            list.AddCircleFilled({centre.x - radius * 0.35f, centre.y - radius * 0.35f},
+                                 radius * 0.28f, IM_COL32(255, 255, 255, 70));
+            list.AddCircleFilled({centre.x - radius * 0.42f, centre.y - radius * 0.42f},
+                                 radius * 0.12f, IM_COL32(255, 255, 255, 140));
+        }
     }
 
     std::optional<std::size_t> bodyDrawn;
@@ -543,16 +630,8 @@ void BoardView::draw(ImVec2 size) {
         }
     }
 
-    for (std::size_t k = 0; k < board.components.size(); ++k) {
-        const auto& pads = board.components[k].pads;
-        for (std::size_t p = 0; p < pads.size(); ++p) {
-            const bool on = lit && scene_->padNet(k, p) == lit;
-            DrawPad(list, map, pads[p], on ? kHighlight : kPadTin);
-        }
-    }
-    for (std::size_t v = 0; v < board.vias.size(); ++v) {
-        const bool on = lit && scene_->viaNet(v) == lit;
-        DrawVia(list, map, board.vias[v], on ? kHighlight : kPadTin);
+    if (!real) {
+        drawPads();
     }
     const float bridgeWidth = std::max(1.0f, map.pixels(kBridgeWidth));
     for (const BodgeWire& bridge : bridges_) {
@@ -572,7 +651,19 @@ void BoardView::draw(ImVec2 size) {
         list.AddLine({c.x - h, c.y - h}, {c.x + h, c.y + h}, colour, 2.0f);
         list.AddLine({c.x - h, c.y + h}, {c.x + h, c.y - h}, colour, 2.0f);
     }
-    for (std::size_t k = 0; k < board.components.size(); ++k) {
+    if (real) {
+        DrawUseReferences(list, look, *scene_);
+        // The part under the cursor: its outline, as in the plain look.
+        if (hoverTarget_ && !hoverTarget_->pad) {
+            std::vector<ImVec2> points;
+            for (const Point p : scene_->courtyard(hoverTarget_->component)) {
+                points.push_back(map(p));
+            }
+            list.AddPolyline(points.data(), static_cast<int>(points.size()), kHighlight,
+                             ImDrawFlags_Closed, 2.0f);
+        }
+    }
+    for (std::size_t k = 0; k < board.components.size() && !real; ++k) {
         const bool outlined = hoverTarget_ && hoverTarget_->component == k && !hoverTarget_->pad;
         const bool keycap =
             legendFont_ != nullptr && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
