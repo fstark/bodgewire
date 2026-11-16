@@ -45,7 +45,8 @@ unsigned KnownBits(std::span<const std::uint8_t> words, std::size_t base, std::s
 }
 
 template <const auto& L>
-void EvaluateRom(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned activeHigh) {
+void EvaluateRom(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned activeHigh,
+                 Time& dataReady) {
     bool off = false;
     bool unknownEnable = false;
     bool enableChanged = false;
@@ -80,6 +81,9 @@ void EvaluateRom(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned
     if constexpr (L.oneAddressDelay()) {
         addressDelay = L.addressDelay[0];
     }
+    if (addressChanged) {
+        dataReady = ctx.now() + addressDelay;
+    }
 
     const unsigned value = words[base];
     const unsigned known = unknown == 0 ? 0xFFu : KnownBits(words, base, unknown);
@@ -90,7 +94,8 @@ void EvaluateRom(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned
     } else if (addressChanged) {
         delay = addressDelay;
     } else if (enableChanged) {
-        delay = enableDelay;
+        // Selected after the address moved: the later of select time and address access (P5v).
+        delay = std::max(enableDelay, dataReady - ctx.now());
     }
     for (std::size_t b = 0; b < L.data.size(); ++b) {
         LogicValue out = X;
@@ -243,7 +248,11 @@ Rom::Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> w
     Check(block_.size() == std::size_t{1} << spec.address.size(), "rom: wrong number of words");
 }
 
-void Rom::evaluate(EvalContext& ctx) { spec_.evaluate(ctx, block_.words(), activeHigh_); }
+void Rom::powerOn(PowerOnContext& /*ctx*/) { dataReady_ = 0; }
+
+void Rom::evaluate(EvalContext& ctx) {
+    spec_.evaluate(ctx, block_.words(), activeHigh_, dataReady_);
+}
 
 std::size_t Rom::wordCount(std::size_t memory) const {
     Check(memory == 0, "rom: one memory");

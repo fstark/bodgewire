@@ -26,6 +26,7 @@ struct AssembledRom {
 //   .checksum: one byte making the whole ROM (unwritten 0xFF words too) sum to 0 mod 256, once;
 //   .checksum BASE, SIZE: the same for that window (one a chip), windows not overlapping
 //   .include "file": the file's lines here, resolved against the including file's directory
+//   .incbin "file", OFFSET, LENGTH: LENGTH bytes of a binary file from OFFSET (resolved so too)
 //   expressions: $hex %bin decimal 'c' symbol * (this statement's address), unary - < > ~,
 //   binary * / + - << >> & ^ | with C's precedence, parentheses.
 // 6502 operands: (none) A #e e e,X e,Y (e) (e,X) (e),Y; an operand starting with ( is indirect;
@@ -37,7 +38,7 @@ struct AssembledRom {
 //   ADD/ADC/SBC take A, first; SUB AND XOR OR CP take one operand. A symbol named like a
 //   register or condition reads as that register in an operand.
 // `file` names the source in errors ("<file> line N: <what>") and in the .rom's header.
-// `includeDir` resolves `.include`; without it `.include` is an error (no file on disk).
+// `includeDir` resolves `.include` and `.incbin`; without it they are errors (no file on disk).
 std::expected<AssembledRom, std::string>
 Assemble(std::string_view source, std::string_view file,
          std::optional<std::filesystem::path> includeDir = std::nullopt);

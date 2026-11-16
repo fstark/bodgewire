@@ -82,8 +82,10 @@ std::optional<PartKind> KindOf(const LoadedCircuit& designCircuit, const std::st
     return std::nullopt;
 }
 
-bool IsResistor(const LoadedCircuit& designCircuit, const std::string& reference) {
-    return KindOf(designCircuit, reference) == PartKind::Resistor;
+// A resistor or a capacitor (P5v): two pins, named by the islands they are on, never naming one.
+bool IsPassive(const LoadedCircuit& designCircuit, const std::string& reference) {
+    const auto kind = KindOf(designCircuit, reference);
+    return kind == PartKind::Resistor || kind == PartKind::Capacitor;
 }
 
 // Names islands: POWER pads first, then non-resistor, non-power Pins in connection order.
@@ -96,7 +98,7 @@ Namer NameIslands(const LoadedCircuit& designCircuit, const Board& board, const 
         }
     }
     for (const Connection& c : designCircuit.connections) {
-        if (IsResistor(designCircuit, c.reference) ||
+        if (IsPassive(designCircuit, c.reference) ||
             designCircuit.components.at(c.reference)->pins()[c.pin].kind == PinKind::Power) {
             continue;
         }
@@ -123,11 +125,11 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
     const Namer namer = NameIslands(designCircuit, board, islands);
 
     std::map<std::string, std::vector<PinRef>> pins;
-    // Resistors: kept while their ends are on two different islands, not both rails. A switch's
-    // legs are named by their islands like a chip's pins.
+    // Resistors and capacitors: kept while their ends are on two different islands, not both rails.
+    // A switch's legs are named by their islands like a chip's pins.
     std::map<std::string, std::vector<const Connection*>> railParts;
     for (const Connection& c : designCircuit.connections) {
-        if (IsResistor(designCircuit, c.reference)) {
+        if (IsPassive(designCircuit, c.reference)) {
             railParts[c.reference].push_back(&c);
             continue;
         }
@@ -146,11 +148,11 @@ Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCirc
 
     std::set<std::string, std::less<>> leftOut;
     for (const auto& [reference, ends] : railParts) {
-        Check(ends.size() == 2, "electrical: resistor without two pins");
+        Check(ends.size() == 2, "electrical: passive part without two pins");
         const auto a = namer.nameOf(namer.island(reference, ends[0]->pin));
         const auto b = namer.nameOf(namer.island(reference, ends[1]->pin));
-        // A pull (one end on a rail) or a series resistor (both on signals, P5u); bridged
-        // across, or between two rails, it does nothing and is left out.
+        // A pull (one end on a rail), a series resistor (both on signals, P5u) or a capacitor
+        // (P5v); bridged across, or between two rails, it does nothing and is left out.
         const bool kept = a && b && *a != *b && !(IsRail(*a) && IsRail(*b));
         if (!kept) {
             leftOut.insert(reference);

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -17,81 +18,24 @@
 #include "parts/rom_contents.hpp"
 #include "parts/z80_stub.hpp"
 #include "sim/simulator.hpp"
+#include "tv_page.hpp"
 
 using namespace bw;
 using namespace bw::literals;
 
 namespace {
 
-// One dot is 153.85 ns (6.5 MHz), 1.23 TV columns of 125 ns; one line one row.
-constexpr double kColumnsPerDot = 1e12 / 6.5e6 / static_cast<double>(Tv::kColumnTime);
-constexpr int kCellDots = 8, kCellLines = 8;
-constexpr int kPageDots = Z80Stub::kColumns * kCellDots;  // 256
-constexpr int kPageLines = Z80Stub::kRows * kCellLines;   // 192
-
-// The page as dots, through the glyphs of the netlist's ROM, D7 inverting: [line][dot], true =
-// ink (black).
-std::vector<std::vector<bool>> ExpectedPage(const char* romFile) {
+// The stub's page through the glyphs of the netlist's ROM (at $0600), D7 inverting.
+PageDots StubPage(const char* romFile) {
     const auto rom =
         ReadRomContents(std::filesystem::path(BW_ROOT_DIR) / "roms" / romFile, 2048, 8);
     REQUIRE(rom.has_value());
     const auto& page = Z80Stub::Page();
-    std::vector<std::vector<bool>> dots(kPageLines, std::vector<bool>(kPageDots, false));
-    for (int row = 0; row < Z80Stub::kRows; ++row) {
-        for (int column = 0; column < Z80Stub::kColumns; ++column) {
-            const unsigned code = page[static_cast<std::size_t>(row * Z80Stub::kRowBytes + column)];
-            for (int line = 0; line < kCellLines; ++line) {
-                const unsigned glyph =
-                    (*rom)[0x600 + (code & 0x3F) * 8 + static_cast<unsigned>(line)];
-                for (int x = 0; x < kCellDots; ++x) {
-                    const bool ink = ((glyph >> (7 - x)) & 1) != 0;
-                    dots[static_cast<std::size_t>(row * kCellLines + line)]
-                        [static_cast<std::size_t>(column * kCellDots + x)] =
-                            ink != ((code & 0x80) != 0);
-                }
-            }
-        }
-    }
-    return dots;
-}
-
-// `left` in TV columns, fractional: a dot is not a whole number of columns.
-int Column(double left, int dot) {
-    return static_cast<int>(std::floor(left + (dot + 0.5) * kColumnsPerDot));
-}
-
-// The page at (left, top), comparing each cell's glyph columns 1-5 at each dot's centre.
-bool Matches(const TvFrame& frame, const std::vector<std::vector<bool>>& page, double left,
-             int top) {
-    for (int y = 0; y < kPageLines; ++y) {
-        for (int x = 0; x < kPageDots; ++x) {
-            const int inCell = x % kCellDots;
-            if (inCell < 1 || inCell > 5) {
-                continue;
-            }
-            const int column = Column(left, x);
-            if (top + y >= kTvRows || column >= kTvColumns) {
-                return false;
-            }
-            const bool ink = frame.at(top + y, column) < 0.5f;
-            if (ink != page[static_cast<std::size_t>(y)][static_cast<std::size_t>(x)]) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-std::optional<std::pair<double, int>> FindPage(const TvFrame& frame,
-                                               const std::vector<std::vector<bool>>& page) {
-    for (int top = 0; top + kPageLines <= kTvRows; ++top) {
-        for (double left = 0; Column(left, kPageDots - 1) < kTvColumns; left += 0.25) {
-            if (Matches(frame, page, left, top)) {
-                return std::pair{left, top};
-            }
-        }
-    }
-    return std::nullopt;
+    return ExpectedPage(std::span(*rom).subspan(0x600, 64 * 8), Z80Stub::kColumns, Z80Stub::kRows,
+                        [&](int row, int column) {
+                            return unsigned{
+                                page[static_cast<std::size_t>(row * Z80Stub::kRowBytes + column)]};
+                        });
 }
 
 // The stub's netlist (P5a) and the real Z80's (P5s), with their ROMs.
@@ -161,7 +105,7 @@ TEST_CASE("bus load: the TV shows the page", "[machines][slow]") {
         CHECK(stats[i].lines <= Z80Stub::kFrameLines);
         CHECK(stats[i].syncedLines * 10 >= stats[i].lines * 9);
     }
-    const auto page = ExpectedPage(netlist.rom);
+    const auto page = StubPage(netlist.rom);
     const auto at = FindPage(frames[1], page);
     REQUIRE(at.has_value());
     INFO("left " << at->first << ", top " << at->second);

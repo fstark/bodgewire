@@ -15,7 +15,8 @@ namespace bw {
 
 // Led: Parts made of LEDs (an LED, a 7-segment digit); what they light is in PartInfo::lamps.
 // Switch: a BUTTON or KEY (P5i), joined to its Nets by the builder's switch network.
-enum class PartKind : std::uint8_t { Chip, Resistor, Connector, Led, Switch };
+// Resistor, Capacitor: passive Parts with pins 1 and 2 and only value=, wired by the builder.
+enum class PartKind : std::uint8_t { Chip, Resistor, Capacitor, Connector, Led, Switch };
 
 enum class LampShape : std::uint8_t {
     Round,

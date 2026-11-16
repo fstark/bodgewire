@@ -514,3 +514,25 @@ TEST_CASE("rom: stuck cell and column", "[parts]") {
         CHECK(bench.word(sim) == 20);
     }
 }
+
+TEST_CASE("rom: a select after the address waits for the address's access time", "[parts]") {
+    // 2332 select=LL. A11 high at 1 us while deselected (CS1 high); CS1 low at 1.1 us: the data
+    // at 1 us + access (the later), not 1.1 us + select. CS1 high at 2 us, A11 low at 3 us, CS1
+    // low at 3.4 us: the address is ready by then, the data at 3.4 us + select.
+    Bench b("2332",
+            {{"A0", {One, {}}},
+             {"A11", {Zero, {{1_us, One}, {3_us, Zero}}}},
+             {"CS1", {One, {{1100_ns, Zero}, {2_us, One}, {3400_ns, Zero}}}},
+             {"CS2", {Zero, {}}}},
+            0);
+    Simulator sim(b.circuit);
+    sim.powerOn(1);
+    sim.runUntil(1_us + delays::k2332Access - 1);
+    CHECK(sim.isFloating(b.nets.at("O0")));
+    sim.runUntil(1_us + delays::k2332Access);
+    CHECK(b.word(sim) == ((0x801 * 7) & 0xFF));
+    sim.runUntil(3400_ns + delays::k2332Select - 1);
+    CHECK(sim.isFloating(b.nets.at("O0")));
+    sim.runUntil(3400_ns + delays::k2332Select);
+    CHECK(b.word(sim) == 7);
+}

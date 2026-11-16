@@ -62,4 +62,46 @@ std::expected<std::uint32_t, std::string> ParseOhms(std::string_view text) {
     return static_cast<std::uint32_t>(ohms);
 }
 
+std::expected<std::uint64_t, std::string> ParseFarads(std::string_view text) {
+    const auto bad = [&] {
+        return std::unexpected("bad capacitance '" + std::string(text) +
+                               "': expected e.g. 47p, 100n, 4n7 or 1u");
+    };
+    const auto isDigit = [](char c) { return c >= '0' && c <= '9'; };
+    std::size_t i = 0;
+    while (i < text.size() && isDigit(text[i])) {
+        ++i;
+    }
+    if (i == 0 || i > 6 || i == text.size()) {
+        return bad();
+    }
+    double whole = std::stod(std::string(text.substr(0, i)));
+    double multiplier = 1;
+    switch (text[i]) {
+    case 'p':
+        break;
+    case 'n':
+        multiplier = 1e3;
+        break;
+    case 'u':
+        multiplier = 1e6;
+        break;
+    default:
+        return bad();
+    }
+    const std::string_view fraction = text.substr(i + 1);
+    if (fraction.size() > 3 || !std::ranges::all_of(fraction, isDigit)) {
+        return bad();
+    }
+    if (!fraction.empty()) {
+        whole +=
+            std::stod(std::string(fraction)) / std::pow(10.0, static_cast<double>(fraction.size()));
+    }
+    const double picofarads = std::round(whole * multiplier);
+    if (picofarads < 1 || picofarads > 1e12) {
+        return bad();
+    }
+    return static_cast<std::uint64_t>(picofarads);
+}
+
 }  // namespace bw

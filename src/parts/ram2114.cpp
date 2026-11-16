@@ -30,7 +30,10 @@ std::vector<PinSpec> Ram2114Pins() {
 Ram2114::Ram2114(std::string reference, Time access)
     : Component(std::move(reference), Ram2114Pins()), access_(access) {}
 
-void Ram2114::powerOn(PowerOnContext& ctx) { cells_.powerOn(ctx); }
+void Ram2114::powerOn(PowerOnContext& ctx) {
+    cells_.powerOn(ctx);
+    dataReady_ = 0;
+}
 
 std::size_t Ram2114::wordCount(std::size_t memory) const {
     Check(memory == 0, "2114: one memory");
@@ -64,6 +67,11 @@ void Ram2114::evaluate(EvalContext& ctx) {
         cells_.store(address, data);
     }
 
+    const bool addressMoved = std::ranges::any_of(
+        kAddress, [&](PinIndex pin) { return ctx.read(pin) != ctx.readBefore(pin); });
+    if (addressMoved) {
+        dataReady_ = ctx.now() + access_;
+    }
     const bool selected = !ctx.readBit(kCsN);
     const bool writing = selected && !ctx.readBit(kWeN);
     std::size_t address = 0;
@@ -84,13 +92,14 @@ void Ram2114::evaluate(EvalContext& ctx) {
         return;
     }
 
+    // The data comes at the later of the address's time plus access (tAA) and the select's time
+    // plus tCO: a chip selected after its address settled may still be waiting for the address.
     Time delay = 0;
-    if (std::ranges::any_of(kAddress,
-                            [&](PinIndex pin) { return ctx.read(pin) != ctx.readBefore(pin); })) {
+    if (addressMoved) {
         delay = access_;
     }
     if (ctx.read(kCsN) != ctx.readBefore(kCsN) || ctx.read(kWeN) != ctx.readBefore(kWeN)) {
-        delay = std::max(delay, delays::k2114Select);
+        delay = std::max({delay, delays::k2114Select, dataReady_ - ctx.now()});
     }
     if (delay == 0) {
         delay = access_;  // power-on, or only the data pins moved

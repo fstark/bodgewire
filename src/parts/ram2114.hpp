@@ -17,9 +17,10 @@ namespace bw {
 // 4 A3, 5 A0, 6 A1, 7 A2, 8 CS_N, 9 GND, 10 WE_N, 11 IO4, 12 IO3, 13 IO2, 14 IO1, 15 A9, 16 A8,
 // 17 A7, 18 VCC. CS_N low, WE_N high: IO1-IO4 drive the word at A0-A9. CS_N and WE_N low: the
 // word is written from IO1-IO4 (floating); the address and data held just before the write ends
-// are kept. CS_N high: IO1-IO4 float. Inputs read X as a random bit. Stuck cells (MemoryCells)
-// hold their value through writes and power-on. `access` the speed grade's address access time
-// (P5q: the 2114 450 ns, the 2114-3 300 ns, the 2114-2 200 ns).
+// are kept. CS_N high: IO1-IO4 float. The data comes at the later of the address's time plus
+// `access` (tAA) and the select's time plus tCO (P5v). Inputs read X as a random bit. Stuck cells
+// (MemoryCells) hold their value through writes and power-on. `access` the speed grade's address
+// access time (P5q: the 2114 450 ns, the 2114-3 300 ns, the 2114-2 200 ns).
 class Ram2114 final : public Component, public MemoryCells {
 public:
     explicit Ram2114(std::string reference, Time access = delays::k2114Address);
@@ -38,6 +39,7 @@ public:
 private:
     RamBlock cells_{1024, 4};
     Time access_;
+    Time dataReady_ = 0;  // the last address change plus access_
 };
 
 }  // namespace bw

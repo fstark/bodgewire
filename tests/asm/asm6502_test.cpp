@@ -306,6 +306,31 @@ TEST_CASE("asm: .include", "[asm]") {
     std::filesystem::remove_all(dir);
 }
 
+TEST_CASE("asm: .incbin", "[asm]") {
+    const auto dir = std::filesystem::temp_directory_path() / "bw_asm_incbin_test";
+    std::filesystem::create_directories(dir);
+    const auto write = [&](const std::filesystem::path& path, std::string_view text) {
+        std::ofstream(dir / path, std::ios::binary) << text;
+    };
+    write("data.bin", std::string("\x10\x20\x30\x40\x00\xFF", 6));
+    write("a.asm", "  .rom $F000, $1000\n  .org $F000\n  .incbin \"data.bin\", 1, 4\n  nop\n");
+    const auto rom = AssembleFile(dir / "a.asm");
+    REQUIRE(rom.has_value());
+    CHECK(Bytes_(rom->words.begin(), rom->words.begin() + 5) ==
+          Bytes_{0x20, 0x30, 0x40, 0x00, 0xEA});
+
+    write("past.asm", "  .rom $F000, $1000\n  .org $F000\n  .incbin \"data.bin\", 4, 3\n");
+    CHECK(AssembleFile(dir / "past.asm").error() ==
+          "past.asm line 3: .incbin reads past the end of data.bin");
+    write("miss.asm", "  .rom $F000, $1000\n  .org $F000\n  .incbin \"none.bin\", 0, 1\n");
+    CHECK(AssembleFile(dir / "miss.asm").error() == "miss.asm line 3: cannot read 'none.bin'");
+    write("args.asm", "  .rom $F000, $1000\n  .org $F000\n  .incbin \"data.bin\", 0\n");
+    CHECK(AssembleFile(dir / "args.asm").error() ==
+          "args.asm line 3: .incbin needs \"file\", OFFSET, LENGTH");
+    CHECK(Error("  .incbin \"data.bin\", 0, 1\n") == "t.asm line 3: .incbin needs a file on disk");
+    std::filesystem::remove_all(dir);
+}
+
 TEST_CASE("asm: every ROM program matches its committed .rom", "[asm]") {
     const std::filesystem::path dir = BW_ROM_DIR;
     for (const auto& entry : std::filesystem::directory_iterator(dir)) {

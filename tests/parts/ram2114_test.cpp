@@ -39,8 +39,9 @@ struct Bench {
     Ram2114* ram = nullptr;
     std::array<NetId, 4> data{};
 
-    Bench(const std::map<std::string, Input>& inputs, const std::array<Input, 4>& bus) {
-        ram = &circuit.add<Ram2114>("U1");
+    Bench(const std::map<std::string, Input>& inputs, const std::array<Input, 4>& bus,
+          Time access = delays::k2114Address) {
+        ram = &circuit.add<Ram2114>("U1", access);
         const auto pins = ram->pins();
         for (PinIndex pin = 0; pin < pins.size(); ++pin) {
             if (pins[pin].kind != PinKind::Input) {
@@ -338,4 +339,26 @@ TEST_CASE("2114: access= sets the speed grade", "[parts]") {
     CHECK(word() == at0);
     sim.runUntil(1000_ns + 300_ns);
     CHECK(word() == ram.word(1));
+}
+
+TEST_CASE("2114: a select after the address waits for the address's access time", "[parts]") {
+    // A0 high at 1 us while deselected; CS_N low at 1.1 us: the data at 1 us + access (the later).
+    // A0 low at 3 us while deselected; CS_N low at 4 us: the data at 4 us + tCO. access=300ns.
+    for (const Time access : {delays::k2114Address, Time{300'000}}) {
+        INFO("access " << access);
+        Bench bench({{"A0", {Zero, {{1000_ns, One}, {3000_ns, Zero}}}},
+                     {"WE_N", {One, {}}},
+                     {"CS_N", {One, {{1100_ns, Zero}, {2000_ns, One}, {4000_ns, Zero}}}}},
+                    BusWord({}), access);
+        Simulator sim(bench.circuit);
+        sim.powerOn(1);
+        sim.runUntil(1000_ns + access - 1);
+        CHECK(bench.floating(sim));
+        sim.runUntil(1000_ns + access);
+        CHECK_FALSE(bench.floating(sim));
+        sim.runUntil(4000_ns + delays::k2114Select - 1);
+        CHECK(bench.floating(sim));
+        sim.runUntil(4000_ns + delays::k2114Select);
+        CHECK_FALSE(bench.floating(sim));
+    }
 }

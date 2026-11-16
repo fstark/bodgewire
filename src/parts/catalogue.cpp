@@ -501,6 +501,7 @@ constexpr std::array s_parts{
     PartInfo{"74LS90", "decade counter", "DIP-14", Chip, &CreateChip<Ls90, "74LS90">},
     PartInfo{"74LS93", "4-bit binary counter", "DIP-14", Chip, &CreateChip<Ls93, "74LS93">},
     PartInfo{"BUTTON", "push button", "TACT-6x3.5", Switch, &CreateSwitch<"BUTTON">},
+    PartInfo{"C", "capacitor", "disc", Capacitor, nullptr},
     PartInfo{"CASSETTE", "cassette port connector", "HDR-1x06", Connector,
              &CreateConnector<"CASSETTE">},
     PartInfo{"DIGIT", "red 0.56-inch 7-segment digit, common anode", "DIGIT-0.56", Led,

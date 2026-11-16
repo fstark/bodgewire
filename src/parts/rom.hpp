@@ -33,7 +33,10 @@ struct RomSpec {
     Time offDelay;                          // enable high to outputs off, ps
     // EvaluateRom<its layout>: evaluation specialised on these pins at compile time (rom.cpp).
     // activeHigh: bit i set when enable i is active high (2316B select=); 0 otherwise.
-    void (*evaluate)(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned activeHigh);
+    // dataReady: the Rom's own state, when the word at the current address is valid (the last
+    // address change plus its access time); a select times its data from it too (P5v).
+    void (*evaluate)(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned activeHigh,
+                     Time& dataReady);
     bool selectable = false;  // select= sets each enable's polarity, required (2316B)
 };
 
@@ -47,6 +50,7 @@ class Rom final : public Component, public MemoryCells {
 public:
     Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> words,
         unsigned activeHigh = 0);
+    void powerOn(PowerOnContext& ctx) override;
     void evaluate(EvalContext& ctx) override;
     std::size_t size() const { return block_.size(); }
     std::uint8_t word(std::size_t address) const { return block_[address]; }  // as held
@@ -59,6 +63,7 @@ private:
     const RomSpec& spec_;
     RomBlock block_;
     unsigned activeHigh_;
+    Time dataReady_ = 0;
 };
 
 }  // namespace bw

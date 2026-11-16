@@ -52,3 +52,19 @@ TEST_CASE("units: ohms errors", "[netlist]") {
     }
     CHECK(ParseOhms("1q").error() == "bad resistance '1q': expected e.g. 470, 1k, 4k7 or 1M");
 }
+
+TEST_CASE("units: farads", "[netlist]") {
+    CHECK(ParseFarads("47p") == 47u);
+    CHECK(ParseFarads("4p7") == 5u);
+    CHECK(ParseFarads("330p") == 330u);
+    CHECK(ParseFarads("100n") == 100'000u);
+    CHECK(ParseFarads("4n7") == 4'700u);
+    CHECK(ParseFarads("1u") == 1'000'000u);
+    CHECK(ParseFarads("2u2") == 2'200'000u);
+    const std::string expected = "': expected e.g. 47p, 100n, 4n7 or 1u";
+    for (const char* bad : {"", "47", "p", "47F", "4.7n", "1uu", "1m", "0p"}) {
+        INFO(bad);
+        REQUIRE_FALSE(ParseFarads(bad).has_value());
+        CHECK(ParseFarads(bad).error() == "bad capacitance '" + std::string(bad) + expected);
+    }
+}

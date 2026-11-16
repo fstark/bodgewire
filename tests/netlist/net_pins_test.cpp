@@ -68,6 +68,18 @@ TEST_CASE("net pins: series resistor on both its Nets", "[netlist]") {
           std::vector<std::string>{"R1 pin 2 \u00b7 1k series", "R2 pin 2 \u00b7 47k pull-up"});
 }
 
+TEST_CASE("net pins: a capacitor pulses its pulled Net", "[netlist]") {
+    const auto loaded =
+        LoadNetlistFile(std::filesystem::path(BW_ROOT_DIR) / "tests/data/capacitor_bench.bwn");
+    REQUIRE(loaded.has_value());
+    const NetPins a = DescribeNet(**loaded, "A");
+    CHECK(Texts(a.drivers) == std::vector<std::string>{"U1 pin 2 1Y"});
+    CHECK(Texts(a.loads) == std::vector<std::string>{"C1 pin 1 \u00b7 47p capacitor"});
+    const NetPins b = DescribeNet(**loaded, "B");
+    CHECK(Texts(b.drivers) == std::vector<std::string>{"C1 pin 2 \u00b7 47p capacitor",
+                                                       "R1 pin 1 \u00b7 470 pull-down"});
+}
+
 TEST_CASE("net pins: rail", "[netlist]") {
     const auto design = Load("counter");
     const NetPins pins = DescribeNet(*design, "VCC");
