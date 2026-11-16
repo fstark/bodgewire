@@ -112,15 +112,24 @@ void Print(ImDrawList& list, float size, ImVec2 centre, ImU32 colour, const std:
            bool vertical) {
     ImFont* font = ImGui::GetFont();
     const ImVec2 extent = font->CalcTextSizeA(size, FLT_MAX, 0, text.c_str());
-    const int start = list.VtxBuffer.Size;
-    list.AddText(font, size, {centre.x - extent.x / 2, centre.y - extent.y / 2}, colour,
-                 text.c_str());
     if (!vertical) {
+        list.AddText(font, size, {centre.x - extent.x / 2, centre.y - extent.y / 2}, colour,
+                     text.c_str());
         return;
     }
+    // AddText drops the glyphs outside the clip rectangle as it lays them out: laid out
+    // horizontally where the text is, a vertical text near the panel's edge would lose them.
+    // Lay it out in the middle of the clip rectangle, then turn and move it into place (the GPU
+    // clips the result as usual).
+    const ImVec2 clipMin = list.GetClipRectMin();
+    const ImVec2 clipMax = list.GetClipRectMax();
+    const ImVec2 middle{(clipMin.x + clipMax.x) / 2, (clipMin.y + clipMax.y) / 2};
+    const int start = list.VtxBuffer.Size;
+    list.AddText(font, size, {middle.x - extent.x / 2, middle.y - extent.y / 2}, colour,
+                 text.c_str());
     for (int i = start; i < list.VtxBuffer.Size; ++i) {
         ImVec2& p = list.VtxBuffer[i].pos;
-        const ImVec2 d{p.x - centre.x, p.y - centre.y};
+        const ImVec2 d{p.x - middle.x, p.y - middle.y};
         p = {centre.x - d.y, centre.y + d.x};
     }
 }
