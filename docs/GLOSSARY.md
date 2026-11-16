@@ -304,6 +304,14 @@ _Avoid_: Contact, push (as nouns)
 A key read as held when it is not: three held keys at three corners of a rectangle in a key matrix join the fourth corner's row and column. Emerges from the switch network; never scripted.
 _Avoid_: Phantom key
 
+**Membrane Keyboard**:
+The BW-80's keyboard (`MEMBRANEKB`): the ZX80's 40 keys in a window, their rows the address lines `A8`–`A15` read during an `IN`, their columns `KB0`–`KB4` pulled low through a diode by a held key. Faultless, as every device behind a Connector; its Faults are on the Board (the pull-ups, the buffer, the copper).
+_Avoid_: Touch keyboard
+
+**Keyword Entry**:
+The ZX80 editor's way of typing: while the cursor is `K`, a letter key types the keyword printed above it (P: PRINT); after it the cursor is `L` and keys type their letters; THEN, TO, AND, OR, NOT and the symbols are SHIFT with a key. A pasted listing is typed that way by the tokenizer.
+_Avoid_: Token entry
+
 **Typing**:
 The `bw_ui` mode in which every key the player presses goes to the Machine's keyboard instead of the tools: on while the keyboard window has focus, F2 toggles it. Escape is a key of the keyboard. On a Machine with Board keys and no keyboard, F2 turns it on for the Board: a PC key held down holds the key with that `pc=`, several at once.
 _Avoid_: Keyboard capture (in player text)

@@ -791,6 +791,47 @@ TEST_CASE("session: bw2001 with every instrument", "[session][slow]") {
     session.powerOff();
 }
 
+TEST_CASE("session: bw80 with every instrument", "[session][slow]") {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "bw80.bwn");
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    Session session(std::move(*machine), std::move(*built));
+    session.setSpeed(Speed::Max);
+    REQUIRE(session.tv() != nullptr);
+    CHECK(session.matrixKeyboards() == std::vector<std::string>{"J3"});
+    CHECK(session.matrixKind("J3") == KeyMatrixKind::Bw80);
+    CHECK(session.leds().empty());
+
+    // The Z80's address and data buses and its strobes: 32 Clips.
+    REQUIRE(session.clipGroup("IC1", "A0").has_value());
+    REQUIRE(session.clipGroup("IC1", "D0").has_value());
+    for (const char* pin :
+         {"M1_N", "MREQ_N", "IORQ_N", "RD_N", "WR_N", "RFSH_N", "HALT_N", "INT_N"}) {
+        REQUIRE(session.clip("IC1", pin).has_value());
+    }
+    CHECK(std::ranges::all_of(session.clips(), [](const auto& c) { return c.has_value(); }));
+    REQUIRE(session.hook("IC18", "2Q").has_value());  // PHI
+    REQUIRE(session.hook("IC19", "1Q").has_value());  // SYNC
+    REQUIRE(session.hook("IC15", "1Y").has_value());  // NOP_EN
+    REQUIRE(session.hook("IC17", "4Y").has_value());  // KBD_N
+    const auto dots = session.padLead("IC9", "QH_N");
+    const auto vcc = session.padLead("IC9", "VCC");
+    REQUIRE(dots.has_value());
+    REQUIRE(vcc.has_value());
+    session.touch(ProbeTip{dots->at, Layer::Front});
+    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+
+    // The ROM clears its RAM (about 160 ms), then the K cursor screen; the TV locks on it.
+    session.powerOn(1, 450_ms);
+    session.runner().waitIdle();
+    TvConsumer* tv = session.tv();
+    REQUIRE(tv != nullptr);
+    tv->pictures().update();
+    CHECK(tv->pictures().front().locked);
+    session.powerOff();
+}
+
 TEST_CASE("session: ball with every instrument", "[session][slow]") {
     auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
     REQUIRE(machine.has_value());

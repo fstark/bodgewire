@@ -84,6 +84,7 @@ Tutorial ladder, by difficulty, each spec in `docs/machines/NNN-name/`:
 | 110 | LED computer | LEDs, Reset button | the first computer: a 6502 running a program from ROM, RAM for its variables and stack, an address decoder and an output latch; a light bouncing along 8 LEDs |
 | 120 | BW-1 | six digits, hex keypad, ST, RS, SST | the first computer the player programs: the KIM-1's design, a monitor in a 6530 reading a keypad and scanning multiplexed digits through the same port; a self-test in the other 6530, reached by a wire |
 | 130 | BW-2001 | TV (separate drives), PET keyboard (floating) | the PET 2001's board 320137, chip for chip: a TTL video chain reading the video RAM that the 6502 shares (snow), Tiny BASIC, a full-screen editor and a monitor of our own; a self-test reached by a wire on the user port |
+| 140 | BW-80 | TV, ZX80 keyboard (floating), expansion bus | the ZX80 chip for chip, on the ZX80's own ROM: the Z80 makes the picture itself, sync included, by executing the display file through NOP gates; keyword-per-key entry; the keyboard's rows are the address lines |
 
 - LEDs, digits and buttons whose arrangement belongs to the Board are Components on it (clicked or watched in the board view, faulty like any other); standard devices (TV, keyboard) sit off the Board behind a Connector.
 
