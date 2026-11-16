@@ -11,8 +11,8 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 | 0 | Docs reviewed | `4b19397` |
 | 1 | `PressQueue`, `KeyMatrix`: the BW-2001's keyboard refactored | `cf1630e` (with 2) |
 | 2 | ZX80 keys, the tokenizer, `MEMBRANEKB`, `EXPANSION` | `cf1630e` |
-| 3 | Session, CLI, capture, the window's ZX80 look | this commit |
-| 4 | Netlist with `J3`, `J4`; manuals; the typing cases | |
+| 3 | Session, CLI, capture, the window's ZX80 look | `101eeb4` |
+| 4 | Netlist with `J3`, `J4`; manuals; the typing cases | this commit |
 | 5 | `bw place`: `size`, `at` | |
 | 6 | Board: placed, routed by the user, wired into the tests | |
 | 7 | Session case, release check, recipes, docs, full suite | |
@@ -86,3 +86,4 @@ Fence: `ctest --preset debug -j 12` all green. Commit: `docs: P5x done, the BW-8
 
 - Phases 1 and 2 written while the review ran and committed together: phase 2's Part is what `KeyMatrixOf` and `matrixKeyboards()` name, so phase 1 alone would not build. The review's findings went into the code before the docs commit: the ROM accepts a new key only after five no-key frames (`kMembraneGap` 120 ms), BREAK is SPACE alone, `MEMBRANEKB` sorts after `MC3446`, the datasheets' pin ranges, `PressQueue::step` returning the delay instead of taking an `EvalContext` (none can be made in a test). The tokenizer's "after a keyword" state is tracked, not read back from the last press (a letter key has a keyword too); strings keep their spaces. Fences: phase 1 `matrix|press queue|session|typing|bw2001` green in debug, the BW-2001's typing case in release; phase 2 `zx80 keys|membrane keyboard|connector|catalogue|manuals|footprint` green in debug.
 - Phase 3: the window draws by the capture's kind; the cap loop (buttons, latch, the Session's held keys) is one template over both looks. The ZX80 look after Searle's overlay: black panel, blue caps, white letters and keywords above, yellow shifted legends (words above the digits and NEW LINE, symbols on the cap, graphics as a mosaic, arrows drawn). The Session case runs netlist-only (`Session(std::nullopt, …)`, as `bw_ui` runs a bench: `LoadNetlistMachine` wants a Board) and checks the press after the run pauses. Screenshot on `tests/data/bw80_keys.bwn` viewed: every key with its three legends, at 1.00×.
+- Phase 4: `J3` and `J4` on the netlist (46 + 13 pins, `BUSAK_N` a Net now); the ROM's report after a direct command reads `0/-2` (code 0, line -2: the edit line), not `0/0` as the Machine docs guessed (fixed there); after `RUN` of a two-line program `0/20`. The TV needs about 100 ms to lock again once the picture returns, so the PRINT case allows 600 ms. The display-file reader (`Bw80DisplayRows`) reads D_FILE out of IC3 and IC4. The Machine case for a floating keyboard row was dropped: the ROM scans the keys only once its RAM is cleared (160 ms, minutes in debug), and the Part's bench already proves the diode. Release: `PRINT 2+2` 6.8 s, the program 10 s, the four P5v cases unchanged; debug `bw80|manuals` green.

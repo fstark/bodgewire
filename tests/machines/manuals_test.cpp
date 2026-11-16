@@ -40,7 +40,7 @@ TEST_CASE("manuals: every catalogue Part has a Datasheet", "[machines]") {
 TEST_CASE("manuals: every Machine's manuals pass their checks", "[machines]") {
     for (const std::string machine :
          {"counter", "test_pattern", "chaser", "dice", "stopwatch", "ball", "knob", "tennis",
-          "message", "typewriter", "heartbeat", "led_computer", "bw1", "bw2001"}) {
+          "message", "typewriter", "heartbeat", "led_computer", "bw1", "bw2001", "bw80"}) {
         INFO(machine);
         auto design = LoadNetlistFile(kRoot / "netlists" / (machine + ".bwn"));
         REQUIRE(design.has_value());

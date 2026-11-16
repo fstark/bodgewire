@@ -1,0 +1,59 @@
+# BW-80 — Service Manual
+
+## Components
+
+- `J1` power connector: +5 V and 0 V for the whole board
+- `J2` video connector: `VIDEO` (the dots, high for ink) and `SYNC` (low during a sync pulse) to the TV, mixed by the ZX80's modulator, which is left out
+- `J3` keyboard: the ZX80's membrane, in its own window; its rows are the address lines `A8`–`A15`, its columns `KB0`–`KB4`, a held key joining its column to its row's line through a diode inside the keyboard
+- `J4` expansion bus: the ZX80's edge connector, nothing plugged in; the memory side of the data bus `MD0`–`MD7`, `RAM_CS_N`, the address bus, the Z80's control lines and `PHI_N`
+- `X1` clock: 6.5 MHz, in place of the ceramic resonator and two gates of `IC20`; `DOT` to `IC20` and the shift clock, halved by `IC18`
+- `RST1` power-on reset: holds `RESET_N` low for 1 ms (the ZX80's R21 and C10 hold it about 0.2 s)
+- `IC1` Z80A processor: 3.25 MHz on `CLK`; its `INT_N` is `A6`, so a refresh with bit 6 of R clear interrupts it at the end of each display row; `NMI_N`, `BUSRQ_N`, `WAIT_N` pulled up
+- `IC2` ROM: the ZX80's 4K program and character set (at $0E00), selected by `ROM_CS1` with `A12` low; its address `RA0`–`RA8` comes from `IC6`–`IC8`, `A9`–`A11` from the CPU
+- `IC3` RAM: 1K, bits 7, 1, 0 and 2 of each byte at $4000–$43FF (`MD7`, `MD1`, `MD0`, `MD2`), selected by `RAM_CS_N`, written by `WR_N`
+- `IC4` RAM: bits 4, 3, 5 and 6 (`MD4`, `MD3`, `MD5`, `MD6`), as `IC3`; a fast grade: its bit 6 decides the NOP in time
+- `IC5` data latch: `MD0`–`MD7` into `CH0`–`CH7` while `LE` is high (a memory cycle outside the refresh, `PHI_N` high), frozen through the refresh: the character code for the ROM and the NOP and inverse logic
+- `IC6` multiplexer: `RA8` from `A8` or `CH5`; `ROM_CS1` from `ROM_SEL_N` or low in the refresh; `A14B` and `A15B`, the CPU's `A14` and `A15` buffered
+- `IC7` multiplexer: `RA4`–`RA7` from `A4`–`A7`, or `CH1`–`CH4` in the refresh (`RFSH_N` low)
+- `IC8` multiplexer: `RA0`–`RA3` from `A0`–`A3`, or `LC0`–`LC2` and `CH0` in the refresh
+- `IC9` dot shift register: loads the glyph row from `D0`–`D7` at `LOAD_N`, shifts it out on `PIX_N` at each rise of `SHIFT_CLK` (6.5 MHz)
+- `IC10` keyboard buffer: `KB0`–`KB4` onto `D0`–`D4` and `EAR` onto `D7` while `KBD_N` is low
+- `IC11` gates: `INV_STROBE_N` (the load pulse with `MREQ_N` high: resets the inverse latch); `INV_SET_N` (`LOAD_R` with `CH7`: sets it); the vertical sync latch `VS_N` and `VS_RESET`, set by any OUT (`IOWR_N`), reset by a keyboard read
+- `IC12` gates: the inverse latch `INV` and `INV_N`; `RAM_SEL_N` (`MREQ` with `A14B`); `ROM_SEL_N` (`MREQ` with `A14B_N`)
+- `IC13` inverters: `MREQ`; `LE` from `LE_N`; `MD6_N`; `LOAD` from `LOAD_N`; `CH6_N`; `A14B_N`
+- `IC14` NOP gates: pull `D0`, `D2`–`D5` and `D7` low while `NOP_EN` is high (open collector)
+- `IC15` open-collector gates: `NOP_EN` from `NOP_N` (pulled up by `R3`); the NOP gates for `D1` and `D6`; `M1_CLK` from `M1_N` (pulled up by `R18`); two paralleled gates making `CLK` from `PHI_N` (pulled up by `R20`)
+- `IC16` gates: `LE_N` (`RFSH_N`, `PHI_N`, `MREQ`); `NOP_COND_N` (`HALT_N`, `A15B`, `MD6_N`: an echo fetch of a character while running); `LOAD_N` (`LOAD_PULSE`, `CH6_N`, `MREQ_N`)
+- `IC17` gates: `IORD_N` (`RD_N` with `IORQ_N`); `IOWR_N` (`WR_N` with `IORQ_N`); `NOP_N` (`NOP_COND_N` with `M1_N`); `KBD_N` (`IORD_N` with `A0`: an even port)
+- `IC18` flip-flops: the sync latch, preset by `IORQ_N` (the interrupt acknowledge), cleared by `SYNC`, into `SYNC_ARM_N`; the 6.5 MHz divider giving `PHI` and `PHI_N`
+- `IC19` flip-flops: `SYNC_NEXT` then `SYNC`, clocked by `M1_CLK`: two M1s after the acknowledge `SYNC` goes low, two more and it is high again; cleared through `VS_N` for the vertical pulse
+- `IC20` XOR gates: `DOT2` (the 6.5 MHz buffered); `VIDEO` (`PIX_N` XOR `INV`); two unused gates (the ZX80's oscillator, replaced by `X1`)
+- `IC21` line counter: `LC0`–`LC2`, counting each fall of `SYNC`, cleared by `VS_RESET`: the glyph row within a character
+- `R1` pull-down: `EAR` (no cassette: reads low)
+- `R2` pull-down: `SHIFT_CLK`, with `C9` the shift clock pulse
+- `R3` pull-up: `NOP_EN`
+- `R4` data bus resistor: `MD4`–`D4`
+- `R5` data bus resistor: `MD3`–`D3`
+- `R6` data bus resistor: `MD5`–`D5`
+- `R7` data bus resistor: `MD6`–`D6`
+- `R8` data bus resistor: `MD2`–`D2`
+- `R9` data bus resistor: `MD7`–`D7`
+- `R10` data bus resistor: `MD0`–`D0`
+- `R11` data bus resistor: `MD1`–`D1`
+- `R12` pull-up: `NMI_N`
+- `R13` pull-up: `KB0`
+- `R14` pull-up: `KB1`
+- `R15` pull-up: `KB2`
+- `R16` pull-up: `KB3`
+- `R17` pull-up: `KB4`
+- `R18` pull-up: `M1_CLK`
+- `R19` series resistor: `RAM_SEL_N` to `RAM_CS_N`, so the expansion bus can override the RAM select
+- `R20` pull-up: `CLK`, the CPU clock
+- `R21` pull-up: `RESET_N`
+- `R22` pull-up: `BUSRQ_N`
+- `R23` pull-up: `WAIT_N`
+- `R24` series resistor: `LOAD` to `LOAD_R`, the inverse set gate
+- `R25` pull-down: `LOAD_PULSE`, with `C11` the load pulse
+- `R28` pull-up: `MD6`, so a keyboard read gives bit 6 high (the UK margin of 56 lines; the US machine's diode D11 is not fitted)
+- `C9` coupling capacitor: each edge of `DOT2` onto `SHIFT_CLK`, released by `R2`
+- `C11` coupling capacitor: each rise of `PHI` onto `LOAD_PULSE`, released by `R25`

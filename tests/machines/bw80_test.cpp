@@ -16,12 +16,15 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "bw80_screen.hpp"
 #include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
 #include "netlist/parser.hpp"
 #include "netlist/rom_directory.hpp"
+#include "parts/key_matrix.hpp"
 #include "parts/rom_contents.hpp"
+#include "parts/zx80_keys.hpp"
 #include "sim/simulator.hpp"
 #include "tv_page.hpp"
 
@@ -117,6 +120,54 @@ void CheckSynced(const Frames& f) {
     }
 }
 
+// A run with the TV plugged in: `runTo` advances it (a ms a slice), `frames` the locked frames
+// completed since the last call.
+struct Run {
+    Simulator sim;
+    std::unique_ptr<TvInput> tv;  // plugged in after power-on, as LockedFrames does
+    std::uint64_t completed = 0;
+
+    Run(LoadedCircuit& loaded, std::uint64_t seed) : sim(loaded.circuit) {
+        sim.powerOn(seed);
+        tv = std::make_unique<TvInput>(sim, loaded.nets.at("VIDEO"), loaded.nets.at("SYNC"));
+    }
+    void runTo(Time t) {
+        while (sim.now() < t) {
+            sim.runFor(1_ms);
+            tv->update();
+            sim.trimRecordings();
+        }
+    }
+    // Runs until `count` locked frames completed, or `cap`.
+    Frames lockedFrames(std::size_t count, Time cap) {
+        Frames result;
+        completed = tv->tv().completedFrames();
+        while (sim.now() < cap && result.frames.size() < count) {
+            runTo(sim.now() + 1_ms);
+            if (tv->tv().completedFrames() != completed) {
+                completed = tv->tv().completedFrames();
+                if (tv->tv().isLocked()) {
+                    result.frames.push_back(tv->tv().completedFrame());
+                    result.stats.push_back(tv->tv().completedStats());
+                }
+            }
+        }
+        return result;
+    }
+};
+
+// Types `text` on J3 at `at` and runs through the presses (each held 60 ms and released 120 ms)
+// plus `settle`.
+void Type(Run& run, LoadedCircuit& loaded, std::u32string_view text, Time at, Time settle) {
+    run.runTo(at);
+    KeyMatrix* keyboard = KeyMatrixOf(loaded, "J3");
+    REQUIRE(keyboard != nullptr);
+    const std::size_t presses = Zx80Presses(text).size();
+    REQUIRE(keyboard->type(text));
+    run.sim.wake(keyboard->component().id());
+    run.runTo(run.sim.now() + static_cast<Time>(presses) * 180_ms + settle);
+}
+
 constexpr Time kTestRomCap = 400_ms;
 
 }  // namespace
@@ -206,4 +257,49 @@ TEST_CASE("bw80: the ZX80 ROM shows its K cursor", "[machines][slow]") {
         stray += inRow;
     }
     CHECK(stray == 0);
+}
+
+TEST_CASE("bw80: PRINT 2+2 typed through J3", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("seconds simulated: runs in the release build");
+#endif
+    // The ROM clears its RAM and shows the K cursor by about 200 ms; then the line typed: O for
+    // PRINT (K mode), 2, SHIFT+K, 2, NEW LINE. The answer at the top of the screen, the report
+    // at the bottom (code 0, no error; the line -2, the edit line: a direct command), in the
+    // display file and on the TV, which locks again about 100 ms after the picture returns.
+    auto loaded = Build(NetlistText(), false);
+    Run run(*loaded, 1);
+    Type(run, *loaded, U"PRINT 2+2\n", 400_ms, 300_ms);
+    const auto rows = Bw80DisplayRows(*loaded);
+    for (std::size_t r = 0; r < rows.size(); ++r) {
+        UNSCOPED_INFO("row " << r << ": '" << rows[r] << "'");
+    }
+    REQUIRE(rows.size() == kBw80Rows);
+    CHECK(rows[0] == "4");
+    CHECK(rows[kBw80Rows - 1] == "0/-2");
+    const Frames f = run.lockedFrames(2, run.sim.now() + 600_ms);
+    REQUIRE(f.frames.size() == 2);
+    CheckSynced(f);
+    const PageDots page = Bw80ExpectedPage(*loaded, Glyphs());
+    const auto at = FindPage(f.frames[1], page);
+    REQUIRE(at.has_value());
+    INFO("left " << at->first << ", top " << at->second);
+}
+
+TEST_CASE("bw80: a program is entered and run", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("seconds simulated: runs in the release build");
+#endif
+    // Two lines through the tokenizer (LET, PRINT, * as SHIFT+P), then RUN: 42 at the top, the
+    // report 0/20 (no error, after line 20) at the bottom.
+    auto loaded = Build(NetlistText(), false);
+    Run run(*loaded, 1);
+    Type(run, *loaded, U"10 LET A=6\n20 PRINT A*7\nRUN\n", 400_ms, 400_ms);
+    const auto rows = Bw80DisplayRows(*loaded);
+    for (std::size_t r = 0; r < rows.size(); ++r) {
+        UNSCOPED_INFO("row " << r << ": '" << rows[r] << "'");
+    }
+    REQUIRE(rows.size() == kBw80Rows);
+    CHECK(rows[0] == "42");
+    CHECK(rows[kBw80Rows - 1] == "0/20");
 }

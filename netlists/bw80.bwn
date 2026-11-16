@@ -1,8 +1,11 @@
-# BW-80 (the Sinclair ZX80), P5v: docs/p5v-bw80-video/BW80_VIDEO.md, BW80_VIDEO_DESIGN.md §5.
+# BW-80 (the Sinclair ZX80), Machine 140: docs/machines/140-bw80/BW80.md, BW80_DESIGN.md.
 # Grant Searle's redrawn issue 2 schematic (searle.x10host.com/zx80/zx80.html, his corrections
 # applied: R7 and R28 on D6'), every chip at its designator, running the ZX80's own ROM
-# (roms/zx80_ic2.bin). Left out until P5x: the keyboard matrix and its diodes, the cassette's and
-# the modulator's analog parts, the edge connector; D11 is not fitted (the 50 Hz machine).
+# (roms/zx80_ic2.bin). P5v built the display (docs/p5v-bw80-video/BW80_VIDEO_DESIGN.md §5), P5x
+# added the keyboard (J3: the membrane keyboard in its own window, the isolating diodes D3-D10
+# inside it) and the expansion bus edge connector (J4, nothing plugged in). Left out: the
+# cassette (MIC, and the EAR network: EAR is pulled down through R1), the modulator and the 7805;
+# D11 is not fitted (the 50 Hz machine).
 #
 # The Z80A runs at 3.25 MHz, 6.5 MHz halved by IC18 and buffered by two paralleled 74LS05s (IC15).
 # The ROM (IC2) answers with A14 and A12 low, the 1K of RAM (IC3, IC4) with A14 high, mirrored
@@ -17,7 +20,9 @@
 # latch and IC20. The HALT that ends a row is not forced; when R takes A6 low in a refresh, the
 # interrupt's acknowledge presets IC18's latch and IC19 counts two M1s to start and two to end
 # HSYNC (SYNC low). An IN from an even port (KBD_N) resets the IC11 latch: SYNC held low (VSYNC)
-# and the line counter cleared; any OUT sets it again.
+# and the line counter cleared; any OUT sets it again. The keyboard's rows are A8-A15: the ROM
+# reads an even port with one of them low, and IC10 puts the five columns KB0-KB4 (pulled up by
+# R13-R17, a held key pulling its column low through the keyboard's diode) on D0-D4.
 #
 # Stand-ins: X1 for the ceramic resonator and IC20's two oscillator gates (inputs tied); RST1 for
 # the reset's R21 and C10 (1 ms in place of about 0.2 s). The VIDEO connector takes SYNC and
@@ -25,6 +30,8 @@
 
 part J1   POWER
 part J2   VIDEO
+part J3   MEMBRANEKB        # the keyboard (a window): rows A8-A15, columns KB0-KB4
+part J4   EXPANSION         # the expansion bus edge connector, nothing plugged in
 part X1   OSC freq=6.5MHz
 part RST1 POR time=1ms      # the ZX80's R21/C10
 part IC1  Z80
@@ -81,45 +88,47 @@ part C11  C value=47p       # phi rises: the load pulse
 net DOT       X1.OUT IC20.1B
 net DOT2      IC20.1Y IC18.2CLK C9.1
 net PHI       IC18.2Q C11.1
-net PHI_N     IC18.2Q_N IC18.2D IC15.5A IC15.6A IC16.1B
+net PHI_N     IC18.2Q_N IC18.2D IC15.5A IC15.6A IC16.1B J4.PHI
 net CLK       IC15.5Y IC15.6Y R20.2 IC1.CLK
 net VCC       R20.1 IC18.2PRE_N IC18.2CLR_N
 net GND       IC20.1A IC20.3A IC20.3B IC20.4A IC20.4B
 
 # CPU: the reset; NMI, bus request and wait pulled up; INT_N on A6.
-net RESET_N   IC1.RESET_N RST1.RST_N R21.2
-net NMI_N     IC1.NMI_N R12.2
-net BUSRQ_N   IC1.BUSRQ_N R22.2
-net WAIT_N    IC1.WAIT_N R23.2
-net VCC       R21.1 R12.1 R22.1 R23.1
+net RESET_N   IC1.RESET_N RST1.RST_N R21.2 J4.RESET_N
+net NMI_N     IC1.NMI_N R12.2 J4.NMI_N
+net BUSRQ_N   IC1.BUSRQ_N R22.2 J4.BUSRQ_N
+net WAIT_N    IC1.WAIT_N R23.2 J4.WAIT_N
+net VCC       R21.1 R12.1 R22.1 R23.1 J4.VCC5
+net GND       J4.GND1 J4.GND2
 
 # Address bus.
-net A0        IC1.A0 IC3.A0 IC4.A0 IC8.3B IC17.4B
-net A1        IC1.A1 IC3.A1 IC4.A1 IC8.2B
-net A2        IC1.A2 IC3.A2 IC4.A2 IC8.4B
-net A3        IC1.A3 IC3.A3 IC4.A3 IC8.1B
-net A4        IC1.A4 IC3.A4 IC4.A4 IC7.3B
-net A5        IC1.A5 IC3.A5 IC4.A5 IC7.2B
-net A6        IC1.A6 IC3.A6 IC4.A6 IC7.1B IC1.INT_N
-net A7        IC1.A7 IC3.A7 IC4.A7 IC7.4B
-net A8        IC1.A8 IC3.A8 IC4.A8 IC6.1B
-net A9        IC1.A9 IC3.A9 IC4.A9 IC2.A9
-net A10       IC1.A10 IC2.A10
-net A11       IC1.A11 IC2.A11
-net A12       IC1.A12 IC2.CS2
-net A13       IC1.A13
-net A14       IC1.A14 IC6.3A IC6.3B
-net A15       IC1.A15 IC6.4A IC6.4B
+net A0        IC1.A0 IC3.A0 IC4.A0 IC8.3B IC17.4B J4.A0
+net A1        IC1.A1 IC3.A1 IC4.A1 IC8.2B J4.A1
+net A2        IC1.A2 IC3.A2 IC4.A2 IC8.4B J4.A2
+net A3        IC1.A3 IC3.A3 IC4.A3 IC8.1B J4.A3
+net A4        IC1.A4 IC3.A4 IC4.A4 IC7.3B J4.A4
+net A5        IC1.A5 IC3.A5 IC4.A5 IC7.2B J4.A5
+net A6        IC1.A6 IC3.A6 IC4.A6 IC7.1B IC1.INT_N J4.A6 J4.INT_N
+net A7        IC1.A7 IC3.A7 IC4.A7 IC7.4B J4.A7
+net A8        IC1.A8 IC3.A8 IC4.A8 IC6.1B J4.A8 J3.A8
+net A9        IC1.A9 IC3.A9 IC4.A9 IC2.A9 J4.A9 J3.A9
+net A10       IC1.A10 IC2.A10 J4.A10 J3.A10
+net A11       IC1.A11 IC2.A11 J4.A11 J3.A11
+net A12       IC1.A12 IC2.CS2 J4.A12 J3.A12
+net A13       IC1.A13 J4.A13 J3.A13
+net A14       IC1.A14 IC6.3A IC6.3B J4.A14 J3.A14
+net A15       IC1.A15 IC6.4A IC6.4B J4.A15 J3.A15
 
 # Control lines.
-net M1_N      IC1.M1_N IC17.3B IC15.4A
-net MREQ_N    IC1.MREQ_N IC13.1A IC16.3C IC11.1A
+net M1_N      IC1.M1_N IC17.3B IC15.4A J4.M1_N
+net MREQ_N    IC1.MREQ_N IC13.1A IC16.3C IC11.1A J4.MREQ_N
 net MREQ      IC13.1Y IC12.3A IC12.4A IC16.1C
-net IORQ_N    IC1.IORQ_N IC17.1B IC17.2B IC18.1PRE_N
-net RD_N      IC1.RD_N IC17.1A
-net WR_N      IC1.WR_N IC3.WE_N IC4.WE_N IC17.2A
-net RFSH_N    IC1.RFSH_N IC16.1A IC6.S IC7.S IC8.S
-net HALT_N    IC1.HALT_N IC16.2A
+net IORQ_N    IC1.IORQ_N IC17.1B IC17.2B IC18.1PRE_N J4.IORQ_N
+net RD_N      IC1.RD_N IC17.1A J4.RD_N
+net WR_N      IC1.WR_N IC3.WE_N IC4.WE_N IC17.2A J4.WR_N
+net RFSH_N    IC1.RFSH_N IC16.1A IC6.S IC7.S IC8.S J4.RFSH_N
+net HALT_N    IC1.HALT_N IC16.2A J4.HALT_N
+net BUSAK_N   IC1.BUSAK_N J4.BUSAK_N
 
 # CPU data bus: the NOP gates, the keyboard buffer, the shift register, the resistors.
 net D0        IC1.D0 IC14.6Y IC10.Y3 IC9.A R10.2
@@ -132,14 +141,14 @@ net D6        IC1.D6 IC15.2Y IC9.G R7.2
 net D7        IC1.D7 IC14.1Y IC10.Y1 IC9.H R9.2
 
 # Memory data bus (D0'-D7'): the ROM, the RAM, the data latch.
-net MD0       IC2.O0 IC3.IO3 IC5.3D R10.1
-net MD1       IC2.O1 IC3.IO2 IC5.6D R11.1
-net MD2       IC2.O2 IC3.IO4 IC5.7D R8.1
-net MD3       IC2.O3 IC4.IO2 IC5.8D R5.1
-net MD4       IC2.O4 IC4.IO1 IC5.1D R4.1
-net MD5       IC2.O5 IC4.IO3 IC5.2D R6.1
-net MD6       IC2.O6 IC4.IO4 IC5.4D R7.1 R28.2 IC13.3A
-net MD7       IC2.O7 IC3.IO1 IC5.5D R9.1
+net MD0       IC2.O0 IC3.IO3 IC5.3D R10.1 J4.D0
+net MD1       IC2.O1 IC3.IO2 IC5.6D R11.1 J4.D1
+net MD2       IC2.O2 IC3.IO4 IC5.7D R8.1 J4.D2
+net MD3       IC2.O3 IC4.IO2 IC5.8D R5.1 J4.D3
+net MD4       IC2.O4 IC4.IO1 IC5.1D R4.1 J4.D4
+net MD5       IC2.O5 IC4.IO3 IC5.2D R6.1 J4.D5
+net MD6       IC2.O6 IC4.IO4 IC5.4D R7.1 R28.2 IC13.3A J4.D6
+net MD7       IC2.O7 IC3.IO1 IC5.5D R9.1 J4.D7
 net VCC       R28.1
 
 # ROM address: the CPU's A0-A8 (B), or in the refresh the line counter and the code (A).
@@ -161,7 +170,7 @@ net ROM_CS1   IC6.2Y IC2.CS1
 # selected through the refresh.
 net A14B_N    IC13.6Y IC12.4B
 net RAM_SEL_N IC12.3Y R19.1
-net RAM_CS_N  R19.2 IC3.CS_N IC4.CS_N
+net RAM_CS_N  R19.2 IC3.CS_N IC4.CS_N J4.RAMCS_N
 net ROM_SEL_N IC12.4Y IC6.2B
 
 # Data latch: transparent while MREQ is low with RFSH_N high and phi low; frozen in the refresh.
@@ -203,16 +212,16 @@ net INV_N     IC12.1Y IC12.2A
 net INV       IC12.2Y IC12.1A IC20.2B
 net VIDEO     IC20.2Y J2.VIDEO
 
-# I/O: the keyboard at every even read (KBD_N), cassette on D7. No keys until P5x.
+# I/O: the keyboard at every even read (KBD_N); EAR (no cassette) on D7.
 net IORD_N    IC17.1Y IC17.4A
 net IOWR_N    IC17.2Y IC11.3A
 net KBD_N     IC17.4Y IC10.G1_N IC10.G2_N IC11.4B
 net EAR       IC10.A1 R1.1
-net KB0       IC10.A3 R13.1
-net KB1       IC10.A4 R14.1
-net KB2       IC10.A5 R15.1
-net KB3       IC10.A2 R16.1
-net KB4       IC10.A6 R17.1
+net KB0       IC10.A3 R13.1 J3.KB0
+net KB1       IC10.A4 R14.1 J3.KB1
+net KB2       IC10.A5 R15.1 J3.KB2
+net KB3       IC10.A2 R16.1 J3.KB3
+net KB4       IC10.A6 R17.1 J3.KB4
 net VCC       R13.2 R14.2 R15.2 R16.2 R17.2
 net GND       R1.2
 

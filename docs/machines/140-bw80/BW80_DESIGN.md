@@ -100,9 +100,8 @@ Typing goes through `J3` (`KeyMatrixOf(loaded, "J3")->type(text)`, then a wake) 
 
 - **"bw80: netlist loads without warnings"** (P5v).
 - **"bw80: the test ROM shows every character"**, **"a 450 ns RAM misses the NOP"**, **"the ZX80 ROM shows its K cursor"** (P5v, release-only).
-- **"bw80: PRINT 2+2 typed through J3"** (release-only), seed 1: after the `K` cursor, `PRINT 2+2\n` typed; the display file's row 0 reads `4` and row 23 `0/0`; a locked frame's picture area matches the page expected from the display file.
+- **"bw80: PRINT 2+2 typed through J3"** (release-only), seed 1: after the `K` cursor, `PRINT 2+2\n` typed; the display file's row 0 reads `4` and row 23 `0/-2` (the ROM's report: code 0, the edit line's number -2); a locked frame's picture area matches the page expected from the display file.
 - **"bw80: a program is entered and run"** (release-only), seed 1: `10 LET A=6\n20 PRINT A*7\nRUN\n` (the `*` through SHIFT+P, the keywords through the tokenizer); row 0 `42`, row 23 `0/20`.
-- **"bw80: a key on a floating row does nothing"**: the netlist text edited so `J3.A8` is on a Net of its own; a held SHIFT changes no column; a held `Q` (row 2) still reads (cheap: no ROM needed, a few ms, in debug).
 - **Board** (after the routing): `check-board` ok; the cases above built from the Board; `session: bw80 with every instrument` (`tests/session/session_test.cpp`: the TV locked on the `K` screen by 400 ms, `matrixKeyboards() == {"J3"}`, `matrixKind("J3") == Bw80`, 32 Clips on IC1's buses, 4 Hooks, the probe on `NOP_EN`, the meter).
 
 Debug: P5v's picture cases run about 75–135 s each in debug and are release-only; the typing cases simulate about 1.5 s (`PRINT 2+2`: 5 presses) to 3 s (the program: 14 presses) and are release-only too (about 6–12 s each in release at 0.25×). Each case's simulated time and debug or release wall time go in the plan's notes.
