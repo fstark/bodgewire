@@ -31,11 +31,13 @@ std::vector<std::uint8_t> Bw80Glyphs() {
 }
 
 std::filesystem::path Bw80TestRomDirectory() {
+    // Cases run in parallel share it: made once, never removed.
     const auto dir = std::filesystem::temp_directory_path() / "bw80_test_roms";
-    std::filesystem::remove_all(dir);
     std::filesystem::create_directories(dir);
-    std::filesystem::create_symlink(std::filesystem::path(BW_ROOT_DIR) / "roms/bw80_test.rom",
-                                    dir / "IC2.rom");
+    if (!std::filesystem::is_symlink(dir / "IC2.rom")) {
+        std::filesystem::create_symlink(std::filesystem::path(BW_ROOT_DIR) / "roms/bw80_test.rom",
+                                        dir / "IC2.rom");
+    }
     return dir;
 }
 

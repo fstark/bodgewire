@@ -20,6 +20,9 @@ std::uint8_t Bw80Ram(const LoadedCircuit& loaded, std::uint16_t address);
 // / = > < ; , . 0-9 A-Z), inverse letters as lower case, a graphic as '#', a token as '<n>'.
 std::vector<std::string> Bw80DisplayRows(const LoadedCircuit& loaded);
 
+// The display file's codes, one vector a row (the $76 ending each row left out).
+std::vector<std::vector<std::uint8_t>> Bw80DisplayCodes(const LoadedCircuit& loaded);
+
 // The display file as the TV should show it: 24 rows of 32 cells over `glyphs` (the ROM's
 // character set), short rows padded with spaces.
 PageDots Bw80ExpectedPage(const LoadedCircuit& loaded, std::span<const std::uint8_t> glyphs);

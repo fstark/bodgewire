@@ -91,9 +91,14 @@ std::uint8_t Bw80Ram(const LoadedCircuit& loaded, std::uint16_t address) {
     return static_cast<std::uint8_t>(byte);
 }
 
-std::vector<std::string> Bw80DisplayRows(const LoadedCircuit& loaded) {
+std::vector<std::vector<std::uint8_t>> Bw80DisplayCodes(const LoadedCircuit& loaded) {
     std::vector<std::vector<std::uint8_t>> rows;
     Codes(loaded, rows);
+    return rows;
+}
+
+std::vector<std::string> Bw80DisplayRows(const LoadedCircuit& loaded) {
+    const auto rows = Bw80DisplayCodes(loaded);
     std::vector<std::string> text;
     for (const auto& codes : rows) {
         std::string line;
@@ -113,8 +118,7 @@ std::vector<std::string> Bw80DisplayRows(const LoadedCircuit& loaded) {
 }
 
 PageDots Bw80ExpectedPage(const LoadedCircuit& loaded, std::span<const std::uint8_t> glyphs) {
-    std::vector<std::vector<std::uint8_t>> rows;
-    Codes(loaded, rows);
+    const auto rows = Bw80DisplayCodes(loaded);
     return ExpectedPage(glyphs, kBw80Columns, kBw80Rows, [&](int row, int column) -> unsigned {
         if (row >= static_cast<int>(rows.size()) ||
             column >= static_cast<int>(rows[static_cast<std::size_t>(row)].size())) {

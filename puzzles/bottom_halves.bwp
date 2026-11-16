@@ -1,0 +1,5 @@
+# Bottom halves: the LC2 Trace from the line counter IC21 (QD) to the multiplexer IC8 (4A) is cracked; IC8's input floats high, so the ROM is given rows 4-7 twice: the top half of every glyph is its bottom half.
+machine bw80
+title "Bottom halves"
+brief "The BW-80 works, but the letters are wrong: the top half of each one is a copy of its bottom half."
+fault crack IC21.QD IC8.4A 50%

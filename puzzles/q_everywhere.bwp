@@ -1,0 +1,5 @@
+# Q everywhere: IC16's input 3B (CH6_N) is stuck high, so the load gate no longer tells a character from a control code: the HALT ($76) that ends each row of the display file loads a glyph too, the one of code $36, Q. Every empty place on the screen is a Q, and the margins, where the ROM's running code is loaded as dots, fill up as well.
+machine bw80
+title "Q everywhere"
+brief "The BW-80 works, but every empty place on the screen is filled with the letter Q, and the margins around the picture are full of junk. What is typed shows over the Qs."
+fault stuck IC16.3B 1

@@ -1,0 +1,5 @@
+# Doubled lines: IC21's output QB (LC0, the line counter's bit 0) is stuck low, so the ROM is given even rows only: rows 0, 0, 2, 2, 4, 4, 6, 6 of every glyph.
+machine bw80
+title "Doubled lines"
+brief "The BW-80 works, but every letter on the screen looks squat and striped, as if drawn with only half of its lines, each twice."
+fault stuck IC21.QB 0

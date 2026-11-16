@@ -1,0 +1,5 @@
+# Plain cursor: IC12's output 2Y (INV, the inverse latch) is stuck low, so nothing is ever drawn white on black: the cursor is a plain K.
+machine bw80
+title "Plain cursor"
+brief "The BW-80 works, but its cursor is a plain K on the white screen instead of a white K in a black square. Everything else looks right."
+fault stuck IC12.2Y 0

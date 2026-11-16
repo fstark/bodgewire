@@ -1,0 +1,5 @@
+# Wrong letters: solder bridge between IC5's pins 15 and 16 (CH1 and CH2, two outputs of the data latch); where the two bits differ both read low, so the ROM draws the glyph of another code: PRINT reads LRILT, HELLO reads DCLLK. The display file in RAM holds the right codes.
+machine bw80
+title "Wrong letters"
+brief "The BW-80 works, but many letters on the screen are not the ones typed: PRINT comes out as LRILT and HELLO as DCLLK. The results are right, so it is only the picture."
+fault bridge IC5.15 IC5.16

@@ -32,9 +32,9 @@ Design §3: BW80.md and BW80_DESIGN.md Puzzle sections, ADD_PUZZLE; `bw_ui` scre
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Docs reviewed | |
-| 1 | Rig | |
-| 2 | Picture Puzzles (1–7) | |
+| 0 | Docs reviewed | `3fffc75` |
+| 1 | Rig | `49ad5f3` |
+| 2 | Picture Puzzles (1–7) | this commit |
 | 3 | Keyboard and sync Puzzles (8–12) | |
 | 4 | Dead Puzzles (13–15) | |
 | 5 | Finish | |
@@ -43,3 +43,5 @@ Design §3: BW80.md and BW80_DESIGN.md Puzzle sections, ADD_PUZZLE; `bw_ui` scre
 
 - Candidates tried before the docs (headless, `bw run --tv`): the spec's "Found while trying candidates" lists what was dropped and why.
 - Docs review (before the docs commit), fixed: LET is on K, not on `A13`'s row; the user manual and BW80.md had PRINT on P and LET on O (the ROM and the key table: O and K), fixed in phase 3; phase 1 is the rig alone (a test file with no case does not build); the typed Puzzles' screenshots need `--after 25s`; `BottomHalvesCrack` in phase 2; the TV's Nets by connector pin; `KBD_N`'s junction is a via; the Still starting check spelled out; seeds 2–3 for every Puzzle.
+- Phase 1: the rig as designed; `Bw80TestRomDirectory` no longer removes the shared directory (two release cases run in parallel use it: the 450 ns case failed under `ctest -j` once the Puzzle cases joined). Release `bw80` 17/17, debug fence green.
+- Phase 2: all seven as designed. The page a Puzzle's picture should show is built from the display file's codes through the fault's glyph set, but the cells past a row's end stay blank whatever the chain does to a space: no code is loaded there (the first page for Quotes for spaces drew them as quotes and failed); only Q everywhere fills them, with the HALT's glyph. The cursor under Quotes for spaces is an inverse `L`, as the mapping says (seen at 10×). Seeds 2 and 3 give the same pictures. Release 6–28 s a case; debug `every Puzzle builds` 4 s for seven. Release `bw80` 26/26; debug `bw80|manuals|puzzle` 38/38 in 122 s.

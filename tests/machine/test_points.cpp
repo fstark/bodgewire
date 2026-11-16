@@ -210,4 +210,9 @@ const Crack& NoClockCrack() {
     return crack;
 }
 
+const Crack& BottomHalvesCrack() {
+    static const Crack crack = PuzzleCrack("bottom_halves");
+    return crack;
+}
+
 }  // namespace bw

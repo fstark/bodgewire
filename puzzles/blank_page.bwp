@@ -1,0 +1,5 @@
+# Blank page: IC9's CLK input is stuck high, so the shift register never shifts: no dots come out, only the inverse latch's black square where the cursor is. The display file is right and the BW-80 takes keys: PRINT 2+2 leaves the square where the report goes.
+machine bw80
+title "Blank page"
+brief "The TV locks on a plain white page with one black square near the bottom left, where the cursor should be. Typing changes nothing on the screen, though the square moves as if the BW-80 had taken the keys."
+fault stuck IC9.CLK 1

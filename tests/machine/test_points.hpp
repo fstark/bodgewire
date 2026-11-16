@@ -58,5 +58,6 @@ RollingTextCrack();  // bw2001 VERT_DRIVE, J7 pad 3 → UD8 pin 11: puzzles/roll
 const Crack& MissingKeysCrack();
 // bw2001 OSC8, X1 pad 8 → UE2 pin 5: puzzles/no_clock.bwp
 const Crack& NoClockCrack();
+const Crack& BottomHalvesCrack();  // bw80 LC2, IC21 pin 11 → IC8 pin 14: puzzles/bottom_halves.bwp
 
 }  // namespace bw

@@ -1,0 +1,5 @@
+# Quotes for spaces: a dry Joint on IC5 pin 6 (3Q, CH0): the multiplexer IC8 reads the latch's bit 0 as high, so every even code is drawn as the next one: a space as a quote ($00 to $01), 0 as 1, E as F, O as P, and the cursor's inverse K as an inverse L.
+machine bw80
+title "Quotes for spaces"
+brief "The BW-80 works, but the screen is wrong: every space shows as a quote mark, 0 shows as 1, E as F, O as P, and the cursor's letter is an L."
+fault joint IC5.6
