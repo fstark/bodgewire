@@ -32,6 +32,10 @@ After P5z (2026-11-16, [KERNEL_BW2001.md](../p5z-kernel-bw2001/KERNEL_BW2001.md)
 - Behaviour check after each change: same `applied_events` and `evaluations`; VCD of `--time 40ms --seed 1 --record SYNC_N,VIDEO,HSYNC_N,VSYNC_N` byte-identical.
 - Compiler flags: `-O3` is the Release default; `-mcpu=native` changed nothing. LTO gave 2.5× → 4.0× but was rejected (build complexity); explicit inlining in headers gave more.
 
+## Keeping an idea
+
+An idea is kept when its gain is worth the complexity it adds (the user, 2026-11-16). This replaces the 5 % bar of P5b and P5z, which was set when the code was simpler, against complexity for gains that might not matter. A small gain from a few plain lines is kept; a large one that needs a second path or a Part API change is the user's choice. Traces stay exact and the kernel keeps one path unless the user decides otherwise.
+
 ## History (test pattern, 5 s simulated, release)
 
 | Change | Result | Kept |
@@ -167,7 +171,7 @@ Recommendation (2026-11-13): shelve. Look again only if what is left to real tim
 
 ## Next steps
 
-P5z (2026-11-16): the BW-2001 at 0.36× with traces unchanged and the Part API grown by `fallingEdgeOnly`, `quiet` and `lastChange`. Nothing left reaches 5 % alone on it: `runUntil` 31 % and the queue 21 % spread over many lines, no Part over 7.4 %. The options below stay open; for real time on the BW-2001 (2.8× away) or the BW-80 (4×) the remaining levers bend the design: 2 (10–20 %), 3, 4, 5.
+P5z (2026-11-16): the BW-2001 at 0.36× with traces unchanged and the Part API grown by `fallingEdgeOnly`, `quiet` and `lastChange`. Nothing left reached P5z's 5 % bar alone: `runUntil` 31 % and the queue 21 % spread over many lines, no Part over 7.4 %. The options below stay open (on the roadmap as potential rows since 2026-11-16, with P5z2 for the cheap exact ones: gate packages per unit, 74LS93 and 74LS107 fast paths, quiet D on the 74LS373); for real time on the BW-2001 (2.8× away) or the BW-80 (4×) the remaining levers bend the design: 2 (10–20 %), 3, 4, 5.
 
 Done: 1 (P5a), P5b (2026-11-13): the event queue, LTO, specialised evaluation of the spec-table Parts (ROM, gate packages), sampled inputs; 0.40× on `bus_load`. Within P5b's guards (Part API, traces and simulated Nets unchanged, no second kernel path) nothing left reaches 5 % alone. The options (spec, Results); **the user chose 1 (2026-11-13)**, the others stay open for when the measurements ask:
 
