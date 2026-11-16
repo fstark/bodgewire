@@ -73,6 +73,7 @@ private:
     void markComponentDirty(ComponentId component);
     Resolution resolveNet(NetId net) const;
     void scheduleWake(ComponentId component, Time delay);
+    void setQuiet(PinId pin, bool on);
     const NetState& netOfPin(PinId pin) const { return nets_[ToIndex(pinNet_[ToIndex(pin)])]; }
 
     Circuit& circuit_;
@@ -82,6 +83,11 @@ private:
     std::vector<External> external_;   // per Net, its first network Pin's; where networked
     std::vector<External> external2_;  // per Net, its second network Pin's, if any
     std::vector<std::uint8_t> componentDirty_;
+    // The Circuit's fan-out, each entry's `pins` counting its loud Pins (P5z, quiet Pins); reset
+    // by powerOn. fanOutStart_ is the Circuit's.
+    std::vector<FanOut> fanOut_;
+    std::vector<std::uint32_t> fanOutStart_;
+    std::vector<std::uint8_t> pinQuiet_;  // per Pin
     std::vector<NetId> dirtyNets_;
     std::vector<ComponentId> dirtyComponents_;
     EventQueue queue_;
@@ -94,6 +100,12 @@ private:
 // --- EvalContext hot path ---
 
 inline LogicValue EvalContext::read(PinIndex pin) const { return sim_.netOfPin(pinId(pin)).value; }
+
+inline Time EvalContext::lastChange(PinIndex pin) const {
+    return sim_.netOfPin(pinId(pin)).changedAt;
+}
+
+inline void EvalContext::quiet(PinIndex pin, bool on) { sim_.setQuiet(pinId(pin), on); }
 
 inline LogicValue EvalContext::readBefore(PinIndex pin) const {
     const auto& s = sim_.netOfPin(pinId(pin));

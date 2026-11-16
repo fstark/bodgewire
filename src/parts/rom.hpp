@@ -22,6 +22,14 @@ struct RomEnable {
 };
 
 // One ROM Part of the catalogue (2716, 2513, 2316B): its pins and timing.
+// A Rom's own state between evaluations.
+struct RomState {
+    // When the word at the current address is valid (the last address change plus its access
+    // time); a select times its data from it too (P5v).
+    Time dataReady = 0;
+    bool quiet = false;  // off (an enable at its inactive level): the address Pins quiet (P5z)
+};
+
 struct RomSpec {
     std::string_view part;                    // "2716"
     std::span<const std::string_view> names;  // index = pin - 1
@@ -33,10 +41,8 @@ struct RomSpec {
     Time offDelay;                          // enable high to outputs off, ps
     // EvaluateRom<its layout>: evaluation specialised on these pins at compile time (rom.cpp).
     // activeHigh: bit i set when enable i is active high (2316B select=); 0 otherwise.
-    // dataReady: the Rom's own state, when the word at the current address is valid (the last
-    // address change plus its access time); a select times its data from it too (P5v).
     void (*evaluate)(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned activeHigh,
-                     Time& dataReady);
+                     RomState& state);
     bool selectable = false;  // select= sets each enable's polarity, required (2316B)
 };
 
@@ -63,7 +69,7 @@ private:
     const RomSpec& spec_;
     RomBlock block_;
     unsigned activeHigh_;
-    Time dataReady_ = 0;
+    RomState state_;
 };
 
 }  // namespace bw

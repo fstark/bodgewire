@@ -65,6 +65,7 @@ void Circuit::buildTables() {
     netHasTtlInput_.assign(netCount, 0);
     netNetworkPin_.assign(netCount, kNoPin);
     netNetworkPin2_.assign(netCount, kNoPin);
+    pinFanOut_.assign(pins_.size(), kNoFanOut);
     for (std::uint32_t p = 0; p < pins_.size(); ++p) {
         const PinInfo& info = pins_[p];
         const std::uint32_t n = ToIndex(info.net);
@@ -95,10 +96,14 @@ void Circuit::buildTables() {
                                                           : kWakeOnAny;
         // Pins of one Component are contiguous, so checking the last entry merges them.
         if (fanOut[n].empty() || fanOut[n].back().component != info.owner) {
-            fanOut[n].push_back({info.owner, edges});
+            fanOut[n].push_back({info.owner, edges, 1});
         } else {
-            fanOut[n].back().edges |= edges;
+            FanOut& entry = fanOut[n].back();
+            Check(entry.pins < UINT8_MAX, "circuit: too many pins of one component on one net");
+            entry.edges |= edges;
+            ++entry.pins;
         }
+        pinFanOut_[p] = static_cast<std::uint32_t>(fanOut[n].size() - 1);  // within the Net
     }
 
     driverStart_.assign(netCount + 1, 0);
@@ -115,6 +120,11 @@ void Circuit::buildTables() {
         fanOut_.insert(fanOut_.end(), fanOut[n].begin(), fanOut[n].end());
         driverStart_[n + 1] = static_cast<std::uint32_t>(drivers_.size());
         fanOutStart_[n + 1] = static_cast<std::uint32_t>(fanOut_.size());
+    }
+    for (std::uint32_t p = 0; p < pins_.size(); ++p) {  // within the Net -> in fanOut_
+        if (pinFanOut_[p] != kNoFanOut) {
+            pinFanOut_[p] += fanOutStart_[ToIndex(pins_[p].net)];
+        }
     }
 }
 

@@ -37,6 +37,7 @@ inline constexpr std::uint8_t kWakeOnAny = kWakeOnRise | kWakeOnFall | kWakeOnOt
 struct FanOut {
     ComponentId component;
     std::uint8_t edges;  // the kWakeOn* bits of those Pins, ORed
+    std::uint8_t pins;   // how many Pins; in the Simulator's copy, how many of them are loud (P5z)
 };
 static_assert(sizeof(FanOut) == 8);
 
@@ -84,6 +85,13 @@ public:
         const std::uint32_t i = ToIndex(net);
         return std::span(fanOut_).subspan(fanOutStart_[i], fanOutStart_[i + 1] - fanOutStart_[i]);
     }
+    // Every Net's fan-out in one array, Net after Net; a Net's entries start at fanOutStarts()[net]
+    // (size netCount + 1). A reader Pin's entry is fanOutIndex(pin), kNoFanOut for a Pin with none
+    // (not a reader, or sampled). The Simulator keeps its own copy to count quiet Pins (P5z).
+    std::span<const FanOut> fanOutEntries() const { return fanOut_; }
+    std::span<const std::uint32_t> fanOutStarts() const { return fanOutStart_; }
+    std::uint32_t fanOutIndex(PinId pin) const { return pinFanOut_[ToIndex(pin)]; }
+    static constexpr std::uint32_t kNoFanOut = UINT32_MAX;
     Drive tieOf(NetId net) const { return netTie_[ToIndex(net)]; }
     bool hasTtlInput(NetId net) const { return netHasTtlInput_[ToIndex(net)] != 0; }
     // The Net's only Driver if it is a totem-pole Output and the Net is untied, else kNoPin.
@@ -114,6 +122,7 @@ private:
     std::vector<std::uint32_t> driverStart_, fanOutStart_;  // size netCount + 1
     std::vector<PinId> drivers_;
     std::vector<FanOut> fanOut_;
+    std::vector<std::uint32_t> pinFanOut_;  // per Pin: its entry in fanOut_, or kNoFanOut
 };
 
 }  // namespace bw

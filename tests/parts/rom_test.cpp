@@ -536,3 +536,36 @@ TEST_CASE("rom: a select after the address waits for the address's access time",
     sim.runUntil(3400_ns + delays::k2332Select);
     CHECK(b.word(sim) == 7);
 }
+
+TEST_CASE("rom: a select after a quiet spell times the data from the last address change",
+          "[parts]") {
+    // 2513, off until 2.01 us. A4 (a character bit, 500 ns) rises at 1 us, A1 (a row bit,
+    // 450 ns) at 2 us: the word is ready at 2 us + the row access, the delay of the last change
+    // alone, not 2 us + the character access.
+    Bench b("2513", {{"A1", {Zero, {{2_us, One}}}},
+                     {"A4", {Zero, {{1_us, One}}}},
+                     {"CE_N", {One, {{2010_ns, Zero}}}}});
+    const NetId o0 = b.nets.at(std::string(b.spec.names[b.spec.data[0]]));
+    Simulator sim(b.circuit);
+    sim.powerOn(1);
+    sim.runUntil(2_us + delays::k2513RowAccess - 1);
+    CHECK(sim.isFloating(o0));
+    sim.runUntil(2_us + delays::k2513RowAccess);
+    CHECK(b.word(sim) == ((9 * 7) & 0x1F));
+}
+
+TEST_CASE("rom: off, address changes do not evaluate it; with an X enable they do", "[parts]") {
+    std::vector<Stimulus::Step> toggles;
+    for (int i = 1; i <= 10; ++i) {
+        toggles.push_back({i * 1_us, i % 2 ? One : Zero});
+    }
+    std::uint64_t evaluations[2] = {};
+    for (const int x : {0, 1}) {
+        Bench b("2716", {{"A3", {Zero, toggles}}, {"CE_N", {x ? LogicValue::X : One, {}}}});
+        Simulator sim(b.circuit);
+        sim.powerOn(1);
+        sim.runUntil(20_us);
+        evaluations[x] = sim.stats().evaluations;
+    }
+    CHECK(evaluations[1] - evaluations[0] == 10);
+}

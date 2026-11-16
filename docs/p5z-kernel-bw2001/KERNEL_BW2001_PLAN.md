@@ -19,7 +19,7 @@ An idea that is dropped is reverted before the next one starts, and its row is s
 | 0 | Docs reviewed | done |
 | 1 | Guards and baseline | done |
 | 2 | Z1: falling-edge-only and sampled Pins | done: kept |
-| 3 | Z2: quiet Pins (kernel, then 2114, then ROM) | |
+| 3 | Z2: quiet Pins (kernel, then 2114, then ROM) | done: kept |
 | 4 | Z3: specialised Parts, from the profile | |
 | 5 | Z4: run loop, from the profile | |
 | 6 | Finish | |
@@ -77,6 +77,8 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
 |---|------|--------------|--------------|--------------|-------------|------|----------|------|--------|
 | 0 | baseline (`f849080`) | 0.210× | 856 | 156 | 2.14 | 0.242× | 0.373× | — | `f849080` |
 | Z1 | `PinSpec::fallingEdgeOnly` on the 74LS107, 74LS93, 74LS90 clocks; the 107's `J`, `K` sampled | 0.222× | 830 | 146–148 | 1.95 | 0.244× | 0.382× | yes: +5.7 % ratio, −5…6 % cycles (two runs) | this row's commit |
+| Z2.0 | quiet Pins in the kernel, no Part using them | 0.219× | 845 | 151 | 1.95 | 0.241× | 0.371× | measured only: the test's cost, 1–3 % on every netlist | — |
+| Z2 | quiet Pins: deselected 2114s (`CS_N` a definite 1) and ROMs (off) sleep through their address and data | 0.315–0.320× | 580 | 107 | 1.18 | 0.247× | 0.384–0.387× | yes: +44 % ratio, −27 % cycles against Z1 (two runs) | this row's commit |
 
 ## Implementation notes
 
@@ -114,3 +116,11 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
   - Others against row 0, best of 3; none slower: ball 2.70×, bw1 2.62×, chaser 13.7×, counter 12.5×, dice 33.5×, knob 19.0× (+28 %: its 74LS93s), stopwatch 11.8×, tennis 2.04×, test pattern 7.20×, typewriter 1.32×.
   - The 74LS90 checked against its code: its clocks enter only through `fell`, and its R0/R9 X paths are idempotent.
   - Full debug suite 1361/1361 in 806 s; release `bw2001|bw80|bw1` 156/156.
+- Phase 3, Z2 (2026-11-16):
+  - **One change from the design:** the Simulator keeps its own copy of the fan-out entries, whose new `pins` byte counts the loud Pins, in place of a separate `fanOutLoud_` array. The run loop then reads no extra cache line; `pinQuiet_` is as designed.
+  - The kernel alone (Z2.0) costs 1–3 % everywhere, as the test of the count that no Part changes yet.
+  - Traces identical. Evaluations in the trace runs: bw2001 31.4 M → 23.4 M, bw2001 long 652 M → 376 M (−42 %), bus_load 5.68 M → 5.22 M, bw80 18.15 M → 17.43 M.
+  - Others against Z1, none slower beyond noise: led_computer +19 % (its 2114 and ROM), the rest within ±2.5 %.
+  - Test fix: the 2114's X-select count case first held `WE_N` high, so an X-selected chip drove its data Pins and was woken by its own drives (15 evaluations, not 10). `WE_N` low keeps its outputs off.
+  - Full debug suite 1372/1372 in 680 s (Z1: 806 s); release `bw2001|bw80|bw1|bus load|typewriter` 178/178.
+  - Profile on Z2 (`build/profile`, 6,700 samples by function): `runUntil` 25 %, `resolveNet` 11.5 %, the queue 15 %, `GateFunction` 8 %, **74LS244 7.2 %** (the hottest Part), `driveChanged` 6 %, 74LS93 3.2 %, 74LS107 2 %, 74LS157 2 %, 2114 1.4 %, ROM 1.3 %.

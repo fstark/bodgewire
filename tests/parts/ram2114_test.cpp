@@ -362,3 +362,49 @@ TEST_CASE("2114: a select after the address waits for the address's access time"
         CHECK_FALSE(bench.floating(sim));
     }
 }
+
+TEST_CASE("2114: an address change at the select's own time waits for the access time", "[parts]") {
+    Bench bench(
+        {{"A0", {Zero, {{1000_ns, One}}}}, {"WE_N", {One, {}}}, {"CS_N", {One, {{1000_ns, Zero}}}}},
+        BusWord({}));
+    Simulator sim(bench.circuit);
+    sim.powerOn(1);
+    sim.runUntil(1000_ns + delays::k2114Address - 1);
+    CHECK(bench.floating(sim));
+    sim.runUntil(1000_ns + delays::k2114Address);
+    CHECK(bench.word(sim) == bench.ram->word(1));
+}
+
+TEST_CASE("2114: a select before any address change waits only for tCO", "[parts]") {
+    // Deselected (and asleep) from power-on; no address Pin has moved: the word is ready.
+    Bench bench({{"WE_N", {One, {}}}, {"CS_N", {One, {{50_ns, Zero}}}}}, BusWord({}));
+    Simulator sim(bench.circuit);
+    sim.powerOn(1);
+    sim.runUntil(50_ns + delays::k2114Select - 1);
+    CHECK(bench.floating(sim));
+    sim.runUntil(50_ns + delays::k2114Select);
+    CHECK(bench.word(sim) == bench.ram->word(0));
+}
+
+TEST_CASE("2114: deselected, address changes do not evaluate it; with an X select they do",
+          "[parts]") {
+    // Ten address changes, the same Stimuli either way: only the chip's evaluations differ.
+    Steps toggles;
+    for (int i = 1; i <= 10; ++i) {
+        toggles.push_back({i * 1000_ns, i % 2 ? One : Zero});
+    }
+    std::uint64_t evaluations[2] = {};
+    for (const int x : {0, 1}) {
+        // WE_N low: a chip selected by an X draw writes, its outputs off, so only the
+        // address changes wake it.
+        Bench bench({{"A3", {Zero, toggles}},
+                     {"WE_N", {Zero, {}}},
+                     {"CS_N", {x ? LogicValue::X : One, {}}}},
+                    BusWord({}));
+        Simulator sim(bench.circuit);
+        sim.powerOn(1);
+        sim.runUntil(20'000_ns);
+        evaluations[x] = sim.stats().evaluations;
+    }
+    CHECK(evaluations[1] - evaluations[0] == 10);
+}

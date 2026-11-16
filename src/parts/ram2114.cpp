@@ -33,6 +33,18 @@ Ram2114::Ram2114(std::string reference, Time access)
 void Ram2114::powerOn(PowerOnContext& ctx) {
     cells_.powerOn(ctx);
     dataReady_ = 0;
+    quiet_ = false;  // the Simulator made every Pin loud
+}
+
+void Ram2114::setQuiet(EvalContext& ctx, bool on) {
+    quiet_ = on;
+    for (const PinIndex pin : kAddress) {
+        ctx.quiet(pin, on);
+    }
+    for (const PinIndex pin : kData) {
+        ctx.quiet(pin, on);
+    }
+    ctx.quiet(kWeN, on);
 }
 
 std::size_t Ram2114::wordCount(std::size_t memory) const {
@@ -54,6 +66,17 @@ void Ram2114::stick(std::size_t memory, std::size_t word, unsigned bit, bool one
 }
 
 void Ram2114::evaluate(EvalContext& ctx) {
+    if (quiet_) {
+        // Woken by CS_N after a quiet spell: the address changes it slept through set when the
+        // word is ready, as they did when every one of them woke the chip.
+        setQuiet(ctx, false);
+        Time last = -1;
+        for (const PinIndex pin : kAddress) {
+            last = std::max(last, ctx.lastChange(pin));
+        }
+        dataReady_ = last < 0 ? 0 : last + access_;
+    }
+
     // A write in progress just before now: keep the word it was writing (zero hold time).
     if (!ctx.readBitBefore(kCsN) && !ctx.readBitBefore(kWeN)) {
         std::size_t address = 0;
@@ -88,6 +111,11 @@ void Ram2114::evaluate(EvalContext& ctx) {
     if (!selected || writing) {
         for (const PinIndex pin : kData) {
             ctx.drive(pin, Z, delays::k2114Off);
+        }
+        // Deselected for sure: nothing but CS_N changes what the chip does until it is selected
+        // again (an X select stays loud: each evaluation draws it again).
+        if (ctx.read(kCsN) == One) {
+            setQuiet(ctx, true);
         }
         return;
     }

@@ -80,6 +80,22 @@ Simulator::Simulator(Circuit& circuit) : circuit_(circuit) {
     for (std::uint32_t pin = 0; pin < circuit.pinCount(); ++pin) {
         pinNet_.push_back(circuit.netOf(PinId{pin}));
     }
+    fanOut_.assign(circuit.fanOutEntries().begin(), circuit.fanOutEntries().end());
+    fanOutStart_.assign(circuit.fanOutStarts().begin(), circuit.fanOutStarts().end());
+    pinQuiet_.resize(circuit.pinCount(), 0);
+}
+
+void Simulator::setQuiet(PinId pin, bool on) {
+    std::uint8_t& quiet = pinQuiet_[ToIndex(pin)];
+    if (quiet == static_cast<std::uint8_t>(on)) {
+        return;
+    }
+    const std::uint32_t entry = circuit_.fanOutIndex(pin);
+    if (entry == Circuit::kNoFanOut) {
+        return;  // wakes nobody anyway
+    }
+    quiet = static_cast<std::uint8_t>(on);
+    fanOut_[entry].pins = static_cast<std::uint8_t>(fanOut_[entry].pins + (on ? -1 : 1));
 }
 
 void Simulator::markNetDirty(NetId net) {
@@ -170,6 +186,9 @@ void Simulator::powerOn(std::uint64_t seed) {
     dirtyNets_.clear();
     dirtyComponents_.clear();
     std::fill(componentDirty_.begin(), componentDirty_.end(), 0);
+    // Every Pin loud, before the first evaluations below may quiet some.
+    std::ranges::copy(circuit_.fanOutEntries(), fanOut_.begin());
+    std::ranges::fill(pinQuiet_, 0);
 
     for (std::uint32_t p = 0; p < outputs_.size(); ++p) {
         OutputState& o = outputs_[p];
@@ -269,8 +288,10 @@ void Simulator::runUntil(Time end) {
                     s.previous == LogicValue::Zero && s.value == LogicValue::One   ? kWakeOnRise
                     : s.previous == LogicValue::One && s.value == LogicValue::Zero ? kWakeOnFall
                                                                                    : kWakeOnOther;
-                for (const FanOut& f : circuit_.fanOut(net)) {
-                    if (f.edges & change) {
+                const std::uint32_t n = ToIndex(net);
+                for (std::uint32_t e = fanOutStart_[n]; e < fanOutStart_[n + 1]; ++e) {
+                    const FanOut& f = fanOut_[e];
+                    if ((f.edges & change) && f.pins != 0) {
                         markComponentDirty(f.component);
                     }
                 }

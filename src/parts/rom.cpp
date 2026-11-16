@@ -46,7 +46,32 @@ unsigned KnownBits(std::span<const std::uint8_t> words, std::size_t base, std::s
 
 template <const auto& L>
 void EvaluateRom(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned activeHigh,
-                 Time& dataReady) {
+                 RomState& state) {
+    Time& dataReady = state.dataReady;
+    if (state.quiet) {
+        // Woken by an enable after a quiet spell: the address changes it slept through set when
+        // the word is ready, as they did when every one of them woke the chip.
+        state.quiet = false;
+        Time last = -1;
+        for (const PinIndex pin : L.address) {
+            ctx.quiet(pin, false);
+            last = std::max(last, ctx.lastChange(pin));
+        }
+        if (last < 0) {
+            dataReady = 0;
+        } else if constexpr (L.oneAddressDelay()) {
+            dataReady = last + L.addressDelay[0];
+        } else {
+            Time delay = 0;
+            for (std::size_t i = 0; i < L.address.size(); ++i) {
+                if (ctx.lastChange(L.address[i]) == last) {
+                    delay = std::max(delay, L.addressDelay[i]);
+                }
+            }
+            dataReady = last + delay;
+        }
+    }
+
     bool off = false;
     bool unknownEnable = false;
     bool enableChanged = false;
@@ -105,6 +130,13 @@ void EvaluateRom(EvalContext& ctx, std::span<const std::uint8_t> words, unsigned
             out = ((value >> b) & 1) ? One : Zero;
         }
         ctx.drive(L.data[b], out, delay);
+    }
+    if (off) {
+        // Off for sure: nothing but an enable changes what the chip does until it is on again.
+        state.quiet = true;
+        for (const PinIndex pin : L.address) {
+            ctx.quiet(pin, true);
+        }
     }
 }
 
@@ -248,11 +280,9 @@ Rom::Rom(std::string reference, const RomSpec& spec, std::vector<std::uint8_t> w
     Check(block_.size() == std::size_t{1} << spec.address.size(), "rom: wrong number of words");
 }
 
-void Rom::powerOn(PowerOnContext& /*ctx*/) { dataReady_ = 0; }
+void Rom::powerOn(PowerOnContext& /*ctx*/) { state_ = {}; }  // the Simulator made every Pin loud
 
-void Rom::evaluate(EvalContext& ctx) {
-    spec_.evaluate(ctx, block_.words(), activeHigh_, dataReady_);
-}
+void Rom::evaluate(EvalContext& ctx) { spec_.evaluate(ctx, block_.words(), activeHigh_, state_); }
 
 std::size_t Rom::wordCount(std::size_t memory) const {
     Check(memory == 0, "rom: one memory");

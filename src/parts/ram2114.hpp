@@ -40,6 +40,9 @@ private:
     RamBlock cells_{1024, 4};
     Time access_;
     Time dataReady_ = 0;  // the last address change plus access_
+    // Deselected (CS_N a definite 1): every Pin but CS_N quiet, so bus changes do not wake it.
+    bool quiet_ = false;
+    void setQuiet(EvalContext& ctx, bool on);
 };
 
 }  // namespace bw

@@ -37,8 +37,12 @@ public:
     bool readBit(PinIndex pin);                        // X → seeded random bit (MOS inputs, S4)
     bool readBitBefore(PinIndex pin);                  // readBefore, X → seeded random bit
     inline void drive(PinIndex pin, LogicValue value, Time delay);  // inertial, delay ≥ 1 ps
-    void wakeAfter(Time delay);                // evaluate this Component again at now + delay
-    void wake(ComponentId other, Time delay);  // evaluate `other` at now + delay (≥ 1 ps)
+    // While a Pin is quiet, its Net's changes do not wake this Component; what the Pin reads
+    // and drives is unchanged. Every Pin is loud at power-on (P5z: a deselected memory).
+    inline void quiet(PinIndex pin, bool on);
+    inline Time lastChange(PinIndex pin) const;  // when the Net's value last changed; -1: never
+    void wakeAfter(Time delay);                  // evaluate this Component again at now + delay
+    void wake(ComponentId other, Time delay);    // evaluate `other` at now + delay (≥ 1 ps)
     // Switched and Joined Pins only (P5i, P5u): the drives on the Pin's Net but its own, and
     // whether they changed at this timestamp.
     inline const Resolver& external(PinIndex pin) const;
