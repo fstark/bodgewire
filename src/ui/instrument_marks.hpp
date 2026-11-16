@@ -17,6 +17,14 @@ inline constexpr ImU32 kCursorLine = IM_COL32(255, 255, 255, 90);
 inline constexpr ImU32 kAxisText = IM_COL32(170, 175, 180, 255);
 inline constexpr ImVec4 kHintGrey{0.5f, 0.5f, 0.5f, 1.0f};
 inline constexpr float kAxisHeight = 18.0f;
+// The focus's gold (P6c): on the owner's shelf drawing and round its instrument window.
+inline constexpr ImU32 kFocusGold = IM_COL32(255, 196, 40, 255);
+
+// ImGui::Begin for an instrument window, framed in gold while it owns the focus; End it as
+// usual whatever this returns.
+bool BeginInstrument(const char* name, bool& open, bool owner);
+// After BeginInstrument: the left button went down in the window this frame.
+bool InstrumentClicked();
 
 using TimeToX = std::function<float(Time)>;  // ps from the Trigger → screen x
 

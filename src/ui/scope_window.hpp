@@ -13,13 +13,12 @@
 
 namespace bw {
 
-class BoardView;
-
 // The floating Oscilloscope: settings, the screen with the last Sweep drawn at the current
 // settings, Hook rows with values, the status line.
 class ScopeWindow {
 public:
-    void draw(bool& open, Session& session, BoardView& board);
+    // `owner`: it has the focus (a gold frame). True when clicked: it takes the focus.
+    bool draw(bool& open, bool owner, Session& session);
     // From bw_ui, for screenshots: a marker, and a cursor drawn whenever the mouse is not over
     // the screen.
     void preset(std::optional<Time> marker, std::optional<Time> cursor);

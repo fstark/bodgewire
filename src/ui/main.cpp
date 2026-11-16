@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -14,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <SDL3/SDL.h>
@@ -41,9 +43,10 @@
 #include "ui/matrix_keyboard_window.hpp"
 #include "ui/meter_window.hpp"
 #include "ui/scope_window.hpp"
+#include "ui/shelf.hpp"
 #include "ui/side_panel.hpp"
-#include "ui/toolbar.hpp"
 #include "ui/tv_view.hpp"
+#include "view/focus.hpp"
 #include "view/time_view.hpp"
 
 using namespace bw;
@@ -63,6 +66,7 @@ constexpr std::string_view kUsage =
     "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
     "[--type REF:START:TEXT] [--roms DIR] [--manual user] [--look real|plain] "
+    "[--focus probe|swap|iron|cut|wire|analyzer|scope|meter] "
     "[--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -86,8 +90,24 @@ struct Options {
     std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
     std::vector<Typing> type;
     bool userManual = false;
-    bool plainLook = false;  // --look plain: the specialist's Board, no parts drawn (P6)
+    bool plainLook = false;      // --look plain: the specialist's Board, no parts drawn (P6)
+    std::optional<Owner> focus;  // --focus: the owner at start (P6c)
 };
+
+std::optional<Owner> ParseOwner(std::string_view name) {
+    constexpr std::array<std::pair<std::string_view, Owner>, 8> kNames{{
+        {"probe", Owner::Probe},
+        {"swap", Owner::Puller},
+        {"iron", Owner::Iron},
+        {"cut", Owner::Cutters},
+        {"wire", Owner::Wire},
+        {"analyzer", Owner::Analyzer},
+        {"scope", Owner::Scope},
+        {"meter", Owner::Meter},
+    }};
+    const auto it = std::ranges::find(kNames, name, &std::pair<std::string_view, Owner>::first);
+    return it != kNames.end() ? std::optional(it->second) : std::nullopt;
+}
 
 std::vector<std::string> SplitCommas(std::string_view list) {
     std::vector<std::string> items;
@@ -168,6 +188,11 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
             options.plainLook = look == "plain";
+        } else if (arg == "--focus") {
+            options.focus = ParseOwner(argv[++i]);
+            if (!options.focus) {
+                return std::nullopt;
+            }
         } else if (arg == "--repair") {
             options.repair = SplitCommas(argv[++i]);
         } else if (arg == "--clip") {
@@ -392,7 +417,7 @@ bool SaveScreenshot(SDL_Renderer* renderer, const std::filesystem::path& path) {
 int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, Session& session,
               const Options& options, ImFont* legends) {
     TvView view(renderer);
-    Toolbar toolbar;
+    Shelf shelf;
     SidePanel sidePanel;
     const Machine* machine = session.machine();
     BoardView boardView(machine ? std::optional<BoardScene>(std::in_place, *session.drawnBoard(),
@@ -417,13 +442,12 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         matrixCapture.kind = session.matrixKind(matrices.front()).value_or(KeyMatrixKind::Bw2001);
     }
     MatrixKeyboardWindow matrixWindow(legends);
-    bool matrixOpen = !matrixCapture.reference.empty();
     BoardKeyCapture boardKeys;  // only without a keyboard: that one takes the typing
     if (capture.reference.empty() && matrixCapture.reference.empty()) {
         boardKeys.keys = session.switchKeys();
     }
     boardView.setLegendFont(legends);
-    bool keyboardOpen = !capture.reference.empty();
+    shelf.keyboardOut = !capture.reference.empty() || !matrixCapture.reference.empty();
     if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
         if (const auto component =
                 scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
@@ -431,11 +455,24 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         }
     }
     Speed speed = Speed::RealTime;
-    toolbar.userManualOpen = options.userManual;
+    shelf.manualOut = options.userManual;
     boardView.setPlainLook(options.plainLook);
-    toolbar.analyzerOpen = !options.clip.empty() || !options.group.empty();
-    toolbar.meterOpen = options.meter.has_value();
-    toolbar.scopeOpen = !options.hook.empty();
+    Focus focus;
+    if (!options.clip.empty() || !options.group.empty()) {
+        focus.bringOut(Owner::Analyzer);
+    }
+    if (!options.hook.empty()) {
+        focus.bringOut(Owner::Scope);
+    }
+    if (options.meter) {
+        focus.bringOut(Owner::Meter);
+    }
+    if (options.focus && IsInstrument(*options.focus)) {
+        focus.key(*options.focus);
+    } else if (options.focus) {
+        focus.take(*options.focus);
+    }
+    Owner lastOwner = focus.owner();
     ManualWindows manualWindows;
     AnalyzerWindow analyzerWindow;
     MeterWindow meterWindow;
@@ -489,22 +526,30 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             ImGui::IsKeyPressed(ImGuiKey_Tab, false)) {
             boardView.setPlainLook(!boardView.plainLook());
         }
-        toolbar.draw(session, boardView, speed, seed);
-        const ImVec2 available = ImGui::GetContentRegionAvail();
+        if (focus.owner() != lastOwner) {
+            wireStart.reset();  // a wire is started with one tool only
+            lastOwner = focus.owner();
+        }
+        boardView.setOwner(focus.owner());
+        const ImVec2 whole = ImGui::GetContentRegionAvail();
+        const ImVec2 available{whole.x, whole.y - kShelfHeight - ImGui::GetStyle().ItemSpacing.y};
         boardView.draw({available.x * kBoardShare, available.y});
         // Esc in an instrument window clears its marker; it is not the Board's.
         if (boardView.takeEscape() && !analyzerWindow.focused() && !scopeWindow.focused()) {
-            if (boardView.tool() == Tool::Meter) {
-                session.liftLeads();
-            } else if (boardView.tool() == Tool::Wire) {
+            switch (focus.escape(wireStart.has_value())) {
+            case EscapeStep::CancelWire:
                 wireStart.reset();
-            } else {
+                break;
+            case EscapeStep::ToProbe:
+                break;
+            case EscapeStep::LiftTip:
                 session.touch(std::nullopt);
+                break;
             }
         }
         const auto refuse = [&](std::string reason) {
             boardView.refuse(reason);
-            toolbar.refused(std::move(reason));
+            shelf.refused(std::move(reason));
         };
         if (const auto click = boardView.takeClick()) {
             const auto& pick = click->pick;
@@ -517,26 +562,39 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 boardView.select(*click->component);
             }
             RepairResult result = RepairResult::Done;
-            switch (boardView.tool()) {
-            case Tool::Probe:
+            switch (focus.owner()) {
+            case Owner::Probe:
                 if (pick && pick->hit.kind != HitKind::Component) {
                     session.touch(ProbeTip{pick->contact, pick->layer});
                 }
                 break;
-            case Tool::Swap:
+            case Owner::Puller:
                 if (click->component) {
                     result = session.repair(
                         SwapRepair{session.drawnBoard()->components[*click->component].reference});
                 }
                 break;
-            case Tool::Mend:
-                if (pick && pick->hit.kind == HitKind::Trace) {
-                    result = session.repair(MendRepair{pick->layer, pick->contact});
-                } else {
-                    result = session.repair(MendRepair{click->active, click->at});
+            case Owner::Iron: {
+                // A chip pin is resoldered; anywhere else, a crack is mended.
+                if (session.powered()) {
+                    result = RepairResult::Refused;
+                    break;
+                }
+                result = RepairResult::Unknown;
+                if (pick && pick->hit.kind == HitKind::Pad) {
+                    const BoardComponent& part =
+                        session.drawnBoard()->components[pick->hit.component];
+                    result = session.repair(
+                        ResolderRepair{{part.reference, part.pads[pick->hit.index].number}});
+                }
+                if (result == RepairResult::Unknown) {  // a mend is always Done (Session)
+                    result = pick && pick->hit.kind == HitKind::Trace
+                                 ? session.repair(MendRepair{pick->layer, pick->contact})
+                                 : session.repair(MendRepair{click->active, click->at});
                 }
                 break;
-            case Tool::Cut:
+            }
+            case Owner::Cutters:
                 if (session.powered()) {
                     result = RepairResult::Refused;
                     break;
@@ -558,7 +616,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                     refuse("Cut: click a trace or a wire");
                 }
                 break;
-            case Tool::Wire: {
+            case Owner::Wire: {
                 if (session.powered()) {
                     result = RepairResult::Refused;
                     break;
@@ -581,26 +639,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 wireStart.reset();
                 break;
             }
-            case Tool::Resolder: {
-                if (session.powered()) {
-                    result = RepairResult::Refused;
-                    break;
-                }
-                if (!pick || pick->hit.kind != HitKind::Pad) {
-                    refuse("Resolder: chip pins only");
-                    break;
-                }
-                const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
-                result = session.repair(
-                    ResolderRepair{{part.reference, part.pads[pick->hit.index].number}});
-                if (result == RepairResult::Unknown) {
-                    refuse("Resolder: chip pins only");
-                }
-                break;
-            }
-            case Tool::Clip:
-            case Tool::Hook: {
-                const bool isClip = boardView.tool() == Tool::Clip;
+            case Owner::Analyzer:
+            case Owner::Scope: {
+                const bool isClip = focus.owner() == Owner::Analyzer;
                 if (!pick || pick->hit.kind == HitKind::Component) {
                     break;
                 }
@@ -633,7 +674,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 }
                 break;
             }
-            case Tool::Meter:
+            case Owner::Meter:
                 if (pick && AcceptsLead(LeadKind::Held, pick->hit.kind) &&
                     !session.placeLead({pick->contact, pick->layer,
                                         LeadLabel(*boardView.scene(), pick->hit, pick->layer)})) {
@@ -642,7 +683,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 break;
             }
             if (result == RepairResult::Refused) {
-                toolbar.refused();
+                shelf.refused("Power off first");
                 boardView.refuse("Power off first");
             }
         }
@@ -773,7 +814,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             boardView.setBridges(bridges);
         }
         boardView.setWireStart(wireStart ? std::optional(wireStartAt) : std::nullopt);
-        toolbar.wireStarted = wireStart.has_value();
+        shelf.wireStarted = wireStart.has_value();
         ImGui::SameLine();
         ImGui::BeginChild("side", {0, available.y});
         const std::string_view lock =
@@ -785,36 +826,45 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                                uiMilliseconds,
                                lock,
                                StateName(status.state)};
-        sidePanel.draw(session, view, boardView, loaded, stats, seed);
+        sidePanel.draw(session, view, boardView, loaded, stats, seed, shelf.tvOut, shelf.knobOut);
         ImGui::EndChild();
+        shelf.draw(session, boardView, focus, speed, seed);
         ImGui::End();
-        manualWindows.draw(toolbar.userManualOpen, loaded.manuals.manuals, boardView,
-                           DesignOf(session));
+        manualWindows.draw(shelf.manualOut, loaded.manuals.manuals, boardView, DesignOf(session));
         if (session.machine()) {
-            analyzerWindow.draw(toolbar.analyzerOpen, session, boardView);
-            meterWindow.draw(toolbar.meterOpen, session, boardView);
-            scopeWindow.draw(toolbar.scopeOpen, session, boardView);
+            const auto instrument = [&](Owner owner, auto& window) {
+                bool open = focus.out(owner);
+                if (window.draw(open, focus.owner() == owner, session)) {
+                    focus.clicked(owner);
+                }
+                if (!open) {
+                    focus.closed(owner);
+                }
+            };
+            instrument(Owner::Analyzer, analyzerWindow);
+            instrument(Owner::Meter, meterWindow);
+            instrument(Owner::Scope, scopeWindow);
         }
         // Also without a Board (a netlist-only Session, the bench).
+        // One keyboard per Machine, either kind: the shelf's drawing shows or hides it.
+        bool keyboardOpen = shelf.keyboardOut && !capture.reference.empty();
+        bool matrixOpen = shelf.keyboardOut && !matrixCapture.reference.empty();
         keyboardWindow.draw(keyboardOpen, session, capture);
         capture.sync(window);
         matrixWindow.draw(matrixOpen, session, matrixCapture);
+        if (shelf.keyboardOut && !keyboardOpen && !matrixOpen) {
+            shelf.keyboardOut = false;  // closed by its window
+        }
         matrixCapture.sync(window);
         if (!boardKeys.keys.empty() && !boardKeys.on && !ImGui::GetIO().WantTextInput &&
             ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
             boardKeys.on = true;
         }
         boardKeys.sync();
-        toolbar.typing = capture.on         ? capture.reference
-                         : matrixCapture.on ? matrixCapture.reference
-                         : boardKeys.on     ? std::string("Board keys")
-                                            : std::string();
-        if (const auto picked = boardView.takePicked()) {
-            wireStart.reset();
-            toolbar.analyzerOpen |= *picked == Tool::Clip;
-            toolbar.scopeOpen |= *picked == Tool::Hook;
-            toolbar.meterOpen |= *picked == Tool::Meter;
-        }
+        shelf.typing = capture.on         ? capture.reference
+                       : matrixCapture.on ? matrixCapture.reference
+                       : boardKeys.on     ? std::string("Board keys")
+                                          : std::string();
 
         ImGui::Render();
         const ImGuiIO& io = ImGui::GetIO();

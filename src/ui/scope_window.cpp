@@ -13,7 +13,6 @@
 #include "instruments/volts.hpp"
 #include "ui/board_view.hpp"
 #include "ui/instrument_marks.hpp"
-#include "ui/toolbar.hpp"
 #include "view/time_text.hpp"
 
 namespace bw {
@@ -90,13 +89,13 @@ std::string ScopeWindow::valueAt(std::size_t channel, Time t,
     }
 }
 
-void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
+bool ScopeWindow::draw(bool& open, bool owner, Session& session) {
     if (session.sweeps().update() && !stopped_) {
         shown_ = session.sweeps().front();
     }
     focused_ = false;
     if (!open) {
-        return;
+        return false;
     }
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     // Below the Multimeter's reading, as in P5e.
@@ -104,10 +103,11 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     ImGui::SetNextWindowPos(
         {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 700, viewport->WorkPos.y + 230},
         ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Oscilloscope", &open, ImGuiWindowFlags_NoSavedSettings)) {
+    if (!BeginInstrument("Oscilloscope", open, owner)) {
         ImGui::End();
-        return;
+        return false;
     }
+    const bool clicked = InstrumentClicked();
     ScopeSettings settings = session.scopeSettings();
     bool changed = false;
     const auto set = [&](const ScopeSettings& next) {
@@ -124,10 +124,6 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
     const auto centre = [&] { return ScopeView(settings).left + ScopeView(settings).span() / 2; };
 
     // Header line 1.
-    if (ToolButton("Hook (O)", board.tool() == Tool::Hook)) {
-        board.setTool(Tool::Hook);
-    }
-    ImGui::SameLine(0, 16);
     if (ImGui::Button("-", {24, 0})) {
         zoomBy(centre(), -1);
     }
@@ -464,6 +460,7 @@ void ScopeWindow::draw(bool& open, Session& session, BoardView& board) {
         session.setScope(settings);
     }
     ImGui::End();
+    return clicked;
 }
 
 }  // namespace bw

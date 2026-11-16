@@ -6,7 +6,7 @@
 #include <imgui.h>
 
 #include "ui/board_view.hpp"
-#include "ui/toolbar.hpp"
+#include "ui/instrument_marks.hpp"
 
 namespace bw {
 
@@ -25,22 +25,20 @@ std::string LeadText(const char* name, const std::optional<TestLead>& lead) {
 
 }  // namespace
 
-void MeterWindow::draw(bool& open, Session& session, BoardView& board) {
+bool MeterWindow::draw(bool& open, bool owner, Session& session) {
     if (!open) {
-        return;
+        return false;
     }
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowSize({320, 200}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos(
         {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 340, viewport->WorkPos.y + 130},
         ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Multimeter", &open, ImGuiWindowFlags_NoSavedSettings)) {
+    if (!BeginInstrument("Multimeter", open, owner)) {
         ImGui::End();
-        return;
+        return false;
     }
-    if (ToolButton("Meter (V)", board.tool() == Tool::Meter)) {
-        board.setTool(Tool::Meter);
-    }
+    const bool clicked = InstrumentClicked();
     const MeterMode mode = session.meterMode();
     ImGui::SameLine(0, 16);
     if (ImGui::RadioButton("V", mode == MeterMode::Volts)) {
@@ -78,12 +76,20 @@ void MeterWindow::draw(bool& open, Session& session, BoardView& board) {
     ImGui::PopFont();
 
     ImGui::TextUnformatted(LeadText("red", session.red()).c_str());
+    if (session.red() || session.black()) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton("\u00d7")) {
+            session.liftLeads();
+        }
+        ImGui::SetItemTooltip("Lift both leads");
+    }
     if (mode == MeterMode::Volts) {
         ImGui::TextColored(kGrey, "black: GND (implied)");
     } else {
         ImGui::TextUnformatted(LeadText("black", session.black()).c_str());
     }
     ImGui::End();
+    return clicked;
 }
 
 }  // namespace bw

@@ -11,7 +11,7 @@
 
 #include "parts/matrix_keyboard.hpp"
 #include "parts/zx80_keys.hpp"
-#include "ui/toolbar.hpp"
+#include "ui/shelf.hpp"
 #include "view/matrix_keyboard_layout.hpp"
 
 namespace bw {
@@ -184,7 +184,7 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos(
         {viewport->WorkPos.x + viewport->WorkSize.x * kBoardShare / 2 - size.x / 2,
-         viewport->WorkPos.y + viewport->WorkSize.y - size.y - 16},
+         viewport->WorkPos.y + viewport->WorkSize.y - size.y - 16 - kShelfHeight},
         ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(
         {kMinWidth, 0}, {FLT_MAX, FLT_MAX},

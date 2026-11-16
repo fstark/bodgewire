@@ -17,11 +17,10 @@
 #include "parts/catalogue.hpp"
 #include "session/session.hpp"
 #include "view/board_scene.hpp"
+#include "view/focus.hpp"
 #include "view/viewport.hpp"
 
 namespace bw {
-
-enum class Tool : std::uint8_t { Probe, Swap, Mend, Cut, Wire, Resolder, Clip, Hook, Meter };
 
 struct CutMark {
     Layer layer;
@@ -101,10 +100,8 @@ public:
     explicit BoardView(std::optional<BoardScene> scene) : scene_(std::move(scene)) {}
 
     void draw(ImVec2 size);  // child region: input, Board, tooltip
-    Tool tool() const { return tool_; }
-    // Button or key: a pick of the current tool still counts (reopens a closed window).
-    void setTool(Tool tool) { tool_ = tool, picked_ = tool; }
-    std::optional<Tool> takePicked() { return std::exchange(picked_, std::nullopt); }
+    // The focus owner, set each frame: under the chip puller a click on a switch swaps it.
+    void setOwner(Owner owner) { owner_ = owner; }
     Layer activeLayer() const { return active_; }
     void toggleLayer() { active_ = active_ == Layer::Front ? Layer::Back : Layer::Front; }
     void fit() { needFit_ = true; }
@@ -156,7 +153,7 @@ private:
         std::chrono::steady_clock::time_point until;
     };
 
-    void keys();                // L, F, P, S, M, K, W, C, O, V, +, -, Esc
+    void keys();                // L, F, +, -, Esc
     void input(ImVec2 origin);  // hover, zoom, pan, click while the panel is hovered or dragged
     PickReach reach() const;
 
@@ -164,8 +161,7 @@ private:
     Viewport viewport_;
     Layer active_ = Layer::Front;
     bool plainLook_ = false;
-    Tool tool_ = Tool::Probe;
-    std::optional<Tool> picked_;
+    Owner owner_ = Owner::Probe;
     bool needFit_ = true;  // first draw knows the panel size
     ImVec2 panel_{};
     std::optional<NetId> highlight_;

@@ -15,12 +15,12 @@ struct DebugStats {
     std::string_view lock, state;
 };
 
-// The right column: Puzzle, TV, Knob, Probe, Chip, Repairs and Debug sections. Routes
-// pinout hits to the Board.
+// The right column: Puzzle, TV, Knob, Chip, Repairs and Debug sections (TV and Knob when the
+// shelf has them out). Routes pinout hits to the Board.
 class SidePanel {
 public:
     void draw(Session& session, TvView& tv, BoardView& board, const Loaded& loaded,
-              DebugStats stats, std::uint64_t& seed);
+              DebugStats stats, std::uint64_t& seed, bool tvOut, bool knobOut);
 
 private:
     ChipPanel chip_;

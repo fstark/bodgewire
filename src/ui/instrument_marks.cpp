@@ -112,4 +112,33 @@ int WheelNotches(float wheel, float& rest) {
     return notches;
 }
 
+bool BeginInstrument(const char* name, bool& open, bool owner) {
+    // The border's style is read at Begin.
+    if (owner) {
+        ImGui::PushStyleColor(ImGuiCol_Border, kFocusGold);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
+    }
+    const bool shown = ImGui::Begin(name, &open, ImGuiWindowFlags_NoSavedSettings);
+    if (owner) {
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+    }
+    return shown;
+}
+
+bool InstrumentClicked() {
+    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows |
+                                ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ||
+        !ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        return false;
+    }
+    // Not on the close button: ImGui closes at the release, a frame later, and the closing
+    // window would first take the focus from the tool that has it, then give it to the probe.
+    const ImVec2 pos = ImGui::GetWindowPos();
+    const float right = pos.x + ImGui::GetWindowWidth();
+    const float title = ImGui::GetFrameHeight();
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    return !(mouse.y < pos.y + title && mouse.x > right - title);
+}
+
 }  // namespace bw

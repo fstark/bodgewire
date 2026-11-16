@@ -11,48 +11,13 @@ namespace bw {
 
 namespace {
 
-constexpr ImU32 kLampOff = IM_COL32(70, 70, 70, 255);
-constexpr ImU32 kLampHigh = IM_COL32(230, 40, 40, 255);
-constexpr ImU32 kLampLow = IM_COL32(40, 200, 60, 255);
-constexpr ImU32 kLampPulse = IM_COL32(255, 170, 0, 255);
 constexpr float kTitleScale = 1.3f;
 constexpr double kKnobKeyRate = 1.0;     // turn per second while a knob key is held
 constexpr double kKnobWheelStep = 0.01;  // turn per wheel notch
 
-// "● HIGH  ● LOW  ● PULSE", one row.
-void DrawLamps(ProbeLamps lamps) {
-    const auto lamp = [](bool lit, ImU32 colour, const char* name, bool first) {
-        if (!first) {
-            ImGui::SameLine();
-        }
-        const float height = ImGui::GetTextLineHeight();
-        const float radius = height * 0.4f;
-        const ImVec2 at = ImGui::GetCursorScreenPos();
-        ImGui::GetWindowDrawList()->AddCircleFilled({at.x + radius, at.y + height / 2}, radius,
-                                                    lit ? colour : kLampOff);
-        ImGui::Dummy({2 * radius, height});
-        ImGui::SameLine();
-        ImGui::TextUnformatted(name);
-    };
-    lamp(lamps.high, kLampHigh, "HIGH", true);
-    lamp(lamps.low, kLampLow, "LOW", false);
-    lamp(lamps.pulse, kLampPulse, "PULSE", false);
-}
-
-void DrawNoVideo(ImVec2 size) {
-    const ImVec2 at = ImGui::GetCursorScreenPos();
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.AddRectFilled(at, {at.x + size.x, at.y + size.y}, IM_COL32_BLACK);
-    const char* text = "no video";
-    const ImVec2 textSize = ImGui::CalcTextSize(text);
-    list.AddText({at.x + (size.x - textSize.x) / 2, at.y + (size.y - textSize.y) / 2},
-                 IM_COL32_WHITE, text);
-    ImGui::Dummy(size);
-}
-
-// Up and Down turn the first knob while held, also with the section collapsed; a slider per
-// controller, dragged or turned by the mouse wheel.
-void DrawKnobs(Session& session) {
+// Up and Down turn the first knob while held, also with the section collapsed or hidden from the
+// shelf (`shown` false); a slider per controller, dragged or turned by the mouse wheel.
+void DrawKnobs(Session& session, bool shown) {
     const std::vector<std::string> knobs = session.knobs();
     if (knobs.empty()) {
         return;
@@ -76,7 +41,7 @@ void DrawKnobs(Session& session) {
             turn(knobs[0], ImGuiKey_UpArrow, ImGuiKey_DownArrow);
         }
     }
-    if (!ImGui::CollapsingHeader("Knob", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (!shown || !ImGui::CollapsingHeader("Knob", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
     for (std::size_t i = 0; i < knobs.size(); ++i) {
@@ -119,7 +84,7 @@ std::string SentText(std::string_view codes) {
 }  // namespace
 
 void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loaded& loaded,
-                     DebugStats stats, std::uint64_t& seed) {
+                     DebugStats stats, std::uint64_t& seed, bool tvOut, bool knobOut) {
     const BoardScene* scene = board.scene();
     const LoadedCircuit& design = DesignOf(session);
     const ImGuiTreeNodeFlags open = ImGuiTreeNodeFlags_DefaultOpen;
@@ -133,32 +98,12 @@ void SidePanel::draw(Session& session, TvView& tv, BoardView& board, const Loade
         }
     }
 
-    if (ImGui::CollapsingHeader("TV", open)) {
+    if (tvOut && session.tv() && ImGui::CollapsingHeader("TV", open)) {
         const float width = ImGui::GetContentRegionAvail().x;
-        const ImVec2 size{width, width * 0.75f};
-        if (session.tv()) {
-            tv.draw(size);
-        } else {
-            DrawNoVideo(size);
-        }
+        tv.draw({width, width * 0.75f});
     }
 
-    DrawKnobs(session);
-
-    if (session.machine() && ImGui::CollapsingHeader("Probe", open)) {
-        DrawLamps(session.lamps());
-        std::string text = "not probing";
-        if (const auto tip = session.probeTip(); tip && scene) {
-            const auto picked = scene->pick(tip->at, tip->layer, {});
-            text = picked ? scene->hoverText(picked->hit) : std::string("bare board");
-            if (const auto side =
-                    picked ? ContactSide(*scene, picked->hit, tip->layer) : std::string_view();
-                !side.empty()) {
-                text += " \u00b7 " + std::string(side);
-            }
-        }
-        ImGui::TextUnformatted(text.c_str());
-    }
+    DrawKnobs(session, knobOut);
 
     if (scene && ImGui::CollapsingHeader("Chip", open)) {
         if (const auto chip = board.chip()) {

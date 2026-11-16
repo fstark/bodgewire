@@ -11,7 +11,7 @@
 
 #include "ui/board_view.hpp"
 #include "ui/instrument_marks.hpp"
-#include "ui/toolbar.hpp"
+#include "ui/shelf.hpp"
 #include "view/time_text.hpp"
 
 namespace bw {
@@ -148,7 +148,7 @@ std::vector<AnalyzerWindow::Row> AnalyzerWindow::rows(const Session& session) co
     return rows;
 }
 
-void AnalyzerWindow::draw(bool& open, Session& session, BoardView& board) {
+bool AnalyzerWindow::draw(bool& open, bool owner, Session& session) {
     if (session.captures().update()) {
         shown_ = session.captures().front();
         runs_.clear();
@@ -171,17 +171,18 @@ void AnalyzerWindow::draw(bool& open, Session& session, BoardView& board) {
     }
     focused_ = false;
     if (!open) {
-        return;
+        return false;
     }
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowSize({940, 440}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + 20, viewport->WorkPos.y + viewport->WorkSize.y - 460},
+        {viewport->WorkPos.x + 20, viewport->WorkPos.y + viewport->WorkSize.y - 460 - kShelfHeight},
         ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Logic Analyzer", &open, ImGuiWindowFlags_NoSavedSettings)) {
+    if (!BeginInstrument("Logic Analyzer", open, owner)) {
         ImGui::End();
-        return;
+        return false;
     }
+    const bool clicked = InstrumentClicked();
     const float padX = ImGui::GetStyle().WindowPadding.x;
     const float contentX = ImGui::GetCursorScreenPos().x;
     const float laneX0 = contentX + kLabelWidth;
@@ -191,10 +192,6 @@ void AnalyzerWindow::draw(bool& open, Session& session, BoardView& board) {
     const float laneX1 = laneX0 + width;
 
     // Header line 1: tool, arm, sampling.
-    if (ToolButton("Clip (C)", board.tool() == Tool::Clip)) {
-        board.setTool(Tool::Clip);
-    }
-    ImGui::SameLine(0, 16);
     const AnalyzerPhase phase = session.analyzerPhase();
     const bool running = phase == AnalyzerPhase::Armed || phase == AnalyzerPhase::Filling;
     if (ImGui::Button(running ? "Stop" : "Arm", {60, 0})) {
@@ -689,6 +686,7 @@ void AnalyzerWindow::draw(bool& open, Session& session, BoardView& board) {
         session.setAnalyzer(settings);
     }
     ImGui::End();
+    return clicked;
 }
 
 }  // namespace bw

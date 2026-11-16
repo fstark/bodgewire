@@ -814,33 +814,6 @@ void BoardView::keys() {
     if (ImGui::IsKeyPressed(ImGuiKey_F, false)) {
         fit();
     }
-    if (ImGui::IsKeyPressed(ImGuiKey_P, false)) {
-        setTool(Tool::Probe);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_S, false)) {
-        setTool(Tool::Swap);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_M, false)) {
-        setTool(Tool::Mend);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_K, false)) {
-        setTool(Tool::Cut);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_W, false)) {
-        setTool(Tool::Wire);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
-        setTool(Tool::Resolder);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_C, false)) {
-        setTool(Tool::Clip);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_O, false)) {
-        setTool(Tool::Hook);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_V, false)) {
-        setTool(Tool::Meter);
-    }
     if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
         escape_ = true;
     }
@@ -916,9 +889,9 @@ void BoardView::input(ImVec2 origin) {
     const auto buttonAt = [&]() -> std::optional<std::size_t> {
         const auto body = scene_->bodyAt(at);
         // Not under the Swap tool: a click on a switch body swaps it (P5i).
-        if (body && tool_ != Tool::Swap && std::ranges::any_of(switches_, [&](const SwitchTag& b) {
-                return b.component == *body;
-            })) {
+        if (body && owner_ != Owner::Puller &&
+            std::ranges::any_of(switches_,
+                                [&](const SwitchTag& b) { return b.component == *body; })) {
             return body;
         }
         return std::nullopt;
