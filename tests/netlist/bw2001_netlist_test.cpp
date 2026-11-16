@@ -141,7 +141,10 @@ TEST_CASE("bw2001 netlist: DIAG to the KEY row", "[netlist][slow]") {
     CHECK(rows[11] == "KEY 40 A");
 }
 
-TEST_CASE("bw2001 netlist conformance (release)", "[netlist][slow]") {
+// Hidden (not listed, so not discovered as one test): tests/CMakeLists.txt adds one ctest a
+// session, `bw2001 conformance: NAME`, each running only its own section (`-c NAME.txt`), so
+// the sessions run in parallel.
+TEST_CASE("bw2001 netlist conformance (release)", "[.][netlist][slow][conformance]") {
 #ifndef NDEBUG
     SKIP("release only: the whole set takes hours in debug");
 #endif

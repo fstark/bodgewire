@@ -199,6 +199,16 @@ target_compile_definitions(bw_tests PRIVATE BW_FOOTPRINT_DIR="${PROJECT_SOURCE_D
 include(Catch)
 catch_discover_tests(bw_tests)
 
+# The BW-2001 conformance set, one ctest a session so they run in parallel (a hidden Catch case,
+# one section a session: tests/netlist/bw2001_netlist_test.cpp). Skipped in debug (exit 4).
+file(GLOB sessions CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tests/data/basic/*.txt)
+foreach(session ${sessions})
+  get_filename_component(name ${session} NAME_WE)
+  add_test(NAME "bw2001 conformance: ${name}"
+           COMMAND bw_tests "bw2001 netlist conformance (release)" -c "${name}.txt")
+  set_tests_properties("bw2001 conformance: ${name}" PROPERTIES SKIP_RETURN_CODE 4)
+endforeach()
+
 # bw asm on every ROM program: its output must be the committed .rom beside it.
 file(GLOB programs CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/machines/*/roms/*.asm
      ${PROJECT_SOURCE_DIR}/bench/*.asm)
