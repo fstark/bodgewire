@@ -25,7 +25,8 @@ constexpr ImU32 kBoardGreen = IM_COL32(18, 66, 38, 255);
 constexpr ImU32 kFrontCopper = IM_COL32(200, 125, 60, 255);
 constexpr ImU32 kBackCopper = IM_COL32(70, 120, 200, 255);
 constexpr ImU32 kPadTin = IM_COL32(200, 200, 185, 255);
-constexpr ImU32 kPadGlow = IM_COL32(150, 255, 175, 255);  // a pin on the hovered chip's wiring
+constexpr ImU32 kPadGlow =
+    IM_COL32(205, 155, 30, 255);  // a pin on the hovered chip's wiring: dim gold
 constexpr ImU32 kHole = IM_COL32(12, 12, 12, 255);
 constexpr ImU32 kCourtyard = IM_COL32(190, 190, 190, 150);
 constexpr ImU32 kReference = IM_COL32(230, 230, 230, 200);
@@ -527,7 +528,7 @@ void BoardView::draw(ImVec2 size) {
         if (!glowing.empty()) {
             DrawUseBase(list, look, *scene_, active_, glowing, true);
         }
-        drawTraces(inactive, kInactiveAlpha, kInactiveHighlightAlpha, true);
+        drawTraces(inactive, kInactiveAlpha, 1.0f, true);  // bright gold on both layers
         drawTraces(active_, 1.0f, 1.0f, true);
     } else {
         list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), kBoardGreen);
