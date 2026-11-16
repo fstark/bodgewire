@@ -33,9 +33,10 @@ struct LookMap {
 
 // The mask, the copper under it, the board edge: below the pads.
 // `glowing`: Nets whose copper is drawn brighter, every other trace dimmed (the chip the player
-// works on: where it is wired, on both layers); empty for the plain colours.
+// works on: where it is wired, on both layers); empty for the plain colours. `glowOnly`: those
+// traces alone, drawn again above the parts so a see-through body does not darken them.
 void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, Layer active,
-                 std::span<const NetId> glowing);
+                 std::span<const NetId> glowing, bool glowOnly = false);
 // Silkscreen outlines, then the parts' bodies and leads: above the pads. `own`: Components
 // drawn by BoardView itself (lamps, digits, switches), which get silkscreen only. `xray`: the
 // part the player works on, drawn see-through so its pins and their names show; `alpha`: every

@@ -514,8 +514,6 @@ void BoardView::draw(ImVec2 size) {
     if (real) {
         // The Board as the real one; the Net under the cursor lit over the mask.
         DrawUseBase(list, look, *scene_, active_, glowing);
-        drawTraces(inactive, kInactiveAlpha, kInactiveHighlightAlpha, true);
-        drawTraces(active_, 1.0f, 1.0f, true);
         drawPads();
         std::vector<bool> own(board.components.size(), false);
         for (const LedTag& led : leds_) {
@@ -525,6 +523,12 @@ void BoardView::draw(ImVec2 size) {
             own[button.component] = true;
         }
         DrawUseParts(list, look, *scene_, own, chip(), 1.0f);
+        // The lit wiring above the parts: a see-through body must not darken it.
+        if (!glowing.empty()) {
+            DrawUseBase(list, look, *scene_, active_, glowing, true);
+        }
+        drawTraces(inactive, kInactiveAlpha, kInactiveHighlightAlpha, true);
+        drawTraces(active_, 1.0f, 1.0f, true);
     } else {
         list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), kBoardGreen);
         drawTraces(inactive, kInactiveAlpha, kInactiveHighlightAlpha, false);

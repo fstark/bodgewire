@@ -20,17 +20,18 @@ namespace {
 constexpr std::int64_t kMm = 1'000'000;
 constexpr float kXray = 0.22f;  // a see-through part's opacity
 
-constexpr ImU32 kMask = IM_COL32(16, 70, 40, 255);  // green solder mask over bare board
-// Copper under the mask: the front a lighter green, the back (seen through the board) teal;
-// the active layer bright and on top, the other dim.
-constexpr ImU32 kFrontActive = IM_COL32(70, 160, 85, 255);
-constexpr ImU32 kFrontDim = IM_COL32(34, 104, 56, 255);
-constexpr ImU32 kBackActive = IM_COL32(60, 150, 165, 255);
-constexpr ImU32 kBackDim = IM_COL32(28, 86, 82, 255);
-// The Nets of the chip the player works on: each layer's colour, brighter.
-constexpr ImU32 kFrontGlow = IM_COL32(150, 235, 140, 255);
-constexpr ImU32 kBackGlow = IM_COL32(130, 225, 240, 255);
-constexpr ImU32 kEdge = IM_COL32(8, 38, 20, 255);
+// The Board's colours (P6, the user's pick of three): a dark mask; the copper under it, the front
+// green and the back (seen through the board) teal, the active layer bright and on top, the
+// other dim; the Nets of the chip the player works on, each layer's colour brighter.
+struct Palette {
+    ImU32 mask, frontActive, frontDim, backActive, backDim, frontGlow, backGlow, edge;
+};
+constexpr Palette kColours{IM_COL32(6, 52, 28, 255),     IM_COL32(90, 190, 70, 255),
+                           IM_COL32(24, 84, 40, 255),    IM_COL32(40, 160, 190, 255),
+                           IM_COL32(20, 88, 92, 255),    IM_COL32(190, 255, 120, 255),
+                           IM_COL32(110, 225, 255, 255), IM_COL32(0, 24, 10, 255)};
+constexpr const Palette& Colours() { return kColours; }
+
 constexpr ImU32 kTin = IM_COL32(205, 205, 195, 255);
 constexpr ImU32 kHole = IM_COL32(12, 12, 12, 255);
 constexpr ImU32 kLeg = IM_COL32(185, 185, 180, 255);
@@ -437,12 +438,14 @@ std::optional<Box> SilkBox(const BoardScene& scene, std::size_t k) {
 }  // namespace
 
 void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, Layer active,
-                 std::span<const NetId> glowing) {
+                 std::span<const NetId> glowing, bool glowOnly) {
     std::vector<ImVec2> outline;
     for (const Point p : scene.outline()) {
         outline.push_back(map(p));
     }
-    list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), kMask);
+    if (!glowOnly) {
+        list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), Colours().mask);
+    }
     const Board& board = scene.board();
     const auto draw = [&](Layer layer, ImU32 normal, ImU32 bright) {
         for (std::size_t t = 0; t < board.traces.size(); ++t) {
@@ -451,8 +454,11 @@ void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, 
                 continue;
             }
             const auto net = scene.traceNet(t);
-            const ImU32 colour =
-                net && std::ranges::find(glowing, *net) != glowing.end() ? bright : normal;
+            const bool glows = net && std::ranges::find(glowing, *net) != glowing.end();
+            if (glowOnly && !glows) {
+                continue;
+            }
+            const ImU32 colour = glows ? bright : normal;
             const float width = std::max(1.0f, map.pixels(trace.width));
             const auto segment = [&](Point a, Point b) {
                 list.AddLine(map(a), map(b), colour, width);
@@ -474,22 +480,25 @@ void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, 
     const auto colour = [&](Layer layer) {
         const bool bright = layer == active && glowing.empty();
         if (layer == Layer::Front) {
-            return bright ? kFrontActive : kFrontDim;
+            return bright ? Colours().frontActive : Colours().frontDim;
         }
-        return bright ? kBackActive : kBackDim;
+        return bright ? Colours().backActive : Colours().backDim;
     };
     const auto glowColour = [&](Layer layer) {
-        return layer == Layer::Front ? kFrontGlow : kBackGlow;
+        return layer == Layer::Front ? Colours().frontGlow : Colours().backGlow;
     };
     draw(other, colour(other), glowColour(other));
     draw(active, colour(active), glowColour(active));
+    if (glowOnly) {
+        return;
+    }
     for (const Via& via : board.vias) {
         list.AddCircleFilled(map(via.position), std::max(1.0f, map.pixels(via.diameter) / 2),
-                             kFrontDim);
+                             Colours().frontDim);
         list.AddCircleFilled(map(via.position), map.pixels(via.drill) / 2, kHole);
     }
-    list.AddPolyline(outline.data(), static_cast<int>(outline.size()), kEdge, ImDrawFlags_Closed,
-                     3.0f);
+    list.AddPolyline(outline.data(), static_cast<int>(outline.size()), Colours().edge,
+                     ImDrawFlags_Closed, 3.0f);
 }
 
 void DrawUseParts(ImDrawList& list, const LookMap& map, const BoardScene& scene,
