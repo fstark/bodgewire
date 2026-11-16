@@ -26,8 +26,12 @@ std::vector<PinSpec> Ls90Pins() {
     const auto out = [](const char* name) { return PinSpec{name, PinKind::Output, Family::Ttl}; };
     const auto power = [](const char* name) { return PinSpec{name, PinKind::Power, Family::Ttl}; };
     const auto nc = [](const char* name) { return PinSpec{name, PinKind::NoConnect, Family::Ttl}; };
-    return {in("CKB"), in("R01"), in("R02"),    nc("NC4"), power("VCC"), in("R91"),  in("R92"),
-            out("QC"), out("QB"), power("GND"), out("QD"), out("QA"),    nc("NC13"), in("CKA")};
+    // The clocks act only as they fall (no X-clock path): falling-edge-only.
+    const auto clk = [](const char* name) {
+        return PinSpec{name, PinKind::Input, Family::Ttl, false, false, true};
+    };
+    return {clk("CKB"), in("R01"), in("R02"),    nc("NC4"), power("VCC"), in("R91"),  in("R92"),
+            out("QC"),  out("QB"), power("GND"), out("QD"), out("QA"),    nc("NC13"), clk("CKA")};
 }
 
 LogicValue Level(bool bit, bool unknown) { return unknown ? X : (bit ? One : Zero); }

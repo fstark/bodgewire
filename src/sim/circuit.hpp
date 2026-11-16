@@ -23,13 +23,20 @@ struct PinInfo {
     Family family;
     bool risingEdgeOnly;
     bool sampled;
+    bool fallingEdgeOnly;
 };
+
+// The changes of a Net that wake a reader: one bit per kind of change.
+inline constexpr std::uint8_t kWakeOnRise = 1;   // 0 -> 1
+inline constexpr std::uint8_t kWakeOnFall = 2;   // 1 -> 0
+inline constexpr std::uint8_t kWakeOnOther = 4;  // any other change of value (to or from X, Z)
+inline constexpr std::uint8_t kWakeOnAny = kWakeOnRise | kWakeOnFall | kWakeOnOther;
 
 // One per (Net, reading Component): all Input Pins of that Component on that Net that can wake
 // it (sampled Pins are left out).
 struct FanOut {
     ComponentId component;
-    bool risingEdgeOnly;  // all those Pins are rising-edge-only
+    std::uint8_t edges;  // the kWakeOn* bits of those Pins, ORed
 };
 static_assert(sizeof(FanOut) == 8);
 
@@ -47,8 +54,10 @@ public:
         base.id_ = ComponentId{static_cast<std::uint32_t>(components_.size())};
         base.firstPin_ = PinId{static_cast<std::uint32_t>(pins_.size())};
         for (const PinSpec& spec : base.pins()) {
+            Check(!(spec.risingEdgeOnly && spec.fallingEdgeOnly),
+                  "circuit: a pin both rising- and falling-edge-only");
             pins_.push_back({kUnconnected, base.id_, spec.kind, spec.family, spec.risingEdgeOnly,
-                             spec.sampled});
+                             spec.sampled, spec.fallingEdgeOnly});
         }
         components_.push_back(std::move(component));
         return result;

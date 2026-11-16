@@ -98,7 +98,15 @@ TEST_CASE("74LS107: catalogue entry", "[parts]") {
     }
     CHECK(chip.pins()[2].kind == PinKind::Output);
     CHECK(chip.pins()[11].kind == PinKind::Input);
-    CHECK_FALSE(chip.pins()[11].risingEdgeOnly);  // acts on the falling edge
+    for (const std::size_t clk : {8u, 11u}) {  // 2CLK, 1CLK: act on the falling edge only
+        CHECK_FALSE(chip.pins()[clk].risingEdgeOnly);
+        CHECK(chip.pins()[clk].fallingEdgeOnly);
+    }
+    for (const std::size_t jk : {0u, 3u, 7u, 10u}) {  // 1J, 1K, 2J, 2K: read at the edge only
+        CHECK(chip.pins()[jk].sampled);
+    }
+    CHECK_FALSE(chip.pins()[12].sampled);  // 1CLR_N acts by itself
+    CHECK_FALSE(chip.pins()[12].fallingEdgeOnly);
 }
 
 TEST_CASE("74LS107: set, clear, hold and toggle on the falling edge", "[parts]") {

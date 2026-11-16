@@ -18,7 +18,7 @@ An idea that is dropped is reverted before the next one starts, and its row is s
 |-------|-------------|--------|
 | 0 | Docs reviewed | done |
 | 1 | Guards and baseline | done |
-| 2 | Z1: falling-edge-only and sampled Pins | |
+| 2 | Z1: falling-edge-only and sampled Pins | done: kept |
 | 3 | Z2: quiet Pins (kernel, then 2114, then ROM) | |
 | 4 | Z3: specialised Parts, from the profile | |
 | 5 | Z4: run loop, from the profile | |
@@ -76,6 +76,7 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
 | # | Idea | bw2001 ratio | Instr./event | Cycles/event | Eval./event | bw80 | bus_load | Kept | Commit |
 |---|------|--------------|--------------|--------------|-------------|------|----------|------|--------|
 | 0 | baseline (`f849080`) | 0.210× | 856 | 156 | 2.14 | 0.242× | 0.373× | — | `f849080` |
+| Z1 | `PinSpec::fallingEdgeOnly` on the 74LS107, 74LS93, 74LS90 clocks; the 107's `J`, `K` sampled | 0.222× | 830 | 146–148 | 1.95 | 0.244× | 0.382× | yes: +5.7 % ratio, −5…6 % cycles (two runs) | this row's commit |
 
 ## Implementation notes
 
@@ -107,3 +108,9 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
   - Others, best of the two: ball 2.59×, bus_load_z80 0.42×, bw1 2.57×, chaser 14.0×, counter 12.7×, dice 33.0×, heartbeat 8.5×, knob 14.8×, led_computer 5.1×, message 2.73×, stopwatch 10.7×, tennis 1.91×, test pattern 6.98×, typewriter 1.30×.
   - **Noise:** the small, fast netlists move up to ±7 % between two runs of the same build (dice −5.8 %, stopwatch +6.7 %). A netlist `measure.sh` marks SLOWER is measured again before it is shown to the user.
   - The script's output is kept in `build/measure/` and passed as the previous run for the next comparison.
+- Phase 2, Z1 (2026-11-16):
+  - Traces identical. Evaluations in the trace runs: bw2001 35.1 M → 31.4 M (−11 %), bw2001 long 714 M → 652 M; the others within a few thousand.
+  - Two measurements: bw2001 0.222× both times, 830 instructions, 146–148 cycles, 1.95 evaluations an event. Just over the bar on both, so kept.
+  - Others against row 0, best of 3; none slower: ball 2.70×, bw1 2.62×, chaser 13.7×, counter 12.5×, dice 33.5×, knob 19.0× (+28 %: its 74LS93s), stopwatch 11.8×, tennis 2.04×, test pattern 7.20×, typewriter 1.32×.
+  - The 74LS90 checked against its code: its clocks enter only through `fell`, and its R0/R9 X paths are idempotent.
+  - Full debug suite 1361/1361 in 806 s; release `bw2001|bw80|bw1` 156/156.

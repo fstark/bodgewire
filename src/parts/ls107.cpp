@@ -23,8 +23,16 @@ std::vector<PinSpec> Ls107Pins() {
     const auto in = [](const char* name) { return PinSpec{name, PinKind::Input, Family::Ttl}; };
     const auto out = [](const char* name) { return PinSpec{name, PinKind::Output, Family::Ttl}; };
     const auto power = [](const char* name) { return PinSpec{name, PinKind::Power, Family::Ttl}; };
-    return {in("1J"), out("1Q_N"), out("1Q"),    in("1K"), out("2Q"),  out("2Q_N"),  power("GND"),
-            in("2J"), in("2CLK"),  in("2CLR_N"), in("2K"), in("1CLK"), in("1CLR_N"), power("VCC")};
+    // J and K are read only before a falling clock edge: sampled. The clocks act only as they
+    // fall (no X-clock path): falling-edge-only.
+    const auto jk = [](const char* name) {
+        return PinSpec{name, PinKind::Input, Family::Ttl, false, true};
+    };
+    const auto clk = [](const char* name) {
+        return PinSpec{name, PinKind::Input, Family::Ttl, false, false, true};
+    };
+    return {jk("1J"), out("1Q_N"), out("1Q"),    jk("1K"), out("2Q"),   out("2Q_N"),  power("GND"),
+            jk("2J"), clk("2CLK"), in("2CLR_N"), jk("2K"), clk("1CLK"), in("1CLR_N"), power("VCC")};
 }
 
 bool Known(LogicValue value) { return value == Zero || value == One; }

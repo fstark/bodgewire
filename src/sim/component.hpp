@@ -21,6 +21,9 @@ struct PinSpec {
     // Input read only when another Pin acts (a flip-flop's D): its changes never alter
     // evaluate()'s result, so they do not wake the Component.
     bool sampled = false;
+    // Input whose changes other than 1 -> 0 never alter evaluate()'s result (a clock read only
+    // through fell()). Last, after `sampled`: Parts build PinSpecs positionally.
+    bool fallingEdgeOnly = false;
 };
 
 // Passed to Component::evaluate(); hot members are inline in simulator.hpp, include it to use them.

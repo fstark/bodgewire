@@ -44,7 +44,17 @@ public:
         : Component(std::move(name), {{"CLK1", PinKind::Input, Family::Ttl, true},
                                       {"D", PinKind::Input, Family::Ttl},
                                       {"CLK2", PinKind::Input, Family::Ttl, true},
-                                      {"CLK3", PinKind::Input, Family::Ttl, true}}) {}
+                                      {"CLK3", PinKind::Input, Family::Ttl, true},
+                                      {"FCLK1", PinKind::Input, Family::Ttl, false, false, true},
+                                      {"FCLK2", PinKind::Input, Family::Ttl, false, false, true}}) {
+    }
+    void evaluate(EvalContext& /*ctx*/) override {}
+};
+
+class BothEdges : public Component {
+public:
+    explicit BothEdges(std::string name)
+        : Component(std::move(name), {{"CLK", PinKind::Input, Family::Ttl, true, false, true}}) {}
     void evaluate(EvalContext& /*ctx*/) override {}
 };
 
@@ -179,15 +189,43 @@ TEST_CASE("circuit: fan-out merges pins of one component", "[sim]") {
     circuit.connect(u1, "D", mixed);
     circuit.connect(u1, "CLK2", edges);
     circuit.connect(u1, "CLK3", edges);
+    const NetId falls = circuit.addNet("falls");
+    circuit.connect(u1, "FCLK1", falls);
+    const NetId bothEdges = circuit.addNet("bothEdges");
+    circuit.connect(u1, "FCLK2", bothEdges);
+    const NetId fallAndLevel = circuit.addNet("fallAndLevel");
+    EdgePins& u2 = circuit.add<EdgePins>("U2");
+    circuit.connect(u2, "D", fallAndLevel);
+    circuit.connect(u2, "FCLK1", fallAndLevel);
+    circuit.connect(u2, "CLK1", bothEdges);
     circuit.finalize();
 
     const auto mixedFanOut = circuit.fanOut(mixed);
     REQUIRE(mixedFanOut.size() == 1);
-    CHECK_FALSE(mixedFanOut[0].risingEdgeOnly);
+    CHECK(mixedFanOut[0].edges == kWakeOnAny);
 
     const auto edgesFanOut = circuit.fanOut(edges);
     REQUIRE(edgesFanOut.size() == 1);
-    CHECK(edgesFanOut[0].risingEdgeOnly);
+    CHECK(edgesFanOut[0].edges == kWakeOnRise);
+
+    const auto fallsFanOut = circuit.fanOut(falls);
+    REQUIRE(fallsFanOut.size() == 1);
+    CHECK(fallsFanOut[0].edges == kWakeOnFall);
+    CHECK(circuit.hasTtlInput(falls));  // still a TTL load
+
+    const auto fallAndLevelFanOut = circuit.fanOut(fallAndLevel);  // a level Pin wakes on all
+    REQUIRE(fallAndLevelFanOut.size() == 1);
+    CHECK(fallAndLevelFanOut[0].edges == kWakeOnAny);
+
+    const auto bothFanOut = circuit.fanOut(bothEdges);  // two Components, one entry each
+    REQUIRE(bothFanOut.size() == 2);
+    CHECK(bothFanOut[0].edges == kWakeOnFall);
+    CHECK(bothFanOut[1].edges == kWakeOnRise);
+}
+
+TEST_CASE("circuit: a pin both rising- and falling-edge-only throws", "[sim]") {
+    Circuit circuit;
+    CHECK_THROWS_AS(circuit.add<BothEdges>("U1"), std::logic_error);
 }
 
 TEST_CASE("circuit: a sampled pin is left out of the fan-out", "[sim]") {
@@ -210,11 +248,11 @@ TEST_CASE("circuit: a sampled pin is left out of the fan-out", "[sim]") {
     const auto fedBackFanOut = circuit.fanOut(fedBack);  // the clock Pin alone decides
     REQUIRE(fedBackFanOut.size() == 1);
     CHECK(fedBackFanOut[0].component == u2.id());
-    CHECK(fedBackFanOut[0].risingEdgeOnly);
+    CHECK(fedBackFanOut[0].edges == kWakeOnRise);
 
     const auto clearedFanOut = circuit.fanOut(cleared);
     REQUIRE(clearedFanOut.size() == 1);
-    CHECK_FALSE(clearedFanOut[0].risingEdgeOnly);
+    CHECK(clearedFanOut[0].edges == kWakeOnAny);
 }
 
 TEST_CASE("circuit: TTL input flag", "[sim]") {

@@ -496,6 +496,15 @@ public:
     std::vector<Time> falls;
 };
 
+// One falling-edge-only input: records when it is evaluated.
+class FallingEdgeChip final : public Component {
+public:
+    explicit FallingEdgeChip(std::string name)
+        : Component(std::move(name), {{"CLK", PinKind::Input, Family::Ttl, false, false, true}}) {}
+    void evaluate(EvalContext& ctx) override { times.push_back(ctx.now()); }
+    std::vector<Time> times;
+};
+
 // One MOS bidirectional Pin D and a TTL input EN: while EN is 1 it drives `value` on D, else Z.
 // Records what it reads on D (and before) at each evaluation.
 class BusChip final : public Component {
@@ -681,6 +690,28 @@ TEST_CASE("simulator: fell only at a 1 to 0 change", "[sim]") {
     sim.powerOn(1);
     sim.runUntil(50_ns);
     CHECK(probe.falls == std::vector<Time>{20_ns});
+}
+
+TEST_CASE("simulator: a falling-edge-only input wakes its component only on 1 to 0", "[sim]") {
+    Circuit circuit;
+    const NetId net = circuit.addNet("CLK");
+    auto& source = circuit.add<Stimulus>("S", Zero,
+                                         std::vector<Stimulus::Step>{{10_ns, One},
+                                                                     {20_ns, Zero},
+                                                                     {30_ns, X},
+                                                                     {40_ns, Zero},
+                                                                     {50_ns, X},
+                                                                     {60_ns, One},
+                                                                     {70_ns, Zero}});
+    auto& chip = circuit.add<FallingEdgeChip>("U1");
+    circuit.connect(source, Stimulus::kOut, net);
+    circuit.connect(chip, "CLK", net);
+    circuit.finalize();
+    Simulator sim(circuit);
+    sim.powerOn(1);
+    sim.runUntil(80_ns);
+    // Power-on, then the falls at 20 and 70 ns: not 0 -> 1, 0 -> X, X -> 0, X -> 1.
+    CHECK(chip.times == std::vector<Time>{0, 20_ns, 70_ns});
 }
 
 TEST_CASE("simulator: a pull-up pin starts released, then holds its net at a weak 1", "[sim]") {

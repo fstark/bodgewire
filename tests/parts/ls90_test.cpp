@@ -99,6 +99,9 @@ TEST_CASE("74LS90: catalogue entry", "[parts]") {
     const auto& pins = chip.pins();
     CHECK(pins[Ls90::kCkb].name == "CKB");
     CHECK(pins[Ls90::kCka].name == "CKA");
+    CHECK(pins[Ls90::kCka].fallingEdgeOnly);  // acts only as it falls
+    CHECK(pins[Ls90::kCkb].fallingEdgeOnly);
+    CHECK_FALSE(pins[Ls90::kR01].fallingEdgeOnly);
     CHECK(pins[Ls90::kQA].name == "QA");
     CHECK(pins[Ls90::kQD].name == "QD");
     CHECK(pins[Ls90::kR01].name == "R01");

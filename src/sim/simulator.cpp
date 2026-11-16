@@ -265,9 +265,12 @@ void Simulator::runUntil(Time end) {
                 if (recorder_.isRecording(net)) {
                     recorder_.add(net, {now_, r.value, r.floating});
                 }
-                const bool rose = s.previous == LogicValue::Zero && s.value == LogicValue::One;
+                const std::uint8_t change =
+                    s.previous == LogicValue::Zero && s.value == LogicValue::One   ? kWakeOnRise
+                    : s.previous == LogicValue::One && s.value == LogicValue::Zero ? kWakeOnFall
+                                                                                   : kWakeOnOther;
                 for (const FanOut& f : circuit_.fanOut(net)) {
-                    if (rose || !f.risingEdgeOnly) {
+                    if (f.edges & change) {
                         markComponentDirty(f.component);
                     }
                 }

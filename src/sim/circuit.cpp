@@ -90,11 +90,14 @@ void Circuit::buildTables() {
         if (info.sampled) {
             continue;  // still a load on its Net, but its changes wake nobody
         }
+        const std::uint8_t edges = info.risingEdgeOnly    ? kWakeOnRise
+                                   : info.fallingEdgeOnly ? kWakeOnFall
+                                                          : kWakeOnAny;
         // Pins of one Component are contiguous, so checking the last entry merges them.
         if (fanOut[n].empty() || fanOut[n].back().component != info.owner) {
-            fanOut[n].push_back({info.owner, info.risingEdgeOnly});
+            fanOut[n].push_back({info.owner, edges});
         } else {
-            fanOut[n].back().risingEdgeOnly &= info.risingEdgeOnly;
+            fanOut[n].back().edges |= edges;
         }
     }
 
