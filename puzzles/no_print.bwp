@@ -1,0 +1,5 @@
+# No PRINT: the A13 Trace is cracked between the keyboard connector J3 (pin 6, an end of the Trace) and the CPU, so the keyboard's row A13 floats and its keys do nothing: P, O, I, U, Y, with PRINT (O in K mode), INPUT, IF, REM and the symbols on them. The CPU, the ROM and the edge connector keep A13.
+machine bw80
+title "No PRINT"
+brief "The BW-80 works, but the P, O, I, U and Y keys do nothing: PRINT cannot be typed, nor INPUT, IF, REM or the quote mark. Every other key works."
+fault crack J3.A13 IC1.A13 50%

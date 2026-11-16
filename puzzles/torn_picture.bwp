@@ -1,0 +1,5 @@
+# Torn picture: IC18's output 1Q_N (SYNC_ARM_N) is stuck high, so IC19 never counts out a horizontal sync pulse: only the vertical pulse remains and the TV cannot lock the lines.
+machine bw80
+title "Torn picture"
+brief "The TV shows the picture torn into slanting streaks that never line up: it cannot lock on the BW-80's picture."
+fault stuck IC18.1Q_N 1

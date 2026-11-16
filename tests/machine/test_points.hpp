@@ -59,5 +59,11 @@ const Crack& MissingKeysCrack();
 // bw2001 OSC8, X1 pad 8 → UE2 pin 5: puzzles/no_clock.bwp
 const Crack& NoClockCrack();
 const Crack& BottomHalvesCrack();  // bw80 LC2, IC21 pin 11 → IC8 pin 14: puzzles/bottom_halves.bwp
+const Crack& EightKeysCrack();     // bw80 KB2, IC10 pin 12 → R15 pad 1: puzzles/eight_keys.bwp
+const Crack& NoPrintCrack();       // bw80 A13, J3 pad 6 → IC1 pin 3: puzzles/no_print.bwp
+const Crack&
+RollingScreenCrack();  // bw80 KBD_N, IC17 pin 11 → IC11 pin 13: puzzles/rolling_screen.bwp
+const Crack&
+VerticalStripesCrack();  // bw80 ROM_CS1, IC6 pin 7 → IC2 pin 20: puzzles/vertical_stripes.bwp
 
 }  // namespace bw

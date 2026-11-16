@@ -1,0 +1,5 @@
+# Eight keys: the KB2 Trace is cracked between the keyboard buffer IC10 (pin 12, A5, an end of the Trace) and the pull-up R15, so IC10's input floats high and the column never reads pressed: X, D, E, 3, 8, I, K and M (the third key from each end of every row). The connector and R15 keep the column.
+machine bw80
+title "Eight keys"
+brief "The BW-80 works, but eight keys do nothing: X, D, E, 3, 8, I, K and M never type, so PRINT 12345 comes out as 1245. Every other key works."
+fault crack IC10.A5 R15.1 50%

@@ -1,0 +1,5 @@
+# The same eight keys: IC10's input A5 (KB2) is stuck high inside the chip, so the column never reads pressed: X, D, E, 3, 8, I, K and M. The same symptom as Eight keys, but the Trace is whole: the leg of pin 12 reads the key press while the chip ignores it, and a mend finds nothing.
+machine bw80
+title "The same eight keys"
+brief "The BW-80 works, but eight keys do nothing: X, D, E, 3, 8, I, K and M never type, so PRINT 12345 comes out as 1245. Every other key works."
+fault stuck IC10.A5 1

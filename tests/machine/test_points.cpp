@@ -215,4 +215,24 @@ const Crack& BottomHalvesCrack() {
     return crack;
 }
 
+const Crack& EightKeysCrack() {
+    static const Crack crack = PuzzleCrack("eight_keys");
+    return crack;
+}
+
+const Crack& NoPrintCrack() {
+    static const Crack crack = PuzzleCrack("no_print");
+    return crack;
+}
+
+const Crack& RollingScreenCrack() {
+    static const Crack crack = PuzzleCrack("rolling_screen");
+    return crack;
+}
+
+const Crack& VerticalStripesCrack() {
+    static const Crack crack = PuzzleCrack("vertical_stripes");
+    return crack;
+}
+
 }  // namespace bw

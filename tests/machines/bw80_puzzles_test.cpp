@@ -43,7 +43,8 @@ Machine LoadPuzzle(const std::string& name) {
 // The Puzzles, in BW80.md's order.
 constexpr std::array kPuzzles{"q_everywhere",  "doubled_lines",     "bottom_halves",
                               "wrong_letters", "quotes_for_spaces", "plain_cursor",
-                              "blank_page"};
+                              "blank_page",    "eight_keys",        "same_eight_keys",
+                              "no_print",      "rolling_screen",    "torn_picture"};
 
 using CodeMap = std::function<unsigned(unsigned)>;
 const CodeMap kSameCode = [](unsigned code) { return code; };
@@ -114,6 +115,32 @@ Typed TypeAndLook(const Machine& machine, std::u32string_view text = kListing) {
     REQUIRE(f.frames.size() == 2);
     t.frame = f.frames[1];
     return t;
+}
+
+// The display file's rows after `text` typed on a fresh Machine (the K screen by 400 ms).
+std::vector<std::string> TypedRows(const Machine& machine, std::u32string_view text) {
+    const auto loaded = Bw80Built(machine);
+    Bw80Run run(*loaded, 1);
+    Bw80Type(run, *loaded, text, 400_ms, 300_ms);
+    const auto rows = Bw80DisplayRows(*loaded);
+    for (std::size_t r = 0; r < rows.size(); ++r) {
+        if (!rows[r].empty()) {
+            UNSCOPED_INFO("row " << r << ": '" << rows[r] << "'");
+        }
+    }
+    REQUIRE(rows.size() == kBw80Rows);
+    return rows;
+}
+
+// The sync Puzzles: the display file holds the K cursor by 500 ms while the TV never locks
+// over the next second.
+void CheckUnlocked(const LoadedCircuit& loaded, Bw80Run& run) {
+    run.runTo(500_ms);
+    CHECK(Bw80DisplayRows(loaded)[kBw80Rows - 1] == "k");
+    for (int i = 0; i < 50; ++i) {
+        run.runTo(run.sim.now() + 20_ms);
+        CHECK_FALSE(run.tv->tv().isLocked());
+    }
 }
 
 // The picture is `page` and not the fault-free one.
@@ -263,5 +290,100 @@ TEST_CASE("bw80: blank_page", "[machines][slow]") {
         CHECK(InkCount(t.frame) > 0);
     }
     REQUIRE(machine.swap("IC9"));
+    CheckKScreen(machine);
+}
+
+TEST_CASE("bw80: eight_keys", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 4 s simulated: runs in the release build");
+#endif
+    // KB2 cut at the buffer: its input floats high, the column never reads pressed (3 among
+    // them); R15 and the connector keep the rest of the Net.
+    Machine machine = LoadPuzzle("eight_keys");
+    {
+        const auto loaded = Bw80Built(machine);
+        CHECK(*PinNet(*loaded, "J3", "KB2") != *PinNet(*loaded, "IC10", "A5"));
+        {
+            Bw80Run run(*loaded, 1);  // the column at the connector keeps its pull-up
+            run.runTo(10_ms);
+            CHECK(run.sim.value(*PinNet(*loaded, "J3", "KB2")) == LogicValue::One);
+        }
+        const auto rows = TypedRows(machine, U"PRINT 12345\n");
+        CHECK(rows[0] == "1245");
+        CHECK(rows[kBw80Rows - 1] == "0/-2");
+    }
+    REQUIRE(machine.mend(EightKeysCrack().layer, EightKeysCrack().at));
+    CHECK(TypedRows(machine, U"PRINT 12345\n")[0] == "12345");
+}
+
+TEST_CASE("bw80: same_eight_keys", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 4 s simulated: runs in the release build");
+#endif
+    // The same column dead, but inside the buffer: the Net is whole and there is nothing to mend.
+    Machine machine = LoadPuzzle("same_eight_keys");
+    {
+        const auto loaded = Bw80Built(machine);
+        CHECK(machine.cracks().empty());
+        CHECK(*PinNet(*loaded, "J3", "KB2") == *PinNet(*loaded, "IC10", "A5"));
+        const auto rows = TypedRows(machine, U"PRINT 12345\n");
+        CHECK(rows[0] == "1245");
+        CHECK(rows[kBw80Rows - 1] == "0/-2");
+    }
+    REQUIRE(machine.swap("IC10"));
+    CHECK(TypedRows(machine, U"PRINT 12345\n")[0] == "12345");
+}
+
+TEST_CASE("bw80: no_print", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 4 s simulated: runs in the release build");
+#endif
+    // The keyboard's row A13 cut off at the connector: the O key (PRINT) does nothing, so NEW
+    // LINE leaves 2+2 in the edit line with the syntax error marker; the CPU keeps its A13.
+    Machine machine = LoadPuzzle("no_print");
+    {
+        const auto loaded = Bw80Built(machine);
+        CHECK(*PinNet(*loaded, "J3", "A13") != *PinNet(*loaded, "IC1", "A13"));
+        CHECK(*PinNet(*loaded, "J4", "A13") == *PinNet(*loaded, "IC1", "A13"));
+        const auto rows = TypedRows(machine, U"PRINT 2+2\n");
+        CHECK(rows[0] != "4");
+        CHECK(rows[kBw80Rows - 1] == "2+s2l");  // the error marker and the L cursor
+    }
+    REQUIRE(machine.mend(NoPrintCrack().layer, NoPrintCrack().at));
+    const auto rows = TypedRows(machine, U"PRINT 2+2\n");
+    CHECK(rows[0] == "4");
+    CHECK(rows[kBw80Rows - 1] == "0/-2");
+}
+
+TEST_CASE("bw80: rolling_screen", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 2.5 s simulated: runs in the release build");
+#endif
+    // KBD_N cut just before the vertical sync latch: never reset, no vertical pulse; the
+    // keyboard buffer keeps its enable.
+    Machine machine = LoadPuzzle("rolling_screen");
+    {
+        const auto loaded = Bw80Built(machine);
+        CHECK(*PinNet(*loaded, "IC10", "G1_N") == *PinNet(*loaded, "IC17", "4Y"));
+        CHECK(*PinNet(*loaded, "IC11", "4B") != *PinNet(*loaded, "IC17", "4Y"));
+        Bw80Run run(*loaded, 1);
+        CheckUnlocked(*loaded, run);
+    }
+    REQUIRE(machine.mend(RollingScreenCrack().layer, RollingScreenCrack().at));
+    CheckKScreen(machine);
+}
+
+TEST_CASE("bw80: torn_picture", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 2.5 s simulated: runs in the release build");
+#endif
+    // The sync latch's output stuck: no horizontal pulse is ever armed.
+    Machine machine = LoadPuzzle("torn_picture");
+    {
+        const auto loaded = Bw80Built(machine);
+        Bw80Run run(*loaded, 1);
+        CheckUnlocked(*loaded, run);
+    }
+    REQUIRE(machine.swap("IC18"));
     CheckKScreen(machine);
 }

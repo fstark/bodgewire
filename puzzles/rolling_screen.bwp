@@ -1,0 +1,5 @@
+# Rolling screen: the KBD_N Trace is cracked just before IC11 pin 13 (an end of the Trace, past the junction to the keyboard buffer), so the vertical sync latch is never reset by a keyboard read: no vertical sync pulse, the picture rolls. The keyboard buffer still gets KBD_N: the keys work.
+machine bw80
+title "Rolling screen"
+brief "The picture rolls up the screen and never settles, so the TV cannot hold it still; what can be read of it looks right, and the keys still do their work behind it."
+fault crack IC17.4Y IC11.4B 90%
