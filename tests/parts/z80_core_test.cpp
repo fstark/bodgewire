@@ -176,7 +176,7 @@ TEST_CASE("Z80 core: HALT", "[parts]") {
     for (int i = 0; i < 5; ++i) {
         CHECK(s.core.bus().kind == Z80CycleKind::Fetch);
         CHECK(s.core.bus().halted);
-        CHECK(s.core.bus().address == 0x1001);
+        CHECK(s.core.bus().address == 0x1000);  // the HALT itself, re-read (P5v)
         CHECK(s.instruction() == 4);
     }
     CHECK(s.r().pc == 0x1001);

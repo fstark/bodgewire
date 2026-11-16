@@ -41,6 +41,7 @@ add_executable(bw_tests
   machines/board_probe_test.cpp
   machines/board_repair_test.cpp
   machines/bus_load_test.cpp
+  machines/bw80_test.cpp
   machines/bw1_model.cpp
   machines/bw1_rig.cpp
   machines/bw1_test.cpp
@@ -76,6 +77,7 @@ add_executable(bw_tests
   machines/tennis_test.cpp
   machines/test_pattern_faults_test.cpp
   machines/test_pattern_test.cpp
+  machines/tv_page.cpp
   netlist/builder_test.cpp
   netlist/bw1_bench_test.cpp
   netlist/bw2001_bench_test.cpp
