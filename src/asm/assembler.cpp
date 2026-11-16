@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <iterator>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -156,7 +157,8 @@ private:
         std::string_view text;
         std::string_view file;
         std::size_t number = 0;
-        bool include = false;  // an .include line, already expanded below it
+        bool include = false;                      // an .include line, already expanded below it
+        std::optional<std::filesystem::path> dir;  // resolves .include and .incbin
     };
 
     // The lines of `source`, each `.include "name"` followed by the named file's lines (resolved
@@ -185,7 +187,7 @@ private:
             const std::string_view code = Trim(StripComment(lines[i]));
             const bool include = code.size() >= 8 && Upper(code.substr(0, 8)) == ".INCLUDE" &&
                                  (code.size() == 8 || !IsIdentChar(code[8]));
-            lines_.push_back({lines[i], file, i + 1, include});
+            lines_.push_back({lines[i], file, i + 1, include, dir});
             if (!include) {
                 continue;
             }
@@ -324,6 +326,45 @@ private:
         }
     }
 
+    // .incbin "file", OFFSET, LENGTH (P5v): LENGTH bytes of a binary file from OFFSET, emitted
+    // here; the file resolved as .include's.
+    void incbinDirective(std::string_view args) {
+        const std::string expected = ".incbin needs \"file\", OFFSET, LENGTH";
+        const auto parts = SplitArguments(args);
+        if (parts.size() != 3 || parts[0].size() < 2 || !parts[0].starts_with('"') ||
+            !parts[0].ends_with('"')) {
+            Fail(expected);
+        }
+        const std::optional<std::filesystem::path>& dir = lines_[line_].dir;
+        if (!dir) {
+            Fail(".incbin needs a file on disk");
+        }
+        const AsmValue offset = expression(parts[1]);
+        const AsmValue length = expression(parts[2]);
+        if (!offset.known || !length.known || offset.number < 0 || length.number < 0) {
+            Fail(expected);
+        }
+        const std::string name(parts[0].substr(1, parts[0].size() - 2));
+        const std::filesystem::path path = *dir / name;
+        auto [it, inserted] = binaries_.try_emplace(path.string());
+        if (inserted) {
+            std::ifstream in(path, std::ios::binary);
+            if (!in) {
+                binaries_.erase(it);
+                Fail(std::format("cannot read '{}'", name));
+            }
+            it->second.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        }
+        const std::string& bytes = it->second;
+        if (static_cast<std::uint64_t>(offset.number) + static_cast<std::uint64_t>(length.number) >
+            bytes.size()) {
+            Fail(std::format(".incbin reads past the end of {}", name));
+        }
+        for (std::int64_t i = 0; i < length.number; ++i) {
+            emit(static_cast<std::uint8_t>(bytes[static_cast<std::size_t>(offset.number + i)]));
+        }
+    }
+
     void directive(std::string_view code) {
         std::size_t word = 1;
         while (word < code.size() && IsIdentChar(code[word])) {
@@ -354,6 +395,8 @@ private:
                     emit(static_cast<std::uint8_t>(v.number & 0xFF));
                 }
             }
+        } else if (name == ".INCBIN") {
+            incbinDirective(args);
         } else if (name == ".CHECKSUM") {
             checksumDirective(args);
         } else if (name == ".WORD") {
@@ -798,12 +841,13 @@ private:
 
     std::string_view file_;
     std::vector<Line> lines_;
-    std::deque<std::string> texts_;        // included files' texts, which lines_ views
-    std::deque<std::string> names_;        // their file names
-    std::vector<int> memos_;               // per line, kept from pass 1 to pass 2 (memo())
-    const InstructionSet* cpu_ = nullptr;  // .cpu, the 6502 until it says otherwise
-    bool cpuGiven_ = false;                // .cpu seen in pass 1
-    bool instructionSeen_ = false;         // an instruction before, this pass
+    std::map<std::string, std::string> binaries_;  // .incbin files by path, read once
+    std::deque<std::string> texts_;                // included files' texts, which lines_ views
+    std::deque<std::string> names_;                // their file names
+    std::vector<int> memos_;                       // per line, kept from pass 1 to pass 2 (memo())
+    const InstructionSet* cpu_ = nullptr;          // .cpu, the 6502 until it says otherwise
+    bool cpuGiven_ = false;                        // .cpu seen in pass 1
+    bool instructionSeen_ = false;                 // an instruction before, this pass
     std::map<std::string, std::int64_t> symbols_;
     int pass_ = 1;
     std::size_t line_ = 0;
