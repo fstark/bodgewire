@@ -508,7 +508,12 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         };
         if (const auto click = boardView.takeClick()) {
             const auto& pick = click->pick;
-            if (click->component) {
+            // A click on a part selects it (its pins too, as a probe touches them); on the
+            // selected part's body again, or on bare board, it deselects.
+            const bool body = pick && pick->hit.kind == HitKind::Component;
+            if (!click->component || (body && boardView.selected() == click->component)) {
+                boardView.deselect();
+            } else {
                 boardView.select(*click->component);
             }
             RepairResult result = RepairResult::Done;
