@@ -17,7 +17,7 @@ An idea that is dropped is reverted before the next one starts, and its row is s
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 0 | Docs reviewed | done |
-| 1 | Guards and baseline | |
+| 1 | Guards and baseline | done |
 | 2 | Z1: falling-edge-only and sampled Pins | |
 | 3 | Z2: quiet Pins (kernel, then 2114, then ROM) | |
 | 4 | Z3: specialised Parts, from the profile | |
@@ -75,7 +75,7 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
 
 | # | Idea | bw2001 ratio | Instr./event | Cycles/event | Eval./event | bw80 | bus_load | Kept | Commit |
 |---|------|--------------|--------------|--------------|-------------|------|----------|------|--------|
-| 0 | baseline (`f849080`) | | | | | | | — | |
+| 0 | baseline (`f849080`) | 0.210× | 856 | 156 | 2.14 | 0.242× | 0.373× | — | `f849080` |
 
 ## Implementation notes
 
@@ -93,3 +93,17 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
   - eval./event in `measure.sh` and the slowdown fence;
   - trace check globbing, cache keyed on the options, typing pace and times, real Net names.
 - Measured while writing the spec (2026-11-16, before phase 1): see the spec's Why. `bw_ui` on healthy BW-2001 Puzzles: 0.20×, UI 2.5 ms. On `bad_zero_page`: 0.62×, because its Fault stops the CPU. On the BW-80 (`q_everywhere`'s family): 0.25×, UI 0.9 ms.
+- Phase 1 (2026-11-16):
+  - Typed text, chosen with the reference build and `--tv`, BMPs viewed:
+    - BW-2001: `J5:1600ms:PRINT7\n` in a 2.5 s run; the screen shows `PRINT7`, ` 7`, `READY`.
+    - BW-80: `J3:400ms:P` in a 1 s run; the edit line changes.
+  - VCD sizes on each side:
+    - bus_load 55 MB, test pattern 8 MB, typewriter 147 MB;
+    - bw2001 214 MB, bw2001 long **706 MB** (over the 300 MB aimed for: the video RAM buses and `TV_VIDEO` at 8 MHz; kept, since disk and time allow);
+    - bw80 178 MB, bw80 long 303 MB, bw1 34 MB.
+  - A full check takes 80 s with the reference recorded, 45 s without.
+  - Shown to fail: one value flipped in the reference test pattern VCD gave line 5001, its `#time` and both values.
+  - Baseline, `bench/measure.sh` twice: bw2001 0.212 / 0.210×, 856 instructions, 155–156 cycles, 2.14 evaluations an applied event; bw80 0.243 / 0.242×; bus_load 0.372 / 0.373× (458 instructions, 97 cycles, 0.96 evaluations).
+  - Others, best of the two: ball 2.59×, bus_load_z80 0.42×, bw1 2.57×, chaser 14.0×, counter 12.7×, dice 33.0×, heartbeat 8.5×, knob 14.8×, led_computer 5.1×, message 2.73×, stopwatch 10.7×, tennis 1.91×, test pattern 6.98×, typewriter 1.30×.
+  - **Noise:** the small, fast netlists move up to ±7 % between two runs of the same build (dice −5.8 %, stopwatch +6.7 %). A netlist `measure.sh` marks SLOWER is measured again before it is shown to the user.
+  - The script's output is kept in `build/measure/` and passed as the previous run for the next comparison.

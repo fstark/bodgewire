@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# P5b trace check: every Net of three runs, byte-compared with a reference kernel's, and the
-# count of applied events. Evaluations are printed, not compared: sampled inputs (idea 5) spare
-# evaluations that changed nothing.
-# Usage: bench/trace_check.sh [commit]   (default 0757c02, the P5a kernel)
+# Trace check (P5b, extended in P5z): the Nets of each run byte-compared with a reference
+# kernel's, and the count of applied events. Evaluations are printed, not compared: sampled
+# inputs (P5b idea 5) and quiet Pins (P5z Z2) spare evaluations that changed nothing.
+# Usage: bench/trace_check.sh [commit]   (default f849080, the last commit before P5z)
 # Builds the reference once in a worktree under build/trace-ref/<commit>/, records its traces
-# once, then records the current build/release traces and compares. Build release first.
+# once per set of run options, then records the current build/release traces and compares.
+# Short runs record every Net; long runs (the computers booted and typed on) record a list,
+# since a full trace of the BW-2001 is about 1.4 GB a simulated second. Build release first.
 set -euo pipefail
 
-commit="${1:-0757c02}"
+commit="${1:-f849080}"
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
 
@@ -15,13 +17,39 @@ ref="build/trace-ref/$commit"
 now="build/trace-now"
 current_bw="build/release/src/cli/bw"
 
-runs=(bus_load test_pattern typewriter)
-# run_args <run>: the run's own options (spec S1)
+runs=(bus_load test_pattern typewriter bw2001 bw2001_long bw80 bw80_long bw1)
+
+# The long runs' Nets: what shows the computer working (buses, selects, video out).
+bw2001_nets="A0,A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15"
+bw2001_nets+=",D0,D1,D2,D3,D4,D5,D6,D7"
+bw2001_nets+=",BA0,BA1,BA2,BA3,BA4,BA5,BA6,BA7,BA8,BA9,BA10,BA11"
+bw2001_nets+=",BBD0,BBD1,BBD2,BBD3,BBD4,BBD5,BBD6,BBD7"
+bw2001_nets+=",SA0,SA1,SA2,SA3,SA4,SA5,SA6,SA7,SA8,SA9,SD0,SD1,SD2,SD3,SD4,SD5,SD6,SD7"
+bw2001_nets+=",RAM0_N,RAM1_N,RAM2_N,RAM3_N,RAM4_N,RAM5_N,RAM6_N,RAM7_N"
+bw2001_nets+=",SEL8,SELC_N,SELD_N,SELE_N,SELF_N,TV_VIDEO,HORZ_DRIVE,VERT_DRIVE"
+bw80_nets="A0,A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15"
+bw80_nets+=",D0,D1,D2,D3,D4,D5,D6,D7,MD0,MD1,MD2,MD3,MD4,MD5,MD6,MD7"
+bw80_nets+=",ROM_CS1,RAM_CS_N,KB0,KB1,KB2,KB3,KB4,VIDEO,SYNC,VS_N"
+
+# run_netlist <run>: the netlist a run simulates
+run_netlist() {
+    case "$1" in
+    *_long) echo "${1%_long}" ;;
+    *) echo "$1" ;;
+    esac
+}
+
+# run_args <run>: the run's own options (P5z spec S1); no spaces inside an option
 run_args() {
     case "$1" in
     bus_load) echo "--time 50ms" ;;
     test_pattern) echo "--time 100ms" ;;
     typewriter) echo "--time 300ms --type J3:100ms:HI" ;;
+    bw2001) echo "--time 150ms" ;;
+    bw2001_long) echo "--time 2500ms --type J5:1600ms:PRINT7\\n --record $bw2001_nets" ;;
+    bw80) echo "--time 100ms" ;;
+    bw80_long) echo "--time 1s --type J3:400ms:P --record $bw80_nets" ;;
+    bw1) echo "--time 200ms" ;;
     esac
 }
 
@@ -37,24 +65,40 @@ if [[ ! -x "$ref/build/src/cli/bw" ]]; then
     cmake --build "$ref/build" --target bw >/dev/null
 fi
 
-# record <bw> <netlist dir> <out dir> <run>
+# record <bw> <netlist dir> <out dir> <run>: the VCD, then the options and counts in <run>.txt
 record() {
     local bw="$1" netlists="$2" out="$3" run="$4"
-    # shellcheck disable=SC2046 # the options hold no spaces
-    "$bw" run "$netlists/$run.bwn" $(run_args "$run") --seed 1 --record-all --vcd "$out/$run.vcd" |
-        grep -E '^(applied_events|evaluations) ' >"$out/$run.txt"
+    local args
+    args="$(run_args "$run")"
+    if [[ "$args" != *--record* ]]; then
+        args+=" --record-all"
+    fi
+    set -f # typed text may hold glob characters
+    # shellcheck disable=SC2086 # the options hold no spaces
+    "$bw" run "$netlists/$(run_netlist "$run").bwn" $args --seed 1 --vcd "$out/$run.vcd" |
+        grep -E '^(applied_events|evaluations) ' >"$out/$run.counts"
+    set +f
+    { echo "args $(run_args "$run")"; cat "$out/$run.counts"; } >"$out/$run.txt"
+    rm "$out/$run.counts"
 }
 
 mkdir -p "$now"
+active=()
 for run in "${runs[@]}"; do
-    if [[ ! -f "$ref/$run.txt" ]]; then
+    if [[ ! -f "$ref/src/netlists/$(run_netlist "$run").bwn" ]]; then
+        echo "trace check: $run skipped (no netlist at $commit)"
+        continue
+    fi
+    active+=("$run")
+    # A reference recorded with other options is recorded again.
+    if [[ ! -f "$ref/$run.txt" ]] || [[ "$(head -1 "$ref/$run.txt")" != "args $(run_args "$run")" ]]; then
         record "$ref/build/src/cli/bw" "$ref/src/netlists" "$ref" "$run"
     fi
     record "$current_bw" netlists "$now" "$run"
 done
 
 status=0
-for run in "${runs[@]}"; do
+for run in "${active[@]}"; do
     if ! diff -u <(grep '^applied_events ' "$ref/$run.txt") \
         <(grep '^applied_events ' "$now/$run.txt"); then
         echo "trace check: $run applied events differ"
@@ -75,6 +119,6 @@ for run in "${runs[@]}"; do
     fi
 done
 if [[ $status -eq 0 ]]; then
-    echo "trace check: identical (${#runs[@]} runs)"
+    echo "trace check: identical (${#active[@]} runs)"
 fi
 exit $status
