@@ -115,6 +115,9 @@ _Avoid_: Constant Driver
 **Series Resistor**:
 A resistor between two signal Nets (the ZX80's data bus, P5u): a Net that nothing else drives takes the other's value through it, weakly, while a Net with a Driver of its own keeps it. One resistor network resolves them all; between two weak values on a Net, the one through less resistance wins (a pull-up on a joined Net counts as one of them, not as a Tie).
 
+**Coupling Capacitor**:
+A capacitor (`C`, P5v) between a Net a chip drives and a Net with a pull resistor: each edge of the driven Net appears on the pulled one as a pulse of the pull's ohms times its farads (the ZX80's C11 with R25 make the 74LS165's load pulse). Anywhere else a capacitor does nothing the simulation shows.
+
 **Joined Pin**:
 The resistor network's Pin on a Net that a Series Resistor touches (P5u), as the switch network has one on each Net a Switch is on (a Net may have both): it drives the Net weakly and is woken only by the Net's other Drivers.
 
