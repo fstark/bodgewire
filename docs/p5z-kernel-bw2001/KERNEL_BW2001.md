@@ -126,6 +126,45 @@ Each idea after Z2 is designed in the plan's idea log when it is tried, because 
   - a deselected chip is not evaluated on address or data changes (evaluation count).
 - The full debug suite after each kept kernel idea (AGENTS.md: shared code). For a Part-only idea, the tests of every Machine using that Part, in debug, plus the `bw2001` and `bw80` release cases.
 
+## Results
+
+Measured 2026-11-16 (`bench/measure.sh`, release, best of 3; the idea log in [KERNEL_BW2001_PLAN.md](KERNEL_BW2001_PLAN.md) has every row):
+
+| Netlist | Before (`f849080`) | P5z | Gain |
+|---|---|---|---|
+| `bw2001` | 0.210× | **0.362–0.365×** | 1.72× |
+| instructions an applied event | 856 | 509 | −41 % |
+| cycles an applied event | 156 | 95 | −39 % |
+| evaluations an applied event | 2.14 | 1.07 | −50 % |
+| `bw2001` in `bw_ui` (healthy Puzzle) | 0.20×, UI 2.5 ms | 0.36×, UI 2.4 ms | |
+| `bw80` | 0.242× | 0.246× | flat |
+| `bus_load` | 0.373× | 0.411× | 1.10× |
+| `bw1` | 2.56× | 2.96× | 1.16× |
+| knob, led_computer | 14.8×, 5.06× | 19.4×, 6.49× | 1.31×, 1.28× |
+| bus_load_z80, stopwatch, tennis | 0.42×, 10.7×, 1.91× | 0.46×, 11.7×, 2.04× | |
+| others (ball, chaser, counter, dice, heartbeat, message, test pattern, typewriter) | | equal or up to +6 % | |
+
+No netlist got slower. Traces are identical to `f849080` on all eight runs throughout, and the only exception Guard 1 allowed (random draws of a deselected 2114) never showed.
+
+What gained (the BW-2001's cycles per event):
+- **Z2, quiet Pins on the 2114 and ROM:** 147 → 107. This is where the waste was: 23 chips on each address line, nearly all deselected.
+- **Z4.1, plain buses resolved from a count of their driving Drivers:** 102 → 95. The RAM data bus has 18 Drivers per line.
+- **Z1, falling-edge-only clocks:** 156 → 147.
+- **Z3.1, quiet Pins on the 74LS244:** 107 → 102.
+
+What did not gain:
+- **Z3.2**, the 74LS244 skipping unchanged buffers: equal.
+- **Z4.2**, fan-out masks visiting only loud entries: fewer instructions but more cycles, −6 % ratio.
+
+**Where it stops:** the profile on the result (`build/profile-lto`):
+- `runUntil` 31 % and the queue 21 %, with no line above 4.6 % (Z4.2 tried the largest);
+- the 74LS244 7.4 % (Z3.2 tried it);
+- every other Part under 5 % (gate packages, 74LS93, 74LS107, 2114, ROM, 74LS157).
+
+Nothing left reaches the bar alone (the user's stop rule). Real time on the BW-2001 needs another 2.8×; the options left are those of OPTIMISATION_IDEAS (Next steps), each bending the design.
+
+The BW-80 did not move: its cost is the generic per-event path (run loop and queue). It has no deselected memories on wide buses, and its buses have only a few Drivers.
+
 ## Done when
 
 - Z1 and Z2 tried; then Z3 and Z4 from the profiles until nothing reaches the bar. Each try logged; the kept ones committed under the three guards.

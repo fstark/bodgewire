@@ -20,6 +20,8 @@ Measured (P5a, 2026-11-12, [BUS_LOAD.md](../p5a-bus-load/BUS_LOAD.md)): `netlist
 
 After P5b (2026-11-13, [KERNEL_BUSES.md](../p5b-kernel-buses/KERNEL_BUSES.md), Results): **0.40×** on `bus_load`, 424 instructions and 90 cycles an applied event, traces unchanged. Gap to 2×: ≈ 5×; to real time: 2.5×.
 
+After P5z (2026-11-16, [KERNEL_BW2001.md](../p5z-kernel-bw2001/KERNEL_BW2001.md), Results): the BW-2001 **0.21× → 0.36×**, 856 → 509 instructions and 156 → 95 cycles an applied event, half the evaluations, traces unchanged. The BW-80 0.25× (unchanged), `bus_load` 0.41×. Gap to real time: BW-2001 2.8×, BW-80 4×.
+
 ## How to measure
 
 - Machine: Apple M5 Max. The kernel runs at **~6.4 instructions per cycle**: cache misses and branch mispredictions are not the bottleneck. Cost = instruction count.
@@ -59,6 +61,19 @@ P5b, on `netlists/bus_load.bwn` (ratio best of 3 over 2 s, instructions and cycl
 | The Net of each Pin kept by the Simulator | 0.407× | 424 | 89 | 7.41× | yes |
 | 74LS157, 74LS244 logic rewritten | 0.40–0.41× | 422–424 | 88–90 | — | no |
 | Now (2026-11-13) | 0.40× | 424 | 90 | 7.35× | — |
+
+P5z, on `netlists/bw2001.bwn` (ratio best of 3 over 2 s; the full log in [KERNEL_BW2001_PLAN.md](../p5z-kernel-bw2001/KERNEL_BW2001_PLAN.md)):
+
+| Change | `bw2001` | Instr. | Cycles | Eval./event | Kept |
+|---|---|---|---|---|---|
+| Before P5z (`f849080`) | 0.210× | 856 | 156 | 2.14 | — |
+| Falling-edge-only clocks (74LS107, 74LS93, 74LS90), the 107's `J`/`K` sampled | 0.222× | 830 | 147 | 1.95 | yes |
+| Quiet Pins: deselected 2114s and ROMs not woken by their address and data | 0.32× | 580 | 107 | 1.18 | yes |
+| Quiet Pins on the 74LS244's disabled halves | 0.334× | 550 | 102 | 1.07 | yes |
+| Plain buses resolved from a count of their driving Drivers | 0.365× | 509 | 95 | 1.07 | yes |
+| 74LS244 skipping unchanged buffers | 0.362× | 511 | 97 | 1.07 | no |
+| Fan-out masks: only loud entries visited | 0.344× | 495 | 100 | 1.07 | no |
+| Now (2026-11-16) | 0.36× | 509 | 95 | 1.07 | — |
 
 ## What we learned
 
@@ -151,6 +166,8 @@ What is easy:
 Recommendation (2026-11-13): shelve. Look again only if what is left to real time is within its gain (about 1.4×). More than half the Net changes are clocks and single lines, which no Bus scheme touches.
 
 ## Next steps
+
+P5z (2026-11-16): the BW-2001 at 0.36× with traces unchanged and the Part API grown by `fallingEdgeOnly`, `quiet` and `lastChange`. Nothing left reaches 5 % alone on it: `runUntil` 31 % and the queue 21 % spread over many lines, no Part over 7.4 %. The options below stay open; for real time on the BW-2001 (2.8× away) or the BW-80 (4×) the remaining levers bend the design: 2 (10–20 %), 3, 4, 5.
 
 Done: 1 (P5a), P5b (2026-11-13): the event queue, LTO, specialised evaluation of the spec-table Parts (ROM, gate packages), sampled inputs; 0.40× on `bus_load`. Within P5b's guards (Part API, traces and simulated Nets unchanged, no second kernel path) nothing left reaches 5 % alone. The options (spec, Results); **the user chose 1 (2026-11-13)**, the others stay open for when the measurements ask:
 

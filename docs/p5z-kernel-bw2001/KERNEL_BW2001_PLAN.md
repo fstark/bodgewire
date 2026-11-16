@@ -2,85 +2,33 @@
 
 Spec: [KERNEL_BW2001.md](KERNEL_BW2001.md). Design: [KERNEL_BW2001_DESIGN.md](KERNEL_BW2001_DESIGN.md).
 
-Every phase ends with its fence:
-- `cmake --build --preset release` and `--preset debug` clean;
-- `clang-format` on the C++ files touched;
-- `bench/trace_check.sh` identical;
-- `bench/measure.sh` logged in the idea log, and any netlist slower by more than 5 % than the previous row shown to the user before the idea is kept (spec, Guard 3);
-- the tests the phase names;
-- one commit of this step's own paths, whose message names the tests run.
-
-An idea that is dropped is reverted before the next one starts, and its row is still logged.
+Implemented 2026-11-16; user check pending. The phases and fences are in git history (`2f422b7`); results in the spec (Results).
 
 ## Status
 
-| Phase | Description | Status |
+| Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Docs reviewed | done |
-| 1 | Guards and baseline | done |
-| 2 | Z1: falling-edge-only and sampled Pins | done: kept |
-| 3 | Z2: quiet Pins (kernel, then 2114, then ROM) | done: kept |
-| 4 | Z3: specialised Parts, from the profile | in progress |
-| 5 | Z4: run loop, from the profile | in progress |
-| 6 | Finish | |
-
-## Phases
-
-### 1. Guards and baseline
-
-- `bench/trace_check.sh` and `bench/measure.sh` as designed. The typed text and times for the long runs are chosen with the reference build and `--tv`, the BMP viewed, and written in the notes. VCD sizes logged.
-- The check is run twice and passes. It is then shown to fail by flipping one value in a reference VCD, as P5b did.
-- Baseline: `bench/measure.sh` twice, logged as row 0.
-- Fence tests: none beyond the scripts. Commit: `bench: trace check and measurement on the computers (P5z)`.
-
-### 2. Z1
-
-- `PinSpec::fallingEdgeOnly` (appended after `sampled`), `FanOut` edge mask, the `runUntil` test.
-- Tests: the wake cases in `tests/sim/simulator_test.cpp`; `tests/sim/circuit_test.cpp`'s `risingEdgeOnly` checks rewritten for the mask, plus merge cases.
-- The Parts (74LS107, 74LS93, 74LS90), each checked against its `evaluate` as the design says. The 74LS107's `J`/`K` become sampled. The 74177 is not converted.
-- Measured as one idea (the spec's Guard 3).
-- Fence tests: the full debug suite (kernel change), and release `bw2001|bw80|bw1`. ADD_PART: the lines the design names. Commit: `sim: falling-edge-only Pins, the dot-clock chain's clocks (P5z Z1)`.
-
-### 3. Z2
-
-1. Kernel only: `quiet`, `lastChange`, `pinFanOut_`, `fanOutLoud_`, `pinQuiet_`, `tests/sim/quiet_test.cpp` (added to `tests/CMakeLists.txt`). Measured with no Part using it: the cost of the extra test on every netlist, logged as row Z2.0. Not committed alone.
-2. The 2114, and its tests. Measured.
-3. The ROM, and its tests. Measured.
-
-The bar applies to steps 1–3 together against Z1. Fence tests: the full debug suite, and release `bw2001|bw80|bw1|bus load|typewriter`. ADD_PART: Quiet Pins. One commit: `sim: quiet Pins, deselected 2114s and ROMs sleep (P5z Z2)`.
-
-### 4. Z3
-
-- Profile on Z2 (`build/profile`, by function), logged in the notes.
-- One idea per row, hottest Part first. The design's starting points come first, and the row's own design is written in the notes.
-- Each idea is kept on the bar, one commit each: `parts: <Part> specialised (P5z Z3.n)`.
-- Fence tests: that Part's tests and every Machine using it (`ctest -R`), in debug; release `bw2001|bw80`.
-- The phase ends when no Part reaches the bar.
-
-### 5. Z4
-
-- A line profile of `runUntil` (P5b notes: `sample` with offsets, self time per line).
-- One idea per row, as for Z3, each kept on the bar.
-- Fence tests: the full debug suite per kept idea.
-
-### 6. Finish
-
-- Final `bench/measure.sh` (last row of the log), and the trace check.
-- Spec Results, ARCHITECTURE Performance and row P5z (done, date, links), OPTIMISATION_IDEAS (Target, History, Next steps with the options left).
-- `bw_ui` screenshots of a BW-2001 and a BW-80 Puzzle viewed, with the ratio and UI ms noted.
-- Full debug suite. Plan cut down to the phase table and notes.
-- Commit: `docs: P5z done, kernel for the BW-2001`.
+| 0 | Docs reviewed | `2f422b7` |
+| 1 | Guards and baseline | `bf382ac` |
+| 2 | Z1: falling-edge-only and sampled Pins | `5ce7af3` |
+| 3 | Z2: quiet Pins (kernel, 2114, ROM) | `4916ff2` |
+| 4 | Z3: Parts from the profile: 74LS244 quiet halves kept (Z3.1); unchanged buffers skipped dropped (Z3.2) | `158e181` |
+| 5 | Z4: run loop: plain buses kept (Z4.1); fan-out masks dropped (Z4.2) | `eba14fa` |
+| 6 | Finish | this commit |
 
 ## Idea log
 
 | # | Idea | bw2001 ratio | Instr./event | Cycles/event | Eval./event | bw80 | bus_load | Kept | Commit |
 |---|------|--------------|--------------|--------------|-------------|------|----------|------|--------|
 | 0 | baseline (`f849080`) | 0.210× | 856 | 156 | 2.14 | 0.242× | 0.373× | — | `f849080` |
-| Z1 | `PinSpec::fallingEdgeOnly` on the 74LS107, 74LS93, 74LS90 clocks; the 107's `J`, `K` sampled | 0.222× | 830 | 146–148 | 1.95 | 0.244× | 0.382× | yes: +5.7 % ratio, −5…6 % cycles (two runs) | this row's commit |
+| Z1 | `PinSpec::fallingEdgeOnly` on the 74LS107, 74LS93, 74LS90 clocks; the 107's `J`, `K` sampled | 0.222× | 830 | 146–148 | 1.95 | 0.244× | 0.382× | yes: +5.7 % ratio, −5…6 % cycles (two runs) | `5ce7af3` |
 | Z2.0 | quiet Pins in the kernel, no Part using them | 0.219× | 845 | 151 | 1.95 | 0.241× | 0.371× | measured only: the test's cost, 1–3 % on every netlist | — |
-| Z2 | quiet Pins: deselected 2114s (`CS_N` a definite 1) and ROMs (off) sleep through their address and data | 0.315–0.320× | 580 | 107 | 1.18 | 0.247× | 0.384–0.387× | yes: +44 % ratio, −27 % cycles against Z1 (two runs) | this row's commit |
-| Z3.1 | 74LS244: a half whose `OE_N` is a definite 1 quiets its `A` Pins (quiet Pins on a two-way bus buffer) | 0.333–0.335× | 550 | 101–103 | 1.07 | 0.250× | 0.395× | yes: +5.2 % ratio, −5.2 % instructions, −4.7 % cycles (two runs), kept as part of the quiet-Pins idea (Guard 3: an idea counts with every Part it is applied to) | this row's commit |
-| Z4.1 | plain buses (untied, no network Pin, two or more Output or Bidirectional Drivers) resolved from a count of their driving Drivers and the sum of their PinIds, when 0 or 1 | 0.364–0.365× | 509 | 95 | 1.07 | 0.246–0.247× | 0.413× | yes: +9 % ratio, −7 % cycles, −7.5 % instructions (two runs) | this row's commit |
+| Z2 | quiet Pins: deselected 2114s (`CS_N` a definite 1) and ROMs (off) sleep through their address and data | 0.315–0.320× | 580 | 107 | 1.18 | 0.247× | 0.384–0.387× | yes: +44 % ratio, −27 % cycles against Z1 (two runs) | `4916ff2` |
+| Z3.1 | 74LS244: a half whose `OE_N` is a definite 1 quiets its `A` Pins (quiet Pins on a two-way bus buffer) | 0.333–0.335× | 550 | 101–103 | 1.07 | 0.250× | 0.395× | yes: +5.2 % ratio, −5.2 % instructions, −4.7 % cycles (two runs), kept as part of the quiet-Pins idea (Guard 3: an idea counts with every Part it is applied to) | `158e181` |
+| Z4.1 | plain buses (untied, no network Pin, two or more Output or Bidirectional Drivers) resolved from a count of their driving Drivers and the sum of their PinIds, when 0 or 1 | 0.364–0.365× | 509 | 95 | 1.07 | 0.246–0.247× | 0.413× | yes: +9 % ratio, −7 % cycles, −7.5 % instructions (two runs) | `eba14fa` |
+| Z3.2 | 74LS244: a buffer whose `OE_N` and `A` did not change at this timestamp is skipped | 0.362× | 511 | 97 | 1.07 | 0.250× | 0.408× | no: equal | — |
+| Z4.2 | fan-out masks per Net (loud entries, entries per change kind): the run loop visits only loud entries that wake on the change | 0.344× | 495 | 100 | 1.07 | 0.241× | 0.400× | no: −2.7 % instructions, +5 % cycles, −6 % ratio | — |
+| end | final `bench/measure.sh` (on Z4.1) | 0.362× | 509 | 95 | 1.07 | 0.246× | 0.411× | — | — |
 
 ## Implementation notes
 
@@ -138,3 +86,14 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
   - Traces identical. Others against Z3.1: bw1 +13 % (its 6530 and RAM buses), bus_load_z80 +5.5 %, the rest within ±2.6 %.
   - Full debug suite 1374/1374 in 671 s; release `bw2001|bw80|bw1|bus load|typewriter` 178/178.
   - Profile on Z4.1 with LTO (`build/profile-lto`, 6,700 samples by function): `runUntil` 31 %, the queue 21 %, 74LS244 7.4 %, `resolveNet` 5.3 %, 74LS00 packages 4.9 %, 74LS93 4.6 %, 74LS08 3.0 %, 74LS107 2.9 %, 2114 2.7 %, ROM 2.5 %, 74LS157 2.5 %. The non-LTO profile showed `GateFunction` at 9.8 %; with LTO it is inlined into the packages. Profiles from here come from `build/profile-lto`.
+- Z3.2: what is left of the 74LS244 after Z3.1 is the reads and drives of an enabled half, not the buffers that did not move. Equal, as P5b's 4.4 found for its reads.
+- Z4 line profile on Z4.1 (`build/profile`, self time by source line through `sample`'s call tree): the fan-out loop (`simulator.cpp` 311–314) about 10 %, the queue's `openRun` and `takeNext` lines 2–4 % each, `driveChanged` three lines of about 2 % each; no other line over 3 %.
+- Z4.2: the fan-out loop's 10 % was mostly quiet entries on the address and data buses. A 64-bit loud mask per Net (bits cleared and set by `setQuiet`) and three fixed masks of the entries waking on a rise, a fall, another change; the loop walks `loud & wakes[change]` in entry order (evaluation order unchanged), wider Nets the plain loop. Traces identical, instructions down, cycles up: the bit loop's dependent `countr_zero` steps and the masks' loads cost more than the short, predictable walk.
+- Phase 6 (2026-11-16):
+  - Final `bench/measure.sh` in the log's last row. Others against row 0: ball 2.69×, bus_load_z80 0.46×, bw1 2.96×, chaser 13.8×, counter 12.6×, dice 32.6×, heartbeat 8.4×, knob 19.4×, led_computer 6.49×, message 2.76×, stopwatch 11.7×, tennis 2.04×, test pattern 7.12×, typewriter 1.31×. None slower.
+  - Trace check identical (8 runs).
+  - Screenshots viewed: `bw_ui puzzles/ghost_letter.bwp` (BW-2001: the "VINY BASIC" banner, `READY`; 0.36×, UI 2.4 ms) and `puzzles/q_everywhere.bwp` (BW-80: the Q-filled page and junk margins; 0.23×, UI 0.9 ms).
+  - The full debug suite last ran on Z4.1's code (1374/1374 in 671 s); nothing in `src` or `tests` changed after it.
+- User check (pending):
+  - `bw_ui` on a BW-2001 Puzzle: the speed shown at about 0.36×, the picture and keyboard as before;
+  - `bench/trace_check.sh` (45 s once the reference is recorded) and `bench/measure.sh` on your machine.
