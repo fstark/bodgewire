@@ -88,6 +88,25 @@ private:
     std::vector<FanOut> fanOut_;
     std::vector<std::uint32_t> fanOutStart_;
     std::vector<std::uint8_t> pinQuiet_;  // per Pin
+    // Per Net: how many of its Drivers drive (not Z), and the sum of their PinIds, so that with
+    // one the sum names it (P5z: a plain bus resolved without scanning its Drivers).
+    struct Driving {
+        std::uint32_t count;
+        std::uint64_t pinSum;
+    };
+    std::vector<Driving> driving_;
+    void countDriving(PinId pin, LogicValue from, LogicValue to) {
+        if ((from == LogicValue::Z) != (to == LogicValue::Z)) {
+            Driving& d = driving_[ToIndex(pinNet_[ToIndex(pin)])];
+            if (to == LogicValue::Z) {
+                --d.count;
+                d.pinSum -= ToIndex(pin);
+            } else {
+                ++d.count;
+                d.pinSum += ToIndex(pin);
+            }
+        }
+    }
     std::vector<NetId> dirtyNets_;
     std::vector<ComponentId> dirtyComponents_;
     EventQueue queue_;

@@ -1,5 +1,7 @@
 #include "sim/circuit.hpp"
 
+#include <algorithm>
+
 namespace bw {
 
 NetId Circuit::addNet(std::string name) {
@@ -111,7 +113,14 @@ void Circuit::buildTables() {
     drivers_.clear();
     fanOut_.clear();
     netSingleDriver_.assign(netCount, kNoPin);
+    netPlainBus_.assign(netCount, 0);
     for (std::size_t n = 0; n < netCount; ++n) {
+        netPlainBus_[n] = drivers[n].size() >= 2 && netTie_[n].strength == DriveStrength::None &&
+                          netNetworkPin_[n] == kNoPin &&
+                          std::ranges::all_of(drivers[n], [&](PinId pin) {
+                              const PinKind kind = pins_[ToIndex(pin)].kind;
+                              return kind == PinKind::Output || kind == PinKind::Bidirectional;
+                          });
         if (drivers[n].size() == 1 && pins_[ToIndex(drivers[n][0])].kind == PinKind::Output &&
             netTie_[n].strength == DriveStrength::None) {
             netSingleDriver_[n] = drivers[n][0];

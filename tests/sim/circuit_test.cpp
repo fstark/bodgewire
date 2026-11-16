@@ -312,3 +312,24 @@ TEST_CASE("circuit: single driver only for one untied totem-pole output", "[sim]
     CHECK(circuit.singleDriver(shared) == Circuit::kNoPin);
     CHECK(circuit.singleDriver(pulled) == Circuit::kNoPin);
 }
+
+TEST_CASE("circuit: a plain bus is untied, two or more output or bidirectional drivers", "[sim]") {
+    Circuit circuit;
+    Dummy& u1 = circuit.add<Dummy>("U1");
+    Dummy& u2 = circuit.add<Dummy>("U2");
+    BusPins& u3 = circuit.add<BusPins>("U3");
+    Dummy& u4 = circuit.add<Dummy>("U4");
+    const NetId one = circuit.addNet("one");    // a single Driver
+    const NetId bus = circuit.addNet("bus");    // an Output and a Bidirectional
+    const NetId tied = circuit.addNet("tied");  // the same, pulled up
+    circuit.connect(u1, "Y", one);
+    circuit.connect(u2, "Y", bus);
+    circuit.connect(u3, "T", bus);
+    circuit.connect(u4, "Y", tied);
+    circuit.connect(u3, "M", tied);
+    circuit.tie(tied, LogicValue::One, DriveStrength::Weak);
+    circuit.finalize();
+    CHECK_FALSE(circuit.isPlainBus(one));
+    CHECK(circuit.isPlainBus(bus));
+    CHECK_FALSE(circuit.isPlainBus(tied));
+}

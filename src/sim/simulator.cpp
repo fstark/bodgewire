@@ -83,6 +83,7 @@ Simulator::Simulator(Circuit& circuit) : circuit_(circuit) {
     fanOut_.assign(circuit.fanOutEntries().begin(), circuit.fanOutEntries().end());
     fanOutStart_.assign(circuit.fanOutStarts().begin(), circuit.fanOutStarts().end());
     pinQuiet_.resize(circuit.pinCount(), 0);
+    driving_.resize(circuit.netCount(), Driving{0, 0});
 }
 
 void Simulator::setQuiet(PinId pin, bool on) {
@@ -152,6 +153,16 @@ Resolution Simulator::resolveNet(NetId net) const {
             return {value, false};  // what Resolver gives for one Strong drive and no tie
         }
     }
+    if (circuit_.isPlainBus(net)) {
+        // What Resolver gives with no Drive (floating) or one Strong Drive and no tie.
+        const Driving& d = driving_[ToIndex(net)];
+        if (d.count == 0) {
+            return {circuit_.hasTtlInput(net) ? LogicValue::One : state.lastDriven, true};
+        }
+        if (d.count == 1) {
+            return {outputs_[d.pinSum].current, false};
+        }
+    }
     Resolver resolver;
     resolver.add(circuit_.tieOf(net));
     for (const PinId pin : circuit_.drivers(net)) {
@@ -207,6 +218,13 @@ void Simulator::powerOn(std::uint64_t seed) {
         component->powerOn(ctx);
     }
 
+    std::ranges::fill(driving_, Driving{0, 0});
+    for (std::uint32_t p = 0; p < outputs_.size(); ++p) {
+        if (IsDriver(circuit_.pinInfo(PinId{p}).kind)) {
+            countDriving(PinId{p}, LogicValue::Z, outputs_[p].current);
+        }
+    }
+
     for (std::uint32_t n = 0; n < nets_.size(); ++n) {
         NetState& s = nets_[n];
         s.lastDriven = rng_.nextBit() ? LogicValue::One : LogicValue::Zero;
@@ -255,6 +273,7 @@ void Simulator::runUntil(Time end) {
                 ++stats_.staleEvents;
                 continue;
             }
+            countDriving(PinId{target}, o.current, StampValue(stamp));
             o.current = StampValue(stamp);
             o.hasPending = false;
             ++stats_.appliedEvents;

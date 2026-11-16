@@ -21,7 +21,7 @@ An idea that is dropped is reverted before the next one starts, and its row is s
 | 2 | Z1: falling-edge-only and sampled Pins | done: kept |
 | 3 | Z2: quiet Pins (kernel, then 2114, then ROM) | done: kept |
 | 4 | Z3: specialised Parts, from the profile | in progress |
-| 5 | Z4: run loop, from the profile | |
+| 5 | Z4: run loop, from the profile | in progress |
 | 6 | Finish | |
 
 ## Phases
@@ -80,6 +80,7 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
 | Z2.0 | quiet Pins in the kernel, no Part using them | 0.219× | 845 | 151 | 1.95 | 0.241× | 0.371× | measured only: the test's cost, 1–3 % on every netlist | — |
 | Z2 | quiet Pins: deselected 2114s (`CS_N` a definite 1) and ROMs (off) sleep through their address and data | 0.315–0.320× | 580 | 107 | 1.18 | 0.247× | 0.384–0.387× | yes: +44 % ratio, −27 % cycles against Z1 (two runs) | this row's commit |
 | Z3.1 | 74LS244: a half whose `OE_N` is a definite 1 quiets its `A` Pins (quiet Pins on a two-way bus buffer) | 0.333–0.335× | 550 | 101–103 | 1.07 | 0.250× | 0.395× | yes: +5.2 % ratio, −5.2 % instructions, −4.7 % cycles (two runs), kept as part of the quiet-Pins idea (Guard 3: an idea counts with every Part it is applied to) | this row's commit |
+| Z4.1 | plain buses (untied, no network Pin, two or more Output or Bidirectional Drivers) resolved from a count of their driving Drivers and the sum of their PinIds, when 0 or 1 | 0.364–0.365× | 509 | 95 | 1.07 | 0.246–0.247× | 0.413× | yes: +9 % ratio, −7 % cycles, −7.5 % instructions (two runs) | this row's commit |
 
 ## Implementation notes
 
@@ -131,3 +132,9 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
   - Just under the bar on cycles alone (−4.7 %), over it on ratio and instructions. Kept because it is the quiet-Pins idea of Z2 applied to one more Part, which Guard 3 measures as a whole.
   - Others against Z2: all equal or up to +3 %.
   - Full debug suite 1373/1373 in 675 s; release `bw2001|bw80|bus load` 101/101.
+- Z4.1 (2026-11-16), taken before the rest of Z3 because the Z2 profile put `resolveNet` at 11.5 %:
+  - The BW-2001's RAM data bus `BBD` has sixteen 2114s and two 74LS244 halves on each line, and `BD`, `SD` and `D` are shared too. Each change scanned every Driver through `Resolver`.
+  - A Net with no tie, no network Pin and only Output or Bidirectional Drivers resolves exactly as `Resolver` does when none drives (floating: the TTL pull-up or the last driven value) or one drives (its value). The Simulator keeps each Net's count of Drivers not at Z and the sum of their PinIds: with one, the sum names it. Both are updated where an output's value changes (event apply) and recounted at power-on after `setOutput`.
+  - Traces identical. Others against Z3.1: bw1 +13 % (its 6530 and RAM buses), bus_load_z80 +5.5 %, the rest within ±2.6 %.
+  - Full debug suite 1374/1374 in 671 s; release `bw2001|bw80|bw1|bus load|typewriter` 178/178.
+  - Profile on Z4.1 with LTO (`build/profile-lto`, 6,700 samples by function): `runUntil` 31 %, the queue 21 %, 74LS244 7.4 %, `resolveNet` 5.3 %, 74LS00 packages 4.9 %, 74LS93 4.6 %, 74LS08 3.0 %, 74LS107 2.9 %, 2114 2.7 %, ROM 2.5 %, 74LS157 2.5 %. The non-LTO profile showed `GateFunction` at 9.8 %; with LTO it is inlined into the packages. Profiles from here come from `build/profile-lto`.
