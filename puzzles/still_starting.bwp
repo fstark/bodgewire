@@ -1,0 +1,5 @@
+# Still starting: bit 2 of every byte of RAM (IC3's column IO4) is stuck low, so the ROM's start-up, which clears the RAM and checks it back, never ends: the pattern the TV shows while it does so stays for ever. The keyboard is never read.
+machine bw80
+title "Still starting"
+brief "At power-on the TV shows the usual moment of moving pattern, but it never goes away: no picture, no cursor, and the keys do nothing."
+fault column IC3.IO4 0

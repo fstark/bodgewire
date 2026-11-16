@@ -1,0 +1,5 @@
+# Vertical stripes: the ROM_CS1 Trace from the multiplexer IC6 (2Y) to the ROM IC2 (CS1) is cracked, so the ROM's select floats high and it is never read: the CPU runs on an open bus. ROM_CS1 toggles at IC6 pin 7 and sits high at IC2 pin 20.
+machine bw80
+title "Vertical stripes"
+brief "The TV shows fine vertical stripes over the whole screen and never locks: no cursor ever appears, and the keys do nothing."
+fault crack IC6.2Y IC2.CS1 50%

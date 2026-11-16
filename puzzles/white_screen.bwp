@@ -1,0 +1,5 @@
+# White screen: IC14's output 3Y (a NOP gate, open collector) is stuck low, so D3 is held low on the CPU's side of the bus (the memories' side, MD3, is across R5): every opcode and byte the CPU reads has bit 3 clear, and it never gets going while CLK runs.
+machine bw80
+title "White screen"
+brief "The TV shows a plain white screen from the moment of power-on and never locks: no cursor ever appears, and the keys do nothing."
+fault stuck IC14.3Y 0

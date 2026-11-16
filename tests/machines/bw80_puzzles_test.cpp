@@ -22,6 +22,8 @@
 #include "machine/machine.hpp"
 #include "machine/puzzle.hpp"
 #include "netlist/diagnostic.hpp"
+#include "parts/ram2114.hpp"
+#include "sim/logic.hpp"
 #include "tv_page.hpp"
 
 using namespace bw;
@@ -41,10 +43,10 @@ Machine LoadPuzzle(const std::string& name) {
 }
 
 // The Puzzles, in BW80.md's order.
-constexpr std::array kPuzzles{"q_everywhere",  "doubled_lines",     "bottom_halves",
-                              "wrong_letters", "quotes_for_spaces", "plain_cursor",
-                              "blank_page",    "eight_keys",        "same_eight_keys",
-                              "no_print",      "rolling_screen",    "torn_picture"};
+constexpr std::array kPuzzles{
+    "q_everywhere",   "doubled_lines", "bottom_halves",  "wrong_letters",    "quotes_for_spaces",
+    "plain_cursor",   "blank_page",    "eight_keys",     "same_eight_keys",  "no_print",
+    "rolling_screen", "torn_picture",  "still_starting", "vertical_stripes", "white_screen"};
 
 using CodeMap = std::function<unsigned(unsigned)>;
 const CodeMap kSameCode = [](unsigned code) { return code; };
@@ -141,6 +143,25 @@ void CheckUnlocked(const LoadedCircuit& loaded, Bw80Run& run) {
         run.runTo(run.sim.now() + 20_ms);
         CHECK_FALSE(run.tv->tv().isLocked());
     }
+}
+
+// Changes of `net` over 10 us in 50 ns steps: a clock or select that moves, or one that is
+// still past a crack or a stuck gate.
+int Toggles(Bw80Run& run, NetId net) {
+    int toggles = 0;
+    LogicValue last = run.sim.value(net);
+    for (int i = 0; i < 200; ++i) {
+        run.sim.runUntil(run.sim.now() + 50'000);  // 50 ns
+        toggles += run.sim.value(net) != last ? 1 : 0;
+        last = run.sim.value(net);
+    }
+    return toggles;
+}
+
+NetId NetAt(const LoadedCircuit& loaded, const char* reference, const char* pin) {
+    const auto net = PinNet(loaded, reference, pin);
+    REQUIRE(net.has_value());
+    return *net;
 }
 
 // The picture is `page` and not the fault-free one.
@@ -385,5 +406,73 @@ TEST_CASE("bw80: torn_picture", "[machines][slow]") {
         CheckUnlocked(*loaded, run);
     }
     REQUIRE(machine.swap("IC18"));
+    CheckKScreen(machine);
+}
+
+TEST_CASE("bw80: still_starting", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 3 s simulated: runs in the release build");
+#endif
+    // Bit 2 of every RAM byte stuck low: the ROM's clear-and-check of its RAM never ends, and
+    // the power-on pattern stays (the fault-free K screen locks by 450 ms).
+    Machine machine = LoadPuzzle("still_starting");
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        INFO("seed " << seed);
+        const auto loaded = Bw80Built(machine);
+        Bw80Run run(*loaded, seed);
+        run.runTo(700_ms);
+        CHECK_FALSE(run.tv->tv().isLocked());
+        CHECK(InkCount(run.tv->tv().completedFrame()) > 2000);
+        const auto* ram = dynamic_cast<const Ram2114*>(loaded->components.at("IC3"));
+        REQUIRE(ram != nullptr);
+        int set = 0;
+        for (std::size_t a = 0; a < 1024; ++a) {
+            set += (ram->word(a) & 8) != 0 ? 1 : 0;  // IO4, bit 3 of the 4-bit word
+        }
+        CHECK(set == 0);
+    }
+    REQUIRE(machine.swap("IC3"));
+    CheckKScreen(machine);
+}
+
+TEST_CASE("bw80: vertical_stripes", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 1.5 s simulated: runs in the release build");
+#endif
+    // ROM_CS1 cut: the select moves at the multiplexer and sits high at the ROM.
+    Machine machine = LoadPuzzle("vertical_stripes");
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        INFO("seed " << seed);
+        const auto loaded = Bw80Built(machine);
+        Bw80Run run(*loaded, seed);
+        run.runTo(300_ms);
+        CHECK_FALSE(run.tv->tv().isLocked());
+        CHECK(Toggles(run, NetAt(*loaded, "IC6", "2Y")) > 0);
+        CHECK(Toggles(run, NetAt(*loaded, "IC2", "CS1")) == 0);
+        CHECK(run.sim.value(NetAt(*loaded, "IC2", "CS1")) == LogicValue::One);
+    }
+    REQUIRE(machine.mend(VerticalStripesCrack().layer, VerticalStripesCrack().at));
+    CheckKScreen(machine);
+}
+
+TEST_CASE("bw80: white_screen", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 1.5 s simulated: runs in the release build");
+#endif
+    // A NOP gate stuck low: D3 held low on the CPU's side while the clock runs (the memory
+    // side, MD3, may sit still too once the CPU is stuck: seed 1).
+    Machine machine = LoadPuzzle("white_screen");
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        INFO("seed " << seed);
+        const auto loaded = Bw80Built(machine);
+        Bw80Run run(*loaded, seed);
+        run.runTo(300_ms);
+        CHECK_FALSE(run.tv->tv().isLocked());
+        CHECK(InkCount(run.tv->tv().completedFrame()) < 1500);  // the frame's edge lines only
+        CHECK(Toggles(run, NetAt(*loaded, "IC1", "CLK")) > 0);
+        CHECK(Toggles(run, NetAt(*loaded, "IC1", "D3")) == 0);
+        CHECK(run.sim.value(NetAt(*loaded, "IC1", "D3")) == LogicValue::Zero);
+    }
+    REQUIRE(machine.swap("IC14"));
     CheckKScreen(machine);
 }

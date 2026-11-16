@@ -51,7 +51,7 @@ The ZX80's codes (LISTING, `tests/machines/bw80_screen.cpp`): space `$00`, `"` `
 | 12 | `torn_picture` | `fault stuck IC18.1Q_N 1` | the display file's row 23 holds the cursor; `isLocked()` false over a second | `swap("IC18")`: `KScreen` |
 | 13 | `still_starting` | `fault column IC3.IO4 0` | seeds 1–3: at 700 ms `isLocked()` false and the frame's `InkCount` over 2000 (the power-on pattern; the fault-free `K` screen locks by 450 ms); `IC3`'s `Ram2114::word(a) & 8` is 0 at every `a` (`IO4` is bit 3 of the 4-bit word, bit 2 of the byte through `Bw80Ram`) | `swap("IC3")`: `KScreen` |
 | 14 | `vertical_stripes` | `fault crack IC6.2Y IC2.CS1 50%` | seeds 1–3: at 300 ms `isLocked()` false; `Toggles` of `IC6.2Y`'s Net over 10 µs above 0, of `IC2.CS1`'s 0 (it floats high) | mend: `KScreen` |
-| 15 | `white_screen` | `fault stuck IC14.3Y 0` | seeds 1–3: at 300 ms `isLocked()` false and the frame's `InkCount` under 100; `Toggles` of `IC1.D3`'s Net 0 and of `IC2.O3`'s above 0 | `swap("IC14")`: `KScreen` |
+| 15 | `white_screen` | `fault stuck IC14.3Y 0` | seeds 1–3: at 300 ms `isLocked()` false and the frame's `InkCount` under 1500 (the frame's edge lines); `Toggles` of `IC1.CLK`'s Net above 0, of `IC1.D3`'s 0 and its value 0 | `swap("IC14")`: `KScreen` |
 
 The typed line of the picture Puzzles is `10 PRINT "HELLO 0123"` NEW LINE `LIST` NEW LINE (19 presses, about 3.4 s plus the ROM's work), so row 0 holds a line with a digit, a keyword, a string and spaces. A `PRINT` after a report loses its first key (the ROM takes it to leave the report), so a case types one command from a fresh `K` screen; the repair cases run from power-on again.
 

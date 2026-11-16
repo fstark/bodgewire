@@ -35,8 +35,8 @@ Design §3: BW80.md and BW80_DESIGN.md Puzzle sections, ADD_PUZZLE; `bw_ui` scre
 | 0 | Docs reviewed | `3fffc75` |
 | 1 | Rig | `49ad5f3` |
 | 2 | Picture Puzzles (1–7) | `e5bac3b` |
-| 3 | Keyboard and sync Puzzles (8–12) | this commit |
-| 4 | Dead Puzzles (13–15) | |
+| 3 | Keyboard and sync Puzzles (8–12) | `2915849` |
+| 4 | Dead Puzzles (13–15) | this commit |
 | 5 | Finish | |
 
 ## Implementation notes
@@ -46,3 +46,4 @@ Design §3: BW80.md and BW80_DESIGN.md Puzzle sections, ADD_PUZZLE; `bw_ui` scre
 - Phase 1: the rig as designed; `Bw80TestRomDirectory` no longer removes the shared directory (two release cases run in parallel use it: the 450 ns case failed under `ctest -j` once the Puzzle cases joined). Release `bw80` 17/17, debug fence green.
 - Phase 2: all seven as designed. The page a Puzzle's picture should show is built from the display file's codes through the fault's glyph set, but the cells past a row's end stay blank whatever the chain does to a space: no code is loaded there (the first page for Quotes for spaces drew them as quotes and failed); only Q everywhere fills them, with the HALT's glyph. The cursor under Quotes for spaces is an inverse `L`, as the mapping says (seen at 10×). Seeds 2 and 3 give the same pictures. Release 6–28 s a case; debug `every Puzzle builds` 4 s for seven. Release `bw80` 26/26; debug `bw80|manuals|puzzle` 38/38 in 122 s.
 - Phase 3: all five as designed. No PRINT's edit line after `PRINT 2+2` NEW LINE reads `2+s2l` (the syntax error marker before the last 2, then the `L` cursor). `PinNet` on a resistor's pad gives nothing useful, so Eight keys checks the column at the connector reads high (its pull-up kept) instead of naming `R15`. The user manual's and BW80.md's keys corrected (PRINT on O, LET on K). Seeds 2 and 3 as seed 1. `VerticalStripesCrack` declared here with the other three (phase 4 uses it). Release `bw80` 31/31 in 35 s; debug `bw80|manuals|puzzle` 43/43 in 129 s.
+- Phase 4: the three as designed but White screen's clue: the memory side of the bus (`MD3`) sits still on seed 1 once the CPU is stuck, so the clue is `D3` low and still at `IC1` while `CLK` runs (the brief and the spec say so now); a white frame still has about 900 ink points (the frame's edge lines), the case allows 1500. Still starting's pattern: over 2000 ink points, unlocked, every word of `IC3` with bit 3 clear, seeds 1–3. Release `bw80` 34/34 in 33 s.

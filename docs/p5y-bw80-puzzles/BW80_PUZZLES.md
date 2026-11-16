@@ -52,7 +52,7 @@ As built and measured (seed 1, seeds 2 and 3 as a robustness check; the dead one
 |---|---|---|---|---|---|
 | 13 | `still_starting` | Still starting | `IC3` column `IO4` (bit 2) stuck 0 | the pattern the TV shows for a moment at power-on never goes away (the ROM clears its RAM for ever); the keyboard does nothing | swap `IC3` |
 | 14 | `vertical_stripes` | Vertical stripes | crack on `ROM_CS1` (`IC6.2Y` → `IC2.CS1`, a two-pad Net): the ROM is never selected | fine vertical stripes over the whole screen, never locked; `ROM_CS1` toggles at `IC6` pin 7 and sits high at `IC2` pin 20 | mend |
-| 15 | `white_screen` | White screen | `IC14` output `3Y` stuck 0: `D3` held low on the CPU's side of the bus | a white screen, never locked; `D3` still at `IC1` while `MD3` toggles across `R5` | swap `IC14` |
+| 15 | `white_screen` | White screen | `IC14` output `3Y` stuck 0: `D3` held low on the CPU's side of the bus | a white screen, never locked; `D3` never rises at `IC1` while `CLK` runs (`MD3`, across `R5`, is the memories' side) | swap `IC14` |
 
 Links covered: stuck inputs (`IC16`, `IC9`, `IC10`), stuck outputs (`IC21`, `IC12`, `IC18`, `IC14`'s open-collector gate), five cracks (`LC2`, `KB2`, `A13`, `KBD_N`, `ROM_CS1`), a bridge, a dry Joint, a RAM column. Eight keys and The same eight keys look alike; a mend finds nothing on the second, and `IC10` pin 12's leg reads the pressed key. Blank page and White screen look alike at a glance; the TV locks on the first and not on the second, and the first still takes keys.
 
