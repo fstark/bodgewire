@@ -1,0 +1,112 @@
+# 140 — BW-80 — Machine Design
+
+How the Machine in [BW80.md](BW80.md) is built: netlist, Board, manuals, tests. The new code it needs (`MEMBRANEKB`, `EXPANSION`, the window's ZX80 look, `bw place`'s `at`) is P5x's: [BW80_MACHINE_DESIGN.md](../../p5x-bw80/BW80_MACHINE_DESIGN.md). The display chain and the netlist it grows from are P5v's: [BW80_VIDEO_DESIGN.md](../../p5v-bw80-video/BW80_VIDEO_DESIGN.md) §5. Recipe: [ADD_MACHINE.md](../../recipes/ADD_MACHINE.md).
+
+## Files
+
+Machine name `bw80`:
+
+```
+netlists/bw80.bwn                        the ZX80 (P5v), with J3 and J4
+roms/zx80_ic2.bin, zx80_ic2.md           the ZX80's ROM (P5v)
+roms/bw80_test.asm, .rom                 P5v's test ROM (every character), run through --roms
+boards/bw80/bw80.place                   every chip at its ZX80 position, the connectors, the passives beside their chips
+boards/bw80/bw80.kicad_pcb, .kicad_pro   Board (placed by bw place, routed by the user)
+manuals/bw80/user.md, service.md
+tests/machines/bw80_test.cpp             P5v's picture cases, then typing; built from the Board once there is one
+tests/machines/bw80_screen.{hpp,cpp}     reads the display file out of the two 2114s as text
+```
+
+## Memory map
+
+| Select | Addresses | Chip |
+|---|---|---|
+| `ROM_SEL_N` (`A14` low, `MREQ`), `CS2` = `A12` low | $0000–$0FFF, mirrored at $2000, $8000, $A000 | IC2 |
+| `RAM_SEL_N` (`A14` high, `MREQ`) through `R19` | $4000–$43FF, mirrored every 1K to $7FFF and from $C000 to $FFFF | IC3 (bits 7, 1, 0, 2), IC4 (bits 4, 3, 5, 6) |
+| `KBD_N` (`IORD_N`, `A0` low) | any even `IN` port | IC10: `KB0`–`KB4` on `D0`–`D4`, `EAR` on `D7`; `D5`, `D6` float (`D6` high through `R7`/`R28`) |
+| `IOWR_N` | any `OUT` | sets the vertical sync latch |
+
+The display file's echo: `A15` high over the RAM (`$C000` +) is where the ROM runs it; the same bytes. System variables at $4000 (LISTING): `D_FILE` at $400C points at the display file (a `$76`, then 24 rows of up to 32 codes, each ended by `$76`).
+
+## Netlist
+
+`netlists/bw80.bwn` as P5v left it (every chip of Searle's issue 2 schematic at its designator, [BW80_VIDEO_DESIGN.md](../../p5v-bw80-video/BW80_VIDEO_DESIGN.md) §5), with:
+
+| Change | Why |
+|---|---|
+| header: P5x, [BW80.md](BW80.md); "keys and edge connector" in; the cassette and modulator left out | the Machine |
+| `part J3 MEMBRANEKB` after `J2`; `A8`–`A15` lines gain `J3.A8` … `J3.A15`; `KB0`–`KB4` gain `J3.KB0` … `J3.KB4` | the keyboard (P5x §2) |
+| `part J4 EXPANSION`; `MD0`–`MD7` gain `J4.D0` … `J4.D7`; `RAM_CS_N` gains `J4.RAMCS_N`; `A0`–`A15` gain `J4.A0` … `J4.A15`; `INT_N`, `NMI_N`, `HALT_N`, `MREQ_N`, `IORQ_N`, `RD_N`, `WR_N`, `WAIT_N`, `BUSRQ_N`, `RESET_N`, `M1_N`, `RFSH_N` gain their `J4` pin; `PHI_N` gains `J4.PHI`; `net BUSAK_N IC1.BUSAK_N J4.BUSAK_N` (new: the Z80's pin was unconnected); `VCC` gains `J4.VCC5`, `GND` gains `J4.GND1 J4.GND2` | the edge connector (P5x §3); `A13` was a one-pin Net until now |
+| `INT_N` on `A6` | as P5v: `A6`'s line gains `J4.INT_N` beside `IC1.INT_N` (the ZX80's INT is the `A6` line) |
+
+Nothing else moves: the keyboard's pull-ups, IC10 and `KBD_N` are P5v's. The netlist stays loadable without warnings (a case checks it).
+
+### Connectors
+
+| Ref | Part | Pins (pad: name, Net) |
+|---|---|---|
+| `J1` | `POWER` | |
+| `J2` | `VIDEO` | `VIDEO`, `SYNC_N` (the Net `SYNC`), `GND` |
+| `J3` | `MEMBRANEKB` | 1–8 `A8`–`A15`; 9–13 `KB0`–`KB4` |
+| `J4` | `EXPANSION` | upper n at pad 2n − 1, lower n at pad 2n ([P5x §3](../../p5x-bw80/BW80_MACHINE_DESIGN.md#3-expansion--the-zx80s-edge-connector)): `D0`–`D7` = `MD0`–`MD7`, `RAMCS_N` = `RAM_CS_N`, `PHI` = `PHI_N`, the address and control lines by name; `SLOTA`, `SLOTB`, `NC9V`, `NC23` unconnected |
+
+## Board
+
+`boards/bw80/bw80.place`: the ZX80 issue 2 board's component area, from Searle's foil layout (ZX80: the silk drawing and the hole table, mm from the board's bottom left, the keyboard at the bottom). The ZX80 board is 155.5 mm wide and 204 mm deep, the keyboard its front 62 mm; the Board keeps the rest: **155.5 × 142 mm** (`size 155.5 142`), the back edge (the edge connector's) at the top of the view. Every chip stands upright with its notch at the back, as on the ZX80, which is `bw place`'s 0°. Positions are the DIP centres computed from the hole table (the two rows of holes 2.54 mm apart, 7.62 or 15.24 mm between rows), which `at` takes as the courtyard's centre; y measured from the back: y = 204 − Searle's y.
+
+```
+# BW-80 (Machine 140): the ZX80 issue 2 board's component area, after Grant Searle's foil
+# layout (docs/machines/140-bw80/BW80_DESIGN.md). Every chip stands with its notch at the back.
+size 155.5 142
+at IC1  64.0  66.2         # Z80, the middle
+at IC2  134.9 57.2         # ROM, right
+at IC3  14.4  48.3         # RAM, top left
+at IC4  28.5  48.3
+at IC5  90.6  80.1         # data latch
+at IC6  109.6 52.1         # ROM address multiplexers
+at IC7  109.7 80.1
+at IC8  90.5  52.1
+at IC9  28.5  76.3         # dots
+at IC10 14.4  76.3         # keyboard buffer
+at IC11 89.3  111.4        # the gates, the front row left to right: IC14 IC15 IC16 IC13 IC17 IC11 IC12 IC18 IC20
+at IC12 105.8 111.4
+at IC13 58.9  111.4
+at IC14 17.0  111.4
+at IC15 29.6  111.4
+at IC16 46.2  111.4
+at IC17 72.9  111.4
+at IC18 118.5 111.4
+at IC19 142.5 84.0         # HSYNC
+at IC20 131.3 111.4
+at IC21 128.5 84.0         # line counter
+```
+
+Then the panel parts: `edge J4 back left` (the expansion bus, lying along the back edge at the left, as the ZX80's slot), `edge J2 back 62%` (video, where the modulator sits), `edge J1 back 88%` (power, the 9 V socket's corner), `edge J3 front 30%` (the keyboard's tracks left the component area under IC14–IC16). The passives beside the chips they serve, as the drawing, each `next` chain short enough to stay clear of the next chip (an axial courtyard is about 10 × 3 mm, `next` never rotates): `R4`–`R12` in two columns in the gap between IC9 and IC1 (`next R4 IC9 right`, `next R5 R4 front` … `R8`; `next R9 R4 right`, then `R10`–`R12` chained front); `R1`–`R3` in front of IC10 (`next R1 IC10 front`, chained front); `R13`–`R17` in front of IC14 and IC15 (`next R13 IC14 front`, chained right); `R18`, `R19` in front of IC16; `R20` in front of IC15 beside `R15`; `R21`–`R23` in front of IC1; `R24`, `R25` and `C11` in front of IC17 and IC11; `X1` right of IC20; `R28` right of IC2; `C9` behind IC15 (`next C9 IC15 back`, the drawing's place); `RST1` in front of IC1 beside `R21`. A part the rules miss goes free, nearest its Nets (`placeFree`); a part the rules put off the Board or over another is refused, and the rule moves.
+
+The user routes it in KiCad (ADD_MACHINE §3), two layers, DRC 0; `bw check-board` ok. Then the per-Machine loops get `"bw80"` and the Machine cases build from the Board.
+
+## Manuals
+
+- `manuals/bw80/user.md`: `# BW-80`; what it does seen from outside (the TV, the `K` cursor, keyword entry, NEW LINE, the screen blanking while it thinks, the keyboard window and PC typing, paste; `SAVE` and `LOAD` with no recorder). Plain addresses and codes. The ZX80's own manual is the reference for its BASIC; this one says how the BW-80 is driven.
+- `manuals/bw80/service.md`: `## Components`, one bullet per reference in netlist order (IC1–IC21, `X1`, `RST1`, the resistors, the capacitors, `J1`–`J4`), each its role with its Nets: the P5v header's roles spelled out per chip (IC11's three jobs, IC12's four, IC13's six inverters, IC15's five units, IC16's three, IC17's four). Addresses plain.
+
+## Tests
+
+`tests/machines/bw80_test.cpp`, tag `[machines][slow]`; P5v's helpers kept (the netlist text, `Build`, `LockedFrames`, the page helpers). Until the Board exists the cases build the netlist as today; after it, `BoardCircuit` as `ball_test.cpp`, the "loads without warnings" case on the netlist.
+
+The screen reader `Bw80Screen` (`tests/machines/bw80_screen.{hpp,cpp}`): reads `D_FILE` from the two 2114s (`Ram2114::word`: IC3 holds bits 7, 1, 0, 2 as IO1–IO4, IC4 bits 4, 3, 5, 6) and returns the 24 rows as text, the ZX80's codes mapped to ASCII (LISTING's character set: $00 space, $01 `"`, $0C £, $0D `$`, $0E `:`, $0F `?`, $10–$1B `( ) - + * / = > < ; , .`, $1C–$25 digits, $26–$3F letters; bit 7 inverse, shown lower case; tokens $D5 (THEN) and up as their keyword in angle brackets, from `TKN-TABLE`), and the TV page expected from it (`ExpectedPage` over the ROM's glyphs) to compare with a locked frame's picture area, as P5v's `K` case does.
+
+Typing goes through `J3` (`KeyMatrixOf(loaded, "J3")->type(text)`, then a wake) and runs `presses × 180 ms + 300 ms` (a press is held 60 ms and released 120 ms; the ROM's processing and a frame).
+
+- **"bw80: netlist loads without warnings"** (P5v).
+- **"bw80: the test ROM shows every character"**, **"a 450 ns RAM misses the NOP"**, **"the ZX80 ROM shows its K cursor"** (P5v, release-only).
+- **"bw80: PRINT 2+2 typed through J3"** (release-only), seed 1: after the `K` cursor, `PRINT 2+2\n` typed; the display file's row 0 reads `4` and row 23 `0/0`; a locked frame's picture area matches the page expected from the display file.
+- **"bw80: a program is entered and run"** (release-only), seed 1: `10 LET A=6\n20 PRINT A*7\nRUN\n` (the `*` through SHIFT+P, the keywords through the tokenizer); row 0 `42`, row 23 `0/20`.
+- **"bw80: a key on a floating row does nothing"**: the netlist text edited so `J3.A8` is on a Net of its own; a held SHIFT changes no column; a held `Q` (row 2) still reads (cheap: no ROM needed, a few ms, in debug).
+- **Board** (after the routing): `check-board` ok; the cases above built from the Board; `session: bw80 with every instrument` (`tests/session/session_test.cpp`: the TV locked on the `K` screen by 400 ms, `matrixKeyboards() == {"J3"}`, `matrixKind("J3") == Bw80`, 32 Clips on IC1's buses, 4 Hooks, the probe on `NOP_EN`, the meter).
+
+Debug: P5v's picture cases run about 75–135 s each in debug and are release-only; the typing cases simulate about 1.5 s (`PRINT 2+2`: 5 presses) to 3 s (the program: 14 presses) and are release-only too (about 6–12 s each in release at 0.25×). Each case's simulated time and debug or release wall time go in the plan's notes.
+
+## Puzzles
+
+P5y: `machine bw80` in each file; none in this step.
