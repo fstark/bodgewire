@@ -79,6 +79,15 @@ P5z, on `netlists/bw2001.bwn` (ratio best of 3 over 2 s; the full log in [KERNEL
 | Fan-out masks: only loud entries visited | 0.344× | 495 | 100 | 1.07 | no |
 | Now (2026-11-16) | 0.36× | 509 | 95 | 1.07 | — |
 
+P5z2 ([KERNEL_PARTS.md](../p5z2-kernel-parts/KERNEL_PARTS.md)), kept when worth its complexity:
+
+| Change | `bw2001` | `bw80` | Kept |
+|---|---|---|---|
+| Before (P5z's end, measured again) | 0.368×, 509 instr. | 0.248×, 499 instr. | — |
+| Gate packages evaluate only the units whose inputs moved | 0.373×, 503 | 0.253×, 496 | yes |
+| 74LS93 and 74LS107 known-value paths | equal | equal | no |
+| Quiet D on the 74LS373 | — | equal (1.3 % fewer evaluations) | no |
+
 ## What we learned
 
 Per simulated µs on the test pattern: 6 applied events, 12 evaluations, ~8 queue pops; ~5,000 instructions in total, ~760 per applied event.

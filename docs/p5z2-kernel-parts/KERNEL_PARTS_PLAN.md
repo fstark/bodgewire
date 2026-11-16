@@ -2,65 +2,26 @@
 
 Spec: [KERNEL_PARTS.md](KERNEL_PARTS.md). Design: [KERNEL_PARTS_DESIGN.md](KERNEL_PARTS_DESIGN.md).
 
-Every phase ends with its fence:
-- `cmake --build --preset release` and `--preset debug` clean;
-- `clang-format` on the C++ files touched;
-- `bench/trace_check.sh` identical;
-- `bench/measure.sh build/measure/p5z2-<prev>.txt | tee build/measure/p5z2-<phase>.txt` (the baseline `p5z2-0.txt` taken in phase 1 before A, on `f010fb8`'s code), and the BW-80's evaluations over 1 s (`bw run netlists/bw80.bwn --time 1s`, the `evaluations` line), logged in the idea log with the lines the idea adds and its verdict (spec, Terms);
-- the full debug suite (gate packages and the 74LS373 are shared Parts), and release `bw2001|bw80|bw1|bus load|typewriter`;
-- one commit of this step's own paths, whose message names the tests run.
-
-A dropped idea is reverted before the next, its row still logged.
+Implemented 2026-11-16; user check pending. The phases and fences are in git history (`127939c`); results in the spec (Results).
 
 ## Status
 
-| Phase | Description | Status |
+| Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Docs reviewed | done |
-| 1 | A: gate packages unit by unit | done: kept |
-| 2 | B: 74LS93 and 74LS107 fast paths | |
-| 3 | C: quiet D on the 74LS373 | |
-| 4 | Finish | |
-
-## Phases
-
-### 1. A
-
-- Baseline: `bench/measure.sh > build/measure/p5z2-0.txt` and the BW-80's evaluations, before any change.
-- `EvalContext::readChanged`, `GatePackage::powerOn`, `first_`, `GatePackageSpec::evaluate(ctx, all)`, `EvaluatePackage`'s skip.
-- ADD_PART: the gate package row.
-- Tests as the spec says.
-- Measured; logged.
-- Commit: `parts: gate packages evaluate only the units whose inputs moved (P5z2 A)`.
-
-### 2. B
-
-- The 74LS93's reset read, then the 74LS107's known path, measured together as one idea and logged.
-- The 74LS90's reset form only if the 93's showed a gain.
-- Commit: `parts: 74LS93 and 74LS107 known-value paths (P5z2 B)`.
-
-### 3. C
-
-- The 74LS373's quiet `D`, and its tests.
-- ADD_PART: the Quiet Pins rule reworded (design, ADD_PART).
-- C's expected gain (2–3 % on the BW-80) is inside the ratio's noise: the BW-80's evaluation count and its instructions per event (`/usr/bin/time -l bw run netlists/bw80.bwn --time 1s`) decide.
-- Measured; logged.
-- Commit: `parts: 74LS373 D quiet while the latch is closed (P5z2 C)`.
-
-### 4. Finish
-
-- Final `bench/measure.sh` and the trace check.
-- Spec Results; ARCHITECTURE Performance and row P5z2 (done, date, links); OPTIMISATION_IDEAS History.
-- `bw_ui` screenshots of a BW-2001 and a BW-80 Puzzle viewed, ratio and UI ms noted.
-- Plan cut down to the phase table, log and notes.
-- Commit: `docs: P5z2 done, kernel Parts`.
+| 0 | Docs reviewed | `127939c` |
+| 1 | A: gate packages unit by unit | `fcb70a0` |
+| 2 | B: 74LS93 and 74LS107 known-value paths | dropped |
+| 3 | C: quiet D on the 74LS373 | dropped |
+| 4 | Finish | this commit |
 
 ## Idea log
 
 | # | Idea | bw2001 ratio | Instr./event | Cycles/event | Eval./event | bw80 | bw80 evaluations (1 s) | bus_load | Lines | Kept | Commit |
 |---|------|--------------|--------------|--------------|-------------|------|------------------------|----------|-------|------|--------|
 | 0 | P5z's end (`f010fb8`), measured again before A | 0.368× | 509 | 95 | 1.07 | 0.248× (499 instr., 90 cycles) | 180.2 M | 0.419× | — | — | `f010fb8` |
-| A | gate packages evaluate only the units with an input changed now (`readChanged`), all at power-on | 0.372–0.373× | 503 | 93 | 1.07 | 0.252–0.255× (496 instr., 88–89 cycles) | 180.2 M | 0.417× | +15 in `gate_package`, +6 `readChanged` | yes: small (BW-2001 −2 % cycles, BW-80 −1…2 %) for a few plain lines | this row's commit |
+| A | gate packages evaluate only the units with an input changed now (`readChanged`), all at power-on | 0.372–0.373× | 503 | 93 | 1.07 | 0.252–0.255× (496 instr., 88–89 cycles) | 180.2 M | 0.417× | +15 in `gate_package`, +6 `readChanged` | yes: small (BW-2001 −2 % cycles, BW-80 −1…2 %) for a few plain lines | `fcb70a0` |
+| B | 74LS93 reset read without `GateFunction`; 74LS107 `NextKnown` when `J`, `K`, state known | 0.376× | 503 | 92 | 1.07 | 0.254× | 180.2 M | 0.419× | +10 | no: instructions equal, the rest within noise | — |
+| C | 74LS373 `D` quiet while `LE` is a definite 0 | 0.373× | 503 | 93 | 1.07 | 0.254–0.255× (495 instr., 88 cycles) | 177.8 M | 0.416× | +12 | no: 1.3 % fewer BW-80 evaluations, no time saved | — |
 
 ## Implementation notes
 
@@ -79,3 +40,10 @@ A dropped idea is reverted before the next, its row still logged.
   - Kept under the new rule: steady over two runs, and about twenty plain lines.
   - Traces identical.
   - Full debug suite 1376/1376 in 622 s; release `bw2001|bw80|bw1|bus load|typewriter` 178/178.
+- B: instructions per event unchanged (503). With LTO, `GateFunction(And)` over two inputs was already inlined and folded in the 93, and the 107's `Next()` loop visits one combination when its inputs are known. The 74LS90 variant was not tried.
+- C: the BW-80's latch `IC5` closes and opens every character (`LE` from the load pulse), so `D` sleeps only between loads. The skipped evaluations were the cheapest kind (`LE` low, nothing driven).
+- ADD_PART: the Quiet Pins rule names the 74LS244 (the review's note). The rule's rewording for a closed latch was not made, since C was dropped.
+- Phase 4 (2026-11-16):
+  - Trace check identical.
+  - Screenshots viewed: `ghost_letter` (BW-2001, 0.37×, UI 2.3 ms) and `q_everywhere` (BW-80, 0.23×, UI 0.9 ms), pictures as before.
+  - The full debug suite ran on A's code (1376/1376); nothing in `src` or `tests` changed since.

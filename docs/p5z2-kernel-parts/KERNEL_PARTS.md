@@ -70,7 +70,22 @@ While `LE` reads a definite 0 (the latch closed), the eight `D` Pins are quiet (
 
 ## Results
 
-Filled in at the end.
+Measured 2026-11-16 (`bench/measure.sh`, release, best of 3, and `/usr/bin/time -l` on the BW-80):
+
+| Idea | BW-2001 | BW-80 | Verdict |
+|---|---|---|---|
+| before (P5z's end) | 0.368×, 509 instr., 95 cycles an event | 0.248×, 499 instr., 90 cycles | — |
+| A, gate packages unit by unit | 0.373×, 503, 93 | 0.253×, 496, 88 | kept: small, steady, about twenty lines |
+| B, 74LS93 and 74LS107 known-value paths | equal (503 instructions) | equal | dropped: LTO had already folded `GateFunction` into the 93, and the 107's loop was cheap for known values |
+| C, quiet D on the 74LS373 | — (none on the board) | 1.3 % fewer evaluations, 495 instr., ratio and cycles equal | dropped: no time saved |
+
+Traces identical throughout; no netlist slower. `bw_ui`: BW-2001 0.37× (UI 2.3 ms), BW-80 0.23× (UI 0.9 ms).
+
+**Far below the estimates** (A's 8–15 % on the BW-80 came out at 1–2 %). The estimates took each Part's share of the profile as what an idea could remove. But:
+- most gate package wakes come from the unit whose input moved, so there was little to skip;
+- with LTO, what was left in the 93 and 107 was already small.
+
+The cheap, exact Part-local ideas are now used up on both computers. What remains is the generic run loop and queue (about half the time) and the design-bending options, which are on the roadmap as potential rows.
 
 ## Done when
 
