@@ -25,7 +25,8 @@ namespace bw {
 struct LoadedPart {
     std::string reference;
     const PartInfo* info;
-    std::string value;  // resistor "value" parameter, else the Part name
+    std::string value;    // resistor "value" parameter, else the Part name
+    std::string marking;  // printed on the part beside its name: an oscillator's "freq" ("1MHz")
 };
 
 struct Connection {

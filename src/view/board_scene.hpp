@@ -80,6 +80,8 @@ public:
     std::string_view partName(std::size_t component) const;  // "74LS20", "R", "" if unknown
     // A resistor's value ("4k7"), else the Part name; "" if unknown.
     std::string_view value(std::size_t component) const { return info_[component].value; }
+    // What is printed on the part beside its name ("1MHz" on an oscillator); "" if nothing.
+    std::string_view marking(std::size_t component) const { return info_[component].marking; }
     std::string_view pinName(std::size_t component, std::size_t pad) const;  // "" if unknown
     bool powerPin(std::size_t component, std::size_t pad) const;             // PinKind::Power
     bool chip(std::size_t component) const;  // a PartKind::Chip of the design
@@ -90,6 +92,7 @@ public:
 private:
     struct ComponentInfo {
         std::string value;                  // LoadedPart::value: "74LS161", "4k7"
+        std::string marking;                // LoadedPart::marking: "1MHz"
         const PartInfo* part = nullptr;     // LoadedPart::info
         std::vector<std::string> pinNames;  // [pad], "" when unknown (resistors)
         std::vector<bool> powerPins;        // [pad]

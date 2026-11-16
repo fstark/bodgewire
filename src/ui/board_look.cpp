@@ -5,6 +5,8 @@
 #include <cfloat>
 #include <cmath>
 #include <cstddef>
+#include <exception>
+#include <format>
 #include <functional>
 #include <numbers>
 #include <optional>
@@ -18,7 +20,8 @@ namespace bw {
 namespace {
 
 constexpr std::int64_t kMm = 1'000'000;
-constexpr float kXray = 0.22f;  // a see-through part's opacity
+constexpr float kXray = 0.22f;            // a see-through part's opacity
+constexpr float kSmallestPrintPx = 4.0f;  // print on a part, below which it is left out
 
 // The Board's colours (P6, the user's pick of three): a dark mask; the copper under it, the front
 // green and the back (seen through the board) teal, the active layer bright and on top, the
@@ -122,6 +125,17 @@ void Print(ImDrawList& list, float size, ImVec2 centre, ImU32 colour, const std:
     }
 }
 
+// A text size for `text` in a box `along` x `across` pixels: `preferred`, shrunk to fit; 0 when
+// too small to read.
+float FitText(const std::string& text, float preferred, float along, float across) {
+    const float unit = ImGui::GetFont()->CalcTextSizeA(1.0f, FLT_MAX, 0, text.c_str()).x;
+    float size = std::min(preferred, across);
+    if (unit > 0) {
+        size = std::min(size, along / unit);
+    }
+    return size >= kSmallestPrintPx ? size : 0;
+}
+
 struct ChipBody {
     Box box;
     bool horizontal;  // pad rows along x
@@ -216,23 +230,14 @@ void DrawChip(ImDrawList& list, const LookMap& map, const BoardScene& scene, std
     list.PathArcTo(notchAt, notch, from, from + pi, 16);
     list.PathFillConvex(kNotch);
 
-    const float size = map.pixels(1'300'000);
-    if (size < 5) {
-        return;
-    }
-    // The part number, and its date code (year, week): one batch in early 1980 for most chips
-    // of a Board, an odd one from another week, as boards were stuffed from the stock at hand.
-    const std::size_t hash = std::hash<std::string>{}(component.reference);
-    const std::string date = hash % 7 == 0 ? "8001" : hash % 11 == 0 ? "7948" : "8006";
+    // The part number along the body, as large as the body takes, readable when zoomed out.
+    const ImVec2 a = map(body.min);
+    const ImVec2 b = map(body.max);
+    const float along = horizontal ? std::abs(b.x - a.x) : std::abs(b.y - a.y);
+    const float across = horizontal ? std::abs(b.y - a.y) : std::abs(b.x - a.x);
     const std::string part(scene.partName(k));
-    const ImVec2 centre = map(body.centre());
-    const float gap = size * 0.6f;
-    if (horizontal) {
-        Print(list, size, {centre.x, centre.y - gap}, kPrint, part, false);
-        Print(list, size * 0.8f, {centre.x, centre.y + gap}, kPrint, date, false);
-    } else {
-        Print(list, size, {centre.x + gap, centre.y}, kPrint, part, true);
-        Print(list, size * 0.8f, {centre.x - gap, centre.y}, kPrint, date, true);
+    if (const float size = FitText(part, map.pixels(2'200'000), along * 0.85f, across * 0.6f)) {
+        Print(list, size, map(body.centre()), kPrint, part, !horizontal);
     }
 }
 
@@ -248,9 +253,24 @@ void DrawCan(ImDrawList& list, const LookMap& map, const BoardScene& scene, std:
          kShadow, 1.2f);
     Rect(list, map, can, kCan, 1.2f);
     RectOutline(list, map, can.grown(-350'000), kCanRim, std::max(1.0f, map.pixels(250'000)), 1.0f);
-    const float size = map.pixels(1'100'000);
-    if (size >= 5) {
-        Print(list, size, map(can.centre()), kCanPrint, "OSC", can.height() > can.width());
+    // Its frequency, as a can is marked ("1.000MHz"); "OSC" if the netlist gives none.
+    std::string text = std::string(scene.marking(k));
+    if (text.ends_with("MHz")) {
+        try {
+            text = std::format("{:.3f}MHz", std::stod(text.substr(0, text.size() - 3)));
+        } catch (const std::exception&) {
+        }
+    }
+    if (text.empty()) {
+        text = "OSC";
+    }
+    const ImVec2 a = map(can.min);
+    const ImVec2 b = map(can.max);
+    const bool upright = can.height() > can.width();
+    const float along = upright ? std::abs(b.y - a.y) : std::abs(b.x - a.x);
+    const float across = upright ? std::abs(b.x - a.x) : std::abs(b.y - a.y);
+    if (const float size = FitText(text, map.pixels(2'000'000), along * 0.8f, across * 0.5f)) {
+        Print(list, size, map(can.centre()), kCanPrint, text, upright);
     }
 }
 

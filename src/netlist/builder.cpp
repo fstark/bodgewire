@@ -129,7 +129,13 @@ public:
                     value = param.value;  // only "value" is accepted
                 }
             }
-            loaded_->parts.push_back({decl.reference, part.info, std::move(value)});
+            std::string marking;
+            if (const auto freq = std::ranges::find(decl.params, "freq", &PartParam::name);
+                freq != decl.params.end()) {
+                marking = freq->value;
+            }
+            loaded_->parts.push_back(
+                {decl.reference, part.info, std::move(value), std::move(marking)});
         }
         for (const StuckSwitch& s : switches_) {
             Switch* sw = SwitchOf(*loaded_, s.reference);

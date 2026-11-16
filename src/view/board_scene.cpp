@@ -189,6 +189,7 @@ BoardScene::BoardScene(Board drawn, const Board& pristine, const LoadedCircuit& 
         for (const LoadedPart& part : design.parts) {
             if (part.reference == component.reference) {
                 info.value = part.value;
+                info.marking = part.marking;
                 info.part = part.info;
             }
         }
