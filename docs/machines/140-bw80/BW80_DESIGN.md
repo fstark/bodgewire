@@ -108,4 +108,26 @@ Debug: P5v's picture cases run about 75–135 s each in debug and are release-on
 
 ## Puzzles
 
-P5y: `machine bw80` in each file; none in this step.
+`machine bw80` in each file (BW80.md, Puzzles); tests in `tests/machines/bw80_puzzles_test.cpp` (release-only but the title and build cases), helpers in `tests/machines/bw80_rig.{hpp,cpp}`. Each Fault was tried with `bw run --tv` on seeds 1–3 before its brief was written (P5y plan notes).
+
+| File | Fault line | Symptom (seeds 1–3 the same) | Repair |
+|---|---|---|---|
+| `q_everywhere.bwp` | `fault stuck IC16.3B 1` | every cell past a row's text drawn as `Q` (`$36`, the `HALT`'s low bits), the margins full | swap `IC16` |
+| `doubled_lines.bwp` | `fault stuck IC21.QB 0` | glyph rows `0 0 2 2 4 4 6 6` | swap `IC21` |
+| `bottom_halves.bwp` | `fault crack IC21.QD IC8.4A 50%` | glyph rows `4 5 6 7 4 5 6 7` | mend |
+| `wrong_letters.bwp` | `fault bridge IC5.15 IC5.16` | the glyph of the code with bits 1 and 2 cleared unless both set: `;< LRILT "DCLLK <;23"` | cut the bridge |
+| `quotes_for_spaces.bwp` | `fault joint IC5.6` | the glyph of the code with bit 0 set: `""11"PRJNT""HFLLP"1133"`, the cursor an inverse `L` | resolder `IC5` pin 6 |
+| `plain_cursor.bwp` | `fault stuck IC12.2Y 0` | the cursor's `$B0` drawn as a plain `K` | swap `IC12` |
+| `blank_page.bwp` | `fault stuck IC9.CLK 1` | no dots; the cursor's cell a black square | swap `IC9` |
+| `eight_keys.bwp` | `fault crack IC10.A5 R15.1 50%` | `PRINT 12345` gives `1245`; `KB2` high at `J3` | mend |
+| `same_eight_keys.bwp` | `fault stuck IC10.A5 1` | as `eight_keys`; no crack to find | swap `IC10` |
+| `no_print.bwp` | `fault crack J3.A13 IC1.A13 50%` | `PRINT 2+2` leaves `2+s2l` in the edit line (the O key dead) | mend |
+| `rolling_screen.bwp` | `fault crack IC17.4Y IC11.4B 90%` | the display file right, the TV never locked; `IC10` keeps `KBD_N` | mend |
+| `torn_picture.bwp` | `fault stuck IC18.1Q_N 1` | the display file right, the TV never locked | swap `IC18` |
+| `still_starting.bwp` | `fault column IC3.IO4 0` | unlocked, over 2000 ink points at 700 ms; `IC3`'s bit 3 clear in every word | swap `IC3` |
+| `vertical_stripes.bwp` | `fault crack IC6.2Y IC2.CS1 50%` | unlocked; `ROM_CS1` moves at `IC6.2Y`, high and still at `IC2.CS1` | mend |
+| `white_screen.bwp` | `fault stuck IC14.3Y 0` | unlocked, under 1500 ink points (the frame's edges); `D3` low and still at `IC1` while `CLK` runs | swap `IC14` |
+
+Crack positions, from the Board's segments (a pad touched by one segment is an end of its Trace): `LC2` and `ROM_CS1` are two-pad Nets; `KB2` runs `IC10.12` – `R15.1` – `J3.11` with `R15.1` the junction, so a crack between `IC10.A5` and `R15.1` cuts `IC10` alone; `A13` runs `J3.6` – `IC1.3` – `J4.26` with `IC1.3` the junction; `KBD_N` has `IC17.11`, `IC10.1` and `IC11.13` at ends and a junction via near `IC17` and `IC11` with a branch to `IC10`, so 90 % between `IC17.4Y` and `IC11.4B` lies past the via and cuts `IC11.13` alone (10 % would cut `IC17` off from all).
+
+A line typed after a report loses its first key (the ROM takes it to leave the report): the cases type one command from a fresh `K` screen.

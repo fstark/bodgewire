@@ -20,6 +20,8 @@ Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice), `b1c73bc` 
 - A fault on a signal the program reads belongs on that signal's path (the chip that reads it, its Trace), not in the program that reads it: a ROM bit in a waiting loop is a scripted symptom in disguise (BW-2001 `snow`: the VIA's retrace input, not the editor's wait).
 - A memory fault in what the self-test reports through (a video RAM column) garbles the report too: fine, the garbling is a clue (BW-2001 `garbled_text`); check the report as it shows.
 - A character ROM cell changes one dot: a lit dot in a glyph's empty space shows; a gap in a stroke is hidden by its lit neighbours on the TV (BW-2001 `odd_e`).
+- A fault that misbehaves on every seed but differently (BW-80: the NOP condition ignoring `MD6` draws the cursor in the top right corner on seeds 2 and 3, not on seed 1) is out, as a seed-dependent one; a dead one whose clue differs by seed loses the clue (BW-80 `white_screen`: the memory side of the bus moves on seeds 2 and 3 only, so the clue is the CPU side still while the clock runs).
+- A chain's fault on a Machine whose CPU draws the picture (BW-80) shows in the picture while the display file in RAM stays right: the case compares a locked frame with the page the display file predicts through the fault's glyph set (rows permuted for a line counter bit, codes mapped for a latch bit), and the cells no code is loaded into stay blank whatever the chain does to a space.
 - Pin Faults (stuck input, dry Joint) show nothing on the Board: the clue is the leg against the pad (a touch on a chip pad reads the leg with F.Cu active, the pad with B.Cu). A stuck input's leg reads the right signal while the chip acts wrong; a dry Joint's leg differs from its pad.
 
 ## File: `puzzles/<name>.bwp`
@@ -40,20 +42,21 @@ fault crack R6.2 D5.2 51%
   - `fault stuck UA5.PB5 0 input`: the same on a pin that can also drive (a port pin): the chip reads the value, the Net is left alone, the pin drives nothing; without `input` such a pin forces its Net;
   - `fault joint U15.13`: dry Joint on a chip signal pin: the pin is off its pad's Net (an input floats high, an output drives only its leg); repaired by resoldering, not by a swap;
   - `fault crack A B N%`: Broken Trace on the Copper between pads A and B, `N%` along its crackable straight stretches; repaired by mending;
-  - `fault bridge U5.3 U5.4`: solder bridge between neighbouring pins; repaired by the Cut tool.
+  - `fault bridge U5.3 U5.4`: solder bridge between neighbouring pins of one chip (not a resistor's or a connector's); repaired by the Cut tool.
   - `fault cell U3.IO2 $1FF 0`: inside a RAM or ROM (2114, 2716, 2513, 2316B, 6102, 6530), bit `IO2` of word `$1FF` (the chip's own address: its `A` pins, bit 0 first; `$` hex or decimal) always reads 0; writes do not change it; repaired by swapping the chip;
   - `fault column U15.O1 0`: the same bit stuck in every word, inside the chip: the pin is fine while another chip drives the line; repaired by swapping;
   - `fault cell U2.D3 ram $3F 0`, `fault column U2.D0 rom 1`: a chip with several memories (the 6530's `rom` and `ram`) needs the memory's name before the word; the word is that memory's own address (`ram` `$00`–`$3F`); a chip with one memory takes no name;
   - an internal address line (the chip ignores `A0`, words pair up) is a stuck input: `fault stuck U3.A0 0`;
   - `fault switch SW1 closed` (stuck closed: joined from power-on, a press changes nothing) or `fault switch SW1 open` (never closes): on a `BUTTON` or `KEY`; repaired by swapping the switch. A stuck-closed key in a scanned matrix shows on every scan, and with two other held keys can make a ghost.
 - Check it loads and shows the symptom: `./build/debug/src/cli/bw run puzzles/<name>.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`). `--probe` reads the leg (the pin's own Net).
+- A typed command on a ZX80-like editor: the first key after a report is taken to leave the report, so a case types one command from a fresh power-on.
 - `bw_ui --press` is read once per UI frame: hold a scripted press at least 100 ms (`--press SW1:50ms:200ms`), or it may be missed. `bw run --tv x.bmp` writes the last TV frame alone, quicker to read than a cropped screenshot. Convert it to view it (`sips -s format png x.bmp --out x.png`).
 - A crack or dry Joint leaves a TTL input high, but a Net with only MOS inputs (2513, 2518, 2524) reads X, a random bit at every read: on a data or control input that gives noise, not a symptom. Cut a MOS clock (it never rises: a 2524 fades), or use `stuck` on a MOS input (typewriter `lookalikes`, `copies`).
 - `stuck` on a 6520/6522 port pin drives its Net (the port is bidirectional); a port pin cracked off reads high (its pull-up). For a port pin whose input has failed, add `input` (below).
 - A brief is one quoted string: no `\"` inside (write "the double quote").
 - `bw_ui --after` is wall time: on a slow Machine (BW-2001 0.15× in `bw_ui`) 3.5 s reaches about 0.5 s simulated; `bw run --tv` is quicker for trying Faults.
 - A short Trace stub at a large pad may have no crackable point: pick other pads or another `%`.
-- A crack only cuts one pad off alone if that pad is at an end of the routed Trace. Read the routing order first (the `segment`s of the Net in the `.kicad_pcb`); with the pad in the middle, crack on the other side and write the Symptom for the pads that float together (stopwatch `nineteen`).
+- A crack only cuts one pad off alone if that pad is at an end of the routed Trace. Read the routing order first (the `segment`s of the Net in the `.kicad_pcb`: a pad touched by one segment is an end, by two or more a junction; a via can be the junction); with the pad in the middle, crack on the other side and write the Symptom for the pads that float together (stopwatch `nineteen`). Then probe both sides (`bw run --probe A.PIN,B.PIN`: `-` is floating) to see which pads the position really cuts off (BW-80 `rolling_screen`: 90 % cuts the latch alone, 10 % the keyboard buffer too).
 
 ## Tests (in `tests/machines/<machine>_test.cpp`)
 
