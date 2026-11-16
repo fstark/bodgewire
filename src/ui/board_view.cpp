@@ -456,9 +456,9 @@ void BoardView::draw(ImVec2 size) {
         }
     };
     const Layer inactive = active_ == Layer::Front ? Layer::Back : Layer::Front;
-    // The chip under the cursor, while no single Net is: its Nets glow but its power rails, the
-    // pins at both ends of them marked, and its own power pins marked when connected (P6
-    // prototype).
+    // The part under the cursor, while no single Net is: its Nets glow but the power rails, the
+    // pins at both ends of them marked, and its own pins on a rail marked when connected (a
+    // chip's VCC and GND, a tied input, a pull-up's VCC end) (P6 prototype).
     const std::optional<std::size_t> wired = real && !lit ? chip() : std::nullopt;
     std::vector<NetId> glowing;
     std::vector<bool> used;    // [pad] of `wired`: on a Net that reaches another pad (rails)
@@ -500,8 +500,9 @@ void BoardView::draw(ImVec2 size) {
             for (std::size_t p = 0; p < pads.size(); ++p) {
                 const auto net = scene_->padNet(k, p);
                 const bool on = lit && net == lit;
-                const bool marked = (net && std::ranges::contains(glowing, *net)) ||
-                                    (k == wired && scene_->powerPin(k, p) && used[p]);
+                const bool marked =
+                    (net && std::ranges::contains(glowing, *net)) ||
+                    (k == wired && net && std::ranges::contains(rails, *net) && used[p]);
                 DrawPad(list, map, pads[p], on ? kHighlight : marked ? kPadGlow : kPadTin);
             }
         }
