@@ -13,8 +13,8 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 | 2 | ZX80 keys, the tokenizer, `MEMBRANEKB`, `EXPANSION` | `cf1630e` |
 | 3 | Session, CLI, capture, the window's ZX80 look | `101eeb4` |
 | 4 | Netlist with `J3`, `J4`; manuals; the typing cases | `13f4b0e` |
-| 5 | `bw place`: `size`, `at` | this commit |
-| 6 | Board: placed, routed by the user, wired into the tests | |
+| 5 | `bw place`: `size`, `at` | `261ca72` |
+| 6 | Board: placed, routed by the user, wired into the tests | placed: this commit; routing: the user |
 | 7 | Session case, release check, recipes, docs, full suite | |
 
 ## Phases
@@ -88,3 +88,4 @@ Fence: `ctest --preset debug -j 12` all green. Commit: `docs: P5x done, the BW-8
 - Phase 3: the window draws by the capture's kind; the cap loop (buttons, latch, the Session's held keys) is one template over both looks. The ZX80 look after Searle's overlay: black panel, blue caps, white letters and keywords above, yellow shifted legends (words above the digits and NEW LINE, symbols on the cap, graphics as a mosaic, arrows drawn). The Session case runs netlist-only (`Session(std::nullopt, …)`, as `bw_ui` runs a bench: `LoadNetlistMachine` wants a Board) and checks the press after the run pauses. Screenshot on `tests/data/bw80_keys.bwn` viewed: every key with its three legends, at 1.00×.
 - Phase 4: `J3` and `J4` on the netlist (46 + 13 pins, `BUSAK_N` a Net now); the ROM's report after a direct command reads `0/-2` (code 0, line -2: the edit line), not `0/0` as the Machine docs guessed (fixed there); after `RUN` of a two-line program `0/20`. The TV needs about 100 ms to lock again once the picture returns, so the PRINT case allows 600 ms. The display-file reader (`Bw80DisplayRows`) reads D_FILE out of IC3 and IC4. The Machine case for a floating keyboard row was dropped: the ROM scans the keys only once its RAM is cleared (160 ms, minutes in debug), and the Part's bench already proves the diode. Release: `PRINT 2+2` 6.8 s, the program 10 s, the four P5v cases unchanged; debug `bw80|manuals` green.
 - Phase 5: `size` and `at` as designed; a free part under `size` searches a 2.54 mm grid of the outline inside the bare margin for the spot nearest its Nets' parts (or the centre) whose courtyard, with the part gap around it, overlaps nothing placed; the edge groups go inside the outline with no widening (a group that does not fit "falls off" its edge). `next` beside an `at` part is deferred as beside a PET chip. 39 placement cases green in debug.
+- Phase 6, placement: the Machine design's chains needed two changes (`checkOverlaps` said so): one resistor column fits between the RAM chips and IC1, so `R4`–`R8` run down beside IC4 and `R9`–`R12` beside IC9; the keyboard pull-ups `R13`–`R17` are a row along the front with `R18`–`R20` in a second row under them. `RST1` goes free (beside IC4, near `RESET_N`'s parts). 11.24 m of wire, 155.5 × 142 mm; the SVG from `kicad-cli` viewed: the ZX80's layout. `place_drc_bw80` passes; `drc_bw80` reports the unrouted connections until the user routes.
