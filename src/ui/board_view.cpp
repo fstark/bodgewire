@@ -32,6 +32,8 @@ constexpr ImU32 kCourtyard = IM_COL32(190, 190, 190, 150);
 constexpr ImU32 kReference = IM_COL32(230, 230, 230, 200);
 constexpr ImU32 kPinOne = IM_COL32(230, 230, 230, 230);
 constexpr ImU32 kHighlight = IM_COL32(255, 190, 0, 255);
+// The selected part's box: white, apart from the gold wiring beside it.
+constexpr ImU32 kSelection = IM_COL32(245, 245, 240, 255);
 constexpr ImU32 kChipGold = IM_COL32(190, 140, 20, 255);  // a hovered chip's wiring (plain look)
 constexpr float kPlainDimShare = 0.35f;  // other traces while a chip's wiring shows
 constexpr ImU32 kDriverMark = IM_COL32(255, 255, 255, 255);
@@ -250,7 +252,7 @@ void DrawCourtyard(ImDrawList& list, const Mapper& map, const BoardComponent& co
         points.push_back(map(p));
     }
     const ImVec2 centre = Centre(points);
-    list.AddPolyline(points.data(), static_cast<int>(points.size()), lit ? kHighlight : kCourtyard,
+    list.AddPolyline(points.data(), static_cast<int>(points.size()), lit ? kSelection : kCourtyard,
                      ImDrawFlags_Closed, lit ? 2.0f : 1.0f);
 
     const float size = std::clamp(static_cast<float>(kReferenceMm * map.pixelsPerMm()),
@@ -683,7 +685,7 @@ void BoardView::draw(ImVec2 size) {
     if (real) {
         DrawUseReferences(list, look, *scene_);
         if (selected_) {
-            DrawUseSelection(list, look, *scene_, *selected_, kHighlight);
+            DrawUseSelection(list, look, *scene_, *selected_, kSelection);
         }
     }
     for (std::size_t k = 0; k < board.components.size() && !real; ++k) {
