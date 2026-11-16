@@ -18,6 +18,7 @@
 
 #include "bw80_screen.hpp"
 #include "devices/tv_input.hpp"
+#include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
 #include "netlist/parser.hpp"
@@ -49,18 +50,24 @@ std::vector<std::uint8_t> Glyphs() {
     return {rom->begin() + 0xE00, rom->end()};
 }
 
-// The netlist `text` built, with the test ROM in IC2 through a --roms directory when `testRom`.
+// A --roms directory with the test ROM in IC2.
+std::filesystem::path TestRomDirectory() {
+    const auto dir = std::filesystem::temp_directory_path() / "bw80_test_roms";
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    std::filesystem::create_symlink(std::filesystem::path(BW_ROOT_DIR) / "roms/bw80_test.rom",
+                                    dir / "IC2.rom");
+    return dir;
+}
+
+// The netlist `text` built without a Board (the text variants), with the test ROM in IC2
+// through a --roms directory when `testRom`.
 std::unique_ptr<LoadedCircuit> Build(const std::string& text, bool testRom) {
     auto netlist = ParseNetlist(text, "bw80.bwn");
     REQUIRE(netlist.has_value());
     ResolveContentsPaths(*netlist, BW_NETLIST_DIR);
     if (testRom) {
-        const auto dir = std::filesystem::temp_directory_path() / "bw80_test_roms";
-        std::filesystem::remove_all(dir);
-        std::filesystem::create_directories(dir);
-        std::filesystem::create_symlink(std::filesystem::path(BW_ROOT_DIR) / "roms/bw80_test.rom",
-                                        dir / "IC2.rom");
-        REQUIRE(ApplyRomDirectory(*netlist, dir).has_value());
+        REQUIRE(ApplyRomDirectory(*netlist, TestRomDirectory()).has_value());
     }
     auto result = BuildCircuit(*netlist);
     if (!result) {
@@ -70,6 +77,27 @@ std::unique_ptr<LoadedCircuit> Build(const std::string& text, bool testRom) {
     }
     REQUIRE(result.has_value());
     return std::move(*result);
+}
+
+// The Machine built from its Board (P5x), as ball_test's BoardCircuit; the test ROM through
+// --roms when `testRom`.
+std::unique_ptr<LoadedCircuit> BoardCircuit(bool testRom) {
+    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "bw80.bwn",
+                                      testRom ? std::optional(TestRomDirectory()) : std::nullopt);
+    if (!machine) {
+        for (const Diagnostic& d : machine.error()) {
+            UNSCOPED_INFO(Format(d));
+        }
+    }
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    if (!built) {
+        for (const Diagnostic& d : built.error()) {
+            UNSCOPED_INFO(Format(d));
+        }
+    }
+    REQUIRE(built.has_value());
+    return std::move(*built);
 }
 
 struct Frames {
@@ -192,7 +220,7 @@ TEST_CASE("bw80: the test ROM shows every character", "[machines][slow]") {
 #endif
     const std::uint64_t seed = GENERATE(1, 2);
     INFO("seed " << seed);
-    const auto loaded = Build(NetlistText(), true);
+    const auto loaded = BoardCircuit(true);
     const Frames f = LockedFrames(*loaded, seed, 3, kTestRomCap);
     REQUIRE(f.frames.size() == 3);
     CheckSynced(f);
@@ -226,7 +254,7 @@ TEST_CASE("bw80: the ZX80 ROM shows its K cursor", "[machines][slow]") {
 #endif
     // Sinclair's ROM after power-on: an empty program, the edit line's inverse K cursor at the
     // bottom left, the rest paper.
-    const auto loaded = Build(NetlistText(), false);
+    const auto loaded = BoardCircuit(false);
     const Frames f = LockedFrames(*loaded, 1, 3, 1000_ms);
     REQUIRE(f.frames.size() == 3);
     CheckSynced(f);
@@ -267,7 +295,7 @@ TEST_CASE("bw80: PRINT 2+2 typed through J3", "[machines][slow]") {
     // PRINT (K mode), 2, SHIFT+K, 2, NEW LINE. The answer at the top of the screen, the report
     // at the bottom (code 0, no error; the line -2, the edit line: a direct command), in the
     // display file and on the TV, which locks again about 100 ms after the picture returns.
-    auto loaded = Build(NetlistText(), false);
+    auto loaded = BoardCircuit(false);
     Run run(*loaded, 1);
     Type(run, *loaded, U"PRINT 2+2\n", 400_ms, 300_ms);
     const auto rows = Bw80DisplayRows(*loaded);
@@ -292,7 +320,7 @@ TEST_CASE("bw80: a program is entered and run", "[machines][slow]") {
 #endif
     // Two lines through the tokenizer (LET, PRINT, * as SHIFT+P), then RUN: 42 at the top, the
     // report 0/20 (no error, after line 20) at the bottom.
-    auto loaded = Build(NetlistText(), false);
+    auto loaded = BoardCircuit(false);
     Run run(*loaded, 1);
     Type(run, *loaded, U"10 LET A=6\n20 PRINT A*7\nRUN\n", 400_ms, 400_ms);
     const auto rows = Bw80DisplayRows(*loaded);

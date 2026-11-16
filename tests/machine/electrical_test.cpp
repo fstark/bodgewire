@@ -75,7 +75,7 @@ std::string NetOf(const Netlist& netlist, const std::string& pin) {
 TEST_CASE("electrical: uncracked board gives the design Nets", "[machine]") {
     for (const std::string name :
          {"test_pattern", "counter", "chaser", "dice", "stopwatch", "ball", "knob", "tennis",
-          "message", "typewriter", "heartbeat", "led_computer", "bw1", "bw2001"}) {
+          "message", "typewriter", "heartbeat", "led_computer", "bw1", "bw2001", "bw80"}) {
         INFO(name);
         const Design design = LoadDesign(name);
         const auto electrical =
