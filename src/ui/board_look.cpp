@@ -350,11 +350,14 @@ void DrawResistor(ImDrawList& list, const LookMap& map, const BoardScene& scene,
     // A capsule: a straight middle and two round ends; the shadow the same, offset.
     const float straight = std::max(0.0f, bodyLength - 2 * half);
     const float end = straight / 2;
+    // Round ends that do not overlap the middle: nothing shows twice when see-through.
+    const float heading = std::atan2(along.y, along.x);
+    const float quarter = std::numbers::pi_v<float> / 2;
     const auto capsule = [&](float lift, ImU32 colour) {
-        list.AddQuadFilled(at(-end, -half + lift), at(end, -half + lift), at(end, half + lift),
-                           at(-end, half + lift), colour);
-        list.AddCircleFilled(at(-end, lift), half, colour);
-        list.AddCircleFilled(at(end, lift), half, colour);
+        // One convex outline, both ends' arcs: no seam, no overlap.
+        list.PathArcTo(at(end, lift), half, heading - quarter, heading + quarter, 16);
+        list.PathArcTo(at(-end, lift), half, heading + quarter, heading + 3 * quarter, 16);
+        list.PathFillConvex(colour);
     };
     capsule(map.pixels(250'000), kShadow);
     capsule(0, kResistorBody);
