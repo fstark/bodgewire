@@ -1,6 +1,7 @@
 add_library(bw_view STATIC
   board_scene.cpp
   digit_shape.cpp
+  focus.cpp
   keyboard_layout.cpp
   matrix_keyboard_layout.cpp
   time_text.cpp
