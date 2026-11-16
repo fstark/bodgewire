@@ -32,6 +32,8 @@ constexpr ImU32 kCourtyard = IM_COL32(190, 190, 190, 150);
 constexpr ImU32 kReference = IM_COL32(230, 230, 230, 200);
 constexpr ImU32 kPinOne = IM_COL32(230, 230, 230, 230);
 constexpr ImU32 kHighlight = IM_COL32(255, 190, 0, 255);
+constexpr ImU32 kChipGold = IM_COL32(190, 140, 20, 255);  // a hovered chip's wiring (plain look)
+constexpr float kPlainDimShare = 0.35f;  // other traces while a chip's wiring shows
 constexpr ImU32 kDriverMark = IM_COL32(255, 255, 255, 255);
 constexpr float kDriverMarkGap = 5.0f;  // px outside the pad, outside the hover ring
 constexpr ImU32 kProbeRed = IM_COL32(220, 30, 30, 255);
@@ -45,7 +47,6 @@ constexpr std::int64_t kBridgeWidth = 600'000;  // nm
 constexpr std::int64_t kBlobRadius = 600'000;   // covers the gap of a cracked 0.2 mm Trace
 constexpr float kBlobMinPx = 3;
 constexpr float kInactiveAlpha = 0.35f;
-constexpr float kInactiveHighlightAlpha = 0.6f;
 constexpr double kReferenceMm = 1.5;
 constexpr float kReferenceMinPx = 10;
 constexpr float kReferenceMaxPx = 28;
@@ -459,7 +460,7 @@ void BoardView::draw(ImVec2 size) {
     // The part under the cursor, while no single Net is: its Nets glow but the power rails, the
     // pins at both ends of them marked, and its own pins on a rail marked when connected (a
     // chip's VCC and GND, a tied input, a pull-up's VCC end) (P6 prototype).
-    const std::optional<std::size_t> wired = real && !lit ? chip() : std::nullopt;
+    const std::optional<std::size_t> wired = !lit ? chip() : std::nullopt;
     std::vector<NetId> glowing;
     std::vector<bool> used;    // [pad] of `wired`: on a Net that reaches another pad (rails)
     std::vector<NetId> rails;  // Nets a power pin is on: VCC and GND, never glowing
@@ -532,9 +533,31 @@ void BoardView::draw(ImVec2 size) {
         drawTraces(inactive, kInactiveAlpha, 1.0f, true);  // bright gold on both layers
         drawTraces(active_, 1.0f, 1.0f, true);
     } else {
+        // The plain look: the same selections as the real one (P6), drawn on bare copper. The
+        // other traces first (dimmed while a chip's wiring shows), then that wiring in dim gold,
+        // then the Net under the cursor in bright gold, both on both layers.
         list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), kBoardGreen);
-        drawTraces(inactive, kInactiveAlpha, kInactiveHighlightAlpha, false);
-        drawTraces(active_, 1.0f, 1.0f, false);
+        const float dim = glowing.empty() ? 1.0f : kPlainDimShare;
+        for (const Layer layer : {inactive, active_}) {
+            const float alpha = (layer == active_ ? 1.0f : kInactiveAlpha) * dim;
+            const ImU32 colour =
+                WithAlpha(layer == Layer::Front ? kFrontCopper : kBackCopper, alpha);
+            for (std::size_t t = 0; t < board.traces.size(); ++t) {
+                const auto net = scene_->traceNet(t);
+                const bool selected = net && (net == lit || std::ranges::contains(glowing, *net));
+                if (board.traces[t].layer == layer && !selected) {
+                    DrawTrace(list, map, board.traces[t], colour);
+                }
+            }
+        }
+        for (std::size_t t = 0; t < board.traces.size(); ++t) {
+            const auto net = scene_->traceNet(t);
+            if (net && std::ranges::contains(glowing, *net)) {
+                DrawTrace(list, map, board.traces[t], kChipGold);
+            }
+        }
+        drawTraces(inactive, kInactiveAlpha, 1.0f, true);
+        drawTraces(active_, 1.0f, 1.0f, true);
     }
 
     for (const LedTag& led : leds_) {
