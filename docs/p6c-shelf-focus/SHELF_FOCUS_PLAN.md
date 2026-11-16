@@ -24,3 +24,4 @@ P6c implemented 2026-11-17, user check pending.
 - Clicks (shelf cells, window clicks, close buttons, keys, `Esc`) are checked by reading the code only: the agent cannot drive the mouse. User check.
 - Full release suite: 1413 tests pass in 75 s.
 - Release gate: `machines/110-led-computer/led_computer.bwn --group U1.A0:8000,U1.D0 --sample 100ns --hook U1.RW,U1.A0,U1.A1,U1.D0 --timebase 200ns --delay 1us --probe U1.RW --meter D1.A --focus analyzer`: **1.00×, UI 0.9 ms**; the focused analyzer keeps its gold behind the scope.
+- User check (2026-11-17): works; the analyzer and scope drawings told apart (dark analyzer with clip leads, beige scope with knobs and sockets); a powered-off-only tool owning the focus framed in red. Screenshot viewed: the Stopwatch with `--hook U1.1 --clip U1.1 --focus iron`.

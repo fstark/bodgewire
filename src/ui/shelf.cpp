@@ -22,6 +22,7 @@ constexpr float kGroupGap = 20.0f;
 constexpr float kGrayed = 0.35f;
 constexpr ImU32 kShelfWood = IM_COL32(48, 38, 30, 255);
 constexpr ImU32 kShelfEdge = IM_COL32(92, 74, 58, 255);
+constexpr ImU32 kFocusBlocked = IM_COL32(230, 50, 40, 255);  // the focus on a tool that can't work
 constexpr ImU32 kHover = IM_COL32(255, 255, 255, 40);
 constexpr ImU32 kKeyLetter = IM_COL32(200, 190, 175, 200);
 constexpr ImVec4 kAmber{1.0f, 0.7f, 0.1f, 1.0f};
@@ -242,7 +243,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
         }
         DrawItem(list, entry.item, min, max, look);
         if (owner && !inert && focus.owner() == *owner) {
-            list.AddRect({min.x - 2, min.y - 2}, {max.x + 2, max.y + 2}, kFocusGold, 6.0f, 0, 2.0f);
+            // Red while the tool that owns the focus cannot work (the power is on).
+            list.AddRect({min.x - 2, min.y - 2}, {max.x + 2, max.y + 2},
+                         unpowered ? kFocusBlocked : kFocusGold, 6.0f, 0, 2.0f);
         }
         if (entry.key != nullptr) {
             const float size = ImGui::GetFontSize() * 0.8f;

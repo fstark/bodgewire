@@ -232,34 +232,64 @@ void Keyboard(Pen& p, const ItemLook& look) {
     p.disc(48, 15, 3, look.lit ? kGreen : kLampDark);
 }
 
-void Instrument(Pen& p, const ItemLook& look, bool scope) {
-    p.box(4, 10, 52, 46, kCase, 3);
-    p.frame(4, 10, 52, 46, kCaseEdge, 1, 3);
-    p.box(8, 14, 38, 38, look.lit ? kScreenOn : kScreenOff, 2);
-    if (look.lit && scope) {
+// A beige bench scope: a square screen with a graticule and a sine, knobs down the right, two
+// probe sockets under the screen.
+void Scope(Pen& p, const ItemLook& look) {
+    p.box(5, 6, 51, 48, kCase, 3);
+    p.frame(5, 6, 51, 48, kCaseEdge, 1, 3);
+    p.box(9, 10, 37, 36, look.lit ? kScreenOn : kScreenOff, 3);
+    if (look.lit) {
+        p.line(23, 11, 23, 35, IM_COL32(60, 120, 80, 255), 0.8f);
+        p.line(10, 23, 36, 23, IM_COL32(60, 120, 80, 255), 0.8f);
         std::array<ImVec2, 25> sine{};
         for (std::size_t i = 0; i < sine.size(); ++i) {
             const float t = static_cast<float>(i) / static_cast<float>(sine.size() - 1);
-            sine[i] = {10 + 26 * t, 26 - 7 * std::sin(t * 2 * std::numbers::pi_v<float> * 1.5f)};
+            sine[i] = {11 + 24 * t, 23 - 8 * std::sin(t * 2 * std::numbers::pi_v<float> * 1.5f)};
         }
         p.polyline(sine, kTrace, 1.5f);
-    } else if (look.lit) {
-        for (int lane = 0; lane < 3; ++lane) {
-            const float hi = 17 + static_cast<float>(lane) * 7, lo = hi + 4;
-            const std::array<ImVec2, 8> square{
-                {{10, lo}, {16, lo}, {16, hi}, {23, hi}, {23, lo}, {29, lo}, {29, hi}, {36, hi}}};
-            p.polyline(square, kTrace, 1.2f);
+    }
+    for (float y = 14; y < 36; y += 9) {
+        p.disc(44, y, 3.5f, kDarkMetal);
+        p.line(44, y, 44, y - 3, kWhite, 1);
+    }
+    p.ring(15, 42, 2.5f, kDarkMetal, 1.5f);
+    p.ring(25, 42, 2.5f, kDarkMetal, 1.5f);
+    p.disc(44, 43, 1.8f, look.lit ? kGreen : kLampDark);  // pilot lamp
+}
+
+// A dark, low logic analyzer: a wide screen of coloured lanes, its pod's coloured clip leads
+// fanning out below.
+void Analyzer(Pen& p, const ItemLook& look) {
+    constexpr std::array<ImU32, 6> kLeads{
+        IM_COL32(255, 230, 0, 255), IM_COL32(0, 230, 255, 255),   IM_COL32(255, 60, 220, 255),
+        IM_COL32(255, 140, 0, 255), IM_COL32(140, 255, 100, 255), IM_COL32(110, 160, 255, 255)};
+    for (std::size_t i = 0; i < kLeads.size(); ++i) {
+        const float x0 = 20 + static_cast<float>(i) * 3;
+        const float x1 = 8 + static_cast<float>(i) * 8;
+        p.line(x0, 34, x1, 47, kLeads[i], 1.5f);
+        p.box(x1 - 1.5f, 47, x1 + 1.5f, 52, kLeads[i], 0.5f);
+    }
+    p.box(3, 10, 53, 34, IM_COL32(45, 52, 66, 255), 3);
+    p.frame(3, 10, 53, 34, IM_COL32(90, 100, 120, 255), 1, 3);
+    p.box(6, 13, 44, 31, look.lit ? IM_COL32(12, 16, 24, 255) : kScreenOff, 1.5f);
+    if (look.lit) {
+        for (std::size_t lane = 0; lane < 4; ++lane) {
+            const float hi = 14.5f + static_cast<float>(lane) * 4, lo = hi + 2.5f;
+            const float shift = static_cast<float>(lane) * 2;
+            const std::array<ImVec2, 8> square{{{7, lo},
+                                                {13 + shift, lo},
+                                                {13 + shift, hi},
+                                                {22 + shift, hi},
+                                                {22 + shift, lo},
+                                                {32 - shift, lo},
+                                                {32 - shift, hi},
+                                                {43, hi}}};
+            p.polyline(square, kLeads[lane], 1.0f);
         }
     }
-    if (scope) {
-        p.disc(45, 19, 3.5f, kDarkMetal);
-        p.disc(45, 30, 3.5f, kDarkMetal);
-    } else {
-        for (float y = 16; y < 38; y += 6) {
-            p.box(42, y, 48, y + 3.5f, kDarkMetal, 1);
-        }
-    }
-    p.disc(46, 42, 1.8f, look.lit ? kGreen : kLampDark);  // pilot lamp
+    p.box(47, 14, 50, 17, kDarkMetal, 0.5f);
+    p.box(47, 20, 50, 23, kDarkMetal, 0.5f);
+    p.disc(48.5f, 29, 1.6f, look.lit ? kGreen : kLampDark);  // pilot lamp
 }
 
 void Meter(Pen& p, const ItemLook& look) {
@@ -339,10 +369,10 @@ void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLoo
         Keyboard(p, look);
         break;
     case Item::Analyzer:
-        Instrument(p, look, false);
+        Analyzer(p, look);
         break;
     case Item::Scope:
-        Instrument(p, look, true);
+        Scope(p, look);
         break;
     case Item::Meter:
         Meter(p, look);

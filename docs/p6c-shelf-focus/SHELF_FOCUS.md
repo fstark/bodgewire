@@ -22,6 +22,8 @@ P6b settled what replaces it: one **shelf** along the bottom with drawings of th
 | How the drawings are made | vector, in code (ImDrawList, as the Board's parts), no image assets |
 | Mend and Resolder | one soldering iron: a click on a chip pin resolders it, anywhere else mends a crack there; key `M` (`R` kept as an alias). Five Board tools, as in UX_DESIGN |
 
+After the user check (2026-11-17): it works; looks to improve later. The analyzer and scope drawings looked the same: the analyzer is now a dark, low box with coloured lanes and a fan of clip leads, the scope a beige box with a square screen, knobs and probe sockets. A tool that owns the focus but cannot work (the power is on) is framed in red, not gold.
+
 Decided while designing (2026-11-17), for the user to overrule:
 
 - **Gold.** One focus gold, brighter than the Board's dim selection gold: `IM_COL32(255, 196, 40, 255)`, a 2 px frame round the owner's shelf drawing and round its instrument window. The keyboard's typing edge (amber, P4o) is left as it is; UX_DESIGN's "if the two golds confuse" applies.
