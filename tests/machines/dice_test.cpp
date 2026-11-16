@@ -7,6 +7,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
@@ -19,7 +20,7 @@ namespace {
 using enum LogicValue;
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "dice.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("dice"));
     REQUIRE(result.has_value());
     return std::move(*result);
 }
@@ -94,7 +95,7 @@ TEST_CASE("dice: six roll lengths give six faces", "[machines]") {
 }
 
 TEST_CASE("dice: the Board build rolls six faces", "[machines]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "dice.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("dice"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -108,7 +109,7 @@ TEST_CASE("dice: the Board build rolls six faces", "[machines]") {
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -139,8 +140,7 @@ void CheckSixFaces(const Machine& machine) {
 TEST_CASE("dice: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"dead_button", "loaded_dice", "seven", "odd_dice"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "dice");
         CHECK_FALSE(puzzle->title.empty());

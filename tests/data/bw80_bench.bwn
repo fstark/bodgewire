@@ -1,6 +1,6 @@
 # BW-80 chips bench (P5u, docs/p5u-bw80-chips/BW80_CHIPS_DESIGN.md §6): the ZX80's CPU, ROM, RAM
 # and data bus at their reference designators (Grant Searle's redrawn ZX80 circuit, issue 2),
-# running roms/bw80_bench.asm. The CPU side of the data bus is D0-D7, the memory side MD0-MD7
+# running machines/140-bw80/roms/bw80_bench.asm. The CPU side of the data bus is D0-D7, the memory side MD0-MD7
 # (the schematic's D0'-D7'), joined by R4-R11 (1k): the RAM shows a character code on MD while
 # the 74LS05s force a NOP onto D.
 #
@@ -14,7 +14,7 @@ part J1   POWER
 part X1   OSC freq=6.5MHz
 part RST1 POR time=1ms      # the ZX80's R21/C10
 part IC1  Z80
-part IC2  2332 select=LL contents=../../roms/bw80_bench.rom
+part IC2  2332 select=LL contents=../../machines/140-bw80/roms/bw80_bench.rom
 part IC3  2114 access=300ns
 part IC4  2114 access=300ns
 part IC5  74LS373           # RAM data latch

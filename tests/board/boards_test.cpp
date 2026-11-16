@@ -5,6 +5,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "board/board_check.hpp"
 #include "board/kicad_board.hpp"
 
@@ -18,10 +19,9 @@ struct Loaded {
 };
 
 Loaded Load(const std::string& name) {
-    auto circuit = LoadNetlistFile(std::string(BW_NETLIST_DIR) + "/" + name + ".bwn");
+    auto circuit = LoadNetlistFile(test::NetlistPath(name));
     REQUIRE(circuit.has_value());
-    auto board =
-        ReadKicadBoardFile(std::string(BW_BOARD_DIR) + "/" + name + "/" + name + ".kicad_pcb");
+    auto board = ReadKicadBoardFile(test::BoardPath(name));
     if (!board) {
         for (const Diagnostic& d : board.error()) {
             UNSCOPED_INFO(Format(d));

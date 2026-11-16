@@ -1,4 +1,0 @@
-# 080 Message display: panel parts and ROMs (docs/machines/080-message/MESSAGE_DESIGN.md, Board)
-edge J1 left middle      # power
-edge J2 back right       # TV
-row front middle U14 U15 # the ROMs: DIP-24, no slot in the chip grid

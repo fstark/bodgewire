@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "../paths.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace bw;
@@ -15,7 +16,7 @@ namespace {
 using Names = std::vector<std::string>;
 
 std::unique_ptr<LoadedCircuit> Counter() {
-    auto design = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    auto design = LoadNetlistFile(test::NetlistPath("counter"));
     REQUIRE(design.has_value());
     return std::move(*design);
 }
@@ -160,7 +161,7 @@ TEST_CASE("manual: load with missing files", "[manual]") {
     const auto design = Counter();
     const auto root = std::filesystem::temp_directory_path() / "bw_manuals_empty";
     std::filesystem::create_directories(root);
-    const LoadedManuals loaded = LoadManuals(root, "counter", *design);
+    const LoadedManuals loaded = LoadManuals(root, root / "datasheets", *design);
     CHECK(loaded.problems.empty());
     CHECK_FALSE(loaded.manuals.user);
     CHECK_FALSE(loaded.manuals.service);

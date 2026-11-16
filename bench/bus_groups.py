@@ -13,7 +13,7 @@ Runs a netlist with every Net recorded, then gives, per simulated µs and per Bu
 A Bus is the Nets named PREFIX<number>, two or more (A0-A15); --buses names the prefixes instead.
 
 Run from the repository root, release built:
-  bench/bus_groups.py netlists/bus_load.bwn [--time 60ms] [--seed 1] [--buses A,D,MD]
+  bench/bus_groups.py bench/bus_load.bwn [--time 60ms] [--seed 1] [--buses A,D,MD]
 Options it does not know go to `bw run` (--type J3:100ms:HI).
 """
 

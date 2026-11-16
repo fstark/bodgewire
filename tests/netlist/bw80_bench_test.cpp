@@ -1,5 +1,5 @@
 // The P5u bench (tests/data/bw80_bench.bwn): the ZX80's Z80, 2332, 2114s behind the data bus
-// resistors, NOP gates, 74LS373 and 74LS365, running roms/bw80_bench.asm.
+// resistors, NOP gates, 74LS373 and 74LS365, running machines/140-bw80/roms/bw80_bench.asm.
 
 #include <cstddef>
 #include <cstdint>

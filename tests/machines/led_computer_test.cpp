@@ -12,6 +12,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/ram2114.hpp"
@@ -30,7 +31,7 @@ constexpr Time kPowerOnReset = 20_ms;
 constexpr Time kStep = 124'780_us;  // one latch write to the next (docs: LED_COMPUTER_DESIGN)
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "led_computer.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("led_computer"));
     if (!result) {
         for (const Diagnostic& d : result.error()) {
             UNSCOPED_INFO(Format(d));
@@ -42,7 +43,7 @@ std::unique_ptr<LoadedCircuit> DesignCircuit() {
 
 // Built from the routed Board (the Machine as the player gets it).
 std::unique_ptr<LoadedCircuit> MachineCircuit() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "led_computer.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("led_computer"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -51,8 +52,7 @@ std::unique_ptr<LoadedCircuit> MachineCircuit() {
 
 // The reset vector, from the assembled ROM (so the test follows the program).
 std::uint16_t ResetVector() {
-    const auto words =
-        ReadRomContents(std::filesystem::path(BW_ROM_DIR) / "led_computer.rom", 2048, 8);
+    const auto words = ReadRomContents(test::RomPath("led_computer", "led_computer.rom"), 2048, 8);
     REQUIRE(words.has_value());
     return static_cast<std::uint16_t>((*words)[0x7FC] | (*words)[0x7FD] << 8);
 }
@@ -227,7 +227,7 @@ TEST_CASE("led_computer: Reset restarts the light", "[machines]") {
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -274,8 +274,7 @@ TEST_CASE("led_computer: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"lights_out", "sleeper", "full_house", "three_lights", "first_light",
                              "lightless", "blackout"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "led_computer");
         CHECK_FALSE(puzzle->title.empty());

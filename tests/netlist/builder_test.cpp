@@ -11,6 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "parts/mos6530.hpp"
 #include "parts/ram2114.hpp"
 #include "sim/simulator.hpp"
@@ -275,7 +276,7 @@ TEST_CASE("builder: LoadNetlistFile missing file", "[netlist]") {
 }
 
 TEST_CASE("builder: ConnectorNet finds the VIDEO pins", "[netlist]") {
-    const auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    const auto result = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(result.has_value());
     const auto video = ConnectorNet(**result, "VIDEO", "VIDEO");
     const auto syncN = ConnectorNet(**result, "VIDEO", "SYNC_N");
@@ -286,13 +287,13 @@ TEST_CASE("builder: ConnectorNet finds the VIDEO pins", "[netlist]") {
 }
 
 TEST_CASE("builder: ConnectorNet without the connector", "[netlist]") {
-    const auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    const auto result = LoadNetlistFile(test::NetlistPath("counter"));
     REQUIRE(result.has_value());
     CHECK_FALSE(ConnectorNet(**result, "VIDEO", "VIDEO").has_value());
 }
 
 TEST_CASE("rails: declared voltages", "[netlist]") {
-    const auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    const auto result = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(result.has_value());
     const LoadedCircuit& loaded = **result;
     CHECK(RailVolts(loaded, loaded.nets.at("VCC")) == 5.0);
@@ -438,7 +439,7 @@ TEST_CASE("builder: a bidirectional pin off its net drives nothing there", "[net
 }
 
 TEST_CASE("builder: unpowered chip drives nothing", "[netlist]") {
-    std::ifstream in(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    std::ifstream in(test::NetlistPath("test_pattern"));
     const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
     const auto netlist = ParseNetlist(text, "test_pattern.bwn");
     REQUIRE(netlist.has_value());

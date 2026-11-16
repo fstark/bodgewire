@@ -189,12 +189,8 @@ add_executable(bw_tests
 target_link_libraries(bw_tests PRIVATE bw_asm bw_board bw_devices bw_instruments bw_machine bw_manual
                                        bw_runner bw_session bw_view bw_warnings
                                        Catch2::Catch2WithMain)
-target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR}/netlists"
-                                           BW_BOARD_DIR="${PROJECT_SOURCE_DIR}/boards"
-                                           BW_FOOTPRINT_DIR="${PROJECT_SOURCE_DIR}/boards/footprints"
-                                           BW_PUZZLE_DIR="${PROJECT_SOURCE_DIR}/puzzles"
+target_compile_definitions(bw_tests PRIVATE BW_FOOTPRINT_DIR="${PROJECT_SOURCE_DIR}/footprints"
                                            BW_ROOT_DIR="${PROJECT_SOURCE_DIR}"
-                                           BW_ROM_DIR="${PROJECT_SOURCE_DIR}/roms"
                                            BW_6502_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data/6502"
                                            BW_6502_EXTERNAL_DIR="${PROJECT_SOURCE_DIR}/external/6502"
                                            BW_Z80_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data/z80"
@@ -203,13 +199,15 @@ target_compile_definitions(bw_tests PRIVATE BW_NETLIST_DIR="${PROJECT_SOURCE_DIR
 include(Catch)
 catch_discover_tests(bw_tests)
 
-# bw asm on every ROM program: its output must be the committed .rom.
-file(GLOB programs CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/roms/*.asm)
+# bw asm on every ROM program: its output must be the committed .rom beside it.
+file(GLOB programs CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/machines/*/roms/*.asm
+     ${PROJECT_SOURCE_DIR}/bench/*.asm)
 foreach(program ${programs})
   get_filename_component(name ${program} NAME_WE)
+  get_filename_component(dir ${program} DIRECTORY)
   add_test(NAME asm_${name}
            COMMAND ${CMAKE_COMMAND} -DBW=$<TARGET_FILE:bw> -DSOURCE=${program}
-                   -DEXPECTED=${PROJECT_SOURCE_DIR}/roms/${name}.rom
+                   -DEXPECTED=${dir}/${name}.rom
                    -DOUT=${CMAKE_CURRENT_BINARY_DIR}/asm_${name}.rom
                    -P ${CMAKE_CURRENT_SOURCE_DIR}/asm_cli.cmake)
 endforeach()
@@ -228,7 +226,7 @@ endif()
 # KiCad's own design rule check on every committed Board; no kicad-cli, no tests.
 find_program(BW_KICAD_CLI kicad-cli PATHS /Applications/KiCad/KiCad.app/Contents/MacOS)
 if(BW_KICAD_CLI)
-  file(GLOB boards CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/boards/*/*.kicad_pcb)
+  file(GLOB boards CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/machines/*/board/*.kicad_pcb)
   foreach(board ${boards})
     get_filename_component(name ${board} NAME_WE)
     add_test(NAME drc_${name}
@@ -236,13 +234,14 @@ if(BW_KICAD_CLI)
                      -o ${CMAKE_CURRENT_BINARY_DIR}/${name}_drc.rpt ${board})
   endforeach()
   # A generated, unrouted Board: no DRC violation, only unconnected pads.
-  file(GLOB rules CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/boards/*/*.place)
+  file(GLOB rules CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/machines/*/board/*.place)
   foreach(rule ${rules})
     get_filename_component(name ${rule} NAME_WE)
+    get_filename_component(board_dir ${rule} DIRECTORY)
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/place_${name})
     add_test(NAME place_drc_${name}
              COMMAND ${CMAKE_COMMAND} -DBW=$<TARGET_FILE:bw> -DKICAD_CLI=${BW_KICAD_CLI}
-                     -DNETLIST=${PROJECT_SOURCE_DIR}/netlists/${name}.bwn -DRULES=${rule}
+                     -DNETLIST=${board_dir}/../${name}.bwn -DRULES=${rule}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/place_${name}/${name}.kicad_pcb
                      -P ${CMAKE_CURRENT_SOURCE_DIR}/place_drc.cmake)
   endforeach()

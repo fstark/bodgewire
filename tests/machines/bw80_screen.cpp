@@ -16,7 +16,7 @@ const Ram2114& Ram(const LoadedCircuit& loaded, const char* reference) {
     return *ram;
 }
 
-// IO1-IO4 of IC3 are MD7, MD1, MD0, MD2; of IC4 MD4, MD3, MD5, MD6 (netlists/bw80.bwn).
+// IO1-IO4 of IC3 are MD7, MD1, MD0, MD2; of IC4 MD4, MD3, MD5, MD6 (machines/140-bw80/bw80.bwn).
 constexpr std::array<int, 4> kIc3Bits{7, 1, 0, 2};
 constexpr std::array<int, 4> kIc4Bits{4, 3, 5, 6};
 

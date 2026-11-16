@@ -1,4 +1,4 @@
-// 090 TV typewriter (docs/machines/090-typewriter/TYPEWRITER.md): the shift-register page on the
+// 090 TV typewriter (machines/090-typewriter/docs/TYPEWRITER.md): the shift-register page on the
 // TV.
 
 #include <algorithm>
@@ -17,6 +17,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "devices/tv_input.hpp"
 #include "machine/machine.hpp"
 #include "machine/puzzle.hpp"
@@ -54,7 +55,7 @@ bool Lit(const TvFrame& frame, int row, int column) { return frame.at(row, colum
 
 const std::vector<std::uint8_t>& Font() {
     static const std::vector<std::uint8_t> font = [] {
-        auto read = ReadRomContents(std::filesystem::path(BW_ROOT_DIR) / "roms/2513.rom", 512, 5);
+        auto read = ReadRomContents(test::RomPath("typewriter", "2513.rom"), 512, 5);
         REQUIRE(read.has_value());
         return *read;
     }();
@@ -153,9 +154,9 @@ int LitOutside(const TvFrame& frame, Offset offset) {
     return lit;
 }
 
-// The Machine built from its Board (boards/typewriter/).
+// The Machine built from its Board (machines/090-typewriter/board).
 std::unique_ptr<LoadedCircuit> BoardCircuit() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "typewriter.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("typewriter"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -163,7 +164,7 @@ std::unique_ptr<LoadedCircuit> BoardCircuit() {
 }
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "typewriter.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("typewriter"));
     if (!result) {
         for (const Diagnostic& d : result.error()) {
             UNSCOPED_INFO(Format(d));
@@ -416,7 +417,7 @@ TEST_CASE("typewriter: the typed page and a blinking cursor", "[machines][slow]"
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -462,8 +463,7 @@ TEST_CASE("typewriter: Puzzles have a title and a brief", "[machines]") {
     for (const char* name :
          {"lookalikes", "wallpaper", "copies", "every_other_line", "zeros", "m_is_return"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "typewriter");
         CHECK_FALSE(puzzle->title.empty());

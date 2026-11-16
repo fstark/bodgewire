@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
 #include "runner/tv_consumer.hpp"
@@ -104,7 +105,7 @@ TEST_CASE("dispatcher: unwatch", "[runner]") {
 }
 
 TEST_CASE("dispatcher: TV frame equals TvInput", "[runner]") {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(result.has_value());
     LoadedCircuit& loaded = **result;
     const auto video = ConnectorNet(loaded, "VIDEO", "VIDEO");

@@ -1,4 +1,4 @@
-// Machine 130 BW-2001 Puzzles (docs/machines/130-bw2001/BW2001_DESIGN.md, Puzzles): each from
+// Machine 130 BW-2001 Puzzles (machines/130-bw2001/docs/BW2001_DESIGN.md, Puzzles): each from
 // power-on, faulty, read as the player reads it (the TV, the video RAM, the self-test's rows),
 // then repaired. Release-only but the first two: debug runs the Machine at about 0.004x.
 
@@ -13,6 +13,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "bw2001_harness.hpp"
 #include "bw2001_rig.hpp"
 #include "bw2001_screen.hpp"
@@ -26,7 +27,7 @@ using namespace bw::literals;
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -96,8 +97,7 @@ const TvFrame& Frame(Running& m) {
 TEST_CASE("bw2001: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : kPuzzles) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "bw2001");
         CHECK_FALSE(puzzle->title.empty());

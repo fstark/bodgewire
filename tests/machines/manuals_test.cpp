@@ -5,6 +5,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "manual/manual.hpp"
 #include "netlist/diagnostic.hpp"
 
@@ -42,15 +43,15 @@ TEST_CASE("manuals: every Machine's manuals pass their checks", "[machines]") {
          {"counter", "test_pattern", "chaser", "dice", "stopwatch", "ball", "knob", "tennis",
           "message", "typewriter", "heartbeat", "led_computer", "bw1", "bw2001", "bw80"}) {
         INFO(machine);
-        auto design = LoadNetlistFile(kRoot / "netlists" / (machine + ".bwn"));
+        auto design = LoadNetlistFile(test::NetlistPath(machine));
         REQUIRE(design.has_value());
-        const auto dir = std::filesystem::path("manuals") / machine;
-        CheckClean(CheckUserManual(ParseMarkdown(Read(kRoot / dir / "user.md")),
-                                   (dir / "user.md").string(), **design));
-        CheckClean(CheckServiceManual(ParseMarkdown(Read(kRoot / dir / "service.md")),
-                                      (dir / "service.md").string(), **design));
+        const auto dir = test::MachineDir(machine);
+        CheckClean(CheckUserManual(ParseMarkdown(Read(dir / "manuals" / "user.md")),
+                                   "manuals/user.md", **design));
+        CheckClean(CheckServiceManual(ParseMarkdown(Read(dir / "manuals" / "service.md")),
+                                      "manuals/service.md", **design));
 
-        const LoadedManuals loaded = LoadManuals(kRoot, machine, **design);
+        const LoadedManuals loaded = LoadManuals(dir, kRoot / "datasheets", **design);
         CheckClean(loaded.problems);
         CHECK(loaded.manuals.user.has_value());
         CHECK(loaded.manuals.service.has_value());

@@ -13,6 +13,7 @@
 #include "parts/zx80_keys.hpp"
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "machine/crack.hpp"
 #include "parts/ls47.hpp"
 
@@ -22,7 +23,7 @@ using namespace bw::literals;
 namespace {
 
 Session PuzzleSession(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -108,7 +109,7 @@ TEST_CASE("session: probe across a mend", "[session]") {
 
 TEST_CASE("session: probe on an unconnected pin", "[session]") {
     // 100 Heartbeat: U1 RW, no copper; the 6502 only reads (NOPs), so RW stays high.
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("heartbeat"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -153,7 +154,7 @@ TEST_CASE("session: clips", "[session]") {
 namespace {
 
 Session HeartbeatSession() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("heartbeat"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -442,7 +443,7 @@ TEST_CASE("session: hooks and leads survive a repair", "[session]") {
 }
 
 TEST_CASE("session: netlist without a Board", "[session]") {
-    auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    auto loaded = LoadNetlistFile(test::NetlistPath("counter"));
     REQUIRE(loaded.has_value());
     Session session(std::nullopt, std::move(*loaded));
     session.setSpeed(Speed::Max);
@@ -459,7 +460,7 @@ TEST_CASE("session: netlist without a Board", "[session]") {
 namespace {
 
 Session TestPatternSession() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("test_pattern"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -522,7 +523,7 @@ TEST_CASE("session: continuity across a cut", "[session]") {
 }
 
 TEST_CASE("session: counter LED", "[session]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("counter"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -541,7 +542,7 @@ TEST_CASE("session: counter LED", "[session]") {
 }
 
 TEST_CASE("session: chaser with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "chaser.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("chaser"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -576,7 +577,7 @@ TEST_CASE("session: chaser with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: stopwatch with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "stopwatch.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("stopwatch"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -614,7 +615,7 @@ TEST_CASE("session: stopwatch with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: heartbeat with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("heartbeat"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -646,7 +647,7 @@ TEST_CASE("session: heartbeat with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: led computer with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "led_computer.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("led_computer"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -694,7 +695,7 @@ TEST_CASE("session: led computer with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: bw1 with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "bw1.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("bw1"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -753,7 +754,7 @@ TEST_CASE("session: bw1 with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: bw2001 with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "bw2001.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("bw2001"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -792,7 +793,7 @@ TEST_CASE("session: bw2001 with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: bw80 with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "bw80.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("bw80"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -833,7 +834,7 @@ TEST_CASE("session: bw80 with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: ball with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("ball"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -866,7 +867,7 @@ TEST_CASE("session: ball with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: tennis with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "tennis.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("tennis"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -948,7 +949,7 @@ TEST_CASE("session: typing on a MEMBRANEKB, the text queued whole", "[session]")
 }
 
 TEST_CASE("session: typewriter with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "typewriter.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("typewriter"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -981,7 +982,7 @@ TEST_CASE("session: typewriter with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: message with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "message.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("message"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -1013,7 +1014,7 @@ TEST_CASE("session: message with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: knob meter with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "knob.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("knob"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -1051,7 +1052,7 @@ TEST_CASE("session: no LEDs on the test pattern", "[session]") {
 }
 
 TEST_CASE("session: buttons only press while powered", "[session]") {
-    auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "dice.bwn");
+    auto loaded = LoadNetlistFile(test::NetlistPath("dice"));
     REQUIRE(loaded.has_value());
     Session session(std::nullopt, std::move(*loaded));
     session.setSpeed(Speed::Max);
@@ -1074,7 +1075,7 @@ TEST_CASE("session: buttons only press while powered", "[session]") {
 }
 
 TEST_CASE("session: rolling the dice", "[session]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "dice.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("dice"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -1112,7 +1113,7 @@ TEST_CASE("session: rolling the dice", "[session]") {
 }
 
 TEST_CASE("session: dice rolls both odd and even faces", "[session]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "dice.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("dice"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());

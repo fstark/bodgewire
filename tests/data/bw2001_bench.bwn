@@ -1,6 +1,6 @@
 # Bench for P5n (docs/p5n-bw2001-chips/BW2001_CHIPS_DESIGN.md §7), no Board: the PET 2001's bus
 # at its own reference designators (board 320137: 2316B ROMs, 2114 RAMs), U5x for bench-only glue.
-# UF3 runs roms/bw2001_bench.asm from UH7 ($F800): it tests the 8 KB of RAM and the video RAM,
+# UF3 runs machines/130-bw2001/roms/bw2001_bench.asm from UH7 ($F800): it tests the 8 KB of RAM and the video RAM,
 # sets up the PIAs and the VIA, shows $55 on PIA2's port B, then answers the interrupts: VIA T1
 # (free-running, PB7 a 2 ms square wave), and PIA1 CB1, the retrace (X2, a 60 Hz stand-in for
 # P5q's video), where it reads the keys (SW1 row 3 to PIA2 PA, SW2 row 8 to PIA2 CA2) and counts
@@ -39,7 +39,7 @@ part UH2  2316B select=LLH contents=empty.rom        # $D000
 part UH6  2316B select=LHH contents=empty.rom        # $D800
 part UH3  2316B select=LLH contents=empty.rom        # $E000
 part UH4  2316B select=LLH contents=empty.rom        # $F000
-part UH7  2316B select=LHH contents=../../roms/bw2001_bench.rom # $F800
+part UH7  2316B select=LHH contents=../../machines/130-bw2001/roms/bw2001_bench.rom # $F800
 part UG8  6520                                       # PIA1 $E810
 part UB8  6520                                       # PIA2 $E820
 part UA5  6522                                       # VIA $E840

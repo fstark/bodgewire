@@ -5,6 +5,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "instruments/oscilloscope.hpp"
 #include "machine/machine.hpp"
 
@@ -14,8 +15,7 @@ using namespace bw::literals;
 namespace {
 
 Machine LoadPuzzle(const char* name) {
-    auto machine =
-        LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }

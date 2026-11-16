@@ -5,6 +5,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "instruments/logic_probe.hpp"
 #include "netlist/builder.hpp"
 
@@ -20,7 +21,7 @@ struct Run {
 };
 
 Run Start() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(result.has_value());
     Run run{std::move(*result), nullptr, nullptr};
     const auto video = ConnectorNet(*run.loaded, "VIDEO", "VIDEO");

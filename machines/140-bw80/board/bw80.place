@@ -1,0 +1,67 @@
+# BW-80 (Machine 140): the ZX80 issue 2 board's component area, after Grant Searle's foil
+# layout (machines/140-bw80/docs/BW80_DESIGN.md). The keyboard area (the ZX80's front 62 mm) is
+# left off: the keyboard is a window. Every chip stands with its notch at the back, where Sinclair
+# put it; positions are courtyard centres in mm from the back-left corner.
+size 155.5 142
+at IC1  64.0  66.2         # Z80, the middle
+at IC2  134.9 57.2         # ROM, right
+at IC3  14.4  48.3         # RAM, back left
+at IC4  28.5  48.3
+at IC5  90.6  80.1         # data latch
+at IC6  109.6 52.1         # ROM address multiplexers
+at IC7  109.7 80.1
+at IC8  90.5  52.1
+at IC9  28.5  76.3         # dots
+at IC10 14.4  76.3         # keyboard buffer
+at IC11 89.3  111.4        # the gates, the front row: IC14 IC15 IC16 IC13 IC17 IC11 IC12 IC18 IC20
+at IC12 105.8 111.4
+at IC13 58.9  111.4
+at IC14 17.0  111.4
+at IC15 29.6  111.4
+at IC16 46.2  111.4
+at IC17 72.9  111.4
+at IC18 118.5 111.4
+at IC19 142.5 84.0         # HSYNC
+at IC20 131.3 111.4
+at IC21 128.5 84.0         # line counter
+
+# The connectors: the expansion bus along the back edge at the left (the ZX80's slot), video where
+# the modulator sits, power at the 9 V socket's corner, the keyboard where its tracks left the
+# component area.
+edge J4 back left
+edge J2 back 62%
+edge J1 back 88%
+edge J3 front 30%
+
+# The passives beside the chips they serve, as the drawing: one resistor column fits between
+# the RAM column and IC1, two rows of resistors in the front band.
+next R4 IC4 right          # the data bus resistors: a column from beside IC4 down past IC9
+next R5 R4 front
+next R6 R5 front
+next R7 R6 front
+next R8 R7 front
+next R9 IC9 right
+next R10 R9 front
+next R11 R10 front
+next R12 R11 front
+next R1 IC10 front         # EAR, the shift clock, NOP_EN
+next R2 R1 front
+next R3 R2 front
+next R13 IC14 front        # the keyboard pull-ups, a row along the front
+next R14 R13 right
+next R15 R14 right
+next R16 R15 right
+next R17 R16 right
+next R18 R13 front         # M1 clock, RAM select, the CPU clock pull-up: the second row
+next R19 R18 right
+next R20 R19 right
+next R21 IC1 front         # reset, bus request, wait
+next R22 R21 right
+next R23 R22 right
+next R24 IC11 front        # the load gate, the load pulse
+next R25 R24 right
+next C11 R25 right
+next X1 IC20 right         # the clock
+next R28 IC2 right         # MD6 pull-up
+next C9 IC15 back          # the shift clock pulse
+# RST1 has no rule: it goes free, near RESET_N's parts.

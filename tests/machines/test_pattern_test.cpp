@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../paths.hpp"
 #include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
@@ -67,7 +68,7 @@ int RecordedTransitions(std::span<const Sample> samples, Time begin, Time end) {
 }
 
 std::unique_ptr<LoadedCircuit> LoadTestPattern() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(result.has_value());
     return std::move(*result);
 }

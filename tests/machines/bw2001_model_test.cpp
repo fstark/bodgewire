@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "asm/assembler.hpp"
 #include "bw2001_harness.hpp"
 #include "bw2001_model.hpp"
@@ -55,7 +56,7 @@ irq:    pha
 )";
 
 std::uint16_t IncValue(const std::string& name) {
-    std::ifstream in(std::filesystem::path(BW_ROM_DIR) / "bw2001.inc");
+    std::ifstream in(test::RomPath("bw2001", "bw2001.inc"));
     REQUIRE(in);
     const std::regex line("^" + name + R"(\s*=\s*\$([0-9A-Fa-f]+))");
     for (std::string text; std::getline(in, text);) {

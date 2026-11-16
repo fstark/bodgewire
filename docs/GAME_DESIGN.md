@@ -66,7 +66,7 @@ Faulty machine + symptom → run, observe, measure, study the board and the manu
 
 Likely custom machines inspired by real ones, named after them: we choose their size, write our own ROMs (a monitor is enough, no BASIC) and stay free to sell one day. Exact replicas remain possible.
 
-Tutorial ladder, by difficulty, each spec in `docs/machines/NNN-name/`:
+Tutorial ladder, by difficulty, each in its own directory `machines/NNN-name/` (spec in its `docs/`):
 
 | # | Machine | Output / Input | Notes |
 |---|---|---|---|

@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "parts/catalogue.hpp"
 
 using namespace bw;
@@ -253,7 +254,7 @@ TEST_CASE("placer: the same options give the same placement", "[board]") {
 }
 
 TEST_CASE("placer: tennis", "[board][slow]") {
-    const auto circuit = LoadNetlistFile(std::string(BW_NETLIST_DIR) + "/tennis.bwn");
+    const auto circuit = LoadNetlistFile(test::NetlistPath("tennis"));
     REQUIRE(circuit.has_value());
     const auto rules = ParsePlaceRules("edge J1 left middle\n"
                                        "edge J2 back right\n"

@@ -10,7 +10,7 @@ takes seconds to a minute in plain Python; the tracks are correct, not pretty (s
 vias where a human would detour).
 
 Usage (from the repository, release build present):
-    python3 -I tools/route_missing.py netlists/<m>.bwn boards/<m>/<m>.kicad_pcb -o OUT.kicad_pcb
+    python3 -I tools/route_missing.py machines/NNN-name/<m>.bwn machines/NNN-name/board/<m>.kicad_pcb -o OUT.kicad_pcb
 Then look at OUT in KiCad (or its DRC report) and copy it over the Board with KiCad closed.
 Options: --margin MM (the search area around the two ends, default 40), --step MM (the grid,
 default 0.1; 0.05 for very tight spots, slower).

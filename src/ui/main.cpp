@@ -254,7 +254,7 @@ Loaded Load(const std::filesystem::path& file, const std::optional<std::filesyst
         }
         title = puzzle->title;
         brief = puzzle->brief;
-        machine = LoadMachine(*puzzle, MachineRoot(file), roms);
+        machine = LoadMachine(*puzzle, MachineDir(file), roms);
     } else if (HasBoard(file)) {
         machine = LoadNetlistMachine(file, roms);
     } else {
@@ -280,7 +280,8 @@ Loaded Load(const std::filesystem::path& file, const std::optional<std::filesyst
             return {};
         }
         Print((*result)->warnings);
-        LoadedManuals manuals = LoadManuals(MachineRoot(file), file.stem().string(), **result);
+        const auto dir = MachineDir(file);
+        LoadedManuals manuals = LoadManuals(dir, DatasheetDir(dir), **result);
         Print(manuals.problems);
         return {Session(std::nullopt, std::move(*result)), file.stem().string(), "",
                 std::move(manuals)};
@@ -297,8 +298,8 @@ Loaded Load(const std::filesystem::path& file, const std::optional<std::filesyst
     if (title.empty()) {
         title = machine->name();
     }
-    LoadedManuals manuals =
-        LoadManuals(MachineRoot(file), machine->name(), machine->designCircuit());
+    const auto dir = MachineDir(file);
+    LoadedManuals manuals = LoadManuals(dir, DatasheetDir(dir), machine->designCircuit());
     Print(manuals.problems);
     return {Session(std::move(*machine), std::move(*built)), std::move(title), std::move(brief),
             std::move(manuals)};

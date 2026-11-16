@@ -1,0 +1,82 @@
+# Machine 050, test-pattern generator (machines/050-test-pattern/docs/TEST_PATTERN.md): 1 MHz dot clock, 64 pixels x 312 lines,
+# PAL-like progressive. Outputs: SYNC_N (composite sync) and VIDEO (grid), registered.
+
+part X1  OSC freq=1MHz
+part U1  74LS161    # H0-H3
+part U2  74LS161    # H4-H5
+part U3  74LS161    # V0-V3
+part U4  74LS161    # V4-V7
+part U5  74LS161    # V8
+part U6  74LS20     # LINE_END_N, HSYNC_N
+part U7  74LS30     # FRAME_END_N
+part U8  74LS30     # VSYNC_N
+part U9  74LS04     # H3_N, V3_N, LINE_END
+part U10 74LS86     # composite sync
+part U11 74LS08     # blanking, video gate
+part U12 74LS32     # grid ORs
+part U13 74LS02     # grid NORs, ACTIVE
+part U14 74LS74     # output registers
+part J1  POWER      # 5 V in
+part J2  VIDEO      # to the monitor
+
+net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U4.CLK U5.CLK U14.1CLK U14.2CLK
+
+# Horizontal counter 0..63: U1 free-running, U2 loaded with 0 at each line end.
+net VCC         U1.CLR_N U1.ENP U1.ENT U1.LOAD_N U2.CLR_N U2.ENP
+net GND         U1.A U1.B U1.C U1.D U2.A U2.B U2.C U2.D
+net H0          U1.QA U13.2B
+net H1          U1.QB U12.1B
+net H2          U1.QC U12.1A U6.2D
+net H3          U1.QD U9.1A
+net HC          U1.RCO U2.ENT U6.1A
+net H4          U2.QA U6.1B U6.2B U11.1B
+net H5          U2.QB U6.1C U6.2A U11.1A
+net VCC         U6.1D
+net LINE_END_N  U6.1Y U2.LOAD_N U9.3A
+net LINE_END    U9.3Y U3.ENP U3.ENT U4.ENP U5.ENP U7.G
+net H3_N        U9.1Y U6.2C
+net HSYNC_N     U6.2Y U10.1A
+
+# Vertical counter 0..311: counts at each line end, loaded with 0 at the frame end.
+net VCC         U3.CLR_N U4.CLR_N U5.CLR_N U7.H
+net GND         U3.A U3.B U3.C U3.D U4.A U4.B U4.C U4.D U5.A U5.B U5.C U5.D
+net V0          U3.QA U7.F U12.3B
+net V1          U3.QB U7.E U12.3A
+net V2          U3.QC U7.D U8.D U12.2B
+net V3          U3.QD U9.2A U12.2A
+net VC1         U3.RCO U4.ENT
+net V4          U4.QA U7.C U8.C
+net V5          U4.QB U7.B U8.B U11.2B
+net V6          U4.QC
+net V7          U4.QD
+net VC2         U4.RCO U5.ENT
+net V8          U5.QA U7.A U8.A U11.2A
+net FRAME_END_N U7.Y U3.LOAD_N U4.LOAD_N U5.LOAD_N
+net V3_N        U9.2Y U8.E
+net VCC         U8.F U8.G U8.H
+net VSYNC_N     U8.Y U10.1B
+
+# Composite sync: HSYNC XOR VSYNC, then inverted.
+net SYNC        U10.1Y U10.2A
+net VCC         U10.2B
+net SYNC_N_D    U10.2Y U14.1D
+
+# Video: grid inside the active picture.
+net HBLANK      U11.1Y U13.1A
+net VBLANK      U11.2Y U13.1B
+net ACTIVE      U13.1Y U11.3A
+net H21         U12.1Y U13.2A
+net GRIDH       U13.2Y U12.4A
+net V32         U12.2Y U13.3A
+net V10         U12.3Y U13.3B
+net GRIDV       U13.3Y U12.4B
+net GRID        U12.4Y U11.3B
+net VIDEO_D     U11.3Y U14.2D
+
+# Output registers.
+net SYNC_N      U14.1Q J2.SYNC_N
+net VIDEO       U14.2Q J2.VIDEO
+net VCC         U14.1PRE_N U14.1CLR_N U14.2PRE_N U14.2CLR_N
+
+# Unused gate inputs.
+net GND         U9.4A U9.5A U9.6A U10.3A U10.3B U10.4A U10.4B U11.4A U11.4B U13.4A U13.4B

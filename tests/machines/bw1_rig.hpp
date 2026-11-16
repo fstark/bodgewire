@@ -1,6 +1,6 @@
 #pragma once
 
-// Machine 120 BW-1 under test (docs/machines/120-bw1/BW1_DESIGN.md): a powered BW-1, its keypad
+// Machine 120 BW-1 under test (machines/120-bw1/docs/BW1_DESIGN.md): a powered BW-1, its keypad
 // pressed as a player would, its digits read as the player reads them. Shared by the Machine's
 // fault-free cases and its Puzzles.
 

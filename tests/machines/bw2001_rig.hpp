@@ -1,6 +1,6 @@
 #pragma once
 
-// Machine 130 BW-2001 under test (docs/machines/130-bw2001/BW2001_DESIGN.md): the Machine
+// Machine 130 BW-2001 under test (machines/130-bw2001/docs/BW2001_DESIGN.md): the Machine
 // running with its TV on the MONITOR connector, typed on through J5, its screen read from the
 // video RAM. Shared by the Machine's fault-free cases and its Puzzles.
 

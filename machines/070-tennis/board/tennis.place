@@ -1,0 +1,7 @@
+# 070 Paddle tennis: panel parts (machines/070-tennis/docs/TENNIS_DESIGN.md, Board)
+edge J1 left middle    # power
+edge J2 back right     # TV
+edge J3 front left     # left player's controller
+edge J4 front right    # right player's controller
+edge SW1 front middle  # Start
+next R1 SW1 right      # START_N pull-up

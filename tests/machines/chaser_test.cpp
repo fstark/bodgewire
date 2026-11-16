@@ -8,6 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
@@ -25,13 +26,13 @@ constexpr Time kStep = 65'536_us;         // STEP period: 2^16 CLK cycles
 constexpr std::size_t kFirstSettled = 9;  // index of STEP rise 10: 9 rises settle the chaser
 
 Machine FaultFree() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "chaser.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("chaser"));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -152,8 +153,7 @@ TEST_CASE("chaser: fault-free light runs", "[machines][slow]") {
 TEST_CASE("chaser: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"gap", "stuck_light", "dark_chaser", "twins"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "chaser");
         CHECK_FALSE(puzzle->title.empty());

@@ -24,7 +24,7 @@ Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice), `b1c73bc` 
 - A chain's fault on a Machine whose CPU draws the picture (BW-80) shows in the picture while the display file in RAM stays right: the case compares a locked frame with the page the display file predicts through the fault's glyph set (rows permuted for a line counter bit, codes mapped for a latch bit), and the cells no code is loaded into stay blank whatever the chain does to a space.
 - Pin Faults (stuck input, dry Joint) show nothing on the Board: the clue is the leg against the pad (a touch on a chip pad reads the leg with F.Cu active, the pad with B.Cu). A stuck input's leg reads the right signal while the chip acts wrong; a dry Joint's leg differs from its pad.
 
-## File: `puzzles/<name>.bwp`
+## File: `machines/NNN-name/puzzles/NN-name.bwp`
 
 ```
 # Gap: the LED_A5 Trace from R6 pin 2 to D5's anode is cracked; D5's anode floats.
@@ -34,6 +34,8 @@ brief "The light runs along the row, but D5 never lights: the light skips it."
 fault crack R6.2 D5.2 51%
 ```
 
+- File name: `NN-` its place among the Machine's Puzzles, easiest first and in the order of the Machine doc's Puzzle list (renumber the later ones when one is inserted), then the name in lowercase with hyphens. The number is never shown to the player; tests find a Puzzle by its name alone (`test::PuzzlePath("gap")`, `tests/paths.hpp`).
+- `machine`: the Machine's netlist name; the Puzzle must sit in that Machine's `puzzles/`.
 - Line 1: comment for authors only: the cause and why it gives the symptom.
 - `brief`: what the owner sees, never the cause.
 - Faults (pins by number or name):
@@ -48,7 +50,7 @@ fault crack R6.2 D5.2 51%
   - `fault cell U2.D3 ram $3F 0`, `fault column U2.D0 rom 1`: a chip with several memories (the 6530's `rom` and `ram`) needs the memory's name before the word; the word is that memory's own address (`ram` `$00`–`$3F`); a chip with one memory takes no name;
   - an internal address line (the chip ignores `A0`, words pair up) is a stuck input: `fault stuck U3.A0 0`;
   - `fault switch SW1 closed` (stuck closed: joined from power-on, a press changes nothing) or `fault switch SW1 open` (never closes): on a `BUTTON` or `KEY`; repaired by swapping the switch. A stuck-closed key in a scanned matrix shows on every scan, and with two other held keys can make a ghost.
-- Check it loads and shows the symptom: `./build/debug/src/cli/bw run puzzles/<name>.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`). `--probe` reads the leg (the pin's own Net).
+- Check it loads and shows the symptom: `./build/debug/src/cli/bw run machines/NNN-name/puzzles/NN-name.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`). `--probe` reads the leg (the pin's own Net).
 - A typed command on a ZX80-like editor: the first key after a report is taken to leave the report, so a case types one command from a fresh power-on.
 - `bw_ui --press` is read once per UI frame: hold a scripted press at least 100 ms (`--press SW1:50ms:200ms`), or it may be missed. `bw run --tv x.bmp` writes the last TV frame alone, quicker to read than a cropped screenshot. Convert it to view it (`sips -s format png x.bmp --out x.png`).
 - A crack or dry Joint leaves a TTL input high, but a Net with only MOS inputs (2513, 2518, 2524) reads X, a random bit at every read: on a data or control input that gives noise, not a symptom. Cut a MOS clock (it never rises: a 2524 fades), or use `stuck` on a MOS input (typewriter `lookalikes`, `copies`).
@@ -73,4 +75,4 @@ A Fault can be tested before its Puzzle file exists: `InlinePuzzle("machine led_
 
 ## Docs
 
-- Add the Puzzle to the Machine's `docs/machines/NNN-name/NAME_DESIGN.md` Puzzle list.
+- Add the Puzzle to the Machine's `machines/NNN-name/docs/NAME_DESIGN.md` Puzzle list.

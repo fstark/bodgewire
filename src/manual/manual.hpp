@@ -26,10 +26,13 @@ struct LoadedManuals {
     std::vector<Diagnostic> problems;  // Severity::Warning: unreadable or failing a check
 };
 
-// root/manuals/<machine>/{user,service}.md and root/datasheets/<Part>.md for the design's Parts.
-// Missing files are not problems.
-LoadedManuals LoadManuals(const std::filesystem::path& root, std::string_view machine,
+// dir/manuals/{user,service}.md (`dir` the Machine's directory) and datasheets/<Part>.md for the
+// design's Parts. Missing files are not problems.
+LoadedManuals LoadManuals(const std::filesystem::path& dir, const std::filesystem::path& datasheets,
                           const LoadedCircuit& design);
+
+// The shared datasheets/ of a Machine's directory (machines/NNN-name): the repository's.
+std::filesystem::path DatasheetDir(const std::filesystem::path& machineDir);
 
 // Each returns all problems found, empty if fine.
 std::vector<Diagnostic> CheckUserManual(const Markdown& doc, std::string_view file,

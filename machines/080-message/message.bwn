@@ -1,0 +1,110 @@
+# Machine 080, message display (machines/080-message/docs/MESSAGE.md): a page of fixed text on the TV,
+# 16 rows of 16 characters. A 2 MHz dot clock, 6 dots a character
+# (U1 counts 10-15), 21 characters a line (U2, U3), 312 lines a frame (U6-U8, as on 060). The column
+# and the text row address the message ROM (U14, a 2716), whose character code and the glyph line
+# (V1-V3, each line drawn twice) address the character ROM (U15, a 2513). The 74LS165 (U16) loads
+# the five dots on a character's last dot and shifts them out on the inverted clock; U17 re-times
+# video and sync. Outside the text area the glyph line is forced to 0, blank in every character.
+
+part X1  OSC freq=2MHz
+part U1  74LS161    # dot counter 10-15
+part U2  74LS161    # C0-C3
+part U3  74LS161    # C4
+part U4  74LS20     # LINE_END_N, HSYNC_N
+part U5  74LS04     # DOT_LOAD_N, LINE_END, CLK_N
+part U6  74LS161    # V0-V3
+part U7  74LS161    # V4-V7
+part U8  74LS161    # V8
+part U9  74LS30     # FRAME_END_N
+part U10 74LS20     # VSYNC_N
+part U11 74LS86     # composite sync
+part U12 74LS02     # ACTIVE
+part U13 74LS08     # R1-R3
+part U14 2716 contents=roms/message.rom
+part U15 2513 contents=roms/2513.rom
+part U16 74LS165    # dots out
+part U17 74LS74     # output registers
+part J1  POWER
+part J2  VIDEO
+
+net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U6.CLK U7.CLK U8.CLK U17.1CLK U17.2CLK U5.3A
+
+# Dot counter 10..15: 6 dots a character.
+net VCC         U1.CLR_N U1.ENP U1.ENT U1.B U1.D
+net GND         U1.A U1.C
+net DOT_END     U1.RCO U5.1A U2.ENP U3.ENP U4.1A
+net DOT_LOAD_N  U5.1Y U1.LOAD_N U16.SH_LD_N
+
+# Column counter 0..20, reloaded with 0 after character 20.
+net VCC         U2.CLR_N U2.ENT U3.CLR_N
+net GND         U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
+net C0          U2.QA U14.A0
+net C1          U2.QB U14.A1
+net C2          U2.QC U14.A2 U4.1B U4.2A
+net C3          U2.QD U14.A3
+net CC          U2.RCO U3.ENT
+net C4          U3.QA U4.1C U4.2B U12.1A
+net VCC         U4.1D U4.2C U4.2D
+net LINE_END_N  U4.1Y U2.LOAD_N U3.LOAD_N U5.2A
+net LINE_END    U5.2Y U6.ENP U6.ENT U7.ENP U8.ENP U9.G
+net HSYNC_N     U4.2Y U11.1A
+
+# Line counter 0..311 (as 060): counts at each line end, loaded with 0 at the frame end.
+net VCC         U6.CLR_N U7.CLR_N U8.CLR_N U9.H
+net GND         U6.A U6.B U6.C U6.D U7.A U7.B U7.C U7.D U8.A U8.B U8.C U8.D
+net V0          U6.QA U9.F
+net V1          U6.QB U9.E U13.1A
+net V2          U6.QC U9.D U10.1D U13.2A
+net V3          U6.QD U13.3A
+net VC1         U6.RCO U7.ENT
+net V4          U7.QA U9.C U10.1C U14.A4
+net V5          U7.QB U9.B U10.1B U14.A5
+net V6          U7.QC U14.A6
+net V7          U7.QD U14.A7
+net VC2         U7.RCO U8.ENT
+net V8          U8.QA U9.A U10.1A U12.1B
+net FRAME_END_N U9.Y U6.LOAD_N U7.LOAD_N U8.LOAD_N
+net VSYNC_N     U10.1Y U11.1B
+net GND         U10.2A U10.2B U10.2C U10.2D
+
+# Composite sync: HSYNC XOR VSYNC, then inverted (as 060).
+net SYNC        U11.1Y U11.2A
+net VCC         U11.2B
+net SYNC_N_D    U11.2Y U17.1D
+net GND         U11.3A U11.3B U11.4A U11.4B
+
+# Blanking: outside columns 0-15 and lines 0-255 the character ROM is asked for its blank line 0.
+net ACTIVE      U12.1Y U13.1B U13.2B U13.3B
+net GND         U12.2A U12.2B U12.3A U12.3B U12.4A U12.4B U13.4A U13.4B
+net R1          U13.1Y U15.A1
+net R2          U13.2Y U15.A2
+net R3          U13.3Y U15.A3
+
+# Message ROM: one character code a cell, row x 16 + column.
+net GND         U14.A8 U14.A9 U14.A10 U14.CE_N U14.OE_N
+net VCC         U14.VPP
+net CH0         U14.O0 U15.A4
+net CH1         U14.O1 U15.A5
+net CH2         U14.O2 U15.A6
+net CH3         U14.O3 U15.A7
+net CH4         U14.O4 U15.A8
+net CH5         U14.O5 U15.A9
+
+# Character ROM: the dots of one glyph line, F5 leftmost.
+net GND         U15.CE_N
+net F1          U15.O1 U16.D
+net F2          U15.O2 U16.E
+net F3          U15.O3 U16.F
+net F4          U15.O4 U16.G
+net F5          U15.O5 U16.H
+
+# Shift register: loads on a character's last dot, shifts in the middle of each dot.
+net CLK_N       U5.3Y U16.CLK
+net GND         U16.CLK_INH U16.SER U16.A U16.B U16.C
+net VIDEO_D     U16.QH U17.2D
+
+# Output registers.
+net VCC         U17.1PRE_N U17.1CLR_N U17.2PRE_N U17.2CLR_N
+net SYNC_N      U17.1Q J2.SYNC_N
+net VIDEO       U17.2Q J2.VIDEO
+net GND         U5.4A U5.5A U5.6A

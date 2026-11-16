@@ -10,6 +10,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/switch.hpp"
@@ -26,7 +27,7 @@ constexpr Time kCycle = 1_us;  // 1 MHz
 
 // Built from the routed Board (the Machine as the player gets it).
 std::unique_ptr<LoadedCircuit> BoardCircuit() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("heartbeat"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -34,7 +35,7 @@ std::unique_ptr<LoadedCircuit> BoardCircuit() {
 }
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("heartbeat"));
     if (!result) {
         for (const Diagnostic& d : result.error()) {
             UNSCOPED_INFO(Format(d));
@@ -197,7 +198,7 @@ TEST_CASE("heartbeat: reset starts at EAEA", "[machines]") {
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -230,8 +231,7 @@ bool Counts(const Run& run, Time from) {
 TEST_CASE("heartbeat: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"flatline", "fifteen", "flutter"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "heartbeat");
         CHECK_FALSE(puzzle->title.empty());

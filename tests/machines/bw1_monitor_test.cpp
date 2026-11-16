@@ -1,5 +1,5 @@
-// The BW-1 monitor (roms/bw1_002.asm, docs/p5k-bw1-monitor/BW1_MONITOR.md) on the KIM model,
-// used from its keypad as a player would.
+// The BW-1 monitor (machines/120-bw1/roms/bw1_002.asm, docs/p5k-bw1-monitor/BW1_MONITOR.md) on the
+// KIM model, used from its keypad as a player would.
 
 #include <cstdint>
 #include <filesystem>
@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../paths.hpp"
 #include "bw1_model.hpp"
 #include "parts/rom_contents.hpp"
 
@@ -137,7 +138,7 @@ TEST_CASE("bw1 monitor: a key held is read once", "[machines]") {
 }
 
 TEST_CASE("bw1 monitor: the entry points are at the KIM's addresses", "[machines]") {
-    const auto rom = ReadRomContents(std::filesystem::path(BW_ROM_DIR) / "bw1_002.rom", 1024, 8);
+    const auto rom = ReadRomContents(test::RomPath("bw1", "bw1_002.rom"), 1024, 8);
     REQUIRE(rom.has_value());
     const auto at = [&](std::uint16_t address) { return (*rom)[address - 0x1C00]; };
     CHECK(at(0x1C00) == 0x85);  // SAVE: sta ACC

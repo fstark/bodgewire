@@ -27,9 +27,10 @@ struct WireEnds {
     BodgeWire wire;  // pad positions
 };
 
-// root/netlists/<machine>.bwn + root/boards/<machine>/<machine>.kicad_pcb; all semantic errors.
+// dir/<machine>.bwn + dir/board/<machine>.kicad_pcb, `dir` the Machine's directory
+// (machines/NNN-name); all semantic errors.
 std::expected<Machine, std::vector<Diagnostic>>
-LoadMachine(const Puzzle& puzzle, const std::filesystem::path& root,
+LoadMachine(const Puzzle& puzzle, const std::filesystem::path& dir,
             const std::optional<std::filesystem::path>& roms = std::nullopt);
 
 // Design netlist + Board + Faults. Repairs edit it; build() makes the Circuit for one power-on.
@@ -107,20 +108,20 @@ private:
 std::expected<StuckCell, std::string> ResolveCell(const CellDecl& decl, const Component& component,
                                                   std::string_view part);
 
-// The directory holding netlists/, boards/, puzzles/, manuals/, datasheets/: the file's
-// directory's parent.
-std::filesystem::path MachineRoot(const std::filesystem::path& file);
+// The Machine's directory (machines/NNN-name: netlist, board/, manuals/, roms/, puzzles/) of a
+// file in it: a Puzzle's directory's parent, a netlist's own directory.
+std::filesystem::path MachineDir(const std::filesystem::path& file);
 
 // Read + ParsePuzzle.
 std::expected<Puzzle, std::vector<Diagnostic>> ReadPuzzleFile(const std::filesystem::path& path);
 
-// ReadPuzzleFile + LoadMachine with root = MachineRoot(path).
+// ReadPuzzleFile + LoadMachine with dir = MachineDir(path).
 // `roms`: a ROM directory (ApplyRomDirectory, P5q2), applied to the design before it is built.
 std::expected<Machine, std::vector<Diagnostic>>
 LoadPuzzleFile(const std::filesystem::path& path,
                const std::optional<std::filesystem::path>& roms = std::nullopt);
 
-// root/netlists/<stem>.bwn whose root/boards/<stem>/<stem>.kicad_pcb exists.
+// dir/<stem>.bwn whose dir/board/<stem>.kicad_pcb exists.
 bool HasBoard(const std::filesystem::path& netlist);
 // The fault-free Machine of such a netlist.
 std::expected<Machine, std::vector<Diagnostic>>

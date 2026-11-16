@@ -13,6 +13,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "devices/tv_input.hpp"
 #include "instruments/logic_probe.hpp"
 #include "machine/machine.hpp"
@@ -196,14 +197,14 @@ std::vector<std::string> Watch(LoadedCircuit& loaded, std::uint64_t seed, Time f
 }
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("ball"));
     REQUIRE(result.has_value());
     return std::move(*result);
 }
 
 // The Circuit built from the Board's Copper, with no Faults.
 std::unique_ptr<LoadedCircuit> BoardCircuit() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "ball.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("ball"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -364,7 +365,7 @@ TEST_CASE("ball: one ball bouncing inside the box, seed 2", "[machines][slow]") 
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -428,8 +429,7 @@ bool Pulses(const std::string& lamps) { return lamps.find("PULSE") != std::strin
 TEST_CASE("ball: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"solid_net", "wraparound", "stripe", "jumping_ball", "net_bounce"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "ball");
         CHECK_FALSE(puzzle->title.empty());

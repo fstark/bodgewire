@@ -65,9 +65,18 @@ if [[ ! -x "$ref/build/src/cli/bw" ]]; then
     cmake --build "$ref/build" --target bw >/dev/null
 fi
 
-# record <bw> <netlist dir> <out dir> <run>: the VCD, then the options and counts in <run>.txt
+# netlist_path <tree> <name>: the netlist in a checkout, before P6a (netlists/) or after
+# (machines/NNN-name/, bench/); empty if it has none.
+netlist_path() {
+    local f
+    for f in "$1/netlists/$2.bwn" "$1"/machines/*/"$2.bwn" "$1/bench/$2.bwn"; do
+        [[ -f "$f" ]] && { echo "$f"; return; }
+    done
+}
+
+# record <bw> <tree> <out dir> <run>: the VCD, then the options and counts in <run>.txt
 record() {
-    local bw="$1" netlists="$2" out="$3" run="$4"
+    local bw="$1" tree="$2" out="$3" run="$4"
     local args
     args="$(run_args "$run")"
     if [[ "$args" != *--record* ]]; then
@@ -75,7 +84,7 @@ record() {
     fi
     set -f # typed text may hold glob characters
     # shellcheck disable=SC2086 # the options hold no spaces
-    "$bw" run "$netlists/$(run_netlist "$run").bwn" $args --seed 1 --vcd "$out/$run.vcd" |
+    "$bw" run "$(netlist_path "$tree" "$(run_netlist "$run")")" $args --seed 1 --vcd "$out/$run.vcd" |
         grep -E '^(applied_events|evaluations) ' >"$out/$run.counts"
     set +f
     { echo "args $(run_args "$run")"; cat "$out/$run.counts"; } >"$out/$run.txt"
@@ -85,16 +94,16 @@ record() {
 mkdir -p "$now"
 active=()
 for run in "${runs[@]}"; do
-    if [[ ! -f "$ref/src/netlists/$(run_netlist "$run").bwn" ]]; then
+    if [[ -z "$(netlist_path "$ref/src" "$(run_netlist "$run")")" ]]; then
         echo "trace check: $run skipped (no netlist at $commit)"
         continue
     fi
     active+=("$run")
     # A reference recorded with other options is recorded again.
     if [[ ! -f "$ref/$run.txt" ]] || [[ "$(head -1 "$ref/$run.txt")" != "args $(run_args "$run")" ]]; then
-        record "$ref/build/src/cli/bw" "$ref/src/netlists" "$ref" "$run"
+        record "$ref/build/src/cli/bw" "$ref/src" "$ref" "$run"
     fi
-    record "$current_bw" netlists "$now" "$run"
+    record "$current_bw" . "$now" "$run"
 done
 
 status=0

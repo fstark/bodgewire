@@ -1,5 +1,6 @@
-// The BW-1 self-test (roms/bw1_003.asm, docs/p5k-bw1-monitor/BW1_MONITOR.md) on the KIM model:
-// reached by the strap at reset or by 1800 GO, its steps, its failure codes, and no RAM used.
+// The BW-1 self-test (machines/120-bw1/roms/bw1_003.asm, docs/p5k-bw1-monitor/BW1_MONITOR.md) on
+// the KIM model: reached by the strap at reset or by 1800 GO, its steps, its failure codes, and no
+// RAM used.
 
 #include <array>
 #include <cstdint>

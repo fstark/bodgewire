@@ -12,15 +12,22 @@ bw="build/release/src/cli/bw"
 [[ -x "$bw" ]] || { echo "measure: build release first ($bw)"; exit 2; }
 previous="${1:-}"
 
-netlists=()
-for f in netlists/*.bwn; do
+netlists=() # names; paths parallel
+paths=()
+for f in machines/*/*.bwn bench/*.bwn; do
     netlists+=("$(basename "$f" .bwn)")
+    paths+=("$f")
 done
+path_of() {
+    for i in "${!netlists[@]}"; do
+        [[ "${netlists[$i]}" == "$1" ]] && echo "${paths[$i]}"
+    done
+}
 
 best=() # parallel to netlists (bash 3.2: no associative arrays)
 for round in 1 2 3; do
     for i in "${!netlists[@]}"; do
-        ratio="$("$bw" run "netlists/${netlists[$i]}.bwn" --time 2s | sed -n 's/^ratio //p')"
+        ratio="$("$bw" run "${paths[$i]}" --time 2s | sed -n 's/^ratio //p')"
         if [[ -z "${best[$i]:-}" ]] || awk -v a="$ratio" -v b="${best[$i]}" 'BEGIN{exit !(a>b)}'; then
             best[$i]="$ratio"
         fi
@@ -37,7 +44,7 @@ fmt() { awk -v r="$1" 'BEGIN{printf "%.3f×", r}'; }
 # per_event <netlist>: "instr cycles evals" per applied event over 1 s
 per_event() {
     local out
-    out="$( { /usr/bin/time -l "$bw" run "netlists/$1.bwn" --time 1s; } 2>&1)"
+    out="$( { /usr/bin/time -l "$bw" run "$(path_of "$1")" --time 1s; } 2>&1)"
     awk '/instructions retired/{i=$1} /cycles elapsed/{c=$1}
          /^applied_events /{e=$2} /^evaluations /{v=$2}
          END{printf "%.0f %.0f %.2f", i/e, c/e, v/e}' <<<"$out"

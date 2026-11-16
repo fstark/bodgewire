@@ -2,10 +2,9 @@ There is a venv environment in venv.
 
 ## Build and test
 
-- Debug (ASan + UBSan): `cmake --preset debug && cmake --build --preset debug`; tests `ctest --preset debug -j 12`.
-- The full debug suite takes about 15 minutes (two tennis cases, about 14 minutes each). A change that one Part or Machine alone can see (its code, netlist, tests or docs) runs only the tests that can reach it, e.g. `ctest --preset debug -j 12 -R "2524|typewriter|catalogue|manuals"`, and the commit message says which. The full suite runs at a roadmap step's end, and for changes to shared code (kernel, builder, Board, UI, a Part other Machines use).
-- Release: `cmake --preset release && cmake --build --preset release`.
-- The agent can't see the screen: `build/release/src/ui/bw_ui puzzles/X.bwp --screenshot /tmp/x.png --after 1s`, then view the PNG (it also prints the speed ratio and UI ms).
+- Release: `cmake --preset release && cmake --build --preset release`; tests `ctest --preset release -j 12`. The release suite is the routine check: about 2 minutes, and it runs the cases debug skips (the BW-2001's). The full release suite runs before every final commit (a roadmap step's end, a change to shared code). A change that one Part or Machine alone can see runs only the tests that can reach it in between, e.g. `ctest --preset release -j 12 -R "2524|typewriter|catalogue|manuals"`, and the commit message says which.
+- Debug (ASan + UBSan): `cmake --preset debug && cmake --build --preset debug`; tests `ctest --preset debug -j 12`. Only its sanitizers find what release misses (memory errors, undefined behaviour), so use it for changes to C++ logic in the kernel, Parts, builder or devices, and run only the tests that reach the change (`-R`), never the BW-2001 or BW-80 cases routinely: debug is about 0.004× on them. The full debug suite (about 15 minutes, two tennis cases about 14 minutes each) only when the user asks.
+- The agent can't see the screen: `build/release/src/ui/bw_ui machines/NNN-name/puzzles/NN-x.bwp --screenshot /tmp/x.png --after 1s`, then view the PNG (it also prints the speed ratio and UI ms).
 - `clang-format` on C++ files only, never on `CMakeLists.txt`.
 
 ## Implementing a roadmap step
@@ -18,7 +17,7 @@ There is a venv environment in venv.
    - design: how, file by file, citing recipe steps instead of repeating them;
    - plan: phases, each ending with a fence (checks plus one commit message), and a status table.
 
-   A step that brings a Machine also writes `docs/machines/NNN-name/NAME.md` (lesson, circuit, when it works, Puzzles) and `NAME_DESIGN.md` (netlist, Board, Puzzle files, manuals).
+   A step that brings a Machine also writes `machines/NNN-name/docs/NAME.md` (lesson, circuit, when it works, Puzzles) and `NAME_DESIGN.md` (netlist, Board, Puzzle files, manuals).
 3. **Independent review.** A fresh sub-agent gets only the paths of the three docs (and the Machine docs), not your conclusions. It checks the plan against the design and spec, and both against the code: APIs that exist, rules the builder enforces, recipe steps, test timings. Fix every must-fix in the docs, then commit the docs.
 4. **Implement in one go.** Run every phase in order without stopping, one commit per phase, and update the plan's status table and implementation notes as you go. Stop only for what only the user can do. The main one is the KiCad Board layout: export the `.net`, give the layout constraints from the Machine design, and wait.
 5. **Finish.** Release check with screenshots viewed, recipes fixed, ARCHITECTURE row set to done with the date and links, plan cut down to the phase table and notes.
@@ -40,6 +39,7 @@ Designs and plans cite recipe steps instead of repeating them. When a milestone 
 
 ## Docs
 
+- Each Machine in its own directory `machines/NNN-name/` (P6a): netlist, `board/`, `manuals/` (the player's), `docs/` (its development docs), `roms/`, `puzzles/` (`NN-name.bwp`, easiest first). Datasheets, footprints and benchmarks stay shared (`datasheets/`, `footprints/`, `bench/`).
 - Conventions: `docs/GLOSSARY.md`, `docs/STYLE.md`, `docs/NAMING.md`. Structure and roadmap: `docs/ARCHITECTURE.md`.
 - `docs/p*-*/` are finished milestones: history only, the code is the truth. Read one only when the task names it.
 - The user edits docs in parallel: commit only your own paths.

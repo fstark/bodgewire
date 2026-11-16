@@ -11,6 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "parts/mos6502_core.hpp"
 #include "parts/rom_contents.hpp"
 
@@ -332,8 +333,18 @@ TEST_CASE("asm: .incbin", "[asm]") {
 }
 
 TEST_CASE("asm: every ROM program matches its committed .rom", "[asm]") {
-    const std::filesystem::path dir = BW_ROM_DIR;
-    for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+    std::vector<std::filesystem::directory_entry> programs;
+    for (const auto& machine : std::filesystem::directory_iterator(test::RootDir() / "machines")) {
+        if (std::filesystem::is_directory(machine.path() / "roms")) {
+            for (const auto& entry : std::filesystem::directory_iterator(machine.path() / "roms")) {
+                programs.push_back(entry);
+            }
+        }
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(test::RootDir() / "bench")) {
+        programs.push_back(entry);
+    }
+    for (const auto& entry : programs) {
         if (entry.path().extension() != ".asm") {
             continue;
         }

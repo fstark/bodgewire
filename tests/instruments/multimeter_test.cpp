@@ -3,6 +3,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "instruments/multimeter.hpp"
 #include "instruments/volts.hpp"
 #include "netlist/builder.hpp"
@@ -47,7 +48,7 @@ TEST_CASE("meter: window starts at the first Sample", "[instruments]") {
 }
 
 TEST_CASE("meter: test pattern CLK", "[instruments]") {
-    const auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    const auto loaded = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(loaded.has_value());
     Simulator sim((*loaded)->circuit);
     sim.powerOn(1);

@@ -1,11 +1,16 @@
 #include "bw80_rig.hpp"
 
+#include <unistd.h>
+
 #include <fstream>
 #include <iterator>
+#include <string>
+#include <system_error>
 #include <utility>
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "netlist/diagnostic.hpp"
 #include "netlist/parser.hpp"
 #include "netlist/rom_directory.hpp"
@@ -18,25 +23,30 @@ namespace bw {
 using namespace literals;
 
 std::string Bw80NetlistText() {
-    std::ifstream in(std::filesystem::path(BW_NETLIST_DIR) / "bw80.bwn");
+    std::ifstream in(test::NetlistPath("bw80"));
     REQUIRE(in);
     return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
 std::vector<std::uint8_t> Bw80Glyphs() {
-    const auto rom =
-        ReadRomContents(std::filesystem::path(BW_ROOT_DIR) / "roms/zx80_ic2.bin", 4096, 8);
+    const auto rom = ReadRomContents(test::RomPath("bw80", "zx80_ic2.bin"), 4096, 8);
     REQUIRE(rom.has_value());
     return {rom->begin() + 0xE00, rom->end()};
 }
 
 std::filesystem::path Bw80TestRomDirectory() {
-    // Cases run in parallel share it: made once, never removed.
+    // Cases run in parallel share it: never removed, the link replaced (by an atomic rename) when
+    // it points elsewhere, as it did after the ROM moved (P6a).
     const auto dir = std::filesystem::temp_directory_path() / "bw80_test_roms";
+    const auto rom = test::RomPath("bw80", "bw80_test.rom");
+    const auto link = dir / "IC2.rom";
     std::filesystem::create_directories(dir);
-    if (!std::filesystem::is_symlink(dir / "IC2.rom")) {
-        std::filesystem::create_symlink(std::filesystem::path(BW_ROOT_DIR) / "roms/bw80_test.rom",
-                                        dir / "IC2.rom");
+    std::error_code error;
+    if (std::filesystem::read_symlink(link, error) != rom) {
+        const auto fresh = dir / ("IC2.rom." + std::to_string(::getpid()));
+        std::filesystem::remove(fresh, error);
+        std::filesystem::create_symlink(rom, fresh);
+        std::filesystem::rename(fresh, link);
     }
     return dir;
 }
@@ -44,7 +54,7 @@ std::filesystem::path Bw80TestRomDirectory() {
 std::unique_ptr<LoadedCircuit> Bw80Build(const std::string& text, bool testRom) {
     auto netlist = ParseNetlist(text, "bw80.bwn");
     REQUIRE(netlist.has_value());
-    ResolveContentsPaths(*netlist, BW_NETLIST_DIR);
+    ResolveContentsPaths(*netlist, test::MachineDir("bw80"));
     if (testRom) {
         REQUIRE(ApplyRomDirectory(*netlist, Bw80TestRomDirectory()).has_value());
     }
@@ -59,9 +69,8 @@ std::unique_ptr<LoadedCircuit> Bw80Build(const std::string& text, bool testRom) 
 }
 
 std::unique_ptr<LoadedCircuit> Bw80BoardCircuit(bool testRom) {
-    auto machine =
-        LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "bw80.bwn",
-                           testRom ? std::optional(Bw80TestRomDirectory()) : std::nullopt);
+    auto machine = LoadNetlistMachine(
+        test::NetlistPath("bw80"), testRom ? std::optional(Bw80TestRomDirectory()) : std::nullopt);
     if (!machine) {
         for (const Diagnostic& d : machine.error()) {
             UNSCOPED_INFO(Format(d));

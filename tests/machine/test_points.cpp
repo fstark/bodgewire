@@ -6,13 +6,13 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 
 namespace bw {
 
 Crack PuzzleCrack(std::string_view puzzle) {
-    const auto machine =
-        LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(puzzle) + ".bwp"));
+    const auto machine = LoadPuzzleFile(test::PuzzlePath(puzzle));
     REQUIRE(machine.has_value());
     REQUIRE(machine->cracks().size() == 1);
     return machine->cracks()[0];
@@ -21,7 +21,7 @@ Crack PuzzleCrack(std::string_view puzzle) {
 Machine InlinePuzzle(std::string_view text) {
     const auto puzzle = ParsePuzzle(text, "inline.bwp");
     REQUIRE(puzzle.has_value());
-    auto machine = LoadMachine(*puzzle, std::filesystem::path(BW_NETLIST_DIR).parent_path());
+    auto machine = LoadMachine(*puzzle, test::MachineDir(puzzle->machine));
     if (!machine) {
         for (const Diagnostic& d : machine.error()) {
             UNSCOPED_INFO(Format(d));
@@ -32,8 +32,7 @@ Machine InlinePuzzle(std::string_view text) {
 }
 
 Crack BoardCrack(std::string_view machine, const PinRef& a, const PinRef& b, double percent) {
-    const auto loaded =
-        LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / (std::string(machine) + ".bwn"));
+    const auto loaded = LoadNetlistMachine(test::NetlistPath(machine));
     REQUIRE(loaded.has_value());
     const auto crack = loaded->placeCrack(a, b, percent);
     REQUIRE(crack.has_value());

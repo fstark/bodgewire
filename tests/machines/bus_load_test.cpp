@@ -11,6 +11,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../paths.hpp"
 #include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
@@ -27,8 +28,7 @@ namespace {
 
 // The stub's page through the glyphs of the netlist's ROM (at $0600), D7 inverting.
 PageDots StubPage(const char* romFile) {
-    const auto rom =
-        ReadRomContents(std::filesystem::path(BW_ROOT_DIR) / "roms" / romFile, 2048, 8);
+    const auto rom = ReadRomContents(test::BenchPath(romFile), 2048, 8);
     REQUIRE(rom.has_value());
     const auto& page = Z80Stub::Page();
     return ExpectedPage(std::span(*rom).subspan(0x600, 64 * 8), Z80Stub::kColumns, Z80Stub::kRows,
@@ -51,7 +51,7 @@ constexpr BusLoad kStub{"bus_load.bwn", "bus_load.rom", 100'000'000'000};
 constexpr BusLoad kZ80{"bus_load_z80.bwn", "bus_load_z80.rom", 250'000'000'000};
 
 std::unique_ptr<LoadedCircuit> Load(const BusLoad& netlist) {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / netlist.file);
+    auto result = LoadNetlistFile(test::BenchPath(netlist.file));
     if (!result) {
         for (const Diagnostic& d : result.error()) {
             UNSCOPED_INFO(Format(d));

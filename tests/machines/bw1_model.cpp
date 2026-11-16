@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "parts/rom_contents.hpp"
 
 namespace bw {
@@ -19,7 +20,7 @@ constexpr std::size_t kMainRam = 1024, kRiotRam = 64;
 int Block(std::uint16_t address) { return (address >> 10) & 7; }  // U4: A10-A12, A13-A15 free
 
 std::vector<std::uint8_t> LoadRom(std::string_view name) {
-    const auto words = ReadRomContents(std::filesystem::path(BW_ROM_DIR) / name, 1024, 8);
+    const auto words = ReadRomContents(test::RomPath("bw1", name), 1024, 8);
     if (!words) {
         FAIL(words.error());
     }

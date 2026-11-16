@@ -4,6 +4,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "bw2001_screen.hpp"
 #include "parts/matrix_keyboard.hpp"
 
@@ -11,9 +12,7 @@ namespace bw {
 
 using namespace literals;
 
-std::filesystem::path Bw2001NetlistPath() {
-    return std::filesystem::path(BW_NETLIST_DIR) / "bw2001.bwn";
-}
+std::filesystem::path Bw2001NetlistPath() { return test::NetlistPath("bw2001"); }
 
 std::unique_ptr<LoadedCircuit> Bw2001BoardCircuit() {
     auto machine = LoadNetlistMachine(Bw2001NetlistPath());

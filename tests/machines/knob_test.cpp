@@ -10,6 +10,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/ls47.hpp"
@@ -24,14 +25,14 @@ namespace {
 using enum LogicValue;
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "knob.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("knob"));
     REQUIRE(result.has_value());
     return std::move(*result);
 }
 
 // The Circuit built from the Board's Copper, with no Faults.
 std::unique_ptr<LoadedCircuit> FaultFree() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "knob.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("knob"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -204,7 +205,7 @@ TEST_CASE("knob: one measuring cycle", "[machines]") {
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -228,8 +229,7 @@ TEST_CASE("knob: Puzzles have a title and a brief", "[machines]") {
     for (const char* name :
          {"dead_knob", "runaway", "single_figures", "odd_tens", "four_to_seven"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "knob");
         CHECK_FALSE(puzzle->title.empty());

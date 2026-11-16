@@ -1,4 +1,4 @@
-// Machine 140 BW-80 Puzzles (docs/machines/140-bw80/BW80_DESIGN.md, Puzzles): each from
+// Machine 140 BW-80 Puzzles (machines/140-bw80/docs/BW80_DESIGN.md, Puzzles): each from
 // power-on, faulty, read as the player reads it (the TV against the page the display file
 // predicts, the display file in the two 2114s, the probe's clue), then repaired. Release-only
 // but the first two: debug runs the Machine at about 0.004x.
@@ -17,6 +17,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "bw80_rig.hpp"
 #include "bw80_screen.hpp"
 #include "machine/machine.hpp"
@@ -32,7 +33,7 @@ using namespace bw::literals;
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     if (!machine) {
         for (const Diagnostic& d : machine.error()) {
             UNSCOPED_INFO(Format(d));
@@ -175,8 +176,7 @@ void CheckPicture(const Typed& t, const PageDots& page) {
 TEST_CASE("bw80: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : kPuzzles) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "bw80");
         CHECK_FALSE(puzzle->title.empty());

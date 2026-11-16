@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "netlist/builder.hpp"
 #include "parts/catalogue.hpp"
 #include "sim/simulator.hpp"
@@ -18,7 +19,7 @@ namespace {
 using enum LogicValue;
 
 std::unique_ptr<LoadedCircuit> LoadCounter() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("counter"));
     REQUIRE(result.has_value());
     return std::move(*result);
 }

@@ -350,18 +350,22 @@ std::optional<ManualLink> LinkAt(std::span<const Span> spans, std::size_t i,
     return link;
 }
 
-LoadedManuals LoadManuals(const std::filesystem::path& root, std::string_view machine,
+std::filesystem::path DatasheetDir(const std::filesystem::path& machineDir) {
+    return std::filesystem::absolute(machineDir).parent_path().parent_path() / "datasheets";
+}
+
+LoadedManuals LoadManuals(const std::filesystem::path& dir, const std::filesystem::path& datasheets,
                           const LoadedCircuit& design) {
     LoadedManuals loaded;
-    const auto load = [&](const std::filesystem::path& relative) -> std::optional<Markdown> {
-        const auto path = root / relative;
+    // `shown`: the file's name in problems ("manuals/user.md").
+    const auto load = [&](const std::filesystem::path& path,
+                          const std::string& shown) -> std::optional<Markdown> {
         if (!std::filesystem::exists(path)) {
             return std::nullopt;
         }
         const auto text = ReadFile(path);
         if (!text) {
-            loaded.problems.push_back(
-                {relative.generic_string(), 0, Severity::Warning, "cannot read file"});
+            loaded.problems.push_back({shown, 0, Severity::Warning, "cannot read file"});
             return std::nullopt;
         }
         return ParseMarkdown(*text);
@@ -371,23 +375,20 @@ LoadedManuals LoadManuals(const std::filesystem::path& root, std::string_view ma
                                std::make_move_iterator(problems.end()));
     };
 
-    const std::filesystem::path manuals = std::filesystem::path("manuals") / std::string(machine);
-    if ((loaded.manuals.user = load(manuals / "user.md"))) {
-        report(
-            CheckUserManual(*loaded.manuals.user, (manuals / "user.md").generic_string(), design));
+    if ((loaded.manuals.user = load(dir / "manuals" / "user.md", "manuals/user.md"))) {
+        report(CheckUserManual(*loaded.manuals.user, "manuals/user.md", design));
     }
-    if ((loaded.manuals.service = load(manuals / "service.md"))) {
-        report(CheckServiceManual(*loaded.manuals.service,
-                                  (manuals / "service.md").generic_string(), design));
+    if ((loaded.manuals.service = load(dir / "manuals" / "service.md", "manuals/service.md"))) {
+        report(CheckServiceManual(*loaded.manuals.service, "manuals/service.md", design));
     }
     for (const LoadedPart& part : design.parts) {
         const std::string name(part.info->name);
         if (loaded.manuals.datasheets.contains(name)) {
             continue;
         }
-        const auto file = std::filesystem::path("datasheets") / (name + ".md");
-        if (auto doc = load(file)) {
-            report(CheckDatasheet(*doc, file.generic_string(), *part.info));
+        const std::string shown = "datasheets/" + name + ".md";
+        if (auto doc = load(datasheets / (name + ".md"), shown)) {
+            report(CheckDatasheet(*doc, shown, *part.info));
             loaded.manuals.datasheets.emplace(name, std::move(*doc));
         }
     }

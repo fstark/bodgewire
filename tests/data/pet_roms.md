@@ -16,7 +16,7 @@ Put the files in `external/roms/pet/`, which is git-ignored, either as copies or
 
 There is no ROM at `$E800`–`$EFFF`: that range is the I/O (PIA1 `$E810`, PIA2 `$E820`, VIA `$E840`).
 
-The character ROM is the exception: 901447-08 (UA2, SHA1 `3e067cc621e4beafca2b90cb8f6dba975df2855b`) ships with the BW-2001 as `roms/901447-08.bin` (decided 2026-11-15), since every screen of the Machine goes through it.
+The character ROM is the exception: 901447-08 (UA2, SHA1 `3e067cc621e4beafca2b90cb8f6dba975df2855b`) ships with the BW-2001 as `machines/130-bw2001/roms/901447-08.bin` (decided 2026-11-15), since every screen of the Machine goes through it.
 
 They are used by `tests/netlist/external_rom_test.cpp` and by the BASIC 1 boot on the bench (`tests/netlist/bw2001_bench_test.cpp`).
 
@@ -35,4 +35,4 @@ ln -s ../pet/rom-1-f000.901447-06.bin pet-basic1/UH4.bin
 ln -s ../pet/rom-1-f800.901447-07.bin pet-basic1/UH7.bin
 ```
 
-then `bw_ui netlists/bw2001.bwn --roms external/roms/pet-basic1`: Commodore's PET 2001 on the BW-2001's Board. The tests make the same links in a temporary directory.
+then `bw_ui machines/130-bw2001/bw2001.bwn --roms external/roms/pet-basic1`: Commodore's PET 2001 on the BW-2001's Board. The tests make the same links in a temporary directory.

@@ -1,4 +1,4 @@
-// Machine 120 BW-1 (docs/machines/120-bw1/BW1_DESIGN.md, Behaviour checked): the monitor and the
+// Machine 120 BW-1 (machines/120-bw1/docs/BW1_DESIGN.md, Behaviour checked): the monitor and the
 // self-test of P5k on the real Parts, keys pressed as a player would.
 
 #include <cstdint>

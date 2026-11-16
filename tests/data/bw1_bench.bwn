@@ -1,6 +1,6 @@
 # Bench for P5j (docs/p5j-bw1-chips/BW1_CHIPS_DESIGN.md §7), no Board: the KIM-1's processor,
 # decoder, 6530-002 and 1K RAM wired as its User Manual's Figs. 3.2-3.4, reference designators
-# included, with LS gates for the glue. U2 runs roms/bw1_bench.asm: it tests the 6102s and its own
+# included, with LS gates for the glue. U2 runs machines/120-bw1/roms/bw1_bench.asm: it tests the 6102s and its own
 # RAM, shows $55 on PA0-PA6, then counts its timer's interrupts (PB7 on IRQ_N) on PB0-PB4 and
 # copies PA7 (SW1, pulled up by the 6530 itself) to PB5. U4 decodes A10-A12 into 1K blocks (K0
 # the RAM, K5 the 6530's RAM and ports, K7 its ROM); A13-A15 are not decoded (D on GND).
@@ -8,7 +8,7 @@
 part X1  OSC freq=1MHz
 part J1  POWER
 part U1  6502
-part U2  6530 mask=002 contents=../../roms/bw1_bench.rom
+part U2  6530 mask=002 contents=../../machines/120-bw1/roms/bw1_bench.rom
 part U4  74145       # K0-K7
 part U5  6102        # D7
 part U6  6102        # D6

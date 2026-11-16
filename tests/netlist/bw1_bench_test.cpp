@@ -1,5 +1,5 @@
 // The P5j bench (tests/data/bw1_bench.bwn): the KIM-1's 6502, 74145, 6530-002 and 1K RAM of
-// 6102s through 74125s, running roms/bw1_bench.asm.
+// 6102s through 74125s, running machines/120-bw1/roms/bw1_bench.asm.
 
 #include <cstddef>
 #include <cstdint>

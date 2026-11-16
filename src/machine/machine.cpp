@@ -86,7 +86,7 @@ std::expected<StuckCell, std::string> ResolveCell(const CellDecl& decl, const Co
 }
 
 std::expected<Machine, std::vector<Diagnostic>>
-LoadMachine(const Puzzle& puzzle, const std::filesystem::path& root,
+LoadMachine(const Puzzle& puzzle, const std::filesystem::path& dir,
             const std::optional<std::filesystem::path>& roms) {
     std::vector<Diagnostic> errors;
     const auto error = [&](std::uint32_t line, std::string message) {
@@ -99,8 +99,8 @@ LoadMachine(const Puzzle& puzzle, const std::filesystem::path& root,
 
     Machine machine;
     machine.name_ = puzzle.machine;
-    const auto netlistPath = root / "netlists" / (puzzle.machine + ".bwn");
-    const auto boardPath = root / "boards" / puzzle.machine / (puzzle.machine + ".kicad_pcb");
+    const auto netlistPath = dir / (puzzle.machine + ".bwn");
+    const auto boardPath = dir / "board" / (puzzle.machine + ".kicad_pcb");
     const auto text = ReadFile(netlistPath);
     if (!text || !std::filesystem::exists(boardPath)) {
         return fail(puzzle.machineLine, "unknown machine '" + puzzle.machine + "'");
@@ -538,8 +538,9 @@ std::optional<Point> Machine::padPosition(std::string_view reference, std::strin
     return std::nullopt;
 }
 
-std::filesystem::path MachineRoot(const std::filesystem::path& file) {
-    return std::filesystem::absolute(file).parent_path().parent_path();
+std::filesystem::path MachineDir(const std::filesystem::path& file) {
+    const auto path = std::filesystem::absolute(file);
+    return path.extension() == ".bwp" ? path.parent_path().parent_path() : path.parent_path();
 }
 
 std::expected<Puzzle, std::vector<Diagnostic>> ReadPuzzleFile(const std::filesystem::path& path) {
@@ -559,15 +560,13 @@ LoadPuzzleFile(const std::filesystem::path& path,
     if (!puzzle) {
         return std::unexpected(puzzle.error());
     }
-    return LoadMachine(*puzzle, MachineRoot(path), roms);
+    return LoadMachine(*puzzle, MachineDir(path), roms);
 }
 
 bool HasBoard(const std::filesystem::path& netlist) {
     const auto path = std::filesystem::absolute(netlist);
     const std::string stem = path.stem().string();
-    const auto root = MachineRoot(path);
-    return path.parent_path().filename() == "netlists" &&
-           std::filesystem::exists(root / "boards" / stem / (stem + ".kicad_pcb"));
+    return std::filesystem::exists(path.parent_path() / "board" / (stem + ".kicad_pcb"));
 }
 
 std::expected<Machine, std::vector<Diagnostic>>
@@ -575,7 +574,7 @@ LoadNetlistMachine(const std::filesystem::path& netlist,
                    const std::optional<std::filesystem::path>& roms) {
     const auto path = std::filesystem::absolute(netlist);
     return LoadMachine(Puzzle{.file = path.filename().string(), .machine = path.stem().string()},
-                       MachineRoot(path), roms);
+                       MachineDir(path), roms);
 }
 
 }  // namespace bw

@@ -4,6 +4,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "session/session.hpp"
 
 using namespace bw;
@@ -19,7 +20,7 @@ Session MakeSession(std::expected<Machine, std::vector<Diagnostic>> machine) {
 }
 
 Session PuzzleSession(const char* name) {
-    return MakeSession(LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / name));
+    return MakeSession(LoadPuzzleFile(test::PuzzlePath(name)));
 }
 
 // TV frame at 60 ms (no lock needed: same seed, same Circuit, same frame).
@@ -36,8 +37,7 @@ std::vector<float> Frame(Session& session) {
 
 const std::vector<float>& FaultFree() {
     static const std::vector<float> frame = [] {
-        Session session = MakeSession(
-            LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn"));
+        Session session = MakeSession(LoadNetlistMachine(test::NetlistPath("test_pattern")));
         return Frame(session);
     }();
     return frame;

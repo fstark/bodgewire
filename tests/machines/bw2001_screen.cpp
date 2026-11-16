@@ -4,14 +4,14 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "parts/rom_contents.hpp"
 
 namespace bw {
 
 std::span<const std::uint8_t> Bw2001CharacterRom() {
     static const std::vector<std::uint8_t> rom = [] {
-        const auto words =
-            ReadRomContents(std::filesystem::path(BW_ROOT_DIR) / "roms" / "901447-08.bin", 2048, 8);
+        const auto words = ReadRomContents(test::RomPath("bw2001", "901447-08.bin"), 2048, 8);
         REQUIRE(words.has_value());
         return *words;
     }();

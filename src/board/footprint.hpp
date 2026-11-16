@@ -19,7 +19,7 @@ struct FootprintPad {
     Point position;      // relative to the footprint origin, at 0°
 };
 
-// A KiCad library footprint (.kicad_mod), as vendored in boards/footprints.
+// A KiCad library footprint (.kicad_mod), as vendored in footprints.
 struct Footprint {
     std::string id;    // "Package_DIP:DIP-14_W7.62mm", as in the netlist
     std::string text;  // the .kicad_mod file, unchanged

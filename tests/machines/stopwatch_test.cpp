@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "parts/ls47.hpp"
@@ -22,14 +23,14 @@ namespace {
 using enum LogicValue;
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "stopwatch.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("stopwatch"));
     REQUIRE(result.has_value());
     return std::move(*result);
 }
 
 // The Circuit built from the Board's Copper, with no Faults.
 std::unique_ptr<LoadedCircuit> BoardCircuit() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "stopwatch.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("stopwatch"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -143,7 +144,7 @@ TEST_CASE("stopwatch: the seconds count", "[machines][slow]") {
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -178,8 +179,7 @@ TEST_CASE("stopwatch: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"stuck_at_zero", "nineteen", "eights", "broken_bar", "non_stop",
                              "dark_seconds", "missing_eight"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "stopwatch");
         CHECK_FALSE(puzzle->title.empty());

@@ -1,4 +1,4 @@
-// Machine 120 BW-1 Puzzles (docs/machines/120-bw1/BW1_DESIGN.md, Puzzles): each from power-on,
+// Machine 120 BW-1 Puzzles (machines/120-bw1/docs/BW1_DESIGN.md, Puzzles): each from power-on,
 // faulty, read as the player reads it (the digits, the self-test's code), then repaired.
 
 #include <algorithm>
@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "bw1_rig.hpp"
 #include "machine/machine.hpp"
 #include "machine/puzzle.hpp"
@@ -20,7 +21,7 @@ using namespace bw::literals;
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -73,8 +74,7 @@ Bw1 Monitor(Machine& machine, std::uint64_t seed) { return Started(Bw1Circuit(ma
 TEST_CASE("bw1: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : kPuzzles) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "bw1");
         CHECK_FALSE(puzzle->title.empty());

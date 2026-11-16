@@ -1,6 +1,6 @@
 #pragma once
 
-// Machine 140 BW-80 under test (docs/machines/140-bw80/BW80_DESIGN.md): the Machine built from
+// Machine 140 BW-80 under test (machines/140-bw80/docs/BW80_DESIGN.md): the Machine built from
 // its Board (or a netlist text), run with its TV on J2, typed on through J3, its picture compared
 // with the page its display file predicts. Shared by the Machine's fault-free cases and its
 // Puzzles (P5y). The TV's Nets are found by connector pin: on a damaged Board Nets are named
@@ -25,12 +25,12 @@
 
 namespace bw {
 
-std::string Bw80NetlistText();  // netlists/bw80.bwn
+std::string Bw80NetlistText();  // machines/140-bw80/bw80.bwn
 
 // The ZX80's character set, $0E00-$0FFF of its ROM: 64 glyphs of 8 rows.
 std::vector<std::uint8_t> Bw80Glyphs();
 
-// A --roms directory with the test ROM (roms/bw80_test.rom) in IC2.
+// A --roms directory with the test ROM (machines/140-bw80/roms/bw80_test.rom) in IC2.
 std::filesystem::path Bw80TestRomDirectory();
 
 // The netlist `text` built without a Board (the text variants), with the test ROM in IC2

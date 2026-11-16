@@ -1,5 +1,0 @@
-# 110 LED computer: panel parts, the CPU and the ROM (docs/machines/110-led-computer/LED_COMPUTER_DESIGN.md, Board)
-edge J1 left middle                       # power
-row front left D8 D7 D6 D5 D4 D3 D2 D1    # L7 on the left
-edge SW1 front right                      # Reset
-row back middle U1 U2                     # the 6502 and the 2716: DIP-40 and DIP-24, no slot in the chip grid

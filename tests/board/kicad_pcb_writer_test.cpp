@@ -12,6 +12,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "board/kicad_board.hpp"
 #include "board/sexpr.hpp"
 #include "parts/catalogue.hpp"
@@ -209,9 +210,9 @@ TEST_CASE("kicad pcb writer: project", "[board]") {
 }
 
 TEST_CASE("kicad pcb writer: tennis", "[board][slow]") {
-    auto circuit = LoadNetlistFile(std::string(BW_NETLIST_DIR) + "/tennis.bwn");
+    auto circuit = LoadNetlistFile(test::NetlistPath("tennis"));
     REQUIRE(circuit.has_value());
-    std::ifstream in(std::string(BW_BOARD_DIR) + "/tennis/tennis.place");
+    std::ifstream in(test::MachineDir("tennis") / "board" / "tennis.place");
     std::ostringstream rules;
     rules << in.rdbuf();
     REQUIRE_FALSE(rules.str().empty());

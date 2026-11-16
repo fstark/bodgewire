@@ -5,6 +5,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "session/session.hpp"
 #include "sim/simulator.hpp"
 
@@ -12,8 +13,6 @@ using namespace bw;
 using namespace bw::literals;
 
 namespace {
-
-std::filesystem::path Root() { return std::filesystem::path(BW_NETLIST_DIR).parent_path(); }
 
 Puzzle TestPattern() {
     Puzzle puzzle;
@@ -24,7 +23,7 @@ Puzzle TestPattern() {
 }
 
 Machine Load(const Puzzle& puzzle) {
-    auto machine = LoadMachine(puzzle, Root());
+    auto machine = LoadMachine(puzzle, test::MachineDir(puzzle.machine));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }

@@ -11,6 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "board/kicad_board.hpp"
 #include "machine/crack.hpp"
 #include "machine/machine.hpp"
@@ -29,15 +30,14 @@ struct Design {
 };
 
 Design LoadDesign(const std::string& name) {
-    std::ifstream in(std::filesystem::path(BW_NETLIST_DIR) / (name + ".bwn"));
+    std::ifstream in(test::NetlistPath(name));
     const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
     auto netlist = ParseNetlist(text, name + ".bwn");
     REQUIRE(netlist.has_value());
-    ResolveContentsPaths(*netlist, BW_NETLIST_DIR);
+    ResolveContentsPaths(*netlist, test::MachineDir(name));
     auto circuit = BuildCircuit(*netlist);
     REQUIRE(circuit.has_value());
-    auto board =
-        ReadKicadBoardFile(std::filesystem::path(BW_BOARD_DIR) / name / (name + ".kicad_pcb"));
+    auto board = ReadKicadBoardFile(test::BoardPath(name));
     REQUIRE(board.has_value());
     return {std::move(*netlist), std::move(*circuit), std::move(*board)};
 }
@@ -185,7 +185,7 @@ Machine PowerMachine(std::vector<CrackDecl> cracks, std::vector<BridgeDecl> brid
     puzzle.machine = "test_pattern";
     puzzle.cracks = std::move(cracks);
     puzzle.bridges = std::move(bridges);
-    auto machine = LoadMachine(puzzle, std::filesystem::path(BW_NETLIST_DIR).parent_path());
+    auto machine = LoadMachine(puzzle, test::MachineDir(puzzle.machine));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }

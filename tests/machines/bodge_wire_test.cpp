@@ -5,6 +5,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "session/session.hpp"
 
 using namespace bw;
@@ -20,8 +21,7 @@ Session MakeSession(std::expected<Machine, std::vector<Diagnostic>> machine) {
 }
 
 Session TestPatternSession() {
-    return MakeSession(
-        LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn"));
+    return MakeSession(LoadNetlistMachine(test::NetlistPath("test_pattern")));
 }
 
 // TV frame at 60 ms (no lock needed: same seed, same Circuit, same frame).
@@ -47,8 +47,7 @@ const std::vector<float>& FaultFree() {
 }  // namespace
 
 TEST_CASE("bodge wire: broken trace repaired by a wire", "[machines]") {
-    Session session =
-        MakeSession(LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp"));
+    Session session = MakeSession(LoadPuzzleFile(test::PuzzlePath("broken_trace")));
     session.setSpeed(Speed::Max);
     session.powerOn(1, 10_ms);
     session.runner().waitIdle();
@@ -71,8 +70,7 @@ TEST_CASE("bodge wire: unbridge through the Session", "[machines]") {
     puzzle.machineLine = 1;
     puzzle.machine = "test_pattern";
     puzzle.bridges = {{2, {"U1", "7"}, {"U1", "8"}}};
-    Session session =
-        MakeSession(LoadMachine(puzzle, std::filesystem::path(BW_NETLIST_DIR).parent_path()));
+    Session session = MakeSession(LoadMachine(puzzle, test::MachineDir(puzzle.machine)));
     const auto pad = [&](const char* pin) {
         const auto at = session.machine()->padPosition("U1", pin);
         REQUIRE(at.has_value());

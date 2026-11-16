@@ -5,6 +5,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "netlist/builder.hpp"
 #include "runner/runner.hpp"
 
@@ -14,7 +15,7 @@ using namespace bw::literals;
 namespace {
 
 std::unique_ptr<LoadedCircuit> LoadTestPattern() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(result.has_value());
     return std::move(*result);
 }

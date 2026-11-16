@@ -11,6 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "netlist/builder.hpp"
 using namespace bw;
 
@@ -213,7 +214,7 @@ TEST_CASE("analyzer: ParseTrigger", "[instruments]") {
 
 TEST_CASE("analyzer: LINE_END_N every 64 points", "[instruments]") {
     using namespace bw::literals;
-    const auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    const auto loaded = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(loaded.has_value());
     const auto lineEnd = PinNet(**loaded, "U6", "6");
     const auto load = PinNet(**loaded, "U2", "9");

@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "bw1_model.hpp"
 #include "parts/switch.hpp"
 
@@ -27,7 +28,7 @@ NetId PinNetOf(const LoadedCircuit& loaded, const std::string& reference, std::s
 
 }  // namespace
 
-std::filesystem::path Bw1NetlistPath() { return std::filesystem::path(BW_NETLIST_DIR) / "bw1.bwn"; }
+std::filesystem::path Bw1NetlistPath() { return test::NetlistPath("bw1"); }
 
 std::string Bw1KeyReference(std::string_view name) {
     if (name.size() == 1 && std::isxdigit(static_cast<unsigned char>(name[0]))) {

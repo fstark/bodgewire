@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 #include "netlist/net_pins.hpp"
 #include "view/board_scene.hpp"
@@ -23,7 +24,7 @@ std::vector<std::string> Texts(const std::vector<NetPin>& pins) {
 }
 
 Machine Load(std::string_view puzzle) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / puzzle);
+    auto machine = LoadPuzzleFile(test::PuzzlePath(puzzle));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -46,7 +47,7 @@ std::vector<ScenePad> Drivers(const BoardScene& scene, ScenePad on) {
 }  // namespace
 
 TEST_CASE("net drivers: crack does not split H0", "[machines]") {
-    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
+    const auto machine = LoadPuzzleFile(test::PuzzlePath("broken_trace"));
     REQUIRE(machine.has_value());
     const NetPins pins = DescribeNet(machine->designCircuit(), "H0");
     CHECK(Texts(pins.drivers) == std::vector<std::string>{"U1 pin 14 QA"});
@@ -68,7 +69,7 @@ TEST_CASE("net drivers: crack does not split H0", "[machines]") {
 }
 
 TEST_CASE("net drivers: stuck output is still an output", "[machines]") {
-    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "stuck_gate.bwp");
+    const auto machine = LoadPuzzleFile(test::PuzzlePath("stuck_gate"));
     REQUIRE(machine.has_value());
     const NetPins pins = DescribeNet(machine->designCircuit(), "GRID");
     REQUIRE(pins.drivers.size() == 1);

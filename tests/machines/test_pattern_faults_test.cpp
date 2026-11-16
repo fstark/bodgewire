@@ -7,6 +7,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "devices/tv_input.hpp"
 #include "instruments/logic_probe.hpp"
 #include "machine/machine.hpp"
@@ -52,7 +53,7 @@ Seen Watch(LoadedCircuit& loaded, std::uint64_t seed, const std::vector<std::str
 }
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -68,7 +69,7 @@ std::vector<float> FaultFree(std::uint64_t seed) {
     puzzle.file = "t.bwp";
     puzzle.machineLine = 1;
     puzzle.machine = "test_pattern";
-    auto machine = LoadMachine(puzzle, std::filesystem::path(BW_PUZZLE_DIR).parent_path());
+    auto machine = LoadMachine(puzzle, test::MachineDir(puzzle.machine));
     REQUIRE(machine.has_value());
     return Frame(*machine, seed);
 }
@@ -79,8 +80,7 @@ TEST_CASE("faults: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"broken_trace", "dead_counter", "stuck_gate", "dead_rail",
                              "line_bridge", "unpowered_chip", "sync_bridge", "zips"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "test_pattern");
         CHECK_FALSE(puzzle->title.empty());
@@ -90,7 +90,7 @@ TEST_CASE("faults: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("faults: fault-free Machine on its Board is the netlist", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2);
-    auto netlist = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    auto netlist = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(netlist.has_value());
     CHECK(FaultFree(seed) == Watch(**netlist, seed).frame);
 }

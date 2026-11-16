@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "../paths.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace bw;
@@ -121,12 +122,9 @@ TEST_CASE("rom contents: a .bin of the wrong size or width", "[parts]") {
 }
 
 TEST_CASE("rom contents: the Machine files parse", "[parts]") {
-    const std::filesystem::path roms = std::filesystem::path(BW_ROOT_DIR) / "roms";
-    if (std::filesystem::exists(roms / "2513.rom")) {
-        CHECK(ReadRomContents(roms / "2513.rom", 512, 5).has_value());
-    }
+    CHECK(ReadRomContents(test::RomPath("message", "2513.rom"), 512, 5).has_value());
     // The PET's character ROM, shipped with the BW-2001 (decided 2026-11-15): a 2316B's dump.
-    const auto characters = ReadRomContents(roms / "901447-08.bin", 2048, 8);
+    const auto characters = ReadRomContents(test::RomPath("bw2001", "901447-08.bin"), 2048, 8);
     REQUIRE(characters.has_value());
     // Screen code 1, 'A': its first row of dots is $18 (MAME's pet2001 character ROM).
     CHECK((*characters)[8] == 0x18);

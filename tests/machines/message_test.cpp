@@ -11,6 +11,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "devices/tv_input.hpp"
 #include "machine/machine.hpp"
 #include "machine/puzzle.hpp"
@@ -45,7 +46,7 @@ struct PageFault {
 
 // The page as dots, from the two ROM files: [line][dot].
 std::vector<std::vector<bool>> ExpectedPage(const PageFault& fault = {}) {
-    const std::filesystem::path roms = std::filesystem::path(BW_ROOT_DIR) / "roms";
+    const std::filesystem::path roms = test::MachineDir("message") / "roms";
     const auto message = ReadRomContents(roms / "message.rom", 2048, 8);
     const auto font = ReadRomContents(roms / "2513.rom", 512, 5);
     REQUIRE(message.has_value());
@@ -132,7 +133,7 @@ int LitOutside(const TvFrame& frame, Offset offset) {
 
 // The Circuit built from the Board's Copper, with no Faults.
 std::unique_ptr<LoadedCircuit> BoardCircuit() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "message.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("message"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -140,7 +141,7 @@ std::unique_ptr<LoadedCircuit> BoardCircuit() {
 }
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "message.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("message"));
     if (!result) {
         for (const Diagnostic& d : result.error()) {
             UNSCOPED_INFO(Format(d));
@@ -205,7 +206,7 @@ TEST_CASE("message: the TV shows the page", "[machines][slow]") {
 namespace {
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -255,8 +256,7 @@ TEST_CASE("message: Puzzles have a title and a brief", "[machines]") {
     for (const char* name :
          {"half_letters", "echo", "gibberish", "stammer", "thin_letters", "block_letters"}) {
         INFO(name);
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "message");
         CHECK_FALSE(puzzle->title.empty());

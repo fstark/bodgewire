@@ -1,0 +1,105 @@
+# 110 LED computer (machines/110-led-computer/docs/LED_COMPUTER.md): a 6502 at 1 MHz runs the
+# program in U2 (machines/110-led-computer/roms/led_computer.asm), keeps its variables and stack in U3/U4 and writes a
+# bouncing light to the U7 latch, which drives eight LEDs (D8 on the left). U5 decodes A15-A13
+# into 8K blocks (RAM $0000, LEDs $8000, ROM $E000); U6 makes the write strobes. U8 holds RES_N
+# low for 20 ms after power-on; SW1 resets.
+
+part X1  OSC freq=1MHz
+part J1  POWER
+part U1  6502
+part U2  2716 contents=roms/led_computer.rom
+part U3  2114        # DB0-DB3
+part U4  2114        # DB4-DB7
+part U5  74LS138     # address decoder
+part U6  74LS02      # write strobes
+part U7  74LS273     # LED latch
+part U8  POR time=20ms
+part SW1 BUTTON      # Reset
+part D1 LED          # L0
+part D2 LED          # L1
+part D3 LED          # L2
+part D4 LED          # L3
+part D5 LED          # L4
+part D6 LED          # L5
+part D7 LED          # L6
+part D8 LED          # L7
+part R1 R value=330  # D1's cathode
+part R2 R value=330  # D2's cathode
+part R3 R value=330  # D3's cathode
+part R4 R value=330  # D4's cathode
+part R5 R value=330  # D5's cathode
+part R6 R value=330  # D6's cathode
+part R7 R value=330  # D7's cathode
+part R8 R value=330  # D8's cathode
+part R9  R value=4k7 # RES_N
+part R10 R value=3k3 # IRQ_N
+part R11 R value=3k3 # NMI_N
+
+# Clock, reset, interrupts off.
+net PHI0      X1.OUT U1.PHI0
+net VCC       U1.RDY U1.SO
+net RES_N     U1.RES_N U8.RST_N R9.2 SW1.1 U7.CLR_N
+net IRQ_N     U1.IRQ_N R10.2
+net NMI_N     U1.NMI_N R11.2
+net VCC       R9.1 R10.1 R11.1
+net GND       SW1.2
+
+# Address bus.
+net A0         U1.A0 U2.A0 U3.A0 U4.A0
+net A1         U1.A1 U2.A1 U3.A1 U4.A1
+net A2         U1.A2 U2.A2 U3.A2 U4.A2
+net A3         U1.A3 U2.A3 U3.A3 U4.A3
+net A4         U1.A4 U2.A4 U3.A4 U4.A4
+net A5         U1.A5 U2.A5 U3.A5 U4.A5
+net A6         U1.A6 U2.A6 U3.A6 U4.A6
+net A7         U1.A7 U2.A7 U3.A7 U4.A7
+net A8         U1.A8 U2.A8 U3.A8 U4.A8
+net A9         U1.A9 U2.A9 U3.A9 U4.A9
+net A10       U1.A10 U2.A10
+net A13       U1.A13 U5.A
+net A14       U1.A14 U5.B
+net A15       U1.A15 U5.C
+
+# Data bus.
+net DB0       U1.D0 U2.O0 U3.IO1 U7.1D
+net DB1       U1.D1 U2.O1 U3.IO2 U7.2D
+net DB2       U1.D2 U2.O2 U3.IO3 U7.3D
+net DB3       U1.D3 U2.O3 U3.IO4 U7.4D
+net DB4       U1.D4 U2.O4 U4.IO1 U7.5D
+net DB5       U1.D5 U2.O5 U4.IO2 U7.6D
+net DB6       U1.D6 U2.O6 U4.IO3 U7.7D
+net DB7       U1.D7 U2.O7 U4.IO4 U7.8D
+
+# Decoding: 8K blocks.
+net VCC       U5.G1 U2.VPP
+net GND       U5.G2A_N U5.G2B_N U2.OE_N
+net RAM_N     U5.Y0_N U3.CS_N U4.CS_N
+net LATCH_N   U5.Y4_N U6.3A
+net ROM_N     U5.Y7_N U2.CE_N
+
+# Write strobes: WR high while PHI1 and RW are low (the second half of a write cycle).
+net PHI1      U1.PHI1 U6.1A
+net RW        U1.RW U6.1B
+net WR        U6.1Y U6.2A U6.2B
+net WR_N      U6.2Y U3.WE_N U4.WE_N U6.3B
+net LATCH_WR  U6.3Y U6.4A U6.4B
+net LATCH_CLK U6.4Y U7.CLK
+
+# LEDs, lit while their bit is 1.
+net L0        U7.1Q D1.A
+net LK0       D1.K R1.2
+net L1        U7.2Q D2.A
+net LK1       D2.K R2.2
+net L2        U7.3Q D3.A
+net LK2       D3.K R3.2
+net L3        U7.4Q D4.A
+net LK3       D4.K R4.2
+net L4        U7.5Q D5.A
+net LK4       D5.K R5.2
+net L5        U7.6Q D6.A
+net LK5       D6.K R6.2
+net L6        U7.7Q D7.A
+net LK6       D7.K R7.2
+net L7        U7.8Q D8.A
+net LK7       D8.K R8.2
+net GND       R1.1 R2.1 R3.1 R4.1 R5.1 R6.1 R7.1 R8.1

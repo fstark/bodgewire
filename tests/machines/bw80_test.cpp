@@ -1,5 +1,5 @@
 // The BW-80's netlist (the Sinclair ZX80, P5v): docs/p5v-bw80-video/BW80_VIDEO_DESIGN.md §7;
-// the Machine (P5x): docs/machines/140-bw80/BW80_DESIGN.md. Helpers in bw80_rig.{hpp,cpp}.
+// the Machine (P5x): machines/140-bw80/docs/BW80_DESIGN.md. Helpers in bw80_rig.{hpp,cpp}.
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +12,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../paths.hpp"
 #include "bw80_rig.hpp"
 #include "bw80_screen.hpp"
 #include "netlist/builder.hpp"
@@ -28,7 +29,7 @@ constexpr Time kTestRomCap = 400_ms;
 }  // namespace
 
 TEST_CASE("bw80: netlist loads without warnings", "[machines]") {
-    const auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "bw80.bwn");
+    const auto loaded = LoadNetlistFile(test::NetlistPath("bw80"));
     if (!loaded) {
         for (const Diagnostic& d : loaded.error()) {
             UNSCOPED_INFO(Format(d));

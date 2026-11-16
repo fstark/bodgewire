@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "../paths.hpp"
 #include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
 #include "runner/tv_consumer.hpp"
@@ -25,7 +26,7 @@ struct TestPattern {
 };
 
 TestPattern Load() {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    auto result = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(result.has_value());
     const auto video = ConnectorNet(**result, "VIDEO", "VIDEO");
     const auto syncN = ConnectorNet(**result, "VIDEO", "SYNC_N");
@@ -281,7 +282,7 @@ private:
 }  // namespace
 
 TEST_CASE("runner: 96 watched Nets", "[runner]") {
-    auto loaded = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "tennis.bwn");
+    auto loaded = LoadNetlistFile(test::NetlistPath("tennis"));
     REQUIRE(loaded.has_value());
     std::vector<NetId> nets;
     for (const auto& [name, net] : (*loaded)->nets) {

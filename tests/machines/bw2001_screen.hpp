@@ -15,7 +15,7 @@ namespace bw {
 inline constexpr int kBw2001TextTop = 41, kBw2001TextLeft = 144;
 inline constexpr int kBw2001Columns = 40, kBw2001Rows = 25;
 
-// The character ROM 901447-08 (roms/901447-08.bin), 2 KB.
+// The character ROM 901447-08 (machines/130-bw2001/roms/901447-08.bin), 2 KB.
 std::span<const std::uint8_t> Bw2001CharacterRom();
 
 // The 8 lines of the 8 x 8 dots of cell `cell` (row * 40 + column) as drawn, bit 7 the leftmost.

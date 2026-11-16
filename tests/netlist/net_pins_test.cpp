@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "netlist/net_pins.hpp"
 
 using namespace bw;
@@ -15,7 +16,7 @@ using namespace bw;
 namespace {
 
 std::unique_ptr<LoadedCircuit> Load(const std::string& name) {
-    auto result = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / (name + ".bwn"));
+    auto result = LoadNetlistFile(test::NetlistPath(name));
     REQUIRE(result.has_value());
     return std::move(*result);
 }

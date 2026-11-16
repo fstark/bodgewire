@@ -4,6 +4,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 #include "runner/probe_consumer.hpp"
 #include "runner/runner.hpp"
@@ -17,7 +18,7 @@ namespace {
 // Lamps at 300 ms with the probe on the pad of `reference`.`pin`, through the Runner.
 std::string ProbeAt(const std::string& puzzle, const std::string& reference,
                     const std::string& pin) {
-    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (puzzle + ".bwp"));
+    const auto machine = LoadPuzzleFile(test::PuzzlePath(puzzle));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -52,8 +53,7 @@ TEST_CASE("board probe: broken trace", "[machines]") {
 }
 
 TEST_CASE("board probe: a pick's contact beside a Trace reads that Trace", "[machines]") {
-    const auto machine =
-        LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    const auto machine = LoadNetlistMachine(test::NetlistPath("test_pattern"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());

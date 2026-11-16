@@ -1,7 +1,0 @@
-# 090 TV typewriter: panel parts and the character ROM (docs/machines/090-typewriter/TYPEWRITER_DESIGN.md, Board)
-edge J1 left middle    # power
-edge J2 back right     # TV
-edge J3 front left     # keyboard
-edge SW1 front right   # Clear
-next R1 SW1 left       # CLEAR_N pull-up
-row back left U23      # character ROM: DIP-24, no slot in the chip grid

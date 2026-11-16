@@ -11,6 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 
@@ -22,7 +23,7 @@ namespace {
 // Capture at 1 MHz, all Any, of the given pads in the built `puzzle`.
 Capture CaptureOf(const std::string& puzzle,
                   std::initializer_list<std::pair<const char*, const char*>> pins) {
-    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (puzzle + ".bwp"));
+    const auto machine = LoadPuzzleFile(test::PuzzlePath(puzzle));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -78,7 +79,7 @@ namespace {
 // 110 LED computer at 10 MHz: Channels 0-15 U1 A0-A15, 16-23 U1 D0-D7, 24 RW, 25 PHI2; the
 // address Trigger `pattern` with RW at `rw`.
 Capture CaptureBus(const char* pattern, TriggerCondition rw) {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "led_computer.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("led_computer"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());

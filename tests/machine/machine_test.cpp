@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
 #include "board/copper.hpp"
 #include "machine/crack.hpp"
 #include "parts/mos6530.hpp"
@@ -24,7 +25,11 @@ namespace {
 
 using Lines = std::vector<std::string>;
 
-std::filesystem::path Root() { return std::filesystem::path(BW_NETLIST_DIR).parent_path(); }
+// The Puzzle's Machine directory; a directory without its netlist for an unknown Machine.
+std::filesystem::path Dir(const Puzzle& puzzle) {
+    return puzzle.machine == "nope" ? test::RootDir() / "machines"
+                                    : test::MachineDir(puzzle.machine);
+}
 
 Puzzle TestPattern() {
     Puzzle puzzle;
@@ -41,7 +46,7 @@ Puzzle LedComputer() {
 }
 
 Lines Errors(const Puzzle& puzzle) {
-    const auto result = LoadMachine(puzzle, Root());
+    const auto result = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE_FALSE(result.has_value());
     Lines errors;
     for (const Diagnostic& d : result.error()) {
@@ -80,7 +85,7 @@ TEST_CASE("machine: load errors", "[machine]") {
 TEST_CASE("machine: a chip input can be stuck, and a swap removes it", "[machine]") {
     Puzzle puzzle = TestPattern();
     puzzle.stuck = {{2, "U3", "A", LogicValue::One}};
-    auto machine = LoadMachine(puzzle, Root());
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     const auto ownNets = [&] {
         const auto built = machine->build();
@@ -103,7 +108,7 @@ TEST_CASE("machine: joint errors", "[machine]") {
 TEST_CASE("machine: resolder removes a dry Joint, a swap does not", "[machine]") {
     Puzzle puzzle = TestPattern();
     puzzle.joints = {{2, {"U13", "2B"}}, {3, {"U13", "6"}}};
-    auto machine = LoadMachine(puzzle, Root());
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     REQUIRE(machine->dryJoints().size() == 1);
     CHECK(machine->dryJoints()[0].reference == "U13");
@@ -130,12 +135,12 @@ TEST_CASE("machine: crack errors", "[machine]") {
 }
 
 TEST_CASE("machine: no faults builds the design", "[machine]") {
-    const auto machine = LoadMachine(TestPattern(), Root());
+    const auto machine = LoadMachine(TestPattern(), Dir(TestPattern()));
     REQUIRE(machine.has_value());
     CHECK(machine->name() == "test_pattern");
     const auto built = machine->build();
     REQUIRE(built.has_value());
-    const auto design = LoadNetlistFile(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    const auto design = LoadNetlistFile(test::NetlistPath("test_pattern"));
     REQUIRE(design.has_value());
     CHECK(NetNames(**built) == NetNames(**design));
 }
@@ -143,7 +148,7 @@ TEST_CASE("machine: no faults builds the design", "[machine]") {
 TEST_CASE("machine: swap removes only that chip's Stuck-at", "[machine]") {
     Puzzle puzzle = TestPattern();
     puzzle.stuck = {{2, "U3", "QA", LogicValue::Zero}};
-    auto machine = LoadMachine(puzzle, Root());
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     const auto tieOfV0 = [&] {
         const auto built = machine->build();
@@ -161,7 +166,7 @@ TEST_CASE("machine: swap removes only that chip's Stuck-at", "[machine]") {
 TEST_CASE("machine: mend near and far", "[machine]") {
     Puzzle puzzle = TestPattern();
     puzzle.cracks = {{2, {"U1", "QA"}, {"U13", "2B"}, 79}};
-    auto machine = LoadMachine(puzzle, Root());
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     CHECK(machine->build().value()->nets.contains("H0~2"));
     CHECK_FALSE(machine->mend(Layer::Front, {H0Crack().at.x + 5'000'000, H0Crack().at.y}));
@@ -172,29 +177,30 @@ TEST_CASE("machine: mend near and far", "[machine]") {
 }
 
 TEST_CASE("machine: HasBoard", "[machine]") {
-    const std::filesystem::path netlists(BW_NETLIST_DIR);
-    CHECK(HasBoard(netlists / "test_pattern.bwn"));
-    CHECK(HasBoard(netlists / "counter.bwn"));
+    CHECK(HasBoard(test::NetlistPath("test_pattern")));
+    CHECK(HasBoard(test::NetlistPath("counter")));
     const auto temp = std::filesystem::temp_directory_path() / "bw_has_board";
     std::filesystem::create_directories(temp);
-    std::filesystem::copy_file(netlists / "test_pattern.bwn", temp / "test_pattern.bwn",
+    std::filesystem::copy_file(test::NetlistPath("test_pattern"), temp / "test_pattern.bwn",
                                std::filesystem::copy_options::overwrite_existing);
     CHECK_FALSE(HasBoard(temp / "test_pattern.bwn"));
     std::filesystem::remove_all(temp);
 }
 
-TEST_CASE("machine: MachineRoot", "[machine]") {
-    CHECK(MachineRoot(std::filesystem::path(BW_PUZZLE_DIR) / "dead_counter.bwp") == Root());
-    CHECK(MachineRoot("/a/b/c.bwp") == "/a");
+TEST_CASE("machine: MachineDir", "[machine]") {
+    CHECK(MachineDir(test::PuzzlePath("dead_counter")) == test::MachineDir("test_pattern"));
+    CHECK(MachineDir(test::NetlistPath("counter")) == test::MachineDir("counter"));
+    CHECK(MachineDir("/a/b/c.bwp") == "/a");
+    CHECK(MachineDir("/a/b/c.bwn") == "/a/b");
 }
 
 TEST_CASE("machine: ReadPuzzleFile + LoadMachine", "[machine]") {
-    const auto file = std::filesystem::path(BW_PUZZLE_DIR) / "dead_counter.bwp";
+    const auto file = test::PuzzlePath("dead_counter");
     const auto puzzle = ReadPuzzleFile(file);
     REQUIRE(puzzle.has_value());
     CHECK(puzzle->machine == "test_pattern");
     REQUIRE(puzzle->stuck.size() == 1);
-    const auto viaRead = LoadMachine(*puzzle, MachineRoot(file));
+    const auto viaRead = LoadMachine(*puzzle, MachineDir(file));
     const auto direct = LoadPuzzleFile(file);
     REQUIRE(viaRead.has_value());
     REQUIRE(direct.has_value());
@@ -202,11 +208,11 @@ TEST_CASE("machine: ReadPuzzleFile + LoadMachine", "[machine]") {
     const auto built = viaRead->build();
     REQUIRE(built.has_value());
     CHECK((*built)->circuit.tieOf((*built)->nets.at("V0")).strength == DriveStrength::Strong);
-    CHECK_FALSE(ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "nope.bwp").has_value());
+    CHECK_FALSE(ReadPuzzleFile(test::RootDir() / "machines" / "nope.bwp").has_value());
 }
 
 TEST_CASE("machine: netlist with a Board loads fault-free", "[machine]") {
-    const auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    const auto machine = LoadNetlistMachine(test::NetlistPath("counter"));
     REQUIRE(machine.has_value());
     CHECK(machine->name() == "counter");
     CHECK(machine->board().traces.size() == machine->pristineBoard().traces.size());
@@ -214,7 +220,7 @@ TEST_CASE("machine: netlist with a Board loads fault-free", "[machine]") {
 }
 
 TEST_CASE("machine: Machine without VIDEO runs", "[machine]") {
-    const auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    const auto machine = LoadNetlistMachine(test::NetlistPath("counter"));
     REQUIRE(machine.has_value());
     auto loaded = machine->build();
     REQUIRE(loaded.has_value());
@@ -227,13 +233,13 @@ TEST_CASE("machine: Machine without VIDEO runs", "[machine]") {
 }
 
 TEST_CASE("machine: crack adds a Trace to the drawn Board", "[machine]") {
-    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
+    const auto machine = LoadPuzzleFile(test::PuzzlePath("broken_trace"));
     REQUIRE(machine.has_value());
     CHECK(machine->board().traces.size() == machine->pristineBoard().traces.size() + 1);
 }
 
 TEST_CASE("machine: probeNet across a crack", "[machine]") {
-    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
+    const auto machine = LoadPuzzleFile(test::PuzzlePath("broken_trace"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -309,8 +315,7 @@ TEST_CASE("machine: probeNet across a crack", "[machine]") {
 
 TEST_CASE("machine: probeNet on an unconnected pin", "[machine]") {
     // 100 Heartbeat: U1 RW has a pad but no copper and no netlist Net.
-    const auto machine =
-        LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "heartbeat.bwn");
+    const auto machine = LoadNetlistMachine(test::NetlistPath("heartbeat"));
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -322,7 +327,7 @@ TEST_CASE("machine: probeNet on an unconnected pin", "[machine]") {
 }
 
 TEST_CASE("machine: padPosition", "[machine]") {
-    const auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
+    const auto machine = LoadPuzzleFile(test::PuzzlePath("broken_trace"));
     REQUIRE(machine.has_value());
     const auto qa = machine->padPosition("U1", "QA");
     REQUIRE(qa.has_value());
@@ -340,7 +345,7 @@ TEST_CASE("machine: padPosition", "[machine]") {
     CHECK_FALSE(machine->padPosition("U99", "1"));
     CHECK_FALSE(machine->padPosition("U1", "XX"));
 
-    const auto counter = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    const auto counter = LoadNetlistMachine(test::NetlistPath("counter"));
     REQUIRE(counter.has_value());
     CHECK(counter->padPosition("R1", "1").has_value());
 }
@@ -348,7 +353,7 @@ TEST_CASE("machine: padPosition", "[machine]") {
 namespace {
 
 Machine BrokenTrace() {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / "broken_trace.bwp");
+    auto machine = LoadPuzzleFile(test::PuzzlePath("broken_trace"));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -385,7 +390,7 @@ TEST_CASE("machine: bad wires", "[machine]") {
 }
 
 TEST_CASE("machine: cut and mend", "[machine]") {
-    auto loaded = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    auto loaded = LoadNetlistMachine(test::NetlistPath("test_pattern"));
     REQUIRE(loaded.has_value());
     Machine& machine = *loaded;
     CHECK(PadsConnected(machine, "U1", "14", "U13", "6"));
@@ -420,13 +425,13 @@ TEST_CASE("machine: bridge errors", "[machine]") {
 }
 
 TEST_CASE("machine: bridge joins two pads until removed", "[machine]") {
-    auto fine = LoadMachine(TestPattern(), Root());
+    auto fine = LoadMachine(TestPattern(), Dir(TestPattern()));
     REQUIRE(fine.has_value());
     CHECK_FALSE(PadsConnected(*fine, "U1", "7", "U1", "8"));
 
     Puzzle puzzle = TestPattern();
     puzzle.bridges = {{2, {"U1", "7"}, {"U1", "8"}}};
-    auto machine = LoadMachine(puzzle, Root());
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     CHECK(machine->bridges().size() == 1);
     CHECK(PadsConnected(*machine, "U1", "7", "U1", "8"));
@@ -437,7 +442,7 @@ TEST_CASE("machine: bridge joins two pads until removed", "[machine]") {
 }
 
 TEST_CASE("machine: placeCrack", "[machine]") {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "test_pattern.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("test_pattern"));
     REQUIRE(machine.has_value());
     CHECK(machine->cracks().empty());
     const auto crack = machine->placeCrack({"U1", "QA"}, {"U13", "2B"}, 50);
@@ -508,7 +513,7 @@ TEST_CASE("machine: switch fault errors", "[machine]") {
 TEST_CASE("machine: a swap removes a switch Fault", "[machine]") {
     Puzzle puzzle = LedComputer();
     puzzle.switches = {{2, "SW1", true}};
-    auto machine = LoadMachine(puzzle, Root());
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     const auto fault = [&] {
         const auto built = machine->build();
@@ -524,7 +529,7 @@ TEST_CASE("machine: a swap removes the chip's memory Faults", "[machine]") {
     Puzzle puzzle = LedComputer();
     puzzle.cells = {{2, {"U3", "IO1"}, 0x10, LogicValue::One},
                     {3, {"U4", "14"}, std::nullopt, LogicValue::One}};  // 14: IO1
-    auto machine = LoadMachine(puzzle, Root());
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     // Power-on contents: U3 word $10 bit 0, U4 bit 0 of every word; seeds differ elsewhere.
     const auto stuck = [&](std::uint64_t seed) {

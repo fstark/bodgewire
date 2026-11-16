@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "devices/led_glow.hpp"
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
@@ -24,13 +25,13 @@ using enum LogicValue;
 using Recorded = std::map<std::string, std::vector<Sample>>;
 
 Machine LoadPuzzle(const std::string& name) {
-    auto machine = LoadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (name + ".bwp"));
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
 
 Machine FaultFree() {
-    auto machine = LoadNetlistMachine(std::filesystem::path(BW_NETLIST_DIR) / "counter.bwn");
+    auto machine = LoadNetlistMachine(test::NetlistPath("counter"));
     REQUIRE(machine.has_value());
     return std::move(*machine);
 }
@@ -112,8 +113,7 @@ std::vector<float> Glow(const std::vector<Sample>& anode, const std::vector<Samp
 
 TEST_CASE("counter: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"dark_led", "frozen_led", "too_fast"}) {
-        const auto puzzle =
-            ReadPuzzleFile(std::filesystem::path(BW_PUZZLE_DIR) / (std::string(name) + ".bwp"));
+        const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "counter");
         CHECK_FALSE(puzzle->title.empty());

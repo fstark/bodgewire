@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../machine/test_points.hpp"
+#include "../paths.hpp"
 #include "board/copper.hpp"
 #include "board/kicad_board.hpp"
 #include "machine/crack.hpp"
@@ -25,10 +26,9 @@ struct Fixture {
 };
 
 Fixture Load(const std::string& name) {
-    auto design = LoadNetlistFile(std::string(BW_NETLIST_DIR) + "/" + name + ".bwn");
+    auto design = LoadNetlistFile(test::NetlistPath(name));
     REQUIRE(design.has_value());
-    auto board =
-        ReadKicadBoardFile(std::string(BW_BOARD_DIR) + "/" + name + "/" + name + ".kicad_pcb");
+    auto board = ReadKicadBoardFile(test::BoardPath(name));
     REQUIRE(board.has_value());
     return {std::move(*design), std::move(*board)};
 }
