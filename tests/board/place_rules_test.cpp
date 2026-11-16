@@ -90,3 +90,33 @@ TEST_CASE("place rules: errors name their line", "[board]") {
     CHECK(Errors("grid 0 5\n") == std::vector<std::string>{"t.place:1: error: bad grid size '0'"});
     CHECK(Errors("row front middle\nput\n").size() == 2);
 }
+
+TEST_CASE("place rules: size and at", "[board]") {
+    const auto rules = ParsePlaceRules("size 155.5 142\nat IC1 64.0 66.2\nat IC2 134.9 57.2\n"
+                                       "next R4 IC1 right\nedge J1 back left\n",
+                                       "t.place");
+    REQUIRE(rules.has_value());
+    REQUIRE(rules->size.has_value());
+    CHECK(rules->size->first == 155.5);
+    CHECK(rules->size->second == 142);
+    REQUIRE(rules->rules.size() == 4);
+    const auto& ic1 = std::get<AtRule>(rules->rules[0].rule);
+    CHECK(ic1.reference == "IC1");
+    CHECK(ic1.x == 64.0);
+    CHECK(ic1.y == 66.2);
+    CHECK(std::get<NextRule>(rules->rules[2].rule).other == "IC1");
+
+    CHECK(Errors("at IC1 64 66\n") == std::vector<std::string>{"t.place:1: error: at needs size"});
+    CHECK(Errors("size 10 20\nat IC1 x 66\n") ==
+          std::vector<std::string>{"t.place:2: error: bad position 'x': millimetres"});
+    CHECK(Errors("size 10\n") ==
+          std::vector<std::string>{"t.place:1: error: expected: size WIDTH DEPTH"});
+    CHECK(Errors("size 10 20\nsize 10 20\n") ==
+          std::vector<std::string>{"t.place:2: error: size given twice"});
+    CHECK(Errors("size 10 20\ngrid pet\n") ==
+          std::vector<std::string>{"t.place:2: error: grid does not go with size"});
+    CHECK(Errors("grid 3 3\nsize 10 20\n") ==
+          std::vector<std::string>{"t.place:2: error: size does not go with grid"});
+    CHECK(Errors("size 10 20\nat IC1 1 2\nat IC1 3 4\n") ==
+          std::vector<std::string>{"t.place:3: error: 'IC1' has a rule already"});
+}

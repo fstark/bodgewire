@@ -42,9 +42,16 @@ struct Upright {
     std::uint32_t line;
 };
 
+// `at REF X Y` (P5x): `reference`'s courtyard centre at (x, y) mm from the Board's back-left
+// corner, y toward the front, upright; needs `size`.
+struct AtRule {
+    std::string reference;
+    double x, y;
+};
+
 struct PlaceRule {
     std::uint32_t line;
-    std::variant<EdgeRule, NextRule> rule;
+    std::variant<EdgeRule, NextRule, AtRule> rule;
 };
 
 // A .place file: how the panel parts of a Board are placed.
@@ -55,6 +62,9 @@ struct PlaceRules {
     // horizontally; `next` may then name such a chip.
     bool petGrid = false;
     std::map<std::string, Upright, std::less<>> upright;  // grid pet: chips standing upright
+    // `size W H` (P5x): the Board's outline in mm (width across, depth back to front); the parts
+    // with `at` rules sit in it, the rest beside them or in the empty places.
+    std::optional<std::pair<double, double>> size;
 };
 
 std::expected<PlaceRules, std::vector<Diagnostic>> ParsePlaceRules(std::string_view text,

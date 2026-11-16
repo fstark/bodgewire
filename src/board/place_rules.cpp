@@ -73,12 +73,20 @@ public:
             gridRule(words);
         } else if (rule == "upright") {
             uprightRule(words);
+        } else if (rule == "size") {
+            sizeRule(words);
+        } else if (rule == "at") {
+            atRule(words);
         } else {
             error("unknown rule '" + std::string(rule) + "'");
         }
     }
 
     std::expected<PlaceRules, std::vector<Diagnostic>> result() {
+        if (firstAt_ && !rules_.size) {
+            line_ = *firstAt_;
+            error("at needs size");
+        }
         if (!errors_.empty()) {
             return std::unexpected(std::move(errors_));
         }
@@ -187,10 +195,60 @@ private:
         }
     }
 
+    std::optional<double> parseMm(std::string_view word) {
+        double value = 0;
+        const auto [end, ec] = std::from_chars(word.data(), word.data() + word.size(), value);
+        if (ec != std::errc{} || end != word.data() + word.size() || value <= 0) {
+            error("bad size '" + std::string(word) + "': millimetres");
+            return std::nullopt;
+        }
+        return value;
+    }
+
+    void sizeRule(const std::vector<std::string_view>& words) {
+        if (words.size() != 3) {
+            return error("expected: size WIDTH DEPTH");
+        }
+        if (rules_.size) {
+            return error("size given twice");
+        }
+        if (rules_.grid || rules_.petGrid) {
+            return error("size does not go with grid");
+        }
+        const auto width = parseMm(words[1]);
+        const auto depth = parseMm(words[2]);
+        if (width && depth) {
+            rules_.size = std::pair{*width, *depth};
+        }
+    }
+
+    void atRule(const std::vector<std::string_view>& words) {
+        if (words.size() != 4) {
+            return error("expected: at REF X Y");
+        }
+        double xy[2]{};
+        for (int i = 0; i < 2; ++i) {
+            const std::string_view word = words[2 + i];
+            const auto [end, ec] = std::from_chars(word.data(), word.data() + word.size(), xy[i]);
+            if (ec != std::errc{} || end != word.data() + word.size() || xy[i] < 0) {
+                return error("bad position '" + std::string(word) + "': millimetres");
+            }
+        }
+        if (!firstAt_) {
+            firstAt_ = line_;
+        }
+        if (claim(words[1])) {
+            rules_.rules.push_back({line_, AtRule{std::string(words[1]), xy[0], xy[1]}});
+        }
+    }
+
     void gridRule(const std::vector<std::string_view>& words) {
         if (words.size() == 2 && words[1] == "pet") {
             if (rules_.grid || rules_.petGrid) {
                 return error("grid given twice");
+            }
+            if (rules_.size) {
+                return error("grid does not go with size");
             }
             rules_.petGrid = true;
             return;
@@ -200,6 +258,9 @@ private:
         }
         if (rules_.grid || rules_.petGrid) {
             return error("grid given twice");
+        }
+        if (rules_.size) {
+            return error("grid does not go with size");
         }
         std::int32_t size[2]{};
         for (int i = 0; i < 2; ++i) {
@@ -216,6 +277,7 @@ private:
     std::uint32_t line_ = 0;
     PlaceRules rules_;
     std::set<std::string, std::less<>> placed_;
+    std::optional<std::uint32_t> firstAt_;
     std::vector<Diagnostic> errors_;
 };
 

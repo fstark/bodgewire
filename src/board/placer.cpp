@@ -104,9 +104,15 @@ public:
            const FootprintLibrary& footprints, const PlaceOptions& options)
         : loaded_(loaded), rules_(rules), file_(file), footprints_(footprints), options_(options) {}
 
+    // A layout copied from a real board: grid pet (P5q1) or size and at (P5x).
+    bool fixedLayout() const { return rules_.petGrid || rules_.size.has_value(); }
+
     std::expected<Placement, std::vector<Diagnostic>> run() {
         if (rules_.petGrid) {
             return runPet();
+        }
+        if (rules_.size) {
+            return runSized();
         }
         sortParts();
         if (errors_.empty()) {
@@ -153,10 +159,16 @@ private:
                 // edge connectors do.
                 for (const std::string& reference : edge->references) {
                     const auto it = index_.find(reference);
-                    if (rules_.petGrid && RunsAcross(edge->edge) && it != index_.end() &&
+                    if (fixedLayout() && RunsAcross(edge->edge) && it != index_.end() &&
                         parts_[it->second].footprint->id.find("PinHeader") != std::string::npos) {
                         parts_[it->second].angle = 90;
                     }
+                }
+            } else if (const auto* at = std::get_if<AtRule>(&rule.rule)) {
+                mark(at->reference);
+                if (const auto it = index_.find(at->reference); it != index_.end()) {
+                    atOf_[it->second] = at;
+                    atParts_.push_back(it->second);
                 }
             } else {
                 mark(std::get<NextRule>(rule.rule).reference);
@@ -176,8 +188,8 @@ private:
                 const auto upright = rules_.upright.find(parts_[i].reference);
                 parts_[i].angle = upright == rules_.upright.end() ? 90 : upright->second.angle;
                 petParts_.push_back(i);
-            } else if (rules_.petGrid && IsGridPackage(package)) {
-                parts_[i].angle = 90;
+            } else if (fixedLayout() && IsGridPackage(package)) {
+                parts_[i].angle = rules_.petGrid ? 90 : 0;
                 freeParts_.push_back(i);
             } else if (!IsGridPackage(package)) {
                 error(0, "'" + parts_[i].reference + "' (" + std::string(package) +
@@ -218,10 +230,14 @@ private:
                 groups_.push_back(std::move(group));
                 continue;
             }
-            const auto& next = std::get<NextRule>(rule.rule);
+            const auto* nextRule = std::get_if<NextRule>(&rule.rule);
+            if (nextRule == nullptr) {
+                continue;  // an at rule: layOutSized places it
+            }
+            const auto& next = *nextRule;
             const std::size_t part = index_.at(next.reference);
             const std::size_t other = index_.at(next.other);
-            if (rules_.petGrid && !groupOf.contains(other)) {
+            if (fixedLayout() && !groupOf.contains(other)) {
                 deferred_.push_back(&rule);  // beside a grid chip: once the grid is placed
                 continue;
             }
@@ -941,6 +957,137 @@ private:
         }
     }
 
+    // --- size and at (P5x) ---
+
+    std::expected<Placement, std::vector<Diagnostic>> runSized() {
+        sortParts();
+        if (errors_.empty()) {
+            buildGroups();
+        }
+        if (errors_.empty()) {
+            layOutSized();
+        }
+        if (errors_.empty()) {
+            placeDeferred();
+        }
+        if (errors_.empty()) {
+            placeFreeSized();
+        }
+        if (errors_.empty()) {
+            checkOverlaps();
+        }
+        if (!errors_.empty()) {
+            return std::unexpected(std::move(errors_));
+        }
+        buildNets();
+        return result();
+    }
+
+    bool insideOutline(const Box& b) const {
+        return b.min.x >= outline_.min.x && b.min.y >= outline_.min.y &&
+               b.max.x <= outline_.max.x && b.max.y <= outline_.max.y;
+    }
+
+    // The outline is the size given; each `at` part's courtyard centred where its rule says; the
+    // edge groups inside the outline.
+    void layOutSized() {
+        const auto [width, depth] = *rules_.size;
+        outline_ = {kOrigin,
+                    {kOrigin.x + std::llround(width * static_cast<double>(kMm)),
+                     kOrigin.y + std::llround(depth * static_cast<double>(kMm))}};
+        for (const std::size_t part : atParts_) {
+            const AtRule& at = *atOf_.at(part);
+            const Box b = Courtyard(*parts_[part].footprint, {0, 0}, parts_[part].angle);
+            const Point target{kOrigin.x + std::llround(at.x * static_cast<double>(kMm)),
+                               kOrigin.y + std::llround(at.y * static_cast<double>(kMm))};
+            parts_[part].origin = {SnapNear(target.x - (b.min.x + b.max.x) / 2),
+                                   SnapNear(target.y - (b.min.y + b.max.y) / 2)};
+            filled_.insert(part);
+            if (!insideOutline(courtyard(part))) {
+                error(0, "'" + parts_[part].reference + "' is off the Board");
+            }
+        }
+        const Box inner{{outline_.min.x + kBareMargin, outline_.min.y + kBareMargin},
+                        {outline_.max.x - kBareMargin, outline_.max.y - kBareMargin}};
+        for (const Group& group : groups_) {
+            placeGroup(group, inner);
+            for (const std::size_t part : group.members) {
+                filled_.insert(part);
+            }
+        }
+    }
+
+    // The rest, in netlist order, each to the free spot (a 2.54 mm grid inside the bare margin)
+    // nearest the parts already placed that share its Nets, or the Board's centre.
+    void placeFreeSized() {
+        std::map<std::string_view, std::vector<std::size_t>> partsOn;
+        std::vector<std::vector<std::string_view>> netsOfPart(parts_.size());
+        for (const Connection& c : loaded_.connections) {
+            if (IsRail(c.net)) {
+                continue;
+            }
+            if (const auto it = index_.find(c.reference); it != index_.end()) {
+                partsOn[c.net].push_back(it->second);
+                netsOfPart[it->second].push_back(c.net);
+            }
+        }
+        const std::int64_t step = 2 * kSnap;
+        const Box inner{{outline_.min.x + kBareMargin, outline_.min.y + kBareMargin},
+                        {outline_.max.x - kBareMargin, outline_.max.y - kBareMargin}};
+        for (const std::size_t part : freeParts_) {
+            double sx = 0, sy = 0, n = 0;
+            for (const std::string_view net : netsOfPart[part]) {
+                for (const std::size_t other : partsOn[net]) {
+                    if (other != part && filled_.contains(other)) {
+                        const Box b = courtyard(other);
+                        sx += static_cast<double>(b.min.x + b.max.x) / 2;
+                        sy += static_cast<double>(b.min.y + b.max.y) / 2;
+                        n += 1;
+                    }
+                }
+            }
+            const double wantX =
+                n > 0 ? sx / n : static_cast<double>(inner.min.x + inner.max.x) / 2;
+            const double wantY =
+                n > 0 ? sy / n : static_cast<double>(inner.min.y + inner.max.y) / 2;
+            const Box b = Courtyard(*parts_[part].footprint, {0, 0}, parts_[part].angle);
+            std::optional<Point> best;
+            double bestDistance = 0;
+            for (std::int64_t y = SnapUp(inner.min.y - b.min.y); y + b.max.y <= inner.max.y;
+                 y += step) {
+                for (std::int64_t x = SnapUp(inner.min.x - b.min.x); x + b.max.x <= inner.max.x;
+                     x += step) {
+                    const double dx = static_cast<double>(x + (b.min.x + b.max.x) / 2) - wantX;
+                    const double dy = static_cast<double>(y + (b.min.y + b.max.y) / 2) - wantY;
+                    const double d = dx * dx + dy * dy;
+                    if (best && d >= bestDistance) {
+                        continue;
+                    }
+                    const Box here{{x + b.min.x - kPartGap, y + b.min.y - kPartGap},
+                                   {x + b.max.x + kPartGap, y + b.max.y + kPartGap}};
+                    bool clear = true;
+                    for (const std::size_t other : filled_) {
+                        if (Overlap(here, courtyard(other))) {
+                            clear = false;
+                            break;
+                        }
+                    }
+                    if (clear) {
+                        best = Point{x, y};
+                        bestDistance = d;
+                    }
+                }
+            }
+            if (!best) {
+                return error(0, "no room on the Board for '" + parts_[part].reference + "'");
+            }
+            parts_[part].origin = *best;
+            filled_.insert(part);
+        }
+    }
+
+    std::vector<std::size_t> atParts_;               // size and at: parts with an at rule
+    std::map<std::size_t, const AtRule*> atOf_;      // size and at: their rules
     std::vector<std::size_t> petParts_, freeParts_;  // grid pet: at a PET cell; in an empty one
     std::vector<const PlaceRule*> deferred_;         // grid pet: next beside a grid part
     std::vector<std::int64_t> columnX_;              // grid pet: column left edges, from the grid

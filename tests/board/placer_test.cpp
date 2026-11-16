@@ -425,3 +425,76 @@ TEST_CASE("placer: grid pet lays a pin header along the back or front edge", "[b
     CHECK(j2.origin.y - fp.courtyardMax.x < c9.min.y);  // above row 9
     CHECK(Part(p, "J1").angle == 0);                    // a KK header on the left stays upright
 }
+
+namespace {
+
+// A corner of a real board (P5x): two chips at given places, a header on the back edge, a
+// resistor beside a chip and one with no rule.
+constexpr std::string_view kSized = "part J1 POWER\n"
+                                    "part J2 USERPORT\n"
+                                    "part U1 74LS00\n"
+                                    "part U2 74LS04\n"
+                                    "part R1 R value=1k\n"
+                                    "part R2 R value=1k\n"
+                                    "net A U1.1Y U2.1A R1.1\n"
+                                    "net B U2.1Y R2.1 J2.PA0\n"
+                                    "net VCC R1.2 R2.2\n";
+
+}  // namespace
+
+TEST_CASE("placer: size fixes the outline and at puts a part's centre where it says", "[board]") {
+    const Placement p = Placed(
+        kSized, "size 60 50\nat U1 20 20\nat U2 40 20\nedge J1 left middle\nedge J2 back middle\n"
+                "next R1 U1 front\n");
+    CHECK(p.columns == 0);
+    CHECK(p.outlineMin.x == 15 * kMm);
+    CHECK(p.outlineMin.y == 15 * kMm);
+    CHECK(p.outlineMax.x == 75 * kMm);
+    CHECK(p.outlineMax.y == 65 * kMm);
+    // U1's courtyard centre at (15 + 20, 15 + 20) mm, within the snap; U2 20 mm to its right.
+    const Box u1 = Courtyard(p, "U1");
+    const Box u2 = Courtyard(p, "U2");
+    CHECK(std::abs((u1.min.x + u1.max.x) / 2 - 35 * kMm) <= kSnap / 2);
+    CHECK(std::abs((u1.min.y + u1.max.y) / 2 - 35 * kMm) <= kSnap / 2);
+    CHECK(std::abs((u2.min.x + u2.max.x) / 2 - 55 * kMm) <= kSnap / 2);
+    CHECK(Part(p, "U1").angle == 0);
+    CHECK(u1.max.y - u1.min.y > u1.max.x - u1.min.x);  // standing
+    // R1 just in front of U1; R2 somewhere free, inside, clear of everything.
+    const Box r1 = Courtyard(p, "R1");
+    CHECK(r1.min.y >= u1.max.y);
+    CHECK(r1.min.y - u1.max.y < 4 * kMm);
+    const Box r2 = Courtyard(p, "R2");
+    CHECK(Inside(r2, p.outlineMin, p.outlineMax));
+    for (const char* other : {"U1", "U2", "R1", "J1", "J2"}) {
+        INFO(other);
+        CHECK_FALSE(Overlap(r2, Courtyard(p, other)));
+    }
+    // The header lies along the back edge, inside the outline.
+    CHECK(Part(p, "J2").angle == 90);
+    CHECK(Part(p, "J2").origin.y < u1.min.y);
+    CHECK(Part(p, "J1").angle == 0);
+    for (const PlacedPart& part : p.parts) {
+        CHECK(part.origin.x % kSnap == 0);
+        CHECK(part.origin.y % kSnap == 0);
+    }
+}
+
+TEST_CASE("placer: size and at refusals", "[board]") {
+    // Two at parts overlapping; a part off the Board; a group that does not fit.
+    const auto overlap =
+        Errors(kSized, "size 60 50\nat U1 20 20\nat U2 22 20\nedge J1 left middle\n"
+                       "edge J2 back middle\n");
+    CHECK(std::ranges::any_of(overlap, [](const std::string& m) {
+        return m.find("'U1' overlaps 'U2'") != std::string::npos;
+    }));
+    const auto off = Errors(kSized, "size 60 50\nat U1 2 20\nat U2 40 20\nedge J1 left middle\n"
+                                    "edge J2 back middle\n");
+    CHECK(std::ranges::any_of(off, [](const std::string& m) {
+        return m.find("'U1' is off the Board") != std::string::npos;
+    }));
+    const auto falls = Errors(kSized, "size 30 50\nat U1 10 20\nat U2 20 20\nedge J1 left middle\n"
+                                      "edge J2 back middle\n");
+    CHECK(std::ranges::any_of(falls, [](const std::string& m) {
+        return m.find("falls off the back edge") != std::string::npos;
+    }));
+}
