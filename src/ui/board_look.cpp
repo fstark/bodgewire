@@ -525,20 +525,6 @@ void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, 
 void DrawUseParts(ImDrawList& list, const LookMap& map, const BoardScene& scene,
                   const std::vector<bool>& own, std::optional<std::size_t> xray, float alpha) {
     const auto& components = scene.board().components;
-    const float silk = std::max(1.0f, map.pixels(150'000));
-    for (std::size_t k = 0; k < components.size(); ++k) {
-        const auto box = SilkBox(scene, k);
-        if (!box) {
-            continue;
-        }
-        if (scene.partName(k) == "LED") {
-            // A round LED's outline: its circle.
-            list.AddCircle(map(box->centre()),
-                           map.pixels(std::min(box->width(), box->height()) / 2), kSilk, 0, silk);
-            continue;
-        }
-        RectOutline(list, map, *box, kSilk, silk);
-    }
     for (std::size_t k = 0; k < components.size(); ++k) {
         if (k < own.size() && own[k]) {
             continue;

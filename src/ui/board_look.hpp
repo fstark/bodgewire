@@ -1,9 +1,9 @@
 #pragma once
 
-// The use look of the Board (P6 prototype): the Board as the real thing, parts drawn as the
-// parts (chip bodies, resistors with their bands, the oscillator's can, connector housings),
-// copper under green solder mask, references printed on the silkscreen beside each part.
-// No pin names, outlines on hover or tooltips: those belong to bench mode.
+// The real look of the Board (P6 prototype), BoardView's default: parts drawn as the parts (chip
+// bodies, resistors with their bands, the oscillator's can, connector housings), copper under
+// green solder mask, references printed on the silkscreen above each part, no outlines.
+// BoardView draws its selections over it (see-through chip, gold wiring, pin names).
 
 #include <cstddef>
 #include <cstdint>
@@ -37,10 +37,10 @@ struct LookMap {
 // traces alone, drawn again above the parts so a see-through body does not darken them.
 void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, Layer active,
                  std::span<const NetId> glowing, bool glowOnly = false);
-// Silkscreen outlines, then the parts' bodies and leads: above the pads. `own`: Components
-// drawn by BoardView itself (lamps, digits, switches), which get silkscreen only. `xray`: the
-// part the player works on, drawn see-through so its pins and their names show; `alpha`: every
-// part's opacity (low with the back layer active: the Board seen from below).
+// The parts' bodies and leads: above the pads (no outlines: the user, 2026-11-16). `own`:
+// Components drawn by BoardView itself (lamps, digits, switches), left out here.
+// `xray`: the part the player works on, drawn see-through so its pins and their names show;
+// `alpha`: every part's opacity (low with the back layer active: the Board seen from below).
 void DrawUseParts(ImDrawList& list, const LookMap& map, const BoardScene& scene,
                   const std::vector<bool>& own, std::optional<std::size_t> xray, float alpha);
 // The references, beside each part: above everything else on the Board.

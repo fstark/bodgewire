@@ -682,15 +682,6 @@ void BoardView::draw(ImVec2 size) {
     }
     if (real) {
         DrawUseReferences(list, look, *scene_);
-        // The part under the cursor: its outline, as in the plain look.
-        if (hoverTarget_ && !hoverTarget_->pad) {
-            std::vector<ImVec2> points;
-            for (const Point p : scene_->courtyard(hoverTarget_->component)) {
-                points.push_back(map(p));
-            }
-            list.AddPolyline(points.data(), static_cast<int>(points.size()), kHighlight,
-                             ImDrawFlags_Closed, 2.0f);
-        }
     }
     for (std::size_t k = 0; k < board.components.size() && !real; ++k) {
         const bool outlined = hoverTarget_ && hoverTarget_->component == k && !hoverTarget_->pad;
