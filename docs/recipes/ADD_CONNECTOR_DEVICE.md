@@ -19,7 +19,7 @@ Reference commits (paddle controller): `8bfbcc6` Part, connector pins, footprint
 | Setting | `src/machine/<x>_setting.{hpp,cpp}` | the CLI text form (`ParseKnob("J2:40%")`) |
 | Session | `src/session/session.{hpp,cpp}` | list (`knobs()`), set, get; kept in a map by reference and reapplied after every rebuild (power-on after a Repair) |
 | CLI | `src/cli/main.cpp`, `src/ui/main.cpp` | `--knob REF:N%`, applied before power-on; a reference that is not the device is a usage error |
-| UI | `src/ui/side_panel.cpp` | a section per kind of device (`DrawKnobs`: slider, mouse wheel, Up/Down keys unless text input has the keyboard); a device with many controls gets its own floating window drawn like the real thing (`keyboard_window.cpp`: caps from a layout in `src/view`, tested headless), drawn also without a Board |
+| UI | `src/ui/side_panel.cpp`, `src/ui/shelf.cpp` | a section per kind of device (`DrawKnobs`: slider, mouse wheel, Up/Down keys unless text input has the keyboard, the keys working also while the section is hidden), shown while its equipment drawing on the shelf has it out, the drawing grayed on a Machine without the device (P6c); a device with many controls gets its own floating window drawn like the real thing (`keyboard_window.cpp`: caps from a layout in `src/view`, tested headless), drawn also without a Board |
 | Datasheet | `datasheets/<NAME>.md` | the connector's pins and the device inside |
 
 Tests: `tests/parts/<device>_test.cpp` (row, pins, parameters refused with their messages, behaviour, setting clamped, `ConnectorPowersDevice`), `tests/machine/<x>_setting_test.cpp`, `[session]` cases (setting kept across power, and across a Repair once a Machine has a Puzzle), `manual_test.cpp` (pin names).

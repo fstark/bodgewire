@@ -240,8 +240,18 @@ Checking a Repair by running the player's Machine against the Golden Machine and
 ## Instruments and views
 
 **Instrument**:
-A tool the player measures with: Logic Probe, Oscilloscope, Logic Analyzer, Multimeter.
-_Avoid_: Tool (too broad), equipment
+A tool the player measures with: Logic Probe, Oscilloscope, Logic Analyzer, Multimeter. On the Shelf the Logic Probe sits among the Board's tools (it is held, not brought out); the other three are Equipment.
+_Avoid_: Tool (too broad); equipment (broader: also the TV, keyboard, manuals)
+
+**Shelf**:
+The strip along the bottom of `bw_ui`'s window holding drawings of the controls (power, run, speed, layer, fit), the Board's tools (probe, chip puller, soldering iron, cutters, wire) and the Equipment, each in the same place on every Machine; an item that does not apply is grayed, not hidden (P6c).
+
+**Equipment**:
+The objects brought out from the Shelf or put away: TV, keyboard, Logic Analyzer, Oscilloscope, Multimeter, manuals, a paddle's knob. One that is out is drawn lit on the Shelf.
+_Avoid_: instrument (for the TV, keyboard or manuals)
+
+**Focus**:
+What a click on a pin does: exactly one Board tool or Instrument owns it, shown by a gold frame on its Shelf drawing and its window. Clicking an Instrument gives it the Focus; taking a tool takes it back; `Esc` gives it to the Logic Probe. Not ImGui's keyboard focus, which the windows' `focused()` and Typing Mode mean (P6c).
 
 **Logic Probe**:
 An Instrument showing the Logic Value and activity of one Net.
