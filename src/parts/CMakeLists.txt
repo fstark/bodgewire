@@ -25,6 +25,8 @@ add_library(bw_parts STATIC
   ls90.cpp
   ls93.cpp
   matrix_keyboard.cpp
+  membrane_keyboard.cpp
+  press_queue.cpp
   mc3446.cpp
   memory_block.cpp
   mos6502.cpp
@@ -51,5 +53,6 @@ add_library(bw_parts STATIC
   z80.cpp
   z80_core.cpp
   z80_stub.cpp
+  zx80_keys.cpp
 )
 target_link_libraries(bw_parts PUBLIC bw_sim PRIVATE bw_warnings)

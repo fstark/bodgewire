@@ -16,7 +16,7 @@ std::expected<Typing, std::string> ParseTyping(std::string_view text) {
     if (!start) {
         return std::unexpected(bad);
     }
-    Typing typing{std::string(text.substr(0, first)), *start, {}};
+    Typing typing{std::string(text.substr(0, first)), *start, {}, {}, std::nullopt};
     const std::string_view keys = text.substr(second + 1);
     for (std::size_t i = 0; i < keys.size(); ++i) {
         char32_t key = static_cast<unsigned char>(keys[i]);
@@ -35,9 +35,13 @@ std::expected<Typing, std::string> ParseTyping(std::string_view text) {
                 return std::unexpected("bad escape '\\" + std::string(1, escaped) + "'");
             }
         }
+        typing.text.push_back(key);
         const auto code = KeyboardCode(key);
         if (!code) {
-            return std::unexpected("cannot type '" + std::string(1, keys[i]) + "' on a keyboard");
+            if (!typing.untypable) {
+                typing.untypable = key;
+            }
+            continue;
         }
         typing.keys.push_back(*code);
     }

@@ -13,6 +13,7 @@
 
 #include "netlist/diagnostic.hpp"
 #include "netlist/parser.hpp"
+#include "parts/key_matrix.hpp"
 #include "parts/keyboard.hpp"
 #include "parts/matrix_keyboard.hpp"
 #include "parts/paddle.hpp"
@@ -111,6 +112,8 @@ Paddle* PaddleOf(const LoadedCircuit& loaded, std::string_view reference);
 
 // The MATRIXKB `reference` of this build; nullptr if none.
 MatrixKeyboard* MatrixKeyboardOf(const LoadedCircuit& loaded, std::string_view reference);
+// The KeyMatrix named `reference` (a MATRIXKB or a MEMBRANEKB), or nullptr (P5x).
+KeyMatrix* KeyMatrixOf(const LoadedCircuit& loaded, std::string_view reference);
 
 // The KEYBOARD Part `reference` of this build; nullptr if none (unknown or not a KEYBOARD).
 Keyboard* KeyboardOf(const LoadedCircuit& loaded, std::string_view reference);

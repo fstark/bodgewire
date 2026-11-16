@@ -108,6 +108,34 @@ TEST_CASE("connector: the PET's edge connectors and cassette port are sampled lo
     CHECK_FALSE(ConnectorPowersDevice("CASSETTE"));
 }
 
+TEST_CASE("connector: EXPANSION, the ZX80's edge connector", "[parts]") {
+    CHECK(FindPart("EXPANSION")->package == "HDR-2x23");
+    CHECK_FALSE(ConnectorPowersDevice("EXPANSION"));
+    const auto pins = ConnectorPins("EXPANSION");
+    REQUIRE(pins.size() == 46);
+    CHECK(pins[0].name == "D7");                // upper 1
+    CHECK(pins[1].name == "VCC5");              // lower 1
+    CHECK(pins[2].name == "RAMCS_N");           // upper 2
+    CHECK(pins[4].kind == PinKind::NoConnect);  // the slot
+    CHECK(pins[5].kind == PinKind::NoConnect);
+    CHECK(pins[3].name == "NC9V");
+    CHECK(pins[3].kind == PinKind::NoConnect);
+    CHECK(pins[11].name == "PHI");     // lower 6
+    CHECK(pins[13].name == "A0");      // lower 7
+    CHECK(pins[21].name == "A15");     // lower 11
+    CHECK(pins[20].name == "INT_N");   // upper 11
+    CHECK(pins[43].name == "A4");      // lower 22
+    CHECK(pins[44].name == "RFSH_N");  // upper 23
+    CHECK(pins[45].name == "NC23");
+    CHECK(pins[45].kind == PinKind::NoConnect);
+    for (const PinSpec& pin : pins) {
+        CHECK(pin.kind != PinKind::Power);
+        if (pin.kind == PinKind::Input) {
+            CHECK(pin.sampled);
+        }
+    }
+}
+
 TEST_CASE("connector: a cassette port on the rails gives no warning", "[parts]") {
     const auto loaded = LoadNetlist("part J1 POWER\npart J3 CASSETTE\nnet VCC J3.VCC\n"
                                     "net GND J3.GND\n",

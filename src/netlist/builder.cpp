@@ -15,6 +15,7 @@
 #include "parts/catalogue.hpp"
 #include "parts/connector.hpp"
 #include "parts/matrix_keyboard.hpp"
+#include "parts/membrane_keyboard.hpp"
 #include "parts/memory_cells.hpp"
 #include "parts/resistor_network.hpp"
 #include "parts/switch.hpp"
@@ -680,6 +681,19 @@ MatrixKeyboard* MatrixKeyboardOf(const LoadedCircuit& loaded, std::string_view r
     const auto component = loaded.components.find(reference);
     return component == loaded.components.end() ? nullptr
                                                 : static_cast<MatrixKeyboard*>(component->second);
+}
+
+KeyMatrix* KeyMatrixOf(const LoadedCircuit& loaded, std::string_view reference) {
+    if (MatrixKeyboard* matrix = MatrixKeyboardOf(loaded, reference)) {
+        return matrix;
+    }
+    const auto part = std::ranges::find(loaded.parts, reference, &LoadedPart::reference);
+    if (part == loaded.parts.end() || part->info->name != "MEMBRANEKB") {
+        return nullptr;
+    }
+    const auto component = loaded.components.find(reference);
+    return component == loaded.components.end() ? nullptr
+                                                : static_cast<MembraneKeyboard*>(component->second);
 }
 
 Keyboard* KeyboardOf(const LoadedCircuit& loaded, std::string_view reference) {

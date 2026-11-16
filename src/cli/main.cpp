@@ -529,18 +529,18 @@ int Run(std::span<char*> args) {
         edges.push_back({press.up, sw->id(), [sw] { sw->setPressed(false); }});
     }
     for (const Typing& typing : options.type) {
-        if (MatrixKeyboard* matrix = MatrixKeyboardOf(loaded, typing.reference)) {
-            // The matrix paces its own presses (40 ms down, 40 ms up): all queued at the start.
-            edges.push_back({typing.start, matrix->id(), [matrix, keys = typing.keys] {
-                                 for (const std::uint8_t code : keys) {
-                                     (void)matrix->type(code == 0x08 ? kKeyDel : code);
-                                 }
-                             }});
+        if (KeyMatrix* matrix = KeyMatrixOf(loaded, typing.reference)) {
+            // The matrix paces its own presses (held, then released): all queued at the start.
+            edges.push_back({typing.start, matrix->component().id(),
+                             [matrix, text = typing.text] { (void)matrix->type(text); }});
             continue;
         }
         Keyboard* keyboard = KeyboardOf(loaded, typing.reference);
         if (keyboard == nullptr) {
             return UsageError("'" + typing.reference + "' is not a keyboard");
+        }
+        if (typing.untypable) {
+            return UsageError("cannot type the text on '" + typing.reference + "', a keyboard");
         }
         for (std::size_t i = 0; i < typing.keys.size(); ++i) {
             // 100 ms apart, a key waits only behind a strobe= near 100 ms: the refusal of a

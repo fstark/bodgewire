@@ -33,7 +33,12 @@ TEST_CASE("typing: refusals", "[machine]") {
         REQUIRE_FALSE(typing.has_value());
         CHECK(typing.error() == "bad typing '" + std::string(text) + "' (expected REF:START:TEXT)");
     }
-    CHECK(ParseTyping("J1:1ms:{").error() == "cannot type '{' on a keyboard");
+    // A character with no KeyboardCode is kept for a key matrix and noted for a KEYBOARD.
+    const auto brace = ParseTyping("J1:1ms:A{");
+    REQUIRE(brace.has_value());
+    CHECK(brace->text == U"A{");
+    CHECK(brace->keys.size() == 1);
+    CHECK(brace->untypable == U'{');
     CHECK(ParseTyping(R"(J1:1ms:\q)").error() == "bad escape '\\q'");
     CHECK(ParseTyping(R"(J1:1ms:A\)").error() == "bad escape '\\' at the end");
 }

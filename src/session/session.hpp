@@ -15,6 +15,7 @@
 #include "machine/machine.hpp"
 #include "machine/repair.hpp"
 #include "parts/catalogue.hpp"
+#include "parts/key_matrix.hpp"
 #include "runner/analyzer_consumer.hpp"
 #include "runner/led_consumer.hpp"
 #include "runner/meter_consumer.hpp"
@@ -187,15 +188,21 @@ public:
     // False, nothing sent: not powered, not a KEYBOARD, a code it does not send, or
     // kKeyboardWaiting keys already waiting. Keys still waiting at power-off are dropped.
     bool typeCode(std::string_view reference, std::uint8_t code);
-    // typeCode with the character's KeyboardCode (text, --type); on a MATRIXKB, the press that
-    // types `key` (MatrixKeyFor, kKey… for the named keys), queued in simulation time (40 ms down,
-    // 40 ms up). False, nothing sent: not powered, no such keyboard, no key for it, queue full.
+    // typeCode with the character's KeyboardCode (text, --type); on a key matrix, the press that
+    // types `key` (its key map, kKey… for the named keys), queued in simulation time (held, then
+    // released). False, nothing sent: not powered, no such keyboard, no key for it, queue full.
     bool type(std::string_view reference, char32_t key);
+    // `text` typed: on a key matrix as a whole (the BW-80's keyboard reads keywords out of it:
+    // Zx80Presses), on a KEYBOARD one character at a time. False when nothing was sent.
+    bool typeText(std::string_view reference, std::u32string_view text);
 
-    // Every MATRIXKB Part (the BW-2001 keyboard, P5q), in netlist order.
+    // Every key matrix Part (MATRIXKB, the BW-2001 keyboard, P5q; MEMBRANEKB, the BW-80's, P5x),
+    // in netlist order.
     std::vector<std::string> matrixKeyboards() const;
-    // Holds or releases key `key` (index in Bw2001Keys()) of MATRIXKB `reference`; ignored while
-    // unpowered; every held key is released at power-off, as switch presses are.
+    // Which keyboard `reference` is (its look and key map); nullopt for anything else.
+    std::optional<KeyMatrixKind> matrixKind(std::string_view reference) const;
+    // Holds or releases key `key` (index in the Part's key table) of key matrix `reference`;
+    // ignored while unpowered; every held key is released at power-off, as switch presses are.
     void setMatrixKeyHeld(std::string_view reference, std::size_t key, bool held);
     bool matrixKeyHeld(std::string_view reference, std::size_t key) const;
     // Held, or pressed now by typing (Session::type, --type, paste): drawn down.
@@ -243,7 +250,7 @@ private:
     std::optional<bool> connected_;    // red_ and black_ on one island of the current Copper
     std::optional<double> meterRail_;  // RailVolts of the meter's Net
     std::set<std::string, std::less<>> pressed_;                // Buttons held down
-    std::set<std::pair<std::string, std::size_t>> matrixHeld_;  // MATRIXKB keys held
+    std::set<std::pair<std::string, std::size_t>> matrixHeld_;  // key matrix keys held
     std::map<std::string, double, std::less<>> knobs_;          // PADDLE turns, 0..1
     std::map<std::string, std::string, std::less<>> typed_;     // codes sent, per KEYBOARD
 };

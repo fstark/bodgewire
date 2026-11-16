@@ -8,9 +8,9 @@ Every phase ends with its fence: `cmake --build --preset debug` clean, `clang-fo
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Docs reviewed | |
-| 1 | `PressQueue`, `KeyMatrix`: the BW-2001's keyboard refactored | |
-| 2 | ZX80 keys, the tokenizer, `MEMBRANEKB`, `EXPANSION` | |
+| 0 | Docs reviewed | `4b19397` |
+| 1 | `PressQueue`, `KeyMatrix`: the BW-2001's keyboard refactored | with 2 |
+| 2 | ZX80 keys, the tokenizer, `MEMBRANEKB`, `EXPANSION` | this commit |
 | 3 | Session, CLI, capture, the window's ZX80 look | |
 | 4 | Netlist with `J3`, `J4`; manuals; the typing cases | |
 | 5 | `bw place`: `size`, `at` | |
@@ -84,4 +84,4 @@ Fence: `ctest --preset debug -j 12` all green. Commit: `docs: P5x done, the BW-8
 
 ## Implementation notes
 
-(filled in as the phases run)
+- Phases 1 and 2 written while the review ran and committed together: phase 2's Part is what `KeyMatrixOf` and `matrixKeyboards()` name, so phase 1 alone would not build. The review's findings went into the code before the docs commit: the ROM accepts a new key only after five no-key frames (`kMembraneGap` 120 ms), BREAK is SPACE alone, `MEMBRANEKB` sorts after `MC3446`, the datasheets' pin ranges, `PressQueue::step` returning the delay instead of taking an `EvalContext` (none can be made in a test). The tokenizer's "after a keyword" state is tracked, not read back from the last press (a letter key has a keyword too); strings keep their spaces. Fences: phase 1 `matrix|press queue|session|typing|bw2001` green in debug, the BW-2001's typing case in release; phase 2 `zx80 keys|membrane keyboard|connector|catalogue|manuals|footprint` green in debug.

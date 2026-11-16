@@ -52,8 +52,6 @@ constexpr std::array<MatrixKey, kBw2001KeyCount> kKeys{{
     {9, 7, "=", ""},
 }};
 
-constexpr std::uint16_t kShiftBit = 0x8000;
-
 std::size_t KeyNamed(std::string_view legend) {
     const auto it = std::ranges::find(kKeys, legend, &MatrixKey::legend);
     Check(it != kKeys.end(), "matrix keyboard: no such key");
@@ -88,6 +86,7 @@ std::optional<MatrixPress> MatrixKeyFor(char32_t c) {
     case kKeyLeft:
         return MatrixPress{KeyNamed("CRSR RT"), true};
     case kKeyDel:
+    case '\b':
         return MatrixPress{KeyNamed("DEL")};
     case kKeyInst:
         return MatrixPress{KeyNamed("DEL"), true};
@@ -119,82 +118,41 @@ std::optional<MatrixPress> MatrixKeyFor(char32_t c) {
 }
 
 MatrixKeyboard::MatrixKeyboard(std::string reference)
-    : Component(std::move(reference), ConnectorPins("MATRIXKB")), contacts_(kKeys.size()),
-      waiting_(kMatrixWaiting) {}
+    : Component(std::move(reference), ConnectorPins("MATRIXKB")), contacts_(kKeys.size()) {}
+
+std::size_t MatrixKeyboard::shiftKey() const {
+    static const std::size_t shift = KeyNamed("SHIFT");  // the left one: row 8, column 0
+    return shift;
+}
 
 bool MatrixKeyboard::type(char32_t c) {
     const auto press = MatrixKeyFor(c);
-    if (!press) {
-        return false;
-    }
-    const std::uint32_t head = head_.load(std::memory_order_relaxed);
-    if (head - tail_.load(std::memory_order_acquire) >= kMatrixWaiting) {
-        return false;
-    }
-    waiting_[head % kMatrixWaiting] =
-        static_cast<std::uint16_t>(press->key | (press->shift ? kShiftBit : 0));
-    head_.store(head + 1, std::memory_order_release);
-    return true;
+    return press && queue_.push(*press);
 }
 
-void MatrixKeyboard::dropWaiting() {
-    dropBefore_.store(head_.load(std::memory_order_relaxed), std::memory_order_release);
-}
-
-bool MatrixKeyboard::scripted(std::size_t key) const {
-    const std::uint32_t showing = showing_.load(std::memory_order_relaxed);
-    if (showing == kNotShowing) {
-        return false;
+bool MatrixKeyboard::type(std::u32string_view text) {
+    bool any = false;
+    for (const char32_t c : text) {
+        any = type(c) || any;
     }
-    static const std::size_t shift = *Bw2001KeyAt(8, 0);
-    return key == (showing & ~kShiftBit) || ((showing & kShiftBit) != 0 && key == shift);
+    return any;
 }
 
 void MatrixKeyboard::powerOn(PowerOnContext& /*ctx*/) {
-    showing_.store(kNotShowing, std::memory_order_relaxed);
-    phase_ = Phase::Idle;
-    nextAt_ = 0;
+    queue_.reset();
     for (SwitchContact& contact : contacts_) {
         contact.reset(false);
     }
 }
 
 void MatrixKeyboard::evaluate(EvalContext& ctx) {
-    // The scripted press's own timing; a wake from outside mid-press changes only the held keys.
-    if (phase_ != Phase::Idle && ctx.now() >= nextAt_) {
-        if (phase_ == Phase::Hold) {
-            phase_ = Phase::Gap;
-            nextAt_ = ctx.now() + kMatrixGap;
-            ctx.wakeAfter(kMatrixGap);
-        } else {
-            phase_ = Phase::Idle;
-        }
+    if (const auto wake = queue_.step(ctx.now())) {
+        ctx.wakeAfter(*wake);
     }
-    if (phase_ == Phase::Idle) {
-        std::uint32_t tail = tail_.load(std::memory_order_relaxed);
-        const std::uint32_t head = head_.load(std::memory_order_acquire);
-        const std::uint32_t drop = dropBefore_.load(std::memory_order_acquire);
-        if (static_cast<std::int32_t>(drop - tail) > 0) {
-            tail = drop;  // wrap-safe: the counters only grow
-        }
-        if (tail != head) {
-            const std::uint16_t code = waiting_[tail % kMatrixWaiting];
-            ++tail;
-            current_ = {static_cast<std::size_t>(code & ~kShiftBit), (code & kShiftBit) != 0};
-            phase_ = Phase::Hold;
-            nextAt_ = ctx.now() + kMatrixHold;
-            ctx.wakeAfter(kMatrixHold);
-        }
-        tail_.store(tail, std::memory_order_release);
-    }
-    showing_.store(phase_ == Phase::Hold
-                       ? static_cast<std::uint32_t>(current_.key | (current_.shift ? kShiftBit : 0))
-                       : kNotShowing,
-                   std::memory_order_relaxed);
-    static const std::size_t shift = KeyNamed("SHIFT");  // the left one: row 8, column 0
+    const auto current = queue_.current();
+    const std::size_t shift = shiftKey();
     for (std::size_t k = 0; k < contacts_.size(); ++k) {
-        const bool scripted =
-            phase_ == Phase::Hold && (k == current_.key || (current_.shift && k == shift));
+        const bool scripted = current && (k == current->key || (current->shift && k == shift));
         contacts_[k].set(ctx, held(k) || scripted);
     }
 }

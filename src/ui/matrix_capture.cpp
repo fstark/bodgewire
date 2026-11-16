@@ -1,6 +1,38 @@
 #include "ui/matrix_capture.hpp"
 
+#include <string>
+#include <string_view>
+
 namespace bw {
+
+namespace {
+
+// The clipboard's UTF-8 as code points; a malformed byte becomes U+FFFD.
+std::u32string DecodeUtf8(std::string_view text) {
+    std::u32string out;
+    for (std::size_t i = 0; i < text.size();) {
+        const auto b = static_cast<unsigned char>(text[i]);
+        std::size_t n = b < 0x80             ? 1
+                        : (b & 0xE0) == 0xC0 ? 2
+                        : (b & 0xF0) == 0xE0 ? 3
+                        : (b & 0xF8) == 0xF0 ? 4
+                                             : 0;
+        if (n == 0 || i + n > text.size()) {
+            out.push_back(U'\uFFFD');
+            ++i;
+            continue;
+        }
+        char32_t c = n == 1 ? b : b & (0x7F >> n);
+        for (std::size_t k = 1; k < n; ++k) {
+            c = (c << 6) | (static_cast<unsigned char>(text[i + k]) & 0x3F);
+        }
+        out.push_back(c);
+        i += n;
+    }
+    return out;
+}
+
+}  // namespace
 
 void MatrixCapture::send(Session& session, SDL_Scancode scancode, char32_t c) {
     session.type(reference, c);  // refused with the power off: the caps still move
@@ -37,9 +69,7 @@ bool MatrixCapture::handle(const SDL_Event& event, Session& session) {
         const bool shift = (event.key.mod & SDL_KMOD_SHIFT) != 0;
         if ((event.key.mod & (SDL_KMOD_GUI | SDL_KMOD_CTRL)) != 0 && event.key.key == SDLK_V) {
             if (char* text = SDL_GetClipboardText()) {
-                for (const char* c = text; *c != '\0'; ++c) {
-                    session.type(reference, static_cast<unsigned char>(*c));
-                }
+                session.typeText(reference, DecodeUtf8(text));  // the keyboard's own map
                 SDL_free(text);
             }
             return true;

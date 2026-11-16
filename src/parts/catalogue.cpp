@@ -34,6 +34,7 @@
 #include "parts/ls93.hpp"
 #include "parts/matrix_keyboard.hpp"
 #include "parts/mc3446.hpp"
+#include "parts/membrane_keyboard.hpp"
 #include "parts/mos6502.hpp"
 #include "parts/mos6520.hpp"
 #include "parts/mos6522.hpp"
@@ -324,6 +325,14 @@ std::expected<Component*, std::string> CreateMatrixKeyboard(Circuit& circuit, st
     return &circuit.add<MatrixKeyboard>(std::move(reference));
 }
 
+std::expected<Component*, std::string>
+CreateMembraneKeyboard(Circuit& circuit, std::string reference, std::span<const PartParam> params) {
+    if (!params.empty()) {
+        return std::unexpected("MEMBRANEKB takes no parameters");
+    }
+    return &circuit.add<MembraneKeyboard>(std::move(reference));
+}
+
 std::expected<Component*, std::string> CreateKeyboard(Circuit& circuit, std::string reference,
                                                       std::span<const PartParam> params) {
     Time strobe = kKeyboardStrobe;
@@ -508,6 +517,8 @@ constexpr std::array s_parts{
              &CreateDigit<DigitCommon::Anode>, kDigitLamps},
     PartInfo{"DIGITCC", "red 0.56-inch 7-segment digit, common cathode", "DIGIT-0.56", Led,
              &CreateDigit<DigitCommon::Cathode>, kDigitCcLamps},
+    PartInfo{"EXPANSION", "expansion bus edge connector (2 x 23)", "HDR-2x23", Connector,
+             &CreateConnector<"EXPANSION">},
     PartInfo{"IEEE488", "IEEE-488 edge connector", "HDR-2x12", Connector,
              &CreateConnector<"IEEE488">},
     PartInfo{"KEY", "key switch", "MX-1U", Switch, &CreateSwitch<"KEY">},
@@ -517,6 +528,8 @@ constexpr std::array s_parts{
              &CreateMatrixKeyboard},
     PartInfo{"MC3446", "quad IEEE-488 bus transceiver", "DIP-16", Chip,
              &CreateChip<Mc3446, "MC3446">},
+    PartInfo{"MEMBRANEKB", "BW-80 keyboard (8 x 5 membrane matrix)", "HDR-1x13", Connector,
+             &CreateMembraneKeyboard},
     PartInfo{"MONITOR", "monitor connector, separate drives", "HDR-1x07", Connector,
              &CreateConnector<"MONITOR">},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},

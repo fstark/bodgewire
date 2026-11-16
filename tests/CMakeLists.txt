@@ -103,6 +103,8 @@ add_executable(bw_tests
   parts/ls138_test.cpp
   parts/ls139_test.cpp
   parts/matrix_keyboard_test.cpp
+  parts/membrane_keyboard_test.cpp
+  parts/press_queue_test.cpp
   parts/mc3446_test.cpp
   parts/ls154_test.cpp
   parts/ls157_test.cpp
@@ -118,6 +120,7 @@ add_executable(bw_tests
   parts/ls48_test.cpp
   parts/ls74_test.cpp
   parts/ls90_test.cpp
+  parts/zx80_keys_test.cpp
   parts/ls93_test.cpp
   parts/memory_block_test.cpp
   parts/mos6502_cases.cpp

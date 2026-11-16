@@ -714,14 +714,19 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             } else if (wasPowered) {
                 for (std::size_t t = 0; t < options.type.size(); ++t) {
                     const Typing& typing = options.type[t];
+                    if (typing.reference == matrixCapture.reference) {
+                        // The matrix paces its own presses: the text queued whole, once.
+                        if (typedKeys[t] == 0 && typing.start <= status.simTime) {
+                            session.typeText(typing.reference, typing.text);
+                            typedKeys[t] = 1;
+                        }
+                        continue;
+                    }
                     while (typedKeys[t] < typing.keys.size() &&
                            typing.at(typedKeys[t]) <= status.simTime) {
                         const std::uint8_t code = typing.keys[typedKeys[t]++];
-                        if (typing.reference == matrixCapture.reference) {
-                            // The matrix paces its own presses: queued as they come, 100 ms apart.
-                            session.type(typing.reference, code == 0x08 ? kKeyDel : code);
-                        } else if (session.typeCode(typing.reference, code) &&
-                                   typing.reference == capture.reference) {
+                        if (session.typeCode(typing.reference, code) &&
+                            typing.reference == capture.reference) {
                             keyboardWindow.flash(code);
                         }
                     }
@@ -947,6 +952,12 @@ int main(int argc, char** argv) {
         if (!std::ranges::contains(session.keyboards(), typing.reference) &&
             !std::ranges::contains(session.matrixKeyboards(), typing.reference)) {
             std::println(stderr, "bw_ui: '{}' is not a keyboard", typing.reference);
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+        if (typing.untypable && std::ranges::contains(session.keyboards(), typing.reference)) {
+            std::println(stderr, "bw_ui: cannot type the text on '{}', a keyboard",
+                         typing.reference);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
