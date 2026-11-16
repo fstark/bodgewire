@@ -1,6 +1,7 @@
 #include "parts/ls244.hpp"
 
 #include <array>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <utility>
@@ -153,4 +154,21 @@ TEST_CASE("74LS244: X on A or OE_N gives X", "[parts]") {
     sim.runUntil(200_ns);
     CHECK(b.value(sim, "1Y1") == X);
     CHECK(b.value(sim, "1Y2") == X);
+}
+
+TEST_CASE("74LS244: a disabled half is not evaluated on its A changes; with an X enable it is",
+          "[parts]") {
+    std::vector<Stimulus::Step> toggles;
+    for (int i = 1; i <= 10; ++i) {
+        toggles.push_back({i * 100_ns, i % 2 ? One : Zero});
+    }
+    std::uint64_t evaluations[2] = {};
+    for (const int x : {0, 1}) {
+        Bench b({{"1OE_N", {x ? LogicValue::X : One, {}}}, {"1A2", {Zero, toggles}}});
+        Simulator sim(b.circuit);
+        sim.powerOn(1);
+        sim.runUntil(2000_ns);
+        evaluations[x] = sim.stats().evaluations;
+    }
+    CHECK(evaluations[1] - evaluations[0] == 10);
 }

@@ -23,6 +23,9 @@ private:
     // shorter than the delay is swallowed by the inertial drive, so this may name a value that
     // never showed; it only picks a delay a few ns off.
     std::array<LogicValue, 8> driven_{};
+    // A half disabled for sure (its OE_N a definite 1): its A Pins quiet (P5z), since it drives
+    // Z whatever they do. On a two-way bus the other half's outputs come back on them.
+    std::array<bool, 2> quiet_{};
 };
 
 }  // namespace bw

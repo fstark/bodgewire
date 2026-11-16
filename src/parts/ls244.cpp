@@ -44,6 +44,7 @@ void Ls244::powerOn(PowerOnContext& ctx) {
         ctx.setOutput(kBuffers[i].y, Z);
         driven_[i] = Z;
     }
+    quiet_ = {};  // the Simulator made every Pin loud
 }
 
 void Ls244::evaluate(EvalContext& ctx) {
@@ -66,6 +67,16 @@ void Ls244::evaluate(EvalContext& ctx) {
         }
         driven_[i] = value;
         ctx.drive(b.y, value, delay);
+    }
+    for (std::size_t half = 0; half < quiet_.size(); ++half) {
+        const PinIndex oe = kBuffers[half * 4].oe;
+        const bool off = ctx.read(oe) == One;
+        if (off != quiet_[half]) {
+            quiet_[half] = off;
+            for (std::size_t i = half * 4; i < half * 4 + 4; ++i) {
+                ctx.quiet(kBuffers[i].a, off);
+            }
+        }
     }
 }
 

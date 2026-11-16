@@ -20,7 +20,7 @@ An idea that is dropped is reverted before the next one starts, and its row is s
 | 1 | Guards and baseline | done |
 | 2 | Z1: falling-edge-only and sampled Pins | done: kept |
 | 3 | Z2: quiet Pins (kernel, then 2114, then ROM) | done: kept |
-| 4 | Z3: specialised Parts, from the profile | |
+| 4 | Z3: specialised Parts, from the profile | in progress |
 | 5 | Z4: run loop, from the profile | |
 | 6 | Finish | |
 
@@ -79,6 +79,7 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
 | Z1 | `PinSpec::fallingEdgeOnly` on the 74LS107, 74LS93, 74LS90 clocks; the 107's `J`, `K` sampled | 0.222× | 830 | 146–148 | 1.95 | 0.244× | 0.382× | yes: +5.7 % ratio, −5…6 % cycles (two runs) | this row's commit |
 | Z2.0 | quiet Pins in the kernel, no Part using them | 0.219× | 845 | 151 | 1.95 | 0.241× | 0.371× | measured only: the test's cost, 1–3 % on every netlist | — |
 | Z2 | quiet Pins: deselected 2114s (`CS_N` a definite 1) and ROMs (off) sleep through their address and data | 0.315–0.320× | 580 | 107 | 1.18 | 0.247× | 0.384–0.387× | yes: +44 % ratio, −27 % cycles against Z1 (two runs) | this row's commit |
+| Z3.1 | 74LS244: a half whose `OE_N` is a definite 1 quiets its `A` Pins (quiet Pins on a two-way bus buffer) | 0.333–0.335× | 550 | 101–103 | 1.07 | 0.250× | 0.395× | yes: +5.2 % ratio, −5.2 % instructions, −4.7 % cycles (two runs), kept as part of the quiet-Pins idea (Guard 3: an idea counts with every Part it is applied to) | this row's commit |
 
 ## Implementation notes
 
@@ -124,3 +125,9 @@ The bar applies to steps 1–3 together against Z1. Fence tests: the full debug 
   - Test fix: the 2114's X-select count case first held `WE_N` high, so an X-selected chip drove its data Pins and was woken by its own drives (15 evaluations, not 10). `WE_N` low keeps its outputs off.
   - Full debug suite 1372/1372 in 680 s (Z1: 806 s); release `bw2001|bw80|bw1|bus load|typewriter` 178/178.
   - Profile on Z2 (`build/profile`, 6,700 samples by function): `runUntil` 25 %, `resolveNet` 11.5 %, the queue 15 %, `GateFunction` 8 %, **74LS244 7.2 %** (the hottest Part), `driveChanged` 6 %, 74LS93 3.2 %, 74LS107 2 %, 74LS157 2 %, 2114 1.4 %, ROM 1.3 %.
+- Phase 4, Z3.1 (2026-11-16):
+  - The 74LS244 was the hottest Part on Z2. The BW-2001's six are paired back to back on two-way buses (`SD`↔`BD`, `D`↔`BD`, `BD`↔`BBD`), so the disabled half's `A` Pins see the enabled half's own outputs, and every drive woke the chip again. A disabled half drives Z whatever `A` does and keeps no timing state, so quieting its `A` Pins is exact.
+  - Traces identical. Evaluations: bw2001 23.4 M → 21.5 M, bw2001 long 376 M → 341 M, bus_load 5.22 M → 4.97 M.
+  - Just under the bar on cycles alone (−4.7 %), over it on ratio and instructions. Kept because it is the quiet-Pins idea of Z2 applied to one more Part, which Guard 3 measures as a whole.
+  - Others against Z2: all equal or up to +3 %.
+  - Full debug suite 1373/1373 in 675 s; release `bw2001|bw80|bus load` 101/101.
