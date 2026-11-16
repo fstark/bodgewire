@@ -39,7 +39,7 @@ Designs and plans cite recipe steps instead of repeating them. When a milestone 
 
 ## Docs
 
-- Each Machine in its own directory `machines/NNN-name/` (P6a): netlist, `board/`, `manuals/` (the player's), `docs/` (its development docs), `roms/`, `puzzles/` (`NN-name.bwp`, easiest first). Datasheets, footprints and benchmarks stay shared (`datasheets/`, `footprints/`, `bench/`).
+- Each Machine in its own directory `machines/NNN-name/` (P6a): netlist, `board/`, `manuals/` (the player's), `docs/` (its development docs), `roms/`, `puzzles/` (`NN-name.bwp`, easiest first). Datasheets, footprints and benchmarks stay shared (`datasheets/`, `footprints/`, `bench/`). Layout: [docs/p6a-machine-directories/MACHINE_DIRECTORIES.md](docs/p6a-machine-directories/MACHINE_DIRECTORIES.md).
 - Conventions: `docs/GLOSSARY.md`, `docs/STYLE.md`, `docs/NAMING.md`. Structure and roadmap: `docs/ARCHITECTURE.md`.
 - `docs/p*-*/` are finished milestones: history only, the code is the truth. Read one only when the task names it.
 - The user edits docs in parallel: commit only your own paths.
