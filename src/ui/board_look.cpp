@@ -347,24 +347,31 @@ void DrawResistor(ImDrawList& list, const LookMap& map, const BoardScene& scene,
     const auto at = [&](float s, float t) {
         return ImVec2{mid.x + along.x * s + across.x * t, mid.y + along.y * s + across.y * t};
     };
-    const float end = bodyLength / 2;
-    list.AddLine(at(-end + half, map.pixels(250'000)), at(end - half, map.pixels(250'000)), kShadow,
-                 half * 2);
-    // A capsule: the body's straight part, round ends.
-    list.AddLine(at(-end + half, 0), at(end - half, 0), kResistorBody, half * 2);
-    list.AddCircleFilled(at(-end + half, 0), half, kResistorBody);
-    list.AddCircleFilled(at(end - half, 0), half, kResistorBody);
+    // A capsule: a straight middle and two round ends; the shadow the same, offset.
+    const float straight = std::max(0.0f, bodyLength - 2 * half);
+    const float end = straight / 2;
+    const auto capsule = [&](float lift, ImU32 colour) {
+        list.AddQuadFilled(at(-end, -half + lift), at(end, -half + lift), at(end, half + lift),
+                           at(-end, half + lift), colour);
+        list.AddCircleFilled(at(-end, lift), half, colour);
+        list.AddCircleFilled(at(end, lift), half, colour);
+    };
+    capsule(map.pixels(250'000), kShadow);
+    capsule(0, kResistorBody);
     const auto ohms = Ohms(scene.value(k));
-    if (!ohms || *ohms <= 0) {
+    if (!ohms || *ohms <= 0 || straight <= 0) {
         return;
     }
+    // The bands inside the straight middle, band width included: three together from the
+    // left, the tolerance band apart at the right.
     const auto bands = Bands(*ohms);
-    const float band = bodyLength * 0.09f;
-    const std::array<float, 4> positions = {-0.30f, -0.14f, 0.02f, 0.30f};
+    const float band = straight * 0.12f;
+    const std::array<float, 4> starts = {-end + band * 0.4f, -end + band * 2.0f, -end + band * 3.6f,
+                                         end - band * 1.4f};
     for (std::size_t i = 0; i < bands.size(); ++i) {
-        const float s = positions[i] * bodyLength;
-        list.AddQuadFilled(at(s, -half * 0.97f), at(s + band, -half * 0.97f),
-                           at(s + band, half * 0.97f), at(s, half * 0.97f), bands[i]);
+        const float s = starts[i];
+        list.AddQuadFilled(at(s, -half), at(s + band, -half), at(s + band, half), at(s, half),
+                           bands[i]);
     }
 }
 
