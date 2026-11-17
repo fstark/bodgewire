@@ -247,7 +247,7 @@ _Avoid_: Tool (too broad); equipment (broader: also the TV, keyboard, manuals)
 The strip along the bottom of `bw_ui`'s window holding drawings of the controls (power, run, speed, layer, fit), the Board's tools (probe, chip puller, soldering iron, cutters, wire) and the Equipment, each in the same place on every Machine; an item that does not apply is grayed, not hidden (P6c).
 
 **Equipment**:
-The objects brought out from the Shelf or put away: TV, keyboard, Logic Analyzer, Oscilloscope, Multimeter, manuals, a paddle's knob. One that is out is drawn lit on the Shelf.
+The objects brought out from the Shelf or put away: TV, keyboard, Logic Analyzer, Oscilloscope, Multimeter, manuals, a paddle's knob. One that is out is drawn lit on the Shelf. Each comes out at its default place on the bench, every time, at the size the player last gave it (P6d); the Instruments have two presets, minimal and normal, from a button in their title bar; the TV, keyboard and knob are drawn cases with no title bar, dragged by their body and put away by the × on the case.
 _Avoid_: instrument (for the TV, keyboard or manuals)
 
 **Focus**:
