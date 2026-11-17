@@ -11,7 +11,7 @@
 
 #include "parts/matrix_keyboard.hpp"
 #include "parts/zx80_keys.hpp"
-#include "ui/shelf.hpp"
+#include "ui/bench.hpp"
 #include "view/matrix_keyboard_layout.hpp"
 
 namespace bw {
@@ -23,7 +23,6 @@ constexpr float kMargin = 0.55f;  // the bezel around the keys
 constexpr float kLabel = 0.40f;   // the name strip above the keys
 constexpr float kInset = 0.10f;   // the case inside the window
 constexpr float kGap = 0.16f;     // between chiclets: the PET's keys stand apart
-constexpr float kInitialWidth = 760;
 constexpr float kMinWidth = 380;
 
 // The case in u, by the keyboard drawn.
@@ -177,22 +176,10 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
         stopTyping();
         return;
     }
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    titleHeight_ = ImGui::GetFrameHeight();
-    aspect_ = HeightU(capture.kind) / WidthU(capture.kind);
-    const ImVec2 size{kInitialWidth, kInitialWidth * aspect_ + titleHeight_};
-    ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + viewport->WorkSize.x * kBoardShare / 2 - size.x / 2,
-         viewport->WorkPos.y + viewport->WorkSize.y - size.y - 16 - kShelfHeight},
-        ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(
-        {kMinWidth, 0}, {FLT_MAX, FLT_MAX},
-        [](ImGuiSizeCallbackData* data) {
-            const auto* self = static_cast<const MatrixKeyboardWindow*>(data->UserData);
-            data->DesiredSize.y = data->DesiredSize.x * self->aspect_ + self->titleHeight_;
-        },
-        this);
+    const float aspect = HeightU(capture.kind) / WidthU(capture.kind);
+    const Extent first = FirstSize(BenchObject::Keyboard, BenchArea().extent(), aspect);
+    PlaceNext(BenchObject::Keyboard, {first.width, first.height});
+    KeepAspect(aspect, kMinWidth);
     if (focusNext_) {
         ImGui::SetNextWindowFocus();
         focusNext_ = false;
@@ -203,9 +190,9 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     const std::string title = "Keyboard " + capture.reference + kMatrixKeyboardWindowName;
     const bool visible =
         ImGui::Begin(title.c_str(), &open,
-                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar |
-                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse |
-                         ImGuiWindowFlags_NoFocusOnAppearing);
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings |
+                         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing);
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     if (!visible || !open) {
@@ -223,6 +210,10 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
         drawMembrane(session, capture);
     } else {
         drawKeys(session, capture);
+    }
+    if (CaseClose()) {
+        open = false;
+        stopTyping();
     }
     ImGui::End();
 }

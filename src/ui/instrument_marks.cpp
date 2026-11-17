@@ -4,6 +4,9 @@
 #include <cmath>
 #include <string>
 
+#include <imgui_internal.h>
+
+#include "ui/bench.hpp"
 #include "view/time_text.hpp"
 
 namespace bw {
@@ -112,8 +115,38 @@ int WheelNotches(float wheel, float& rest) {
     return notches;
 }
 
-bool BeginInstrument(const char* name, bool& open) {
-    return ImGui::Begin(name, &open, ImGuiWindowFlags_NoSavedSettings);
+bool BeginInstrument(const char* name, bool& open, BenchObject object) {
+    const Extent normal = NormalSize(object);
+    PlaceNext(object, {normal.width, normal.height});
+    if (!ImGui::Begin(name, &open,
+                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
+        return false;
+    }
+    // The size button, in the title bar left of the close button (P6d).
+    const ImRect title = ImGui::GetCurrentWindow()->TitleBarRect();
+    const float side = title.GetHeight();
+    const ImVec2 min{title.Max.x - 2 * side, title.Min.y};
+    const ImVec2 cursor = ImGui::GetCursorScreenPos();
+    ImGui::PushClipRect(title.Min, title.Max, false);
+    ImGui::SetCursorScreenPos(min);
+    if (ImGui::InvisibleButton("##size", {side, side})) {
+        const ImVec2 now = ImGui::GetWindowSize();
+        const Extent next = NextPreset({now.x, now.y}, MinimalSize(object), normal);
+        ImGui::SetWindowSize({next.width, next.height});
+    }
+    const bool hovered = ImGui::IsItemHovered();
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    const ImU32 colour = ImGui::GetColorU32(ImGuiCol_Text, hovered ? 1.0f : 0.6f);
+    const float u = side / 16;
+    list.AddRect({min.x + 4 * u, min.y + 4 * u}, {min.x + 12 * u, min.y + 12 * u}, colour, 0, 0,
+                 1.0f);
+    list.AddRectFilled({min.x + 4 * u, min.y + 8 * u}, {min.x + 8 * u, min.y + 12 * u}, colour);
+    if (hovered) {
+        ImGui::SetTooltip("Minimal / normal size");
+    }
+    ImGui::PopClipRect();
+    ImGui::SetCursorScreenPos(cursor);
+    return true;
 }
 
 bool InstrumentClicked() {

@@ -38,8 +38,6 @@ private:
     ImFont* legends_;
     std::vector<bool> latched_;  // per key: right-clicked down
     bool focusNext_ = false;
-    float titleHeight_ = 0;
-    float aspect_ = 1;  // height over width of the keyboard's case, for the size constraint
 };
 
 }  // namespace bw

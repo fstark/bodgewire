@@ -6,8 +6,8 @@ Spec: [EQUIPMENT_OBJECTS.md](EQUIPMENT_OBJECTS.md). Design: [EQUIPMENT_OBJECTS_D
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Places and presets, and their tests | |
-| 2 | The equipment as objects: instrument places and the size button, the TV and knob cases, keyboards without a title bar; the side panel removed (brief, manuals tabs, Debug); the Board across the width | |
+| 1 | Places and presets, and their tests | 95294db |
+| 2 | The equipment as objects: instrument places and the size button, the TV and knob cases, keyboards without a title bar; the side panel removed (brief, manuals tabs, Debug); the Board across the width | this commit |
 | 3 | Release check, screenshots, recipes, glossary, docs | |
 
 ## Phase 1 — Places and presets
@@ -43,3 +43,4 @@ Fence: full release suite. Commit: `docs: P6d done, equipment objects`.
 
 - Docs review (before the docs commit), fixed: fences matched no ctest (`-R "bench places"`); the knob's aspect inverted; `--debug` the first flag with no value; the repairs log a span; `case_marks` named `bench` in the spec; the TV's `powered`; `PushClipRect` not intersected; the bench defined once (1264 × 716); the ZX80's aspect 0.54; the brief narrowed clear of the TV; every first size in `bench_places` and tested; the brief's dark text pushed after `Begin`; the instruments' overlap stated and accepted; what the side panel showed always, now on demand, stated; `--manual chip` for the Chip tab's screenshot; ARCHITECTURE P6e and the LED computer's seed line.
 - Written while the review ran: phase 1, most of phase 2.
+- Phase 2: full release suite 1417 tests in 75 s; debug `-R "bench places|focus"`. Screenshots viewed: Stopwatch with every instrument, BW-2001, BW-80, Tennis, typewriter, `bw1_bench.bwn`, `--manual chip --probe U1.1 --debug`. Debug first sat halfway down the left, on the manuals window: moved to the bottom centre. The brief's first height is its text's (`{340, 0}`), not 120. The meter drawn after the scope, so at start the smallest instrument is in front. `ManualWindows` moved to `manual_window`: `chip_panel.hpp` includes `manual_view.hpp`.

@@ -6,6 +6,7 @@
 
 #include <imgui.h>
 
+#include "view/bench_places.hpp"
 #include "view/time_view.hpp"
 
 namespace bw {
@@ -22,8 +23,10 @@ inline constexpr const char* kAnalyzerWindowName = "Logic Analyzer";
 inline constexpr const char* kScopeWindowName = "Oscilloscope";
 inline constexpr const char* kMeterWindowName = "Multimeter";
 
-// ImGui::Begin for an instrument window; End it as usual whatever this returns.
-bool BeginInstrument(const char* name, bool& open);
+// ImGui::Begin for an instrument window, at its default place each time it comes out, normal size
+// at first, with the minimal / normal size button in its title bar (P6d); End it as usual whatever
+// this returns.
+bool BeginInstrument(const char* name, bool& open, BenchObject object);
 // After BeginInstrument: the left button went down in the window this frame.
 bool InstrumentClicked();
 

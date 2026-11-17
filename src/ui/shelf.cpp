@@ -8,9 +8,12 @@
 
 #include <imgui.h>
 
+#include "ui/brief_window.hpp"
 #include "ui/instrument_marks.hpp"
-#include "ui/manual_view.hpp"
+#include "ui/knob_window.hpp"
+#include "ui/manual_window.hpp"
 #include "ui/shelf_drawings.hpp"
+#include "ui/tv_window.hpp"
 #include "ui/window_order.hpp"
 
 namespace bw {
@@ -39,7 +42,7 @@ struct Entry {
 };
 
 // The fixed order, the same on every Machine; a group ends at each nullptr name.
-constexpr std::array<Entry, 17> kItems{{
+constexpr std::array<Entry, 18> kItems{{
     {Item::Power, "Power", nullptr, 1},
     {Item::Run, "Run / pause", nullptr, 1},
     {Item::Speed, "Speed: real time or as fast as possible", nullptr, 1},
@@ -55,8 +58,9 @@ constexpr std::array<Entry, 17> kItems{{
     {Item::Analyzer, "Logic Analyzer: click a chip pin; shift-click: its whole bus", "C", 1},
     {Item::Scope, "Oscilloscope: click a chip pin (4 channels)", "O", 1},
     {Item::Meter, "Multimeter: volts, or continuity with the power off", "V", 1},
-    {Item::Manual, "User Manual", "U", 1},
-    {Item::Knob, "Knob: drag in its panel, mouse wheel, or the arrow keys", nullptr, 1},
+    {Item::Manual, "Manuals: User Manual, chip, repairs", "U", 1},
+    {Item::Knob, "Knob: drag it, mouse wheel, or the arrow keys", nullptr, 1},
+    {Item::Brief, "Puzzle brief", nullptr, 1},
 }};
 
 bool GroupEnds(Item item) { return item == Item::Fit || item == Item::Wire; }
@@ -239,6 +243,11 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
             inert = !hasKnob;
             why = "No knob on this Machine";
             break;
+        case Item::Brief:
+            look.lit = briefOut;
+            inert = !hasBrief;
+            why = "No brief: not a Puzzle";
+            break;
         default:
             break;
         }
@@ -327,7 +336,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                 board.fit();
                 break;
             case Item::Tv:
-                tvOut = !tvOut;
+                ToggleWindow(tvOut, kTvWindowName);
                 break;
             case Item::Keyboard:
                 ToggleWindow(keyboardOut, keyboardWindow);
@@ -336,7 +345,10 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                 ToggleWindow(manualOut, kManualWindowName);
                 break;
             case Item::Knob:
-                knobOut = !knobOut;
+                ToggleWindow(knobOut, kKnobWindowName);
+                break;
+            case Item::Brief:
+                ToggleWindow(briefOut, kBriefWindowName);
                 break;
             default:
                 if (IsInstrument(*owner)) {

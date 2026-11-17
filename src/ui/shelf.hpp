@@ -12,8 +12,6 @@
 
 namespace bw {
 
-// The Board's share of the main window's width; the side panel has the rest.
-inline constexpr float kBoardShare = 2.0f / 3.0f;
 // The shelf's height along the bottom of the main window, logical px.
 inline constexpr float kShelfHeight = 64.0f;
 
@@ -28,8 +26,9 @@ public:
     // A click the focus owner could not act on: the reason in amber for 2 s.
     void refused(std::string reason);
 
-    // Equipment that is not an instrument: shown or hidden from the shelf.
-    bool tvOut = true, keyboardOut = false, manualOut = false, knobOut = true;
+    // Equipment that is not an instrument, and the brief: out or away, from the shelf.
+    bool tvOut = false, keyboardOut = false, manualOut = false, knobOut = false, briefOut = false;
+    bool hasBrief = false;                 // a Puzzle: the brief note is not grayed
     const char* keyboardWindow = nullptr;  // the Machine's keyboard window, by name
     bool keyboardTyping = false;           // its typing on: the keyboard's own focus, in gold
     bool wireStarted = false;              // Wire tool: first pin clicked

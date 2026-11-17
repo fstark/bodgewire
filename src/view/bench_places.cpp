@@ -37,7 +37,7 @@ Place DefaultPlace(BenchObject object, Extent bench) {
     case BenchObject::Brief:
         return {w / 2, m, 0.5f, 0};
     case BenchObject::Debug:
-        return {m, h / 2, 0, 0.5f};
+        return {w / 2, h - m, 0.5f, 1};
     }
     return {};
 }

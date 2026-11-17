@@ -41,7 +41,6 @@ private:
     std::optional<CapPress> flash_;
     std::chrono::steady_clock::time_point flashUntil_{};
     bool focusNext_ = false;  // F2 while not typing
-    float titleHeight_ = 0;   // for the size constraint
 };
 
 }  // namespace bw

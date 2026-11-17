@@ -97,13 +97,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     if (!open) {
         return false;
     }
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    // Below the Multimeter's reading, as in P5e.
-    ImGui::SetNextWindowSize({680, 460}, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 700, viewport->WorkPos.y + 230},
-        ImGuiCond_FirstUseEver);
-    if (!BeginInstrument(kScopeWindowName, open)) {
+    if (!BeginInstrument(kScopeWindowName, open, BenchObject::Scope)) {
         ImGui::End();
         return false;
     }

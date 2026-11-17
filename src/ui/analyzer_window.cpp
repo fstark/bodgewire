@@ -11,7 +11,6 @@
 
 #include "ui/board_view.hpp"
 #include "ui/instrument_marks.hpp"
-#include "ui/shelf.hpp"
 #include "view/time_text.hpp"
 
 namespace bw {
@@ -173,12 +172,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     if (!open) {
         return false;
     }
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowSize({940, 440}, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + 20, viewport->WorkPos.y + viewport->WorkSize.y - 460 - kShelfHeight},
-        ImGuiCond_FirstUseEver);
-    if (!BeginInstrument(kAnalyzerWindowName, open)) {
+    if (!BeginInstrument(kAnalyzerWindowName, open, BenchObject::Analyzer)) {
         ImGui::End();
         return false;
     }

@@ -327,6 +327,16 @@ void Knob(Pen& p, const ItemLook& look) {
     p.disc(47, 9, 3, look.lit ? kGreen : kLampDark);
 }
 
+// A yellow note, slightly turned, a folded corner, three lines of writing.
+void Brief(Pen& p, const ItemLook& look) {
+    const ImU32 paper = look.lit ? IM_COL32(255, 232, 90, 255) : IM_COL32(200, 180, 80, 255);
+    p.quad(11, 13, 44, 10, 46, 40, 13, 45, paper);
+    p.triangle(37, 41, 46, 40, 45, 32, IM_COL32(170, 150, 60, 255));
+    for (float y = 20; y < 36; y += 6) {
+        p.line(16, y + 1, 39, y - 1, IM_COL32(90, 80, 50, 255), 1.2f);
+    }
+}
+
 }  // namespace
 
 void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLook& look) {
@@ -382,6 +392,9 @@ void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLoo
         break;
     case Item::Knob:
         Knob(p, look);
+        break;
+    case Item::Brief:
+        Brief(p, look);
         break;
     }
 }

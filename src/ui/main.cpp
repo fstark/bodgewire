@@ -35,17 +35,21 @@
 #include "parts/catalogue.hpp"
 #include "session/session.hpp"
 #include "ui/analyzer_window.hpp"
+#include "ui/bench.hpp"
 #include "ui/board_keys.hpp"
 #include "ui/board_view.hpp"
+#include "ui/brief_window.hpp"
+#include "ui/debug_window.hpp"
 #include "ui/keyboard_window.hpp"
+#include "ui/knob_window.hpp"
 #include "ui/loaded.hpp"
-#include "ui/manual_view.hpp"
+#include "ui/manual_window.hpp"
 #include "ui/matrix_keyboard_window.hpp"
 #include "ui/meter_window.hpp"
 #include "ui/scope_window.hpp"
 #include "ui/shelf.hpp"
-#include "ui/side_panel.hpp"
 #include "ui/tv_view.hpp"
+#include "ui/tv_window.hpp"
 #include "view/focus.hpp"
 #include "view/time_view.hpp"
 
@@ -65,8 +69,8 @@ constexpr std::string_view kUsage =
     "[--view 1us[:+20us]] [--marker +2us] [--cursor +3.7us] "
     "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
-    "[--type REF:START:TEXT] [--roms DIR] [--manual user] [--look real|plain] "
-    "[--focus probe|swap|iron|cut|wire|analyzer|scope|meter] "
+    "[--type REF:START:TEXT] [--roms DIR] [--manual user|chip] [--look real|plain] "
+    "[--focus probe|swap|iron|cut|wire|analyzer|scope|meter] [--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -90,8 +94,10 @@ struct Options {
     std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
     std::vector<Typing> type;
     bool userManual = false;
+    bool chipTab = false;        // --manual chip: the manuals window at its Chip tab (P6d)
     bool plainLook = false;      // --look plain: the specialist's Board, no parts drawn (P6)
     std::optional<Owner> focus;  // --focus: the owner at start (P6c)
+    bool debug = false;          // --debug: the Debug window out (P6d)
 };
 
 std::optional<Owner> ParseOwner(std::string_view name) {
@@ -161,6 +167,10 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
     bool after = false;
     for (int i = 2; i < argc; ++i) {
         const std::string_view arg = argv[i];
+        if (arg == "--debug") {  // the one flag without a value
+            options.debug = true;
+            continue;
+        }
         if (i + 1 >= argc) {
             return std::nullopt;
         }
@@ -178,10 +188,12 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
         } else if (arg == "--probe") {
             options.probe = argv[++i];
         } else if (arg == "--manual") {
-            if (std::string_view(argv[++i]) != "user") {
+            const std::string_view manual = argv[++i];
+            if (manual != "user" && manual != "chip") {
                 return std::nullopt;
             }
             options.userManual = true;
+            options.chipTab = manual == "chip";
         } else if (arg == "--look") {
             const std::string_view look = argv[++i];
             if (look != "real" && look != "plain") {
@@ -418,7 +430,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
               const Options& options, ImFont* legends) {
     TvView view(renderer);
     Shelf shelf;
-    SidePanel sidePanel;
+    TvWindow tvWindow;
+    KnobWindow knobWindow;
+    bool debugOut = options.debug;
     const Machine* machine = session.machine();
     BoardView boardView(machine ? std::optional<BoardScene>(std::in_place, *session.drawnBoard(),
                                                             machine->pristineBoard(),
@@ -459,6 +473,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     }
     Speed speed = Speed::RealTime;
     shelf.manualOut = options.userManual;
+    shelf.tvOut = session.tv() != nullptr;
+    shelf.knobOut = !session.knobs().empty();
+    shelf.hasBrief = shelf.briefOut = !loaded.brief.empty();
     boardView.setPlainLook(options.plainLook);
     Focus focus;
     if (!options.clip.empty() || !options.group.empty()) {
@@ -477,6 +494,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     }
     Owner lastOwner = focus.owner();
     ManualWindows manualWindows;
+    if (options.chipTab) {
+        manualWindows.showChip();
+    }
     AnalyzerWindow analyzerWindow;
     MeterWindow meterWindow;
     ScopeWindow scopeWindow;
@@ -534,9 +554,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             lastOwner = focus.owner();
         }
         boardView.setOwner(focus.owner());
-        const ImVec2 whole = ImGui::GetContentRegionAvail();
-        const ImVec2 available{whole.x, whole.y - kShelfHeight - ImGui::GetStyle().ItemSpacing.y};
-        boardView.draw({available.x * kBoardShare, available.y});
+        const Extent bench = BenchArea().extent();  // above the shelf
+        const ImVec2 available{bench.width, bench.height};
+        boardView.draw(available);
         // Esc in an instrument window clears its marker; it is not the Board's.
         if (boardView.takeEscape() && !analyzerWindow.focused() && !scopeWindow.focused()) {
             switch (focus.escape(wireStart.has_value())) {
@@ -818,8 +838,6 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         }
         boardView.setWireStart(wireStart ? std::optional(wireStartAt) : std::nullopt);
         shelf.wireStarted = wireStart.has_value();
-        ImGui::SameLine();
-        ImGui::BeginChild("side", {0, available.y});
         const std::string_view lock =
             !tv ? "no video" : (tv->pictures().front().locked ? "locked" : "no lock");
         const DebugStats stats{static_cast<double>(status.simTime) /
@@ -829,11 +847,16 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                                uiMilliseconds,
                                lock,
                                StateName(status.state)};
-        sidePanel.draw(session, view, boardView, loaded, stats, seed, shelf.tvOut, shelf.knobOut);
-        ImGui::EndChild();
         shelf.draw(session, boardView, focus, speed, seed);
         ImGui::End();
-        manualWindows.draw(shelf.manualOut, loaded.manuals.manuals, boardView, DesignOf(session));
+        // The bench, back to front at start: brief, TV, knob, manuals, instruments, keyboard,
+        // Debug.
+        knobWindow.keys(session);
+        DrawBrief(shelf.briefOut, loaded);
+        tvWindow.draw(shelf.tvOut, view, session.powered());
+        knobWindow.draw(shelf.knobOut, session);
+        manualWindows.draw(shelf.manualOut, loaded.manuals.manuals, boardView, DesignOf(session),
+                           session.log());
         if (session.machine()) {
             const auto instrument = [&](Owner owner, auto& window) {
                 bool open = focus.out(owner);
@@ -845,8 +868,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 }
             };
             instrument(Owner::Analyzer, analyzerWindow);
-            instrument(Owner::Meter, meterWindow);
             instrument(Owner::Scope, scopeWindow);
+            instrument(Owner::Meter, meterWindow);  // the smallest in front at start
         }
         // Also without a Board (a netlist-only Session, the bench).
         // One keyboard per Machine, either kind: the shelf's drawing shows or hides it.
@@ -859,6 +882,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             shelf.keyboardOut = false;  // closed by its window
         }
         matrixCapture.sync(window);
+        DrawDebug(debugOut, session, stats, seed);
         if (!boardKeys.keys.empty() && !boardKeys.on && !ImGui::GetIO().WantTextInput &&
             ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
             boardKeys.on = true;

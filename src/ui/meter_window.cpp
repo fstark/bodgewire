@@ -29,12 +29,7 @@ bool MeterWindow::draw(bool& open, Session& session) {
     if (!open) {
         return false;
     }
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowSize({320, 200}, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 340, viewport->WorkPos.y + 130},
-        ImGuiCond_FirstUseEver);
-    if (!BeginInstrument(kMeterWindowName, open)) {
+    if (!BeginInstrument(kMeterWindowName, open, BenchObject::Meter)) {
         ImGui::End();
         return false;
     }

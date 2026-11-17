@@ -73,9 +73,9 @@ Extent NextPreset(Extent current, Extent minimal, Extent normal);
 | Meter | W − m, H − m | 1, 1 |
 | Manual | m, m + `kKnobBox.height` + m | 0, 0 |
 | Brief | W / 2, m | 0.5, 0 |
-| Debug | m, H / 2 | 0, 0.5 |
+| Debug | W / 2, H − m | 0.5, 1 |
 
-Sizes: Analyzer 940 × 440 / 560 × 260, Scope 680 × 460 / 420 × 300, Meter 320 × 200 / 240 × 150 (normal / minimal). First sizes (no presets): Manual 480 × 460, Brief 340 × 120 (clear of the TV at the top centre), Debug 420 × 140. On the 1264 × 716 bench: the TV case 440 × 370; the keyboard's top at 402, room for 298 px: the BW-2001's chiclets (aspect 0.36) and the typewriter (0.43) keep 640 px, the ZX80's membrane (0.54) narrows to about 550. The instruments overlap when out together at normal size (spec).
+Sizes: Analyzer 940 × 440 / 560 × 260, Scope 680 × 460 / 420 × 300, Meter 320 × 200 / 240 × 150 (normal / minimal). First sizes (no presets): Manual 480 × 460, Brief 340 wide (clear of the TV at the top centre) and as tall as its text, 120 tested, Debug 420 × 140. On the 1264 × 716 bench: the TV case 440 × 370; the keyboard's top at 402, room for 298 px: the BW-2001's chiclets (aspect 0.36) and the typewriter (0.43) keep 640 px, the ZX80's membrane (0.54) narrows to about 550. The instruments overlap when out together at normal size (spec).
 
 ## Bench helpers (`src/ui/bench.hpp`)
 

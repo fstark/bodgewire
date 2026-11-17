@@ -31,14 +31,4 @@ void TvView::show(const TvPicture& picture) {
     SDL_UpdateTexture(texture_, nullptr, pixels_.data(), kTvColumns * 4);
 }
 
-void TvView::draw(ImVec2 available) {
-    const float width = std::max(0.0f, std::min(available.x, available.y * 4.0f / 3.0f));
-    const float height = width * 3.0f / 4.0f;
-    ImGui::BeginChild("tv", available);
-    ImGui::SetCursorPos({(available.x - width) / 2.0f, (available.y - height) / 2.0f});
-    ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<std::uintptr_t>(texture_)),
-                 {width, height});
-    ImGui::EndChild();
-}
-
 }  // namespace bw

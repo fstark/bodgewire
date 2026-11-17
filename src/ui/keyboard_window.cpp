@@ -9,8 +9,8 @@
 
 #include <imgui_internal.h>
 
+#include "ui/bench.hpp"
 #include "ui/keycap.hpp"
-#include "ui/shelf.hpp"
 
 namespace bw {
 
@@ -25,7 +25,6 @@ constexpr float kCaseInset = 0.12f;   // the case inside the window
 constexpr float kGap = 0.08f;         // between caps
 constexpr float kWidthU = kKeyboardWidth + 2 * kCaseMargin;
 constexpr float kHeightU = kKeyboardRows + 2 * kCaseMargin + kLabelStrip;
-constexpr float kInitialWidth = 720;  // points
 constexpr float kMinWidth = 360;
 constexpr auto kFlash = 150ms;
 
@@ -62,22 +61,10 @@ void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
         return;
     }
 
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    titleHeight_ = ImGui::GetFrameHeight();
     const float aspect = kHeightU / kWidthU;
-    const ImVec2 size{kInitialWidth, kInitialWidth * aspect + titleHeight_};
-    ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + viewport->WorkSize.x * kBoardShare / 2 - size.x / 2,
-         viewport->WorkPos.y + viewport->WorkSize.y - size.y - 16 - kShelfHeight},
-        ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(
-        {kMinWidth, 0}, {FLT_MAX, FLT_MAX},
-        [](ImGuiSizeCallbackData* data) {
-            const float title = *static_cast<const float*>(data->UserData);
-            data->DesiredSize.y = data->DesiredSize.x * kHeightU / kWidthU + title;
-        },
-        &titleHeight_);
+    const Extent first = FirstSize(BenchObject::Keyboard, BenchArea().extent(), aspect);
+    PlaceNext(BenchObject::Keyboard, {first.width, first.height});
+    KeepAspect(aspect, kMinWidth);
     if (focusNext_) {
         ImGui::SetNextWindowFocus();
         focusNext_ = false;
@@ -86,9 +73,9 @@ void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
     ImGui::PushStyleColor(ImGuiCol_WindowBg, kSurround);
     const bool visible =
         ImGui::Begin(kKeyboardWindowName, &open,
-                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar |
-                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse |
-                         ImGuiWindowFlags_NoFocusOnAppearing);
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings |
+                         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing);
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     if (!visible || !open) {
@@ -103,6 +90,10 @@ void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
         capture.on = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     }
     drawCaps(session, capture);
+    if (CaseClose()) {
+        open = false;
+        stopTyping();
+    }
     ImGui::End();
 }
 
