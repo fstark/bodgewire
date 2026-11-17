@@ -14,9 +14,13 @@ struct BenchRect {
 };
 BenchRect BenchArea();
 
-// Before Begin: the window at its default place each time it comes out (ImGuiCond_Appearing),
-// `first` its size the first time only (FirstUseEver: the player's size is kept for the run).
+// Before Begin: the window at its default place and `first` its size the first time it comes
+// out; after that where and as large as the player left it, for the run (FirstUseEver), unless
+// SendHome asked for its default place again.
 void PlaceNext(BenchObject object, ImVec2 first);
+// The next PlaceNext of `object` puts it back at its default place (its shelf drawing
+// double-clicked), keeping its size.
+void SendHome(BenchObject object);
 // Before Begin: height = width * aspect, at least `minWidth` wide (a case keeps its proportions).
 void KeepAspect(float aspect, float minWidth);
 // A case's put-away mark, last before End: a small circled × in the window's top-right corner,

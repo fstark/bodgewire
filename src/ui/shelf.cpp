@@ -8,6 +8,7 @@
 
 #include <imgui.h>
 
+#include "ui/bench.hpp"
 #include "ui/brief_window.hpp"
 #include "ui/instrument_marks.hpp"
 #include "ui/knob_window.hpp"
@@ -105,6 +106,21 @@ void ToggleWindow(bool& out, const char* window) {
             BringToFront(window);
         }
     }
+}
+
+// A window's shelf drawing double-clicked: out, in front, back at its default place.
+void Home(bool& out, const char* window, BenchObject object) {
+    out = true;
+    if (window != nullptr) {
+        BringToFront(window);
+    }
+    SendHome(object);
+}
+
+BenchObject ObjectOf(Owner instrument) {
+    return instrument == Owner::Analyzer ? BenchObject::Analyzer
+           : instrument == Owner::Scope  ? BenchObject::Scope
+                                         : BenchObject::Meter;
 }
 
 // Swap, mend, cut and wire need the power off.
@@ -302,6 +318,12 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
             if (owner && IsInstrument(*owner) && !inert) {
                 tip += focus.owner() == *owner ? "\nhas the focus" : look.lit ? "\nout" : "\naway";
             }
+            const bool object = entry.item == Item::Tv || entry.item == Item::Keyboard ||
+                                entry.item == Item::Manual || entry.item == Item::Knob ||
+                                entry.item == Item::Brief || (owner && IsInstrument(*owner));
+            if (object && !inert) {
+                tip += "\ndouble-click: back in its place";
+            }
             if (grayed && !why.empty()) {
                 tip += "\n" + why;
             }
@@ -309,6 +331,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
         }
         ImGui::PopID();
 
+        // The second click of a double-click: the object back at its default place (P6e).
+        const bool home =
+            clicked && ImGui::GetIO().MouseClickedLastCount[ImGuiMouseButton_Left] >= 2;
         if (clicked) {
             switch (entry.item) {
             case Item::Power:
@@ -336,22 +361,31 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                 board.fit();
                 break;
             case Item::Tv:
-                ToggleWindow(tvOut, kTvWindowName);
+                home ? Home(tvOut, kTvWindowName, BenchObject::Tv)
+                     : ToggleWindow(tvOut, kTvWindowName);
                 break;
             case Item::Keyboard:
-                ToggleWindow(keyboardOut, keyboardWindow);
+                home ? Home(keyboardOut, keyboardWindow, BenchObject::Keyboard)
+                     : ToggleWindow(keyboardOut, keyboardWindow);
                 break;
             case Item::Manual:
-                ToggleWindow(manualOut, kManualWindowName);
+                home ? Home(manualOut, kManualWindowName, BenchObject::Manual)
+                     : ToggleWindow(manualOut, kManualWindowName);
                 break;
             case Item::Knob:
-                ToggleWindow(knobOut, kKnobWindowName);
+                home ? Home(knobOut, kKnobWindowName, BenchObject::Knob)
+                     : ToggleWindow(knobOut, kKnobWindowName);
                 break;
             case Item::Brief:
-                ToggleWindow(briefOut, kBriefWindowName);
+                home ? Home(briefOut, kBriefWindowName, BenchObject::Brief)
+                     : ToggleWindow(briefOut, kBriefWindowName);
                 break;
             default:
-                if (IsInstrument(*owner)) {
+                if (IsInstrument(*owner) && home) {
+                    focus.key(*owner);  // out with the focus
+                    BringToFront(WindowOf(*owner));
+                    SendHome(ObjectOf(*owner));
+                } else if (IsInstrument(*owner)) {
                     focus.shelfClick(*owner, InFront(WindowOf(*owner)));
                     if (focus.out(*owner)) {
                         BringToFront(WindowOf(*owner));

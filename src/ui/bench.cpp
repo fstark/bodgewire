@@ -1,5 +1,6 @@
 #include "ui/bench.hpp"
 
+#include <array>
 #include <cfloat>
 
 #include "ui/shelf.hpp"
@@ -14,6 +15,7 @@ constexpr ImU32 kCloseBright = IM_COL32(240, 240, 240, 230);
 constexpr ImU32 kCloseDisc = IM_COL32(0, 0, 0, 120);
 
 float aspect_ = 1;  // read by the size callback during the next Begin
+std::array<bool, static_cast<std::size_t>(BenchObject::Debug) + 1> home_{};  // SendHome
 
 }  // namespace
 
@@ -31,8 +33,11 @@ BenchRect BenchArea() {
 void PlaceNext(BenchObject object, ImVec2 first) {
     const BenchRect bench = BenchArea();
     const Place place = DefaultPlace(object, bench.extent());
-    ImGui::SetNextWindowPos({bench.min.x + place.x, bench.min.y + place.y}, ImGuiCond_Appearing,
+    bool& home = home_[static_cast<std::size_t>(object)];
+    ImGui::SetNextWindowPos({bench.min.x + place.x, bench.min.y + place.y},
+                            home ? ImGuiCond_Always : ImGuiCond_FirstUseEver,
                             {place.pivotX, place.pivotY});
+    home = false;
     ImGui::SetNextWindowSize(first, ImGuiCond_FirstUseEver);
 }
 
@@ -45,6 +50,8 @@ void KeepAspect(float aspect, float minWidth) {
         },
         &aspect_);
 }
+
+void SendHome(BenchObject object) { home_[static_cast<std::size_t>(object)] = true; }
 
 bool CaseClose(float inset) {
     const ImVec2 pos = ImGui::GetWindowPos();
