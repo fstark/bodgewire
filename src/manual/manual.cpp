@@ -258,6 +258,22 @@ std::vector<std::string> PartPinNames(const PartInfo& part) {
     return names;
 }
 
+std::vector<IndexEntry> DatasheetIndex(const LoadedCircuit& design) {
+    std::vector<IndexEntry> index;
+    for (const LoadedPart& part : design.parts) {
+        if (part.info == nullptr) {
+            continue;
+        }
+        const auto entry = std::ranges::find(index, part.info->name, &IndexEntry::part);
+        if (entry == index.end()) {
+            index.push_back({std::string(part.info->name), {part.reference}});
+        } else {
+            entry->references.push_back(part.reference);
+        }
+    }
+    return index;
+}
+
 std::optional<Role> ComponentRole(const Markdown& service, std::string_view reference) {
     for (const Block& block : Section(service, "Components")) {
         if (block.kind != BlockKind::Bullet || block.spans.empty() ||

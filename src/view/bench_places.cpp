@@ -55,7 +55,7 @@ Extent FirstSize(BenchObject object, Extent bench, float aspect, int count) {
         return {width, width * aspect};
     }
     case BenchObject::Manual:
-        return {480, 460};
+        return {600, 500};
     case BenchObject::Brief:
         return {340, 120};
     case BenchObject::Debug:

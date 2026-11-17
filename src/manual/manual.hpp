@@ -44,6 +44,14 @@ std::vector<Diagnostic> CheckDatasheet(const Markdown& doc, std::string_view fil
 
 std::vector<std::string> PartPinNames(const PartInfo& part);  // empty without `create` (R)
 
+// The Parts on a Machine, in netlist order of first use, each with its references in netlist
+// order (P6e: the binder's datasheet index).
+struct IndexEntry {
+    std::string part;  // PartInfo::name: the key of Manuals::datasheets
+    std::vector<std::string> references;
+};
+std::vector<IndexEntry> DatasheetIndex(const LoadedCircuit& design);
+
 // "- `U6` end-of-frame decoder: detail" → {"end-of-frame decoder", "detail"}.
 struct Role {
     std::string name, detail;

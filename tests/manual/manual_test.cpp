@@ -168,3 +168,16 @@ TEST_CASE("manual: load with missing files", "[manual]") {
     CHECK(loaded.manuals.datasheets.empty());
     std::filesystem::remove_all(root);
 }
+
+TEST_CASE("manual: datasheet index", "[manual]") {
+    const auto design = Counter();
+    const std::vector<IndexEntry> index = DatasheetIndex(*design);
+    Names parts;
+    for (const IndexEntry& entry : index) {
+        parts.push_back(entry.part);
+    }
+    CHECK(parts == Names{"OSC", "POWER", "R", "74LS161", "LED"});
+    CHECK(index[2].references == Names{"R1", "R2"});
+    CHECK(index[3].references == Names{"U1", "U2", "U3", "U4", "U5"});
+    CHECK(index[4].references == Names{"D1"});
+}
