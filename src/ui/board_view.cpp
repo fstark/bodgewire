@@ -32,6 +32,13 @@ constexpr ImU32 kCourtyard = IM_COL32(190, 190, 190, 150);
 constexpr ImU32 kReference = IM_COL32(230, 230, 230, 200);
 constexpr ImU32 kPinOne = IM_COL32(230, 230, 230, 230);
 constexpr ImU32 kHighlight = IM_COL32(255, 190, 0, 255);
+// The power rails in the gold's place, so a glance tells VCC from GND, as a breadboard's red and
+// blue rails: bright for the Net under the cursor, dim for a chip's power pins. The blue stays
+// brighter than the back copper's.
+constexpr ImU32 kVccLit = IM_COL32(255, 70, 40, 255);
+constexpr ImU32 kVccGlow = IM_COL32(215, 55, 35, 255);
+constexpr ImU32 kGndLit = IM_COL32(90, 190, 255, 255);
+constexpr ImU32 kGndGlow = IM_COL32(70, 150, 215, 255);
 // The selected part's box: white, apart from the gold wiring beside it.
 constexpr ImU32 kSelection = IM_COL32(245, 245, 240, 255);
 constexpr ImU32 kChipGold = IM_COL32(190, 140, 20, 255);  // a hovered chip's wiring (plain look)
@@ -452,9 +459,21 @@ void BoardView::draw(ImVec2 size) {
         corner_ = corner;
     }
     const std::optional<NetId> lit = highlight_;
+    // Gold, or the rail's own colour on VCC and GND (the builder names every power Net so).
+    const auto railColour = [&](std::optional<NetId> net, bool bright) {
+        const std::string_view name = net ? scene_->netName(*net) : std::string_view{};
+        if (name == "VCC") {
+            return bright ? kVccLit : kVccGlow;
+        }
+        if (name == "GND") {
+            return bright ? kGndLit : kGndGlow;
+        }
+        return bright ? kHighlight : kPadGlow;
+    };
+    const ImU32 litGold = railColour(lit, true);
     const auto drawTraces = [&](Layer layer, float alpha, float litAlpha, bool litOnly) {
         const ImU32 colour = WithAlpha(layer == Layer::Front ? kFrontCopper : kBackCopper, alpha);
-        const ImU32 litColour = WithAlpha(kHighlight, litAlpha);
+        const ImU32 litColour = WithAlpha(litGold, litAlpha);
         for (std::size_t t = 0; t < board.traces.size(); ++t) {
             const Trace& trace = board.traces[t];
             if (trace.layer == layer) {
@@ -510,16 +529,20 @@ void BoardView::draw(ImVec2 size) {
             for (std::size_t p = 0; p < pads.size(); ++p) {
                 const auto net = scene_->padNet(k, p);
                 const bool on = lit && net == lit;
-                const bool marked =
-                    (net && std::ranges::contains(glowing, *net)) ||
-                    (k == wired && net && std::ranges::contains(rails, *net) && used[p]);
-                DrawPad(list, map, pads[p], on ? kHighlight : marked ? kPadGlow : kPadTin);
+                const bool glows = net && std::ranges::contains(glowing, *net);
+                const bool rail =
+                    k == wired && net && std::ranges::contains(rails, *net) && used[p];
+                DrawPad(list, map, pads[p],
+                        on      ? litGold
+                        : rail  ? railColour(net, false)
+                        : glows ? kPadGlow
+                                : kPadTin);
             }
         }
         for (std::size_t v = 0; v < board.vias.size(); ++v) {
             const bool on = lit && scene_->viaNet(v) == lit;
             if (on || !real) {
-                DrawVia(list, map, board.vias[v], on ? kHighlight : kPadTin);
+                DrawVia(list, map, board.vias[v], on ? litGold : kPadTin);
             }
         }
     };
