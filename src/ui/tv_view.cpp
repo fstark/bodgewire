@@ -1,7 +1,5 @@
 #include "ui/tv_view.hpp"
 
-#include <algorithm>
-#include <cmath>
 #include <cstddef>
 
 #include "sim/check.hpp"
@@ -20,9 +18,24 @@ TvView::TvView(SDL_Renderer* renderer)
 TvView::~TvView() { SDL_DestroyTexture(texture_); }
 
 void TvView::show(const TvPicture& picture) {
-    for (std::size_t i = 0; i < picture.frame.cells.size(); ++i) {
-        const auto grey = static_cast<std::uint8_t>(
-            std::lround(std::clamp(picture.frame.cells[i], 0.0f, 1.0f) * 255.0f));
+    cells_ = picture.frame.cells;
+    if (picture.locked) {
+        lines_ = picture.lines;  // the window keeps still until the next locked frame
+    }
+    upload();
+}
+
+void TvView::setTone(TvTone tone) {
+    if (tone == tone_) {
+        return;
+    }
+    tone_ = tone;
+    upload();
+}
+
+void TvView::upload() {
+    for (std::size_t i = 0; i < cells_.size(); ++i) {
+        const std::uint8_t grey = Grey(cells_[i], tone_);
         pixels_[i * 4 + 0] = grey;
         pixels_[i * 4 + 1] = grey;
         pixels_[i * 4 + 2] = grey;

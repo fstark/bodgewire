@@ -211,12 +211,17 @@ void Wire(Pen& p) {
 }
 
 void Tv(Pen& p, const ItemLook& look) {
-    p.box(5, 8, 51, 44, IM_COL32(70, 62, 55, 255), 4);
-    p.box(9, 12, 41, 40, look.lit ? kTvOn : kScreenOff, 6);
-    p.disc(46, 18, 2.5f, kBlack);
-    p.disc(46, 26, 2.5f, kBlack);
-    p.line(16, 44, 12, 50, kDarkMetal, 2);
-    p.line(40, 44, 44, 50, kDarkMetal, 2);
+    // A small 1970s monitor: a cream shell, a dark front, the screen high, a strip of knobs.
+    p.box(7, 6, 49, 47, IM_COL32(220, 214, 194, 255), 4);
+    p.box(9, 8, 47, 47, IM_COL32(50, 50, 54, 255), 3);
+    p.box(12, 10, 44, 34, look.lit ? kTvOn : kScreenOff, 3);
+    p.box(11, 37, 45, 44, IM_COL32(24, 24, 26, 255), 1);
+    for (int i = 0; i < 4; ++i) {
+        p.disc(15 + 4.5f * static_cast<float>(i), 40.5f, 1.3f, IM_COL32(200, 196, 186, 255));
+    }
+    p.disc(33, 40.5f, 1.2f, look.lit ? IM_COL32(235, 45, 35, 255) : IM_COL32(85, 22, 20, 255));
+    p.line(14, 47, 14, 50, kDarkMetal, 2);
+    p.line(42, 47, 42, 50, kDarkMetal, 2);
 }
 
 void Keyboard(Pen& p, const ItemLook& look) {

@@ -52,6 +52,7 @@
 #include "ui/tv_window.hpp"
 #include "view/focus.hpp"
 #include "view/time_view.hpp"
+#include "view/tv_controls.hpp"
 
 using namespace bw;
 
@@ -69,7 +70,8 @@ constexpr std::string_view kUsage =
     "[--view 1us[:+20us]] [--marker +2us] [--cursor +3.7us] "
     "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
-    "[--type REF:START:TEXT] [--roms DIR] [--manual user|service|datasheet|repairs] [--look "
+    "[--type REF:START:TEXT] [--roms DIR] [--manual user|service|datasheet|repairs] "
+    "[--tv hpos:N%,vpos:N%,bright:N%,contrast:N%,off,underscan] [--look "
     "real|plain] "
     "[--focus probe|swap|iron|cut|wire|analyzer|scope|meter] [--debug] "
     "[--screenshot OUT.png [--after 1s]]";
@@ -95,6 +97,7 @@ struct Options {
     std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
     std::vector<Typing> type;
     std::optional<Divider> manual;  // --manual: the binder out at this divider (P6e)
+    std::optional<TvControls> tv;   // --tv: the monitor's controls at start (P6f)
     bool plainLook = false;         // --look plain: the specialist's Board, no parts drawn (P6)
     std::optional<Owner> focus;     // --focus: the owner at start (P6c)
     bool debug = false;             // --debug: the Debug window out (P6d)
@@ -260,6 +263,11 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                     return std::nullopt;
                 }
                 options.press.push_back(std::move(*press));
+            }
+        } else if (arg == "--tv") {
+            options.tv = ParseTvSettings(argv[++i]);
+            if (!options.tv) {
+                return std::nullopt;
             }
         } else if (arg == "--knob") {
             for (const std::string& text : SplitCommas(argv[++i])) {
@@ -437,6 +445,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     TvView view(renderer);
     Shelf shelf;
     TvWindow tvWindow;
+    if (options.tv) {
+        tvWindow.controls() = *options.tv;
+    }
     KnobWindow knobWindow;
     bool debugOut = options.debug;
     const Machine* machine = session.machine();
@@ -859,7 +870,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         // Debug.
         knobWindow.keys(session);
         DrawBrief(shelf.briefOut, loaded, boardView.corner());
-        tvWindow.draw(shelf.tvOut, view, session.powered());
+        tvWindow.draw(shelf.tvOut, view);
         knobWindow.draw(shelf.knobOut, session);
         manualWindows.draw(shelf.manualOut, loaded.manuals.manuals, boardView, DesignOf(session),
                            session.log());
@@ -1045,6 +1056,11 @@ int main(int argc, char** argv) {
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
+    }
+    if (options->tv && session.tv() == nullptr) {
+        std::println(stderr, "bw_ui: this Machine has no TV");
+        std::println(stderr, "{}", kUsage);
+        return kExitUsage;
     }
     for (const KnobSetting& knob : options->knob) {
         if (!session.setKnob(knob.reference, knob.turn)) {

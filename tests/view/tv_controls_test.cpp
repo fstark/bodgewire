@@ -66,14 +66,14 @@ TEST_CASE("tv controls: the tone's ends", "[view]") {
 TEST_CASE("tv controls: the window, a real monitor's or the whole frame", "[view]") {
     TvControls controls;
     // A frame of N line starts paints rows 0..N: the window's bottom is N + 1.
-    CHECK(controls.window(260) == PictureWindow{80, 496, 20, 261});
-    CHECK(controls.window(312) == PictureWindow{80, 496, 20, 313});
-    CHECK(controls.window(319) == PictureWindow{80, 496, 20, 320});
-    CHECK(controls.window(320) == PictureWindow{80, 496, 20, 320});
-    CHECK(controls.window(0) == PictureWindow{80, 496, 20, 320});    // no frame yet
-    CHECK(controls.window(330) == PictureWindow{80, 496, 20, 320});  // past the frame's rows
-    CHECK(controls.window(119) == PictureWindow{80, 496, 20, 320});  // no sensible frame
-    CHECK(controls.window(120) == PictureWindow{80, 496, 20, 121});
+    CHECK(controls.window(260) == PictureWindow{80, 496, 28, 261});
+    CHECK(controls.window(312) == PictureWindow{80, 496, 28, 313});
+    CHECK(controls.window(319) == PictureWindow{80, 496, 28, 320});
+    CHECK(controls.window(320) == PictureWindow{80, 496, 28, 320});
+    CHECK(controls.window(0) == PictureWindow{80, 496, 28, 320});    // no frame yet
+    CHECK(controls.window(330) == PictureWindow{80, 496, 28, 320});  // past the frame's rows
+    CHECK(controls.window(127) == PictureWindow{80, 496, 28, 320});  // no sensible frame
+    CHECK(controls.window(128) == PictureWindow{80, 496, 28, 129});
     controls.setUnderscan(true);
     CHECK(controls.window(260) == PictureWindow{0, 512, 0, 320});
 }

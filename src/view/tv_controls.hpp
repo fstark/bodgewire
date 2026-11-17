@@ -22,8 +22,8 @@ struct PictureWindow {
     bool operator==(const PictureWindow&) const = default;
 };
 // A real monitor's window: the line's first 10 µs (sync and back porch) and last 2 µs hidden,
-// and the vertical retrace's lines.
-inline constexpr float kWindowLeft = 80, kWindowRight = 496, kWindowTop = 20;
+// and the vertical retrace's lines (the BW-80's junk ends at row 27).
+inline constexpr float kWindowLeft = 80, kWindowRight = 496, kWindowTop = 28;
 
 // The picture's shift, fractions of the screen's width and height; right and down positive.
 struct PictureShift {
