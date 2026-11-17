@@ -13,6 +13,7 @@ namespace bw {
 struct TvPicture {
     TvFrame frame;  // black when off or before the first frame
     bool locked = false;
+    int lines = 0;  // lines started in the frame (0 when off or before the first)
 };
 
 // Tv as a Consumer; each completed frame is published for the UI. A VIDEO connector's two Nets

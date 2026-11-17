@@ -8,6 +8,7 @@ add_library(bw_view STATIC
   matrix_keyboard_layout.cpp
   time_text.cpp
   time_view.cpp
+  tv_controls.cpp
   viewport.cpp
 )
-target_link_libraries(bw_view PUBLIC bw_board bw_instruments PRIVATE bw_warnings)
+target_link_libraries(bw_view PUBLIC bw_board bw_devices bw_instruments PRIVATE bw_warnings)

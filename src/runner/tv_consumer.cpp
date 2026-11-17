@@ -31,7 +31,7 @@ void TvConsumer::advanceTo(Time time) {
     tv_.advanceTo(time);
     if (tv_.completedFrames() != lastFrames_) {
         lastFrames_ = tv_.completedFrames();
-        pictures_.back() = {tv_.completedFrame(), tv_.isLocked()};
+        pictures_.back() = {tv_.completedFrame(), tv_.isLocked(), tv_.completedStats().lines};
         pictures_.publish();
     }
 }

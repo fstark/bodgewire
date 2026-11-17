@@ -187,6 +187,7 @@ add_executable(bw_tests
   view/matrix_keyboard_layout_test.cpp
   view/time_text_test.cpp
   view/time_view_test.cpp
+  view/tv_controls_test.cpp
   view/viewport_test.cpp
 )
 target_link_libraries(bw_tests PRIVATE bw_asm bw_board bw_devices bw_instruments bw_machine bw_manual

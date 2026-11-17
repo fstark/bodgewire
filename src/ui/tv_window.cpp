@@ -10,6 +10,8 @@ namespace bw {
 namespace {
 
 constexpr float kMinWidth = 200;
+constexpr float kTvBezel = 0.06f;  // the P6d case's fractions, until P6f's monitor
+constexpr float kTvPicture = 1 - 2 * kTvBezel;
 constexpr ImU32 kCase = IM_COL32(52, 52, 56, 255);
 constexpr ImU32 kCaseLight = IM_COL32(84, 84, 90, 255);
 constexpr ImU32 kCaseDark = IM_COL32(30, 30, 33, 255);

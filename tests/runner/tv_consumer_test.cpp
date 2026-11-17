@@ -49,6 +49,7 @@ TEST_CASE("tv consumer: a MONITOR's video is low for a lit dot, on separate driv
         tv.pictures().update();
         const TvPicture& picture = tv.pictures().front();
         CHECK(picture.locked);
+        CHECK(picture.lines == 260);
         CHECK(picture.frame.at(101, 128) > 0.99f);
         CHECK(picture.frame.at(101, 127) == 0.0f);
         CHECK(picture.frame.at(50, 128) == 0.0f);

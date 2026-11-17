@@ -28,12 +28,8 @@ struct Place {
 };
 
 inline constexpr float kBenchMargin = 16;
-// The TV case's proportions, fractions of its width: a bezel each side and on top, a 4:3
-// picture, a chin below.
-inline constexpr float kTvBezel = 0.06f;
-inline constexpr float kTvChin = 0.12f;
-inline constexpr float kTvPicture = 1 - 2 * kTvBezel;                        // its width
-inline constexpr float kTvAspect = kTvBezel + kTvPicture * 0.75f + kTvChin;  // height / width
+// The TV case's height for its width: a small 1970s monitor's, near square (P6f).
+inline constexpr float kTvAspect = 0.96f;
 inline constexpr float kTvFirstWidth = 440;
 inline constexpr float kKeyboardFirstWidth = 640;
 inline constexpr Extent kKnobBox{140, 160};  // one paddle controller
