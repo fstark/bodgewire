@@ -32,7 +32,7 @@ double Mark(TvKnob knob);        // its starting turn: 0.5, 0.5, 0.25, 0.75
 struct PictureWindow {
     float x0 = 0, x1 = kTvColumns, y0 = 0, y1 = kTvRows;
 };
-inline constexpr float kWindowLeft = 80, kWindowRight = 496, kWindowTop = 20;
+inline constexpr float kWindowLeft = 80, kWindowRight = 496, kWindowTop = 28;
 
 // The picture's shift, fractions of the screen's width and height; right and down positive.
 struct PictureShift {
