@@ -691,6 +691,10 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 }
                 const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
                 const std::string& pin = part.pads[pick->hit.index].number;
+                if (!session.padLead(part.reference, pin)) {  // a resistor's, a capacitor's
+                    refuse(std::format("{}: chip pins only", isClip ? "Clip" : "Hook"));
+                    break;
+                }
                 if (isClip) {
                     const auto channel = session.clipAt(part.reference, pin);
                     const auto group = channel ? session.groupOf(*channel) : std::nullopt;

@@ -940,7 +940,9 @@ void BoardView::input(ImVec2 origin) {
             hovered_ = hit.component;
         }
         const std::string text = tooltip_ ? tooltip_(*scene_, hit) : scene_->hoverText(hit);
-        if (!text.empty()) {
+        // A refusal is drawn where the tooltip would go: it wins while it shows.
+        const bool refusing = refusal_ && std::chrono::steady_clock::now() < refusal_->until;
+        if (!text.empty() && !refusing) {
             ImGui::SetTooltip("%s", text.c_str());
         }
     }
