@@ -1,4 +1,5 @@
 add_library(bw_view STATIC
+  bench_places.cpp
   board_scene.cpp
   digit_shape.cpp
   focus.cpp

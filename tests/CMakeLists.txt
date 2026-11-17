@@ -178,6 +178,7 @@ add_executable(bw_tests
   sim/switched_test.cpp
   sim/time_test.cpp
   sim/vcd_test.cpp
+  view/bench_places_test.cpp
   view/board_scene_test.cpp
   view/digit_shape_test.cpp
   view/focus_test.cpp
