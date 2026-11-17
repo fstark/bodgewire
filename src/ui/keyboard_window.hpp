@@ -18,6 +18,9 @@ namespace bw {
 extern const unsigned char kKeycapFont[];
 extern const std::size_t kKeycapFontSize;
 
+// The keyboard window's name, for the shelf to bring it to the front.
+inline constexpr const char* kKeyboardWindowName = "Keyboard";
+
 // The Machine's ASCII keyboard as a floating window of drawn caps (the first KEYBOARD). Typing
 // while it is focused (KeyboardCapture), F2 toggles; clicks type caps; --type keys flash.
 class KeyboardWindow {

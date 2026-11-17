@@ -25,7 +25,7 @@ std::string LeadText(const char* name, const std::optional<TestLead>& lead) {
 
 }  // namespace
 
-bool MeterWindow::draw(bool& open, bool owner, Session& session) {
+bool MeterWindow::draw(bool& open, Session& session) {
     if (!open) {
         return false;
     }
@@ -34,7 +34,7 @@ bool MeterWindow::draw(bool& open, bool owner, Session& session) {
     ImGui::SetNextWindowPos(
         {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 340, viewport->WorkPos.y + 130},
         ImGuiCond_FirstUseEver);
-    if (!BeginInstrument("Multimeter", open, owner)) {
+    if (!BeginInstrument(kMeterWindowName, open)) {
         ImGui::End();
         return false;
     }

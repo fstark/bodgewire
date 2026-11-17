@@ -448,6 +448,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     }
     boardView.setLegendFont(legends);
     shelf.keyboardOut = !capture.reference.empty() || !matrixCapture.reference.empty();
+    shelf.keyboardWindow = !capture.reference.empty()         ? kKeyboardWindowName
+                           : !matrixCapture.reference.empty() ? kMatrixKeyboardWindowName
+                                                              : nullptr;
     if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
         if (const auto component =
                 scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
@@ -834,7 +837,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         if (session.machine()) {
             const auto instrument = [&](Owner owner, auto& window) {
                 bool open = focus.out(owner);
-                if (window.draw(open, focus.owner() == owner, session)) {
+                if (window.draw(open, session)) {
                     focus.clicked(owner);
                 }
                 if (!open) {
@@ -861,6 +864,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             boardKeys.on = true;
         }
         boardKeys.sync();
+        shelf.keyboardTyping = capture.on || matrixCapture.on;
         shelf.typing = capture.on         ? capture.reference
                        : matrixCapture.on ? matrixCapture.reference
                        : boardKeys.on     ? std::string("Board keys")

@@ -12,6 +12,10 @@
 
 namespace bw {
 
+// The matrix keyboard window's ID (its title shows the reference), for the shelf to bring it to the
+// front.
+inline constexpr const char* kMatrixKeyboardWindowName = "###matrix keyboard";
+
 // A key matrix keyboard as a floating window of drawn keys: the BW-2001's chiclets, as the PET
 // 2001's (P5q), or the BW-80's membrane, as the ZX80's (P5x), by the capture's kind. Typing while
 // it is focused (MatrixCapture), F2 toggles; a click holds a key while the mouse is down, a

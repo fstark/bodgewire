@@ -9,7 +9,9 @@
 #include <imgui.h>
 
 #include "ui/instrument_marks.hpp"
+#include "ui/manual_view.hpp"
 #include "ui/shelf_drawings.hpp"
+#include "ui/window_order.hpp"
 
 namespace bw {
 
@@ -22,6 +24,7 @@ constexpr float kGroupGap = 20.0f;
 constexpr float kGrayed = 0.35f;
 constexpr ImU32 kShelfWood = IM_COL32(48, 38, 30, 255);
 constexpr ImU32 kShelfEdge = IM_COL32(92, 74, 58, 255);
+constexpr ImU32 kFocusGold = IM_COL32(255, 196, 40, 255);    // what a click on a pin does
 constexpr ImU32 kFocusBlocked = IM_COL32(230, 50, 40, 255);  // the focus on a tool that can't work
 constexpr ImU32 kHover = IM_COL32(255, 255, 255, 40);
 constexpr ImU32 kKeyLetter = IM_COL32(200, 190, 175, 200);
@@ -78,6 +81,25 @@ std::optional<Owner> OwnerOf(Item item) {
         return Owner::Meter;
     default:
         return std::nullopt;
+    }
+}
+
+const char* WindowOf(Owner instrument) {
+    return instrument == Owner::Analyzer ? kAnalyzerWindowName
+           : instrument == Owner::Scope  ? kScopeWindowName
+                                         : kMeterWindowName;
+}
+
+// A window's shelf drawing clicked (not an instrument's): away, out and in front; out behind
+// another, in front; in front, away.
+void ToggleWindow(bool& out, const char* window) {
+    if (out && window != nullptr && InFront(window)) {
+        out = false;
+    } else {
+        out = true;
+        if (window != nullptr) {
+            BringToFront(window);
+        }
     }
 }
 
@@ -147,11 +169,12 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
             for (const auto& [key, owner] : kInstruments) {
                 if (ImGui::IsKeyPressed(key, false)) {
                     focus.key(owner);
+                    BringToFront(WindowOf(owner));
                 }
             }
         }
         if (ImGui::IsKeyPressed(ImGuiKey_U, false)) {
-            manualOut = !manualOut;
+            ToggleWindow(manualOut, kManualWindowName);
         }
     }
 
@@ -242,6 +265,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
             list.AddRectFilled(min, max, kHover, 6.0f);
         }
         DrawItem(list, entry.item, min, max, look);
+        if (entry.item == Item::Keyboard && keyboardTyping && !inert) {
+            list.AddRect({min.x - 2, min.y - 2}, {max.x + 2, max.y + 2}, kFocusGold, 6.0f, 0, 2.0f);
+        }
         if (owner && !inert && focus.owner() == *owner) {
             // Red while the tool that owns the focus cannot work (the power is on).
             list.AddRect({min.x - 2, min.y - 2}, {max.x + 2, max.y + 2},
@@ -304,17 +330,20 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                 tvOut = !tvOut;
                 break;
             case Item::Keyboard:
-                keyboardOut = !keyboardOut;
+                ToggleWindow(keyboardOut, keyboardWindow);
                 break;
             case Item::Manual:
-                manualOut = !manualOut;
+                ToggleWindow(manualOut, kManualWindowName);
                 break;
             case Item::Knob:
                 knobOut = !knobOut;
                 break;
             default:
                 if (IsInstrument(*owner)) {
-                    focus.shelfClick(*owner);
+                    focus.shelfClick(*owner, InFront(WindowOf(*owner)));
+                    if (focus.out(*owner)) {
+                        BringToFront(WindowOf(*owner));
+                    }
                 } else {
                     focus.take(*owner);
                 }

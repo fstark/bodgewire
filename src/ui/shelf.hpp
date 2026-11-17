@@ -19,7 +19,9 @@ inline constexpr float kShelfHeight = 64.0f;
 
 // The strip along the bottom (P6c): controls, the Board's tools, equipment, each a drawing in a
 // fixed place on every Machine; what does not apply is grayed. The focus owner is framed in
-// gold. A short hint at the right end. Also the keys P, S, M (R), K, W; C, O, V; U.
+// gold (red while it cannot work), and the keyboard while it is typed on. A click on equipment
+// brings its window out and to the front, or puts it away when already in front. A short hint at
+// the right end. Also the keys P, S, M (R), K, W; C, O, V; U.
 class Shelf {
 public:
     void draw(Session& session, BoardView& board, Focus& focus, Speed& speed, std::uint64_t seed);
@@ -28,8 +30,10 @@ public:
 
     // Equipment that is not an instrument: shown or hidden from the shelf.
     bool tvOut = true, keyboardOut = false, manualOut = false, knobOut = true;
-    bool wireStarted = false;  // Wire tool: first pin clicked
-    std::string typing;        // the keyboard typed on; empty: not typing
+    const char* keyboardWindow = nullptr;  // the Machine's keyboard window, by name
+    bool keyboardTyping = false;           // its typing on: the keyboard's own focus, in gold
+    bool wireStarted = false;              // Wire tool: first pin clicked
+    std::string typing;                    // the keyboard typed on; empty: not typing
 
 private:
     struct Devices {

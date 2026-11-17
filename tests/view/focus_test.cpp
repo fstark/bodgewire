@@ -32,14 +32,17 @@ TEST_CASE("focus: an instrument's key brings it out with the focus, never away",
 
 TEST_CASE("focus: a shelf click brings out, focuses, then puts away", "[view]") {
     Focus focus;
-    focus.shelfClick(Owner::Scope);  // away
+    focus.shelfClick(Owner::Scope, false);  // away
     CHECK(focus.owner() == Owner::Scope);
     CHECK(focus.out(Owner::Scope));
     focus.take(Owner::Wire);
-    focus.shelfClick(Owner::Scope);  // out without the focus
+    focus.shelfClick(Owner::Scope, true);  // out and in front, without the focus
     CHECK(focus.owner() == Owner::Scope);
     CHECK(focus.out(Owner::Scope));
-    focus.shelfClick(Owner::Scope);  // the owner
+    focus.shelfClick(Owner::Scope, false);  // the owner, behind another window: stays out
+    CHECK(focus.owner() == Owner::Scope);
+    CHECK(focus.out(Owner::Scope));
+    focus.shelfClick(Owner::Scope, true);  // the owner, in front
     CHECK(focus.owner() == Owner::Probe);
     CHECK_FALSE(focus.out(Owner::Scope));
 }

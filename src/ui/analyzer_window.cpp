@@ -148,7 +148,7 @@ std::vector<AnalyzerWindow::Row> AnalyzerWindow::rows(const Session& session) co
     return rows;
 }
 
-bool AnalyzerWindow::draw(bool& open, bool owner, Session& session) {
+bool AnalyzerWindow::draw(bool& open, Session& session) {
     if (session.captures().update()) {
         shown_ = session.captures().front();
         runs_.clear();
@@ -178,7 +178,7 @@ bool AnalyzerWindow::draw(bool& open, bool owner, Session& session) {
     ImGui::SetNextWindowPos(
         {viewport->WorkPos.x + 20, viewport->WorkPos.y + viewport->WorkSize.y - 460 - kShelfHeight},
         ImGuiCond_FirstUseEver);
-    if (!BeginInstrument("Logic Analyzer", open, owner)) {
+    if (!BeginInstrument(kAnalyzerWindowName, open)) {
         ImGui::End();
         return false;
     }

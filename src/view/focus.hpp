@@ -20,12 +20,14 @@ class Focus {
 public:
     Owner owner() const { return owner_; }
     bool out(Owner instrument) const;
-    void take(Owner tool);              // a Board tool, from the shelf or its key
-    void key(Owner instrument);         // C, O, V: out with the focus; never put away
-    void shelfClick(Owner instrument);  // away: out with the focus; out: the focus; owner: away
-    void bringOut(Owner instrument);    // start-up flags: out, the owner unchanged
-    void clicked(Owner instrument);     // a click in its window: the focus, if out
-    void closed(Owner instrument);      // its window closed: away; the probe takes the focus
+    void take(Owner tool);       // a Board tool, from the shelf or its key
+    void key(Owner instrument);  // C, O, V: out with the focus; never put away
+    // Its shelf drawing clicked: put away when it owns the focus and its window is in front
+    // (`front`); else out with the focus (the caller brings the window to the front).
+    void shelfClick(Owner instrument, bool front);
+    void bringOut(Owner instrument);  // start-up flags: out, the owner unchanged
+    void clicked(Owner instrument);   // a click in its window: the focus, if out
+    void closed(Owner instrument);    // its window closed: away; the probe takes the focus
     EscapeStep escape(bool wireStarted);
 
 private:

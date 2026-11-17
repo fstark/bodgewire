@@ -33,8 +33,8 @@ TimeRange RecordOf(const Capture& capture);
 // waveforms on one canvas under an overview and a time axis.
 class AnalyzerWindow {
 public:
-    // `owner`: it has the focus (a gold frame). True when clicked: it takes the focus.
-    bool draw(bool& open, bool owner, Session& session);
+    // True when clicked: it takes the focus.
+    bool draw(bool& open, Session& session);
     // From bw_ui, for screenshots: the view and marker taken at the first Capture; a cursor
     // drawn whenever the mouse is not over the waveforms.
     void preset(std::optional<TimeView> view, std::optional<Time> marker,

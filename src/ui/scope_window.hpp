@@ -17,8 +17,8 @@ namespace bw {
 // settings, Hook rows with values, the status line.
 class ScopeWindow {
 public:
-    // `owner`: it has the focus (a gold frame). True when clicked: it takes the focus.
-    bool draw(bool& open, bool owner, Session& session);
+    // True when clicked: it takes the focus.
+    bool draw(bool& open, Session& session);
     // From bw_ui, for screenshots: a marker, and a cursor drawn whenever the mouse is not over
     // the screen.
     void preset(std::optional<Time> marker, std::optional<Time> cursor);

@@ -25,8 +25,8 @@ void Focus::key(Owner instrument) {
     owner_ = instrument;
 }
 
-void Focus::shelfClick(Owner instrument) {
-    if (owner_ == instrument) {
+void Focus::shelfClick(Owner instrument, bool front) {
+    if (owner_ == instrument && out(instrument) && front) {
         closed(instrument);
     } else {
         key(instrument);

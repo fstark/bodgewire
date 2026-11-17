@@ -20,6 +20,9 @@ public:
                     const LoadedCircuit& design);
 };
 
+// The User Manual window's name, for the shelf to bring it to the front.
+inline constexpr const char* kManualWindowName = "User Manual";
+
 // The floating User Manual window.
 class ManualWindows {
 public:

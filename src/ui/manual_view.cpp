@@ -179,7 +179,7 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     ImGui::SetNextWindowSize({480, 180}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos({viewport->WorkPos.x + 40, viewport->WorkPos.y + 120},
                             ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("User Manual", &open, ImGuiWindowFlags_NoSavedSettings)) {
+    if (ImGui::Begin(kManualWindowName, &open, ImGuiWindowFlags_NoSavedSettings)) {
         if (manuals.user) {
             board.route(user_.draw(manuals.user->blocks, board.scene(), design));
         } else {

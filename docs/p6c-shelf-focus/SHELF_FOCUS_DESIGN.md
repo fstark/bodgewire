@@ -68,6 +68,8 @@ private:
 
 ## Instrument windows
 
+User check (2026-11-17): the windows have no gold frame (`BeginInstrument(name, open)`, `draw(open, session)`); the gold is on the shelf drawing only. A shelf click brings a window to the front (`src/ui/window_order.{hpp,cpp}`: `InFront(name)` from ImGui's display order, `BringToFront(name)` by `SetWindowFocus`); `Focus::shelfClick(instrument, front)` puts away only the owner whose window is in front. The windows' names are constants beside them (`kAnalyzerWindowName`, `kScopeWindowName`, `kMeterWindowName`, `kKeyboardWindowName`, `kMatrixKeyboardWindowName`, `kManualWindowName`). The text below is the first design.
+
 - The `ToolButton` at the head of each header goes; the next item starts the line.
 - `BeginInstrument(name, open, owner)` in `instrument_marks`: while `owner`, `PushStyleColor(ImGuiCol_Border, kFocusGold)` and `PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2)` before `Begin`, popped right after (the style is read at `Begin`).
 - `InstrumentClicked()` after `Begin`: `IsWindowHovered(RootAndChildWindows | AllowWhenBlockedByActiveItem)` (a click while a text field is active counts) and `IsMouseClicked(Left)`, **except on the close button** (the title bar's last `GetFrameHeight()` px on the right): ImGui closes on the release, a frame after the press, so a press there counted as a click would give the closing window the focus and its close would then hand it to the probe, taking it from the tool that had it.

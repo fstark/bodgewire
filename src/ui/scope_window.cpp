@@ -89,7 +89,7 @@ std::string ScopeWindow::valueAt(std::size_t channel, Time t,
     }
 }
 
-bool ScopeWindow::draw(bool& open, bool owner, Session& session) {
+bool ScopeWindow::draw(bool& open, Session& session) {
     if (session.sweeps().update() && !stopped_) {
         shown_ = session.sweeps().front();
     }
@@ -103,7 +103,7 @@ bool ScopeWindow::draw(bool& open, bool owner, Session& session) {
     ImGui::SetNextWindowPos(
         {viewport->WorkPos.x + viewport->WorkSize.x * 2 / 3 - 700, viewport->WorkPos.y + 230},
         ImGuiCond_FirstUseEver);
-    if (!BeginInstrument("Oscilloscope", open, owner)) {
+    if (!BeginInstrument(kScopeWindowName, open)) {
         ImGui::End();
         return false;
     }

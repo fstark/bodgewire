@@ -251,7 +251,7 @@ The objects brought out from the Shelf or put away: TV, keyboard, Logic Analyzer
 _Avoid_: instrument (for the TV, keyboard or manuals)
 
 **Focus**:
-What a click on a pin does: exactly one Board tool or Instrument owns it, shown by a gold frame on its Shelf drawing and its window. Clicking an Instrument gives it the Focus; taking a tool takes it back; `Esc` gives it to the Logic Probe. Not ImGui's keyboard focus, which the windows' `focused()` and Typing Mode mean (P6c).
+What a click on a pin does: exactly one Board tool or Instrument owns it, shown by a gold frame on its Shelf drawing (red while the tool cannot work, the power being on). Clicking an Instrument gives it the Focus; taking a tool takes it back; `Esc` gives it to the Logic Probe. Not ImGui's keyboard focus, which the windows' `focused()` and Typing Mode mean (P6c).
 
 **Logic Probe**:
 An Instrument showing the Logic Value and activity of one Net.

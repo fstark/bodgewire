@@ -22,7 +22,7 @@ P6b settled what replaces it: one **shelf** along the bottom with drawings of th
 | How the drawings are made | vector, in code (ImDrawList, as the Board's parts), no image assets |
 | Mend and Resolder | one soldering iron: a click on a chip pin resolders it, anywhere else mends a crack there; key `M` (`R` kept as an alias). Five Board tools, as in UX_DESIGN |
 
-After the user check (2026-11-17): it works; looks to improve later. The analyzer and scope drawings looked the same: the analyzer is now a dark, low box with coloured lanes and a fan of clip leads, the scope a beige box with a square screen, knobs and probe sockets. A tool that owns the focus but cannot work (the power is on) is framed in red, not gold.
+After the user check (2026-11-17): it works; looks to improve later. The analyzer and scope drawings looked the same: the analyzer is now a dark, low box with coloured lanes and a fan of clip leads, the scope a beige box with a square screen, knobs and probe sockets. A tool that owns the focus but cannot work (the power is on) is framed in red, not gold. Then: the gold frame on the shelf drawing only, never on the window; the keyboard's drawing framed in gold while it is typed on (its own focus); a click on equipment brings its window out and to the front, and puts it away only when it is already in front (an instrument: when it also owns the focus); `C`, `O`, `V` bring it to the front too. Bringing a keyboard to the front starts the typing on it (ImGui's keyboard focus). Lit drawings for equipment that is out are kept: they tell whether a click will bring the window out or to the front.
 
 Decided while designing (2026-11-17), for the user to overrule:
 

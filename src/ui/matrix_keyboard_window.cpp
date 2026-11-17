@@ -200,7 +200,7 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleColor(ImGuiCol_WindowBg,
                           capture.kind == KeyMatrixKind::Bw80 ? kPanel : kSurround);
-    const std::string title = "Keyboard " + capture.reference + "###matrix keyboard";
+    const std::string title = "Keyboard " + capture.reference + kMatrixKeyboardWindowName;
     const bool visible =
         ImGui::Begin(title.c_str(), &open,
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar |

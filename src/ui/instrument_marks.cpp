@@ -112,18 +112,8 @@ int WheelNotches(float wheel, float& rest) {
     return notches;
 }
 
-bool BeginInstrument(const char* name, bool& open, bool owner) {
-    // The border's style is read at Begin.
-    if (owner) {
-        ImGui::PushStyleColor(ImGuiCol_Border, kFocusGold);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
-    }
-    const bool shown = ImGui::Begin(name, &open, ImGuiWindowFlags_NoSavedSettings);
-    if (owner) {
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor();
-    }
-    return shown;
+bool BeginInstrument(const char* name, bool& open) {
+    return ImGui::Begin(name, &open, ImGuiWindowFlags_NoSavedSettings);
 }
 
 bool InstrumentClicked() {
