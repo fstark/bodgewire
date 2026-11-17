@@ -27,7 +27,7 @@ enum class Item : std::uint8_t {
     Meter,
     Manual,
     Knob,
-    Brief  // the Puzzle brief, until P6f's post-it
+    Brief  // the Puzzle brief, a post-it on the Board
 };
 
 struct ItemLook {

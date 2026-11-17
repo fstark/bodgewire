@@ -858,7 +858,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         // The bench, back to front at start: brief, TV, knob, manuals, instruments, keyboard,
         // Debug.
         knobWindow.keys(session);
-        DrawBrief(shelf.briefOut, loaded);
+        DrawBrief(shelf.briefOut, loaded, boardView.corner());
         tvWindow.draw(shelf.tvOut, view, session.powered());
         knobWindow.draw(shelf.knobOut, session);
         manualWindows.draw(shelf.manualOut, loaded.manuals.manuals, boardView, DesignOf(session),

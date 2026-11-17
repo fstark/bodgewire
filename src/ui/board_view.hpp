@@ -120,6 +120,8 @@ public:
     void focus(BoardTarget target);  // frame + flash 1 s
     void route(const TargetHits& hits);
     const BoardScene* scene() const { return scene_ ? &*scene_ : nullptr; }
+    // The Board outline's top-left corner on screen at the last draw (none without a Board).
+    std::optional<ImVec2> corner() const { return corner_; }
     void setTooltip(TooltipText text) { tooltip_ = std::move(text); }
     void setProbeTip(std::optional<Point> tip);  // drawn above everything
     void setBlobs(std::span<const SolderBlob> blobs) { blobs_.assign(blobs.begin(), blobs.end()); }
@@ -158,6 +160,7 @@ private:
     PickReach reach() const;
 
     std::optional<BoardScene> scene_;
+    std::optional<ImVec2> corner_;
     Viewport viewport_;
     Layer active_ = Layer::Front;
     bool plainLook_ = false;

@@ -444,6 +444,13 @@ void BoardView::draw(ImVec2 size) {
     for (const Point p : scene_->outline()) {
         outline.push_back(map(p));
     }
+    if (!outline.empty()) {
+        ImVec2 corner = outline.front();
+        for (const ImVec2 q : outline) {
+            corner = {std::min(corner.x, q.x), std::min(corner.y, q.y)};
+        }
+        corner_ = corner;
+    }
     const std::optional<NetId> lit = highlight_;
     const auto drawTraces = [&](Layer layer, float alpha, float litAlpha, bool litOnly) {
         const ImU32 colour = WithAlpha(layer == Layer::Front ? kFrontCopper : kBackCopper, alpha);

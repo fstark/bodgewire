@@ -209,7 +209,7 @@ A Machine with one or more placed Faults, presented to the player to diagnose an
 _Avoid_: Scenario, level, case
 
 **Brief**:
-The player-facing text of a Puzzle: a title and the Symptom as a customer would report it. It never names the Fault.
+The player-facing text of a Puzzle: a title and the Symptom as a customer would report it. It never names the Fault. In `bw_ui` a post-it stuck on the Board's top-left corner, moving with the Board; its × puts it away into the Shelf.
 _Avoid_: Description, hint
 
 **User Manual**:

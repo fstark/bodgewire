@@ -320,7 +320,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
             }
             const bool object = entry.item == Item::Tv || entry.item == Item::Keyboard ||
                                 entry.item == Item::Manual || entry.item == Item::Knob ||
-                                entry.item == Item::Brief || (owner && IsInstrument(*owner));
+                                (owner && IsInstrument(*owner));
             if (object && !inert) {
                 tip += "\ndouble-click: back in its place";
             }
@@ -377,8 +377,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                      : ToggleWindow(knobOut, kKnobWindowName);
                 break;
             case Item::Brief:
-                home ? Home(briefOut, kBriefWindowName, BenchObject::Brief)
-                     : ToggleWindow(briefOut, kBriefWindowName);
+                ToggleWindow(briefOut, kBriefWindowName);  // glued to the Board: no home
                 break;
             default:
                 if (IsInstrument(*owner) && home) {
