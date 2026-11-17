@@ -19,7 +19,7 @@ constexpr float kBodyWidth = 34;
 constexpr ImU32 kBody = IM_COL32(60, 60, 66, 255);
 constexpr ImU32 kNotch = IM_COL32(25, 25, 28, 255);
 constexpr ImU32 kPinOne = IM_COL32(220, 220, 220, 255);
-constexpr ImVec4 kPowerText{0.55f, 0.55f, 0.55f, 1.0f};
+constexpr ImVec4 kPowerText{0.5f, 0.48f, 0.44f, 1.0f};  // on paper
 constexpr ImU32 kDigitBody = IM_COL32(28, 28, 30, 255);
 constexpr ImU32 kSegmentDim = IM_COL32(70, 22, 22, 255);
 constexpr ImU32 kSegmentLit = IM_COL32(255, 40, 30, 255);
@@ -57,8 +57,7 @@ void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markd
         hits.hovered = BoardTarget{component, row.pad};
         if (datasheet) {
             if (const Block* bullet = PinBullet(*datasheet, row.name)) {
-                const std::string line = Displayable(PlainText(bullet->spans));
-                ImGui::SetTooltip("%s", line.c_str());
+                PageTooltip(Displayable(PlainText(bullet->spans)));
             }
         }
     }

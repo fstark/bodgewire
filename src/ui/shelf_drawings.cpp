@@ -304,18 +304,37 @@ void Meter(Pen& p, const ItemLook& look) {
     p.disc(35, 46, 2.2f, kBlack);
 }
 
+// The manuals binder: closed, a blue ring binder with its dividers' tabs; out, open flat.
 void Manual(Pen& p, const ItemLook& look) {
-    if (look.lit) {  // open
-        p.quad(4, 14, 27, 18, 27, 46, 4, 42, kWhite);
-        p.quad(29, 18, 52, 14, 52, 42, 29, 46, kWhite);
-        for (float y = 22; y < 40; y += 5) {
-            p.line(8, y - 1, 23, y + 2, kGrey, 1);
-            p.line(33, y + 2, 48, y - 1, kGrey, 1);
+    constexpr ImU32 kCover = IM_COL32(40, 70, 130, 255);
+    constexpr ImU32 kSpine = IM_COL32(25, 45, 90, 255);
+    constexpr ImU32 kPaper = IM_COL32(246, 242, 228, 255);
+    constexpr ImU32 kRing = IM_COL32(190, 190, 198, 255);
+    constexpr ImU32 kYellow = IM_COL32(240, 225, 140, 255);
+    constexpr ImU32 kGreenTab = IM_COL32(170, 215, 160, 255);
+    constexpr ImU32 kPink = IM_COL32(235, 175, 190, 255);
+    if (look.lit) {  // open flat, the rings across the middle
+        p.box(5, 12, 51, 46, kCover, 2);
+        p.box(7, 14, 27, 44, kPaper, 1);
+        p.box(29, 14, 49, 44, kPaper, 1);
+        p.box(49, 18, 52, 24, kYellow, 1);
+        for (float y = 19; y < 42; y += 5) {
+            p.line(10, y, 24, y, kGrey, 1);
+            p.line(32, y, 46, y, kGrey, 1);
+        }
+        for (const float y : {18.0f, 29.0f, 40.0f}) {
+            p.ring(28, y, 3, kRing, 1.5f);
         }
     } else {
-        p.box(12, 8, 44, 48, IM_COL32(40, 70, 130, 255), 2);
-        p.box(12, 8, 17, 48, IM_COL32(25, 45, 90, 255), 1);
-        p.box(22, 16, 38, 22, kWhite, 1);
+        p.box(40, 11, 45, 17, kYellow, 1);
+        p.box(40, 21, 45, 27, kGreenTab, 1);
+        p.box(40, 31, 45, 37, kPink, 1);
+        p.box(12, 8, 42, 48, kCover, 2);
+        p.box(12, 8, 17, 48, kSpine, 1);
+        for (const float y : {16.0f, 28.0f, 40.0f}) {
+            p.line(13, y, 16, y, kRing, 2);
+        }
+        p.box(23, 16, 37, 22, kWhite, 1);
     }
 }
 

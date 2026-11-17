@@ -9,67 +9,18 @@ namespace bw {
 
 namespace {
 
-constexpr ImU32 kText = IM_COL32(225, 225, 225, 255);
-constexpr ImU32 kBold = IM_COL32(255, 255, 255, 255);
-constexpr ImU32 kCode = IM_COL32(235, 200, 120, 255);
-constexpr ImU32 kLink = IM_COL32(110, 185, 255, 255);
+// Paper colours (P6e: the manuals are pages in a binder).
+constexpr ImU32 kText = IM_COL32(30, 30, 35, 255);
+constexpr ImU32 kBold = IM_COL32(0, 0, 0, 255);
+constexpr ImU32 kTooltipText = IM_COL32(230, 230, 230, 255);
 constexpr float kTitleScale = 1.3f;
-
-// Lays out words left to right, wrapping at the right edge of the content region.
-class Flow {
-public:
-    Flow() : right_(ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x) {}
-
-    // Each word keeps its trailing spaces. True when the mouse is over one of them.
-    struct Result {
-        bool hovered = false, clicked = false;
-    };
-    Result text(std::string_view raw, ImU32 colour, bool underline) {
-        Result result;
-        const std::string display = Displayable(raw);
-        std::string_view text = display;
-        while (!text.empty()) {
-            std::size_t end = text.find(' ');
-            end = end == std::string_view::npos ? text.size() : text.find_first_not_of(' ', end);
-            end = end == std::string_view::npos ? text.size() : end;
-            const std::string_view word = text.substr(0, end);
-            text.remove_prefix(end);
-            const float width = ImGui::CalcTextSize(word.data(), word.data() + word.size()).x;
-            if (!first_) {
-                ImGui::SameLine(0, 0);
-                if (ImGui::GetCursorScreenPos().x + width > right_) {
-                    ImGui::NewLine();
-                }
-            }
-            first_ = false;
-            ImGui::PushStyleColor(ImGuiCol_Text, colour);
-            ImGui::TextUnformatted(word.data(), word.data() + word.size());
-            ImGui::PopStyleColor();
-            const std::size_t last = word.find_last_not_of(' ');
-            if (underline && last != std::string_view::npos) {
-                const ImVec2 min = ImGui::GetItemRectMin();
-                const ImVec2 max = ImGui::GetItemRectMax();
-                const float trimmed = ImGui::CalcTextSize(word.data(), word.data() + (last + 1)).x;
-                ImGui::GetWindowDrawList()->AddLine({min.x, max.y}, {min.x + trimmed, max.y},
-                                                    colour);
-            }
-            result.hovered = result.hovered || ImGui::IsItemHovered();
-            result.clicked = result.clicked || ImGui::IsItemClicked(ImGuiMouseButton_Left);
-        }
-        return result;
-    }
-
-private:
-    float right_;
-    bool first_ = true;
-};
 
 ImU32 Colour(SpanStyle style) {
     switch (style) {
     case SpanStyle::Text:
         return kText;
     case SpanStyle::Code:
-        return kCode;
+        return kPageCode;
     case SpanStyle::Bold:
         return kBold;
     }
@@ -78,17 +29,17 @@ ImU32 Colour(SpanStyle style) {
 
 void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const LoadedCircuit& design,
                TargetHits& hits) {
-    Flow flow;
+    TextFlow flow;
     for (std::size_t i = 0; i < spans.size(); ++i) {
         const auto link = LinkAt(spans, i, design);
         if (!link) {
             flow.text(spans[i].text, Colour(spans[i].style), false);
             continue;
         }
-        Flow::Result result = flow.text(spans[i].text, kLink, true);
+        TextFlow::Result result = flow.text(spans[i].text, kPageLink, true);
         if (link->pinChars > 0) {
             const std::string_view next = spans[i + 1].text;
-            const Flow::Result pin = flow.text(next.substr(0, link->pinChars), kLink, true);
+            const TextFlow::Result pin = flow.text(next.substr(0, link->pinChars), kPageLink, true);
             result.hovered = result.hovered || pin.hovered;
             result.clicked = result.clicked || pin.clicked;
             flow.text(next.substr(link->pinChars), Colour(spans[i + 1].style), false);
@@ -116,6 +67,51 @@ void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const Loade
 
 }  // namespace
 
+TextFlow::TextFlow() : right_(ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x) {}
+
+TextFlow::Result TextFlow::text(std::string_view raw, ImU32 colour, bool underline) {
+    Result result;
+    const std::string display = Displayable(raw);
+    std::string_view text = display;
+    while (!text.empty()) {
+        std::size_t end = text.find(' ');
+        end = end == std::string_view::npos ? text.size() : text.find_first_not_of(' ', end);
+        end = end == std::string_view::npos ? text.size() : end;
+        const std::string_view word = text.substr(0, end);
+        text.remove_prefix(end);
+        const float width = ImGui::CalcTextSize(word.data(), word.data() + word.size()).x;
+        if (!first_) {
+            ImGui::SameLine(0, 0);
+            if (ImGui::GetCursorScreenPos().x + width > right_) {
+                ImGui::NewLine();
+            }
+        }
+        first_ = false;
+        ImGui::PushStyleColor(ImGuiCol_Text, colour);
+        ImGui::TextUnformatted(word.data(), word.data() + word.size());
+        ImGui::PopStyleColor();
+        const std::size_t last = word.find_last_not_of(' ');
+        if (underline && last != std::string_view::npos) {
+            const ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 max = ImGui::GetItemRectMax();
+            const float trimmed = ImGui::CalcTextSize(word.data(), word.data() + (last + 1)).x;
+            ImGui::GetWindowDrawList()->AddLine({min.x, max.y}, {min.x + trimmed, max.y}, colour);
+        }
+        result.hovered = result.hovered || ImGui::IsItemHovered();
+        result.clicked = result.clicked || ImGui::IsItemClicked(ImGuiMouseButton_Left);
+    }
+    return result;
+}
+
+void PageTooltip(std::string_view text) {
+    if (ImGui::BeginTooltip()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, kTooltipText);
+        ImGui::TextUnformatted(text.data(), text.data() + text.size());
+        ImGui::PopStyleColor();
+        ImGui::EndTooltip();
+    }
+}
+
 std::string Displayable(std::string_view text) {
     std::string result;
     result.reserve(text.size());
@@ -123,6 +119,9 @@ std::string Displayable(std::string_view text) {
         const std::string_view rest = text.substr(i);
         if (rest.starts_with("\u2013") || rest.starts_with("\u2014")) {
             result += '-';
+            i += 2;
+        } else if (rest.starts_with("\u2192")) {
+            result += "->";
             i += 2;
         } else {
             result += text[i];

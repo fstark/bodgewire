@@ -2,30 +2,39 @@
 
 #include <span>
 #include <string>
+#include <vector>
 
 #include "manual/manual.hpp"
 #include "ui/board_view.hpp"
 #include "ui/chip_panel.hpp"
 #include "ui/manual_view.hpp"
+#include "view/binder.hpp"
 
 namespace bw {
 
-// The manuals window's ID (its title is "Manuals"), for the shelf to bring it to the front.
-inline constexpr const char* kManualWindowName = "Manuals###manuals";
+// The binder's window ID, for the shelf to bring it to the front.
+inline constexpr const char* kManualWindowName = "###manuals";
 
-// The floating manuals window (P6d, until P6e's binder): the User Manual, and with a Board the
-// Chip (the selected or hovered chip: role, pinout, Datasheet) and the Repairs log, as tabs.
+// The manuals binder (P6e): a drawn ring binder with four dividers, the User Manual, the Service
+// Manual, the Datasheets (the hovered or selected chip's page, else an index of the Machine's
+// Parts) and the Repairs log. Out at the User Manual; a chip selected while it is out turns it to
+// that chip's page.
 class ManualWindows {
 public:
     void draw(bool& open, const Manuals& manuals, BoardView& board, const LoadedCircuit& design,
               std::span<const std::string> log);
-    // The next draw shows the Chip tab (`--manual chip`).
-    void showChip() { showChip_ = true; }
+    void show(Divider divider) { binder_.show(divider); }  // --manual: the divider it comes out at
 
 private:
-    ManualView user_;
+    void tabs(bool board);
+    void datasheets(const Manuals& manuals, BoardView& board, const LoadedCircuit& design);
+    TargetHits index(const Manuals& manuals, const BoardScene* scene);
+
+    Binder binder_;
+    ManualView user_, service_, sheet_;
     ChipPanel chip_;
-    bool showChip_ = false;
+    std::vector<IndexEntry> index_;
+    bool indexed_ = false;
 };
 
 }  // namespace bw

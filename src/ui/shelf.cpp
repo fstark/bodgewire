@@ -58,7 +58,7 @@ constexpr std::array<Entry, 18> kItems{{
     {Item::Analyzer, "Logic Analyzer: click a chip pin; shift-click: its whole bus", "C", 1},
     {Item::Scope, "Oscilloscope: click a chip pin (4 channels)", "O", 1},
     {Item::Meter, "Multimeter: volts, or continuity with the power off", "V", 1},
-    {Item::Manual, "Manuals: User Manual, chip, repairs", "U", 1},
+    {Item::Manual, "Manuals binder: User and Service Manuals, datasheets, repairs", "U", 1},
     {Item::Knob, "Knob: drag it, mouse wheel, or the arrow keys", nullptr, 1},
     {Item::Brief, "Puzzle brief", nullptr, 1},
 }};

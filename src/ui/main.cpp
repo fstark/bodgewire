@@ -69,7 +69,8 @@ constexpr std::string_view kUsage =
     "[--view 1us[:+20us]] [--marker +2us] [--cursor +3.7us] "
     "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
-    "[--type REF:START:TEXT] [--roms DIR] [--manual user|chip] [--look real|plain] "
+    "[--type REF:START:TEXT] [--roms DIR] [--manual user|service|datasheet|repairs] [--look "
+    "real|plain] "
     "[--focus probe|swap|iron|cut|wire|analyzer|scope|meter] [--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
@@ -93,11 +94,10 @@ struct Options {
     std::vector<KnobSetting> knob;
     std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
     std::vector<Typing> type;
-    bool userManual = false;
-    bool chipTab = false;        // --manual chip: the manuals window at its Chip tab (P6d)
-    bool plainLook = false;      // --look plain: the specialist's Board, no parts drawn (P6)
-    std::optional<Owner> focus;  // --focus: the owner at start (P6c)
-    bool debug = false;          // --debug: the Debug window out (P6d)
+    std::optional<Divider> manual;  // --manual: the binder out at this divider (P6e)
+    bool plainLook = false;         // --look plain: the specialist's Board, no parts drawn (P6)
+    std::optional<Owner> focus;     // --focus: the owner at start (P6c)
+    bool debug = false;             // --debug: the Debug window out (P6d)
 };
 
 std::optional<Owner> ParseOwner(std::string_view name) {
@@ -189,11 +189,17 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             options.probe = argv[++i];
         } else if (arg == "--manual") {
             const std::string_view manual = argv[++i];
-            if (manual != "user" && manual != "chip") {
+            if (manual == "user") {
+                options.manual = Divider::User;
+            } else if (manual == "service") {
+                options.manual = Divider::Service;
+            } else if (manual == "datasheet") {
+                options.manual = Divider::Datasheets;
+            } else if (manual == "repairs") {
+                options.manual = Divider::Repairs;
+            } else {
                 return std::nullopt;
             }
-            options.userManual = true;
-            options.chipTab = manual == "chip";
         } else if (arg == "--look") {
             const std::string_view look = argv[++i];
             if (look != "real" && look != "plain") {
@@ -472,7 +478,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         }
     }
     Speed speed = Speed::RealTime;
-    shelf.manualOut = options.userManual;
+    shelf.manualOut = options.manual.has_value();
     shelf.tvOut = session.tv() != nullptr;
     shelf.knobOut = !session.knobs().empty();
     shelf.hasBrief = shelf.briefOut = !loaded.brief.empty();
@@ -494,8 +500,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     }
     Owner lastOwner = focus.owner();
     ManualWindows manualWindows;
-    if (options.chipTab) {
-        manualWindows.showChip();
+    if (options.manual) {
+        manualWindows.show(*options.manual);
     }
     AnalyzerWindow analyzerWindow;
     MeterWindow meterWindow;
