@@ -244,14 +244,14 @@ A tool the player measures with: Logic Probe, Oscilloscope, Logic Analyzer, Mult
 _Avoid_: Tool (too broad); equipment (broader: also the TV, keyboard, manuals)
 
 **Shelf**:
-The strip along the bottom of `bw_ui`'s window holding drawings of the controls (power, run, speed, layer, fit), the Board's tools (probe, chip puller, soldering iron, cutters, wire) and the Equipment, each in the same place on every Machine; an item that does not apply is grayed, not hidden (P6c).
+The strip along the bottom of `bw_ui`'s window holding drawings of the controls (power, run, speed, layer, fit), the Board's tools (probe, chip puller, soldering iron, cutters, wire, grease pencil) and the Equipment, each in the same place on every Machine; an item that does not apply is grayed, not hidden (P6c).
 
 **Equipment**:
 The objects brought out from the Shelf or put away: TV, keyboard, Logic Analyzer, Oscilloscope, Multimeter, the manuals binder, a paddle's knob. One that is out is drawn lit on the Shelf. Each comes out first at its default place on the bench, then where and as large as the player left it for the run; a double-click on its shelf drawing puts it back at its default place (P6d, P6e); the Instruments have two presets, minimal and normal, from a button in their title bar; the TV, keyboard, knob and manuals binder are drawn cases with no title bar, dragged by their body and put away by the × on the case. The TV (P6f) is a monitor in a small 1970s set's look: `H-POS` and `V-POS` move the picture, `BRIGHT` and `CONTRAST` set its tone, its own `POWER` switch and red lamp; it shows what a real monitor shows (the line's sync and back porch and the vertical retrace hidden), and an unlabelled trimmer below the strip shows the whole frame (underscan); the controls keep their turns for the run. The binder (P6e) has four dividers (User Manual, Service Manual, Datasheets, Repairs), comes out at the User Manual and turns to a chip's datasheet when a chip is selected.
 _Avoid_: instrument (for the TV, keyboard or manuals)
 
 **Focus**:
-What a click on a pin does: exactly one Board tool or Instrument owns it, shown by a gold frame on its Shelf drawing (red while the tool cannot work, the power being on). Clicking an Instrument gives it the Focus; taking a tool takes it back; `Esc` gives it to the Logic Probe. Not ImGui's keyboard focus, which the windows' `focused()` and Typing Mode mean (P6c).
+What a click on a pin does: exactly one Board tool or Instrument owns it, shown by a gold frame on its Shelf drawing (red while a tool that needs the power off cannot work, the power being on; never the grease pencil). Clicking an Instrument gives it the Focus; taking a tool takes it back; `Esc` gives it to the Logic Probe. Not ImGui's keyboard focus, which the windows' `focused()` and Typing Mode mean (P6c).
 
 **Logic Probe**:
 An Instrument showing the Logic Value and activity of one Net.
@@ -295,6 +295,10 @@ _Avoid_: Bus (that is the circuit's group of Nets)
 
 **Marker**:
 A time picked with a click on an Oscilloscope or Logic Analyzer screen, from which the cursor's `dt` is measured.
+
+**Pencil Mark**:
+A grey dot, cross or check the player puts on the Board with the grease pencil (a china marker, `G`), a note for the session (P6h): a click on bare Board or a part puts a dot, a click on a mark turns it to a cross, a check, then none; a Shift-click or right-click clears it. Drawn whatever the tool, layer or look; one on a chip's body leaves with the chip when it is swapped; nothing is saved.
+_Avoid_: Marker (that is the Instruments' time), Mark (alone: a capacitor's printed code is also drawn by `board_marks`)
 
 **See-through Board**:
 The single top-down view of a Board showing every Layer at once, the back seen through the board rather than flipped.

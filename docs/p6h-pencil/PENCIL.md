@@ -20,9 +20,9 @@ A repair is a search: the player probes chip after chip and keeps in their head 
 
 Decided while designing (2026-11-18), for the user to overrule:
 
-- **Size**: 2.5 mm across (a pin pitch, a third of a DIP's width), never under 10 px so it reads zoomed out. One constant, set again after the user sees it.
+- **Size**: 4 mm across (two thirds of a DIP's body), never under 10 px so it reads zoomed out; designed at 2.5 mm, which read small on the first screenshot. One constant (`kMarkSize`), to set again after the user sees it.
 - **The colour**: a light grey `(205, 205, 200)` stroke over a faint dark edge, so it reads on the green, on a black chip and on the tin pads. Not the selection's near-white nor any gold.
-- **Strokes**: a dot (a filled disc, a third of the size across), a cross (two strokes corner to corner), a checkmark (a short stroke down, a long one up to the right).
+- **Strokes**: a dot (a filled disc, half the size across), a cross (two strokes corner to corner), a checkmark (a short stroke down, a long one up to the right).
 - **On a mark**: a click within the drawn mark's half-size of its centre; of two overlapping marks the nearest. A click off every mark puts a new dot, even next to one.
 - **A chip's body**: the courtyard off its pads (`BoardScene::bodyAt`, as for the switches). A mark on a pin's pad belongs to the Board: it stays when the chip is swapped.
 - **No selection**: a pencil click does not select the chip (the selection's gold and wiring would cover what was just marked), and does not move the probe.
