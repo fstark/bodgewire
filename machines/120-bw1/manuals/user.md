@@ -13,7 +13,7 @@ Connect +5 V to `J1`. After a moment the six digits show `0200` and a byte: an a
 
 Programs usually start at $0200: `AD 0200`, then `DA` and the first byte, `+` and the next byte, and so on, then `AD 0200 GO`.
 
-On a PC keyboard, after F2 (Typing): `0`–`9` and `A`–`F` the hex keys, Enter GO, `+`, `/` AD, `*` DA, `P` PC, Escape ST, Backspace RS.
+On a PC keyboard, after a click on the keypad or the shelf's keyboard (or F2): `0`–`9` and `A`–`F` the hex keys, Enter GO, `+`, `/` AD, `*` DA, `P` PC, Escape ST, Backspace RS.
 
 If the BW-1 will not start or behaves oddly, run the self-test. It lives in `U3` and checks the memory, the ROMs and the display without using any RAM, so it runs even when the monitor cannot.
 

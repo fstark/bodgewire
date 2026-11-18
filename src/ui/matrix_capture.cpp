@@ -80,9 +80,6 @@ bool MatrixCapture::handle(const SDL_Event& event, Session& session) {
         }
         const bool bw80 = kind == KeyMatrixKind::Bw80;
         switch (event.key.key) {
-        case SDLK_F2:
-            stop = true;
-            return true;
         case SDLK_RETURN:
         case SDLK_KP_ENTER:
             send(session, scancode, bw80 && shift ? kKeyEdit : U'\r');

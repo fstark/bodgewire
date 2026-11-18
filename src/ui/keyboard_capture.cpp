@@ -48,9 +48,6 @@ bool KeyboardCapture::handle(const SDL_Event& event, Session& session) {
     case SDL_EVENT_KEY_DOWN: {
         const SDL_Scancode scancode = event.key.scancode;
         switch (event.key.key) {
-        case SDLK_F2:
-            stop = true;
-            return true;
         case SDLK_RETURN:
         case SDLK_KP_ENTER:
             send(session, scancode, kReturn);

@@ -24,8 +24,9 @@ class MatrixKeyboardWindow {
 public:
     explicit MatrixKeyboardWindow(ImFont* legends) : legends_(legends) {}
 
-    // `capture.on` follows the window's focus. Nothing drawn without a MATRIXKB.
-    void draw(bool& open, Session& session, MatrixCapture& capture);
+    // `capture.on` is main.cpp's (the Machine's keys: P6g); its frame gold while on. Nothing drawn
+    // without a MATRIXKB. True when the case was clicked (not its ×).
+    bool draw(bool& open, Session& session, MatrixCapture& capture);
 
 private:
     void drawKeys(Session& session, const MatrixCapture& capture);
@@ -37,7 +38,6 @@ private:
 
     ImFont* legends_;
     std::vector<bool> latched_;  // per key: right-clicked down
-    bool focusNext_ = false;
 };
 
 }  // namespace bw

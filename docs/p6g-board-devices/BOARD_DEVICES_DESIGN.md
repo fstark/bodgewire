@@ -75,7 +75,7 @@ private:
 
 Then `applyKeys()`. A Board button with no PC key (Tennis's START, the Typewriter's CLEAR) is a press on the Board: the keys go back to the bench, and the player clicks the knob box or the TV again to play (spec).
 
-**The shelf's keyboard drawing.** With a keyboard window, as today (out or away). On a Machine with Board keys and no keyboard (`Shelf::boardKeys`, new), it is no longer grayed: a click toggles, and it is lit while the Machine has the keys. `Shelf::keyboardTyping` becomes `keys.machine()` (the frame on the drawing); `Shelf::typing` goes. The hint shows on `keyboardTyping`: `Keys to the Machine · F2 or a click on the Board gives them back`.
+**The shelf's keyboard drawing.** With a keyboard window, as today (out or away). On a Machine with Board keys and no keyboard (`Shelf::boardKeys`, new), it is no longer grayed: a click toggles, and it is lit while the Machine has the keys. `Shelf::keyboardTyping` becomes `keys.machine()` (the frame on the drawing); `Shelf::typing` goes. The hint shows on `keyboardTyping`: `Keys to the Machine · F2 gives them back`.
 
 **Knob keys.** `KnobWindow::keys(Session&, const KnobKeys&, bool on)`: returns at once unless `on`; the turns as today from `down(SDL_SCANCODE_Q)`, `…A`, `…UP`, `…DOWN` (the first two knobs only, as today; a third has none). The `WantTextInput` check goes (while `on` no key reaches ImGui).
 

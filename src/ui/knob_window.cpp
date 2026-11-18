@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 #include "ui/bench.hpp"
+#include "ui/instrument_marks.hpp"
 #include "view/bench_places.hpp"
 
 namespace bw {
@@ -76,15 +77,32 @@ const std::vector<std::string>& KnobWindow::knobs(const Session& session) {
     return *knobs_;
 }
 
-void KnobWindow::keys(Session& session) {
+void KnobKeys::handle(const SDL_Event& event, bool on) {
+    switch (event.type) {
+    case SDL_EVENT_KEY_DOWN:
+        if (on) {
+            held_.insert(event.key.scancode);
+        }
+        break;
+    case SDL_EVENT_KEY_UP:
+        held_.erase(event.key.scancode);
+        break;
+    case SDL_EVENT_WINDOW_FOCUS_LOST:
+        held_.clear();
+        break;
+    default:
+        break;
+    }
+}
+
+void KnobWindow::keys(Session& session, const KnobKeys& held, bool on) {
     const std::vector<std::string>& all = knobs(session);
-    const ImGuiIO& io = ImGui::GetIO();
-    if (all.empty() || io.WantTextInput) {
+    if (all.empty() || !on) {
         return;
     }
-    const auto turn = [&](const std::string& reference, ImGuiKey up, ImGuiKey down) {
-        const int direction =
-            static_cast<int>(ImGui::IsKeyDown(up)) - static_cast<int>(ImGui::IsKeyDown(down));
+    const ImGuiIO& io = ImGui::GetIO();
+    const auto turn = [&](const std::string& reference, SDL_Scancode up, SDL_Scancode down) {
+        const int direction = static_cast<int>(held.down(up)) - static_cast<int>(held.down(down));
         if (direction != 0) {
             session.setKnob(reference,
                             session.knob(reference) + direction * kKeyRate * io.DeltaTime);
@@ -92,17 +110,17 @@ void KnobWindow::keys(Session& session) {
     };
     // One knob: Up and Down. Two or more: Q and A turn the first, Up and Down the second.
     if (all.size() >= 2) {
-        turn(all[0], ImGuiKey_Q, ImGuiKey_A);
-        turn(all[1], ImGuiKey_UpArrow, ImGuiKey_DownArrow);
+        turn(all[0], SDL_SCANCODE_Q, SDL_SCANCODE_A);
+        turn(all[1], SDL_SCANCODE_UP, SDL_SCANCODE_DOWN);
     } else {
-        turn(all[0], ImGuiKey_UpArrow, ImGuiKey_DownArrow);
+        turn(all[0], SDL_SCANCODE_UP, SDL_SCANCODE_DOWN);
     }
 }
 
-void KnobWindow::draw(bool& open, Session& session) {
+bool KnobWindow::draw(bool& open, Session& session, bool gold) {
     const std::vector<std::string>& all = knobs(session);
     if (!open || all.empty()) {
-        return;
+        return false;
     }
     const int count = static_cast<int>(all.size());
     const Extent first = FirstSize(BenchObject::Knob, BenchArea().extent(), 1, count);
@@ -120,8 +138,9 @@ void KnobWindow::draw(bool& open, Session& session) {
     ImGui::PopStyleVar(2);
     if (!visible) {
         ImGui::End();
-        return;
+        return false;
     }
+    const bool clicked = InstrumentClicked();
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const ImGuiIO& io = ImGui::GetIO();
     const ImVec2 at = ImGui::GetWindowPos();
@@ -161,9 +180,11 @@ void KnobWindow::draw(bool& open, Session& session) {
             }
             const std::size_t upDown = players ? 1 : 0;  // the knob Up and Down turn
             const char* keys = players && i == 0
-                                   ? "Turn the knob: drag up or down, mouse wheel, or Q and A"
+                                   ? "Turn the knob: drag up or down, mouse wheel, or Q and A\n"
+                                     "(the keys while the Machine has them: a click on the box)"
                                : static_cast<std::size_t>(i) == upDown
-                                   ? "Turn the knob: drag up or down, mouse wheel, or Up and Down"
+                                   ? "Turn the knob: drag up or down, mouse wheel, or Up and Down\n"
+                                     "(the keys while the Machine has them: a click on the box)"
                                    : "Turn the knob: drag up or down or mouse wheel";
             ImGui::SetTooltip("%s\n%s %.0f %%", keys, reference.c_str(),
                               session.knob(reference) * 100.0);
@@ -190,10 +211,16 @@ void KnobWindow::draw(bool& open, Session& session) {
             DrawKnobKeys(list, c.x, min.y + 154 * s, s, !(players && i == 0));
         }
     }
+    if (gold) {
+        const ImVec2 size = ImGui::GetWindowSize();
+        list.AddRect({at.x + 1, at.y + 1}, {at.x + size.x - 1, at.y + size.y - 1}, kFocusGold, 6.0f,
+                     0, 2.0f);
+    }
     if (CaseClose()) {
         open = false;
     }
     ImGui::End();
+    return clicked;
 }
 
 }  // namespace bw

@@ -92,6 +92,11 @@ struct BoardClick {
     bool shift = false;                    // Shift held at the release
 };
 
+// A left press on the Board panel (P6g): on a switch's body (the one under the cursor), or not.
+struct BoardPress {
+    std::optional<std::size_t> component;
+};
+
 using TooltipText = std::function<std::string(const BoardScene&, const Hit&)>;
 
 // The Board panel: ImGui drawing and input over a BoardScene and a Viewport.
@@ -135,6 +140,10 @@ public:
     void setLegendFont(ImFont* font) { legendFont_ = font; }   // keycap legends
     std::optional<std::size_t> held() const { return held_; }  // left button down on a body
     std::optional<std::size_t> takeLatchToggle();  // right-clicked body; any click on a slide
+    std::optional<BoardPress> takePress();         // the left press since the last call
+    // The keys' frame around the Board's keypad (the switches drawn as keycaps): the Machine has
+    // the keys (P6g).
+    void setKeypadGold(bool gold) { keypadGold_ = gold; }
     void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
     void setBodgeWires(std::span<const BodgeWire> wires) {
         bodgeWires_.assign(wires.begin(), wires.end());
@@ -185,6 +194,8 @@ private:
     std::vector<SwitchTag> switches_;
     ImFont* legendFont_ = nullptr;
     std::optional<std::size_t> held_, latchToggle_;
+    std::optional<BoardPress> press_;
+    bool keypadGold_ = false;
     std::vector<CutMark> cuts_;
     std::vector<BodgeWire> bodgeWires_;
     std::vector<BodgeWire> bridges_;

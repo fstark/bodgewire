@@ -28,7 +28,6 @@ constexpr float kGroupGap = 20.0f;
 constexpr float kGrayed = 0.35f;
 constexpr ImU32 kShelfWood = IM_COL32(48, 38, 30, 255);
 constexpr ImU32 kShelfEdge = IM_COL32(92, 74, 58, 255);
-constexpr ImU32 kFocusGold = IM_COL32(255, 196, 40, 255);    // what a click on a pin does
 constexpr ImU32 kFocusBlocked = IM_COL32(230, 50, 40, 255);  // the focus on a tool that can't work
 constexpr ImU32 kHover = IM_COL32(255, 255, 255, 40);
 constexpr ImU32 kKeyLetter = IM_COL32(200, 190, 175, 200);
@@ -247,8 +246,8 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
             why = "No TV on this Machine";
             break;
         case Item::Keyboard:
-            look.lit = keyboardOut;
-            inert = !hasKeyboard;
+            look.lit = keyboardOut || (boardKeys && keyboardTyping);
+            inert = !hasKeyboard && !boardKeys;
             why = "No keyboard on this Machine";
             break;
         case Item::Manual:
@@ -365,8 +364,15 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                      : ToggleWindow(tvOut, kTvWindowName);
                 break;
             case Item::Keyboard:
+                if (!hasKeyboard) {  // the Board's keys: no window, the keys toggled
+                    keysClick_ = KeysClick::Toggle;
+                    break;
+                }
                 home ? Home(keyboardOut, keyboardWindow, BenchObject::Keyboard)
                      : ToggleWindow(keyboardOut, keyboardWindow);
+                if (keyboardOut) {
+                    keysClick_ = KeysClick::Front;
+                }
                 break;
             case Item::Manual:
                 home ? Home(manualOut, kManualWindowName, BenchObject::Manual)
@@ -380,6 +386,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                 ToggleWindow(briefOut, kBriefWindowName);  // glued to the Board: no home
                 break;
             default:
+                keysClick_ = KeysClick::Bench;
                 if (IsInstrument(*owner) && home) {
                     focus.key(*owner);  // out with the focus
                     BringToFront(WindowOf(*owner));
@@ -404,8 +411,8 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
     if (std::chrono::steady_clock::now() < reasonUntil_) {
         hint = reason_;
         amber = true;
-    } else if (!typing.empty()) {
-        hint = std::format("Typing on {} · F2 to stop", typing);
+    } else if (keyboardTyping) {
+        hint = "Keys to the Machine · F2 gives them back";
     } else if (hasBoard && NeedsPowerOff(focus.owner()) && powered) {
         hint = "Power off first";
         amber = true;

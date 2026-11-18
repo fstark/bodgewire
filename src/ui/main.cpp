@@ -51,6 +51,7 @@
 #include "ui/tv_view.hpp"
 #include "ui/tv_window.hpp"
 #include "view/focus.hpp"
+#include "view/machine_keys.hpp"
 #include "view/time_view.hpp"
 #include "view/tv_controls.hpp"
 
@@ -73,7 +74,7 @@ constexpr std::string_view kUsage =
     "[--type REF:START:TEXT] [--roms DIR] [--manual user|service|datasheet|repairs] "
     "[--tv hpos:N%,vpos:N%,bright:N%,contrast:N%,off,underscan] [--look "
     "real|plain] "
-    "[--focus probe|swap|iron|cut|wire|analyzer|scope|meter] [--debug] "
+    "[--focus probe|swap|iron|cut|wire|analyzer|scope|meter] [--keys machine] [--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -101,6 +102,7 @@ struct Options {
     bool plainLook = false;         // --look plain: the specialist's Board, no parts drawn (P6)
     std::optional<Owner> focus;     // --focus: the owner at start (P6c)
     bool debug = false;             // --debug: the Debug window out (P6d)
+    bool keysToMachine = false;     // --keys machine: the keys on the Machine at start (P6g)
 };
 
 std::optional<Owner> ParseOwner(std::string_view name) {
@@ -264,6 +266,11 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 }
                 options.press.push_back(std::move(*press));
             }
+        } else if (arg == "--keys") {
+            if (std::string_view(argv[++i]) != "machine") {
+                return std::nullopt;
+            }
+            options.keysToMachine = true;
         } else if (arg == "--tv") {
             options.tv = ParseTvSettings(argv[++i]);
             if (!options.tv) {
@@ -478,6 +485,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         boardKeys.keys = session.switchKeys();
     }
     boardView.setLegendFont(legends);
+    shelf.boardKeys = !boardKeys.keys.empty();
     shelf.keyboardOut = !capture.reference.empty() || !matrixCapture.reference.empty();
     shelf.keyboardWindow = !capture.reference.empty()         ? kKeyboardWindowName
                            : !matrixCapture.reference.empty() ? kMatrixKeyboardWindowName
@@ -492,6 +500,33 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     shelf.manualOut = options.manual.has_value();
     shelf.tvOut = session.tv() != nullptr;
     shelf.knobOut = !session.knobs().empty();
+    // Who the PC keys go to (P6g): the bench, or the Machine's keyboard, Board keys and knobs.
+    // Something takes them only while out (the keyboard, the knob box) or on the Board. The
+    // captures' `on` follow at once, so no event is read with a stale state. A Machine with both a
+    // keyboard and knobs (none yet) would give the knobs only the keys the keyboard has no use
+    // for.
+    MachineKeys keys;
+    KnobKeys knobKeys;
+    const bool hasKnobs = !session.knobs().empty();
+    bool knobsOn = false;
+    const auto applyKeys = [&] {
+        const bool keyboard = !capture.reference.empty() || !matrixCapture.reference.empty();
+        keys.setTakers((shelf.keyboardOut && keyboard) || !boardKeys.keys.empty() ||
+                       (shelf.knobOut && hasKnobs));
+        capture.on = keys.machine() && shelf.keyboardOut && !capture.reference.empty();
+        matrixCapture.on = keys.machine() && shelf.keyboardOut && !matrixCapture.reference.empty();
+        boardKeys.on = keys.machine() && !boardKeys.keys.empty();
+        knobsOn = keys.machine() && shelf.knobOut && hasKnobs;
+        if (!knobsOn) {
+            knobKeys.clear();
+        }
+    };
+    applyKeys();
+    if (options.keysToMachine) {
+        keys.front();
+        applyKeys();
+    }
+    bool textField = false;  // last frame: a text field had the keyboard (F2 left to it)
     shelf.hasBrief = shelf.briefOut = !loaded.brief.empty();
     boardView.setPlainLook(options.plainLook);
     Focus focus;
@@ -532,10 +567,39 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     while (running) {
         const auto frameStart = std::chrono::steady_clock::now();
         SDL_Event event;
+        applyKeys();
         while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F2 && !event.key.repeat &&
+                !textField) {
+                // F2: the keys to the Machine and back; an away keyboard comes out, as before.
+                if (!keys.machine() && shelf.keyboardWindow != nullptr && !shelf.keyboardOut) {
+                    shelf.keyboardOut = true;
+                    applyKeys();
+                }
+                keys.toggle();
+                applyKeys();
+                continue;
+            }
+            // The modifiers reach ImGui whoever has the keys: a Shift-click stays one.
+            const bool modifier =
+                (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) &&
+                (event.key.key == SDLK_LSHIFT || event.key.key == SDLK_RSHIFT ||
+                 event.key.key == SDLK_LCTRL || event.key.key == SDLK_RCTRL ||
+                 event.key.key == SDLK_LALT || event.key.key == SDLK_RALT ||
+                 event.key.key == SDLK_LGUI || event.key.key == SDLK_RGUI);
+            knobKeys.handle(event, knobsOn);
             if (capture.handle(event, session) || matrixCapture.handle(event, session) ||
                 boardKeys.handle(event)) {
+                if (modifier) {
+                    ImGui_ImplSDL3_ProcessEvent(&event);
+                }
                 continue;
+            }
+            const bool keyEvent = event.type == SDL_EVENT_KEY_DOWN ||
+                                  event.type == SDL_EVENT_TEXT_INPUT ||
+                                  event.type == SDL_EVENT_TEXT_EDITING;
+            if (keys.machine() && keyEvent && !modifier) {
+                continue;  // the Machine's: no shortcut acts
             }
             ImGui_ImplSDL3_ProcessEvent(&event);
             if (event.type == SDL_EVENT_QUIT ||
@@ -562,7 +626,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
         // Tab: the real Board or the specialist's plain one (P6 prototype).
-        if (!ImGui::GetIO().WantTextInput && !capture.on && !matrixCapture.on && !boardKeys.on &&
+        if (!ImGui::GetIO().WantTextInput && !keys.machine() &&
             ImGui::IsKeyPressed(ImGuiKey_Tab, false)) {
             boardView.setPlainLook(!boardView.plainLook());
         }
@@ -571,6 +635,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             lastOwner = focus.owner();
         }
         boardView.setOwner(focus.owner());
+        boardView.setKeypadGold(keys.machine());
         const Extent bench = BenchArea().extent();  // above the shelf
         const ImVec2 available{bench.width, bench.height};
         boardView.draw(available);
@@ -872,10 +937,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         ImGui::End();
         // The bench, back to front at start: brief, TV, knob, manuals, instruments, keyboard,
         // Debug.
-        knobWindow.keys(session);
+        knobWindow.keys(session, knobKeys, knobsOn);
         DrawBrief(shelf.briefOut, loaded, boardView.corner());
-        tvWindow.draw(shelf.tvOut, view);
-        knobWindow.draw(shelf.knobOut, session);
+        bool toMachine = tvWindow.draw(shelf.tvOut, view, keys.machine());
+        toMachine |= knobWindow.draw(shelf.knobOut, session, keys.machine());
+        bool toBench = false;
         manualWindows.draw(shelf.manualOut, loaded.manuals.manuals, boardView, DesignOf(session),
                            session.log());
         if (session.machine()) {
@@ -883,6 +949,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 bool open = focus.out(owner);
                 if (window.draw(open, session)) {
                     focus.clicked(owner);
+                    toBench = true;
                 }
                 if (!open) {
                     focus.closed(owner);
@@ -896,24 +963,48 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         // One keyboard per Machine, either kind: the shelf's drawing shows or hides it.
         bool keyboardOpen = shelf.keyboardOut && !capture.reference.empty();
         bool matrixOpen = shelf.keyboardOut && !matrixCapture.reference.empty();
-        keyboardWindow.draw(keyboardOpen, session, capture);
-        capture.sync(window);
-        matrixWindow.draw(matrixOpen, session, matrixCapture);
+        toMachine |= keyboardWindow.draw(keyboardOpen, session, capture);
+        toMachine |= matrixWindow.draw(matrixOpen, session, matrixCapture);
         if (shelf.keyboardOut && !keyboardOpen && !matrixOpen) {
             shelf.keyboardOut = false;  // closed by its window
         }
-        matrixCapture.sync(window);
         DrawDebug(debugOut, session, stats, seed);
-        if (!boardKeys.keys.empty() && !boardKeys.on && !ImGui::GetIO().WantTextInput &&
-            ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
-            boardKeys.on = true;
+        // Where the keys go after this frame's clicks (P6g): a press on a Board key with a PC key,
+        // or on the Machine's objects, gives them to the Machine; any other press on the Board,
+        // a tool or an instrument, back to the bench.
+        if (const auto press = boardView.takePress(); press && boardView.scene()) {
+            const bool key =
+                press->component && std::ranges::any_of(boardKeys.keys, [&](const SwitchKey& k) {
+                    return k.reference ==
+                           boardView.scene()->board().components[*press->component].reference;
+                });
+            (key ? toMachine : toBench) = true;
         }
+        switch (shelf.takeKeysClick()) {
+        case KeysClick::Front:
+            toMachine = true;
+            break;
+        case KeysClick::Toggle:
+            keys.machine() ? toBench = true : toMachine = true;
+            break;
+        case KeysClick::Bench:
+            toBench = true;
+            break;
+        case KeysClick::None:
+            break;
+        }
+        applyKeys();  // what is out now
+        if (toBench) {
+            keys.bench();
+        } else if (toMachine) {
+            keys.front();
+        }
+        applyKeys();
+        capture.sync(window);
+        matrixCapture.sync(window);
         boardKeys.sync();
-        shelf.keyboardTyping = capture.on || matrixCapture.on;
-        shelf.typing = capture.on         ? capture.reference
-                       : matrixCapture.on ? matrixCapture.reference
-                       : boardKeys.on     ? std::string("Board keys")
-                                          : std::string();
+        shelf.keyboardTyping = keys.machine();
+        textField = ImGui::GetIO().WantTextInput;
 
         ImGui::Render();
         const ImGuiIO& io = ImGui::GetIO();
@@ -1060,6 +1151,13 @@ int main(int argc, char** argv) {
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
+    }
+    if (options->keysToMachine && session.keyboards().empty() &&
+        session.matrixKeyboards().empty() && session.switchKeys().empty() &&
+        session.knobs().empty()) {
+        std::println(stderr, "bw_ui: nothing on this Machine takes keys");
+        std::println(stderr, "{}", kUsage);
+        return kExitUsage;
     }
     if (options->tv && session.tv() == nullptr) {
         std::println(stderr, "bw_ui: this Machine has no TV");

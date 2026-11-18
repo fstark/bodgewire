@@ -7,6 +7,7 @@
 #include <imgui.h>
 
 #include "ui/bench.hpp"
+#include "ui/instrument_marks.hpp"
 #include "view/bench_places.hpp"
 
 namespace bw {
@@ -71,10 +72,10 @@ void Label(ImDrawList& list, ImVec2 centre, float size, const char* text) {
 
 }  // namespace
 
-void TvWindow::draw(bool& open, TvView& view) {
+bool TvWindow::draw(bool& open, TvView& view, bool gold) {
     view.setTone(controls_.tone());
     if (!open) {
-        return;
+        return false;
     }
     PlaceNext(BenchObject::Tv, {kTvFirstWidth, kTvFirstWidth * kTvAspect});
     KeepAspect(kTvAspect, kMinWidth);
@@ -90,8 +91,9 @@ void TvWindow::draw(bool& open, TvView& view) {
     ImGui::PopStyleVar(2);
     if (!visible) {
         ImGui::End();
-        return;
+        return false;
     }
+    const bool clicked = InstrumentClicked();
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const ImGuiIO& io = ImGui::GetIO();
     const ImVec2 at = ImGui::GetWindowPos();
@@ -260,7 +262,11 @@ void TvWindow::draw(bool& open, TvView& view) {
     if (CaseClose()) {
         open = false;
     }
+    if (gold) {
+        list.AddRect({at.x + 1, at.y + 1}, {at.x + w - 1, at.y + h - 1}, kFocusGold, 6.0f, 0, 2.0f);
+    }
     ImGui::End();
+    return clicked;
 }
 
 }  // namespace bw

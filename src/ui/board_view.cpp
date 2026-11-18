@@ -1,5 +1,6 @@
 #include "ui/board_view.hpp"
 
+#include "ui/bench.hpp"
 #include "ui/board_look.hpp"
 
 #include <algorithm>
@@ -101,6 +102,7 @@ constexpr std::int64_t kPlungerRadius = 1'100'000;
 constexpr std::int64_t kPlungerDownRadius = 950'000;
 constexpr std::int64_t kLegLength = 1'200'000;
 constexpr std::int64_t kLegHalf = 400'000;
+constexpr std::int64_t kKeypadMargin = 1'500'000;  // the keys' gold frame around the keypad
 constexpr float kSwitchPrintMinPx = 6;
 constexpr float kSwitchPrintMinPartPx = 16;               // a switch smaller on screen: no print
 constexpr std::int64_t kLegendGap = 400'000;              // a legend under its part's courtyard
@@ -851,6 +853,29 @@ void BoardView::draw(ImVec2 size) {
         }
     }
 
+    if (keypadGold_) {
+        // The Board's keypad, framed while the Machine has the keys (P6g).
+        std::optional<Bounds> keypad;
+        for (const SwitchTag& t : switches_) {
+            if (t.look != SwitchLook::Key) {
+                continue;
+            }
+            for (const Point p : scene_->courtyard(t.component)) {
+                if (!keypad) {
+                    keypad = Bounds{p, p};
+                }
+                keypad->min = {std::min(keypad->min.x, p.x), std::min(keypad->min.y, p.y)};
+                keypad->max = {std::max(keypad->max.x, p.x), std::max(keypad->max.y, p.y)};
+            }
+        }
+        if (keypad) {
+            const ImVec2 a = map({keypad->min.x - kKeypadMargin, keypad->min.y - kKeypadMargin});
+            const ImVec2 b = map({keypad->max.x + kKeypadMargin, keypad->max.y + kKeypadMargin});
+            list.AddRect({std::min(a.x, b.x), std::min(a.y, b.y)},
+                         {std::max(a.x, b.x), std::max(a.y, b.y)}, kFocusGold, 6.0f, 0, 2.0f);
+        }
+    }
+
     if (!real) {
         drawPads();
     }
@@ -1096,6 +1121,7 @@ void BoardView::input(ImVec2 origin) {
     }
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         held_ = buttonAt();
+        press_ = BoardPress{held_};
         if (held_ && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
                 return t.component == *held_ && t.look == SwitchLook::Slide;
             })) {
@@ -1140,6 +1166,8 @@ void BoardView::refuse(std::string reason) {
 }
 
 std::optional<BoardClick> BoardView::takeClick() { return std::exchange(click_, std::nullopt); }
+
+std::optional<BoardPress> BoardView::takePress() { return std::exchange(press_, std::nullopt); }
 
 std::optional<std::size_t> BoardView::takeLatchToggle() {
     return std::exchange(latchToggle_, std::nullopt);

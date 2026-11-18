@@ -10,6 +10,7 @@
 #include <imgui_internal.h>
 
 #include "ui/bench.hpp"
+#include "ui/instrument_marks.hpp"
 #include "ui/keycap.hpp"
 
 namespace bw {
@@ -34,7 +35,6 @@ constexpr ImU32 kCaseBottom = IM_COL32(28, 28, 30, 255);
 constexpr ImU32 kCaseEdge = IM_COL32(78, 78, 82, 255);
 constexpr ImU32 kWell = IM_COL32(9, 9, 10, 255);  // the opening the keys sit in
 constexpr ImU32 kWellLip = IM_COL32(0, 0, 0, 120);
-constexpr ImU32 kTypingEdge = IM_COL32(255, 176, 40, 255);
 constexpr ImU32 kEngraving = IM_COL32(128, 128, 132, 255);
 
 }  // namespace
@@ -44,31 +44,15 @@ void KeyboardWindow::flash(std::uint8_t code) {
     flashUntil_ = std::chrono::steady_clock::now() + kFlash;
 }
 
-void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture) {
-    if (capture.reference.empty()) {
-        return;
-    }
-    if (!capture.on && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
-        open = true;
-        focusNext_ = true;
-    }
-    const auto stopTyping = [&capture] {
-        capture.on = false;
-        capture.stop = false;
-    };
-    if (!open) {
-        stopTyping();
-        return;
+bool KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture) {
+    if (capture.reference.empty() || !open) {
+        return false;
     }
 
     const float aspect = kHeightU / kWidthU;
     const Extent first = FirstSize(BenchObject::Keyboard, BenchArea().extent(), aspect);
     PlaceNext(BenchObject::Keyboard, {first.width, first.height});
     KeepAspect(aspect, kMinWidth);
-    if (focusNext_) {
-        ImGui::SetNextWindowFocus();
-        focusNext_ = false;
-    }
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleColor(ImGuiCol_WindowBg, kSurround);
     const bool visible =
@@ -80,21 +64,15 @@ void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
     ImGui::PopStyleVar();
     if (!visible || !open) {
         ImGui::End();
-        stopTyping();
-        return;
+        return false;
     }
-    if (capture.stop) {
-        ImGui::SetWindowFocus(nullptr);
-        stopTyping();
-    } else {
-        capture.on = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-    }
+    const bool clicked = InstrumentClicked();
     drawCaps(session, capture);
     if (CaseClose()) {
         open = false;
-        stopTyping();
     }
     ImGui::End();
+    return clicked;
 }
 
 void KeyboardWindow::drawCaps(Session& session, const KeyboardCapture& capture) {
@@ -115,7 +93,7 @@ void KeyboardWindow::drawCaps(Session& session, const KeyboardCapture& capture) 
     list.AddLine({caseA.x + caseRounding, caseA.y + 0.5f}, {caseB.x - caseRounding, caseA.y + 0.5f},
                  kCaseEdge);
     if (capture.on) {
-        list.AddRect(caseA, caseB, kTypingEdge, caseRounding, 0, 2.0f);
+        list.AddRect(caseA, caseB, kFocusGold, caseRounding, 0, 2.0f);
     }
     const ImVec2 keys{origin.x + kCaseMargin * u, origin.y + (kCaseMargin + kLabelStrip) * u};
     // The well: a dark opening a little larger than the keys, its top lip in shadow.

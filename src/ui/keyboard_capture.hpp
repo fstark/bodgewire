@@ -12,12 +12,11 @@
 
 namespace bw {
 
-// Typing: while on (the keyboard window focused), the keyboard and text events of SDL go to one
-// KEYBOARD Part instead of ImGui, so no tool or knob key acts. F2 asks to stop (`stop`); Escape
-// is a key of the keyboard.
+// Typing: while on (the Machine has the keys and the keyboard is out: P6g), the keyboard and text
+// events of SDL go to one KEYBOARD Part instead of ImGui, so no tool or knob key acts. Escape is
+// a key of the keyboard; F2 is main.cpp's (it gives the keys back).
 struct KeyboardCapture {
     bool on = false;
-    bool stop = false;      // F2 pressed while typing; the keyboard window clears it
     std::string reference;  // the first of Session::keyboards(); empty: none
 
     // Before ImGui_ImplSDL3_ProcessEvent; true when the event was taken.

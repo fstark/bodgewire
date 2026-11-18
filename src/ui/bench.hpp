@@ -6,6 +6,10 @@
 
 namespace bw {
 
+// The gold of what has the focus: the tool or instrument a click on a pin goes to (P6c), and
+// the Machine's objects while the keys go to it (P6g).
+inline constexpr ImU32 kFocusGold = IM_COL32(255, 196, 40, 255);
+
 // The bench in screen coordinates: the main window's content above the shelf, where the Board is
 // drawn and the equipment comes out (P6d).
 struct BenchRect {

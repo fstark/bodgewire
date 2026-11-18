@@ -27,8 +27,9 @@ class KeyboardWindow {
 public:
     explicit KeyboardWindow(ImFont* legends) : legends_(legends) {}
 
-    // `capture.on` follows the window's focus. Nothing drawn without a keyboard.
-    void draw(bool& open, Session& session, KeyboardCapture& capture);
+    // `capture.on` is main.cpp's (the Machine's keys: P6g); its frame gold while on. Nothing drawn
+    // without a keyboard. True when the case was clicked (not its ×).
+    bool draw(bool& open, Session& session, KeyboardCapture& capture);
     // A code sent other than by this window (--type): its cap and modifiers down 150 ms, or
     // until the next flash.
     void flash(std::uint8_t code);
@@ -40,7 +41,6 @@ private:
     bool shiftLatched_ = false, ctrlLatched_ = false;  // mouse: until the next cap is released
     std::optional<CapPress> flash_;
     std::chrono::steady_clock::time_point flashUntil_{};
-    bool focusNext_ = false;  // F2 while not typing
 };
 
 }  // namespace bw

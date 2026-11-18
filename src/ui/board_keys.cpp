@@ -63,11 +63,6 @@ bool BoardKeyCapture::handle(const SDL_Event& event) {
     if (event.type != SDL_EVENT_KEY_DOWN) {
         return false;
     }
-    if (event.key.key == SDLK_F2) {
-        on = false;
-        held_.clear();
-        return true;
-    }
     if (event.key.repeat) {
         return true;
     }

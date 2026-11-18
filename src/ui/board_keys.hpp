@@ -11,9 +11,10 @@
 
 namespace bw {
 
-// Typing on the Board's keys (P5i): while on, a PC key held down holds the switch whose `pc=` it
-// is, several at once; every other key down is swallowed so no tool or knob key acts. F2 turns
-// it off. Only on a Machine with switch PC keys and no KEYBOARD (that one types instead).
+// Typing on the Board's keys (P5i): while on (the Machine has the keys: P6g), a PC key held down
+// holds the switch whose `pc=` it is, several at once; every other key down is swallowed so no
+// tool or knob key acts. F2 is main.cpp's. Only on a Machine with switch PC keys and no KEYBOARD
+// (that one types instead).
 struct BoardKeyCapture {
     bool on = false;
     std::vector<SwitchKey> keys;  // Session::switchKeys(); empty: no Board keys

@@ -12,6 +12,7 @@
 #include "parts/matrix_keyboard.hpp"
 #include "parts/zx80_keys.hpp"
 #include "ui/bench.hpp"
+#include "ui/instrument_marks.hpp"
 #include "view/matrix_keyboard_layout.hpp"
 
 namespace bw {
@@ -51,7 +52,6 @@ constexpr ImU32 kCaseTop = IM_COL32(52, 56, 64, 255);  // the PET's blue-grey me
 constexpr ImU32 kCaseBottom = IM_COL32(30, 32, 37, 255);
 constexpr ImU32 kCaseEdge = IM_COL32(90, 96, 106, 255);
 constexpr ImU32 kPlate = IM_COL32(16, 17, 20, 255);  // the black plate the keys stand on
-constexpr ImU32 kTypingEdge = IM_COL32(255, 176, 40, 255);
 constexpr ImU32 kEngraving = IM_COL32(150, 156, 166, 255);
 constexpr ImU32 kCapTop = IM_COL32(222, 218, 206, 255);  // off-white chiclet
 constexpr ImU32 kCapBottom = IM_COL32(186, 181, 168, 255);
@@ -160,30 +160,14 @@ void DrawChiclet(ImDrawList& list, ImFont* font, std::string_view legend, std::s
 
 }  // namespace
 
-void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& capture) {
-    if (capture.reference.empty()) {
-        return;
-    }
-    if (!capture.on && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
-        open = true;
-        focusNext_ = true;
-    }
-    const auto stopTyping = [&capture] {
-        capture.on = false;
-        capture.stop = false;
-    };
-    if (!open) {
-        stopTyping();
-        return;
+bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& capture) {
+    if (capture.reference.empty() || !open) {
+        return false;
     }
     const float aspect = HeightU(capture.kind) / WidthU(capture.kind);
     const Extent first = FirstSize(BenchObject::Keyboard, BenchArea().extent(), aspect);
     PlaceNext(BenchObject::Keyboard, {first.width, first.height});
     KeepAspect(aspect, kMinWidth);
-    if (focusNext_) {
-        ImGui::SetNextWindowFocus();
-        focusNext_ = false;
-    }
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleColor(ImGuiCol_WindowBg,
                           capture.kind == KeyMatrixKind::Bw80 ? kPanel : kSurround);
@@ -197,15 +181,9 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     ImGui::PopStyleVar();
     if (!visible || !open) {
         ImGui::End();
-        stopTyping();
-        return;
+        return false;
     }
-    if (capture.stop) {
-        ImGui::SetWindowFocus(nullptr);
-        stopTyping();
-    } else {
-        capture.on = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-    }
+    const bool clicked = InstrumentClicked();
     if (capture.kind == KeyMatrixKind::Bw80) {
         drawMembrane(session, capture);
     } else {
@@ -213,9 +191,9 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     }
     if (CaseClose()) {
         open = false;
-        stopTyping();
     }
     ImGui::End();
+    return clicked;
 }
 
 template <class Draw>
@@ -269,7 +247,7 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
     list.AddLine({caseA.x + 0.2f * u, caseA.y + 0.5f}, {caseB.x - 0.2f * u, caseA.y + 0.5f},
                  kCaseEdge);
     if (capture.on) {
-        list.AddRect(caseA, caseB, kTypingEdge, 0.2f * u, 0, 2.0f);
+        list.AddRect(caseA, caseB, kFocusGold, 0.2f * u, 0, 2.0f);
     }
     const ImVec2 keys{origin.x + kMargin * u, origin.y + (kMargin + kLabel) * u};
     const std::string engraving = "BW-2001 \xc2\xb7 " + capture.reference;
@@ -380,7 +358,7 @@ void MatrixKeyboardWindow::drawMembrane(Session& session, const MatrixCapture& c
                  {panelB.x - 0.3f * u, panelA.y + 0.12f * u}, kPanelLine,
                  std::max(1.0f, 0.02f * u));
     if (capture.on) {
-        list.AddRect(panelA, panelB, kTypingEdge, 0.1f * u, 0, 2.0f);
+        list.AddRect(panelA, panelB, kFocusGold, 0.1f * u, 0, 2.0f);
     }
     const ImVec2 keys{origin.x + kMargin * u, origin.y + (kMargin + kLabel) * u};
     const std::string engraving = "BW-80 \xc2\xb7 " + capture.reference;
