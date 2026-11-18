@@ -29,12 +29,12 @@ void PencilMarks::click(Point at, std::optional<std::size_t> body, std::int64_t 
     PencilMark& mark = marks_[*found];
     switch (mark.shape) {
     case MarkShape::Dot:
-        mark.shape = MarkShape::Cross;
-        break;
-    case MarkShape::Cross:
         mark.shape = MarkShape::Check;
         break;
     case MarkShape::Check:
+        mark.shape = MarkShape::Cross;
+        break;
+    case MarkShape::Cross:
         marks_.erase(std::next(marks_.begin(), static_cast<std::ptrdiff_t>(*found)));
         break;
     }

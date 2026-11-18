@@ -8,7 +8,7 @@ namespace {
 constexpr std::int64_t kReach = 1'000'000;  // nm
 }
 
-TEST_CASE("pencil marks: a click on bare Board puts a dot, clicks on it go cross, check, none",
+TEST_CASE("pencil marks: a click on bare Board puts a dot, clicks on it go check, cross, none",
           "[view]") {
     PencilMarks marks;
     marks.click({5'000'000, 5'000'000}, std::nullopt, kReach);
@@ -18,10 +18,10 @@ TEST_CASE("pencil marks: a click on bare Board puts a dot, clicks on it go cross
     CHECK_FALSE(marks.marks()[0].body);
     marks.click({5'400'000, 5'300'000}, std::nullopt, kReach);  // 0.5 mm off: on it
     REQUIRE(marks.marks().size() == 1);
-    CHECK(marks.marks()[0].shape == MarkShape::Cross);
+    CHECK(marks.marks()[0].shape == MarkShape::Check);
     CHECK(marks.marks()[0].at == Point{5'000'000, 5'000'000});  // not moved
     marks.click({5'000'000, 5'000'000}, std::nullopt, kReach);
-    CHECK(marks.marks()[0].shape == MarkShape::Check);
+    CHECK(marks.marks()[0].shape == MarkShape::Cross);
     marks.click({5'000'000, 5'000'000}, std::nullopt, kReach);
     CHECK(marks.marks().empty());
 }
@@ -42,11 +42,11 @@ TEST_CASE("pencil marks: of two in reach the nearest changes, the later on a tie
     marks.add({{1'200'000, 0}, MarkShape::Dot, std::nullopt});
     marks.click({800'000, 0}, std::nullopt, kReach);  // 0.8 mm and 0.4 mm away
     CHECK(marks.marks()[0].shape == MarkShape::Dot);
-    CHECK(marks.marks()[1].shape == MarkShape::Cross);
+    CHECK(marks.marks()[1].shape == MarkShape::Check);
     marks.add({{0, 0}, MarkShape::Dot, std::nullopt});  // on top of the first
     marks.click({0, 0}, std::nullopt, kReach);
     CHECK(marks.marks()[0].shape == MarkShape::Dot);
-    CHECK(marks.marks()[2].shape == MarkShape::Cross);
+    CHECK(marks.marks()[2].shape == MarkShape::Check);
 }
 
 TEST_CASE("pencil marks: a clear removes the nearest, or reports none in reach", "[view]") {

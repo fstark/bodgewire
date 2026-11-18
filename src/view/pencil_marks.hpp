@@ -24,7 +24,7 @@ class PencilMarks {
 public:
     std::span<const PencilMark> marks() const { return marks_; }
     // A pencil click at `at`: the nearest mark within `reach` nm takes the next shape (dot,
-    // cross, check, then none: removed); with none in reach, a dot there, on `body`.
+    // check, cross, then none: removed); with none in reach, a dot there, on `body`.
     void click(Point at, std::optional<std::size_t> body, std::int64_t reach);
     // A Shift-click or right-click: the nearest mark within `reach` removed; false: none there.
     bool clear(Point at, std::int64_t reach);

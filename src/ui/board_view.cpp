@@ -52,10 +52,9 @@ constexpr ImU32 kSolder = IM_COL32(205, 205, 210, 255);
 constexpr ImU32 kCutMark = IM_COL32(20, 20, 20, 255);
 constexpr std::int64_t kCutHalf = 300'000;  // nm: half the X's arm
 constexpr float kCutMinPx = 4;
-constexpr std::int64_t kMarkSize = 4'000'000;  // nm across: a grease pencil's mark (P6h)
+constexpr std::int64_t kMarkSize = 3'000'000;  // nm across: a grease pencil's mark (P6h)
 constexpr float kMarkMinPx = 10;
-constexpr ImU32 kPencil = IM_COL32(205, 205, 200, 235);
-constexpr ImU32 kPencilEdge = IM_COL32(0, 0, 0, 110);
+constexpr ImU32 kPencil = IM_COL32(205, 205, 200, 255);  // opaque: the discs overlap
 constexpr ImU32 kWireInsulation = IM_COL32(120, 170, 255, 255);
 constexpr std::int64_t kWireWidth = 300'000;
 constexpr std::int64_t kBridgeWidth = 600'000;  // nm
@@ -550,33 +549,62 @@ void DrawTactile(ImDrawList& list, const LookMap& look, const BoardComponent& co
     list.AddCircleFilled({centre.x - r * 0.35f, centre.y - r * 0.35f}, r * 0.3f, kPlungerLight);
 }
 
-// A grease pencil's mark of `size` px across, centred on `c`: each stroke over a faint dark edge
-// so it reads on the green, a black chip and the tin.
-void DrawPencilMark(ImDrawList& list, ImVec2 c, float size, MarkShape shape) {
-    const float t = std::max(2.0f, 0.18f * size);
-    const float h = size / 2;
-    for (const bool edge : {true, false}) {
-        const ImU32 colour = edge ? kPencilEdge : kPencil;
-        const float width = edge ? t + 2 : t;
-        switch (shape) {
-        case MarkShape::Dot:
-            list.AddCircleFilled(c, size / 4 + (edge ? 1.0f : 0.0f), colour);
-            break;
-        case MarkShape::Cross:
-            list.AddLine({c.x - h, c.y - h}, {c.x + h, c.y + h}, colour, width);
-            list.AddLine({c.x - h, c.y + h}, {c.x + h, c.y - h}, colour, width);
-            break;
-        case MarkShape::Check: {
-            const std::array<ImVec2, 3> points{{{c.x - 0.45f * size, c.y},
-                                                {c.x - 0.15f * size, c.y + 0.35f * size},
-                                                {c.x + 0.45f * size, c.y - 0.4f * size}}};
-            list.AddPolyline(points.data(), 3, colour, 0, width);
-            break;
-        }
-        }
+// A stable pseudo-random number in [-1, 1] from a mark's place and an index: the same every
+// frame, different from mark to mark (the hand's tilt, the wax's uneven edge).
+float Wobble(std::uint64_t seed, std::uint64_t index) {
+    std::uint64_t h = (seed ^ (index * 0x9E3779B97F4A7C15ull)) * 0xBF58476D1CE4E5B9ull;
+    h ^= h >> 31;
+    h *= 0x94D049BB133111EBull;
+    h ^= h >> 29;
+    return static_cast<float>(h & 0xFFFF) / 32767.5f - 1.0f;
+}
+
+// A wax stroke from `a` through the control point `c` to `b` (a quadratic curve), its width
+// going from `w0` to `w1`: discs along it, so the ends are round and the edge a little uneven.
+void WaxStroke(ImDrawList& list, ImVec2 a, ImVec2 c, ImVec2 b, float w0, float w1,
+               std::uint64_t seed) {
+    const float length = std::hypot(c.x - a.x, c.y - a.y) + std::hypot(b.x - c.x, b.y - c.y);
+    const float step = std::max(0.75f, std::min(w0, w1) * 0.25f);
+    const int steps = std::max(2, static_cast<int>(length / step));
+    for (int i = 0; i <= steps; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(steps);
+        const float u = 1 - t;
+        const ImVec2 at{u * u * a.x + 2 * u * t * c.x + t * t * b.x,
+                        u * u * a.y + 2 * u * t * c.y + t * t * b.y};
+        const float width = (w0 + (w1 - w0) * t) * (1 + 0.08f * Wobble(seed, i / 3));
+        list.AddCircleFilled(at, std::max(1.0f, width / 2), kPencil, 12);
     }
 }
 
+// A grease pencil's mark of `size` px across, centred on `c`, drawn as a hand would: curved
+// tapering strokes, tilted a little, from `seed` (its place) so it is the same every frame.
+void DrawPencilMark(ImDrawList& list, ImVec2 c, float size, MarkShape shape, std::uint64_t seed) {
+    const float tilt = 0.18f * Wobble(seed, 101);
+    const float scale = size * (1 + 0.06f * Wobble(seed, 102));
+    const float cosT = std::cos(tilt), sinT = std::sin(tilt);
+    const auto at = [&](float x, float y) {  // unit coordinates, y down, about the centre
+        return ImVec2{c.x + scale * (x * cosT - y * sinT), c.y + scale * (x * sinT + y * cosT)};
+    };
+    const auto width = [&](float share) { return std::max(2.0f, share * scale); };
+    switch (shape) {
+    case MarkShape::Dot:  // a short dab
+        WaxStroke(list, at(-0.07f, -0.03f), at(0.0f, 0.04f), at(0.08f, -0.01f), width(0.38f),
+                  width(0.34f), seed);
+        break;
+    case MarkShape::Check:
+        WaxStroke(list, at(-0.42f, 0.0f), at(-0.3f, 0.2f), at(-0.12f, 0.34f), width(0.14f),
+                  width(0.19f), seed);
+        WaxStroke(list, at(-0.12f, 0.34f), at(0.06f, -0.04f), at(0.46f, -0.42f), width(0.19f),
+                  width(0.08f), seed + 1);
+        break;
+    case MarkShape::Cross:
+        WaxStroke(list, at(-0.4f, -0.38f), at(0.04f, -0.04f), at(0.42f, 0.4f), width(0.18f),
+                  width(0.11f), seed);
+        WaxStroke(list, at(0.38f, -0.41f), at(0.04f, 0.04f), at(-0.4f, 0.38f), width(0.17f),
+                  width(0.1f), seed + 1);
+        break;
+    }
+}
 }  // namespace
 
 void BoardView::draw(ImVec2 size) {
@@ -987,7 +1015,10 @@ void BoardView::draw(ImVec2 size) {
         list.AddCircleFilled(map(*wireStart_), wireBlob, kSolder);
     }
     for (const PencilMark& mark : marks_) {
-        DrawPencilMark(list, map(mark.at), std::max(map.pixels(kMarkSize), kMarkMinPx), mark.shape);
+        const auto seed = (static_cast<std::uint64_t>(mark.at.x) * 0x9E3779B97F4A7C15ull) ^
+                          static_cast<std::uint64_t>(mark.at.y);
+        DrawPencilMark(list, map(mark.at), std::max(map.pixels(kMarkSize), kMarkMinPx), mark.shape,
+                       seed);
     }
     if (tip_) {
         const float radius = std::max(4.0f, map.pixels(400'000));

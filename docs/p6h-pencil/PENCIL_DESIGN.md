@@ -33,7 +33,7 @@ class PencilMarks {
 public:
     std::span<const PencilMark> marks() const { return marks_; }
     // A pencil click at `at`: the nearest mark within `reach` nm takes the next shape (dot,
-    // cross, check, then none: removed); with none in reach, a dot there, on `body`.
+    // check, cross, then none: removed); with none in reach, a dot there, on `body`.
     void click(Point at, std::optional<std::size_t> body, std::int64_t reach);
     // A Shift-click or right-click: the nearest mark within `reach` removed; false: none there.
     bool clear(Point at, std::int64_t reach);
@@ -47,21 +47,21 @@ private:
 };
 ```
 
-`nearest`: the smallest Euclidean distance (as `double`, from the `int64` nm) that is `<= reach`; the last on a tie (the one drawn on top). `click` on a found `Check` erases it (`std::vector::erase`, the order of the rest kept: the later drawn on top). Test cases `pencil marks: …` `[view]`, as the spec lists.
+`nearest`: the smallest Euclidean distance (as `double`, from the `int64` nm) that is `<= reach`; the last on a tie (the one drawn on top). `click` turns a `Dot` to `Check`, a `Check` to `Cross`, and erases a `Cross` (`std::vector::erase`, the order of the rest kept: the later drawn on top). Test cases `pencil marks: …` `[view]`, as the spec lists.
 
 ## The tool
 
 - `src/ui/main.cpp`'s `switch (focus.owner())` has no `default` and `-Werror` is on: phase 1 adds `case Owner::Pencil: break;` there, phase 2 fills it.
 - `src/view/focus.hpp`: `Owner { Probe, Puller, Iron, Cutters, Wire, Pencil, Analyzer, Scope, Meter }`. `Focus::take`, `escape` work unchanged. `focus_test`: a case `focus: the pencil is a tool` (`IsInstrument(Owner::Pencil)` false; `take(Pencil)` owns it; `escape(false)` → `ToProbe`).
-- `src/ui/shelf_drawings`: `Item::Pencil` between `Wire` and `Tv`. `Pencil(Pen& p)` in the 56-unit cell, drawn diagonally as the iron: a white paper-wrapped body (`line(46, 46, 22, 22, kWhite, 9)`), the paper's spiral as four short dark-grey strokes across it, the wax tip (`line(22, 22, 13, 13, IM_COL32(215, 215, 210, 255), 5)`, a `disc` at its end), the pull string a thin dark line from the body; a small grey check scribbled below left (`polyline`, 3 points) — what it does.
-- `src/ui/shelf.cpp`: `kItems` gains `{Item::Pencil, "Grease pencil: mark the Board; click a mark: dot, cross, check, none; shift- or right-click: clear", "G", 1}` after Wire (the array 19); `GroupEnds` moves from `Wire` to `Pencil`; `OwnerOf(Item::Pencil)` → `Owner::Pencil`; `kTools` gains `{ImGuiKey_G, Owner::Pencil}` (the array 7). `NeedsPowerOff` unchanged (not the pencil). The click's `default` branch already takes the tool and gives the keys to the bench. The shelf grows one cell (52 px): the hint starts further right.
+- `src/ui/shelf_drawings`: `Item::Pencil` between `Fit` and `Probe` (the user: the first tool). `Pencil(Pen& p)` in the 56-unit cell, drawn diagonally as the iron: a white paper-wrapped body (`line(46, 46, 22, 22, kWhite, 9)`), the paper's spiral as four short dark-grey strokes across it, the wax tip (`line(22, 22, 13, 13, IM_COL32(215, 215, 210, 255), 5)`, a `disc` at its end), the pull string a thin dark line from the body; a small grey check scribbled below left (`polyline`, 3 points) only while lit (the pencil held: `look.lit = focus.owner() == Owner::Pencil`).
+- `src/ui/shelf.cpp`: `kItems` gains `{Item::Pencil, "Grease pencil: mark the Board; click a mark: dot, cross, check, none; shift- or right-click: clear", "G", 1}` before the Probe (the array 19); `GroupEnds` unchanged; `OwnerOf(Item::Pencil)` → `Owner::Pencil`; `kTools` gains `{ImGuiKey_G, Owner::Pencil}` (the array 7). `NeedsPowerOff` unchanged (not the pencil). The click's `default` branch already takes the tool and gives the keys to the bench. The shelf grows one cell (52 px): the hint starts further right.
 
 ## The Board (`src/ui/board_view`)
 
 - `setMarks(std::span<const PencilMark>)`, kept in `marks_` (as `setCuts`).
-- Constants: `kMarkSize = 4'000'000` (nm across; 2.5 mm at first, too small), `kMarkMinPx = 10`, `kPencil = IM_COL32(205, 205, 200, 235)`, `kPencilEdge = IM_COL32(0, 0, 0, 110)`.
+- Constants: `kMarkSize = 3'000'000` (nm across), `kMarkMinPx = 10`, `kPencil = IM_COL32(205, 205, 200, 255)` (opaque: the discs overlap).
 - `markReach()`: half the drawn size in nm at the current zoom, `max(kMarkSize / 2, kMarkMinPx / 2 · nmPerPixel)`: a click on what is drawn is on the mark.
-- Drawn after the bodge wires and the wire's rubber band, before the probe's tip (above the parts, the references, the selection and the pin names; under the tip, clips, hooks, leads and the refusal), for every layer and in the plain look: `s = max(map.pixels(kMarkSize), kMarkMinPx)`, stroke `t = max(2, 0.18 s)`, each stroke first in `kPencilEdge` at `t + 2`, then `kPencil` at `t`. Dot: a disc of radius `s / 4` (edge radius `+1`). Cross: `(−s/2, −s/2)–(s/2, s/2)` and `(−s/2, s/2)–(s/2, −s/2)`, around the centre. Check: a polyline `(−0.45 s, 0)`, `(−0.15 s, 0.35 s)`, `(0.45 s, −0.4 s)` (y down).
+- Drawn after the bodge wires and the wire's rubber band, before the probe's tip (above the parts, the references, the selection and the pin names; under the tip, clips, hooks, leads and the refusal), for every layer and in the plain look, at `s = max(map.pixels(kMarkSize), kMarkMinPx)` px across. `WaxStroke` draws a quadratic curve as discs (12 segments) every quarter of its width, the width tapering from one end to the other and varied ±8 % every third disc; `Wobble(seed, i)` gives the stable noise, the seed from the mark's place. `DrawPencilMark` tilts the mark by up to ±0.18 rad and scales it ±6 %, then draws in unit coordinates: the dot one dab (`(−0.07, −0.03)` to `(0.08, −0.01)`, 0.38 to 0.34 wide), the check two strokes (`(−0.42, 0)` to `(−0.12, 0.34)`, then to `(0.46, −0.42)` thinning to 0.08), the cross two curved strokes corner to corner (0.18 to 0.11).
 - A double-click on bare Board fits the view (`input`, `IsMouseDoubleClicked && !picked`); not under the pencil, where two quick clicks change a mark from dot to cross.
 - The switches: `buttonAt` (in `input`) already returns none under `Owner::Puller`; it returns none under `Owner::Pencil` too, so a left press there is a Board click (`pressed_`), a slide does not move and a right-click toggles no latch. A press on a Board key then reports `BoardPress{nullopt}`, so it gives the PC keys back to the bench, as under the puller (`main.cpp`'s press routing).
 - `takeRightClick()`: `std::optional<Point>`, set in `input` where the right button is released without dragging over the panel (the same test as the latch toggle), to the Board point under the cursor; taken each frame by `main.cpp` whoever owns the focus (discarded unless the pencil). Right-drag pans from the first pixel while the release test uses ImGui's drag threshold, so a shaky right-click may pan a pixel or two and still clear: accepted.

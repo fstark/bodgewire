@@ -11,18 +11,19 @@ A repair is a search: the player probes chip after chip and keeps in their head 
 | Question | Decision |
 |---|---|
 | The tool | a white grease pencil (a china marker) on the shelf, among the Board's tools (the row) |
-| A click | on a chip or anywhere on the Board puts a grey mark there; a click on a mark changes its shape: dot, cross, checkmark, no mark; Shift-click or right-click clears it (the row) |
+| A click | on a chip or anywhere on the Board puts a grey mark there; a click on a mark changes its shape: dot, checkmark, cross, no mark (the order changed by the user after the first build); Shift-click or right-click clears it (the row) |
 | Visible | always, whatever the tool or layer (the row) |
 | Its key | `G` (grease pencil) |
 | A mark on a chip | where the click was; a mark on a chip's body goes away when that chip is swapped with the puller (the real mark would leave with the chip); a mark anywhere else stays |
 | Size | in Board millimetres, growing with the zoom; the user unsure 1.5 mm is large enough (below) |
+| After the first build | the pencil first among the Board's tools, before the probe; the marks smaller (4 mm was too large); the shelf's drawing without its check, the check drawn only while the pencil is held (as the scope's trace when out); the marks more organic, not sharp-edged |
 | A switch under the pencil | a click marks it and never presses it (as the puller: a switch is only a place to mark) |
 
 Decided while designing (2026-11-18), for the user to overrule:
 
-- **Size**: 4 mm across (two thirds of a DIP's body), never under 10 px so it reads zoomed out; designed at 2.5 mm, which read small on the first screenshot. One constant (`kMarkSize`), to set again after the user sees it.
-- **The colour**: a light grey `(205, 205, 200)` stroke over a faint dark edge, so it reads on the green, on a black chip and on the tin pads. Not the selection's near-white nor any gold.
-- **Strokes**: a dot (a filled disc, half the size across), a cross (two strokes corner to corner), a checkmark (a short stroke down, a long one up to the right).
+- **Size**: 3 mm across (half a DIP's body), never under 10 px so it reads zoomed out; designed at 2.5 mm (small on the first screenshot), built at 4 mm (too large for the user). One constant (`kMarkSize`).
+- **The colour**: an opaque light grey `(205, 205, 200)`, no edge. Not the selection's near-white nor any gold.
+- **Strokes**, as a hand draws them: each a slightly curved line that tapers, round at both ends, its edge a little uneven, the whole mark tilted up to about 10° and sized ±6 % by its place (the same every frame, different from mark to mark). A dot is a short dab, a checkmark a short stroke down and a long one up to the right thinning out, a cross two strokes corner to corner.
 - **On a mark**: a click within the drawn mark's half-size of its centre; of two overlapping marks the nearest. A click off every mark puts a new dot, even next to one.
 - **A chip's body**: the courtyard off its pads (`BoardScene::bodyAt`, as for the switches). A mark on a pin's pad belongs to the Board: it stays when the chip is swapped.
 - **No selection**: a pencil click does not select the chip (the selection's gold and wiring would cover what was just marked), and does not move the probe.

@@ -8,7 +8,8 @@ Spec: [PENCIL.md](PENCIL.md). Design: [PENCIL_DESIGN.md](PENCIL_DESIGN.md).
 |-------|-------------|--------|
 | 1 | Pencil marks, `Owner::Pencil` | b20ba46 |
 | 2 | The tool on the shelf and the Board, `--mark` | 387e0ec |
-| 3 | Glossary, recipe, ARCHITECTURE | this commit |
+| 3 | Glossary, recipe, ARCHITECTURE | 6146090 |
+| 4 | The user's first look: pencil first, smaller, organic marks, dot-check-cross | this commit |
 
 P6h implemented 2026-11-18, user check pending.
 
@@ -18,3 +19,4 @@ P6h implemented 2026-11-18, user check pending.
 - Phase 2: the mark enlarged to **4 mm** across (the design's 2.5 mm read small at the Stopwatch's fit zoom: the dot on U9 lost in the part number), the dot a quarter of the size in radius, the stroke 0.18 of it; the floor stays 10 px. Screenshots viewed: the Stopwatch with `--focus pencil --mark dot:88.5:70.6,check:65.69:116.71,cross:76:96,check:111.5:70.6` (a dot on U9's body, a check on `START` (SW1), a cross on bare Board between U5 and U6, a check on U10), the shelf's pencil framed in gold; the same with `--look plain`; the BW-80 at fit zoom (`check:29.2:63.5,cross:61:127,dot:31.7:127`: IC3, IC16, IC14), every mark readable beside the TV and keyboard; `--focus wire` with the power on: `Power off first` still fits after the extra cell. `--mark blob:1:2` and `--mark dot:1` give the usage; `--mark` on `tests/data/bw1_bench.bwn` (no Board): `no Board to mark`, exit 2. Clicks (a dot, cross, check, none; Shift-click and right-click; a swap clearing a chip's marks; a switch not pressed; no fit on a double-click) are checked by reading the code only: the agent cannot drive the mouse. User check.
 - Phase 2 checks: full release suite 1442 passed (99 s); debug `-R "pencil marks|focus"` 13 passed. Speed gate: the 110 with every instrument and two marks 1.00×, UI 0.6 ms.
 - Phase 3: GLOSSARY (**Pencil Mark**, the Shelf's tools, Focus's red), ADD_INSTRUMENT's Focus row (a Board tool), the spec and design at 4 mm, ARCHITECTURE.
+- Phase 4 (the user, 2026-11-18): the pencil before the probe; the shelf drawing's check only while held; dot → check → cross; marks 3 mm (4 mm too large); strokes drawn as discs along tapering quadratic curves with round ends and a slightly uneven edge, each mark tilted and sized a little by its place, opaque, the dark edge dropped (overlapping discs would have stacked it to black). Screenshots viewed: the Stopwatch with two of each shape (on chips, bare Board, `START`), the shelf with and without the pencil held. Full release suite 1442 passed; debug `-R "pencil marks|focus"` 13 passed; the 110 with every instrument 1.00×, UI 0.7 ms.

@@ -48,15 +48,15 @@ constexpr std::array<Entry, 19> kItems{{
     {Item::Speed, "Speed: real time or as fast as possible", nullptr, 1},
     {Item::Layer, "Copper layer seen and worked on", "L", 1},
     {Item::Fit, "Fit the Board in view", "F", 1},
+    {Item::Pencil,
+     "Grease pencil: mark the Board; click a mark: dot, check, cross, none; shift- or "
+     "right-click: clear",
+     "G", 1},
     {Item::Probe, "Logic probe: touch any copper; HIGH, LOW, PULSE", "P", 2},
     {Item::Puller, "Chip puller: swap a chip", "S", 1},
     {Item::Iron, "Soldering iron: mend a crack, resolder a chip pin", "M", 1},
     {Item::Cutters, "Cutters: cut a trace or a wire", "K", 1},
     {Item::Wire, "Wire: solder a bodge wire between two pins", "W", 1},
-    {Item::Pencil,
-     "Grease pencil: mark the Board; click a mark: dot, cross, check, none; shift- or "
-     "right-click: clear",
-     "G", 1},
     {Item::Tv, "TV", nullptr, 1},
     {Item::Keyboard, "Keyboard", nullptr, 1},
     {Item::Analyzer, "Logic Analyzer: click a chip pin; shift-click: its whole bus", "C", 1},
@@ -67,7 +67,7 @@ constexpr std::array<Entry, 19> kItems{{
     {Item::Brief, "Puzzle brief", nullptr, 1},
 }};
 
-bool GroupEnds(Item item) { return item == Item::Fit || item == Item::Pencil; }
+bool GroupEnds(Item item) { return item == Item::Fit || item == Item::Wire; }
 
 std::optional<Owner> OwnerOf(Item item) {
     switch (item) {
@@ -278,6 +278,8 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
             why = "No Board";
             if (IsInstrument(*owner)) {
                 look.lit = focus.out(*owner);
+            } else if (*owner == Owner::Pencil) {
+                look.lit = focus.owner() == Owner::Pencil;  // held: the check drawn
             }
         }
         const bool unpowered = owner && hasBoard && NeedsPowerOff(*owner) && powered;

@@ -15,12 +15,12 @@ enum class Item : std::uint8_t {
     Speed,
     Layer,
     Fit,
+    Pencil,  // the grease pencil (P6h), the first of the Board's tools
     Probe,
     Puller,
     Iron,
     Cutters,
     Wire,
-    Pencil,  // the grease pencil (P6h)
     Tv,
     Keyboard,
     Analyzer,
