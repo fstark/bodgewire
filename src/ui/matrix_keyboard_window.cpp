@@ -61,7 +61,6 @@ constexpr ImU32 kGold = IM_COL32(212, 180, 98, 255);        // on the black
 constexpr ImU32 kGoldOnKey = IM_COL32(234, 210, 128, 255);  // on the blue
 constexpr ImU32 kGraphicInk = IM_COL32(214, 176, 48, 255);
 constexpr ImU32 kGraphicFrame = IM_COL32(228, 230, 236, 255);
-constexpr ImU32 kGraphicLine = IM_COL32(12, 14, 30, 255);
 constexpr ImU32 kBreak = IM_COL32(56, 70, 168, 255);
 constexpr ImU32 kCream = IM_COL32(236, 230, 212, 255);
 constexpr ImU32 kCreamShade = IM_COL32(214, 207, 186, 255);
@@ -297,7 +296,7 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
 namespace {
 
 // A ZX80 graphic's quarters (top left, top right, bottom left, bottom right): paper (the key's
-// blue), ink (gold) or grey (a gold and black check), as printed on its key.
+// blue), ink (gold) or grey (a check of the two), as printed on its key.
 enum class Quarter : std::uint8_t { Paper, Ink, Grey };
 
 std::array<Quarter, 4> GraphicOf(std::string_view legend) {
@@ -325,18 +324,14 @@ std::array<Quarter, 4> GraphicOf(std::string_view legend) {
     return {P, P, P, P};
 }
 
-// A graphic `s` square at `at`: a pale frame, a dark line inside it, the quarters.
+// A graphic `s` square at `at`: a pale frame around the quarters.
 void DrawGraphic(ImDrawList& list, std::string_view legend, ImVec2 at, float s) {
     const float frame = std::max(1.0f, std::round(s * 0.07f));
     s = std::round(s);
     list.AddRectFilled(at, {at.x + s, at.y + s}, kGraphicFrame);
-    const ImVec2 in{at.x + frame, at.y + frame};
-    const float inner = s - 2 * frame;
-    list.AddRectFilled(in, {in.x + inner, in.y + inner}, kGraphicLine);
-    const float line = std::max(1.0f, s * 0.04f);
-    // Whole pixels, so the quarters meet without seams; the check 6 by 6 across the square.
-    const float x0 = std::round(in.x + line), y0 = std::round(in.y + line);
-    const float x2 = std::round(in.x + inner - line), y2 = std::round(in.y + inner - line);
+    // Whole pixels, so the quarters meet without seams.
+    const float x0 = at.x + frame, y0 = at.y + frame;
+    const float x2 = at.x + s - frame, y2 = at.y + s - frame;
     const float xs[3] = {x0, std::round((x0 + x2) / 2), x2};
     const float ys[3] = {y0, std::round((y0 + y2) / 2), y2};
     list.AddRectFilled({x0, y0}, {x2, y2}, kKeyTop);
@@ -346,10 +341,9 @@ void DrawGraphic(ImDrawList& list, std::string_view legend, ImVec2 at, float s) 
         if (quarters[q] == Quarter::Ink) {
             list.AddRectFilled(qa, qb, kGraphicInk);
         } else if (quarters[q] == Quarter::Grey) {
-            list.AddRectFilled(qa, qb, kGraphicLine);
             for (int y = 0; y < 3; ++y) {
                 for (int x = 0; x < 3; ++x) {
-                    if ((x + y) % 2 == 0) {
+                    if ((x + y + 3 * (q % 2 + q / 2)) % 2 == 0) {  // across quarters
                         const auto step = [](float from, float to, int k) {
                             return std::round(from + (to - from) * k / 3);
                         };

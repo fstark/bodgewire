@@ -21,7 +21,7 @@ P5x's membrane was a first sketch, and it was off in ways that looked ugly next 
 - **Colours**: mid-blue keys (about `(30, 82, 200)`) with a gentle gradient, and a soft black panel `(26, 24, 29)`. Letters are pale blue-white and keywords white. Shifted words above the digits and EDIT are muted gold. Symbols on the keys and SHIFT's legend are a paler gold. BREAK is dark blue on the black.
 - **Legends**: keywords at 0.22 of the pitch, centred over their key. Digits are centred on the key, letters at its lower left. TO is now above the 4, not on it.
 - **Arrows**: hollow block arrows outlined in gold, above 5–8, clear of the keys.
-- **Graphics**: each key has its own mosaic in a pale frame with a dark line inside: Q ▌, W ▄, E ▘, R ▝, T grey bottom half, A grey, S ▞, D ▖, F ▗, G grey top half (grey is a gold and black check).
+- **Graphics**: each key has its own mosaic in a pale frame (the dark line inside it on the photograph is shadow or dirt, the user: none drawn): Q ▌, W ▄, E ▘, R ▝, T grey bottom half, A grey, S ▞, D ▖, F ▗, G grey top half (grey is a check of gold and the key's blue).
 - The cream top lip leaves room for the put-away ×. The window keeps its proportions (`KeepAspect`), now 12.05 × 5.55 pitches.
 
 ## Checked
