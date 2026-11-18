@@ -968,6 +968,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 cuts.push_back({cut.layer, cut.at});
             }
             boardView.setCuts(cuts);
+            std::vector<CutMark> cracks;
+            for (const Crack& crack : machine->cracks()) {
+                cracks.push_back({crack.layer, crack.at});
+            }
+            boardView.setCracks(cracks);
             std::vector<BodgeWire> wires;
             for (const WireEnds& w : machine->wires()) {
                 wires.push_back(w.wire);

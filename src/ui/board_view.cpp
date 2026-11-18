@@ -195,13 +195,18 @@ void DrawSegment(ImDrawList& list, ImVec2 a, ImVec2 b, float width, ImU32 colour
     list.AddCircleFilled(b, width / 2, colour);
 }
 
-void DrawTrace(ImDrawList& list, const Mapper& map, const Trace& trace, ImU32 colour) {
+void DrawTrace(ImDrawList& list, const Mapper& map, const Trace& trace, ImU32 colour,
+               std::span<const CutMark> cracks) {
     if (map.offPanel(trace.start, trace.end, trace.width) && !trace.mid) {
         return;
     }
     const float width = std::max(1.0f, map.pixels(trace.width));
     if (!trace.mid) {
-        DrawSegment(list, map(trace.start), map(trace.end), width, colour);
+        const auto [atStart, atEnd] = TraceCracks(trace, cracks);
+        DrawStraightTrace(list, map(trace.start), map(trace.end), width, colour,
+                          atStart ? std::optional(map(*atStart)) : std::nullopt,
+                          atEnd ? std::optional(map(*atEnd)) : std::nullopt,
+                          map.pixels(kCrackWidth));
         return;
     }
     const auto points = ArcPolyline(trace.start, *trace.mid, trace.end);
@@ -678,7 +683,7 @@ void BoardView::draw(ImVec2 size) {
             if (trace.layer == layer) {
                 const bool on = lit && scene_->traceNet(t) == lit;
                 if (on || !litOnly) {
-                    DrawTrace(list, map, trace, on ? litColour : colour);
+                    DrawTrace(list, map, trace, on ? litColour : colour, cracks_);
                 }
             }
         }
@@ -747,7 +752,7 @@ void BoardView::draw(ImVec2 size) {
     };
     if (real) {
         // The Board as the real one; the Net under the cursor lit over the mask.
-        DrawUseBase(list, look, *scene_, active_, glowing);
+        DrawUseBase(list, look, *scene_, active_, glowing, cracks_);
         drawPads();
         std::vector<bool> own(board.components.size(), false);
         for (const LedTag& led : leds_) {
@@ -759,7 +764,7 @@ void BoardView::draw(ImVec2 size) {
         DrawUseParts(list, look, *scene_, own, chip(), 1.0f);
         // The lit wiring above the parts: a see-through body must not darken it.
         if (!glowing.empty()) {
-            DrawUseBase(list, look, *scene_, active_, glowing, true);
+            DrawUseBase(list, look, *scene_, active_, glowing, cracks_, true);
         }
         drawTraces(inactive, kInactiveAlpha, 1.0f, true);  // bright gold on both layers
         drawTraces(active_, 1.0f, 1.0f, true);
@@ -777,14 +782,14 @@ void BoardView::draw(ImVec2 size) {
                 const auto net = scene_->traceNet(t);
                 const bool selected = net && (net == lit || std::ranges::contains(glowing, *net));
                 if (board.traces[t].layer == layer && !selected) {
-                    DrawTrace(list, map, board.traces[t], colour);
+                    DrawTrace(list, map, board.traces[t], colour, cracks_);
                 }
             }
         }
         for (std::size_t t = 0; t < board.traces.size(); ++t) {
             const auto net = scene_->traceNet(t);
             if (net && std::ranges::contains(glowing, *net)) {
-                DrawTrace(list, map, board.traces[t], kChipGold);
+                DrawTrace(list, map, board.traces[t], kChipGold, cracks_);
             }
         }
         drawTraces(inactive, kInactiveAlpha, 1.0f, true);

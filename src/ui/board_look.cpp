@@ -535,10 +535,71 @@ std::optional<Box> SilkBox(const BoardScene& scene, std::size_t k) {
     return box.grown(-250'000);
 }
 
+constexpr double kCrackReach = 60'000;  // nm beyond the half width: CrackBoard's margin is 50 µm
+
+// `crack` if it lies on the line from `from` through `end`, just beyond `end`.
+std::optional<Point> CrackBeyond(const Trace& trace, Point from, Point end,
+                                 std::span<const CutMark> cracks) {
+    const double dx = static_cast<double>(end.x - from.x);
+    const double dy = static_cast<double>(end.y - from.y);
+    const double length = std::hypot(dx, dy);
+    if (length == 0) {
+        return std::nullopt;
+    }
+    for (const CutMark& crack : cracks) {
+        if (crack.layer != trace.layer) {
+            continue;
+        }
+        const double px = static_cast<double>(crack.at.x - end.x);
+        const double py = static_cast<double>(crack.at.y - end.y);
+        const double along = (px * dx + py * dy) / length;
+        const double across = std::abs(px * dy - py * dx) / length;
+        if (along > 0 && along <= static_cast<double>(trace.width) / 2 + kCrackReach &&
+            across < 1'000) {
+            return crack.at;
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
+std::pair<std::optional<Point>, std::optional<Point>> TraceCracks(const Trace& trace,
+                                                                  std::span<const CutMark> cracks) {
+    if (trace.mid || cracks.empty()) {
+        return {};
+    }
+    return {CrackBeyond(trace, trace.end, trace.start, cracks),
+            CrackBeyond(trace, trace.start, trace.end, cracks)};
+}
+
+void DrawStraightTrace(ImDrawList& list, ImVec2 a, ImVec2 b, float width, ImU32 colour,
+                       std::optional<ImVec2> crackAtA, std::optional<ImVec2> crackAtB,
+                       float crackPx) {
+    // A cracked end moves to its crack, less half the crack's width, and stays square. Under
+    // kCrackMinPx the crack is not drawn: both ends meet at it (a thick line's square end has no
+    // antialiased fringe, so no seam shows; overlapping would double the side fringes).
+    const float half = crackPx >= kCrackMinPx ? crackPx / 2 : 0.0f;
+    const auto shortOf = [half](ImVec2 from, ImVec2 crack) {
+        const float dx = crack.x - from.x;
+        const float dy = crack.y - from.y;
+        const float length = std::hypot(dx, dy);
+        return length <= half ? from
+                              : ImVec2{crack.x - dx / length * half, crack.y - dy / length * half};
+    };
+    const ImVec2 start = crackAtA ? shortOf(b, *crackAtA) : a;
+    const ImVec2 end = crackAtB ? shortOf(a, *crackAtB) : b;
+    list.AddLine(start, end, colour, width);
+    if (!crackAtA) {
+        list.AddCircleFilled(start, width / 2, colour);
+    }
+    if (!crackAtB) {
+        list.AddCircleFilled(end, width / 2, colour);
+    }
+}
+
 void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, Layer active,
-                 std::span<const NetId> glowing, bool glowOnly) {
+                 std::span<const NetId> glowing, std::span<const CutMark> cracks, bool glowOnly) {
     std::vector<ImVec2> outline;
     for (const Point p : scene.outline()) {
         outline.push_back(map(p));
@@ -566,7 +627,11 @@ void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, 
                 list.AddCircleFilled(map(b), width / 2, colour);
             };
             if (!trace.mid) {
-                segment(trace.start, trace.end);
+                const auto [atStart, atEnd] = TraceCracks(trace, cracks);
+                DrawStraightTrace(list, map(trace.start), map(trace.end), width, colour,
+                                  atStart ? std::optional(map(*atStart)) : std::nullopt,
+                                  atEnd ? std::optional(map(*atEnd)) : std::nullopt,
+                                  map.pixels(kCrackWidth));
                 continue;
             }
             const auto points = ArcPolyline(trace.start, *trace.mid, trace.end);

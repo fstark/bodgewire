@@ -16,17 +16,13 @@
 #include "instruments/oscilloscope.hpp"
 #include "parts/catalogue.hpp"
 #include "session/session.hpp"
+#include "ui/board_look.hpp"
 #include "view/board_scene.hpp"
 #include "view/focus.hpp"
 #include "view/pencil_marks.hpp"
 #include "view/viewport.hpp"
 
 namespace bw {
-
-struct CutMark {
-    Layer layer;
-    Point at;  // nm
-};
 
 // Analyzer Channel colours, readable on the green Board; shared with the Analyzer window.
 inline constexpr std::array<ImU32, 8> kChannelColours{
@@ -146,6 +142,10 @@ public:
     // the keys (P6g).
     void setKeypadGold(bool gold) { keypadGold_ = gold; }
     void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
+    // The Puzzle's cracks: their Traces drawn with square ends, a hairline apart.
+    void setCracks(std::span<const CutMark> cracks) {
+        cracks_.assign(cracks.begin(), cracks.end());
+    }
     // The grease pencil's marks (P6h), drawn whatever the tool or layer.
     void setMarks(std::span<const PencilMark> marks) { marks_.assign(marks.begin(), marks.end()); }
     // Half a mark's drawn size in nm at the current zoom: a click that near is on the mark.
@@ -204,6 +204,7 @@ private:
     std::optional<BoardPress> press_;
     bool keypadGold_ = false;
     std::vector<CutMark> cuts_;
+    std::vector<CutMark> cracks_;
     std::vector<PencilMark> marks_;
     std::optional<Point> rightClick_;
     std::vector<BodgeWire> bodgeWires_;

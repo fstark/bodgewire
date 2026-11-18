@@ -171,7 +171,7 @@ A Net joining supply pins of different voltages, such as VCC shorted to GND; it 
 _Avoid_: Shorted supply
 
 **Broken Trace**:
-A Fault where a Trace is cracked, splitting one Net in two.
+A Fault where a Trace is cracked, splitting one Net in two. Drawn as a 12 µm hairline across the copper, square-edged, seen only near full zoom (the user, 2026-11-18): it is found with the probe, not by eye.
 
 **Intermittent Fault**:
 A Fault that only sometimes breaks the connection, such as a loose Socket contact or a cracked Joint.
