@@ -64,3 +64,17 @@ TEST_CASE("manuals: every Machine's manuals pass their checks", "[machines]") {
         }
     }
 }
+
+TEST_CASE("manuals: the Counter's explain how it works", "[machines]") {
+    const auto dir = test::MachineDir("counter");
+    const Markdown user = ParseMarkdown(Read(dir / "manuals" / "user.md"));
+    const Markdown service = ParseMarkdown(Read(dir / "manuals" / "service.md"));
+    for (const char* heading : {"What it does", "How it works"}) {
+        INFO(heading);
+        CHECK_FALSE(Section(user, heading).empty());
+    }
+    for (const char* heading : {"Components", "Test points", "Troubleshooting"}) {
+        INFO(heading);
+        CHECK_FALSE(Section(service, heading).empty());
+    }
+}

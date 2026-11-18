@@ -52,5 +52,7 @@ Crack placement (P4e) skips copper too close to a pad, via, corner or junction: 
 
 ## Manuals
 
-- User: What it does (one paragraph: power `J1`, `D1` blinks about once a second).
-- Service: Components (every reference).
+Written to STYLE's Manuals rules (P6i, the pilot):
+
+- User: What it does (a welcome: `D1` blinks about once a second; five counters divide 1 MHz by 1 048 576); How it works (the goal, the clock, one chip counting 0–15, the five chips as an odometer with `CARRY1`–`CARRY4`, the LED, the unused pins in a table).
+- Service: Components (every reference); Test points (a table of probe readings on a working board, checked with `bw run --probe` at 1 s, 1.5 s and 2 s); Troubleshooting (the LED never changes, the count stops, the LED blinks too fast: ordered checks, never naming a fault).
