@@ -42,7 +42,7 @@ struct Entry {
 };
 
 // The fixed order, the same on every Machine; a group ends at each nullptr name.
-constexpr std::array<Entry, 18> kItems{{
+constexpr std::array<Entry, 19> kItems{{
     {Item::Power, "Power", nullptr, 1},
     {Item::Run, "Run / pause", nullptr, 1},
     {Item::Speed, "Speed: real time or as fast as possible", nullptr, 1},
@@ -53,6 +53,10 @@ constexpr std::array<Entry, 18> kItems{{
     {Item::Iron, "Soldering iron: mend a crack, resolder a chip pin", "M", 1},
     {Item::Cutters, "Cutters: cut a trace or a wire", "K", 1},
     {Item::Wire, "Wire: solder a bodge wire between two pins", "W", 1},
+    {Item::Pencil,
+     "Grease pencil: mark the Board; click a mark: dot, cross, check, none; shift- or "
+     "right-click: clear",
+     "G", 1},
     {Item::Tv, "TV", nullptr, 1},
     {Item::Keyboard, "Keyboard", nullptr, 1},
     {Item::Analyzer, "Logic Analyzer: click a chip pin; shift-click: its whole bus", "C", 1},
@@ -63,7 +67,7 @@ constexpr std::array<Entry, 18> kItems{{
     {Item::Brief, "Puzzle brief", nullptr, 1},
 }};
 
-bool GroupEnds(Item item) { return item == Item::Fit || item == Item::Wire; }
+bool GroupEnds(Item item) { return item == Item::Fit || item == Item::Pencil; }
 
 std::optional<Owner> OwnerOf(Item item) {
     switch (item) {
@@ -77,6 +81,8 @@ std::optional<Owner> OwnerOf(Item item) {
         return Owner::Cutters;
     case Item::Wire:
         return Owner::Wire;
+    case Item::Pencil:
+        return Owner::Pencil;
     case Item::Analyzer:
         return Owner::Analyzer;
     case Item::Scope:
@@ -168,13 +174,14 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
     // Keys, as the toolbar's before (the typing modes take key events before ImGui).
     if (!io.WantTextInput) {
         if (hasBoard) {
-            constexpr std::array<std::pair<ImGuiKey, Owner>, 6> kTools{
+            constexpr std::array<std::pair<ImGuiKey, Owner>, 7> kTools{
                 {{ImGuiKey_P, Owner::Probe},
                  {ImGuiKey_S, Owner::Puller},
                  {ImGuiKey_M, Owner::Iron},
                  {ImGuiKey_R, Owner::Iron},
                  {ImGuiKey_K, Owner::Cutters},
-                 {ImGuiKey_W, Owner::Wire}}};
+                 {ImGuiKey_W, Owner::Wire},
+                 {ImGuiKey_G, Owner::Pencil}}};
             for (const auto& [key, owner] : kTools) {
                 if (ImGui::IsKeyPressed(key, false)) {
                     focus.take(owner);

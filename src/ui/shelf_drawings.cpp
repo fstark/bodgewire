@@ -210,6 +210,21 @@ void Wire(Pen& p) {
     p.line(48, 44, 51, 49, kCopper, 2);
 }
 
+void Pencil(Pen& p) {
+    // A white china marker, paper-wrapped, diagonal as the iron: its wax tip to the upper left,
+    // the pull string trailing, a grey check scribbled below left.
+    constexpr ImU32 kWax = IM_COL32(215, 215, 210, 255);
+    p.line(46, 46, 22, 22, kWhite, 9);
+    for (float t = 26; t < 44; t += 5) {  // the paper's spiral
+        p.line(t - 3, t + 3, t + 3, t - 3, kGrey, 1.2f);
+    }
+    p.line(22, 22, 14, 14, kWax, 5);
+    p.disc(13.5f, 13.5f, 2.5f, kWax);
+    p.line(44, 40, 51, 33, kDarkMetal, 1);  // the string
+    const std::array<ImVec2, 3> check{{{8, 41}, {13, 47}, {22, 36}}};
+    p.polyline(check, kWax, 2.5f);
+}
+
 void Tv(Pen& p, const ItemLook& look) {
     // A small 1970s monitor: a cream shell, a dark front, the screen high, a strip of knobs.
     p.box(7, 6, 49, 47, IM_COL32(220, 214, 194, 255), 4);
@@ -395,6 +410,9 @@ void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLoo
         break;
     case Item::Wire:
         Wire(p);
+        break;
+    case Item::Pencil:
+        Pencil(p);
         break;
     case Item::Tv:
         Tv(p, look);

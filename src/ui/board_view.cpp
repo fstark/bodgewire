@@ -4,6 +4,7 @@
 #include "ui/board_look.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cfloat>
 #include <cmath>
 #include <numbers>
@@ -51,6 +52,10 @@ constexpr ImU32 kSolder = IM_COL32(205, 205, 210, 255);
 constexpr ImU32 kCutMark = IM_COL32(20, 20, 20, 255);
 constexpr std::int64_t kCutHalf = 300'000;  // nm: half the X's arm
 constexpr float kCutMinPx = 4;
+constexpr std::int64_t kMarkSize = 4'000'000;  // nm across: a grease pencil's mark (P6h)
+constexpr float kMarkMinPx = 10;
+constexpr ImU32 kPencil = IM_COL32(205, 205, 200, 235);
+constexpr ImU32 kPencilEdge = IM_COL32(0, 0, 0, 110);
 constexpr ImU32 kWireInsulation = IM_COL32(120, 170, 255, 255);
 constexpr std::int64_t kWireWidth = 300'000;
 constexpr std::int64_t kBridgeWidth = 600'000;  // nm
@@ -545,6 +550,33 @@ void DrawTactile(ImDrawList& list, const LookMap& look, const BoardComponent& co
     list.AddCircleFilled({centre.x - r * 0.35f, centre.y - r * 0.35f}, r * 0.3f, kPlungerLight);
 }
 
+// A grease pencil's mark of `size` px across, centred on `c`: each stroke over a faint dark edge
+// so it reads on the green, a black chip and the tin.
+void DrawPencilMark(ImDrawList& list, ImVec2 c, float size, MarkShape shape) {
+    const float t = std::max(2.0f, 0.18f * size);
+    const float h = size / 2;
+    for (const bool edge : {true, false}) {
+        const ImU32 colour = edge ? kPencilEdge : kPencil;
+        const float width = edge ? t + 2 : t;
+        switch (shape) {
+        case MarkShape::Dot:
+            list.AddCircleFilled(c, size / 4 + (edge ? 1.0f : 0.0f), colour);
+            break;
+        case MarkShape::Cross:
+            list.AddLine({c.x - h, c.y - h}, {c.x + h, c.y + h}, colour, width);
+            list.AddLine({c.x - h, c.y + h}, {c.x + h, c.y - h}, colour, width);
+            break;
+        case MarkShape::Check: {
+            const std::array<ImVec2, 3> points{{{c.x - 0.45f * size, c.y},
+                                                {c.x - 0.15f * size, c.y + 0.35f * size},
+                                                {c.x + 0.45f * size, c.y - 0.4f * size}}};
+            list.AddPolyline(points.data(), 3, colour, 0, width);
+            break;
+        }
+        }
+    }
+}
+
 }  // namespace
 
 void BoardView::draw(ImVec2 size) {
@@ -954,6 +986,9 @@ void BoardView::draw(ImVec2 size) {
         list.AddLine(map(*wireStart_), ImGui::GetIO().MousePos, kWireInsulation, wireWidth);
         list.AddCircleFilled(map(*wireStart_), wireBlob, kSolder);
     }
+    for (const PencilMark& mark : marks_) {
+        DrawPencilMark(list, map(mark.at), std::max(map.pixels(kMarkSize), kMarkMinPx), mark.shape);
+    }
     if (tip_) {
         const float radius = std::max(4.0f, map.pixels(400'000));
         list.AddCircleFilled(map(*tip_), radius, kProbeRed);
@@ -1103,8 +1138,9 @@ void BoardView::input(ImVec2 origin) {
     }
     const auto buttonAt = [&]() -> std::optional<std::size_t> {
         const auto body = scene_->bodyAt(at);
-        // Not under the Swap tool: a click on a switch body swaps it (P5i).
-        if (body && owner_ != Owner::Puller &&
+        // Not under the Swap tool: a click on a switch body swaps it (P5i); nor the pencil: it
+        // marks it (P6h).
+        if (body && owner_ != Owner::Puller && owner_ != Owner::Pencil &&
             std::ranges::any_of(switches_,
                                 [&](const SwitchTag& b) { return b.component == *body; })) {
             return body;
@@ -1115,6 +1151,7 @@ void BoardView::input(ImVec2 origin) {
         io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Right] <
             io.MouseDragThreshold * io.MouseDragThreshold) {
         latchToggle_ = buttonAt();
+        rightClick_ = at;
     }
     if (io.MouseWheel != 0) {
         viewport_.zoomAt(mouse, io.MouseWheel);
@@ -1133,7 +1170,8 @@ void BoardView::input(ImVec2 origin) {
         }
         dragging_ = false;
     }
-    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked) {
+    // Not under the pencil: two quick clicks change a mark from dot to cross.
+    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked && owner_ != Owner::Pencil) {
         fit();
     }
     if (dragging_) {
@@ -1166,6 +1204,15 @@ void BoardView::refuse(std::string reason) {
 }
 
 std::optional<BoardClick> BoardView::takeClick() { return std::exchange(click_, std::nullopt); }
+
+std::optional<Point> BoardView::takeRightClick() {
+    return std::exchange(rightClick_, std::nullopt);
+}
+
+std::int64_t BoardView::markReach() const {
+    const double nmPerPixel = 1e6 / viewport_.pixelsPerMm();
+    return std::max(kMarkSize / 2, std::llround(kMarkMinPx / 2 * nmPerPixel));
+}
 
 std::optional<BoardPress> BoardView::takePress() { return std::exchange(press_, std::nullopt); }
 

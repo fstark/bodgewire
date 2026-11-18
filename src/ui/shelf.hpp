@@ -24,7 +24,7 @@ inline constexpr float kShelfHeight = 64.0f;
 // fixed place on every Machine; what does not apply is grayed. The focus owner is framed in
 // gold (red while it cannot work), and the keyboard while it is typed on. A click on equipment
 // brings its window out and to the front, or puts it away when already in front. A short hint at
-// the right end. Also the keys P, S, M (R), K, W; C, O, V; U.
+// the right end. Also the keys P, S, M (R), K, W, G; C, O, V; U.
 class Shelf {
 public:
     void draw(Session& session, BoardView& board, Focus& focus, Speed& speed, std::uint64_t seed);

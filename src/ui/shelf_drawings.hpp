@@ -20,6 +20,7 @@ enum class Item : std::uint8_t {
     Iron,
     Cutters,
     Wire,
+    Pencil,  // the grease pencil (P6h)
     Tv,
     Keyboard,
     Analyzer,

@@ -18,6 +18,7 @@
 #include "session/session.hpp"
 #include "view/board_scene.hpp"
 #include "view/focus.hpp"
+#include "view/pencil_marks.hpp"
 #include "view/viewport.hpp"
 
 namespace bw {
@@ -145,6 +146,12 @@ public:
     // the keys (P6g).
     void setKeypadGold(bool gold) { keypadGold_ = gold; }
     void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
+    // The grease pencil's marks (P6h), drawn whatever the tool or layer.
+    void setMarks(std::span<const PencilMark> marks) { marks_.assign(marks.begin(), marks.end()); }
+    // Half a mark's drawn size in nm at the current zoom: a click that near is on the mark.
+    std::int64_t markReach() const;
+    // The Board point of a right-click (released without dragging) since the last call.
+    std::optional<Point> takeRightClick();
     void setBodgeWires(std::span<const BodgeWire> wires) {
         bodgeWires_.assign(wires.begin(), wires.end());
     }
@@ -197,6 +204,8 @@ private:
     std::optional<BoardPress> press_;
     bool keypadGold_ = false;
     std::vector<CutMark> cuts_;
+    std::vector<PencilMark> marks_;
+    std::optional<Point> rightClick_;
     std::vector<BodgeWire> bodgeWires_;
     std::vector<BodgeWire> bridges_;
     std::optional<Point> wireStart_;

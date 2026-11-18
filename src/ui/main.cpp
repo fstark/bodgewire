@@ -23,6 +23,7 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 
+#include "board/kicad_board.hpp"
 #include "machine/knob_setting.hpp"
 #include "machine/machine.hpp"
 #include "machine/press.hpp"
@@ -52,6 +53,7 @@
 #include "ui/tv_window.hpp"
 #include "view/focus.hpp"
 #include "view/machine_keys.hpp"
+#include "view/pencil_marks.hpp"
 #include "view/time_view.hpp"
 #include "view/tv_controls.hpp"
 
@@ -74,7 +76,8 @@ constexpr std::string_view kUsage =
     "[--type REF:START:TEXT] [--roms DIR] [--manual user|service|datasheet|repairs] "
     "[--tv hpos:N%,vpos:N%,bright:N%,contrast:N%,off,underscan] [--look "
     "real|plain] "
-    "[--focus probe|swap|iron|cut|wire|analyzer|scope|meter] [--keys machine] [--debug] "
+    "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] [--keys machine] "
+    "[--mark dot|cross|check:X:Y,...] [--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -103,21 +106,45 @@ struct Options {
     std::optional<Owner> focus;     // --focus: the owner at start (P6c)
     bool debug = false;             // --debug: the Debug window out (P6d)
     bool keysToMachine = false;     // --keys machine: the keys on the Machine at start (P6g)
+    std::vector<std::pair<MarkShape, Point>> mark;  // --mark: pencil marks at start (P6h)
 };
 
 std::optional<Owner> ParseOwner(std::string_view name) {
-    constexpr std::array<std::pair<std::string_view, Owner>, 8> kNames{{
+    constexpr std::array<std::pair<std::string_view, Owner>, 9> kNames{{
         {"probe", Owner::Probe},
         {"swap", Owner::Puller},
         {"iron", Owner::Iron},
         {"cut", Owner::Cutters},
         {"wire", Owner::Wire},
+        {"pencil", Owner::Pencil},
         {"analyzer", Owner::Analyzer},
         {"scope", Owner::Scope},
         {"meter", Owner::Meter},
     }};
     const auto it = std::ranges::find(kNames, name, &std::pair<std::string_view, Owner>::first);
     return it != kNames.end() ? std::optional(it->second) : std::nullopt;
+}
+
+// "check:12.5:30" (Board millimetres, as --repair cut:): a pencil mark's shape and place.
+std::optional<std::pair<MarkShape, Point>> ParseMark(std::string_view text) {
+    constexpr std::array<std::pair<std::string_view, MarkShape>, 3> kShapes{{
+        {"dot", MarkShape::Dot},
+        {"cross", MarkShape::Cross},
+        {"check", MarkShape::Check},
+    }};
+    const std::size_t first = text.find(':');
+    const std::size_t second = first == std::string_view::npos ? first : text.find(':', first + 1);
+    if (second == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const auto shape = std::ranges::find(kShapes, text.substr(0, first),
+                                         &std::pair<std::string_view, MarkShape>::first);
+    const auto x = ParseMillimetres(text.substr(first + 1, second - first - 1));
+    const auto y = ParseMillimetres(text.substr(second + 1));
+    if (shape == kShapes.end() || !x || !y) {
+        return std::nullopt;
+    }
+    return std::pair{shape->second, Point{*x, *y}};
 }
 
 std::vector<std::string> SplitCommas(std::string_view list) {
@@ -271,6 +298,14 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
             options.keysToMachine = true;
+        } else if (arg == "--mark") {
+            for (const std::string& text : SplitCommas(argv[++i])) {
+                const auto mark = ParseMark(text);
+                if (!mark) {
+                    return std::nullopt;
+                }
+                options.mark.push_back(*mark);
+            }
         } else if (arg == "--tv") {
             options.tv = ParseTvSettings(argv[++i]);
             if (!options.tv) {
@@ -464,6 +499,10 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                                 : std::nullopt);
     std::uint64_t seed = 1;
     std::optional<PinRef> wireStart;  // Wire tool: the first pin
+    PencilMarks marks;                // the grease pencil's (P6h)
+    for (const auto& [shape, at] : options.mark) {
+        marks.add({at, shape, boardView.scene()->bodyAt(at)});  // a Board: checked in main()
+    }
     Point wireStartAt{};
     std::set<std::string> latched;  // Buttons kept pressed by a right-click
     std::set<std::string> slid;     // SLIDE switches at ON, kept across power off and on
@@ -660,11 +699,14 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             const auto& pick = click->pick;
             // A click on a part selects it (its pins too, as a probe touches them); on the
             // selected part's body again, or on bare board, it deselects.
+            // Not under the pencil: the selection's gold would cover what was just marked.
             const bool body = pick && pick->hit.kind == HitKind::Component;
-            if (!click->component || (body && boardView.selected() == click->component)) {
-                boardView.deselect();
-            } else {
-                boardView.select(*click->component);
+            if (focus.owner() != Owner::Pencil) {
+                if (!click->component || (body && boardView.selected() == click->component)) {
+                    boardView.deselect();
+                } else {
+                    boardView.select(*click->component);
+                }
             }
             RepairResult result = RepairResult::Done;
             switch (focus.owner()) {
@@ -677,6 +719,9 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 if (click->component) {
                     result = session.repair(
                         SwapRepair{session.drawnBoard()->components[*click->component].reference});
+                    if (result == RepairResult::Done) {
+                        marks.swapped(*click->component);  // its marks leave with it (P6h)
+                    }
                 }
                 break;
             case Owner::Iron: {
@@ -784,6 +829,12 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 break;
             }
             case Owner::Pencil:
+                if (click->shift) {
+                    marks.clear(click->at, boardView.markReach());
+                } else {
+                    marks.click(click->at, boardView.scene()->bodyAt(click->at),
+                                boardView.markReach());
+                }
                 break;
             case Owner::Meter:
                 if (pick && AcceptsLead(LeadKind::Held, pick->hit.kind) &&
@@ -798,6 +849,10 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 boardView.refuse("Power off first");
             }
         }
+        if (const auto at = boardView.takeRightClick(); at && focus.owner() == Owner::Pencil) {
+            marks.clear(*at, boardView.markReach());
+        }
+        boardView.setMarks(marks.marks());
         const auto tip = session.probeTip();
         boardView.setProbeTip(tip ? std::optional(tip->at) : std::nullopt);
         boardView.setBlobs(session.blobs());
@@ -1153,6 +1208,11 @@ int main(int argc, char** argv) {
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
+    }
+    if (!options->mark.empty() && !session.machine()) {
+        std::println(stderr, "bw_ui: no Board to mark");
+        std::println(stderr, "{}", kUsage);
+        return kExitUsage;
     }
     if (options->keysToMachine && session.keyboards().empty() &&
         session.matrixKeyboards().empty() && session.switchKeys().empty() &&
