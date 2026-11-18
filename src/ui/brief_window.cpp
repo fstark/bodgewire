@@ -28,6 +28,7 @@ void DrawBrief(bool& open, const Loaded& loaded, std::optional<ImVec2> corner) {
         return;
     }
     if (corner) {
+        OnBench();
         ImGui::SetNextWindowPos({corner->x + kInset, corner->y + kInset}, ImGuiCond_Always);
     } else {
         PlaceNext(BenchObject::Brief, {kWidth, 0});

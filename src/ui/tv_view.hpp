@@ -11,30 +11,34 @@
 
 namespace bw {
 
-// TvPicture → streaming SDL texture, drawn by the TV window (P6d), through the monitor's tone
-// (P6f).
+// TvPicture → a GPU texture, drawn by the TV window (P6d), through the monitor's tone (P6f);
+// uploaded in the frame's copy pass (P6j).
 class TvView {
 public:
-    explicit TvView(SDL_Renderer* renderer);
+    explicit TvView(SDL_GPUDevice* device);
     ~TvView();
     TvView(const TvView&) = delete;
     TvView& operator=(const TvView&) = delete;
 
-    void show(const TvPicture& picture);  // keeps the frame, uploads it through the tone
-    void setTone(TvTone tone);            // a change uploads the kept frame again
+    void show(const TvPicture& picture);          // keeps the frame, uploads it through the tone
+    void setTone(TvTone tone);                    // a change uploads the kept frame again
+    void upload(SDL_GPUCommandBuffer* commands);  // what changed, before the frame's draws
     int lines() const { return lines_; }  // the last locked frame's line count, 0 before one
     ImTextureID texture() const {
         return static_cast<ImTextureID>(reinterpret_cast<std::uintptr_t>(texture_));
     }
 
 private:
-    void upload();
+    void fill();
 
-    SDL_Texture* texture_;
+    SDL_GPUDevice* device_;
+    SDL_GPUTexture* texture_;
+    SDL_GPUTransferBuffer* transfer_;
     std::vector<float> cells_;          // the shown frame
     std::vector<std::uint8_t> pixels_;  // RGBA
     TvTone tone_;
     int lines_ = 0;
+    bool dirty_ = false;
 };
 
 }  // namespace bw

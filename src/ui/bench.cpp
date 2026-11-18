@@ -3,6 +3,8 @@
 #include <array>
 #include <cfloat>
 
+#include <imgui_internal.h>
+
 #include "ui/shelf.hpp"
 
 namespace bw {
@@ -15,7 +17,11 @@ constexpr ImU32 kCloseBright = IM_COL32(240, 240, 240, 230);
 constexpr ImU32 kCloseDisc = IM_COL32(0, 0, 0, 120);
 
 float aspect_ = 1;  // read by the size callback during the next Begin
-std::array<bool, static_cast<std::size_t>(BenchObject::Debug) + 1> home_{};  // SendHome
+constexpr std::size_t kObjects = static_cast<std::size_t>(BenchObject::Debug) + 1;
+std::array<bool, kObjects> home_{};    // SendHome
+std::array<bool, kObjects> popped_{};  // in its own desktop window (P6j)
+
+std::size_t Index(BenchObject object) { return static_cast<std::size_t>(object); }
 
 }  // namespace
 
@@ -31,9 +37,17 @@ BenchRect BenchArea() {
 }
 
 void PlaceNext(BenchObject object, ImVec2 first) {
+    if (popped_[Index(object)]) {
+        // Its own viewport even over the main window (ImGui's GetWindowAlwaysWantOwnViewport).
+        ImGuiWindowClass own;
+        own.ViewportFlagsOverrideSet = ImGuiViewportFlags_NoAutoMerge;
+        ImGui::SetNextWindowClass(&own);
+    } else {
+        OnBench();
+    }
     const BenchRect bench = BenchArea();
     const Place place = DefaultPlace(object, bench.extent());
-    bool& home = home_[static_cast<std::size_t>(object)];
+    bool& home = home_[Index(object)];
     ImGui::SetNextWindowPos({bench.min.x + place.x, bench.min.y + place.y},
                             home ? ImGuiCond_Always : ImGuiCond_FirstUseEver,
                             {place.pivotX, place.pivotY});
@@ -51,7 +65,13 @@ void KeepAspect(float aspect, float minWidth) {
         &aspect_);
 }
 
-void SendHome(BenchObject object) { home_[static_cast<std::size_t>(object)] = true; }
+void SendHome(BenchObject object) { home_[Index(object)] = true; }
+
+bool PoppedOut(BenchObject object) { return popped_[Index(object)]; }
+
+void PopOutAtStart(BenchObject object) { popped_[Index(object)] = true; }
+
+void OnBench() { ImGui::SetNextWindowViewport(ImGui::GetMainViewport()->ID); }
 
 bool CaseClose(float inset) {
     const ImVec2 pos = ImGui::GetWindowPos();

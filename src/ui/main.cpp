@@ -21,7 +21,7 @@
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
-#include <imgui_impl_sdlrenderer3.h>
+#include <imgui_impl_sdlgpu3.h>
 
 #include "board/kicad_board.hpp"
 #include "machine/knob_setting.hpp"
@@ -41,6 +41,7 @@
 #include "ui/board_view.hpp"
 #include "ui/brief_window.hpp"
 #include "ui/debug_window.hpp"
+#include "ui/gpu_render.hpp"
 #include "ui/keyboard_window.hpp"
 #include "ui/knob_window.hpp"
 #include "ui/loaded.hpp"
@@ -77,7 +78,8 @@ constexpr std::string_view kUsage =
     "[--tv hpos:N%,vpos:N%,bright:N%,contrast:N%,off,underscan] [--look "
     "real|plain] "
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] [--keys machine] "
-    "[--mark dot|cross|check:X:Y,...] [--debug] "
+    "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
+    "[--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
 struct Options {
@@ -107,7 +109,23 @@ struct Options {
     bool debug = false;             // --debug: the Debug window out (P6d)
     bool keysToMachine = false;     // --keys machine: the keys on the Machine at start (P6g)
     std::vector<std::pair<MarkShape, Point>> mark;  // --mark: pencil marks at start (P6h)
+    std::vector<BenchObject> pop;  // --pop: out in their own desktop windows at start (P6j)
 };
+
+std::optional<BenchObject> ParseBenchObject(std::string_view name) {
+    constexpr std::array<std::pair<std::string_view, BenchObject>, 7> kNames{{
+        {"manual", BenchObject::Manual},
+        {"tv", BenchObject::Tv},
+        {"keyboard", BenchObject::Keyboard},
+        {"knob", BenchObject::Knob},
+        {"analyzer", BenchObject::Analyzer},
+        {"scope", BenchObject::Scope},
+        {"meter", BenchObject::Meter},
+    }};
+    const auto it =
+        std::ranges::find(kNames, name, &std::pair<std::string_view, BenchObject>::first);
+    return it != kNames.end() ? std::optional(it->second) : std::nullopt;
+}
 
 std::optional<Owner> ParseOwner(std::string_view name) {
     constexpr std::array<std::pair<std::string_view, Owner>, 9> kNames{{
@@ -306,6 +324,14 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 }
                 options.mark.push_back(*mark);
             }
+        } else if (arg == "--pop") {
+            for (const std::string& text : SplitCommas(argv[++i])) {
+                const auto object = ParseBenchObject(text);
+                if (!object) {
+                    return std::nullopt;
+                }
+                options.pop.push_back(*object);
+            }
         } else if (arg == "--tv") {
             options.tv = ParseTvSettings(argv[++i]);
             if (!options.tv) {
@@ -406,6 +432,27 @@ Loaded Load(const std::filesystem::path& file, const std::optional<std::filesyst
             std::move(manuals)};
 }
 
+// A tooltip past the main window's edge is a desktop window of its own (multi-viewports, P6j).
+// On macOS ImGui's SDL3 backend activates every window it shows, so a tooltip would take the keys
+// from the window under the mouse; shown without activation it still comes on top (ImGui makes
+// tooltips TopMost). Popups keep the backend's way (unactivated, they appear under the window).
+void KeepFocusFromTooltips() {
+    static void (*show)(ImGuiViewport*) = nullptr;
+    ImGuiPlatformIO& platform = ImGui::GetPlatformIO();
+    show = platform.Platform_ShowWindow;
+    platform.Platform_ShowWindow = [](ImGuiViewport* viewport) {
+        constexpr ImGuiViewportFlags kTooltip =
+            ImGuiViewportFlags_TopMost | ImGuiViewportFlags_NoFocusOnAppearing;
+        if ((viewport->Flags & kTooltip) != kTooltip) {
+            show(viewport);
+            return;
+        }
+        SDL_SetHint(SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN, "0");
+        SDL_ShowWindow(SDL_GetWindowFromID(
+            static_cast<SDL_WindowID>(reinterpret_cast<std::uintptr_t>(viewport->PlatformHandle))));
+    };
+}
+
 // Simulated / wall time over the last second.
 class SpeedRatio {
 public:
@@ -473,18 +520,9 @@ std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manu
     return Displayable(text);
 }
 
-// Saves the whole framebuffer; false with SDL's error on failure.
-bool SaveScreenshot(SDL_Renderer* renderer, const std::filesystem::path& path) {
-    SDL_SetRenderScale(renderer, 1, 1);
-    SDL_Surface* surface = SDL_RenderReadPixels(renderer, nullptr);
-    const bool ok = surface != nullptr && SDL_SavePNG(surface, path.string().c_str());
-    SDL_DestroySurface(surface);
-    return ok;
-}
-
-int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, Session& session,
+int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session& session,
               const Options& options, ImFont* legends) {
-    TvView view(renderer);
+    TvView view(gpu.device());
     Shelf shelf;
     TvWindow tvWindow;
     if (options.tv) {
@@ -583,6 +621,36 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     } else if (options.focus) {
         focus.take(*options.focus);
     }
+    for (const BenchObject object : options.pop) {  // the Machine has each: checked in main()
+        switch (object) {
+        case BenchObject::Manual:
+            shelf.manualOut = true;
+            break;
+        case BenchObject::Tv:
+            shelf.tvOut = true;
+            break;
+        case BenchObject::Keyboard:
+            shelf.keyboardOut = true;
+            break;
+        case BenchObject::Knob:
+            shelf.knobOut = true;
+            break;
+        case BenchObject::Analyzer:
+            focus.bringOut(Owner::Analyzer);
+            break;
+        case BenchObject::Scope:
+            focus.bringOut(Owner::Scope);
+            break;
+        case BenchObject::Meter:
+            focus.bringOut(Owner::Meter);
+            break;
+        case BenchObject::Brief:
+        case BenchObject::Debug:
+            break;
+        }
+        PopOutAtStart(object);
+    }
+    applyKeys();  // a keyboard or knob box out
     Owner lastOwner = focus.owner();
     ManualWindows manualWindows;
     if (options.manual) {
@@ -601,6 +669,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
     SpeedRatio ratio;
     double uiMilliseconds = 0;
     int exitCode = 0;
+    long frames = 0;  // drawn, for the frame rate --screenshot prints
 
     bool running = true;
     while (running) {
@@ -654,10 +723,11 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         const RunnerStatus status = session.runner().status();
         const double speedRatio = ratio.update(status.simTime);
 
-        ImGui_ImplSDLRenderer3_NewFrame();
+        ImGui_ImplSDLGPU3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        OnBench();
         ImGui::SetNextWindowPos(viewport->WorkPos);
         ImGui::SetNextWindowSize(viewport->WorkSize);
         ImGui::Begin("Bodgewire", nullptr,
@@ -1069,24 +1139,26 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
         textField = ImGui::GetIO().WantTextInput;
 
         ImGui::Render();
-        const ImGuiIO& io = ImGui::GetIO();
-        SDL_SetRenderScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-        ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+        // The UI's work: the frame built, not drawn (the GPU's waits for the windows' vsync
+        // would count otherwise, P6j).
+        uiMilliseconds =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - frameStart)
+                .count();
+        gpu.present(view);
+        ++frames;
         const auto now = std::chrono::steady_clock::now();
-        uiMilliseconds = std::chrono::duration<double, std::milli>(now - frameStart).count();
         if (options.screenshot && now - start >= options.after) {
-            std::println("bw_ui: t {:.3f} s  {:.2f}\u00d7  ui {:.1f} ms",
+            std::println("bw_ui: t {:.3f} s  {:.2f}\u00d7  ui {:.1f} ms  {:.0f} fps",
                          static_cast<double>(status.simTime) / static_cast<double>(kPicosPerSecond),
-                         speedRatio, uiMilliseconds);
-            if (!SaveScreenshot(renderer, *options.screenshot)) {
+                         speedRatio, uiMilliseconds,
+                         static_cast<double>(frames) /
+                             std::chrono::duration<double>(now - start).count());
+            if (!gpu.screenshot(*options.screenshot)) {
                 std::println(stderr, "bw_ui: {}", SDL_GetError());
                 exitCode = kExitErrors;
             }
             break;
         }
-        SDL_RenderPresent(renderer);
     }
     return exitCode;
 }
@@ -1231,6 +1303,23 @@ int main(int argc, char** argv) {
         std::println(stderr, "{}", kUsage);
         return kExitUsage;
     }
+    for (const BenchObject object : options->pop) {
+        const bool has = object == BenchObject::Tv ? session.tv() != nullptr
+                         : object == BenchObject::Keyboard
+                             ? !session.keyboards().empty() || !session.matrixKeyboards().empty()
+                         : object == BenchObject::Knob   ? !session.knobs().empty()
+                         : object == BenchObject::Manual ? true
+                                                         : session.machine() != nullptr;
+        if (!has) {
+            std::println(stderr, "bw_ui: this Machine has no {}",
+                         object == BenchObject::Tv         ? "TV"
+                         : object == BenchObject::Keyboard ? "keyboard"
+                         : object == BenchObject::Knob     ? "paddle controller"
+                                                           : "Board for the instruments");
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+    }
     for (const KnobSetting& knob : options->knob) {
         if (!session.setKnob(knob.reference, knob.turn)) {
             std::println(stderr, "bw_ui: '{}' is not a paddle controller", knob.reference);
@@ -1260,19 +1349,33 @@ int main(int argc, char** argv) {
     const std::string title = "Bodgewire \u2014 " + loaded.title;
     SDL_Window* window = SDL_CreateWindow(title.c_str(), kWindowWidth, kWindowHeight,
                                           SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    SDL_Renderer* renderer = window != nullptr ? SDL_CreateRenderer(window, nullptr) : nullptr;
-    if (renderer == nullptr) {
+    if (window == nullptr) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         SDL_Quit();
         return kExitErrors;
     }
-    SDL_SetRenderVSync(renderer, 1);
+    auto gpu = std::make_unique<GpuRender>(window);
+    if (!gpu->ready()) {
+        std::println(stderr, "bw_ui: {}", SDL_GetError());
+        gpu.reset();
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return kExitErrors;
+    }
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGui::GetIO().IniFilename = nullptr;
-    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer3_Init(renderer);
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    // Multi-viewports, docking off (P6j): a popped-out object in its own desktop window, not tied
+    // to the main one (ImGui's default), with no title bar.
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // ConfigViewportsNoDefaultParent: true
+    ImGui_ImplSDL3_InitForSDLGPU(window);
+    KeepFocusFromTooltips();
+    ImGui_ImplSDLGPU3_InitInfo gpuInfo;
+    gpuInfo.Device = gpu->device();
+    gpuInfo.ColorTargetFormat = gpu->format();
+    ImGui_ImplSDLGPU3_Init(&gpuInfo);
     // The UI font first, as NewFrame would pick it lazily (13 px at the framebuffer scale: vector
     // from 15 px); AddFontDefault() itself, before the first frame, assumes Retina on macOS.
     ImFontAtlas& fonts = *ImGui::GetIO().Fonts;
@@ -1287,12 +1390,13 @@ int main(int argc, char** argv) {
         fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kKeycapFont),
                                    static_cast<int>(kKeycapFontSize), 0.0f, &legendConfig);
 
-    const int exitCode = RunWindow(window, renderer, loaded, session, *options, legends);
+    const int exitCode = RunWindow(window, *gpu, loaded, session, *options, legends);
 
-    ImGui_ImplSDLRenderer3_Shutdown();
+    SDL_WaitForGPUIdle(gpu->device());
     ImGui_ImplSDL3_Shutdown();
+    ImGui_ImplSDLGPU3_Shutdown();
     ImGui::DestroyContext();
-    SDL_DestroyRenderer(renderer);
+    gpu.reset();
     SDL_DestroyWindow(window);
     SDL_Quit();
     return exitCode;
