@@ -1359,6 +1359,10 @@ void BoardView::route(const TargetHits& hits) {
         const bool measures = owner_ == Owner::Probe || IsInstrument(owner_);
         if (scene_ && measures && target.components.size() == 1 && target.pad && !target.net &&
             !io.KeyCtrl && !io.KeySuper) {
+            if (io.MouseClickedLastCount[ImGuiMouseButton_Left] >= 2) {
+                focus(target);  // a double-click's second: the first one measured; no selection
+                return;
+            }
             const std::size_t k = target.components.front();
             const Point at = scene_->board().components[k].pads[*target.pad].position;
             click_ = BoardClick{at, active_,     Pick{{HitKind::Pad, k, *target.pad}, active_, at},

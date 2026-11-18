@@ -125,8 +125,9 @@ public:
     void hoverFromOutside(std::optional<BoardTarget> target) { outside_ = target; }
     void focus(BoardTarget target);  // frame + flash 1 s
     // A manual's or chip panel's hits. A clicked pin, the probe or an instrument owning the focus:
-    // a click on that pad for takeClick(), flashed in place, the view unmoved; Cmd-click, or any
-    // other target or owner: focus() it (a single part also selected).
+    // a click on that pad for takeClick(), flashed in place, the view unmoved; a double-click's
+    // second click focus()es it (the first measured). Cmd-click, or any other target or owner:
+    // focus() it (a single part also selected).
     void route(const TargetHits& hits);
     const BoardScene* scene() const { return scene_ ? &*scene_ : nullptr; }
     // The Board outline's top-left corner on screen at the last draw (none without a Board).
