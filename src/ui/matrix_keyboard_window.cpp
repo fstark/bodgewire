@@ -179,9 +179,9 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
         centred(lower, cy + 0.12f * u, sz);
     };
     if (legend == "RETURN") {  // two rows high, its letters stacked
-        const float sz = std::max(6.0f, std::round(0.18f * u));
+        const float sz = std::max(6.0f, std::round(0.26f * u));
         constexpr std::string_view kWord = "RETURN";
-        const float step = std::min(0.22f * u, (tb.y - ta.y) / 7);
+        const float step = std::min(0.24f * u, (tb.y - ta.y) / 7);
         for (std::size_t i = 0; i < kWord.size(); ++i) {
             centred(kWord.substr(i, 1), cy + (static_cast<float>(i) - 2.5f) * step, sz);
         }
