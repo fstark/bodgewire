@@ -241,8 +241,10 @@ The test (`tests/machines/led_computer_test.cpp`) checks each symptom (the latch
 
 ## Manuals
 
-- `machines/110-led-computer/manuals/user.md`: power `J1`; after a moment one LED lights and the light runs from right to left and back, about 8 steps a second; `SW1` restarts it.
-- `machines/110-led-computer/manuals/service.md`: Components, one bullet per reference in netlist order, `J1` included (`CheckServiceManual` wants each; `U3` and `U4`, each `Dn` and `Rn` a bullet of its own), roles: `X1` clock into `PHI0`; `U1` processor; `U2` program ROM at `$F800`–`$FFFF` (mirrored from `$E000`), selected by `ROM_N`; `U3`/`U4` RAM, low/high half of each byte, at `$0000`–`$03FF` (mirrored to `$1FFF`), selected by `RAM_N`, written by `WR_N`; `U5` address decoder, `A13`–`A15` to `RAM_N`, `LATCH_N`, `ROM_N`; `U6` write strobes `WR`, `WR_N`, `LATCH_WR`, `LATCH_CLK`; `U7` LED latch, loaded by `LATCH_CLK`, cleared by `RES_N`; `U8` power-on reset on `RES_N`; `SW1` Reset; `Dn` "LED: lit while `L(n−1)` is high"; `R1`–`R8` LED resistors; `R9`–`R11` pull-ups.
+Written to STYLE's Manuals rules (P6k):
+
+- User: What it does (a welcome: the light bouncing along `D1`–`D8`; the 6502, the program in `U2`, the RAM, the LEDs, a line each); Using it (RESET restarts the light at `D1`); How it works (the goal, the clock, the reset, the processor as a cook following a recipe, the address decoder with a memory map table and its mirrors, the program in six steps, the RAM in two halves, the write strobe, the latch, the LEDs, the unused pins in a table).
+- Service: Components (every reference, netlist order); Test points (probe readings checked with `bw run --probe` at 30 ms, 500 ms, 1 s, 1.06 s, 1.10 s, 1.13 s, 1.15 s and 1.5 s, and with `--press SW1:500ms:700ms` at 600 ms, 700 ms, 760 ms and 900 ms; three logic analyzer setups, each checked with `bw_ui --group U1.A0[:pattern],U1.D0 --clip … --screenshot` and the picture viewed: the program starting (trigger `U1 A` = F800, 100 ns, 1 µs a division), the first RAM write (`U6.2Y` falling, 20 ns, 200 ns a division) and the LED write (`U1 A` = 8000, 20 ns, 200 ns a division)); Troubleshooting (the LEDs never light, the light stuck or wrong, the light restarting at `D1`, one LED wrong: ordered checks, never naming a fault).
 
 ## Per-Machine checks
 

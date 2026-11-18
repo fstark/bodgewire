@@ -132,8 +132,10 @@ The test (`tests/machines/heartbeat_test.cpp`) checks each symptom on `U1`'s pin
 
 ## Manuals
 
-- `machines/100-heartbeat/manuals/user.md`: power `J1`; the 16 LEDs show the address the processor is reading, the left one the highest bit; the left one blinks about 7.6 times a second, the next twice as fast, the others glow; `SW1` restarts the processor.
-- `machines/100-heartbeat/manuals/service.md`: Components, one bullet per reference in netlist order (`X1` clock into `PHI0`; `U1` processor, data bus pulled to `$EA` so it runs NOPs; `U2`/`U3` address buffers; `R17`–`R24` "data line `DBn` pulled to 0/1"; `R25`–`R27` pull-ups; `SW1` Reset; `Dn` "LED: lit while `A(n−1)` is high"; `Rn` "LED resistor").
+Written to STYLE's Manuals rules, the Counter's as the model:
+
+- User: What it does (a welcome: the first processor, no memory and no program; the 16 LEDs show the address in binary, `D16` blinking about eight times a second; the free-run as the first check on a dead computer); Using it (RESET `SW1`: the LEDs freeze while held, the count restarts from the same address; power-on starts anywhere); How it works (the goal, a processor as a chip with clock in and address out, the clock, `R17`–`R24` holding the data bus at NOP, the address counting as pages that say "turn the page", the address lines as a binary counter, the buffers and LEDs, reset from $EAEA, the unused pins of `U1`–`U3` in a table).
+- Service: Components (every reference, netlist order); Test points (the clock, reset, data pins, `SYNC`, `RW`, `A0` and `A15` through the buffer to `D16`, and a logic analyzer setup: the address bus grouped by shift-clicking `U1.A0`, `SYNC` triggering on its rise, `RW`, 100 ns samples at 2 µs a division, the bus lane counting up one step every 2 µs). The probe readings checked with `bw run --probe` at 50, 100, 150 and 200 ms and at 1, 1.04 and 1.08 s (`A15` read high, then low, then low), RESET held with `--press SW1:100ms:400ms` read at 300 ms; the analyzer with `bw_ui --group U1.A0 --clip U1.SYNC:r,U1.RW --sample 100ns --view 2us`, screenshot viewed. Troubleshooting (every LED frozen; the LEDs change but not as a count; one LED wrong: ordered checks, never naming a fault).
 
 ## Per-Machine checks
 

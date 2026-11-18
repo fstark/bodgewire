@@ -63,8 +63,8 @@ Fence: full release suite. Commit: `docs: P6k done, every Machine's manuals expl
 | 1 | The Typewriter's Nets `GL1`–`GL3` | af03ba6 |
 | 2 | LED Chaser, Dice, Stopwatch, Knob Meter | 399e2a3 |
 | 3 | Test Pattern, Bouncing Ball, Tennis | d6a6d13 |
-| 4 | Message, Typewriter | this commit |
-| 5 | Heartbeat, LED computer | |
+| 4 | Message, Typewriter | a324816 |
+| 5 | Heartbeat, LED computer | this commit |
 | 6 | BW-1 | |
 | 7 | BW-2001 | |
 | 8 | BW-80 | |
@@ -79,3 +79,4 @@ Fence: full release suite. Commit: `docs: P6k done, every Machine's manuals expl
 - From phase 3 on, the Machines of phases 3–7 were drafted at once (they share no file), the brief carrying phase 2's findings; each phase is still reviewed and committed in ladder order.
 - Phase 3: readings with `bw run --probe` (Test Pattern 0.3–1.1 s; Ball 0.5–2 s, the ball's directions every 0.2 s to 3.1 s; Tennis with START pressed, 150 ms–4 s, game over at 55 s, the next START at 57 s, `--vcd` records of 8, 42 and 60 s); analyzer and scope setups for a line and a frame on each, the Ball's ball, Tennis's controllers, screenshots viewed. Every fast TV signal shows P; the tables give the level it mostly reads ("mostly H, with P lit"). Release `-R "manual|test.pattern|ball|tennis"` 71 passed; Tennis's User Manual viewed (the keys table drawn). Seen: Tennis's knobs start at 0 %, both paddles at the bottom, so a fresh game misses every serve (the user's knobs decide; not a manual matter).
 - Phase 4: readings with `bw run --probe` (Message 0.5–1.5 s; Typewriter idle 1–1.5 s, CLEAR held, then `--type 'J3:1s:HI\n'` read at 1.002–1.25 s); analyzer setups: the Message's dots, a line, the two ROM lookups (codes `"HOPE"` and their dots), a frame; the Typewriter's text line, a row's top line (the page's clocks and the row buffer loading), a frame, a key written. Screenshots viewed. Both see the default TV window cut the page's left (Message, about a character and a half) and the Typewriter's top rows and left columns (so typing after CLEAR shows only in underscan): P6m's margins, not written in the manuals. The Markdown has no `###`: a big Machine's parts are bold lead-ins after a short list. A bare pin name that is not a Net (`PHI1`) is reported as an unknown reference, as R01; one that is also a Net links the Net.
+- Phase 5: readings with `bw run --probe` (Heartbeat 50 ms–1.08 s, RESET held and released; LED computer 30 ms–1.5 s, RESET held 500–700 ms, the light back at `D1` at 760 ms); analyzer setups with the address bus as a group: the Heartbeat's count (139F, 13A0… a step every 2 µs), the LED computer's program starting at F800, its first RAM write, its LED write; screenshots viewed. An LED's pin 1 is its cathode: the anode is `D16.A`. A signal changing about every 125 ms makes the P lamp (100 ms) flicker; the LED computer's manual says so.
