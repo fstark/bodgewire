@@ -1,6 +1,7 @@
 #include "ui/matrix_keyboard_window.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -26,26 +27,47 @@ constexpr float kInset = 0.10f;   // the case inside the window
 constexpr float kGap = 0.16f;     // between chiclets: the PET's keys stand apart
 constexpr float kMinWidth = 380;
 
+// The BW-80's case (P6l): the ZX80's cream lip around the black membrane, the membrane's black
+// around its keys, the screws in its bottom corners, the reference moulded into the bottom lip.
+constexpr float kLipSide = 0.30f;
+constexpr float kLipTop = 0.45f;  // room for the put-away ×
+constexpr float kLipBottom = 0.42f;
+constexpr float kMembraneSide = 0.30f;
+constexpr float kMembraneTop = 0.10f;  // above the digits' words
+constexpr float kMembraneBottom = 0.45f;
+
 // The case in u, by the keyboard drawn.
 float WidthU(KeyMatrixKind kind) {
-    return (kind == KeyMatrixKind::Bw80 ? kZx80KeyboardWidth : kMatrixKeyboardWidth) + 2 * kMargin;
+    return kind == KeyMatrixKind::Bw80 ? kZx80KeyboardWidth + 2 * (kLipSide + kMembraneSide)
+                                       : kMatrixKeyboardWidth + 2 * kMargin;
 }
 float HeightU(KeyMatrixKind kind) {
-    return (kind == KeyMatrixKind::Bw80 ? kZx80KeyboardHeight : kMatrixKeyboardRows) + 2 * kMargin +
-           kLabel;
+    return kind == KeyMatrixKind::Bw80
+               ? kZx80KeyboardHeight + kLipTop + kMembraneTop + kMembraneBottom + kLipBottom
+               : kMatrixKeyboardRows + 2 * kMargin + kLabel;
 }
 
-// The ZX80's membrane (P5x): a black panel, blue keys, white letters and keywords, yellow shifted
-// legends, a thin light line along the top.
-constexpr ImU32 kPanel = IM_COL32(10, 10, 12, 255);
-constexpr ImU32 kPanelLine = IM_COL32(200, 200, 204, 255);
-constexpr ImU32 kMembraneTop = IM_COL32(28, 48, 226, 255);
-constexpr ImU32 kMembraneBottom = IM_COL32(18, 32, 176, 255);
-constexpr ImU32 kMembraneDownTop = IM_COL32(16, 26, 128, 255);
-constexpr ImU32 kMembraneDownBottom = IM_COL32(12, 20, 96, 255);
-constexpr ImU32 kMembraneEdge = IM_COL32(60, 80, 240, 255);
-constexpr ImU32 kWhite = IM_COL32(244, 244, 246, 255);
-constexpr ImU32 kYellow = IM_COL32(236, 216, 40, 255);
+// The ZX80's membrane (P5x, matched to a photograph in P6l): a soft black panel, mid-blue keys,
+// pale letters, white keywords, muted gold shifted legends (paler on the keys), BREAK in dark blue
+// on the black, the arrows as hollow block arrows outlined in gold.
+constexpr ImU32 kPanel = IM_COL32(26, 24, 29, 255);
+constexpr ImU32 kKeyTop = IM_COL32(38, 94, 214, 255);
+constexpr ImU32 kKeyBottom = IM_COL32(22, 70, 184, 255);
+constexpr ImU32 kKeyDownTop = IM_COL32(20, 54, 140, 255);
+constexpr ImU32 kKeyDownBottom = IM_COL32(16, 44, 120, 255);
+constexpr ImU32 kKeyLetter = IM_COL32(224, 234, 250, 255);
+constexpr ImU32 kKeyword = IM_COL32(234, 234, 238, 255);
+constexpr ImU32 kGold = IM_COL32(212, 180, 98, 255);        // on the black
+constexpr ImU32 kGoldOnKey = IM_COL32(234, 210, 128, 255);  // on the blue
+constexpr ImU32 kGraphicInk = IM_COL32(214, 176, 48, 255);
+constexpr ImU32 kGraphicFrame = IM_COL32(228, 230, 236, 255);
+constexpr ImU32 kGraphicLine = IM_COL32(12, 14, 30, 255);
+constexpr ImU32 kBreak = IM_COL32(56, 70, 168, 255);
+constexpr ImU32 kCream = IM_COL32(236, 230, 212, 255);
+constexpr ImU32 kCreamShade = IM_COL32(214, 207, 186, 255);
+constexpr ImU32 kCreamText = IM_COL32(150, 142, 122, 255);
+constexpr ImU32 kScrew = IM_COL32(48, 46, 50, 255);
+constexpr ImU32 kScrewShine = IM_COL32(96, 94, 100, 255);
 
 constexpr ImU32 kSurround = IM_COL32(8, 8, 9, 255);
 constexpr ImU32 kCaseTop = IM_COL32(52, 56, 64, 255);  // the PET's blue-grey metal
@@ -170,7 +192,7 @@ bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     KeepAspect(aspect, kMinWidth);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleColor(ImGuiCol_WindowBg,
-                          capture.kind == KeyMatrixKind::Bw80 ? kPanel : kSurround);
+                          capture.kind == KeyMatrixKind::Bw80 ? kCream : kSurround);
     const std::string title = "Keyboard " + capture.reference + kMatrixKeyboardWindowName;
     const bool visible =
         ImGui::Begin(title.c_str(), &open,
@@ -189,7 +211,7 @@ bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     } else {
         drawKeys(session, capture);
     }
-    if (CaseClose()) {
+    if (CaseClose(capture.kind == KeyMatrixKind::Bw80 ? 3 : 6)) {
         open = false;
     }
     ImGui::End();
@@ -199,7 +221,7 @@ bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
 template <class Draw>
 void MatrixKeyboardWindow::drawCaps(Session& session, const MatrixCapture& capture,
                                     std::span<const MatrixCap> caps, std::size_t shift, ImVec2 keys,
-                                    float u, Draw&& draw) {
+                                    float u, ImVec2 gap, float height, Draw&& draw) {
     latched_.resize(std::max(latched_.size(), caps.size()), false);
     std::vector<bool> down(latched_.size(), false);
     for (const MatrixPress& p : capture.held()) {
@@ -211,8 +233,8 @@ void MatrixKeyboardWindow::drawCaps(Session& session, const MatrixCapture& captu
         }
     }
     for (const MatrixCap& cap : caps) {
-        const ImVec2 a{keys.x + (cap.x + kGap / 2) * u, keys.y + (cap.y + kGap / 2) * u};
-        const ImVec2 b{a.x + (cap.width - kGap) * u, a.y + (1 - kGap) * u};
+        const ImVec2 a{keys.x + (cap.x + gap.x / 2) * u, keys.y + (cap.y + gap.y / 2) * u};
+        const ImVec2 b{a.x + (cap.width - gap.x) * u, a.y + (height - gap.y) * u};
         ImGui::SetCursorScreenPos(a);
         ImGui::PushID(static_cast<int>(cap.key));
         ImGui::InvisibleButton("key", {b.x - a.x, b.y - a.y},
@@ -265,7 +287,7 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
         0.1f * u);
 
     const auto all = Bw2001Keys();
-    drawCaps(session, capture, Bw2001Caps(), *Bw2001KeyAt(8, 0), keys, u,
+    drawCaps(session, capture, Bw2001Caps(), *Bw2001KeyAt(8, 0), keys, u, {kGap, kGap}, 1,
              [&](const MatrixCap& cap, ImVec2 a, ImVec2 b, bool down) {
                  const MatrixKey& key = all[cap.key];
                  DrawChiclet(list, legends_, key.legend, key.shifted, a, b, u, down);
@@ -274,20 +296,120 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
 
 namespace {
 
-// One ZX80 key: the blue cap with its letter at the lower left, its shifted legend at the upper
-// right in yellow (a graphic as a small mosaic), and above the cap the keyword in white or, for
-// the digits and NEW LINE, the shifted word or arrow in yellow.
+// A ZX80 graphic's quarters (top left, top right, bottom left, bottom right): paper (the key's
+// blue), ink (gold) or grey (a gold and black check), as printed on its key.
+enum class Quarter : std::uint8_t { Paper, Ink, Grey };
+
+std::array<Quarter, 4> GraphicOf(std::string_view legend) {
+    constexpr Quarter P = Quarter::Paper, I = Quarter::Ink, G = Quarter::Grey;
+    if (legend == "Q")
+        return {I, P, I, P};
+    if (legend == "W")
+        return {P, P, I, I};
+    if (legend == "E")
+        return {I, P, P, P};
+    if (legend == "R")
+        return {P, I, P, P};
+    if (legend == "T")
+        return {P, P, G, G};
+    if (legend == "A")
+        return {G, G, G, G};
+    if (legend == "S")
+        return {P, I, I, P};
+    if (legend == "D")
+        return {P, P, I, P};
+    if (legend == "F")
+        return {P, P, P, I};
+    if (legend == "G")
+        return {G, G, P, P};
+    return {P, P, P, P};
+}
+
+// A graphic `s` square at `at`: a pale frame, a dark line inside it, the quarters.
+void DrawGraphic(ImDrawList& list, std::string_view legend, ImVec2 at, float s) {
+    const float frame = std::max(1.0f, std::round(s * 0.07f));
+    s = std::round(s);
+    list.AddRectFilled(at, {at.x + s, at.y + s}, kGraphicFrame);
+    const ImVec2 in{at.x + frame, at.y + frame};
+    const float inner = s - 2 * frame;
+    list.AddRectFilled(in, {in.x + inner, in.y + inner}, kGraphicLine);
+    const float line = std::max(1.0f, s * 0.04f);
+    // Whole pixels, so the quarters meet without seams; the check 6 by 6 across the square.
+    const float x0 = std::round(in.x + line), y0 = std::round(in.y + line);
+    const float x2 = std::round(in.x + inner - line), y2 = std::round(in.y + inner - line);
+    const float xs[3] = {x0, std::round((x0 + x2) / 2), x2};
+    const float ys[3] = {y0, std::round((y0 + y2) / 2), y2};
+    list.AddRectFilled({x0, y0}, {x2, y2}, kKeyTop);
+    const auto quarters = GraphicOf(legend);
+    for (int q = 0; q < 4; ++q) {
+        const ImVec2 qa{xs[q % 2], ys[q / 2]}, qb{xs[q % 2 + 1], ys[q / 2 + 1]};
+        if (quarters[q] == Quarter::Ink) {
+            list.AddRectFilled(qa, qb, kGraphicInk);
+        } else if (quarters[q] == Quarter::Grey) {
+            list.AddRectFilled(qa, qb, kGraphicLine);
+            for (int y = 0; y < 3; ++y) {
+                for (int x = 0; x < 3; ++x) {
+                    if ((x + y) % 2 == 0) {
+                        const auto step = [](float from, float to, int k) {
+                            return std::round(from + (to - from) * k / 3);
+                        };
+                        list.AddRectFilled({step(qa.x, qb.x, x), step(qa.y, qb.y, y)},
+                                           {step(qa.x, qb.x, x + 1), step(qa.y, qb.y, y + 1)},
+                                           kGraphicInk);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A hollow block arrow outlined in gold, as printed above 5-8: centred on `c`, `w` wide and `h`
+// high (its head's span), pointing left, right, up or down.
+void DrawBlockArrow(ImDrawList& list, ImVec2 c, float w, float h, char dir, float thick) {
+    // Pointing right in a unit box (x 0..1 along the arrow, y -0.5..0.5 across it).
+    constexpr std::array<ImVec2, 7> kShape{{{0.0f, -0.22f},
+                                            {0.52f, -0.22f},
+                                            {0.52f, -0.5f},
+                                            {1.0f, 0.0f},
+                                            {0.52f, 0.5f},
+                                            {0.52f, 0.22f},
+                                            {0.0f, 0.22f}}};
+    std::array<ImVec2, 7> points{};
+    const bool vertical = dir == 'u' || dir == 'd';
+    const float along = vertical ? h : w, across = vertical ? w : h;
+    const float sign = (dir == 'r' || dir == 'd') ? 1.0f : -1.0f;
+    for (std::size_t i = 0; i < kShape.size(); ++i) {
+        const float x = sign * (kShape[i].x - 0.5f) * along;
+        const float y = kShape[i].y * across;
+        points[i] = vertical ? ImVec2{c.x + y, c.y + x} : ImVec2{c.x + x, c.y + y};
+    }
+    list.AddPolyline(points.data(), static_cast<int>(points.size()), kGold, ImDrawFlags_Closed,
+                     thick);
+}
+
+char ArrowDirection(std::string_view shifted) {
+    if (shifted == "\xe2\x86\x90")
+        return 'l';
+    if (shifted == "\xe2\x86\x92")
+        return 'r';
+    if (shifted == "\xe2\x86\x91")
+        return 'u';
+    if (shifted == "\xe2\x86\x93")
+        return 'd';
+    return 0;
+}
+
+// One ZX80 key: the blue cap; its letter at the lower left (a digit centred), its shifted legend
+// at the upper right (a graphic as its mosaic); above the cap its keyword in white or, for the
+// digits and NEW LINE, its shifted word in gold or its arrow; SPACE's BREAK in dark blue.
 void DrawMembraneKey(ImDrawList& list, ImFont* font, const Zx80Key& key, ImVec2 a, ImVec2 b,
                      float u, bool down) {
-    const float rounding = 0.12f * u;
+    const float rounding = 0.11f * u;
+    const ImU32 top = down ? kKeyDownTop : kKeyTop, bottom = down ? kKeyDownBottom : kKeyBottom;
     const int first = list.VtxBuffer.Size;
-    list.AddRectFilled(a, b, down ? kMembraneDownTop : kMembraneTop, rounding);
+    list.AddRectFilled(a, b, top, rounding);
     ImGui::ShadeVertsLinearColorGradientKeepAlpha(&list, first, list.VtxBuffer.Size, a, {a.x, b.y},
-                                                  down ? kMembraneDownTop : kMembraneTop,
-                                                  down ? kMembraneDownBottom : kMembraneBottom);
-    if (!down) {
-        list.AddRect(a, b, kMembraneEdge, rounding, 0, 1.0f);
-    }
+                                                  top, bottom);
     const auto size = [&](std::string_view s, float px) {
         return font->CalcTextSizeA(px, FLT_MAX, 0, s.data(), s.data() + s.size());
     };
@@ -295,51 +417,61 @@ void DrawMembraneKey(ImDrawList& list, ImFont* font, const Zx80Key& key, ImVec2 
         list.AddText(font, px, {std::round(at.x), std::round(at.y)}, colour, s.data(),
                      s.data() + s.size());
     };
-    const float big = std::max(6.0f, std::round(0.34f * u));
-    const float word = std::max(6.0f, std::round(0.18f * u));
-    const float small = std::max(6.0f, std::round(0.22f * u));
-    const float centreX = (a.x + b.x) / 2;
-    // The letter, digit or word on the cap.
+    const auto centred = [&](std::string_view s, float px, float y, ImU32 colour) {
+        text(s, px, {(a.x + b.x) / 2 - size(s, px).x / 2, y}, colour);
+    };
+    const float big = std::max(7.0f, std::round(0.32f * u));
+    const float word = std::max(6.0f, std::round(0.22f * u));
+    const float onKey = std::max(6.0f, std::round(0.19f * u));
+    const float symbol = std::max(6.0f, std::round(0.30f * u));
+    const float midY = (a.y + b.y) / 2;
+    const bool digit = key.legend.size() == 1 && key.legend[0] >= '0' && key.legend[0] <= '9';
+    // On the cap.
     if (key.legend == "NEW LINE") {
-        text("NEW", word, {centreX - size("NEW", word).x / 2, a.y + 0.22f * u}, kWhite);
-        text("LINE", word, {centreX - size("LINE", word).x / 2, a.y + 0.50f * u}, kWhite);
-    } else if (key.legend.size() > 1) {
-        text(key.legend, word, {centreX - size(key.legend, word).x / 2, b.y - 0.17f * u - word},
-             kWhite);
+        centred("NEW", onKey, midY - onKey * 0.95f, kKeyLetter);
+        centred("LINE", onKey, midY - onKey * 0.05f, kKeyLetter);
+    } else if (key.legend == "SHIFT") {
+        centred(key.legend, onKey, midY - onKey / 2, kGoldOnKey);
+    } else if (key.legend == "SPACE") {
+        centred(key.legend, onKey, b.y - 0.10f * u - onKey, kKeyLetter);
+    } else if (digit) {
+        centred(key.legend, big, midY - big / 2, kKeyLetter);
     } else {
-        text(key.legend, big, {a.x + 0.14f * u, b.y - 0.12f * u - big}, kWhite);
+        text(key.legend, big, {a.x + 0.13f * u, b.y - 0.07f * u - big}, kKeyLetter);
     }
-    // Above the cap: the keyword (white), or the digits' and NEW LINE's shifted word (yellow).
-    // Words go above the cap (the digits' and NEW LINE's); symbols, OR, ** and the pound sign
-    // stay on it.
-    const bool isWord = key.shifted.size() > 2 && std::ranges::all_of(key.shifted, [](char c) {
-                            return c >= 'A' && c <= 'Z';
-                        });
-    const bool shiftedAbove = isWord && key.shifted != "GRAPHIC";
-    const bool arrow = key.shifted.size() == 3 && key.shifted[0] == '\xe2';
+    // Above the cap: the keyword (white, BREAK dark blue), the digits' and NEW LINE's shifted
+    // word in gold, or an arrow. OR, ** and the symbols stay on the cap.
+    const bool shiftedWord =
+        key.shifted.size() >= 2 && key.shifted != "OR" && key.shifted != "GRAPHIC" &&
+        std::ranges::all_of(key.shifted, [](char c) { return c >= 'A' && c <= 'Z'; });
+    const char arrow = ArrowDirection(key.shifted);
+    const float aboveY = a.y - 0.07f * u - word;
     if (!key.keyword.empty()) {
-        text(key.keyword, word, {centreX - size(key.keyword, word).x / 2, a.y - 0.05f * u - word},
-             kWhite);
-    } else if (arrow) {
-        const ImVec2 c{centreX, a.y - 0.05f * u - word / 2};
-        const bool vertical = key.shifted == "\xe2\x86\x91" || key.shifted == "\xe2\x86\x93";
-        const bool endHead = key.shifted == "\xe2\x86\x92" || key.shifted == "\xe2\x86\x93";
-        DrawArrow(list, c, 0.36f * u, 0.14f * u, vertical, !endHead, endHead, kYellow);
-    } else if (shiftedAbove) {
-        text(key.shifted, word, {centreX - size(key.shifted, word).x / 2, a.y - 0.05f * u - word},
-             kYellow);
+        centred(key.keyword, word, aboveY, key.legend == "SPACE" ? kBreak : kKeyword);
+    } else if (shiftedWord) {
+        centred(key.shifted, word, aboveY, kGold);
+    } else if (arrow != 0) {
+        const bool vertical = arrow == 'u' || arrow == 'd';
+        DrawBlockArrow(list, {(a.x + b.x) / 2, a.y - 0.19f * u}, vertical ? 0.46f * u : 0.50f * u,
+                       vertical ? 0.24f * u : 0.25f * u, arrow, std::max(1.0f, 0.022f * u));
     }
     // The upper right: a symbol, OR, **, pound, or a graphic's mosaic.
     if (key.shifted == "GRAPHIC") {
-        const float s = 0.13f * u;
-        const ImVec2 g{b.x - 0.12f * u - 2 * s, a.y + 0.12f * u};
-        list.AddRectFilled(g, {g.x + 2 * s, g.y + 2 * s}, kYellow);
-        list.AddRectFilled({g.x + s, g.y}, {g.x + 2 * s, g.y + s}, kMembraneTop);
-        list.AddRectFilled({g.x, g.y + s}, {g.x + s, g.y + 2 * s}, kMembraneTop);
-    } else if (!key.shifted.empty() && !shiftedAbove && !arrow) {
-        text(key.shifted, small, {b.x - 0.12f * u - size(key.shifted, small).x, a.y + 0.08f * u},
-             kYellow);
+        const float s = 0.27f * u;
+        DrawGraphic(list, key.legend,
+                    {std::round(b.x - 0.10f * u - s), std::round(a.y + 0.08f * u)}, s);
+    } else if (!key.shifted.empty() && !shiftedWord && arrow == 0) {
+        const float px = key.shifted == "OR" || key.shifted == "\xc2\xa3" ? 0.22f * u : symbol;
+        text(key.shifted, px, {b.x - 0.11f * u - size(key.shifted, px).x, a.y + 0.05f * u},
+             kGoldOnKey);
     }
+}
+
+// A screw head in the membrane's corner.
+void DrawScrew(ImDrawList& list, ImVec2 c, float r) {
+    list.AddCircleFilled(c, r, kScrew);
+    list.AddCircle(c, r * 0.8f, kScrewShine, 0, std::max(1.0f, r * 0.12f));
+    list.AddCircleFilled({c.x - r * 0.25f, c.y - r * 0.25f}, r * 0.25f, kScrewShine);
 }
 
 }  // namespace
@@ -351,23 +483,37 @@ void MatrixKeyboardWindow::drawMembrane(Session& session, const MatrixCapture& c
     const float u = std::max(1.0f, std::min(avail.x / widthU, avail.y / heightU));
     ImDrawList& list = *ImGui::GetWindowDrawList();
 
-    const ImVec2 panelA{origin.x + kInset * u, origin.y + kInset * u};
-    const ImVec2 panelB{origin.x + (widthU - kInset) * u, origin.y + (heightU - kInset) * u};
-    list.AddRectFilled(panelA, panelB, kPanel, 0.1f * u);
-    list.AddLine({panelA.x + 0.3f * u, panelA.y + 0.12f * u},
-                 {panelB.x - 0.3f * u, panelA.y + 0.12f * u}, kPanelLine,
-                 std::max(1.0f, 0.02f * u));
+    // The cream lip, shaded a little towards the bottom.
+    const ImVec2 caseA = origin;
+    const ImVec2 caseB{origin.x + widthU * u, origin.y + heightU * u};
+    const int first = list.VtxBuffer.Size;
+    list.AddRectFilled(caseA, caseB, kCream, 0.12f * u);
+    ImGui::ShadeVertsLinearColorGradientKeepAlpha(&list, first, list.VtxBuffer.Size, caseA,
+                                                  {caseA.x, caseB.y}, kCream, kCreamShade);
     if (capture.on) {
-        list.AddRect(panelA, panelB, kFocusGold, 0.1f * u, 0, 2.0f);
+        list.AddRect(caseA, caseB, kFocusGold, 0.12f * u, 0, 2.0f);
     }
-    const ImVec2 keys{origin.x + kMargin * u, origin.y + (kMargin + kLabel) * u};
+    // The membrane, a shadow line along its top where it goes under the case.
+    const ImVec2 panelA{origin.x + kLipSide * u, origin.y + kLipTop * u};
+    const ImVec2 panelB{caseB.x - kLipSide * u, caseB.y - kLipBottom * u};
+    list.AddRectFilled({panelA.x - 1, panelA.y - 1}, {panelB.x + 1, panelB.y + 1}, kCreamShade,
+                       0.04f * u);
+    list.AddRectFilled(panelA, panelB, kPanel, 0.04f * u);
+    const float r = 0.13f * u;
+    DrawScrew(list, {panelA.x + 0.22f * u, panelB.y - 0.22f * u}, r);
+    DrawScrew(list, {panelB.x - 0.22f * u, panelB.y - 0.22f * u}, r);
+    // The reference moulded into the bottom lip.
     const std::string engraving = "BW-80 \xc2\xb7 " + capture.reference;
-    list.AddText(legends_, std::max(6.0f, std::round(0.24f * u)),
-                 {std::round(keys.x), std::round(origin.y + kMargin * u)}, kEngraving,
-                 engraving.c_str());
+    const float px = std::max(6.0f, std::round(0.20f * u));
+    list.AddText(
+        legends_, px,
+        {std::round(panelA.x + 0.1f * u), std::round(panelB.y + (kLipBottom * u - px) / 2)},
+        kCreamText, engraving.c_str());
+
+    const ImVec2 keys{panelA.x + kMembraneSide * u, panelA.y + kMembraneTop * u};
     const auto all = Zx80Keys();
-    drawCaps(session, capture, Zx80Caps(), *Zx80KeyAt(0, 0), keys, u,
-             [&](const MatrixCap& cap, ImVec2 a, ImVec2 b, bool down) {
+    drawCaps(session, capture, Zx80Caps(), *Zx80KeyAt(0, 0), keys, u, {1 - kZx80CapWidth, 0},
+             kZx80CapHeight, [&](const MatrixCap& cap, ImVec2 a, ImVec2 b, bool down) {
                  DrawMembraneKey(list, legends_, all[cap.key], a, b, u, down);
              });
 }

@@ -49,7 +49,7 @@ TEST_CASE("matrix keyboard layout: the ZX80's caps, every key once, inside, none
         CHECK(cap.x >= 0);
         CHECK(cap.x + cap.width <= kZx80KeyboardWidth);
         CHECK(cap.y >= 0);
-        CHECK(cap.y + 1 <= kZx80KeyboardHeight);
+        CHECK(cap.y + kZx80CapHeight <= kZx80KeyboardHeight);
     }
     for (std::size_t k = 0; k < keys.size(); ++k) {
         INFO(keys[k].legend);

@@ -22,12 +22,17 @@ inline constexpr float kMatrixPadX = 13.0f;  // u: the numeric pad's first colum
 std::span<const MatrixCap> Bw2001Caps();
 
 // The ZX80's membrane as printed: four staggered rows of ten keys (1-0; Q-P; A-L, NEW LINE;
-// SHIFT, Z-M, ., SPACE), rows kZx80RowPitch apart to leave room for the keyword above each key,
-// the first row kZx80TopBand below the top for its words. Every key once.
-inline constexpr float kZx80KeyboardWidth = 10.5f;  // u
-inline constexpr float kZx80RowPitch = 1.18f;       // u
-inline constexpr float kZx80TopBand = 0.22f;        // u: the words above the digits
-inline constexpr float kZx80KeyboardHeight = kZx80TopBand + 3 * kZx80RowPitch + 1;  // u
+// SHIFT, Z-M, ., SPACE), each row 0, 1/2, 3/4 and 1/4 of a key to the right, rows kZx80RowPitch
+// apart to leave room for the keyword above each key, the first row kZx80TopBand below the top for
+// its words and arrows. A cap's x and width are its pitch (1u); the key printed in it is
+// kZx80CapWidth wide, centred, and kZx80CapHeight high: wider than tall, as on the real one (P6l).
+// Every key once.
+inline constexpr float kZx80KeyboardWidth = 10.75f;  // u
+inline constexpr float kZx80RowPitch = 1.03f;        // u
+inline constexpr float kZx80TopBand = 0.38f;         // u: the words and arrows above the digits
+inline constexpr float kZx80CapWidth = 0.80f;        // u
+inline constexpr float kZx80CapHeight = 0.66f;       // u
+inline constexpr float kZx80KeyboardHeight = kZx80TopBand + 3 * kZx80RowPitch + kZx80CapHeight;
 std::span<const MatrixCap> Zx80Caps();
 
 }  // namespace bw

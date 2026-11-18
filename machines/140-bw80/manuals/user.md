@@ -24,7 +24,7 @@ On the PC keyboard, Enter is NEW LINE and Backspace is RUBOUT. The arrows are th
 
 - While the cursor shows K, the BW-80 expects a keyword. O types PRINT, K types LET, A types LIST, R types RUN.
 - After the keyword, the cursor shows L. Now the keys type their letters and digits.
-- SHIFT with a letter types the symbol written in yellow on the key: SHIFT and K is +. THEN, TO, AND, OR and NOT are SHIFT with a digit or B.
+- SHIFT with a letter types the symbol printed in gold on the key: SHIFT and K is +. THEN, TO, AND, OR and NOT are SHIFT with a digit or B.
 
 **A command.** Type PRINT 2+2 and press NEW LINE. The answer, 4, shows at the top of the screen. At the bottom, a report shows 0/-2. The 0 means no error. The -2 is the line it ran: -2 is the line you type on, where a command runs at once. While a report shows, the first key you press only clears it.
 

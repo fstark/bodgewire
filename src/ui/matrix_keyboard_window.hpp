@@ -17,9 +17,9 @@ namespace bw {
 inline constexpr const char* kMatrixKeyboardWindowName = "###matrix keyboard";
 
 // A key matrix keyboard as a floating window of drawn keys: the BW-2001's chiclets, as the PET
-// 2001's (P5q), or the BW-80's membrane, as the ZX80's (P5x), by the capture's kind. Typing while
-// it is focused (MatrixCapture), F2 toggles; a click holds a key while the mouse is down, a
-// right-click latches it (SHIFT for a sequence) until clicked again.
+// 2001's (P5q), or the BW-80's membrane in its cream case, as the ZX80's (P5x, P6l), by the
+// capture's kind. Typing while it is focused (MatrixCapture), F2 toggles; a click holds a key while
+// the mouse is down, a right-click latches it (SHIFT for a sequence) until clicked again.
 class MatrixKeyboardWindow {
 public:
     explicit MatrixKeyboardWindow(ImFont* legends) : legends_(legends) {}
@@ -31,10 +31,11 @@ public:
 private:
     void drawKeys(Session& session, const MatrixCapture& capture);
     void drawMembrane(Session& session, const MatrixCapture& capture);
-    // The cap loop both looks share: the buttons, the latch, the Session's held keys.
+    // The cap loop both looks share: the buttons, the latch, the Session's held keys; each cap
+    // drawn `gap` (u) smaller than its pitch, `height` (u) high.
     template <class Draw>
     void drawCaps(Session& session, const MatrixCapture& capture, std::span<const MatrixCap> caps,
-                  std::size_t shift, ImVec2 keys, float u, Draw&& draw);
+                  std::size_t shift, ImVec2 keys, float u, ImVec2 gap, float height, Draw&& draw);
 
     ImFont* legends_;
     std::vector<bool> latched_;  // per key: right-clicked down
