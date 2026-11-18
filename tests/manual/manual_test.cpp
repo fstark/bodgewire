@@ -48,6 +48,7 @@ constexpr std::string_view kGoodService = "# Counter \u2014 Service Manual\n"
                                           "- `U4` counter: bits 12-15\n"
                                           "- `U5` counter: bits 16-19\n"
                                           "- `D1` LED: lit while C19 is low\n";
+constexpr std::string_view kServiceTail = "## Test points\nx\n## Troubleshooting\nx\n";
 
 }  // namespace
 
@@ -139,7 +140,8 @@ TEST_CASE("manual: run and pin name checks", "[manual]") {
     CHECK(Messages(CheckUserManual(
               ParseMarkdown("# Counter\n## What it does\n"
                             "`U5`\u2013`U1`; `U1`\u2013`R2`; `C3`\u2013`C1`; `R1`\u2013`C3`\n"
-                            "`U2.ENX`, `U9.ENT`, `UH1.bin`, `0.5`, `U2.ENT`\n"),
+                            "`U2.ENX`, `U9.ENT`, `UH1.bin`, `0.5`, `U2.ENT`\n"
+                            "## How it works\n"),
               "u.md", *design)) ==
           std::vector<std::string>{"3: bad run U5\u2013U1", "3: bad run U1\u2013R2",
                                    "3: U2 has no pin ENX", "3: unknown reference 'U9'"});
@@ -151,17 +153,22 @@ TEST_CASE("manual: optional sections", "[manual]") {
         return Messages(
             CheckUserManual(ParseMarkdown("# Counter\n" + std::string(sections)), "u.md", *design));
     };
-    CHECK(user("## What it does\n").empty());
+    CHECK(user("## What it does\n").front() ==
+          "2: sections must be: What it does[, Using it], How it works");
     CHECK(user("## What it does\n## How it works\n").empty());
     CHECK(user("## What it does\n## Using it\n## How it works\n").empty());
     CHECK(user("## What it does\n## How it works\n## Using it\n").front() ==
-          "2: sections must be: What it does[, Using it][, How it works]");
+          "2: sections must be: What it does[, Using it], How it works");
     CHECK(user("## What it does\n## How it works\n## How it works\n").size() == 1);
     CHECK(user("## How it works\n").size() == 1);
-    CHECK(Messages(CheckServiceManual(ParseMarkdown(std::string(kGoodService) +
-                                                    "## Test points\n## Troubleshooting\n"),
-                                      "s.md", *design))
-              .empty());
+    const auto service = [&](std::string_view sections) {
+        return Messages(CheckServiceManual(
+            ParseMarkdown(std::string(kGoodService) + std::string(sections)), "s.md", *design));
+    };
+    CHECK(service(kServiceTail).empty());
+    CHECK(service("## Troubleshooting\n").front() ==
+          "2: sections must be: Components, Test points, Troubleshooting");
+    CHECK(service("## Test points\n").size() == 1);
 }
 
 TEST_CASE("manual: part pin names", "[manual]") {
@@ -180,33 +187,39 @@ TEST_CASE("manual: part pin names", "[manual]") {
 
 TEST_CASE("manual: checks", "[manual]") {
     const auto design = Counter();
-    CHECK(CheckServiceManual(ParseMarkdown(kGoodService), "s.md", *design).empty());
+    CHECK(CheckServiceManual(ParseMarkdown(std::string(kGoodService) + std::string(kServiceTail)),
+                             "s.md", *design)
+              .empty());
     CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## How it works\n## Components\n"),
                                       "s.md", *design))
-              .front() == "2: sections must be: Components[, Test points][, Troubleshooting]");
+              .front() == "2: sections must be: Components, Test points, Troubleshooting");
 
     std::string service(kGoodService);
     const std::string u5 = "- `U5` counter: bits 16-19\n";
     service.replace(service.find(u5), u5.size(), "- `U3` again\n- `U9` x\n");
     service += "- `U1` pin 17 floats\n";
+    service += kServiceTail;
     CHECK(Messages(CheckServiceManual(ParseMarkdown(service), "s.md", *design)) ==
           std::vector<std::string>{"12: unknown reference 'U9'", "14: U1 has no pin 17",
                                    "11: Components: U3 listed twice",
                                    "14: Components: U1 listed twice", "2: Components: missing U5"});
-    CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## Components\nx\n"), "s.md", *design))
+    CHECK(Messages(CheckServiceManual(
+                       ParseMarkdown("# S\n## Components\nx\n" + std::string(kServiceTail)), "s.md",
+                       *design))
               .front() == "3: Components: each bullet starts with a `REF`");
 
-    CHECK(CheckUserManual(ParseMarkdown("# Counter\n## What it does\nConnect +5 V to `J1`.\n"),
-                          "u.md", *design)
+    CHECK(CheckUserManual(
+              ParseMarkdown("# Counter\n## What it does\nConnect +5 V to `J1`.\n## How it works\n"),
+              "u.md", *design)
               .empty());
     CHECK(Messages(CheckUserManual(
                        ParseMarkdown("# Counter\n## What it does\nCounts.\n## Connections\n- "
                                      "`J1`: power\n"),
                        "u.md", *design))
-              .front() == "2: sections must be: What it does[, Using it][, How it works]");
-    CHECK(
-        Messages(CheckUserManual(ParseMarkdown("## What it does\nSee `J7`.\n"), "u.md", *design)) ==
-        std::vector<std::string>{"1: must start with a # title", "2: unknown reference 'J7'"});
+              .front() == "2: sections must be: What it does[, Using it], How it works");
+    CHECK(Messages(CheckUserManual(ParseMarkdown("## What it does\nSee `J7`.\n## How it works\n"),
+                                   "u.md", *design)) ==
+          std::vector<std::string>{"1: must start with a # title", "2: unknown reference 'J7'"});
 
     const PartInfo& ls00 = *FindPart("74LS00");
     const std::string sheet =
@@ -224,7 +237,8 @@ TEST_CASE("manual: references in table cells", "[manual]") {
     CHECK(Messages(CheckUserManual(ParseMarkdown("# Counter\n## What it does\n"
                                                  "| Probe | Reads |\n|---|---|\n"
                                                  "| `U1` pin 2 | pulsing |\n"
-                                                 "| `U7` | `U1` pin 30 |\n"),
+                                                 "| `U7` | `U1` pin 30 |\n"
+                                                 "## How it works\n"),
                                    "u.md", *design)) ==
           std::vector<std::string>{"3: unknown reference 'U7'", "3: U1 has no pin 30"});
 }

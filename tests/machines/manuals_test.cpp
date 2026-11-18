@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -62,19 +63,23 @@ TEST_CASE("manuals: every Machine's manuals pass their checks", "[machines]") {
             INFO(part.reference);
             CHECK(ComponentRole(*loaded.manuals.service, part.reference).has_value());
         }
-    }
-}
 
-TEST_CASE("manuals: the Counter's explain how it works", "[machines]") {
-    const auto dir = test::MachineDir("counter");
-    const Markdown user = ParseMarkdown(Read(dir / "manuals" / "user.md"));
-    const Markdown service = ParseMarkdown(Read(dir / "manuals" / "service.md"));
-    for (const char* heading : {"What it does", "How it works"}) {
-        INFO(heading);
-        CHECK_FALSE(Section(user, heading).empty());
-    }
-    for (const char* heading : {"Components", "Test points", "Troubleshooting"}) {
-        INFO(heading);
-        CHECK_FALSE(Section(service, heading).empty());
+        // The checks require the sections; each must also say something.
+        const Markdown user = ParseMarkdown(Read(dir / "manuals" / "user.md"));
+        const Markdown service = ParseMarkdown(Read(dir / "manuals" / "service.md"));
+        for (const char* heading : {"What it does", "How it works"}) {
+            INFO(heading);
+            CHECK_FALSE(Section(user, heading).empty());
+        }
+        for (const char* heading : {"Components", "Test points", "Troubleshooting"}) {
+            INFO(heading);
+            CHECK_FALSE(Section(service, heading).empty());
+        }
+        const bool usingIt = std::ranges::any_of(user.blocks, [](const Block& block) {
+            return block.kind == BlockKind::Heading && PlainText(block.spans) == "Using it";
+        });
+        if (usingIt) {
+            CHECK_FALSE(Section(user, "Using it").empty());
+        }
     }
 }

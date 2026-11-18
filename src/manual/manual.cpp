@@ -159,10 +159,14 @@ private:
     std::vector<Diagnostic> list_;
 };
 
-// A Title first, then exactly `required` headings, in order, then any of `optional`, each at
-// most once, in their order.
-void CheckShape(const Markdown& doc, Problems& problems, std::span<const std::string_view> required,
-                std::span<const std::string_view> optional = {}) {
+struct SectionRule {
+    std::string_view name;
+    bool optional = false;
+};
+
+// A Title first, then the sections in order: each required one exactly once, each optional one
+// at most once, in its place.
+void CheckShape(const Markdown& doc, Problems& problems, std::span<const SectionRule> sections) {
     if (doc.blocks.empty() || doc.blocks.front().kind != BlockKind::Title) {
         problems.add(doc.blocks.empty() ? 0 : doc.blocks.front().line, "must start with a # title");
     }
@@ -173,25 +177,22 @@ void CheckShape(const Markdown& doc, Problems& problems, std::span<const std::st
         }
     }
     std::string expected;
-    for (const std::string_view name : required) {
-        expected += (expected.empty() ? "" : ", ") + std::string(name);
+    for (const SectionRule& rule : sections) {
+        const std::string comma = expected.empty() ? "" : ", ";
+        expected += rule.optional ? "[" + comma + std::string(rule.name) + "]"
+                                  : comma + std::string(rule.name);
     }
-    for (const std::string_view name : optional) {
-        expected += "[, " + std::string(name) + "]";
-    }
-    bool ok = headings.size() >= required.size();
-    for (std::size_t i = 0; ok && i < required.size(); ++i) {
-        ok = headings[i].first == required[i];
-    }
-    std::size_t next = 0;  // the first optional section still allowed
-    for (std::size_t i = required.size(); ok && i < headings.size(); ++i) {
-        while (next < optional.size() && optional[next] != headings[i].first) {
+    std::size_t next = 0;  // the first heading not yet matched
+    bool ok = true;
+    for (const SectionRule& rule : sections) {
+        if (next < headings.size() && headings[next].first == rule.name) {
             ++next;
+        } else if (!rule.optional) {
+            ok = false;
+            break;
         }
-        ok = next < optional.size();
-        ++next;
     }
-    if (!ok) {
+    if (!ok || next != headings.size()) {
         problems.add(headings.empty() ? 0 : headings.front().second,
                      "sections must be: " + expected);
     }
@@ -263,9 +264,8 @@ std::optional<std::string> ReadFile(const std::filesystem::path& path) {
 std::vector<Diagnostic> CheckUserManual(const Markdown& doc, std::string_view file,
                                         const LoadedCircuit& design) {
     Problems problems(file);
-    constexpr std::string_view kSections[] = {"What it does"};
-    constexpr std::string_view kOptional[] = {"Using it", "How it works"};
-    CheckShape(doc, problems, kSections, kOptional);
+    constexpr SectionRule kSections[] = {{"What it does"}, {"Using it", true}, {"How it works"}};
+    CheckShape(doc, problems, kSections);
     CheckReferences(doc, problems, design);
     return problems.take();
 }
@@ -273,9 +273,8 @@ std::vector<Diagnostic> CheckUserManual(const Markdown& doc, std::string_view fi
 std::vector<Diagnostic> CheckServiceManual(const Markdown& doc, std::string_view file,
                                            const LoadedCircuit& design) {
     Problems problems(file);
-    constexpr std::string_view kSections[] = {"Components"};
-    constexpr std::string_view kOptional[] = {"Test points", "Troubleshooting"};
-    CheckShape(doc, problems, kSections, kOptional);
+    constexpr SectionRule kSections[] = {{"Components"}, {"Test points"}, {"Troubleshooting"}};
+    CheckShape(doc, problems, kSections);
     CheckReferences(doc, problems, design);
 
     std::uint32_t headingLine = 0;
@@ -310,7 +309,7 @@ std::vector<Diagnostic> CheckServiceManual(const Markdown& doc, std::string_view
 std::vector<Diagnostic> CheckDatasheet(const Markdown& doc, std::string_view file,
                                        const PartInfo& part) {
     Problems problems(file);
-    constexpr std::string_view kSections[] = {"Function", "Pins"};
+    constexpr SectionRule kSections[] = {{"Function"}, {"Pins"}};
     CheckShape(doc, problems, kSections);
     const std::string title = Title(doc);
     if (!title.starts_with(part.name) ||
