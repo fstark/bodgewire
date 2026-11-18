@@ -81,3 +81,12 @@ TEST_CASE("focus: Esc steps back", "[view]") {
     CHECK(focus.escape(false) == EscapeStep::LiftTip);
     CHECK(focus.owner() == Owner::Probe);
 }
+
+TEST_CASE("focus: the pencil is a tool", "[view]") {
+    Focus focus;
+    CHECK_FALSE(IsInstrument(Owner::Pencil));
+    focus.take(Owner::Pencil);
+    CHECK(focus.owner() == Owner::Pencil);
+    CHECK(focus.escape(false) == EscapeStep::ToProbe);
+    CHECK(focus.owner() == Owner::Probe);
+}

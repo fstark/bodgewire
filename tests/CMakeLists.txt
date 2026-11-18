@@ -187,6 +187,7 @@ add_executable(bw_tests
   view/keyboard_layout_test.cpp
   view/machine_keys_test.cpp
   view/matrix_keyboard_layout_test.cpp
+  view/pencil_marks_test.cpp
   view/time_text_test.cpp
   view/time_view_test.cpp
   view/tv_controls_test.cpp

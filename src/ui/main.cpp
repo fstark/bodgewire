@@ -783,6 +783,8 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
                 }
                 break;
             }
+            case Owner::Pencil:
+                break;
             case Owner::Meter:
                 if (pick && AcceptsLead(LeadKind::Held, pick->hit.kind) &&
                     !session.placeLead({pick->contact, pick->layer,

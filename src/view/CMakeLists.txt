@@ -8,6 +8,7 @@ add_library(bw_view STATIC
   keyboard_layout.cpp
   machine_keys.cpp
   matrix_keyboard_layout.cpp
+  pencil_marks.cpp
   time_text.cpp
   time_view.cpp
   tv_controls.cpp

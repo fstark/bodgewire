@@ -6,7 +6,17 @@
 namespace bw {
 
 // What a click on a pin does: one Board tool or one instrument owns it (P6c, UX_DESIGN's Focus).
-enum class Owner : std::uint8_t { Probe, Puller, Iron, Cutters, Wire, Analyzer, Scope, Meter };
+enum class Owner : std::uint8_t {
+    Probe,
+    Puller,
+    Iron,
+    Cutters,
+    Wire,
+    Pencil,
+    Analyzer,
+    Scope,
+    Meter
+};
 
 bool IsInstrument(Owner owner);  // Analyzer, Scope, Meter
 
