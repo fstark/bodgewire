@@ -258,13 +258,7 @@ Titles and briefs:
 
 ## Manuals
 
-- User: What it does (power on `J1`, TV on `J2`, the left player's controller on `J3` and the right player's on `J4`; Start is `SW1`; the court, the paddles following the knobs (right stop: top), the ball returned at four angles by where it hits the paddle, speeding up after a few hits; a missed ball scores for the other player and comes back from that side; first to 11, then the ball bounces alone until Start; at power-on the scores may show anything until Start).
-- Service: Components, one bullet per reference with its Nets, netlist order (`X1`, `U1`–`U26`, `J1`–`J4`, `U27`–`U58`, `SW1`, `R1`). `U1`–`U26` as on 060 with the changed roles (§ Changes), for example:
-  - `U16` video mixer: `MIX` high when any of `BALL_N`, `TOP_N`, `BOTTOM_N`, `PAD_N`, `NET_N`, `SCORE_N` is low
-  - `U26` direction flip-flops: `HDIR` (high: right), set by `GO_RIGHT`, cleared by `GO_LEFT`; `VDIR_N` (high: up), from `GO_DOWN` and `GO_UP`
-  - `U27` paddle line sync: `LWAIT`, `RWAIT`, the controllers' pulses taken at each line start
-  - `U28`, `U29` paddle line counters: `LP0`–`LP3`, `RP0`–`RP3`, the paddle's line 0–15
-  - `U44` lost-ball flip-flops: `LOST_LEFT`, `LOST_RIGHT`, set by a miss, cleared by `SERVE_END`
-  - `U53` score decoder: `SEG_A`–`SEG_G` for the units count of the half of the line being drawn
-  - `J3`, `J4` paddle controllers: `TRIG_N` on `VSYNC_N`, `OUT` `LPULSE` / `RPULSE`, 1.248 ms (right stop) to 14.56 ms (left stop)
-  - `SW1` Start: pulls `START_N` low; `R1` its 1 kΩ pull-up
+Written to STYLE's Manuals rules (P6k, as the Counter's):
+
+- User: What it does (a welcome: the court, the ball, a point for a missed ball, first to 11; no computer on the board); Using it (the knobs `J3` and `J4`, right stop up, their keys Q/A and Up/Down in a table as the knob box prints them; the rally's speed and the four angles; the miss and serve; the end of a game; START (`SW1`); power-up); How it works (the goal: the board follows the beam; the clock, the beam counters, the sync, the court, the picture; the ball as a second clock; the paddles as kitchen timers wound by `VSYNC_N`; hits and angles; the speed; a miss and the serve; the scores and game over; the score digits as stencils; the unused pins in a table).
+- Service: Components (every reference, netlist order, formulas reworded); Test points (a table of probe readings, in play after START: `bw run --press SW1:100ms:200ms --probe` at 150 ms, 500 ms, 1 s, 2 s and 4 s, game over at 55 s and 59 s, a second START at 57 s read at 57.5 s; two logic analyzer setups viewed in `bw_ui` screenshots: a line, `--clip U6.2Y:f,U6.1Y,U11.1Q,U11.2Q --sample 100ns --view 10us`, and the controllers, `--knob J3:0%,J4:100% --clip U8.1Y:f,J3.OUT,J4.OUT,U27.1Q,U27.2Q --sample 1us --view 2ms`); Troubleshooting (no picture or no lock, a paddle missing or deaf to its knob, the ball through a paddle or one angle only, no speed-up, a miss not scoring or no serve, a digit drawn wrong, START doing nothing: ordered checks, never naming a fault).

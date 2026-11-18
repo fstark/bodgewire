@@ -79,7 +79,7 @@ Tests: `tests/machines/test_pattern_faults_test.cpp` (titles and briefs of all e
 
 ## Manuals
 
-Existing, unchanged:
+Written to STYLE's Manuals rules (P6k):
 
-- User: What it does (power on `J1`, TV on `J2`; a steady grid of 6 by 18 lines, locked within half a second).
-- Service: Components, one bullet per reference with its Nets, `X1` to `J2`.
+- User: What it does (a welcome: the TV beside the board shows a steady grid of 6 vertical and 18 horizontal lines; a clock and counters draw it, no processor); How it works (the goal, the beam as an eye reading a page, the clock, the dot counter `U1` `U2` with `LINE_END_N`, the line counter `U3`–`U5` with `FRAME_END_N`, the sync, the dark border, the grid, the output register `U14`, no reset, the unused pins in a table). No Using it: nothing to operate.
+- Service: Components (every reference, netlist order); Test points (probe readings checked with `bw run --probe` at 0.3 s, 0.5 s, 0.6 s, 0.8 s, 1 s, 1.013 s and 1.1 s: every signal but the supply shows P, and its brighter lamp; four instrument setups checked in `bw_ui` screenshots after 1 s: a line on the analyzer (`--clip U6.1Y:f,…` at 100 ns, 10 µs a division), a line on the oscilloscope (`--hook U14.1Q,U14.2Q --timebase 10us`, after 1 s and 1.2 s), a frame on the analyzer (`--clip U8.Y:f,…` at 10 µs, 2 ms a division), the meter on `U6` pin 14); Troubleshooting (no picture, a picture that will not hold still, a steady but wrong grid: ordered checks, never naming a fault).

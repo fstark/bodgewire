@@ -61,8 +61,8 @@ Fence: full release suite. Commit: `docs: P6k done, every Machine's manuals expl
 | Phase | Description | Commit |
 |-------|-------------|--------|
 | 1 | The Typewriter's Nets `GL1`–`GL3` | af03ba6 |
-| 2 | LED Chaser, Dice, Stopwatch, Knob Meter | this commit |
-| 3 | Test Pattern, Bouncing Ball, Tennis | |
+| 2 | LED Chaser, Dice, Stopwatch, Knob Meter | 399e2a3 |
+| 3 | Test Pattern, Bouncing Ball, Tennis | this commit |
 | 4 | Message, Typewriter | |
 | 5 | Heartbeat, LED computer | |
 | 6 | BW-1 | |
@@ -76,3 +76,5 @@ Fence: full release suite. Commit: `docs: P6k done, every Machine's manuals expl
 - Docs review (before the docs commit), fixed: the Typewriter's Service Manual renamed in phase 1 (an `R3` left would fail the checks); every test text the required sections break listed, `kGoodService` kept and a `kServiceTail` added; ADD_MACHINE §2 changed with the checks (phase 9); the Counter-only sections case folded into the every-Machine case (sections not empty); the macOS `sed -i ''`; the Typewriter docs' lines named; `drc_typewriter` the Board's check, not `place_drc_typewriter`.
 - Phase 1: `check-board` ok; release `-R "typewriter|manual"` 36 passed.
 - Phase 2: each Machine drafted by a sub-agent, read whole and kept (the Chaser's, Dice's, Stopwatch's and Knob Meter's prose needed no rewrite). Readings checked with `bw run --probe` (Chaser 1–2 s, every 33 ms over one run; Dice idle and with `ROLL` held, `--press`; Stopwatch running, stopped, each button held; Knob Meter at 0 %, 47 %, 100 % around a round's start at x.x425 s) and one analyzer or scope setup each, screenshot viewed; the times are in each design doc's `## Manuals`. Release `-R "manual|chaser|dice|stopwatch|knob"` 73 passed; the Stopwatch's Service Manual viewed. Found for STYLE: a run means the whole range (a pair is "`D1` and `D7`"); a pin name shaped like a reference (the 74LS90's R01, R92) is written plain or as `U8.R01`; button legends in plain capitals (`RESET` is also a Net); the probe's P lamp holds 100 ms; readings that need input say the state ("idle", "`ROLL` held").
+- From phase 3 on, the Machines of phases 3–7 were drafted at once (they share no file), the brief carrying phase 2's findings; each phase is still reviewed and committed in ladder order.
+- Phase 3: readings with `bw run --probe` (Test Pattern 0.3–1.1 s; Ball 0.5–2 s, the ball's directions every 0.2 s to 3.1 s; Tennis with START pressed, 150 ms–4 s, game over at 55 s, the next START at 57 s, `--vcd` records of 8, 42 and 60 s); analyzer and scope setups for a line and a frame on each, the Ball's ball, Tennis's controllers, screenshots viewed. Every fast TV signal shows P; the tables give the level it mostly reads ("mostly H, with P lit"). Release `-R "manual|test.pattern|ball|tennis"` 71 passed; Tennis's User Manual viewed (the keys table drawn). Seen: Tennis's knobs start at 0 %, both paddles at the bottom, so a fresh game misses every serve (the user's knobs decide; not a manual matter).

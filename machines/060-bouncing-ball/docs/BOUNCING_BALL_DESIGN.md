@@ -235,29 +235,7 @@ Titles and briefs:
 
 ## Manuals
 
-- User: What it does (power on `J1`, TV on `J2`; a white box with a dashed net, a small ball bouncing off the four walls, crossing in about a second; locks within half a second; at power-on the ball may be out of sight for a moment).
-- Service: Components, one bullet per reference with its Nets, netlist order (`X1`, `U1`–`U26`, `J1`, `J2`):
-  - `X1` dot clock: 2 MHz crystal oscillator, net `CLK`
-  - `U1`, `U2` horizontal counter: `H0`–`H3`, carry `HC`; `H4`–`H6`, 128 dots a line
-  - `U3`–`U5` vertical counter: `V0`–`V8`, counts at each line end, reloaded with 0 after line 311
-  - `U6` line decoder: `LINE_END_N` at dot 127, `HSYNC_N` for dots 104–111
-  - `U7` frame-end decoder: `FRAME_END_N` low at the end of line 311
-  - `U8` vertical decoders: `VSYNC_N` for lines 308–311, `BOTTOM_N` for lines 240–255
-  - `U9` inverters: `H4_N`, `LINE_END`, `VBALL`, `MR`, `MIX_N`, `HBLANK`
-  - `U10` sync mixer: composite sync from `HSYNC_N` and `VSYNC_N`, inverted into `SYNC_N_D`
-  - `U11` output register: re-times `SYNC_N` and `VIDEO` on the clock
-  - `U12` wall and net decodes: `TOP_A`, `LEFT_A`, `NET_A`
-  - `U13` decodes: `H56_LOW`, `TOP_B`; `BALL_CK`, the ball height clock
-  - `U14` walls: `TOP_N` (lines 0–15), `LEFT_N` (dots 0–3); `HBLANK_N`
-  - `U15` right wall and net: `RIGHT_N` (dots 92–95), `NET_N` (dots 48–49, dashed by `V2`)
-  - `U16` video mixer: `MIX` high when any of `BALL_N`, `TOP_N`, `BOTTOM_N`, `RIGHT_N`, `NET_N`, `LEFT_N` is low
-  - `U17` move and video gates: `MOVE` on line 308; `VIDEO_D` = `MIX` outside blanking
-  - `U18`, `U19` ball horizontal counter: steps every other dot, `HBALL` at its overflow, reloaded by `HLOAD_N`
-  - `U20`, `U21` ball vertical counter, low 8 bits: steps each line, `VRCO` high on count 255, reloaded by `VLOAD_N`
-  - `U22` ball vertical counter, bit 8: `BV8`, toggled by `VRCO`
-  - `U23` ball height: cleared on the line of ball count 511, `BALL_OFF` low for 8 lines
-  - `U24` ball gates: `HLOAD_N`, `VLOAD_N`, `BALL_N`, `MR_N`
-  - `U25` bounce detectors: `HIT_LEFT`, `HIT_RIGHT`, `HIT_TOP`, `HIT_BOTTOM`
-  - `U26` direction flip-flops: `HDIR` (high: right), `VDIR_N` (high: up)
-  - `J1` power connector: +5 V and 0 V for the whole board
-  - `J2` monitor connector: `VIDEO` and `SYNC_N` out
+Written to STYLE's Manuals rules (P6k):
+
+- User: What it does (a welcome: a white box with a dashed net, a ball bouncing off the four walls, crossing in about a second; nothing to press; the ball may be out of sight for up to a second after power-on); no Using it; How it works (the goal, the clock, the beam counters as line and column numbers, sync, the dark edges, the walls and net as a stencil in a table, the ball's counters as two clocks one a little fast, across and up and down, its height, bounces as a meeting, the mixer, no reset, the unused pins in a table).
+- Service: Components (every reference, netlist order); Test points (probe readings, checked with `bw run --probe` at 0.5 s, 1 s, 1.5 s and 2 s; `HDIR` and `VDIR_N` and the hits sampled every 0.2 s from 0.1 s to 3.1 s, `HDIR` low from 0.3 s to 1.3 s, high from 1.5 s to 2.1 s; four setups: a line on the analyzer and on the oscilloscope, a picture and the ball on the analyzer, each viewed in a `bw_ui --clip`/`--hook --screenshot --after 1s`); Troubleshooting (dark or rolling picture, a wall or the net wrong, the ball missing or misshapen, the ball moving wrong: ordered checks, never naming a fault).
