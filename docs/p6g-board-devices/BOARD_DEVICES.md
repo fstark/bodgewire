@@ -67,7 +67,7 @@ The kernel, Parts' behaviour, the builder, devices and Puzzles are untouched.
 
 ## Later
 
-- P6h: the keyboard pulled out from under the TV.
+- P6i: the keyboard pulled out from under the TV.
 - A Machine with both a keyboard and knobs: the split above.
 - The BW-1's key pin by the legend, if it still bothers: a press refused only on the pad, the hover 12 px around it; picking a capped part's pins on the pad only is one answer.
 - Text placed on the silkscreen in KiCad (a Board's title, warnings): a reader for `gr_text`, when a Board wants one.
