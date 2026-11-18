@@ -202,6 +202,41 @@ TEST_CASE("session: clip a group", "[session]") {
     CHECK_FALSE(session.clipGroup("U99", "A0").has_value());
 }
 
+TEST_CASE("session: clip a bus the Part declares", "[session]") {
+    Session session = PuzzleSession("dark_led");  // U1-U5: 74LS161
+    // QA-QD have no digits: the 74LS161 declares them, QA bit 0 whichever pin is clicked.
+    const auto q = session.clipGroup("U1", "QC");
+    REQUIRE(q.has_value());
+    REQUIRE(q->group == 0);
+    const ChannelGroup& outputs = session.groups()[0];
+    CHECK(outputs.name == "U1 QA-QD");
+    REQUIRE(outputs.channels.size() == 4);
+    for (std::size_t b = 0; b < 4; ++b) {
+        INFO(b);
+        CHECK(session.clips()[outputs.channels[b]]->pin ==
+              std::to_string(14 - b));  // QA 14 .. QD 11
+    }
+    const auto data = session.clipGroup("U2", "A");
+    REQUIRE(data.has_value());
+    CHECK(session.groups()[1].name == "U2 A-D");
+    CHECK(session.clips()[session.groups()[1].channels[0]]->pin == "3");  // A
+    // ENP is in no bus: clipped alone.
+    const auto enp = session.clipGroup("U1", "ENP");
+    REQUIRE(enp.has_value());
+    CHECK_FALSE(enp->group.has_value());
+
+    // A hand group of declared pins is ordered by bit, not reversed as given.
+    session.ungroup(0);
+    const auto qa = session.clipAt("U1", "14");
+    const auto qb = session.clipAt("U1", "13");
+    const auto qc = session.clipAt("U1", "12");
+    const auto qd = session.clipAt("U1", "11");
+    REQUIRE((qa && qb && qc && qd));
+    const auto hand = session.group({*qa, *qb, *qc, *qd});
+    REQUIRE(hand.has_value());
+    CHECK(session.groups()[*hand].channels == std::vector{*qa, *qb, *qc, *qd});
+}
+
 TEST_CASE("session: group refused without enough channels", "[session]") {
     Session session = HeartbeatSession();
     REQUIRE(session.clipGroup("U1", "A0").has_value());  // 16

@@ -21,6 +21,21 @@ struct Overloaded : Ts... {
     using Ts::operator()...;
 };
 
+// The bus a Pin belongs to and its bit: a PinBus the Part declares (QA-QD), else the digits in
+// its name (A0-A15, StemOf). Power and unconnected Pins belong to none.
+std::optional<NameStem> BusBitOf(const Component& part, std::size_t pin) {
+    const PinSpec& spec = part.pins()[pin];
+    if (spec.kind == PinKind::Power || spec.kind == PinKind::NoConnect) {
+        return std::nullopt;
+    }
+    for (const PinBus& bus : part.buses()) {
+        if (const auto bit = std::ranges::find(bus.pins, pin); bit != bus.pins.end()) {
+            return NameStem{bus.name, static_cast<std::uint32_t>(bit - bus.pins.begin())};
+        }
+    }
+    return StemOf(spec.name);
+}
+
 // A hand's timing is not tied to the 1 ms slices: without this, every hold lasts whole
 // milliseconds and a 1 MHz counter cycling every 6 µs keeps its parity (the dice only rolls even).
 Time PressJitter() {
@@ -282,16 +297,13 @@ std::expected<ClipGroupResult, std::string> Session::clipGroup(std::string_view 
     if (!lead) {
         return std::unexpected("no such pin");
     }
-    const auto pins = machine_->designCircuit().components.find(reference)->second->pins();
-    const auto joins = [](const PinSpec& spec) {
-        return spec.kind != PinKind::Power && spec.kind != PinKind::NoConnect;
-    };
-    const PinSpec& clicked = pins[static_cast<std::size_t>(std::stoi(lead->pin) - 1)];
-    const auto stem = joins(clicked) ? StemOf(clicked.name) : std::nullopt;
-    std::vector<std::pair<std::uint32_t, std::string>> members;  // stem index, pin number
+    const Component& part = *machine_->designCircuit().components.find(reference)->second;
+    const auto pins = part.pins();
+    const auto stem = BusBitOf(part, static_cast<std::size_t>(std::stoi(lead->pin) - 1));
+    std::vector<std::pair<std::uint32_t, std::string>> members;  // bit, pin number
     for (std::size_t p = 0; stem && p < pins.size(); ++p) {
-        const auto other = StemOf(pins[p].name);
-        if (joins(pins[p]) && other && other->stem == stem->stem) {
+        const auto other = BusBitOf(part, p);
+        if (other && other->stem == stem->stem) {
             members.emplace_back(other->index, std::to_string(p + 1));
         }
     }
@@ -346,8 +358,8 @@ std::optional<std::size_t> Session::group(std::vector<std::size_t> channels) {
             return std::nullopt;
         }
         const PadLead& clip = *clips_[channel];
-        const auto pins = machine_->designCircuit().components.at(clip.reference)->pins();
-        const auto stem = StemOf(pins[static_cast<std::size_t>(std::stoi(clip.pin) - 1)].name);
+        const auto stem = BusBitOf(*machine_->designCircuit().components.at(clip.reference),
+                                   static_cast<std::size_t>(std::stoi(clip.pin) - 1));
         if (stem) {
             stems.emplace_back(stem->index, channel);
         }

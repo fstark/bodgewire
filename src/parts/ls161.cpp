@@ -31,7 +31,10 @@ LogicValue Bit(std::uint8_t count, std::size_t bit) { return (count >> bit) & 1u
 
 }  // namespace
 
-Ls161::Ls161(std::string reference) : Component(std::move(reference), Ls161Pins()) {}
+Ls161::Ls161(std::string reference) : Component(std::move(reference), Ls161Pins()) {
+    declareBus("A-D", {"A", "B", "C", "D"});
+    declareBus("QA-QD", {"QA", "QB", "QC", "QD"});
+}
 
 void Ls161::powerOn(PowerOnContext& ctx) {
     count_ = 0;

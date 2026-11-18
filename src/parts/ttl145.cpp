@@ -30,7 +30,9 @@ std::vector<PinSpec> Ttl145Pins() {
 }  // namespace
 
 Ttl145::Ttl145(std::string reference, const Delays& delays)
-    : Component(std::move(reference), Ttl145Pins()), delays_(delays) {}
+    : Component(std::move(reference), Ttl145Pins()), delays_(delays) {
+    declareBus("A-D", {"A", "B", "C", "D"});
+}
 
 void Ttl145::evaluate(EvalContext& ctx) {
     // The codes the inputs allow: a known bit fixes it, an X bit allows both (as the 74LS138).

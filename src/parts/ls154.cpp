@@ -31,7 +31,9 @@ bool Changed(const EvalContext& ctx, PinIndex pin) { return ctx.rose(pin) || ctx
 
 }  // namespace
 
-Ls154::Ls154(std::string reference) : Component(std::move(reference), Ls154Pins()) {}
+Ls154::Ls154(std::string reference) : Component(std::move(reference), Ls154Pins()) {
+    declareBus("A-D", {"A", "B", "C", "D"});
+}
 
 void Ls154::evaluate(EvalContext& ctx) {
     const LogicValue g1 = ctx.read(kG1N);

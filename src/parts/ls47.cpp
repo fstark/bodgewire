@@ -55,7 +55,9 @@ std::uint8_t Ls47Segments(unsigned value, bool lampTestN, bool rippleBlankingInN
     return kGlyphs[value & 15u];
 }
 
-Ls47::Ls47(std::string reference) : Component(std::move(reference), Ls47Pins()) {}
+Ls47::Ls47(std::string reference) : Component(std::move(reference), Ls47Pins()) {
+    declareBus("A-D", {"A", "B", "C", "D"});
+}
 
 SegmentCertainty ReadSegments(EvalContext& ctx) {
     unsigned known = 0;    // input bits read as 1

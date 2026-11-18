@@ -38,7 +38,9 @@ LogicValue Level(bool bit, bool unknown) { return unknown ? X : (bit ? One : Zer
 
 }  // namespace
 
-Ls90::Ls90(std::string reference) : Component(std::move(reference), Ls90Pins()) {}
+Ls90::Ls90(std::string reference) : Component(std::move(reference), Ls90Pins()) {
+    declareBus("QA-QD", {"QA", "QB", "QC", "QD"});
+}
 
 void Ls90::powerOn(PowerOnContext& ctx) {
     unknownA_ = false;

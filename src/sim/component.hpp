@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initializer_list>
 #include <span>
 #include <string>
 #include <string_view>
@@ -24,6 +25,13 @@ struct PinSpec {
     // Input whose changes other than 1 -> 0 never alter evaluate()'s result (a clock read only
     // through fell()). Last, after `sampled`: Parts build PinSpecs positionally.
     bool fallingEdgeOnly = false;
+};
+
+// Pins the datasheet names as one value by letters (QA-QD), not digits: the Logic Analyzer's
+// Shift-click groups them (pins named with digits, A0-A15, are grouped by their names).
+struct PinBus {
+    std::string name;            // "QA-QD"
+    std::vector<PinIndex> pins;  // bit 0 first
 };
 
 // Passed to Component::evaluate(); hot members are inline in simulator.hpp, include it to use them.
@@ -88,6 +96,7 @@ public:
     ComponentId id() const { return id_; }              // valid once added to a Circuit
     PinId firstPin() const { return firstPin_; }        // global PinId of local Pin 0
     PinIndex pinIndex(std::string_view pinName) const;  // Check()s the name
+    std::span<const PinBus> buses() const { return buses_; }
 
     // Outputs already hold random 0/1, bidirectional Pins Z; override to seed state / make outputs
     // consistent.
@@ -96,11 +105,14 @@ public:
 
 protected:
     Component(std::string name, std::vector<PinSpec> pins);
+    // Adds a PinBus over these Pins, bit 0 first; Check()s the names.
+    void declareBus(std::string name, std::initializer_list<std::string_view> pins);
 
 private:
     friend class Circuit;
     std::string name_;
     std::vector<PinSpec> pins_;
+    std::vector<PinBus> buses_;
     ComponentId id_{};
     PinId firstPin_{};
 };

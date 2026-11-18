@@ -36,7 +36,9 @@ LogicValue Or(LogicValue a, LogicValue b) {
 
 }  // namespace
 
-Ls165::Ls165(std::string reference) : Component(std::move(reference), Ls165Pins()) {}
+Ls165::Ls165(std::string reference) : Component(std::move(reference), Ls165Pins()) {
+    declareBus("A-H", {"A", "B", "C", "D", "E", "F", "G", "H"});
+}
 
 void Ls165::powerOn(PowerOnContext& ctx) {
     for (LogicValue& stage : stages_) {

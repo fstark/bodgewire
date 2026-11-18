@@ -29,7 +29,9 @@ std::vector<PinSpec> Ls164Pins() {
 
 }  // namespace
 
-Ls164::Ls164(std::string reference) : Component(std::move(reference), Ls164Pins()) {}
+Ls164::Ls164(std::string reference) : Component(std::move(reference), Ls164Pins()) {
+    declareBus("QA-QH", {"QA", "QB", "QC", "QD", "QE", "QF", "QG", "QH"});
+}
 
 void Ls164::powerOn(PowerOnContext& ctx) {
     for (std::size_t i = 0; i < kOutputs.size(); ++i) {

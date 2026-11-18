@@ -29,7 +29,9 @@ bool Changed(const EvalContext& ctx, PinIndex pin) { return ctx.rose(pin) || ctx
 
 }  // namespace
 
-Ls138::Ls138(std::string reference) : Component(std::move(reference), Ls138Pins()) {}
+Ls138::Ls138(std::string reference) : Component(std::move(reference), Ls138Pins()) {
+    declareBus("A-C", {"A", "B", "C"});
+}
 
 void Ls138::evaluate(EvalContext& ctx) {
     const LogicValue g1 = ctx.read(kG1);
