@@ -77,5 +77,7 @@ net LED_A8   R9.2 D8.A
 
 ## Manuals
 
-- User: What it does (one paragraph: power `J1`, one light running along eight LEDs).
-- Service: Components (every reference).
+Written to STYLE's Manuals rules, as the Counter's (P6k):
+
+- User: What it does (a welcome: one light runs along `D1`–`D8` about 15 steps a second; a few LEDs may light together for the first half second); How it works (the goal, the clock, the four counters as an odometer making `STEP`, `U5` as a line passing buckets along `S1`–`S8`, `U6` feeding a new low into `SER` and cleaning up after power-on, the LEDs, the unused pins in a table). No Using it: nothing to operate.
+- Service: Components (every reference); Test points (a table of probe readings on a working board, checked with `bw run --probe` at 1 s, 1.03 s, 1.2 s, 1.45 s, 1.5 s and 2 s, and the `S1`–`S8` low walking checked every 33 ms from 1 s to 1.6 s; a logic analyzer row checked with `bw_ui --clip U4.QD,U6.Y:f,U5.QA,…,U5.QH --sample 20us --view 100ms:+400ms --after 3s`, the staircase viewed); Troubleshooting (no LED lights or all stay lit, the light never comes back, one LED wrong, two together or a jump: ordered checks, never naming a fault).

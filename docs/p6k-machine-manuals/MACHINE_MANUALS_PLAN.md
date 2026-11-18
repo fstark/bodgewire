@@ -60,8 +60,8 @@ Fence: full release suite. Commit: `docs: P6k done, every Machine's manuals expl
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | The Typewriter's Nets `GL1`–`GL3` | |
-| 2 | LED Chaser, Dice, Stopwatch, Knob Meter | |
+| 1 | The Typewriter's Nets `GL1`–`GL3` | af03ba6 |
+| 2 | LED Chaser, Dice, Stopwatch, Knob Meter | this commit |
 | 3 | Test Pattern, Bouncing Ball, Tennis | |
 | 4 | Message, Typewriter | |
 | 5 | Heartbeat, LED computer | |
@@ -74,3 +74,5 @@ Fence: full release suite. Commit: `docs: P6k done, every Machine's manuals expl
 ## Implementation notes
 
 - Docs review (before the docs commit), fixed: the Typewriter's Service Manual renamed in phase 1 (an `R3` left would fail the checks); every test text the required sections break listed, `kGoodService` kept and a `kServiceTail` added; ADD_MACHINE §2 changed with the checks (phase 9); the Counter-only sections case folded into the every-Machine case (sections not empty); the macOS `sed -i ''`; the Typewriter docs' lines named; `drc_typewriter` the Board's check, not `place_drc_typewriter`.
+- Phase 1: `check-board` ok; release `-R "typewriter|manual"` 36 passed.
+- Phase 2: each Machine drafted by a sub-agent, read whole and kept (the Chaser's, Dice's, Stopwatch's and Knob Meter's prose needed no rewrite). Readings checked with `bw run --probe` (Chaser 1–2 s, every 33 ms over one run; Dice idle and with `ROLL` held, `--press`; Stopwatch running, stopped, each button held; Knob Meter at 0 %, 47 %, 100 % around a round's start at x.x425 s) and one analyzer or scope setup each, screenshot viewed; the times are in each design doc's `## Manuals`. Release `-R "manual|chaser|dice|stopwatch|knob"` 73 passed; the Stopwatch's Service Manual viewed. Found for STYLE: a run means the whole range (a pair is "`D1` and `D7`"); a pin name shaped like a reference (the 74LS90's R01, R92) is written plain or as `U8.R01`; button legends in plain capitals (`RESET` is also a Net); the probe's P lamp holds 100 ms; readings that need input say the state ("idle", "`ROLL` held").

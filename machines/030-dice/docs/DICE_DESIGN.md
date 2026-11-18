@@ -96,16 +96,7 @@ With the `loaded_dice` crack, `U2` pin 3 and `U3` pin 2 share an island without 
 
 ## Manuals
 
-- User: What it does (one paragraph: power `J1`; hold `SW1` and the LEDs flicker; let go and they show a face from 1 to 6; before the first roll they may show any pattern).
-- Service: Components (every reference):
-  - `X1` clock: 1 MHz crystal oscillator, drives `CLK`
-  - `J1` power connector: +5 V and 0 V for the whole board
-  - `SW1` roll button: pulls `BTN_N` low while pressed
-  - `R1` pull-up: holds `RESET_N` high so `U1` runs
-  - `R9` pull-up: holds `BTN_N` high while `SW1` is released
-  - `R2`–`R8` LED resistors: limit the current through `D1`–`D7` (one line each)
-  - `U1` counter: counts 1 to 6 on `ROLL_CLK`, back to 1 after 6 (`SIX_N` loads 1)
-  - `U2` decoder: inverts `N0` into `ODD_N` and `N2` into `FOUR_N`
-  - `U3` decoder: NAND of `N1` and `N2` into `SIX_N`
-  - `U4` clock gate and decoder: `ROLL_CLK` from `CLK` while `BTN_N` is low; NOR of `N1` and `N2` into `TWO_N`
-  - `D1`–`D7` LEDs: lit while their decoder output is low (one line each, naming the Net)
+Written to STYLE's Manuals rules (P6k, the Counter's as the model):
+
+- User: What it does (a welcome: seven LEDs as a die face; a counter running 1 to 6 a million times a second, stopped by the player's hand); Using it (`ROLL`: hold to roll, the LEDs glow at different brightness; every face equally likely; any pattern at power-on until the first roll); How it works (the goal, the clock, the button as a tap on the clock through `U4`, the counter 1 to 6 reloaded by `SIX_N`, the decoder as four spot groups in a table, the LEDs and their brightness while rolling, the unused pins in a table).
+- Service: Components (every reference, gate wording without NAND/NOR); Test points (probe readings idle and with `ROLL` held, checked with `bw run --probe` idle at 300 ms and 1 s, held with `--press SW1:100ms:600ms` at 300 ms and 500 ms, released at 1 s with two release times giving faces 2 and 5; a logic analyzer row on `ROLL_CLK`, `N0`–`N2` and `SIX_N` triggered on `SIX_N` falling, 100 ns samples, 2 µs a division, checked with `bw_ui --press SW1:100ms:100s --clip U4.1Y,U1.QA,U1.QB,U1.QC,U3.1Y:f --sample 100ns --view 2us` and viewed); Troubleshooting (rolling does nothing, faces missing or wrong, one spot or pair never lights: ordered checks, never naming a fault).

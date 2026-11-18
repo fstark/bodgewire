@@ -154,16 +154,7 @@ Each test turns the knob before power-on (`Paddle::setKnob`), reads the digits a
 
 ## Manuals
 
-- User: What it does (one paragraph: power `J1`, plug the paddle controller into `J2`; the two digits `DS1` `DS2` show how far the knob is turned, 00 at the left stop to 99 at the right, ten times a second; at power-on they may show anything for a moment).
-- Service: Components, one bullet per reference starting with it, netlist order (`CheckServiceManual`):
-  - `X1` clock: 1 MHz crystal oscillator, drives `CLK`
-  - `J1` power connector: +5 V and 0 V for the whole board
-  - `J2` paddle controller connector: `TRIG_N` to the controller, its pulse back on `PULSE`, 30 µs at the left stop to 9.93 ms at the right; the controller runs on the board's +5 V
-  - `R1`, `R2` digit resistors: feed the anodes of `DS1` (`DS1_CA`), `DS2` (`DS2_CA`) and limit their current
-  - `U1`–`U4` timebase: each divides by ten (`U1`: `CLK` 1 MHz → `F100K`, …, `U2` gives the 10 kHz count clock `F10K`, `U4`: `F1K` → `F100` 100 Hz)
-  - `U5` measuring cycle: steps 0–9 every 10 ms; `TRIG_N` falls at 9 → 0; `TB1` and `TB2` both high in steps 6 and 7 clear the counters
-  - `U6` gates: `GCLK` from `F10K` while `PULSE` is high; `LATCH` rises when `PULSE` ends
-  - `U7` tens counter: counts on `C3` into `C4`–`C7`; `U8` units counter: counts on `GCLK` into `C0`–`C3`, carries on `C3`; both cleared by `TB1` and `TB2`
-  - `U9` tens latch: `C4`–`C7` → `L4`–`L7` on `LATCH`; `U10` units latch: `C0`–`C3` → `L0`–`L3`
-  - `U11` tens decoder: `L4`–`L7` to the segments of `DS1`; `U12` units decoder: `L0`–`L3` to `DS2`
-  - `DS1` tens digit, `DS2` units digit: a segment lights while its decoder output is low
+Written to STYLE's Manuals rules, the Counter's as the model:
+
+- User: What it does (a welcome: the paddle controller on `J2`, the two digits read 00 at the left stop to 99 at the right, renewed ten times a second); Using it (the knob's box: a vertical drag, the mouse wheel, Up and Down once the box is clicked; odd digits for a fifth of a second after power-on); How it works (the goal: a knob read as a time; the controller as someone holding a door open; the timebase `U1`–`U4`; `U5`'s round of a tenth of a second with `TRIG_N`, `TB1`, `TB2`; counting the pulse through `U6` into `U8`, `U7`; the latches `U9`, `U10` taking the count when `LATCH` rises; the decoders and digits; the unused pins in a table).
+- Service: Components (every reference, netlist order); Test points (a table of probe readings on a working board, the knob-dependent ones at 47 %, checked with `bw run --probe` at 1.03 s, 1.045 s, 1.06 s and 1.11 s with `--knob J2:0%`, `47%` and `100%`, and `C3` at 9 % and 15 %; a logic analyzer setup, triggered on the fall of `U5.QD`, checked with `bw_ui --clip … --sample 10us --view 1ms:+5ms --knob J2:47%` and the screenshot viewed); Troubleshooting (the digits never change, the number is wrong or climbs, one digit is wrong: ordered checks, never naming a fault).

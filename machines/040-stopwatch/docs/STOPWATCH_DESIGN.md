@@ -146,16 +146,8 @@ Briefs:
 
 ## Manuals
 
-- User: What it does (one paragraph: power `J1`; `SW1` starts, `SW2` stops, `SW3` resets to 0.00; the display `DS1` `DS2` `DS3` reads seconds, tenths and hundredths up to 9.99, then starts again; at power-on it may show anything, press Stop and Reset).
-- Service: Components, one bullet per reference starting with it, netlist order (`CheckServiceManual`):
-  - `X1` clock: 1 MHz crystal oscillator, drives `CLK`
-  - `J1` power connector: +5 V and 0 V for the whole board
-  - `SW1` Start button: pulls `START_N` low while pressed; `SW2` Stop button: `STOP_N`; `SW3` Reset button: `RST_N`
-  - `R1`, `R2`, `R3` pull-ups: hold `START_N`, `STOP_N`, `RST_N` high while released
-  - `R4`, `R5`, `R6` digit resistors: feed the anodes of `DS1`, `DS2`, `DS3` (`DS1_CA` …) and limit their current
-  - `U1`–`U4` prescaler: each divides by ten, naming its input and output (`U1`: `GCLK` 1 MHz → `F100K`, …, `U4`: `F1K` → `F100` 100 Hz)
-  - `U5` seconds counter, `U6` tenths counter, `U7` hundredths counter: count 0 to 9 on their `CKA`, carry on `QD`; cleared by `RESET`
-  - `U8`, `U9`, `U10` decoders: `S0`–`S3` (`T0`–`T3`, `H0`–`H3`) to the segments of `DS1` (`DS2`, `DS3`)
-  - `U11` run flip-flop: `RUN` set by `START_N`, cleared by `STOP_N`
-  - `U12` clock gate and reset: `GCLK` from `CLK` while `RUN` is high; `RESET` high while `RST_N` is low
-  - `DS1` seconds digit, `DS2` tenths digit, `DS3` hundredths digit: a segment lights while its decoder output is low; `DS1`'s decimal point always lit
+Written to STYLE's Manuals rules (P6k, the Counter's as the model):
+
+- User: What it does (a welcome: a coach's stopwatch, `DS1`–`DS3` read seconds, tenths and hundredths, 0.00 to 9.99 then 0.00 again); Using it (START, STOP, RESET by their legends, the hundredths a blur, the random power-on state, the 6 and 9 without tails); How it works (the goal, the clock, the buttons as doorbell pushes, `U11` as a light with an on switch and an off switch, the clock gate `GCLK`, one 74LS90 counting 0 to 9 with its outside `QA` to `CKB` link and +5 V on pin 5, the prescaler `U1`–`U4` as gears, the time counters `U7`, `U6`, `U5` as an odometer, `RESET`, the decoders, the common-anode digits; the unused pins in a table).
+- Service: Components (every reference, netlist order); Test points (the buttons' Nets, `RUN`, `GCLK`, `RESET`, the prescaler outputs, one oscilloscope row: `U4.QD`, `U7.QA`, `U7.QD`, `U6.QA` at 10 ms a division, trigger on channel 1 rising; `T3`, `S0`, `S3`, two of `U8`'s segment outputs, the anodes); Troubleshooting (nothing counts after START, STOP or RESET does nothing, a digit never moves or skips numbers, a digit draws wrong shapes: ordered checks, never naming a fault).
+- Readings checked with `bw run --probe`, after Stop and Reset at 1 ms and Start at 20 ms: running at 1.5 s, 1.85 s, 2.5 s, 3 s, 8.5 s and 10.5 s (`S0` H at 1.5 s and L at 2.5 s, `S3` H at 8.5 s only, `T3` H at 1.85 s and L at 1.5 s, `U8.SA_N` neither H nor L at 1.5 s and L at 2.5 s); stopped at 1.5 s and read at 2 s and 3 s; Start, Stop and Reset held across the reading. The oscilloscope row with `bw_ui --press SW1:300ms:500ms --hook U4.QD,U7.QA,U7.QD,U6.QA --timebase 10ms --screenshot … --after 2s`, the picture viewed.
