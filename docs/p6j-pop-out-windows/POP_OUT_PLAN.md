@@ -10,7 +10,7 @@ Spec: [POP_OUT.md](POP_OUT.md). Design: [POP_OUT_DESIGN.md](POP_OUT_DESIGN.md).
 | 2 | Beside the main window, back on the bench, the binder's control, keys on the focused window | 2db95d7 |
 | 3 | Glossary, recipes, ARCHITECTURE | this commit |
 
-P6j implemented 2026-11-18, user check pending.
+P6j implemented 2026-11-18, checked by the user the same day.
 
 ## Implementation notes
 - Docs review (before the docs commit), fixed: the composed screenshot's order (main first, then by `LastFocusedStampCount`); `PrepareDrawData` per viewport in the screenshot (one shared buffer pair); the spec's screenshots narrowed to what the plan takes; the UI time taken before `present` (its vsync wait) and the frame rate printed; the screenshot after `present` (this frame's TV upload in); the TV uploaded with the main window minimized; tooltips and popups crossing the main window's edge become desktop windows (spec), a tooltip shown without the focus; `ConfigViewportsNoDefaultParent` is ImGui's default; the taskbar left as ImGui's default; the shutdown order; `cycle` on the texture upload; no debug run in phase 1 (no logic it reaches); ADD_INSTRUMENT's Window row named in the design.
@@ -22,3 +22,4 @@ P6j implemented 2026-11-18, user check pending.
 - Phase 2, seen: objects popped out together (`--pop`) are placed each alone, so they land at the same edge, overlapping (the scope over the analyzer, the keyboard over the TV). Only the binder has a control, so a player pops one at a time; left for later (spec).
 - Phase 2 checks: full release suite 1458 passed (80 s); debug build, `-R "bench places"` 11 passed. The click, a popped window's drag, the keys on a popped keyboard and a double-click home: by reading the code. User check.
 - Phase 3: GLOSSARY (Equipment), ADD_INSTRUMENT (Window row, Gotchas: every bench window through `PlaceNext` or `OnBench`), ADD_CONNECTOR_DEVICE (UI layer), ARCHITECTURE (the row, the stack's renderer).
+- User check (2026-11-18): the binder's control both ways, a popped window's drag, typing on a popped-out keyboard, a double-click home, and a tooltip past the edge leaving the keys where they were: all work. The TV looked less sharp; measured identical to the previous renderer on both displays and popped out (only the screen's right clip edge one device pixel apart), and the user's own side-by-side agreed.
