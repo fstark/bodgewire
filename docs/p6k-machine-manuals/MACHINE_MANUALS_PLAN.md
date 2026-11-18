@@ -2,60 +2,6 @@
 
 Spec: [MACHINE_MANUALS.md](MACHINE_MANUALS.md). Design: [MACHINE_MANUALS_DESIGN.md](MACHINE_MANUALS_DESIGN.md).
 
-Every batch phase follows the design's "Writing a Machine's manuals" steps 1–6 for each of its Machines; its fence is those checks plus the batch's tests. One commit per phase, only this step's paths (the user edits docs in parallel).
-
-## Phases
-
-### Phase 1 — The Typewriter's Nets `GL1`–`GL3`
-
-The design's "The Typewriter's rename".
-
-With the Service Manual's `U13` and `U23` bullets.
-
-Fence: `./build/release/src/cli/bw check-board machines/090-typewriter/typewriter.bwn machines/090-typewriter/board/typewriter.kicad_pcb` prints `ok`; `ctest --preset release -j -R "typewriter|manual"` (`drc_typewriter`, `boards: typewriter matches its netlist` among them). Commit: `typewriter: Nets R1–R3 renamed GL1–GL3, R1 only the resistor (P6k phase 1)`.
-
-### Phase 2 — The LED Machines: LED Chaser, Dice, Stopwatch, Knob Meter
-
-Fence: `ctest --preset release -j -R "manual|chaser|dice|stopwatch|knob"`; both manuals of each viewed in screenshots. Commit: `manuals: LED Chaser, Dice, Stopwatch, Knob Meter explain how they work (P6k phase 2)`.
-
-### Phase 3 — The first TV Machines: Test Pattern, Bouncing Ball, Tennis
-
-The first analyzer setups (a line's sync, the beam counters).
-
-Fence: `ctest --preset release -j -R "manual|test.pattern|ball|tennis"`; manuals and each analyzer setup's screenshot viewed. Commit: `manuals: Test Pattern, Bouncing Ball, Tennis (P6k phase 3)`.
-
-### Phase 4 — The text Machines: Message, Typewriter
-
-Fence: `ctest --preset release -j -R "manual|message|typewriter"`; screenshots viewed. Commit: `manuals: Message, Typewriter (P6k phase 4)`.
-
-### Phase 5 — The first processors: Heartbeat, LED computer
-
-Fence: `ctest --preset release -j -R "manual|heartbeat|led.computer"`; screenshots viewed. Commit: `manuals: Heartbeat, LED computer (P6k phase 5)`.
-
-### Phase 6 — The BW-1
-
-Fence: `ctest --preset release -j -R "manual|bw1"`; screenshots viewed. Commit: `manuals: BW-1 (P6k phase 6)`.
-
-### Phase 7 — The BW-2001
-
-Fence: `ctest --preset release -j -R "manual|bw2001"`; screenshots viewed. Commit: `manuals: BW-2001 (P6k phase 7)`.
-
-### Phase 8 — The BW-80
-
-Fence: `ctest --preset release -j -R "manual|bw80"`; screenshots viewed. Commit: `manuals: BW-80 (P6k phase 8)`.
-
-### Phase 9 — The sections required
-
-The design's "The sections required", with ADD_MACHINE §2.
-
-Fence: release `-R manual`; debug build, `ctest --preset debug -j -R "manual"`; full release suite. Commit: `manual: How it works, Test points and Troubleshooting required; ADD_MACHINE §2 (P6k phase 9)`.
-
-### Phase 10 — Docs
-
-The design's "Docs (last phase)".
-
-Fence: full release suite. Commit: `docs: P6k done, every Machine's manuals explain it`.
-
 ## Status
 
 | Phase | Description | Commit |
@@ -68,8 +14,10 @@ Fence: full release suite. Commit: `docs: P6k done, every Machine's manuals expl
 | 6 | BW-1 | d8cb2c7 |
 | 7 | BW-2001 | 21523c8 |
 | 8 | BW-80 | 1e6390d |
-| 9 | The sections required | this commit |
-| 10 | Docs | |
+| 9 | The sections required | 4960e5d |
+| 10 | STYLE, ARCHITECTURE | this commit |
+
+P6k implemented 2026-11-18, user check pending (reading the manuals).
 
 ## Implementation notes
 
@@ -84,3 +32,4 @@ Fence: full release suite. Commit: `docs: P6k done, every Machine's manuals expl
 - Phase 7: readings with `bw run --probe` idle at READY (0.2, 1.5, 2 s) and while typing (`--type 'J5:1.4s:…'`); `--record` VCDs for what the probe cannot show (`IRQ_N` low 72 µs a frame, `SEL8` high 2 µs every third of a second for the cursor blink, `DS1.K`'s 9 ns glitch once a frame); analyzer setups: a line, a frame, the video address counting, the 6502 starting at FFFD, the 6502 writing the screen; screenshots viewed. The analyzer re-arms at power-on only if armed: those rows say "press Arm, then switch the power off and on". The keyboard rows float between scans, so the probe shows nothing on them; the manual probes `UG8.PA0` and the `KIN` lines instead. The Markdown has no `###` and no fenced code: the three parts of How it works are bold lead-ins, the banner three code lines. `BW2001_DESIGN.md`'s Puzzles note no longer says the Service Manual has only Components.
 - Phase 8: drafted alone, last (with the brief's every finding), read whole and kept. Readings with `bw run --probe` (0.5 ms–1 s; a key held with `--type J3:300ms:O`, read at 330 and 345 ms) and `--vcd` for timings (the picture from 172 ms, the line sync 6.1 µs every 63.7 µs, the frame sync 386 µs every 19.7 ms, nine keyboard reads 25 µs apart); analyzer setups: a line and its sync, a character drawn (the forced NOP, the latch, the load, the shift), the character shapes (the ROM address F80 after the cursor's B0), the frame sync, the keyboard rows; screenshots viewed. The analyzer arms at power-on and the start-up fires most edges at once: each setup triggers on something only the running picture makes (`M1_N` rising with `NOP_EN` high). The `J2` bullet corrected: `VIDEO` is high for white. Seen, not written in the manuals: the working Machine's TV shows a dashed line along the cursor's row (in `bw_ui` and `bw run --tv`); a real ZX80 shows only the K. For the user.
 - Phase 9: `CheckShape` takes `SectionRule`s (a name, optional or not), the message `What it does[, Using it], How it works`; the Counter-only case folded into the every-Machine case (each required section not empty, `Using it` when present). Release `-R manual` 16 passed; debug `-R manual` 16 passed; full release suite 1457 passed (79 s). ADD_MACHINE §2: the sections required, analyzer setups, general charts, the binder's Markdown without `###` or fenced code.
+- Phase 10: STYLE Manuals (the rules the rollout found), ARCHITECTURE (P6k done). Full release suite passed at phase 9; docs only since.
