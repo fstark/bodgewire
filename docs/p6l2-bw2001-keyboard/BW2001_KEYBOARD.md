@@ -32,3 +32,6 @@ P5q drew the 2001 as a typewriter: staggered chiclets with RVS left of Q and a f
 - Screenshots of `machines/130-bw2001/bw2001.bwn` viewed and compared with the photograph.
 - `ctest --preset release -R "matrix|keyboard|layout|manual"`, then the full release suite.
 
+## Left for later
+
+- The printed graphics are smooth drawings, not the ROM's pixels: the ♣ on X shows the difference most (the user, 2026-11-19). A roadmap row, *Smooth PET key graphics*.

@@ -283,6 +283,7 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | — | Timing | L2: setup/hold checks, delay spread, slow and wrong parts, timing faults |
 | — | Diagnostic ROMs | test ROMs swapped in for the firmware, on the BW-2001 and BW-80 (not the BW-1: its ROM is inside its RIOTs) |
 | — | Tennis knobs at start | maybe, probably not (the user, 2026-11-18): both knobs start at 0 %, so the paddles sit at the bottom and a fresh game misses every serve until the players turn them (found in P6k) |
+| — | Smooth PET key graphics | later (the user, 2026-11-19): the graphics printed on the BW-2001's keys are smooth drawings, not the character ROM's pixels (the ♣ on X looks like an arrow in 8 × 8); draw them as smooth shapes, the thin square kept (none around the suits). From P6l2 |
 
 v0.9: P5 to P7, running on the author's machines.
 
