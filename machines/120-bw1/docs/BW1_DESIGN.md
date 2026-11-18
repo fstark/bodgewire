@@ -243,9 +243,11 @@ Not used: a cell or Trace the monitor never reads with no self-test test over it
 
 ## Manuals
 
-- `machines/120-bw1/manuals/user.md`: power `J1`; the display shows an address and the byte there; AD, DA, `+`, GO, PC, ST, RS and SST as BW1.md, When it works; typing a program at `$0200` and running it; the PC keys.
-- `machines/120-bw1/manuals/user.md` ends with the self-test (P5m: how to strap it, the tests' numbers, reading a failure, which chip holds which bit): the User Manual is where the player learns to run it; the Service Manual lists roles only (both in the binder since P6e).
-- `machines/120-bw1/manuals/service.md`: Components, one bullet per reference in netlist order (`X1`, `J1`, each `U5`–`U12`, `DS1`–`DS6`, `SW1`–`SW24`, `R1`–`R7` its own): `U4` address decoder (`A10`–`A12` to `K0`, `K5`, `K6`, `K7`); `U2` the monitor at $1C00–$1FFF, RAM at $17C0, ports at $1740, `PA0`–`PA6` segments and keypad columns, `PB1`–`PB4` to `U24`; `U3` the self-test at $1800, RAM at $1780, ports at $1700 (unused); `U24` display and keypad scanner, "output 3 (pad 4) is the self-test strap: joined to `PA0`, reset runs the self-test"; `U17` segment driver; `SW24` "SST: on, `NMI_N` follows `SST_N`".
+Written to STYLE's Manuals rules (P6k):
+
+- User: What it does (a welcome: the 6502, the 1K of main memory, the monitor in `U2`, the self-test in `U3`, the six digits showing an address and its byte); Using it (the keypad's layout, AD, DA, +, GO, a BRK, ST, PC, SST, RS, the PC keys, then the self-test: the strap from `U24` pin 4 to `U2` pin 2, its five tests, 888888, PA55 and the key codes, reading a failure code, which chip holds which bit); How it works (the goal, the clock, the reset, the processor, the decoder with the memory map table, the main memory and its gates, the two 6530s, the digit scan, the keypad on the same wires, single step, the monitor's loop in words, the unused pins in a table).
+- Service: Components (every reference, netlist order); Test points (probe readings idle in the monitor, with RS, ST held and a program running, checked with `bw run --probe` at 10 ms, 100 ms, 200 ms, 300 ms, 500 ms, 700 ms, 1 s, 1.3 s, 1.7 s and 2 s, and with keys typed by `--press`: a JMP loop at 0200 read at 900 ms and 1.2 s, SST at ON at 790 ms and 1.2 s; three logic analyzer setups, each viewed in a `bw_ui --screenshot` at 1 s: the buses with `--group U1.A0:1F19,U1.D0` at 100 ns, 1 µs a division; the digit scan, `U2.PB1`–`PB4` with `PB3` rising and the seven `U17` outputs at 1 µs, 500 µs a division; a key read with GO held, `PA0`–`PA2` at 100 µs a division); Troubleshooting (the digits dark, nonsense or frozen, a segment or digit wrong, a key dead, ST, RS or SST dead: ordered checks, never naming a fault).
+- The keypad's behaviour was checked on screenshots: ST stopping a loop at 0200 shows 02004C; SST at ON, one GO shows 0202A9; a BRK at 0204 shows 0206.
 
 ## Per-Machine checks
 

@@ -44,11 +44,11 @@ As on the KIM, from the top:
 
 - At power-on the digits are dark for 20 ms, then show `0200` and the byte at `$0200` (random: the RAM's power-on).
 - `AD 0 3 0 0` shows `0300 xx`; `DA A 9` writes `$A9` there; `+` steps to `0301`.
-- A program typed at `$0200` runs with `AD 0200 GO`; a `BRK` stops it, showing the address after the `BRK`.
+- A program typed at `$0200` runs with `AD 0200 GO`; a `BRK` stops it, showing the address two past the `BRK` (the 6502 pushes the `BRK`'s address plus 2: a `BRK` at `$0204` shows `0206`).
 - ST stops a running program and shows where; SST on, each GO runs one instruction.
 - RS returns to `0200`.
 - With the strap bodged: reset shows `1`, then `2` … `5` for a moment, `888888`, each digit `8` alone, then `PA55` and the code of a held key (`PA5513` for GO).
-- `U24`'s `PB1`–`PB4` select a digit about every 0.55 ms, `0200xx` scanned about 290 times a second; `RW` low only when a key is typed or a program writes; `SYNC` high on every opcode fetch.
+- `U24`'s `PB1`–`PB4` select a digit about every 0.55 ms, `0200xx` scanned about 290 times a second; `RW` pulsing even while the monitor waits (it writes its stack and the ports all the time); `SYNC` high on every opcode fetch.
 
 ## Puzzles
 
