@@ -20,8 +20,8 @@ What the logic probe shows on a working board. **P** is the pulse lamp: it stays
 | Probe | Net | A working board shows |
 |---|---|---|
 | `U1.CLK` (pin 2 of every chip) | `CLK` | P lit |
-| `U1.QA`, `U1.QB`, `U1.QC`, `U1.QD` | | P lit: far too fast for the eye. The logic analyzer shows each output changing half as often as the one before |
-| `U1.RCO`, `U2.RCO`, `U3.RCO`, `U4.RCO` | `CARRY1`–`CARRY4` | L, with P lit. Each carry is high for one clock tick only, a millionth of a second. The H lamp is too slow to show it: it may flicker on `U1.RCO`, and stays dark on the others |
+| `U1.QA`, `U1.QB`, `U1.QC`, `U1.QD` | | P lit: far too fast for the eye. Hook all four on the oscilloscope, at 2 µs a division: each output changes half as often as the one before |
+| `U1.RCO`, `U2.RCO`, `U3.RCO`, `U4.RCO` | `CARRY1`–`CARRY4` | L, with P lit. Each carry is high for one clock tick only, a millionth of a second. The H lamp is too slow to show it: it may flicker on `U1.RCO`, and stays dark on the others. The oscilloscope shows the pulse: hook the carry, trigger on its rising edge |
 | `U5.QD` | `C19` | H for about half a second, then L for half a second; P flashes at each change |
 | `D1` pin 1 | `C19` | the same as `U5.QD`: it is the same wire |
 | `U1.CLR_N` | `RESET_N` | H, steady |
