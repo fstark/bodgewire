@@ -1,7 +1,9 @@
 #include "manual/markdown.hpp"
 
+#include <cstdint>
 #include <optional>
 #include <utility>
+#include <vector>
 
 namespace bw {
 
@@ -57,11 +59,41 @@ std::vector<Span> Inline(std::string_view text) {
     return spans;
 }
 
+bool IsTableLine(std::string_view line) { return Trim(line).starts_with('|'); }
+
+// `|---|:--:|`: bars, dashes, colons and spaces only, at least one dash.
+bool IsSeparator(std::string_view line) {
+    const std::string_view text = Trim(line);
+    return text.starts_with('|') && text.find('-') != std::string_view::npos &&
+           text.find_first_not_of("|-: \t") == std::string_view::npos;
+}
+
+// `| a | `b|c` |` → {a, b|c}: split at bars outside code spans, the outer bars dropped.
+std::vector<std::vector<Span>> Cells(std::string_view line) {
+    std::string_view text = Trim(line);
+    text.remove_prefix(1);
+    if (text.ends_with('|')) {
+        text.remove_suffix(1);
+    }
+    std::vector<std::vector<Span>> cells;
+    std::size_t start = 0;
+    bool code = false;
+    for (std::size_t i = 0; i <= text.size(); ++i) {
+        if (i < text.size() && text[i] == '`') {
+            code = !code;
+        } else if (i == text.size() || (text[i] == '|' && !code)) {
+            cells.push_back(Inline(Trim(text.substr(start, i - start))));
+            start = i + 1;
+        }
+    }
+    return cells;
+}
+
 class Builder {
 public:
     void close() {
         if (open_) {
-            doc_.blocks.push_back({open_->kind, open_->line, Inline(open_->text)});
+            doc_.blocks.push_back({open_->kind, open_->line, Inline(open_->text), {}});
             open_.reset();
         }
     }
@@ -74,6 +106,11 @@ public:
     void append(std::string_view text) {
         open_->text += ' ';
         open_->text += Trim(text);
+    }
+
+    void push(Block block) {
+        close();
+        doc_.blocks.push_back(std::move(block));
     }
 
     std::optional<BlockKind> openKind() const {
@@ -99,18 +136,30 @@ private:
 }  // namespace
 
 Markdown ParseMarkdown(std::string_view text) {
-    Builder builder;
-    std::uint32_t number = 0;
+    std::vector<std::string_view> lines;
     while (!text.empty()) {
         const std::size_t newline = text.find('\n');
         std::string_view line = text.substr(0, newline);
         text = newline == std::string_view::npos ? std::string_view{} : text.substr(newline + 1);
-        ++number;
         if (line.ends_with('\r')) {
             line.remove_suffix(1);
         }
+        lines.push_back(line);
+    }
+    Builder builder;
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        const std::string_view line = lines[i];
+        const auto number = static_cast<std::uint32_t>(i + 1);
         if (IsBlank(line)) {
             builder.close();
+        } else if (IsTableLine(line) && i + 1 < lines.size() && IsSeparator(lines[i + 1])) {
+            Block table{BlockKind::Table, number, {}, {Cells(line)}};
+            i += 2;
+            for (; i < lines.size() && IsTableLine(lines[i]); ++i) {
+                table.rows.push_back(Cells(lines[i]));
+            }
+            --i;  // the line that ended the table is parsed as usual
+            builder.push(std::move(table));
         } else if (line.starts_with("# ")) {
             builder.start(BlockKind::Title, number, line.substr(2));
             builder.close();

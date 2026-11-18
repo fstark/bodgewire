@@ -70,3 +70,46 @@ TEST_CASE("markdown: section", "[manual]") {
     CHECK(Section(doc, "B").size() == 1);
     CHECK(Section(doc, "missing").empty());
 }
+
+TEST_CASE("markdown: table", "[manual]") {
+    const Markdown doc = ParseMarkdown("text\n"
+                                       "| Probe | You see |\n"
+                                       "|---|:--|\n"
+                                       "| `CLK` | pulsing |\n"
+                                       "| `a|b` | x | extra |\n"
+                                       "after\n");
+    REQUIRE(doc.blocks.size() == 3);
+    CHECK(doc.blocks[0].kind == BlockKind::Paragraph);
+    const Block& table = doc.blocks[1];
+    CHECK(table.kind == BlockKind::Table);
+    CHECK(table.line == 2);
+    CHECK(table.spans.empty());
+    REQUIRE(table.rows.size() == 3);  // the separator dropped
+    REQUIRE(table.rows[0].size() == 2);
+    CHECK(PlainText(table.rows[0][1]) == "You see");
+    REQUIRE(table.rows[1][0].size() == 1);
+    CHECK(table.rows[1][0][0].style == SpanStyle::Code);
+    CHECK(table.rows[1][0][0].text == "CLK");
+    REQUIRE(table.rows[2].size() == 3);        // rows keep their own counts
+    CHECK(table.rows[2][0][0].text == "a|b");  // a bar inside code
+    CHECK(doc.blocks[2].kind == BlockKind::Paragraph);
+    CHECK(doc.blocks[2].line == 6);
+}
+
+TEST_CASE("markdown: table ended by a blank line or another block", "[manual]") {
+    const Markdown doc = ParseMarkdown("| a |\n|-|\n| 1 |\n\n- b\n| c |\n|-|\n## H\n");
+    REQUIRE(doc.blocks.size() == 4);
+    CHECK(doc.blocks[0].kind == BlockKind::Table);
+    CHECK(doc.blocks[0].rows.size() == 2);
+    CHECK(doc.blocks[1].kind == BlockKind::Bullet);
+    CHECK(doc.blocks[2].kind == BlockKind::Table);
+    CHECK(doc.blocks[2].rows.size() == 1);
+    CHECK(doc.blocks[3].kind == BlockKind::Heading);
+}
+
+TEST_CASE("markdown: a bar line without a separator is text", "[manual]") {
+    const Markdown doc = ParseMarkdown("| not | a table |\nstill text\n");
+    REQUIRE(doc.blocks.size() == 1);
+    CHECK(doc.blocks[0].kind == BlockKind::Paragraph);
+    CHECK(PlainText(doc.blocks[0].spans) == "| not | a table | still text");
+}

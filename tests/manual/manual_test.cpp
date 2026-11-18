@@ -157,6 +157,16 @@ TEST_CASE("manual: checks", "[manual]") {
               .front() == "2: sections must be: Function, Pins");
 }
 
+TEST_CASE("manual: references in table cells", "[manual]") {
+    const auto design = Counter();
+    CHECK(Messages(CheckUserManual(ParseMarkdown("# Counter\n## What it does\n"
+                                                 "| Probe | Reads |\n|---|---|\n"
+                                                 "| `U1` pin 2 | pulsing |\n"
+                                                 "| `U7` | `U1` pin 30 |\n"),
+                                   "u.md", *design)) ==
+          std::vector<std::string>{"3: unknown reference 'U7'", "3: U1 has no pin 30"});
+}
+
 TEST_CASE("manual: load with missing files", "[manual]") {
     const auto design = Counter();
     const auto root = std::filesystem::temp_directory_path() / "bw_manuals_empty";

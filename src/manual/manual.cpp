@@ -114,27 +114,39 @@ void CheckShape(const Markdown& doc, Problems& problems,
 
 // Every Code span that looks like a reference (and is no Net name) names a Component, and a
 // following " pin N" an existing pin.
+void CheckSpans(std::span<const Span> spans, std::uint32_t line, Problems& problems,
+                const LoadedCircuit& design) {
+    for (std::size_t i = 0; i < spans.size(); ++i) {
+        const Span& span = spans[i];
+        if (span.style != SpanStyle::Code || !LooksLikeReference(span.text) ||
+            design.nets.contains(span.text)) {
+            continue;
+        }
+        const LoadedPart* part = FindLoadedPart(design, span.text);
+        if (!part) {
+            problems.add(line, "unknown reference '" + span.text + "'");
+            continue;
+        }
+        if (i + 1 >= spans.size() || spans[i + 1].style != SpanStyle::Text) {
+            continue;
+        }
+        if (const auto pin = PinAfter(spans[i + 1].text)) {
+            const std::size_t n = std::stoul(*pin);
+            if (n == 0 || n > PinCount(design, *part)) {
+                problems.add(line, span.text + " has no pin " + *pin);
+            }
+        }
+    }
+}
+
+// Every Code span that looks like a reference (and is no Net name) names a Component, and a
+// following " pin N" an existing pin; in paragraphs, bullets and table cells.
 void CheckReferences(const Markdown& doc, Problems& problems, const LoadedCircuit& design) {
     for (const Block& block : doc.blocks) {
-        for (std::size_t i = 0; i < block.spans.size(); ++i) {
-            const Span& span = block.spans[i];
-            if (span.style != SpanStyle::Code || !LooksLikeReference(span.text) ||
-                design.nets.contains(span.text)) {
-                continue;
-            }
-            const LoadedPart* part = FindLoadedPart(design, span.text);
-            if (!part) {
-                problems.add(block.line, "unknown reference '" + span.text + "'");
-                continue;
-            }
-            if (i + 1 >= block.spans.size() || block.spans[i + 1].style != SpanStyle::Text) {
-                continue;
-            }
-            if (const auto pin = PinAfter(block.spans[i + 1].text)) {
-                const std::size_t n = std::stoul(*pin);
-                if (n == 0 || n > PinCount(design, *part)) {
-                    problems.add(block.line, span.text + " has no pin " + *pin);
-                }
+        CheckSpans(block.spans, block.line, problems, design);
+        for (const auto& row : block.rows) {
+            for (const auto& cell : row) {
+                CheckSpans(cell, block.line, problems, design);
             }
         }
     }

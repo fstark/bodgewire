@@ -15,12 +15,14 @@ struct Span {
     std::string text;  // without the ` or ** markers
 };
 
-enum class BlockKind : std::uint8_t { Title, Heading, Paragraph, Bullet };  // #, ##, text, -
+// #, ##, text, -, | a | b | (a header row, a separator row |---|, then rows).
+enum class BlockKind : std::uint8_t { Title, Heading, Paragraph, Bullet, Table };
 
 struct Block {
     BlockKind kind;
-    std::uint32_t line;  // first source line, for diagnostics
-    std::vector<Span> spans;
+    std::uint32_t line;                                // first source line, for diagnostics
+    std::vector<Span> spans;                           // empty for a Table
+    std::vector<std::vector<std::vector<Span>>> rows;  // Table: rows of cells, the header first
 };
 
 struct Markdown {

@@ -1,5 +1,7 @@
 #include "ui/manual_view.hpp"
 
+#include <algorithm>
+#include <cstddef>
 #include <string>
 #include <string_view>
 
@@ -13,6 +15,8 @@ namespace {
 constexpr ImU32 kText = IM_COL32(30, 30, 35, 255);
 constexpr ImU32 kBold = IM_COL32(0, 0, 0, 255);
 constexpr ImU32 kTooltipText = IM_COL32(230, 230, 230, 255);
+constexpr ImU32 kTableHeader = IM_COL32(222, 212, 182, 255);  // the cream page, darker
+constexpr ImU32 kTableRule = IM_COL32(170, 160, 135, 255);
 constexpr float kTitleScale = 1.3f;
 
 ImU32 Colour(SpanStyle style) {
@@ -63,6 +67,43 @@ void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const Loade
             hits.clicked = target;
         }
     }
+}
+
+// A pipe table: the header row on a tinted band with a rule under it (no bold font is loaded),
+// each cell's text wrapping at its column's edge.
+void DrawTable(const Block& table, const BoardScene* scene, const LoadedCircuit& design,
+               TargetHits& hits) {
+    std::size_t columns = 0;
+    for (const auto& row : table.rows) {
+        columns = std::max(columns, row.size());
+    }
+    if (columns == 0) {
+        return;
+    }
+    ImGui::PushID(static_cast<int>(table.line));
+    ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, kTableHeader);
+    ImGui::PushStyleColor(ImGuiCol_TableBorderLight, kTableRule);
+    ImGui::PushStyleColor(ImGuiCol_TableBorderStrong, kTableRule);
+    if (ImGui::BeginTable("table", static_cast<int>(columns),
+                          ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp)) {
+        for (std::size_t r = 0; r < table.rows.size(); ++r) {
+            ImGui::TableNextRow(r == 0 ? ImGuiTableRowFlags_Headers : ImGuiTableRowFlags_None);
+            if (r == 0) {
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, kTableHeader);
+            }
+            for (std::size_t c = 0; c < columns; ++c) {
+                ImGui::TableSetColumnIndex(static_cast<int>(c));
+                if (c < table.rows[r].size()) {
+                    ImGui::PushID(static_cast<int>(r * columns + c));
+                    DrawSpans(table.rows[r][c], scene, design, hits);
+                    ImGui::PopID();
+                }
+            }
+        }
+        ImGui::EndTable();
+    }
+    ImGui::PopStyleColor(3);
+    ImGui::PopID();
 }
 
 }  // namespace
@@ -162,6 +203,12 @@ TargetHits ManualView::draw(std::span<const Block> blocks, const BoardScene* sce
                 ImGui::BeginGroup();
                 DrawSpans(block.spans, scene, design, hits);
                 ImGui::EndGroup();
+            }
+            continue;
+        case BlockKind::Table:
+            if (open) {
+                DrawTable(block, scene, design, hits);
+                ImGui::Spacing();
             }
             continue;
         }
