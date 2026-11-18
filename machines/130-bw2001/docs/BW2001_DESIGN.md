@@ -79,8 +79,10 @@ Running other ROMs (P5q2): `--roms DIR`, the files named by socket (`UH1.bin` �
 
 ## Manuals
 
-- `machines/130-bw2001/manuals/user.md`: `# BW-2001`; what it does (the banner, BASIC, the keyboard window, the TV); the self-test: `.T` from the monitor, or a wire from user port pin 5 (`J2` pad 5) to a ground pin of the same connector, then reset (power off and on); the killer poke as a curiosity of the original ("the screen fills with snow while it prints"). Plain addresses.
-- `machines/130-bw2001/manuals/service.md`: `## Components`, one bullet per reference in netlist order (about 130: every chip, resistor, connector, `X1`, `DS1`, `UDE9`), each with its role and Nets as the BW-1's; a `## Notes` section with the timing (dots, characters, lines, the four vertical states), the snow, and the parts left out. Addresses and codes plain, not backticked.
+Written to STYLE's Manuals rules (P6k):
+
+- User: What it does (a welcome: the PET 2001 copied chip for chip; the 6502, 8 KB, the five ROMs, the 40 × 25 screen; the banner); Using it (the keyboard and the PC mapping, BASIC, the screen editor's keys, the monitor's `.M` and `.X`, the self-test by a wire from `J2.DIAG` to `J2.GND1` or `.T`, Commodore's ROMs by `--roms`, the killer poke); How it works (the goal: two machines sharing one memory; the clock; the picture: beam counters, video address and `UE6`'s row start, screen memory, character ROM, shift register, reverse video, the output; the computer: the 6502, the buffers, the decoder with a memory map table, the memory, the ROMs, start-up, the keyboard matrix, the retrace interrupt, `DS1`; sharing the screen memory: the multiplexers, snow, the editor's wait; the unused features in a table).
+- Service: Components (every reference, netlist order; formulas and test-point wording tightened); Test points (probe readings idle at `READY`, checked with `bw run --probe` at 1.5 s and 2 s, the clock and video side also at 0.2 s; `SEL8` and `RES_N` from a `--record` VCD over 3 s: `SEL8` high 2 µs every third of a second, from the cursor blink; `KIN0` with `--type 'J5:1.4s:AAAA…'` read at 1.9 s. Five logic analyzer setups, each checked with `bw_ui --clip/--group … --sample … --view … --screenshot --after 2s` and the picture viewed: a line (`--clip UC5.1Q_N:r,UC6.3Y:1,UC5.2Q,UE9.1Y --sample 100ns --view 10us:+30us`), a frame (`--clip UD8.4Y:f,UC6.3Y,UC5.1Q_N --sample 10us --view 2ms:+8ms`), the video address (`--group UC3.A0 --clip UC5.2Q:r,UC6.3Y:1 --sample 100ns --view 1us:+4us`: 000, 001…), the 6502 starting (`--group UF3.A0,UF3.D0 --clip UF3.SYNC:r,UF3.RW`: FFFD F8, F806 78, F807 D8), the 6502 writing the screen (`--clip UE5.4Y:r,UF3.RW,UC6.3Y` with both buses: 8000, `RW` low the second microsecond, `VIDEO_ON` low)); Troubleshooting (no picture; the picture rolls; every character wrong the same way; no banner; wrong bytes free; specks while printing; no cursor blink or dead keys: ordered checks, never naming a fault).
 
 ## Tests
 
@@ -122,7 +124,7 @@ Debug: a guess of 0.005–0.01× under ASan (0.24× release); phase 8 measures i
 | `no_clock.bwp` | `fault crack X1.OUT UE2.2B 50%` | black, unlocked; `CLK8` still, `OSC8` at `X1` running | mend |
 | `joined_bits.bwp` | `fault bridge UF3.D0 UF3.D1` | the power-on screen unchanged; `RES_N` high; no self-test | cut the bridge |
 
-Missing keys depends on two readings the transcription assumed (Netlist above): `J5`'s column order and `R18`–`R25`'s (`R18` on `KIN0`). The service manual has only its Components section, so the note is here: if the real PET differs, the Puzzle still holds on our Board, which is what the player probes.
+Missing keys depends on two readings the transcription assumed (Netlist above): `J5`'s column order and `R18`–`R25`'s (`R18` on `KIN0`). The player's manuals never discuss the transcription, so the note is here: if the real PET differs, the Puzzle still holds on our Board, which is what the player probes.
 
 Snow's specks are brief: a one-frame screenshot may miss them (and with no wait, printing is fast); the case's snow watch (screen accesses while the beam draws the text) is the evidence.
 
