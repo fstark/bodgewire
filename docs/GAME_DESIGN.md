@@ -100,6 +100,8 @@ Computers, after the ladder:
 - BW-2001 video chain: counters (sync + addresses) → video RAM → character ROM → shift register → pixels.
 - Analog sub-circuits (TV/RF output, cassette, sound, power-on reset, RC pulse shapers, some clock generators) get logic-only equivalents; custom chips (ULAs, PLAs) get behavioural models.
 - Later inspirations: Apple II, ZX Spectrum.
+- Machine ideas, not yet on the ladder:
+  - A dimmer (the user, 2026-11-18): a knob sets the share of the time a 7-segment digit is lit (a paddle's pulse compared with a free-running counter, PWM), so the player sees brightness follow the duty cycle. The Board already draws a segment's brightness from the share of time it is lit, through a cube root (`Perceived`): the BW-1's multiplexed digits, each lit a sixth of the time, look darker than the Stopwatch's, which are lit all the time. It also introduces the idea behind multiplexing, before the BW-1.
 
 ## Presentation
 
