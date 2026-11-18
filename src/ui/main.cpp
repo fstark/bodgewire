@@ -521,7 +521,7 @@ std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manu
 }
 
 int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session& session,
-              const Options& options, ImFont* legends) {
+              const Options& options, ImFont* legends, ImFont* petLegends) {
     TvView view(gpu.device());
     Shelf shelf;
     TvWindow tvWindow;
@@ -556,7 +556,7 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
         matrixCapture.reference = matrices.front();
         matrixCapture.kind = session.matrixKind(matrices.front()).value_or(KeyMatrixKind::Bw2001);
     }
-    MatrixKeyboardWindow matrixWindow(legends);
+    MatrixKeyboardWindow matrixWindow(legends, petLegends);
     BoardKeyCapture boardKeys;  // only without a keyboard: that one takes the typing
     if (capture.reference.empty() && matrixCapture.reference.empty()) {
         boardKeys.keys = session.switchKeys();
@@ -1394,8 +1394,10 @@ int main(int argc, char** argv) {
     ImFont* legends =
         fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kKeycapFont),
                                    static_cast<int>(kKeycapFontSize), 0.0f, &legendConfig);
+    ImFont* petLegends = fonts.AddFontFromMemoryTTF(
+        const_cast<unsigned char*>(kPetFont), static_cast<int>(kPetFontSize), 0.0f, &legendConfig);
 
-    const int exitCode = RunWindow(window, *gpu, loaded, session, *options, legends);
+    const int exitCode = RunWindow(window, *gpu, loaded, session, *options, legends, petLegends);
 
     SDL_WaitForGPUIdle(gpu->device());
     ImGui_ImplSDL3_Shutdown();

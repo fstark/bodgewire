@@ -87,6 +87,7 @@ constexpr ImU32 kPetRed = IM_COL32(186, 60, 54, 255);
 constexpr ImU32 kPetBlue = IM_COL32(36, 158, 218, 255);
 constexpr ImU32 kPetWord = IM_COL32(248, 244, 244, 255);
 constexpr ImU32 kLegend = IM_COL32(22, 22, 24, 255);
+constexpr ImU32 kPetCellLine = IM_COL32(22, 22, 24, 90);  // the thin square around a graphic
 constexpr ImU32 kPressed = IM_COL32(0, 0, 0, 48);
 
 // An arrow centred on `c`, `len` long, its heads `head` wide; `vertical` or horizontal; heads at
@@ -158,23 +159,27 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
         list.AddRectFilled(a, b, kPressed, 0.06f * u);
     }
     const float cx = (la.x + tb.x) / 2, cy = (la.y + tb.y) / 2;
-    const float px = std::max(6.0f, std::round(0.28f * u));
+    const float px = std::max(6.0f, std::round(0.30f * u));
     const float density = ImGui::GetWindowViewport()->FramebufferScale.x;
     const auto centred = [&](std::string_view t, float y, float size = 0) {
         const float sz = size > 0 ? size : px;
         const ImVec2 e = font->CalcTextSizeA(sz, FLT_MAX, 0, t.data(), t.data() + t.size());
         const ImVec2 at{std::round(cx - e.x / 2), std::round(y - e.y / 2)};
-        // Struck twice a device pixel apart: the 2001's legends are bold, the keycap font is not.
         list.AddText(font, sz, at, ink, t.data(), t.data() + t.size());
-        list.AddText(font, sz, {at.x + 1 / density, at.y}, ink, t.data(), t.data() + t.size());
+    };
+    // A word's size: `want`, or smaller to fill at most 86 % of the label's width, as printed.
+    const auto fit = [&](std::string_view t, float want) {
+        const float w = font->CalcTextSizeA(want, FLT_MAX, 0, t.data(), t.data() + t.size()).x;
+        const float room = 0.86f * (tb.x - la.x);
+        return std::max(5.0f, std::floor(w > room ? want * room / w : want));
     };
     const auto twoLines = [&](std::string_view upper, std::string_view lower) {
-        const float sz = std::max(6.0f, std::round(0.19f * u));
+        const float sz = std::min(fit(upper, 0.20f * u), fit(lower, 0.20f * u));
         centred(upper, cy - 0.12f * u, sz);
         centred(lower, cy + 0.12f * u, sz);
     };
     if (legend == "RETURN") {  // two rows high, its letters stacked
-        const float sz = std::max(6.0f, std::round(0.20f * u));
+        const float sz = std::max(6.0f, std::round(0.18f * u));
         constexpr std::string_view kWord = "RETURN";
         const float step = std::min(0.22f * u, (tb.y - ta.y) / 7);
         for (std::size_t i = 0; i < kWord.size(); ++i) {
@@ -183,7 +188,7 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
         return;
     }
     if (legend == "SHIFT" || legend == "SPACE") {
-        centred(legend, cy, std::max(6.0f, std::round(0.19f * u)));
+        centred(legend, cy, fit(legend, 0.20f * u));
         return;
     }
     if (legend == "RVS" || legend == "STOP" || legend == "HOME" || legend == "DEL") {
@@ -196,7 +201,7 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
     }
     if (legend.starts_with("CRSR")) {
         const bool vertical = legend == "CRSR DN";
-        centred("CRSR", cy, std::max(6.0f, std::round(0.18f * u)));
+        centred("CRSR", cy, fit("CRSR", 0.18f * u));
         const float len = 0.24f * u, head = 0.09f * u;
         if (vertical) {
             DrawArrow(list, {cx, cy - 0.19f * u}, 0.12f * u, head, true, true, false, ink);
@@ -220,6 +225,10 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
                 }
             }
         }
+        // The character cell's very thin square, printed around every graphic.
+        const float hair = 1 / density;
+        list.AddRect({gx - hair, gy - hair}, {gx + 8 * cell + hair, gy + 8 * cell + hair},
+                     kPetCellLine, 0, 0, hair);
     }
     const float ly = cy + 0.03f * u + px / 2;
     if (legend == "_") {
@@ -263,6 +272,7 @@ bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     }
     const bool clicked = InstrumentClicked();
     SharpFont(legends_);
+    SharpFont(petLegends_);
     if (capture.kind == KeyMatrixKind::Bw80) {
         drawMembrane(session, capture);
     } else {
@@ -347,7 +357,7 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
     const auto all = Bw2001Keys();
     drawCaps(session, capture, Bw2001Caps(), *Bw2001KeyAt(8, 0), keys, u, {kGap, kGap}, 1,
              [&](const MatrixCap& cap, ImVec2 a, ImVec2 b, bool down) {
-                 DrawPetKey(list, legends_, all[cap.key].legend, a, b, u, down,
+                 DrawPetKey(list, petLegends_, all[cap.key].legend, a, b, u, down,
                             cap.x >= kMatrixPadX);
              });
 }

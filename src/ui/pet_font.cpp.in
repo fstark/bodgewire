@@ -1,0 +1,11 @@
+// Generated from src/ui/pet_font.cpp.in: Saira Expanded Bold (SIL OFL 1.1), src/ui/fonts.
+#include <cstddef>
+
+namespace bw {
+
+extern const unsigned char kPetFont[];
+extern const std::size_t kPetFontSize;
+const unsigned char kPetFont[] = {@bytes@};
+const std::size_t kPetFontSize = sizeof(kPetFont);
+
+}  // namespace bw

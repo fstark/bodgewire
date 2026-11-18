@@ -12,6 +12,10 @@
 
 namespace bw {
 
+// Embedded by src/ui/CMakeLists.txt (pet_font.cpp.in).
+extern const unsigned char kPetFont[];
+extern const std::size_t kPetFontSize;
+
 // The matrix keyboard window's ID (its title shows the reference), for the shelf to bring it to the
 // front.
 inline constexpr const char* kMatrixKeyboardWindowName = "###matrix keyboard";
@@ -22,7 +26,9 @@ inline constexpr const char* kMatrixKeyboardWindowName = "###matrix keyboard";
 // key while the mouse is down, a right-click latches it (SHIFT for a sequence) until clicked again.
 class MatrixKeyboardWindow {
 public:
-    explicit MatrixKeyboardWindow(ImFont* legends) : legends_(legends) {}
+    // `petLegends`: the BW-2001's square bold legends (Saira Expanded Bold, P6l2).
+    MatrixKeyboardWindow(ImFont* legends, ImFont* petLegends)
+        : legends_(legends), petLegends_(petLegends) {}
 
     // `capture.on` is main.cpp's (the Machine's keys: P6g); its frame gold while on. Nothing drawn
     // without a MATRIXKB. True when the case was clicked (not its ×).
@@ -38,6 +44,7 @@ private:
                   std::size_t shift, ImVec2 keys, float u, ImVec2 gap, float height, Draw&& draw);
 
     ImFont* legends_;
+    ImFont* petLegends_;
     std::vector<bool> latched_;  // per key: right-clicked down
 };
 
