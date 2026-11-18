@@ -21,8 +21,8 @@ Fence: release build; `ctest --preset release -j -R "manual|markdown|manuals"`; 
 
 ## Phase 2 — Links and sections
 
-- `LinkScope`, the new `ManualLink`, `LinkAt` (design, Links); `CheckReferences` with the scope and the new reports; `CheckShape` with optional sections, the User and Service Manuals' lists, datasheets with no optional ones.
-- `BoardTarget` reshaped; every builder and reader updated; `BoardScene::netNamed`; hover, focus, flash and `route` for runs and Nets (design, The Board).
+- `LinkScope`, the new `ManualLink`, `LinkAt` (design, Links); `CheckReferences` with the new reports (no scope: Machine manuals only); `CheckShape` with optional sections, the User and Service Manuals' lists, datasheets with no optional ones.
+- `BoardTarget` reshaped; every builder and reader updated (readers guard an empty `components`); a Net's id from `design.nets`; hover, focus, flash and `route` for runs and Nets (design, The Board).
 - `ManualView::draw` takes the scope; `manual_window.cpp` passes `Machine` for the User and Service Manuals, `Parts` for datasheets; `chip_panel.cpp` likewise for its datasheet text.
 - `manual_test` cases: the spec's list (runs, Nets, pins by name, scope, a part over a Net, bad runs only between parts, unknown pins, `UH1.bin` not reported, sections in and out of order); the existing `manual: links` and `manual: checks` cases updated.
 
