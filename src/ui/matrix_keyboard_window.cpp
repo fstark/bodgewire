@@ -159,7 +159,7 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
         list.AddRectFilled(a, b, kPressed, 0.06f * u);
     }
     const float cx = (la.x + tb.x) / 2, cy = (la.y + tb.y) / 2;
-    const float px = std::max(6.0f, std::round(0.30f * u));
+    const float px = std::max(6.0f, std::round(0.42f * u));  // capitals 0.17 of the key high
     const float density = ImGui::GetWindowViewport()->FramebufferScale.x;
     const auto centred = [&](std::string_view t, float y, float size = 0) {
         const float sz = size > 0 ? size : px;
@@ -215,8 +215,9 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
     // A graphic above, the legend below: an arrow for ← and ↑, a slashed zero on the pad.
     if (const auto* glyph = PetGraphicOf(legend)) {
         // Each pixel whole device pixels (half points on a Retina display), so the check is even.
-        const float cell = std::max(1.0f, std::floor(0.036f * u * density)) / density;
-        const float gx = std::round(cx - 4 * cell), gy = std::round(cy - 0.05f * u - 8 * cell);
+        // As printed: about a sixth of the key (the user's close-ups).
+        const float cell = std::max(1.0f, std::round(0.022f * u * density)) / density;
+        const float gx = std::round(cx - 4 * cell), gy = std::round(cy - 0.04f * u - 8 * cell);
         for (int y = 0; y < 8; ++y) {
             for (int x = 0; x < 8; ++x) {
                 if (((*glyph)[y] >> (7 - x)) & 1) {
@@ -225,12 +226,15 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
                 }
             }
         }
-        // The character cell's very thin square, printed around every graphic.
-        const float hair = 1 / density;
-        list.AddRect({gx - hair, gy - hair}, {gx + 8 * cell + hair, gy + 8 * cell + hair},
-                     kPetCellLine, 0, 0, hair);
+        // The character cell's very thin square, printed around every graphic but the card
+        // suits (A, S, Z, X: the user's close-up).
+        if (legend != "A" && legend != "S" && legend != "Z" && legend != "X") {
+            const float hair = 1 / density;
+            list.AddRect({gx - hair, gy - hair}, {gx + 8 * cell + hair, gy + 8 * cell + hair},
+                         kPetCellLine, 0, 0, hair);
+        }
     }
-    const float ly = cy + 0.03f * u + px / 2;
+    const float ly = cy + 0.14f * u;
     if (legend == "_") {
         DrawArrow(list, {cx, ly}, 0.26f * u, 0.11f * u, false, true, false, ink);
     } else if (legend == "^") {
