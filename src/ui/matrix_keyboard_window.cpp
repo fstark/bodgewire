@@ -69,18 +69,19 @@ constexpr ImU32 kCreamText = IM_COL32(150, 142, 122, 255);
 constexpr ImU32 kScrew = IM_COL32(48, 46, 50, 255);
 constexpr ImU32 kScrewShine = IM_COL32(96, 94, 100, 255);
 
-constexpr ImU32 kSurround = IM_COL32(8, 8, 9, 255);
-constexpr ImU32 kCaseTop = IM_COL32(52, 56, 64, 255);  // the PET's blue-grey metal
-constexpr ImU32 kCaseBottom = IM_COL32(30, 32, 37, 255);
-constexpr ImU32 kCaseEdge = IM_COL32(90, 96, 106, 255);
+constexpr ImU32 kCaseTop = IM_COL32(234, 234, 230, 255);  // the PET's white-painted metal
+constexpr ImU32 kCaseBottom = IM_COL32(214, 214, 208, 255);
+constexpr ImU32 kCaseEdge = IM_COL32(250, 250, 248, 255);
 constexpr ImU32 kPlate = IM_COL32(16, 17, 20, 255);  // the black plate the keys stand on
-constexpr ImU32 kEngraving = IM_COL32(150, 156, 166, 255);
+constexpr ImU32 kEngraving = IM_COL32(120, 120, 116, 255);
 // The PET 2001's point-of-sale keys (P6l2), from a photograph: a cream body, a rounded top set in
 // it (grey on the main block, near-white on the pad, red or blue on the keys with
 // words), black legends and graphics, white words on the coloured tops.
 constexpr ImU32 kPetBody = IM_COL32(232, 226, 206, 255);
 constexpr ImU32 kPetBodyShade = IM_COL32(196, 189, 168, 255);
-constexpr ImU32 kPetGrey = IM_COL32(170, 171, 181, 255);
+constexpr ImU32 kPetRim = IM_COL32(248, 244, 230, 255);     // the rim's highlight
+constexpr ImU32 kPetRecess = IM_COL32(120, 112, 100, 255);  // the recess's shadow
+constexpr ImU32 kPetGrey = IM_COL32(164, 164, 170, 255);    // the silver foil
 constexpr ImU32 kPetWhite = IM_COL32(240, 238, 230, 255);
 constexpr ImU32 kPetRed = IM_COL32(186, 60, 54, 255);
 constexpr ImU32 kPetBlue = IM_COL32(36, 158, 218, 255);
@@ -113,6 +114,15 @@ void DrawArrow(ImDrawList& list, ImVec2 c, float len, float head, bool vertical,
     }
 }
 
+// A colour a fifth of the way to white: the light on the top of a foil label.
+ImU32 Lighter(ImU32 c) {
+    const auto mix = [&](int shift) {
+        const int v = static_cast<int>((c >> shift) & 0xFF);
+        return v + (255 - v) / 5;
+    };
+    return IM_COL32(mix(IM_COL32_R_SHIFT), mix(IM_COL32_G_SHIFT), mix(IM_COL32_B_SHIFT), 255);
+}
+
 // One PET key in its pitch `a`-`b`: the cream body, the coloured top, the graphic SHIFT gives above
 // the legend (from the character ROM), or the words of the keys that have them. `pad`: a key of
 // the numeric pad (near-white tops).
@@ -122,9 +132,14 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
     list.AddRectFilled(a, b, kPetBody, 0.06f * u);
     ImGui::ShadeVertsLinearColorGradientKeepAlpha(&list, first, list.VtxBuffer.Size, a, {a.x, b.y},
                                                   kPetBody, kPetBodyShade);
-    const float sink = down ? 0.04f * u : 0;
-    const ImVec2 ta{a.x + 0.10f * u, a.y + 0.07f * u + sink};
-    const ImVec2 tb{b.x - 0.10f * u, b.y - 0.22f * u + sink};
+    // The raised rim around the recess, then the label in it, centred: the key is symmetrical.
+    const ImVec2 ra{a.x + 0.06f * u, a.y + 0.06f * u}, rb{b.x - 0.06f * u, b.y - 0.06f * u};
+    const int rim = list.VtxBuffer.Size;
+    list.AddRectFilled(ra, rb, kPetRim, 0.09f * u);
+    ImGui::ShadeVertsLinearColorGradientKeepAlpha(&list, rim, list.VtxBuffer.Size, ra, {ra.x, rb.y},
+                                                  kPetRim, kPetBody);
+    const ImVec2 ta{a.x + 0.14f * u, a.y + 0.14f * u}, tb{b.x - 0.14f * u, b.y - 0.14f * u};
+    list.AddRectFilled({ta.x - 0.02f * u, ta.y - 0.02f * u}, tb, kPetRecess, 0.07f * u);
     ImU32 top = pad ? kPetWhite : kPetGrey;
     ImU32 ink = kLegend;
     if (legend == "SHIFT" || legend == "SPACE" || legend == "RETURN" || legend == "HOME" ||
@@ -133,11 +148,16 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
     } else if (legend == "RVS" || legend == "STOP" || legend.starts_with("CRSR")) {
         top = kPetBlue, ink = kPetWord;
     }
-    list.AddRectFilled(ta, tb, top, 0.10f * u);
+    // The label's foil: lighter at the top, a shadow along its top and left edge from the rim.
+    const ImVec2 la{ta.x + 0.012f * u, ta.y + 0.012f * u};
+    const int foil = list.VtxBuffer.Size;
+    list.AddRectFilled(la, tb, top, 0.06f * u);
+    ImGui::ShadeVertsLinearColorGradientKeepAlpha(&list, foil, list.VtxBuffer.Size, la,
+                                                  {la.x, tb.y}, Lighter(top), top);
     if (down) {
         list.AddRectFilled(a, b, kPressed, 0.06f * u);
     }
-    const float cx = (ta.x + tb.x) / 2, cy = (ta.y + tb.y) / 2;
+    const float cx = (la.x + tb.x) / 2, cy = (la.y + tb.y) / 2;
     const float px = std::max(6.0f, std::round(0.28f * u));
     const float density = ImGui::GetWindowViewport()->FramebufferScale.x;
     const auto centred = [&](std::string_view t, float y, float size = 0) {
@@ -191,7 +211,7 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
     if (const auto* glyph = PetGraphicOf(legend)) {
         // Each pixel whole device pixels (half points on a Retina display), so the check is even.
         const float cell = std::max(1.0f, std::floor(0.036f * u * density)) / density;
-        const float gx = std::round(cx - 4 * cell), gy = std::round(ta.y + 0.04f * u);
+        const float gx = std::round(cx - 4 * cell), gy = std::round(cy - 0.05f * u - 8 * cell);
         for (int y = 0; y < 8; ++y) {
             for (int x = 0; x < 8; ++x) {
                 if (((*glyph)[y] >> (7 - x)) & 1) {
@@ -201,11 +221,11 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
             }
         }
     }
-    const float ly = tb.y - 0.03f * u - px / 2;
+    const float ly = cy + 0.03f * u + px / 2;
     if (legend == "_") {
         DrawArrow(list, {cx, ly}, 0.26f * u, 0.11f * u, false, true, false, ink);
     } else if (legend == "^") {
-        DrawArrow(list, {cx, ly}, 0.22f * u, 0.10f * u, true, true, false, ink);
+        DrawArrow(list, {cx, ly + 0.02f * u}, 0.16f * u, 0.09f * u, true, true, false, ink);
     } else {
         centred(legend, ly);
         if (pad && legend == "0") {  // the 2001's slashed zero
@@ -228,7 +248,7 @@ bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     KeepAspect(aspect, kMinWidth);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleColor(ImGuiCol_WindowBg,
-                          capture.kind == KeyMatrixKind::Bw80 ? kCream : kSurround);
+                          capture.kind == KeyMatrixKind::Bw80 ? kCream : kCaseTop);
     const std::string title = "Keyboard " + capture.reference + kMatrixKeyboardWindowName;
     const bool visible =
         ImGui::Begin(title.c_str(), &open,

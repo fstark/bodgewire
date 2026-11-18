@@ -22,10 +22,15 @@ P5q drew the 2001 as a typewriter: staggered chiclets with RVS left of Q and a f
 ## What changed
 
 - **Layout**: an 11-column main block with no stagger. Rows: `! " # $ % ' & \ ( ) ←`; Q–P, ↑; A–L, `:`, RETURN two rows high; Z–M, `, ; ?`; SHIFT, OFF/RVS, `@ [ ]`, SPACE two keys wide, `< >`, RUN/STOP, SHIFT. The numeric pad is unchanged, one key from the block. `MatrixCap` gained a `height` in rows (RETURN's 2), and the layout test checks heights. `kMatrixKeyboardWidth` is now 16 and `kMatrixPadX` 12.
-- **Keys**: a cream body around a rounded top. The tops are grey on the main block and near-white on the pad. The coloured tops carry white words: red SHIFT, SPACE, RETURN (its letters stacked), CLR/HOME and INST/DEL (the photograph's paler two are worn stickers under the lighting, the user), and blue OFF/RVS, RUN/STOP and the two CRSR keys (arrows above and below). The keys nearly touch. The legends are black and bold (the keycap font struck twice a device pixel apart), and the pad's 0 is slashed.
+- **Case**: white-painted metal (the user, from a second photograph), the black plates under the keys kept.
+- **Keys**: symmetrical, from the user's close-up: a cream body, a raised rim, and in its recess a centred foil label, lighter at the top, with a shadow along its top and left edge. The graphic sits above the label's centre and the legend below it. The labels are silver on the main block and near-white on the pad. The coloured labels carry white words: red SHIFT, SPACE, RETURN (its letters stacked), CLR/HOME and INST/DEL (the photograph's paler two are worn stickers under the lighting, the user), and blue OFF/RVS, RUN/STOP and the two CRSR keys (arrows above and below). The keys nearly touch. The legends are black and bold (the keycap font struck twice a device pixel apart), and the pad's 0 is slashed.
 - **Graphics**: above each legend, the character SHIFT and the key type, drawn from the character ROM's 8 × 8 bitmap. A key types its character c and SHIFT sets bit 7, which the screen shows as code c (letters, `@ [ ]`, ← ↑) or c + 0x40 (digits and symbols): A ♠, ↑ π, the pad's digits the box corners. `kPetGraphics` holds screen codes 0x40–0x7F, copied from the ROM. Each glyph pixel is a whole number of device pixels, so the checks stay even.
 
 ## Checked
 
 - Screenshots of `machines/130-bw2001/bw2001.bwn` viewed and compared with the photograph.
 - `ctest --preset release -R "matrix|keyboard|layout|manual"`, then the full release suite.
+
+## Left open
+
+- The legend font. The 2001's is square and bold, like Microgramma or Eurostile Bold Extended; the keys still use Roboto Medium, struck twice. The user is choosing among free fonts (2026-11-18).
