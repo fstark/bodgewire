@@ -51,10 +51,10 @@ PinRow Row(const BoardScene& scene, std::size_t component, std::size_t number) {
 void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markdown* datasheet,
              TargetHits& hits) {
     if (clicked && row.pad) {
-        hits.clicked = BoardTarget{component, row.pad};
+        hits.clicked = BoardTarget{{component}, row.pad, std::nullopt};
     }
     if (ImGui::IsItemHovered() && row.pad) {
-        hits.hovered = BoardTarget{component, row.pad};
+        hits.hovered = BoardTarget{{component}, row.pad, std::nullopt};
         if (datasheet) {
             if (const Block* bullet = PinBullet(*datasheet, row.name)) {
                 PageTooltip(Displayable(PlainText(bullet->spans)));
@@ -205,7 +205,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         }
     }
     if (ImGui::SmallButton("Zoom to")) {
-        hits.clicked = BoardTarget{component, std::nullopt};
+        hits.clicked = BoardTarget{{component}, std::nullopt, std::nullopt};
     }
 
     const auto sheet = manuals.datasheets.find(part);
@@ -254,13 +254,14 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         return hits;
     }
     if (ImGui::TreeNodeEx("Function", ImGuiTreeNodeFlags_DefaultOpen)) {
-        const TargetHits more = function_.draw(Section(*datasheet, "Function"), &scene, design);
+        const TargetHits more =
+            function_.draw(Section(*datasheet, "Function"), &scene, design, LinkScope::Parts);
         hits.hovered = hits.hovered ? hits.hovered : more.hovered;
         hits.clicked = hits.clicked ? hits.clicked : more.clicked;
         ImGui::TreePop();
     }
     if (ImGui::TreeNode("Pins")) {
-        pins_.draw(Section(*datasheet, "Pins"), &scene, design);
+        pins_.draw(Section(*datasheet, "Pins"), &scene, design, LinkScope::Parts);
         ImGui::TreePop();
     }
     return hits;

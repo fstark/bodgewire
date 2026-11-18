@@ -6,8 +6,8 @@ Spec: [MANUALS.md](MANUALS.md). Design: [MANUALS_DESIGN.md](MANUALS_DESIGN.md).
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Tables in the manuals' Markdown, drawn in the binder | this commit |
-| 2 | Links: runs, Nets, pins by name; the Board's targets; optional sections | |
+| 1 | Tables in the manuals' Markdown, drawn in the binder | 0e614fb |
+| 2 | Links: runs, Nets, pins by name; the Board's targets; optional sections | this commit |
 | 3 | The Counter's manuals | |
 | 4 | STYLE, recipe, glossary, ARCHITECTURE | |
 
@@ -46,3 +46,4 @@ Fence: full release suite. Commit: `docs: P6i done, manuals that explain`.
 ## Implementation notes
 
 - Phase 1: release `-R "manual|markdown|manuals"` 21 passed; debug `-R "manual|markdown"` passed. Screenshot viewed: a three-row table added to the Counter's `user.md` (then checked out): the header on a tinted band, rules between rows, a long cell wrapping in its column, `U1` pin 2 and `D1` links inside cells.
+- Phase 2: full release suite 1450 passed (every Machine's manuals still clean: the BW-2001's `UH1.bin`, the Typewriter's `R1`–`R3`, the Message's `F5`–`F1` unreported); debug `-R "manual|markdown|board scene"` 25 passed. Screenshot viewed: the BW-80's Service Manual, Nets underlined as links (`VIDEO`, `SYNC`, `A8` and `A15`, `MD0`, `RESET_N`, `CLK`, `NMI_N`), `IC6`–`IC8` one run link; `INT_N` plain (the CPU's pin, wired to Net `A6`). Hover outlines and a click's frame and flash for a run or a Net are checked by reading the code: user check. A single part's link now outlines it on hover too. A Net's flash rings its pads; while it lasts the Net stays lit.

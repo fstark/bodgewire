@@ -643,8 +643,18 @@ void BoardView::draw(ImVec2 size) {
     const std::optional<BoardTarget> outside = std::exchange(outside_, std::nullopt);
     if (!ImGui::IsWindowHovered() && outside) {
         hoverTarget_ = outside;
-        highlight_ =
-            outside->pad ? scene_->padNet(outside->component, *outside->pad) : std::nullopt;
+        if (outside->net) {
+            highlight_ = outside->net;
+        } else if (outside->pad && !outside->components.empty()) {
+            highlight_ = scene_->padNet(outside->components.front(), *outside->pad);
+        } else {
+            highlight_.reset();
+        }
+    }
+    // A Net link clicked: its Net stays lit while it flashes.
+    if (!highlight_ && flash_ && flash_->target.net &&
+        std::chrono::steady_clock::now() < flash_->until) {
+        highlight_ = flash_->target.net;
     }
 
     const Mapper map(viewport_, origin, panel);
@@ -968,6 +978,12 @@ void BoardView::draw(ImVec2 size) {
             DrawUseSelection(list, look, *scene_, *selected_, kSelection);
         }
     }
+    // Parts a manual link points at (one part or a run, P6i): outlined while it is hovered.
+    if (hoverTarget_ && !hoverTarget_->pad) {
+        for (const std::size_t k : hoverTarget_->components) {
+            DrawUseSelection(list, look, *scene_, k, kHighlight);
+        }
+    }
     for (std::size_t k = 0; k < board.components.size() && !real; ++k) {
         const bool outlined = selected_ == k;  // the selection's box; a hover has none
         const bool keycap =
@@ -977,8 +993,9 @@ void BoardView::draw(ImVec2 size) {
         DrawCourtyard(list, map, board.components[k], scene_->courtyard(k), scene_->partName(k),
                       outlined, keycap);
     }
-    if (hoverTarget_ && hoverTarget_->pad) {
-        const Pad& pad = board.components[hoverTarget_->component].pads[*hoverTarget_->pad];
+    if (hoverTarget_ && hoverTarget_->pad && !hoverTarget_->components.empty()) {
+        const Pad& pad =
+            board.components[hoverTarget_->components.front()].pads[*hoverTarget_->pad];
         const ImVec2 half = PadHalf(map, pad);
         list.AddCircle(map(pad.position), std::max(half.x, half.y) + 3, kHighlight, 0, 2.0f);
     }
@@ -994,12 +1011,27 @@ void BoardView::draw(ImVec2 size) {
         const double left =
             std::chrono::duration<double>(flash_->until - std::chrono::steady_clock::now()).count();
         const float alpha = static_cast<float>(0.5 + 0.5 * std::cos(left * 6 * std::numbers::pi));
-        const auto& pads = board.components[flash_->target.component].pads;
-        for (std::size_t p = 0; p < pads.size(); ++p) {
-            if (!flash_->target.pad || flash_->target.pad == p) {
-                const ImVec2 half = PadHalf(map, pads[p]);
-                list.AddCircle(map(pads[p].position), std::max(half.x, half.y) + 4,
-                               WithAlpha(kFlash, alpha), 0, 3.0f);
+        const BoardTarget& target = flash_->target;
+        const auto ring = [&](const Pad& pad) {
+            const ImVec2 half = PadHalf(map, pad);
+            list.AddCircle(map(pad.position), std::max(half.x, half.y) + 4,
+                           WithAlpha(kFlash, alpha), 0, 3.0f);
+        };
+        if (target.net) {
+            for (std::size_t k = 0; k < board.components.size(); ++k) {
+                for (std::size_t p = 0; p < board.components[k].pads.size(); ++p) {
+                    if (scene_->padNet(k, p) == target.net) {
+                        ring(board.components[k].pads[p]);
+                    }
+                }
+            }
+        }
+        for (const std::size_t k : target.components) {
+            const auto& pads = board.components[k].pads;
+            for (std::size_t p = 0; p < pads.size(); ++p) {
+                if (!target.pad || target.pad == p) {
+                    ring(pads[p]);
+                }
             }
         }
     } else {
@@ -1217,7 +1249,7 @@ void BoardView::input(ImVec2 origin) {
         const Hit& hit = picked->hit;
         highlight_ = scene_->netOf(hit);
         if (hit.kind == HitKind::Pad) {
-            hoverTarget_ = BoardTarget{hit.component, hit.index};
+            hoverTarget_ = BoardTarget{{hit.component}, hit.index, std::nullopt};
             hovered_ = hit.component;
         } else if (hit.kind == HitKind::Component) {
             hovered_ = hit.component;
@@ -1262,30 +1294,59 @@ void BoardView::focus(BoardTarget target) {
     if (!scene_) {
         return;
     }
-    const BoardComponent& component = scene_->board().components[target.component];
-    Bounds box{};
-    if (target.pad) {
-        const Point p = component.pads[*target.pad].position;
-        box = {{p.x - kFocusPadMargin, p.y - kFocusPadMargin},
-               {p.x + kFocusPadMargin, p.y + kFocusPadMargin}};
+    const Board& board = scene_->board();
+    std::optional<Bounds> box;
+    const auto add = [&](Point p) {
+        box = box ? Bounds{{std::min(box->min.x, p.x), std::min(box->min.y, p.y)},
+                           {std::max(box->max.x, p.x), std::max(box->max.y, p.y)}}
+                  : Bounds{p, p};
+    };
+    if (target.net) {  // the Net's copper: pads, traces, vias
+        for (std::size_t k = 0; k < board.components.size(); ++k) {
+            for (std::size_t p = 0; p < board.components[k].pads.size(); ++p) {
+                if (scene_->padNet(k, p) == target.net) {
+                    add(board.components[k].pads[p].position);
+                }
+            }
+        }
+        for (std::size_t t = 0; t < board.traces.size(); ++t) {
+            if (scene_->traceNet(t) == target.net) {
+                add(board.traces[t].start);
+                add(board.traces[t].end);
+            }
+        }
+        for (std::size_t v = 0; v < board.vias.size(); ++v) {
+            if (scene_->viaNet(v) == target.net) {
+                add(board.vias[v].position);
+            }
+        }
+    } else if (target.pad && target.components.size() == 1) {
+        const Point p = board.components[target.components.front()].pads[*target.pad].position;
+        add({p.x - kFocusPadMargin, p.y - kFocusPadMargin});
+        add({p.x + kFocusPadMargin, p.y + kFocusPadMargin});
     } else {
-        const auto courtyard = scene_->courtyard(target.component);
-        box = {courtyard[0], courtyard[0]};
-        for (const Point p : courtyard) {
-            box.min = {std::min(box.min.x, p.x), std::min(box.min.y, p.y)};
-            box.max = {std::max(box.max.x, p.x), std::max(box.max.y, p.y)};
+        for (const std::size_t k : target.components) {
+            for (const Point p : scene_->courtyard(k)) {
+                add(p);
+            }
         }
     }
-    std::int64_t smallest = 0;
-    for (const Pad& pad : component.pads) {
-        const std::int64_t side = std::min(pad.size.x, pad.size.y);
-        smallest = smallest == 0 ? side : std::min(smallest, side);
+    if (!box) {
+        return;
     }
-    const double minPixelsPerMm =
-        smallest > 0 ? kFocusPadMinPx / (static_cast<double>(smallest) / 1e6) : 0;
+    // One part: never so small its pads cannot be told apart.
+    double minPixelsPerMm = 0;
+    if (target.components.size() == 1 && !target.net) {
+        std::int64_t smallest = 0;
+        for (const Pad& pad : board.components[target.components.front()].pads) {
+            const std::int64_t side = std::min(pad.size.x, pad.size.y);
+            smallest = smallest == 0 ? side : std::min(smallest, side);
+        }
+        minPixelsPerMm = smallest > 0 ? kFocusPadMinPx / (static_cast<double>(smallest) / 1e6) : 0;
+    }
     needFit_ = false;
-    viewport_.frame(box, target.pad ? 0.3 : 0.5, minPixelsPerMm);
-    flash_ = Flash{target, std::chrono::steady_clock::now() + kFlashTime};
+    viewport_.frame(*box, target.pad ? 0.3 : 0.5, minPixelsPerMm);
+    flash_ = Flash{std::move(target), std::chrono::steady_clock::now() + kFlashTime};
 }
 
 void BoardView::route(const TargetHits& hits) {
@@ -1293,8 +1354,10 @@ void BoardView::route(const TargetHits& hits) {
         hoverFromOutside(hits.hovered);
     }
     if (hits.clicked) {
+        if (hits.clicked->components.size() == 1 && !hits.clicked->net) {
+            select(hits.clicked->components.front());  // a run or a Net selects nothing
+        }
         focus(*hits.clicked);
-        select(hits.clicked->component);
     }
 }
 

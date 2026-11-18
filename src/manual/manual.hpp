@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <map>
 #include <optional>
@@ -63,13 +64,20 @@ std::optional<Role> ComponentRole(const Markdown& service, std::string_view refe
 std::vector<std::string> BulletPins(const Block& bullet);
 const Block* PinBullet(const Markdown& datasheet, std::string_view pin);  // nullptr if none
 
-// A backticked Component reference, optionally followed by " pin N", starting at spans[i].
+// Which links a page has: a datasheet (shared by every Machine: its `CLK` or `D0`–`D7` are pin
+// names) only parts; a Machine's own manual also runs, pins by name and Nets (P6i).
+enum class LinkScope : std::uint8_t { Parts, Machine };
+
+// A link starting at spans[i]: a part (" pin N" after it), a run `U1`–`U5`, a pin by name
+// `U2.ENT`, or a Net `C19`.
 struct ManualLink {
-    std::string reference;
-    std::optional<std::string> pin;  // number
+    std::vector<std::string> references;  // one part, or a run's parts in netlist order
+    std::optional<std::string> pin;       // a pin number, with one reference
+    std::optional<std::string> net;       // a Net link: no references
+    std::size_t spansUsed = 1;            // a run: 3 (`U1`, "–", `U5`)
     std::size_t pinChars = 0;  // leading chars of spans[i + 1] that are " pin N"; rest is text
 };
 std::optional<ManualLink> LinkAt(std::span<const Span> spans, std::size_t i,
-                                 const LoadedCircuit& design);
+                                 const LoadedCircuit& design, LinkScope scope);
 
 }  // namespace bw

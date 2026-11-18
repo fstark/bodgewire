@@ -91,15 +91,77 @@ TEST_CASE("manual: links", "[manual]") {
     const auto design = Counter();
     const Markdown doc = ParseMarkdown("check `U1` pin 15 (RCO): a pulse; `QA` and `CLK`\n");
     const auto& spans = doc.blocks[0].spans;
-    const auto link = LinkAt(spans, 1, *design);
+    const auto link = LinkAt(spans, 1, *design, LinkScope::Machine);
     REQUIRE(link.has_value());
-    CHECK(link->reference == "U1");
+    CHECK(link->references == std::vector<std::string>{"U1"});
     CHECK(link->pin == "15");
     CHECK(link->pinChars == std::string(" pin 15").size());
     CHECK(spans[2].text.substr(link->pinChars) == " (RCO): a pulse; ");
-    CHECK_FALSE(LinkAt(spans, 0, *design));
-    CHECK_FALSE(LinkAt(spans, 3, *design));  // `QA`
-    CHECK_FALSE(LinkAt(spans, 5, *design));  // `CLK`: a Net
+    CHECK_FALSE(LinkAt(spans, 0, *design, LinkScope::Machine));
+    CHECK_FALSE(LinkAt(spans, 3, *design, LinkScope::Machine));  // `QA`: a pin name alone
+    // `CLK`: a Net in a Machine's manual, plain in a datasheet.
+    const auto clk = LinkAt(spans, 5, *design, LinkScope::Machine);
+    REQUIRE(clk.has_value());
+    CHECK(clk->net == "CLK");
+    CHECK(clk->references.empty());
+    CHECK_FALSE(LinkAt(spans, 5, *design, LinkScope::Parts));
+    CHECK(LinkAt(spans, 1, *design, LinkScope::Parts).has_value());  // parts in both
+}
+
+TEST_CASE("manual: runs and pins by name", "[manual]") {
+    const auto design = Counter();
+    const Markdown doc =
+        ParseMarkdown("`U2`\u2013`U4` count; `U2.ENT` and `U9.ENT`, `R1.X`, `UH1.bin`, `C3`\n");
+    const auto& spans = doc.blocks[0].spans;
+    const auto run = LinkAt(spans, 0, *design, LinkScope::Machine);
+    REQUIRE(run.has_value());
+    CHECK(run->references == std::vector<std::string>{"U2", "U3", "U4"});
+    CHECK(run->spansUsed == 3);
+    // In a datasheet `U2` alone is a part; the run is not one there.
+    const auto alone = LinkAt(spans, 0, *design, LinkScope::Parts);
+    REQUIRE(alone.has_value());
+    CHECK(alone->spansUsed == 1);
+
+    const auto ent = LinkAt(spans, 4, *design, LinkScope::Machine);
+    REQUIRE(ent.has_value());
+    CHECK(ent->references == std::vector<std::string>{"U2"});
+    CHECK(ent->pin == "10");  // ENT
+    CHECK_FALSE(LinkAt(spans, 4, *design, LinkScope::Parts));
+    CHECK_FALSE(LinkAt(spans, 6, *design, LinkScope::Machine));  // U9: no such part
+    CHECK_FALSE(LinkAt(spans, 8, *design, LinkScope::Machine));  // a resistor: no pin names
+    const auto net = LinkAt(spans, 12, *design, LinkScope::Machine);
+    REQUIRE(net.has_value());
+    CHECK(net->net == "C3");
+}
+
+TEST_CASE("manual: run and pin name checks", "[manual]") {
+    const auto design = Counter();
+    CHECK(Messages(CheckUserManual(
+              ParseMarkdown("# Counter\n## What it does\n"
+                            "`U5`\u2013`U1`; `U1`\u2013`R2`; `C3`\u2013`C1`; `R1`\u2013`C3`\n"
+                            "`U2.ENX`, `U9.ENT`, `UH1.bin`, `0.5`, `U2.ENT`\n"),
+              "u.md", *design)) ==
+          std::vector<std::string>{"3: bad run U5\u2013U1", "3: bad run U1\u2013R2",
+                                   "3: U2 has no pin ENX", "3: unknown reference 'U9'"});
+}
+
+TEST_CASE("manual: optional sections", "[manual]") {
+    const auto design = Counter();
+    const auto user = [&](std::string_view sections) {
+        return Messages(
+            CheckUserManual(ParseMarkdown("# Counter\n" + std::string(sections)), "u.md", *design));
+    };
+    CHECK(user("## What it does\n").empty());
+    CHECK(user("## What it does\n## How it works\n").empty());
+    CHECK(user("## What it does\n## Using it\n## How it works\n").empty());
+    CHECK(user("## What it does\n## How it works\n## Using it\n").front() ==
+          "2: sections must be: What it does[, Using it][, How it works]");
+    CHECK(user("## What it does\n## How it works\n## How it works\n").size() == 1);
+    CHECK(user("## How it works\n").size() == 1);
+    CHECK(Messages(CheckServiceManual(ParseMarkdown(std::string(kGoodService) +
+                                                    "## Test points\n## Troubleshooting\n"),
+                                      "s.md", *design))
+              .empty());
 }
 
 TEST_CASE("manual: part pin names", "[manual]") {
@@ -121,7 +183,7 @@ TEST_CASE("manual: checks", "[manual]") {
     CHECK(CheckServiceManual(ParseMarkdown(kGoodService), "s.md", *design).empty());
     CHECK(Messages(CheckServiceManual(ParseMarkdown("# S\n## How it works\n## Components\n"),
                                       "s.md", *design))
-              .front() == "2: sections must be: Components");
+              .front() == "2: sections must be: Components[, Test points][, Troubleshooting]");
 
     std::string service(kGoodService);
     const std::string u5 = "- `U5` counter: bits 16-19\n";
@@ -141,7 +203,7 @@ TEST_CASE("manual: checks", "[manual]") {
                        ParseMarkdown("# Counter\n## What it does\nCounts.\n## Connections\n- "
                                      "`J1`: power\n"),
                        "u.md", *design))
-              .front() == "2: sections must be: What it does");
+              .front() == "2: sections must be: What it does[, Using it][, How it works]");
     CHECK(
         Messages(CheckUserManual(ParseMarkdown("## What it does\nSee `J7`.\n"), "u.md", *design)) ==
         std::vector<std::string>{"1: must start with a # title", "2: unknown reference 'J7'"});

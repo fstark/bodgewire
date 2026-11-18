@@ -41,6 +41,60 @@ const LoadedPart* FindLoadedPart(const LoadedCircuit& design, std::string_view r
     return nullptr;
 }
 
+// "U12" → {"U", 12}; nullopt unless LooksLikeReference.
+std::optional<std::pair<std::string_view, int>> SplitReference(std::string_view text) {
+    if (!LooksLikeReference(text)) {
+        return std::nullopt;
+    }
+    std::size_t letters = 0;
+    while (IsUpper(text[letters])) {
+        ++letters;
+    }
+    return std::pair{text.substr(0, letters), std::stoi(std::string(text.substr(letters)))};
+}
+
+constexpr std::string_view kEnDash = "\u2013";
+
+// `A`–`B` at spans[i]: both parts? Then their letters and numbers.
+struct RunEnds {
+    std::string_view letters;
+    int first, last;
+};
+std::optional<RunEnds> RunAt(std::span<const Span> spans, std::size_t i,
+                             const LoadedCircuit& design);
+
+// Pins named with upper case letters, digits and `_` (`ENT`, `CLR_N`, `1A`).
+bool LooksLikePinName(std::string_view text) {
+    return !text.empty() &&
+           std::ranges::all_of(text, [](char c) { return IsUpper(c) || IsDigit(c) || c == '_'; });
+}
+
+// `REF.PIN` → {REF, PIN} when REF looks like a reference and PIN like a pin name.
+std::optional<std::pair<std::string_view, std::string_view>> SplitPinName(std::string_view text) {
+    const std::size_t dot = text.find('.');
+    if (dot == std::string_view::npos || !LooksLikeReference(text.substr(0, dot)) ||
+        !LooksLikePinName(text.substr(dot + 1))) {
+        return std::nullopt;
+    }
+    return std::pair{text.substr(0, dot), text.substr(dot + 1)};
+}
+
+// The number (1-based) of the pin named `name` on a chip or connector; resistors have none.
+std::optional<std::size_t> PinNumber(const LoadedCircuit& design, std::string_view reference,
+                                     std::string_view name) {
+    const auto it = design.components.find(reference);
+    if (it == design.components.end()) {
+        return std::nullopt;
+    }
+    const auto pins = it->second->pins();
+    for (std::size_t p = 0; p < pins.size(); ++p) {
+        if (pins[p].name == name) {
+            return p + 1;
+        }
+    }
+    return std::nullopt;
+}
+
 std::size_t PinCount(const LoadedCircuit& design, const LoadedPart& part) {
     if (const auto it = design.components.find(part.reference); it != design.components.end()) {
         return it->second->pins().size();
@@ -61,6 +115,25 @@ std::optional<std::string> PinAfter(std::string_view text) {
         return std::nullopt;
     }
     return std::string(text.substr(kPinWord.size(), end - kPinWord.size()));
+}
+
+std::optional<RunEnds> RunAt(std::span<const Span> spans, std::size_t i,
+                             const LoadedCircuit& design) {
+    if (i + 2 >= spans.size() || spans[i].style != SpanStyle::Code ||
+        spans[i + 1].style != SpanStyle::Text || spans[i + 1].text != kEnDash ||
+        spans[i + 2].style != SpanStyle::Code || !FindLoadedPart(design, spans[i].text) ||
+        !FindLoadedPart(design, spans[i + 2].text)) {
+        return std::nullopt;
+    }
+    const auto a = SplitReference(spans[i].text);
+    const auto b = SplitReference(spans[i + 2].text);
+    if (!a || !b) {
+        return std::nullopt;
+    }
+    if (a->first != b->first) {
+        return RunEnds{{}, a->second, b->second};  // reported by the check: letters differ
+    }
+    return RunEnds{a->first, a->second, b->second};
 }
 
 std::string Trim(std::string_view text) {
@@ -86,9 +159,10 @@ private:
     std::vector<Diagnostic> list_;
 };
 
-// A Title first, then exactly `required` headings, in order.
-void CheckShape(const Markdown& doc, Problems& problems,
-                std::span<const std::string_view> required) {
+// A Title first, then exactly `required` headings, in order, then any of `optional`, each at
+// most once, in their order.
+void CheckShape(const Markdown& doc, Problems& problems, std::span<const std::string_view> required,
+                std::span<const std::string_view> optional = {}) {
     if (doc.blocks.empty() || doc.blocks.front().kind != BlockKind::Title) {
         problems.add(doc.blocks.empty() ? 0 : doc.blocks.front().line, "must start with a # title");
     }
@@ -102,9 +176,20 @@ void CheckShape(const Markdown& doc, Problems& problems,
     for (const std::string_view name : required) {
         expected += (expected.empty() ? "" : ", ") + std::string(name);
     }
-    bool ok = headings.size() == required.size();
-    for (std::size_t i = 0; ok && i < headings.size(); ++i) {
+    for (const std::string_view name : optional) {
+        expected += "[, " + std::string(name) + "]";
+    }
+    bool ok = headings.size() >= required.size();
+    for (std::size_t i = 0; ok && i < required.size(); ++i) {
         ok = headings[i].first == required[i];
+    }
+    std::size_t next = 0;  // the first optional section still allowed
+    for (std::size_t i = required.size(); ok && i < headings.size(); ++i) {
+        while (next < optional.size() && optional[next] != headings[i].first) {
+            ++next;
+        }
+        ok = next < optional.size();
+        ++next;
     }
     if (!ok) {
         problems.add(headings.empty() ? 0 : headings.front().second,
@@ -112,14 +197,27 @@ void CheckShape(const Markdown& doc, Problems& problems,
     }
 }
 
-// Every Code span that looks like a reference (and is no Net name) names a Component, and a
-// following " pin N" an existing pin.
 void CheckSpans(std::span<const Span> spans, std::uint32_t line, Problems& problems,
                 const LoadedCircuit& design) {
     for (std::size_t i = 0; i < spans.size(); ++i) {
         const Span& span = spans[i];
-        if (span.style != SpanStyle::Code || !LooksLikeReference(span.text) ||
-            design.nets.contains(span.text)) {
+        if (span.style != SpanStyle::Code) {
+            continue;
+        }
+        if (const auto run = RunAt(spans, i, design);
+            run && (run->letters.empty() || run->first >= run->last)) {
+            problems.add(line, "bad run " + span.text + std::string(kEnDash) + spans[i + 2].text);
+        }
+        if (const auto named = SplitPinName(span.text)) {
+            const std::string reference(named->first);
+            if (!FindLoadedPart(design, reference)) {
+                problems.add(line, "unknown reference '" + reference + "'");
+            } else if (!PinNumber(design, reference, named->second)) {
+                problems.add(line, reference + " has no pin " + std::string(named->second));
+            }
+            continue;
+        }
+        if (!LooksLikeReference(span.text) || design.nets.contains(span.text)) {
             continue;
         }
         const LoadedPart* part = FindLoadedPart(design, span.text);
@@ -166,7 +264,8 @@ std::vector<Diagnostic> CheckUserManual(const Markdown& doc, std::string_view fi
                                         const LoadedCircuit& design) {
     Problems problems(file);
     constexpr std::string_view kSections[] = {"What it does"};
-    CheckShape(doc, problems, kSections);
+    constexpr std::string_view kOptional[] = {"Using it", "How it works"};
+    CheckShape(doc, problems, kSections, kOptional);
     CheckReferences(doc, problems, design);
     return problems.take();
 }
@@ -175,7 +274,8 @@ std::vector<Diagnostic> CheckServiceManual(const Markdown& doc, std::string_view
                                            const LoadedCircuit& design) {
     Problems problems(file);
     constexpr std::string_view kSections[] = {"Components"};
-    CheckShape(doc, problems, kSections);
+    constexpr std::string_view kOptional[] = {"Test points", "Troubleshooting"};
+    CheckShape(doc, problems, kSections, kOptional);
     CheckReferences(doc, problems, design);
 
     std::uint32_t headingLine = 0;
@@ -363,19 +463,50 @@ const Block* PinBullet(const Markdown& datasheet, std::string_view pin) {
 }
 
 std::optional<ManualLink> LinkAt(std::span<const Span> spans, std::size_t i,
-                                 const LoadedCircuit& design) {
-    if (i >= spans.size() || spans[i].style != SpanStyle::Code ||
-        !FindLoadedPart(design, spans[i].text)) {
+                                 const LoadedCircuit& design, LinkScope scope) {
+    if (i >= spans.size() || spans[i].style != SpanStyle::Code) {
         return std::nullopt;
     }
-    ManualLink link{spans[i].text, std::nullopt, 0};
-    if (i + 1 < spans.size() && spans[i + 1].style == SpanStyle::Text) {
-        if (auto pin = PinAfter(spans[i + 1].text)) {
-            link.pinChars = kPinWord.size() + pin->size();
-            link.pin = std::move(pin);
+    const std::string& text = spans[i].text;
+    const bool machine = scope == LinkScope::Machine;
+    if (const auto run = machine ? RunAt(spans, i, design) : std::nullopt;
+        run && !run->letters.empty() && run->first < run->last) {
+        ManualLink link;
+        for (const LoadedPart& part : design.parts) {
+            const auto split = SplitReference(part.reference);
+            if (split && split->first == run->letters && split->second >= run->first &&
+                split->second <= run->last) {
+                link.references.push_back(part.reference);
+            }
         }
+        link.spansUsed = 3;
+        return link;
     }
-    return link;
+    if (FindLoadedPart(design, text)) {
+        ManualLink link{{text}, std::nullopt, std::nullopt, 1, 0};
+        if (i + 1 < spans.size() && spans[i + 1].style == SpanStyle::Text) {
+            if (auto pin = PinAfter(spans[i + 1].text)) {
+                link.pinChars = kPinWord.size() + pin->size();
+                link.pin = std::move(pin);
+            }
+        }
+        return link;
+    }
+    if (!machine) {
+        return std::nullopt;
+    }
+    if (const auto named = SplitPinName(text)) {
+        const std::string reference(named->first);
+        if (const auto number = PinNumber(design, reference, named->second);
+            number && FindLoadedPart(design, reference)) {
+            return ManualLink{{reference}, std::to_string(*number), std::nullopt, 1, 0};
+        }
+        return std::nullopt;
+    }
+    if (design.nets.contains(text)) {
+        return ManualLink{{}, std::nullopt, text, 1, 0};
+    }
+    return std::nullopt;
 }
 
 std::filesystem::path DatasheetDir(const std::filesystem::path& machineDir) {

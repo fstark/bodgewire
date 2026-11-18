@@ -162,14 +162,15 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
         switch (divider) {
         case Divider::User:
             if (manuals.user) {
-                board.route(user_.draw(manuals.user->blocks, scene, design));
+                board.route(user_.draw(manuals.user->blocks, scene, design, LinkScope::Machine));
             } else {
                 ImGui::TextDisabled("no user manual");
             }
             break;
         case Divider::Service:
             if (manuals.service) {
-                board.route(service_.draw(manuals.service->blocks, scene, design));
+                board.route(
+                    service_.draw(manuals.service->blocks, scene, design, LinkScope::Machine));
             } else {
                 ImGui::TextDisabled("no service manual");
             }
@@ -256,7 +257,7 @@ void ManualWindows::datasheets(const Manuals& manuals, BoardView& board,
         }
         ImGui::Spacing();
         if (const auto sheet = manuals.datasheets.find(*part); sheet != manuals.datasheets.end()) {
-            board.route(sheet_.draw(sheet->second.blocks, scene, design));
+            board.route(sheet_.draw(sheet->second.blocks, scene, design, LinkScope::Parts));
         }
         ImGui::PopID();
         return;
@@ -287,10 +288,10 @@ TargetHits ManualWindows::index(const Manuals& manuals, const BoardScene* scene)
             }
             if (const auto component = scene->componentIndex(reference)) {
                 if (link.hovered) {
-                    hits.hovered = BoardTarget{*component, std::nullopt};
+                    hits.hovered = BoardTarget{{*component}, std::nullopt, std::nullopt};
                 }
                 if (link.clicked) {
-                    hits.clicked = BoardTarget{*component, std::nullopt};
+                    hits.clicked = BoardTarget{{*component}, std::nullopt, std::nullopt};
                 }
             }
         }

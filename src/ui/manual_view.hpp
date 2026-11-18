@@ -41,7 +41,7 @@ class ManualView {
 public:
     // Links under the mouse / clicked this frame. `scene` may be null (no Board: no targets).
     TargetHits draw(std::span<const Block> blocks, const BoardScene* scene,
-                    const LoadedCircuit& design);
+                    const LoadedCircuit& design, LinkScope scope);
 };
 
 }  // namespace bw
