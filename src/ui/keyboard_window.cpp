@@ -67,6 +67,7 @@ bool KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
         return false;
     }
     const bool clicked = InstrumentClicked();
+    SharpFont(legends_);
     drawCaps(session, capture);
     if (CaseClose()) {
         open = false;

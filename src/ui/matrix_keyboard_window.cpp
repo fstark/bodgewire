@@ -205,6 +205,7 @@ bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
         return false;
     }
     const bool clicked = InstrumentClicked();
+    SharpFont(legends_);
     if (capture.kind == KeyMatrixKind::Bw80) {
         drawMembrane(session, capture);
     } else {
@@ -295,63 +296,60 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
 
 namespace {
 
-// A ZX80 graphic's quarters (top left, top right, bottom left, bottom right): paper (the key's
-// blue), ink (gold) or grey (a check of the two), as printed on its key.
-enum class Quarter : std::uint8_t { Paper, Ink, Grey };
+// A ZX80 graphic as the ROM's character set draws it (8 rows of 8 pixels, bit 7 the left; IC2 at
+// 0x0E00): the code SHIFT and the key type (the key table at 0x0093). The greys are a one-pixel
+// check (P6l: checked against zx80_ic2.bin).
+using Glyph = std::array<std::uint8_t, 8>;
 
-std::array<Quarter, 4> GraphicOf(std::string_view legend) {
-    constexpr Quarter P = Quarter::Paper, I = Quarter::Ink, G = Quarter::Grey;
+Glyph GraphicOf(std::string_view legend) {
+    constexpr Glyph kLeft{0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0};      // Q: code 2
+    constexpr Glyph kBottom{0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF};                // W: 3
+    constexpr Glyph kTopLeft{0xF0, 0xF0, 0xF0, 0xF0, 0, 0, 0, 0};               // E: 4
+    constexpr Glyph kTopRight{0x0F, 0x0F, 0x0F, 0x0F, 0, 0, 0, 0};              // R: 5
+    constexpr Glyph kBottomLeft{0, 0, 0, 0, 0xF0, 0xF0, 0xF0, 0xF0};            // D: 6
+    constexpr Glyph kBottomRight{0, 0, 0, 0, 0x0F, 0x0F, 0x0F, 0x0F};           // F: 7
+    constexpr Glyph kDiagonal{0x0F, 0x0F, 0x0F, 0x0F, 0xF0, 0xF0, 0xF0, 0xF0};  // S: 8
+    constexpr Glyph kGrey{0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};      // A: 9
+    constexpr Glyph kGreyBottom{0, 0, 0, 0, 0xAA, 0x55, 0xAA, 0x55};            // T: 10
+    constexpr Glyph kGreyTop{0xAA, 0x55, 0xAA, 0x55, 0, 0, 0, 0};               // G: 11
     if (legend == "Q")
-        return {I, P, I, P};
+        return kLeft;
     if (legend == "W")
-        return {P, P, I, I};
+        return kBottom;
     if (legend == "E")
-        return {I, P, P, P};
+        return kTopLeft;
     if (legend == "R")
-        return {P, I, P, P};
+        return kTopRight;
     if (legend == "T")
-        return {P, P, G, G};
+        return kGreyBottom;
     if (legend == "A")
-        return {G, G, G, G};
+        return kGrey;
     if (legend == "S")
-        return {P, I, I, P};
+        return kDiagonal;
     if (legend == "D")
-        return {P, P, I, P};
+        return kBottomLeft;
     if (legend == "F")
-        return {P, P, P, I};
+        return kBottomRight;
     if (legend == "G")
-        return {G, G, P, P};
-    return {P, P, P, P};
+        return kGreyTop;
+    return {};
 }
 
-// A graphic `s` square at `at`: a pale frame around the quarters.
+// A graphic about `s` square at `at`: a pale frame around its 8 by 8 pixels, gold ink on the
+// key's blue, each pixel a whole number of screen points so the check stays even.
 void DrawGraphic(ImDrawList& list, std::string_view legend, ImVec2 at, float s) {
     const float frame = std::max(1.0f, std::round(s * 0.07f));
-    s = std::round(s);
-    list.AddRectFilled(at, {at.x + s, at.y + s}, kGraphicFrame);
-    // Whole pixels, so the quarters meet without seams.
-    const float x0 = at.x + frame, y0 = at.y + frame;
-    const float x2 = at.x + s - frame, y2 = at.y + s - frame;
-    const float xs[3] = {x0, std::round((x0 + x2) / 2), x2};
-    const float ys[3] = {y0, std::round((y0 + y2) / 2), y2};
-    list.AddRectFilled({x0, y0}, {x2, y2}, kKeyTop);
-    const auto quarters = GraphicOf(legend);
-    for (int q = 0; q < 4; ++q) {
-        const ImVec2 qa{xs[q % 2], ys[q / 2]}, qb{xs[q % 2 + 1], ys[q / 2 + 1]};
-        if (quarters[q] == Quarter::Ink) {
-            list.AddRectFilled(qa, qb, kGraphicInk);
-        } else if (quarters[q] == Quarter::Grey) {
-            for (int y = 0; y < 3; ++y) {
-                for (int x = 0; x < 3; ++x) {
-                    if ((x + y + 3 * (q % 2 + q / 2)) % 2 == 0) {  // across quarters
-                        const auto step = [](float from, float to, int k) {
-                            return std::round(from + (to - from) * k / 3);
-                        };
-                        list.AddRectFilled({step(qa.x, qb.x, x), step(qa.y, qb.y, y)},
-                                           {step(qa.x, qb.x, x + 1), step(qa.y, qb.y, y + 1)},
-                                           kGraphicInk);
-                    }
-                }
+    const float cell = std::max(1.0f, std::floor((s - 2 * frame) / 8));
+    const float x0 = std::round(at.x + frame), y0 = std::round(at.y + frame);
+    list.AddRectFilled({x0 - frame, y0 - frame}, {x0 + 8 * cell + frame, y0 + 8 * cell + frame},
+                       kGraphicFrame);
+    list.AddRectFilled({x0, y0}, {x0 + 8 * cell, y0 + 8 * cell}, kKeyTop);
+    const Glyph glyph = GraphicOf(legend);
+    for (int y = 0; y < 8; ++y) {
+        for (int x = 0; x < 8; ++x) {
+            if ((glyph[y] >> (7 - x)) & 1) {
+                list.AddRectFilled({x0 + x * cell, y0 + y * cell},
+                                   {x0 + (x + 1) * cell, y0 + (y + 1) * cell}, kGraphicInk);
             }
         }
     }

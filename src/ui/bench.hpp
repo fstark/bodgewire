@@ -32,6 +32,10 @@ void KeepAspect(float aspect, float minWidth);
 // A case's put-away mark, last before End: a small circled × in the window's top-right corner,
 // faint until hovered. True when clicked.
 bool CaseClose(float inset = 6);
+// Inside a window, before drawing with a font other than the current one straight into a draw
+// list (the keycap legends): baked at the window's pixel density, as PushFont does for the current
+// font, else ImGui bakes it at 1x and a Retina display shows it blurred (P6l).
+void SharpFont(ImFont* font);
 
 // P6j: true while `object` is in its own desktop window, for the run.
 bool PoppedOut(BenchObject object);

@@ -138,6 +138,12 @@ void PopOutAtStart(BenchObject object) {
 
 void OnBench() { ImGui::SetNextWindowViewport(ImGui::GetMainViewport()->ID); }
 
+void SharpFont(ImFont* font) {
+    if (font != nullptr) {
+        font->CurrentRasterizerDensity = ImGui::GetWindowViewport()->FramebufferScale.x;
+    }
+}
+
 bool CaseClose(float inset) {
     const ImVec2 pos = ImGui::GetWindowPos();
     const ImVec2 min{pos.x + ImGui::GetWindowWidth() - inset - kCloseSize, pos.y + inset};

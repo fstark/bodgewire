@@ -618,6 +618,7 @@ void BoardView::draw(ImVec2 size) {
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const ImVec2 panel = ImGui::GetContentRegionAvail();
     ImDrawList& list = *ImGui::GetWindowDrawList();
+    SharpFont(legendFont_);
     list.AddRectFilled(origin, {origin.x + panel.x, origin.y + panel.y}, kPanelBackground);
     if (!scene_) {
         const char* text = "no board";
