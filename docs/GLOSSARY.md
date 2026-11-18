@@ -323,5 +323,5 @@ The ZX80 editor's way of typing: while the cursor is `K`, a letter key types the
 _Avoid_: Token entry
 
 **Typing**:
-The `bw_ui` mode in which every key the player presses goes to the Machine's keyboard instead of the tools: on while the keyboard window has focus, F2 toggles it. Escape is a key of the keyboard. On a Machine with Board keys and no keyboard, F2 turns it on for the Board: a PC key held down holds the key with that `pc=`, several at once.
+The `bw_ui` mode in which every key the player presses goes to the Machine instead of the bench (P6g): its keyboard (either kind), its Board keys (a PC key held down holds the key with that `pc=`, several at once) and its knobs. A click on any of the Machine's objects (the TV, the keyboard, the knob box, a Board key with a PC key, the shelf's keyboard drawing) gives it the keys, framed in gold on each; a click on the Board, a tool or an instrument gives them back to the bench and its shortcuts; F2 toggles. Escape is a key of the Machine. The keyboard and the knobs take keys only while out.
 _Avoid_: Keyboard capture (in player text)

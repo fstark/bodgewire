@@ -2,53 +2,16 @@
 
 Spec: [BOARD_DEVICES.md](BOARD_DEVICES.md). Design: [BOARD_DEVICES_DESIGN.md](BOARD_DEVICES_DESIGN.md).
 
-## Phase 1 — Keys and marks, ImGui-free
-
-- `src/view/machine_keys.{hpp,cpp}`, `tests/view/machine_keys_test.cpp` (design: where the keys go; spec: Tests).
-- `src/view/board_marks.{hpp,cpp}`, `tests/view/board_marks_test.cpp` (design: the capacitor).
-- `src/view/CMakeLists.txt`, `tests/CMakeLists.txt`.
-- `src/parts/catalogue.cpp`, `tests/parts/switch_test.cpp`: BUTTON takes `legend=` (design: catalogue).
-
-Fence: release build; `ctest --preset release -R "machine keys|board marks|switch"`; debug build, the same `-R`. Commit: `view, parts: where the keys go (bench or Machine), a capacitor's printed code; BUTTON takes legend=`.
-
-## Phase 2 — The looks
-
-- `machines/*/*.bwn`: the seven BUTTON legends; the six User Manuals (design: netlists and manuals; the BW-1's line waits for phase 3).
-- `src/ui/board_look.{hpp,cpp}`: `Kind::Capacitor`, `DrawCapacitor`, `SilkTextPx` and `kSilk` exported.
-- `src/ui/board_view.cpp`: the button, its legend, the slide switch, the digit's rim (design: the Board).
-- `src/ui/knob_window.{hpp,cpp}` (the legends font), `src/ui/main.cpp` (passing it), `src/view/bench_places.hpp`, `tests/view/bench_places_test.cpp`: the printed keys, the box taller.
-- `datasheets/BUTTON.md`: `legend=`.
-- Screenshots viewed (spec: Tests): Stopwatch, Dice, Tennis, BW-1, BW-80, Knob Meter.
-
-Fence: release build; `ctest --preset release -R "dice|stopwatch|tennis|typewriter|heartbeat|led.computer|manuals|bench places|switch"`; the screenshots. Commit: `ui: buttons as tactile switches with their legends on the silkscreen, a readable slide switch, digits in a grey rim, ceramic capacitors with their code, the knob keys printed`.
-
-## Phase 3 — The keys go to the bench or the Machine
-
-- `src/ui/bench.hpp`: `kFocusGold`.
-- `src/ui/main.cpp`: `MachineKeys`, the event routing, F2, the clicks (design: routing).
-- `src/ui/keyboard_capture.*`, `matrix_capture.*`, `board_keys.*`: F2 out; `keyboard_window.*`, `matrix_keyboard_window.*`: `on` from the routing, a click reported, the gold.
-- `src/ui/knob_window.*`: `KnobKeys`, keys while on, gold, a click reported. `src/ui/tv_window.*`: gold, a click reported.
-- `src/ui/board_view.*`: `takePress`, `setKeypadGold`.
-- `src/ui/shelf.*`: the keyboard drawing with Board keys, `takeBenchClick`, the hint.
-- `machines/120-bw1/manuals/user.md`: its typing line; `datasheets/BUTTON.md`, `datasheets/KEY.md`: Typing.
-- Screenshots viewed: the BW-1 with its keys given to the Machine (`--keys machine`, design: routing), Tennis and the Typewriter the same; the speed gate (the 110 with every instrument, the BW-2001 with its TV out).
-
-Fence: full release suite; debug build and `ctest --preset debug -R "machine keys|switch|manuals"`; the screenshots; the speed gate. Commit: `ui: the keys go to the bench or the Machine: a click on the TV, keyboard, knob or a Board key gives them, gold on each; the BW-1 types from the shelf's keyboard; knobs turn only then`.
-
-## Phase 4 — Docs
-
-- GLOSSARY, ADD_BOARD_DEVICE, ADD_CONNECTOR_DEVICE, ARCHITECTURE (design: datasheets, recipes and glossary); this plan cut down to the status table and notes.
-
-Fence: links checked by reading. Commit: `docs: P6g done, Board devices`.
-
 ## Status
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
 | 1 | Machine keys, capacitor code, BUTTON legend | 2e2cd5b |
 | 2 | The looks | d3b3681 |
-| 3 | Keys to the bench or the Machine | |
-| 4 | Glossary, recipe, ARCHITECTURE | |
+| 3 | Keys to the bench or the Machine | 1725d07 |
+| 4 | Glossary, recipes, ARCHITECTURE | this commit |
+
+P6g implemented 2026-11-18, user check pending.
 
 ## Implementation notes
 
