@@ -20,7 +20,7 @@ What the logic probe shows on a working board. **P** is the pulse lamp: it stays
 | Probe | A working board shows |
 |---|---|
 | `CLK`, on pin 2 of any chip | P lit |
-| `U1.QA`, `U1.QB`, `U1.QC`, `U1.QD` | P lit; each output changes half as often as the one before |
+| `U1.QA`, `U1.QB`, `U1.QC`, `U1.QD` | P lit: far too fast for the eye. The logic analyzer shows each output changing half as often as the one before |
 | `CARRY1`, `CARRY2`, `CARRY3`, `CARRY4` | L, with P lit: a short high blip now and then |
 | `C19`, on `U5` pin 11 | H for about half a second, then L for half a second; P flashes at each change |
 | `D1` pin 1 | the same as `C19`: it is the same wire |
