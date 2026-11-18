@@ -15,7 +15,7 @@
 - `U10` vertical sync decoder `VSYNC_N` for lines 308–311; `ROW_CLK`, the row buffer's clock, once a character in the text
 - `U11` sync mixer: composite sync from `HSYNC_N` and `VSYNC_N` into `SYNC_N_D`; two gates compare `V6`, `V7` with `Y2`, `Y3` (`NE7`, `NE8`)
 - `U12` text area `ACTIVE` (columns 0–31 of lines 0–255); `CTL`, high for control codes; `CUR_SHOW`, the blinking cursor; `MATCH`
-- `U13` row gates: `R1`–`R3` = `V1`–`V3` while `ACTIVE`, else 0; `ROW_TOP`, the first line of a text row
+- `U13` row gates: `GL1`–`GL3` = `V1`–`V3` while `ACTIVE`, else 0; `ROW_TOP`, the first line of a text row
 - `U14` `V01_ZERO`, `V23_ZERO` (`V0`–`V3` low in pairs); `CLEAR`; `GO`
 - `U15` page clock gates: `PHI2_N` on dots 12–13, `PHI1_N` on dot 15 of characters 0–31 of a row's top line
 - `U16` page (2524), bit 0 of each character: 512 cells, round once a frame, out on `P0`, written from `W0` while `WRITE` is high
@@ -25,7 +25,7 @@
 - `U20` page (2524), bit 4: `P4`, `W4`
 - `U21` page (2524), bit 5: `P5`, `W5`
 - `U22` row buffer (2518): the 32 characters of the row being drawn on `B0`–`B5`, round once a line on `ROW_CLK`; takes them from `P0`–`P5` while `ROW_LOAD_N` is low
-- `U23` character ROM (2513): address `R1`–`R3`, `B0`–`B5`; out the line's dots `F5` (left) to `F1`
+- `U23` character ROM (2513): address `GL1`–`GL3`, `B0`–`B5`; out the line's dots `F5` (left) to `F1`
 - `U24` dot shift register: loads `F5`–`F1` on `DOT_LOAD_N`, shifts them out on `CLK_N` as `VIDEO_D`
 - `U25` output register: re-times `SYNC_N`, `VIDEO` and `LINE_END` (the first dot of each line) on the clock
 - `U26` keyboard buffer: drives `D0`–`D5` onto the write bus `W0`–`W5` except during Clear

@@ -25,7 +25,7 @@ part U9  74LS30     # FRAME_END_N
 part U10 74LS20     # VSYNC_N, ROW_CLK
 part U11 74LS86     # composite sync; cursor compare V6, V7
 part U12 74LS02     # ACTIVE, CTL, CUR_SHOW, MATCH
-part U13 74LS08     # R1-R3, ROW_TOP
+part U13 74LS08     # GL1-GL3, ROW_TOP
 part U14 74LS02     # V01_ZERO, V23_ZERO, CLEAR, GO
 part U15 74LS20     # PHI1_N, PHI2_N
 part U16 2524       # page, bit 0
@@ -110,9 +110,9 @@ net SYNC_N_D    U11.2Y U25.1D
 
 # Text area: characters 0-31 of lines 0-255. Outside it the character ROM reads its blank line 0.
 net ACTIVE      U12.1Y U13.1B U13.2B U13.3B U15.1B U15.2B U10.2B U38.1D
-net R1          U13.1Y U23.A1
-net R2          U13.2Y U23.A2
-net R3          U13.3Y U23.A3
+net GL1          U13.1Y U23.A1
+net GL2          U13.2Y U23.A2
+net GL3          U13.3Y U23.A3
 
 # Page clocks: on the top line of each text row, PHI2 on dots 12-13 and PHI1 on dot 15 of characters 0-31.
 net V01_ZERO    U14.1Y U13.4A U29.3A
