@@ -93,3 +93,71 @@ TEST_CASE("bench places: the size button goes to the preset further away", "[vie
     CHECK(same(NextPreset({250, 150}, minimal, normal), normal));   // near minimal
     CHECK(same(NextPreset({600, 400}, minimal, normal), minimal));  // larger than both
 }
+
+TEST_CASE("bench places: a popped-out object goes right of the main window, its top kept",
+          "[view]") {
+    const Area display{0, 25, 2560, 1390};
+    const Area main{200, 100, 1280, 800};
+    const auto place = BesidePlace({300, 400, 600, 500}, main, std::span(&display, 1));
+    REQUIRE(place);
+    CHECK(place->x == Catch::Approx(200 + 1280 + kBenchMargin));
+    CHECK(place->y == Catch::Approx(400));
+    CHECK(place->width == Catch::Approx(600));
+    CHECK(place->height == Catch::Approx(500));
+}
+
+TEST_CASE("bench places: a popped-out object moves up to fit the display's bottom", "[view]") {
+    const Area display{0, 25, 2560, 1390};
+    const auto place =
+        BesidePlace({300, 1100, 600, 500}, {200, 100, 1280, 800}, std::span(&display, 1));
+    REQUIRE(place);
+    CHECK(place->y == Catch::Approx(25 + 1390 - 500));
+}
+
+TEST_CASE("bench places: left of the main window when the right has no room", "[view]") {
+    const Area display{0, 25, 2560, 1390};
+    const auto place =
+        BesidePlace({1500, 200, 600, 500}, {1000, 100, 1280, 800}, std::span(&display, 1));
+    REQUIRE(place);
+    CHECK(place->x == Catch::Approx(1000 - kBenchMargin - 600));
+    CHECK(place->y == Catch::Approx(200));
+}
+
+TEST_CASE("bench places: no room either side, the object stays where it was", "[view]") {
+    const Area display{0, 25, 1512, 957};
+    CHECK_FALSE(BesidePlace({300, 200, 600, 500}, {100, 60, 1280, 800}, std::span(&display, 1)));
+    // Too tall for the display beside it.
+    const Area wide{0, 0, 3000, 400};
+    CHECK_FALSE(BesidePlace({300, 0, 600, 500}, {100, 0, 1280, 400}, std::span(&wide, 1)));
+}
+
+TEST_CASE("bench places: a popped-out object goes on a second display right of the first",
+          "[view]") {
+    const Area displays[] = {{0, 25, 1512, 957}, {1512, 0, 1920, 1080}};
+    const auto place = BesidePlace({300, 200, 600, 500}, {100, 60, 1400, 800}, displays);
+    REQUIRE(place);
+    CHECK(place->x == Catch::Approx(100 + 1400 + kBenchMargin));
+    CHECK(place->y == Catch::Approx(200));
+}
+
+TEST_CASE("bench places: back on the bench, a size kept or shrunk in proportion", "[view]") {
+    const Extent fits = FitBench({600, 500}, kBench);
+    CHECK(fits.width == Catch::Approx(600));
+    CHECK(fits.height == Catch::Approx(500));
+    const Extent wide = FitBench({2000, 1000}, kBench);  // by the width
+    CHECK(wide.width == Catch::Approx(1264));
+    CHECK(wide.height == Catch::Approx(632));
+    const Extent tall = FitBench({800, 1432}, kBench);  // by the height
+    CHECK(tall.width == Catch::Approx(400));
+    CHECK(tall.height == Catch::Approx(716));
+}
+
+TEST_CASE("bench places: on a display further left, at its edge nearest the main window",
+          "[view]") {
+    // The laptop's display, and one up and to the left whose right edge is the laptop's left.
+    const Area displays[] = {{0, 33, 1512, 949}, {-3008, -1114, 3008, 1662}};
+    const auto place = BesidePlace({140, 331, 600, 500}, {116, 107, 1280, 800}, displays);
+    REQUIRE(place);
+    CHECK(place->x == Catch::Approx(-600));
+    CHECK(place->y == Catch::Approx(-1114 + 1662 - 500));
+}

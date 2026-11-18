@@ -19,13 +19,14 @@ struct BenchRect {
 BenchRect BenchArea();
 
 // Before Begin: on the bench (locked to the main window, clipped at its edge) or, popped out, in
-// its own desktop window (P6j); then and `first` its size the first time it comes
+// its own desktop window (P6j); at its default place and `first` its size the first time it comes
 // out; after that where and as large as the player left it, for the run (FirstUseEver), unless
-// SendHome asked for its default place again.
+// SendHome, PopOut or PopIn moved it.
 void PlaceNext(BenchObject object, ImVec2 first);
 // The next PlaceNext of `object` puts it back at its default place (its shelf drawing
-// double-clicked), keeping its size.
-void SendHome(BenchObject object);
+// double-clicked), keeping its size; popped out, back on the bench as PopIn (`window`: its
+// Begin name, for its size).
+void SendHome(BenchObject object, const char* window);
 // Before Begin: height = width * aspect, at least `minWidth` wide (a case keeps its proportions).
 void KeepAspect(float aspect, float minWidth);
 // A case's put-away mark, last before End: a small circled × in the window's top-right corner,
@@ -34,8 +35,15 @@ bool CaseClose(float inset = 6);
 
 // P6j: true while `object` is in its own desktop window, for the run.
 bool PoppedOut(BenchObject object);
-// --pop: `object` in its own desktop window from its first PlaceNext.
+// From inside its window: to its own desktop window beside the main one (BesidePlace; else where
+// it is), from the next frame.
+void PopOut(BenchObject object);
+// --pop: the same before the object first comes out, beside from its default place and first
+// size.
 void PopOutAtStart(BenchObject object);
+// From inside its window: back on the bench at its default place, its size kept or shrunk in
+// proportion to fit the bench (FitBench), from the next frame.
+void PopIn(BenchObject object);
 // Before Begin of a window that never leaves the bench (the main one, the brief).
 void OnBench();
 

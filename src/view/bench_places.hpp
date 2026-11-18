@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <span>
 
 namespace bw {
 
@@ -46,5 +48,18 @@ Extent NormalSize(BenchObject instrument);
 Extent MinimalSize(BenchObject instrument);
 // The size button: the preset further from `current` (by the two sides' distances summed).
 Extent NextPreset(Extent current, Extent minimal, Extent normal);
+
+// A rectangle in desktop logical px (ImGui's coordinates with viewports on), top left (P6j).
+struct Area {
+    float x = 0, y = 0, width = 0, height = 0;
+};
+// Where an object popped out of the main window goes (P6j): right of `main` with kBenchMargin
+// between, else left of it, on the first display (each its work area) that holds the whole
+// object there; on a display further away, at its edge nearest the main window; its top where it
+// was, moved to fit that display's height. nullopt when neither side fits any display (it stays
+// where it was).
+std::optional<Area> BesidePlace(Area object, Area main, std::span<const Area> displays);
+// A size back on the bench: as is when it fits `bench`, else shrunk in proportion to fit.
+Extent FitBench(Extent size, Extent bench);
 
 }  // namespace bw

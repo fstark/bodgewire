@@ -127,6 +127,16 @@ GpuRender::GpuRender(SDL_Window* main) : main_(main) {
     format_ = SDL_GetGPUSwapchainTextureFormat(device_, main_);
 }
 
+SDL_GPUPresentMode GpuRender::unpacedMode() const {
+    for (const SDL_GPUPresentMode mode :
+         {SDL_GPU_PRESENTMODE_MAILBOX, SDL_GPU_PRESENTMODE_IMMEDIATE}) {
+        if (SDL_WindowSupportsGPUPresentMode(device_, main_, mode)) {
+            return mode;
+        }
+    }
+    return SDL_GPU_PRESENTMODE_VSYNC;
+}
+
 GpuRender::~GpuRender() {
     if (device_ != nullptr) {
         SDL_WaitForGPUIdle(device_);

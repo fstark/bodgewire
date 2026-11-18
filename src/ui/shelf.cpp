@@ -119,7 +119,7 @@ void Home(bool& out, const char* window, BenchObject object) {
     if (window != nullptr) {
         BringToFront(window);
     }
-    SendHome(object);
+    SendHome(object, window);
 }
 
 BenchObject ObjectOf(Owner instrument) {
@@ -399,7 +399,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                 if (IsInstrument(*owner) && home) {
                     focus.key(*owner);  // out with the focus
                     BringToFront(WindowOf(*owner));
-                    SendHome(ObjectOf(*owner));
+                    SendHome(ObjectOf(*owner), WindowOf(*owner));
                 } else if (IsInstrument(*owner)) {
                     focus.shelfClick(*owner, InFront(WindowOf(*owner)));
                     if (focus.out(*owner)) {

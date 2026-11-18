@@ -21,6 +21,8 @@ public:
     bool ready() const { return device_ != nullptr; }
     SDL_GPUDevice* device() const { return device_; }
     SDL_GPUTextureFormat format() const { return format_; }  // the main swapchain's
+    // MAILBOX where the main window supports it (no tearing), else IMMEDIATE, else VSYNC.
+    SDL_GPUPresentMode unpacedMode() const;
 
     // After ImGui::Render: the TV's upload, the main window cleared black and drawn, submitted;
     // then the popped-out windows (UpdatePlatformWindows, RenderPlatformWindowsDefault). Waits

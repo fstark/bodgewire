@@ -43,7 +43,7 @@ The kernel, Parts, the builder, devices, Session, Machines and Puzzles are untou
 
 ## Tests
 
-- **Bench places** (`tests/view/bench_places_test.cpp`): `BesidePlace` puts an object right of the main window with the margin, its top kept; moved up to fit a display's bottom; left when the right has no room; nullopt when neither side fits any display; on a second display right of the first. `FitBench` keeps a size that fits, shrinks a larger one in proportion to fit width and height.
+- **Bench places** (`tests/view/bench_places_test.cpp`): `BesidePlace` puts an object right of the main window with the margin, its top kept; moved up to fit a display's bottom; left when the right has no room; nullopt when neither side fits any display; on a second display right of the first; on a display left of the first, not touching the main window, at that display's right edge. `FitBench` keeps a size that fits, shrinks a larger one in proportion to fit width and height.
 - No UI tests exist: the control, the drag and the keys are checked by reading the code, by screenshots and by the user.
 - **Screenshots** (release, viewed): the renderer's switch changes nothing seen: Tennis with the binder, Tennis with its TV's tone turned (`--tv bright:60%,contrast:90%`), the BW-80's first Puzzle (its TV's text, keyboard) and the 110 with every instrument, each compared with the same shot before the switch; `--pop manual` on Tennis (the binder beside the window, its control pointing in), `--pop scope,analyzer,meter` on the 110, `--pop tv,keyboard` on the Typewriter, `--pop knob` on Tennis; the binder's control on the bench; a bad `--pop` and `--pop keyboard` on the Counter give the usage error.
 - **Release:** the 110 with every instrument, speed 1.00× and UI time as before the switch (about 1 ms), and the frame rate kept, with and without the instruments popped out. `--screenshot` prints the UI time as the frame's building (to `ImGui::Render`; the GPU's waits for each window's vsync would count otherwise) and the frames per second. The full release suite passes.
@@ -51,4 +51,6 @@ The kernel, Parts, the builder, devices, Session, Machines and Puzzles are untou
 ## Later
 
 - A pop-out control on the other objects, if wanted (one generic button or one per object).
+- Several objects popped out at once (`--pop`) placed apart: each goes beside the main window alone, so they overlap at the same edge.
+- A popped-out window on a slower display: presented unpaced, the UI keeps 60–80 fps beside a 30 Hz monitor (Metal); more would need each window drawn on its own pace.
 - Remembering popped-out windows between runs, with the rest of a session's layout, if P7 keeps one.

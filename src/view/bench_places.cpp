@@ -98,4 +98,27 @@ Extent NextPreset(Extent current, Extent minimal, Extent normal) {
     return Distance(current, minimal) > Distance(current, normal) ? minimal : normal;
 }
 
+std::optional<Area> BesidePlace(Area object, Area main, std::span<const Area> displays) {
+    // Each side, each display: the place nearest to just beside the main window that lies on the
+    // display and still clears the main window.
+    for (const bool right : {true, false}) {
+        for (const Area& d : displays) {
+            const float x = right ? std::max(main.x + main.width + kBenchMargin, d.x)
+                                  : std::min(main.x - kBenchMargin - object.width,
+                                             d.x + d.width - object.width);
+            if (x < d.x || x + object.width > d.x + d.width || object.height > d.height) {
+                continue;
+            }
+            const float y = std::clamp(object.y, d.y, d.y + d.height - object.height);
+            return Area{x, y, object.width, object.height};
+        }
+    }
+    return std::nullopt;
+}
+
+Extent FitBench(Extent size, Extent bench) {
+    const float scale = std::min({1.0f, bench.width / size.width, bench.height / size.height});
+    return {size.width * scale, size.height * scale};
+}
+
 }  // namespace bw

@@ -26,6 +26,7 @@ From `examples/example_sdl3_sdlgpu3/main.cpp` of the docking tag: the device for
 class GpuRender {
 public:
     explicit GpuRender(SDL_Window* main);  // the device claims `main`, VSYNC; error() if not
+    SDL_GPUPresentMode unpacedMode() const;  // the popped-out windows' (below)
     ~GpuRender();                          // waits for the GPU, releases the device
     const char* error() const;             // null when ready
     SDL_GPUDevice* device() const;
@@ -49,7 +50,7 @@ public:
 };
 ```
 
-`main()`: `ImGui_ImplSDL3_InitForSDLGPU(window)`, `ImGui_ImplSDLGPU3_Init` with `{device, format, SAMPLECOUNT_1}`; `io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable` (no `DockingEnable`); `ConfigViewportsNoDefaultParent` (true), `ConfigViewportsNoDecoration` (true, no title bar) and `ConfigViewportsNoTaskBarIcon` (false) stay ImGui's defaults. The frame: `ImGui_ImplSDLGPU3_NewFrame` for `ImGui_ImplSDLRenderer3_NewFrame`; the UI time taken after `ImGui::Render` (before `present`, whose vsync waits it would count), a frame counted; then `present`; then the screenshot (when due), which prints the frames per second beside the UI time. Shutdown: `RunWindow` returns (its `TvView` releases its texture and buffer), `SDL_WaitForGPUIdle`, `ImGui_ImplSDL3_Shutdown`, `ImGui_ImplSDLGPU3_Shutdown` (the platform windows destroyed), `DestroyContext`, then `GpuRender` (the main window released from the device, the device destroyed), then `SDL_DestroyWindow`, as the example.
+`main()`: `ImGui_ImplSDL3_InitForSDLGPU(window)`, `ImGui_ImplSDLGPU3_Init` with `{device, format, SAMPLECOUNT_1}`; `io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable` (no `DockingEnable`); `ConfigViewportsNoDefaultParent` (true), `ConfigViewportsNoDecoration` (true, no title bar) and `ConfigViewportsNoTaskBarIcon` (false) stay ImGui's defaults. The popped-out windows' present mode (`InitInfo.PresentMode`) is `GpuRender::unpacedMode()`: MAILBOX where the main window supports it, else IMMEDIATE, else VSYNC; a VSYNC swapchain on a slower display (30 Hz) paced the whole loop at its rate (phase 2). The frame: `ImGui_ImplSDLGPU3_NewFrame` for `ImGui_ImplSDLRenderer3_NewFrame`; the UI time taken after `ImGui::Render` (before `present`, whose vsync waits it would count), a frame counted; then `present`; then the screenshot (when due), which prints the frames per second beside the UI time. Shutdown: `RunWindow` returns (its `TvView` releases its texture and buffer), `SDL_WaitForGPUIdle`, `ImGui_ImplSDL3_Shutdown`, `ImGui_ImplSDLGPU3_Shutdown` (the platform windows destroyed), `DestroyContext`, then `GpuRender` (the main window released from the device, the device destroyed), then `SDL_DestroyWindow`, as the example.
 
 Tooltips: `KeepFocusFromTooltips()` after the SDL3 backend's init wraps `platform_io.Platform_ShowWindow`: a viewport with `TopMost | NoFocusOnAppearing` (ImGui's tooltips, `WindowSyncOwnedViewport`) is shown with `SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN` "0", every other through the backend (on macOS it sets "1" for all: an unactivated popup would appear under the main window). The download's pixel format: `B8G8R8A8_UNORM` → `SDL_PIXELFORMAT_BGRA32`, `R8G8B8A8_UNORM` → `RGBA32`, any other refused. `SDL_SetRenderVSync` goes (the swapchain's present mode).
 
@@ -68,8 +69,9 @@ struct Area {
 };
 // Where an object popped out of the main window goes (P6j): right of `main` with kBenchMargin
 // between, else left of it, on the first display (each its work area) that holds the whole
-// object there; its top where it was, moved to fit that display's height. nullopt when neither
-// side fits any display (it stays where it was).
+// object there; on a display further away, at its edge nearest the main window; its top where it
+// was, moved to fit that display's height. nullopt when neither side fits any display (it stays
+// where it was).
 std::optional<Area> BesidePlace(Area object, Area main, std::span<const Area> displays);
 // A size back on the bench: as is when it fits `bench`, else shrunk in proportion to fit.
 Extent FitBench(Extent size, Extent bench);
@@ -97,7 +99,7 @@ void OnBench();
 - not popped out: `OnBench()`, i.e. `SetNextWindowViewport(GetMainViewport()->ID)`: locked to the main window, clipped at its edge when dragged past it;
 - popped out: `SetNextWindowClass` with `ViewportFlagsOverrideSet = ImGuiViewportFlags_NoAutoMerge` (ImGui's `GetWindowAlwaysWantOwnViewport`: its own viewport even over the main window); a pending `BesidePlace` position `SetNextWindowPos(…, ImGuiCond_Always)` once.
 
-The default-place branch is unchanged, so a popped-in object goes home through `home_` (as `SendHome`) with a pending `FitBench` size `SetNextWindowSize(…, ImGuiCond_Always)` once. `SendHome` of a popped-out object pops it in. `BenchArea` keeps the main viewport's `WorkPos`: with viewports on, desktop coordinates, so the default places follow the main window wherever it is (ImGui moves the main viewport's windows with it).
+The default-place branch is unchanged, so a popped-in object goes home through `home_` (as `SendHome`) with a pending `FitBench` size `SetNextWindowSize(…, ImGuiCond_Always)` once. `SendHome(object, window)` of a popped-out object pops it in, its size read from its window (`FindWindowByName`; the shelf has the name). `BenchArea` keeps the main viewport's `WorkPos`: with viewports on, desktop coordinates, so the default places follow the main window wherever it is (ImGui moves the main viewport's windows with it).
 
 `PopOut` and `PopIn` record a request applied by the next `PlaceNext` (the window is between `Begin` and `End`). The popped-out flags live beside `home_`, indexed by `BenchObject`.
 

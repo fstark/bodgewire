@@ -32,7 +32,7 @@ struct MatrixCapture {
 
     // Before ImGui_ImplSDL3_ProcessEvent; true when the event was taken.
     bool handle(const SDL_Event& event, Session& session);
-    void sync(SDL_Window* window);  // as KeyboardCapture::sync
+    void sync(SDL_Window* focused);  // as KeyboardCapture::sync
 
     // The presses typed by the PC keys held now (drawn down).
     std::vector<MatrixPress> held() const;
@@ -40,7 +40,7 @@ struct MatrixCapture {
 private:
     void send(Session& session, SDL_Scancode scancode, char32_t c);
 
-    bool started_ = false;
+    SDL_Window* started_ = nullptr;
     std::optional<SDL_Scancode> lastDown_;  // the key whose text event is due
     std::map<SDL_Scancode, MatrixPress> held_;
 };

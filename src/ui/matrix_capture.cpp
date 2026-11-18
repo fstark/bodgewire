@@ -116,13 +116,14 @@ bool MatrixCapture::handle(const SDL_Event& event, Session& session) {
     }
 }
 
-void MatrixCapture::sync(SDL_Window* window) {
-    if (on && !SDL_TextInputActive(window)) {
-        SDL_StartTextInput(window);
-        started_ = true;
-    } else if (!on && started_) {
-        SDL_StopTextInput(window);
-        started_ = false;
+void MatrixCapture::sync(SDL_Window* focused) {
+    if (started_ != nullptr && (!on || started_ != focused)) {
+        SDL_StopTextInput(started_);
+        started_ = nullptr;
+    }
+    if (on && !SDL_TextInputActive(focused)) {
+        SDL_StartTextInput(focused);
+        started_ = focused;
     }
     if (!on) {
         held_.clear();

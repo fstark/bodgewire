@@ -2,6 +2,8 @@
 
 #include <array>
 #include <cfloat>
+#include <optional>
+#include <vector>
 
 #include <imgui_internal.h>
 
@@ -18,10 +20,40 @@ constexpr ImU32 kCloseDisc = IM_COL32(0, 0, 0, 120);
 
 float aspect_ = 1;  // read by the size callback during the next Begin
 constexpr std::size_t kObjects = static_cast<std::size_t>(BenchObject::Debug) + 1;
-std::array<bool, kObjects> home_{};    // SendHome
-std::array<bool, kObjects> popped_{};  // in its own desktop window (P6j)
+std::array<bool, kObjects> home_{};                   // SendHome
+std::array<bool, kObjects> popped_{};                 // in its own desktop window (P6j)
+std::array<bool, kObjects> popAtStart_{};             // --pop: beside from its first place
+std::array<std::optional<ImVec2>, kObjects> at_{};    // PopOut: its next position, once
+std::array<std::optional<ImVec2>, kObjects> size_{};  // PopIn: its next size, once
 
 std::size_t Index(BenchObject object) { return static_cast<std::size_t>(object); }
+
+Area MainArea() {
+    const ImGuiViewport* main = ImGui::GetMainViewport();
+    return {main->Pos.x, main->Pos.y, main->Size.x, main->Size.y};
+}
+
+std::vector<Area> Displays() {
+    std::vector<Area> displays;
+    for (const ImGuiPlatformMonitor& m : ImGui::GetPlatformIO().Monitors) {
+        displays.push_back({m.WorkPos.x, m.WorkPos.y, m.WorkSize.x, m.WorkSize.y});
+    }
+    return displays;
+}
+
+void PopOutFrom(BenchObject object, Area rect) {
+    popped_[Index(object)] = true;
+    if (const auto beside = BesidePlace(rect, MainArea(), Displays())) {
+        at_[Index(object)] = ImVec2{beside->x, beside->y};
+    }
+}
+
+void PopInSized(BenchObject object, ImVec2 size) {
+    popped_[Index(object)] = false;
+    home_[Index(object)] = true;
+    const Extent fit = FitBench({size.x, size.y}, BenchArea().extent());
+    size_[Index(object)] = ImVec2{fit.width, fit.height};
+}
 
 }  // namespace
 
@@ -37,7 +69,15 @@ BenchRect BenchArea() {
 }
 
 void PlaceNext(BenchObject object, ImVec2 first) {
-    if (popped_[Index(object)]) {
+    const BenchRect bench = BenchArea();
+    const Place place = DefaultPlace(object, bench.extent());
+    const std::size_t i = Index(object);
+    if (popAtStart_[i]) {
+        popAtStart_[i] = false;
+        PopOutFrom(object, {bench.min.x + place.x - place.pivotX * first.x,
+                            bench.min.y + place.y - place.pivotY * first.y, first.x, first.y});
+    }
+    if (popped_[i]) {
         // Its own viewport even over the main window (ImGui's GetWindowAlwaysWantOwnViewport).
         ImGuiWindowClass own;
         own.ViewportFlagsOverrideSet = ImGuiViewportFlags_NoAutoMerge;
@@ -45,14 +85,21 @@ void PlaceNext(BenchObject object, ImVec2 first) {
     } else {
         OnBench();
     }
-    const BenchRect bench = BenchArea();
-    const Place place = DefaultPlace(object, bench.extent());
-    bool& home = home_[Index(object)];
-    ImGui::SetNextWindowPos({bench.min.x + place.x, bench.min.y + place.y},
-                            home ? ImGuiCond_Always : ImGuiCond_FirstUseEver,
-                            {place.pivotX, place.pivotY});
-    home = false;
-    ImGui::SetNextWindowSize(first, ImGuiCond_FirstUseEver);
+    if (at_[i]) {
+        ImGui::SetNextWindowPos(*at_[i], ImGuiCond_Always);
+        at_[i].reset();
+    } else {
+        ImGui::SetNextWindowPos({bench.min.x + place.x, bench.min.y + place.y},
+                                home_[i] ? ImGuiCond_Always : ImGuiCond_FirstUseEver,
+                                {place.pivotX, place.pivotY});
+    }
+    home_[i] = false;
+    if (size_[i]) {
+        ImGui::SetNextWindowSize(*size_[i], ImGuiCond_Always);
+        size_[i].reset();
+    } else {
+        ImGui::SetNextWindowSize(first, ImGuiCond_FirstUseEver);
+    }
 }
 
 void KeepAspect(float aspect, float minWidth) {
@@ -65,11 +112,29 @@ void KeepAspect(float aspect, float minWidth) {
         &aspect_);
 }
 
-void SendHome(BenchObject object) { home_[Index(object)] = true; }
+void SendHome(BenchObject object, const char* window) {
+    const ImGuiWindow* found = window != nullptr ? ImGui::FindWindowByName(window) : nullptr;
+    if (popped_[Index(object)] && found != nullptr) {
+        PopInSized(object, found->Size);
+    } else {
+        popped_[Index(object)] = false;
+        home_[Index(object)] = true;
+    }
+}
+
+void PopOut(BenchObject object) {
+    const ImVec2 at = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
+    PopOutFrom(object, {at.x, at.y, size.x, size.y});
+}
+
+void PopIn(BenchObject object) { PopInSized(object, ImGui::GetWindowSize()); }
 
 bool PoppedOut(BenchObject object) { return popped_[Index(object)]; }
 
-void PopOutAtStart(BenchObject object) { popped_[Index(object)] = true; }
+void PopOutAtStart(BenchObject object) {
+    popped_[Index(object)] = true;
+    popAtStart_[Index(object)] = true;
+}
 
 void OnBench() { ImGui::SetNextWindowViewport(ImGui::GetMainViewport()->ID); }
 

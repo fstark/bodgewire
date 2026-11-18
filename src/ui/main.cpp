@@ -1132,8 +1132,10 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
             keys.front();
         }
         applyKeys();
-        capture.sync(window);
-        matrixCapture.sync(window);
+        // Text input on the window with the keyboard focus: a popped-out keyboard's (P6j).
+        SDL_Window* focused = SDL_GetKeyboardFocus();
+        capture.sync(focused != nullptr ? focused : window);
+        matrixCapture.sync(focused != nullptr ? focused : window);
         boardKeys.sync();
         shelf.keyboardTyping = keys.machine();
         textField = ImGui::GetIO().WantTextInput;
@@ -1375,6 +1377,9 @@ int main(int argc, char** argv) {
     ImGui_ImplSDLGPU3_InitInfo gpuInfo;
     gpuInfo.Device = gpu->device();
     gpuInfo.ColorTargetFormat = gpu->format();
+    // The popped-out windows never wait for their display's vsync: one on a slower display (a
+    // 30 Hz monitor) would pace the whole UI at its rate. The main window's vsync paces it.
+    gpuInfo.PresentMode = gpu->unpacedMode();
     ImGui_ImplSDLGPU3_Init(&gpuInfo);
     // The UI font first, as NewFrame would pick it lazily (13 px at the framebuffer scale: vector
     // from 15 px); AddFontDefault() itself, before the first frame, assumes Retina on macOS.
