@@ -52,6 +52,7 @@ The player's manuals (`machines/NNN-name/manuals/`) are read by someone holding 
 - Leave out what the reader does not need to repair this Machine (synchronous against ripple counters).
 - Features the board does not use go in a table, out of the story.
 - End a mechanism with what the probe shows; `Test points` and `Troubleshooting` describe the working board and never name a fault.
+- Where to probe is a pin (`` `U5.QD` ``, `` `D1` pin 1 ``), the Net after it if it helps: a click on a pin link probes it; a Net link only frames the Net.
 - Links: a part `` `U1` ``, a pin `` `U1` pin 15 `` or `` `U2.ENT` ``, a run `` `U1`–`U5` `` (en dash), a Net `` `C19` ``. A bare pin name (`` `QA` ``) is code, not a link. A misspelt Net is not reported: it just stays code.
 - Numbers as people read them: 1 048 576, "about once a second".
 - Bold is only a colour in the binder: a lead-in in bold barely stands out, so the sentence must not depend on it.

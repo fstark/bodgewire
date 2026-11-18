@@ -1354,6 +1354,18 @@ void BoardView::route(const TargetHits& hits) {
         hoverFromOutside(hits.hovered);
     }
     if (hits.clicked) {
+        const BoardTarget& target = *hits.clicked;
+        const ImGuiIO& io = ImGui::GetIO();
+        const bool measures = owner_ == Owner::Probe || IsInstrument(owner_);
+        if (scene_ && measures && target.components.size() == 1 && target.pad && !target.net &&
+            !io.KeyCtrl && !io.KeySuper) {
+            const std::size_t k = target.components.front();
+            const Point at = scene_->board().components[k].pads[*target.pad].position;
+            click_ = BoardClick{at, active_,     Pick{{HitKind::Pad, k, *target.pad}, active_, at},
+                                k,  io.KeyShift, true};
+            flash_ = Flash{target, std::chrono::steady_clock::now() + kFlashTime};
+            return;
+        }
         if (hits.clicked->components.size() == 1 && !hits.clicked->net) {
             select(hits.clicked->components.front());  // a run or a Net selects nothing
         }

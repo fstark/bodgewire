@@ -701,7 +701,7 @@ int RunWindow(SDL_Window* window, SDL_Renderer* renderer, const Loaded& loaded, 
             // selected part's body again, or on bare board, it deselects.
             // Not under the pencil: the selection's gold would cover what was just marked.
             const bool body = pick && pick->hit.kind == HitKind::Component;
-            if (focus.owner() != Owner::Pencil) {
+            if (focus.owner() != Owner::Pencil && !click->fromPage) {
                 if (!click->component || (body && boardView.selected() == click->component)) {
                     boardView.deselect();
                 } else {

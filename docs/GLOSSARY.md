@@ -251,7 +251,7 @@ The objects brought out from the Shelf or put away: TV, keyboard, Logic Analyzer
 _Avoid_: instrument (for the TV, keyboard or manuals)
 
 **Focus**:
-What a click on a pin does: exactly one Board tool or Instrument owns it, shown by a gold frame on its Shelf drawing (red while a tool that needs the power off cannot work, the power being on; never the grease pencil). Clicking an Instrument gives it the Focus; taking a tool takes it back; `Esc` gives it to the Logic Probe. Not ImGui's keyboard focus, which the windows' `focused()` and Typing Mode mean (P6c).
+What a click on a pin does: exactly one Board tool or Instrument owns it, shown by a gold frame on its Shelf drawing (red while a tool that needs the power off cannot work, the power being on; never the grease pencil). Clicking an Instrument gives it the Focus; taking a tool takes it back; `Esc` gives it to the Logic Probe. A pin link clicked in a manual or the chip panel goes to the Focus owner too, when it is the Logic Probe or an Instrument: the pin is probed, clipped, hooked or touched with the red lead, flashed in place, the Board view unmoved; `Cmd`-click frames it instead (2026-11-18). Not ImGui's keyboard focus, which the windows' `focused()` and Typing Mode mean (P6c).
 
 **Logic Probe**:
 An Instrument showing the Logic Value and activity of one Net.
@@ -281,7 +281,7 @@ An Oscilloscope lead attached to one pad; it feeds one Channel.
 _Avoid_: Probe (that is the Logic Probe)
 
 **Test Point**:
-A place on the Board the Service Manual names in its `Test points` section, with what a working Board reads there (P6i).
+A place on the Board the Service Manual names in its `Test points` section, with what a working Board reads there (P6i). Named by a pin (`` `U5.QD` ``), not a Net, so a click probes it: a Net can be split by a fault, and its name does not say which side.
 
 **Test Lead**:
 One of the two Multimeter tips (red, black), held on any copper.

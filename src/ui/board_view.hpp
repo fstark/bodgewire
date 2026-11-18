@@ -90,6 +90,7 @@ struct BoardClick {
     std::optional<Pick> pick;              // nullopt: off everything
     std::optional<std::size_t> component;  // the pick's Component, else componentAt(at)
     bool shift = false;                    // Shift held at the release
+    bool fromPage = false;  // a pin link in a manual or the chip panel: the selection stays
 };
 
 // A left press on the Board panel (P6g): on a switch's body (the one under the cursor), or not.
@@ -123,6 +124,9 @@ public:
     // Highlighted like a Board hover at the next draw only: panels draw after the Board.
     void hoverFromOutside(std::optional<BoardTarget> target) { outside_ = target; }
     void focus(BoardTarget target);  // frame + flash 1 s
+    // A manual's or chip panel's hits. A clicked pin, the probe or an instrument owning the focus:
+    // a click on that pad for takeClick(), flashed in place, the view unmoved; Cmd-click, or any
+    // other target or owner: focus() it (a single part also selected).
     void route(const TargetHits& hits);
     const BoardScene* scene() const { return scene_ ? &*scene_ : nullptr; }
     // The Board outline's top-left corner on screen at the last draw (none without a Board).

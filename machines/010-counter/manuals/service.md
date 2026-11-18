@@ -15,32 +15,32 @@
 
 ## Test points
 
-What the logic probe shows on a working board. **P** is the pulse lamp: it stays lit while the signal keeps changing.
+What the logic probe shows on a working board. **P** is the pulse lamp: it stays lit while the signal keeps changing. Click a pin below with the probe in hand to probe it.
 
-| Probe | A working board shows |
-|---|---|
-| `CLK`, on pin 2 of any chip | P lit |
-| `U1.QA`, `U1.QB`, `U1.QC`, `U1.QD` | P lit: far too fast for the eye. The logic analyzer shows each output changing half as often as the one before |
-| `CARRY1`, `CARRY2`, `CARRY3`, `CARRY4` | L, with P lit: a short high blip now and then |
-| `C19`, on `U5` pin 11 | H for about half a second, then L for half a second; P flashes at each change |
-| `D1` pin 1 | the same as `C19`: it is the same wire |
-| `RESET_N` | H, steady |
+| Probe | Net | A working board shows |
+|---|---|---|
+| `U1.CLK` (pin 2 of every chip) | `CLK` | P lit |
+| `U1.QA`, `U1.QB`, `U1.QC`, `U1.QD` | | P lit: far too fast for the eye. The logic analyzer shows each output changing half as often as the one before |
+| `U1.RCO`, `U2.RCO`, `U3.RCO`, `U4.RCO` | `CARRY1`–`CARRY4` | L, with P lit: a short high blip now and then |
+| `U5.QD` | `C19` | H for about half a second, then L for half a second; P flashes at each change |
+| `D1` pin 1 | `C19` | the same as `U5.QD`: it is the same wire |
+| `U1.CLR_N` | `RESET_N` | H, steady |
 
 ## Troubleshooting
 
 **The LED never lights, or never goes out.**
 
-1. Probe `C19` on `U5` pin 11. Does it change every half second?
+1. Probe `U5.QD`, which drives `C19`. Does it change every half second?
 2. If it does, probe `D1` pin 1. It is the same wire, so it must read the same.
-3. If `C19` never changes, the count stops before it: see below.
+3. If `U5.QD` never changes, the count stops before it: see below.
 
 **The count stops somewhere.**
 
-1. Probe `CLK` on pin 2 of each chip, `U1` to `U5`. Each one must show P.
-2. Probe `RESET_N`. It must read H.
-3. Follow the carries in order: `CARRY1`, `CARRY2`, `CARRY3`, `CARRY4`. Each one must show P.
+1. Probe the clock pin of each chip: `U1.CLK`, `U2.CLK`, `U3.CLK`, `U4.CLK`, `U5.CLK`. Each one must show P.
+2. Probe `U1.CLR_N`, on `RESET_N`. It must read H.
+3. Follow the carries in order: `U1.RCO`, `U2.RCO`, `U3.RCO`, `U4.RCO`. Each one must show P.
 4. The first carry that stays dark is where the count stops. Check the chip that drives it, and the wire to the next chip's `ENT`.
 
 **The LED blinks too fast.**
 
-A chip counts more often than it should. A working carry is mostly L. Probe each carry: one that stays H makes the next chip count at every tick.
+A chip counts more often than it should. A working carry is mostly L. Probe each carry, `U1.RCO` to `U4.RCO`: one that stays H makes the next chip count at every tick.
