@@ -1,10 +1,12 @@
 add_library(bw_view STATIC
   bench_places.cpp
   binder.cpp
+  board_marks.cpp
   board_scene.cpp
   digit_shape.cpp
   focus.cpp
   keyboard_layout.cpp
+  machine_keys.cpp
   matrix_keyboard_layout.cpp
   time_text.cpp
   time_view.cpp

@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cstddef>
 #include <filesystem>
+#include <format>
 #include <optional>
 #include <string>
 #include <utility>
@@ -360,8 +361,9 @@ std::expected<Component*, std::string> CreateLed(Circuit& circuit, std::string r
     return &circuit.add<Led>(std::move(reference));
 }
 
-// BUTTON: `pc=`; KEY: `legend=` (1-4 printable characters, not '#') and `pc=`, which defaults
-// to a one-character legend; SLIDE: `legend=` only (moved by a click, no PC key).
+// BUTTON: `legend=` (1-8 printable characters, not '#', on the silkscreen: P6g) and `pc=`; KEY:
+// `legend=` (1-4: it fills a cap) and `pc=`, which defaults to a one-character legend; SLIDE:
+// `legend=` (1-8) only (moved by a click, no PC key).
 template <PartName Name>
 std::expected<Component*, std::string> CreateSwitch(Circuit& circuit, std::string reference,
                                                     std::span<const PartParam> params) {
@@ -370,14 +372,11 @@ std::expected<Component*, std::string> CreateSwitch(Circuit& circuit, std::strin
     const bool slide = name == "SLIDE";
     std::optional<std::string> legend, pc;
     for (const PartParam& param : params) {
-        std::optional<std::string>* slot = !slide && param.name == "pc"               ? &pc
-                                           : (key || slide) && param.name == "legend" ? &legend
-                                                                                      : nullptr;
+        std::optional<std::string>* slot = !slide && param.name == "pc" ? &pc
+                                           : param.name == "legend"     ? &legend
+                                                                        : nullptr;
         if (slot == nullptr) {
-            return std::unexpected(name +
-                                   (key     ? " takes legend= and pc="
-                                    : slide ? " takes legend="
-                                            : " takes pc=") +
+            return std::unexpected(name + (slide ? " takes legend=" : " takes legend= and pc=") +
                                    ", not " + param.name + "=");
         }
         if (slot->has_value()) {
@@ -385,18 +384,19 @@ std::expected<Component*, std::string> CreateSwitch(Circuit& circuit, std::strin
         }
         *slot = param.value;
     }
+    const std::size_t longest = key ? 4 : 8;
     if (legend &&
-        (legend->empty() || legend->size() > 4 ||
+        (legend->empty() || legend->size() > longest ||
          !std::ranges::all_of(*legend, [](char c) { return c > ' ' && c < 0x7F && c != '#'; }))) {
-        return std::unexpected(name + " legend= takes 1 to 4 printable characters, not '" +
-                               *legend + "'");
+        return std::unexpected(std::format(
+            "{} legend= takes 1 to {} printable characters, not '{}'", name, longest, *legend));
     }
     if (pc && !IsPcKey(*pc)) {
         return std::unexpected(name + ": unknown PC key '" + *pc +
                                "' (one character, Space, Enter, Tab, Backspace, Escape, Up, "
                                "Down, Left or Right)");
     }
-    if (!slide && !pc && legend && IsPcKey(*legend) && legend->size() == 1) {
+    if (key && !pc && legend && IsPcKey(*legend) && legend->size() == 1) {
         pc = legend;
     }
     std::string pcKey = pc.value_or("");

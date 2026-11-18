@@ -88,8 +88,9 @@ TEST_CASE("switch: SLIDE takes legend= only", "[parts]") {
     CHECK(Create(circuit, "SLIDE").legend().empty());
     CHECK(Create(circuit, "SLIDE", {{"legend", "S"}}).pcKey().empty());
     CHECK(CreateError("SLIDE", {{"pc", "S"}}) == "SLIDE takes legend=, not pc=");
-    CHECK(CreateError("SLIDE", {{"legend", "SINGLE"}}) ==
-          "SLIDE legend= takes 1 to 4 printable characters, not 'SINGLE'");
+    CHECK(Create(circuit, "SLIDE", {{"legend", "SINGLE"}}).legend() == "SINGLE");
+    CHECK(CreateError("SLIDE", {{"legend", "SINGLESTEP"}}) ==
+          "SLIDE legend= takes 1 to 8 printable characters, not 'SINGLESTEP'");
 }
 
 TEST_CASE("switch: legend and PC key", "[parts]") {
@@ -107,7 +108,15 @@ TEST_CASE("switch: legend and PC key", "[parts]") {
     CHECK(Create(circuit, "KEY").legend().empty());
     CHECK(Create(circuit, "KEY", {{"legend", "+"}, {"pc", "Enter"}}).pcKey() == "Enter");
 
-    CHECK(CreateError("BUTTON", {{"legend", "A"}}) == "BUTTON takes pc=, not legend=");
+    Switch& reset = Create(circuit, "BUTTON", {{"legend", "RESET"}});
+    CHECK(reset.legend() == "RESET");
+    CHECK(reset.pcKey().empty());
+    CHECK(Create(circuit, "BUTTON", {{"legend", "A"}}).pcKey().empty());  // a KEY's default only
+    CHECK(Create(circuit, "BUTTON", {{"legend", "A"}, {"pc", "a"}}).pcKey() == "A");
+    CHECK(CreateError("BUTTON", {{"colour", "red"}}) ==
+          "BUTTON takes legend= and pc=, not colour=");
+    CHECK(CreateError("BUTTON", {{"legend", "RESETNOW!"}}) ==
+          "BUTTON legend= takes 1 to 8 printable characters, not 'RESETNOW!'");
     CHECK(CreateError("KEY", {{"colour", "red"}}) == "KEY takes legend= and pc=, not colour=");
     CHECK(CreateError("KEY", {{"legend", "A"}, {"legend", "B"}}) == "KEY: legend= given twice");
     CHECK(CreateError("KEY", {{"legend", "RESET"}}) ==
