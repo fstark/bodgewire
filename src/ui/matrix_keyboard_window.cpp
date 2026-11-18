@@ -14,6 +14,7 @@
 #include "parts/zx80_keys.hpp"
 #include "ui/bench.hpp"
 #include "ui/instrument_marks.hpp"
+#include "ui/pet_graphics.hpp"
 #include "view/matrix_keyboard_layout.hpp"
 
 namespace bw {
@@ -24,7 +25,7 @@ namespace {
 constexpr float kMargin = 0.55f;  // the bezel around the keys
 constexpr float kLabel = 0.40f;   // the name strip above the keys
 constexpr float kInset = 0.10f;   // the case inside the window
-constexpr float kGap = 0.16f;     // between chiclets: the PET's keys stand apart
+constexpr float kGap = 0.06f;     // between the PET's keys: a grid, nearly touching
 constexpr float kMinWidth = 380;
 
 // The BW-80's case (P6l): the ZX80's cream lip around the black membrane, the membrane's black
@@ -74,33 +75,18 @@ constexpr ImU32 kCaseBottom = IM_COL32(30, 32, 37, 255);
 constexpr ImU32 kCaseEdge = IM_COL32(90, 96, 106, 255);
 constexpr ImU32 kPlate = IM_COL32(16, 17, 20, 255);  // the black plate the keys stand on
 constexpr ImU32 kEngraving = IM_COL32(150, 156, 166, 255);
-constexpr ImU32 kCapTop = IM_COL32(222, 218, 206, 255);  // off-white chiclet
-constexpr ImU32 kCapBottom = IM_COL32(186, 181, 168, 255);
-constexpr ImU32 kCapDownTop = IM_COL32(176, 171, 158, 255);
-constexpr ImU32 kCapDownBottom = IM_COL32(160, 155, 143, 255);
-constexpr ImU32 kCapSide = IM_COL32(96, 93, 86, 255);
-constexpr ImU32 kCapShine = IM_COL32(255, 255, 255, 70);
-constexpr ImU32 kLegend = IM_COL32(28, 28, 30, 255);
-constexpr ImU32 kShifted = IM_COL32(70, 70, 76, 255);
-
-enum class Arrow : std::uint8_t { None, Left, Up, UpDown, LeftRight };
-
-// The PET's arrows, drawn (the keycap font has no arrow glyphs): ← and ↑ alone, CRSR with ↕ or ↔.
-Arrow ArrowOf(std::string_view legend) {
-    if (legend == "_") {
-        return Arrow::Left;
-    }
-    if (legend == "^") {
-        return Arrow::Up;
-    }
-    if (legend == "CRSR DN") {
-        return Arrow::UpDown;
-    }
-    if (legend == "CRSR RT") {
-        return Arrow::LeftRight;
-    }
-    return Arrow::None;
-}
+// The PET 2001's point-of-sale keys (P6l2), from a photograph: a cream body, a rounded top set in
+// it (grey on the main block, near-white on the pad, red or blue on the keys with
+// words), black legends and graphics, white words on the coloured tops.
+constexpr ImU32 kPetBody = IM_COL32(232, 226, 206, 255);
+constexpr ImU32 kPetBodyShade = IM_COL32(196, 189, 168, 255);
+constexpr ImU32 kPetGrey = IM_COL32(170, 171, 181, 255);
+constexpr ImU32 kPetWhite = IM_COL32(240, 238, 230, 255);
+constexpr ImU32 kPetRed = IM_COL32(186, 60, 54, 255);
+constexpr ImU32 kPetBlue = IM_COL32(36, 158, 218, 255);
+constexpr ImU32 kPetWord = IM_COL32(248, 244, 244, 255);
+constexpr ImU32 kLegend = IM_COL32(22, 22, 24, 255);
+constexpr ImU32 kPressed = IM_COL32(0, 0, 0, 48);
 
 // An arrow centred on `c`, `len` long, its heads `head` wide; `vertical` or horizontal; heads at
 // the start, the end, or both.
@@ -127,56 +113,107 @@ void DrawArrow(ImDrawList& list, ImVec2 c, float len, float head, bool vertical,
     }
 }
 
-void DrawChiclet(ImDrawList& list, ImFont* font, std::string_view legend, std::string_view shifted,
-                 ImVec2 a, ImVec2 b, float u, bool down) {
-    const float rounding = 0.10f * u;
-    const float depth = down ? 0.02f * u : 0.07f * u;
-    // The side seen below the top, then the top.
-    list.AddRectFilled({a.x, a.y + depth}, {b.x, b.y + 0.07f * u}, kCapSide, rounding);
-    const ImVec2 ta{a.x, a.y + (down ? 0.05f * u : 0)};
-    const ImVec2 tb{b.x, b.y - depth + (down ? 0.05f * u : 0)};
+// One PET key in its pitch `a`-`b`: the cream body, the coloured top, the graphic SHIFT gives above
+// the legend (from the character ROM), or the words of the keys that have them. `pad`: a key of
+// the numeric pad (near-white tops).
+void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 a, ImVec2 b,
+                float u, bool down, bool pad) {
     const int first = list.VtxBuffer.Size;
-    list.AddRectFilled(ta, tb, down ? kCapDownTop : kCapTop, rounding);
-    ImGui::ShadeVertsLinearColorGradientKeepAlpha(&list, first, list.VtxBuffer.Size, ta,
-                                                  {ta.x, tb.y}, down ? kCapDownTop : kCapTop,
-                                                  down ? kCapDownBottom : kCapBottom);
-    if (!down) {
-        list.AddLine({ta.x + rounding, ta.y + 1}, {tb.x - rounding, ta.y + 1}, kCapShine);
+    list.AddRectFilled(a, b, kPetBody, 0.06f * u);
+    ImGui::ShadeVertsLinearColorGradientKeepAlpha(&list, first, list.VtxBuffer.Size, a, {a.x, b.y},
+                                                  kPetBody, kPetBodyShade);
+    const float sink = down ? 0.04f * u : 0;
+    const ImVec2 ta{a.x + 0.10f * u, a.y + 0.07f * u + sink};
+    const ImVec2 tb{b.x - 0.10f * u, b.y - 0.22f * u + sink};
+    ImU32 top = pad ? kPetWhite : kPetGrey;
+    ImU32 ink = kLegend;
+    if (legend == "SHIFT" || legend == "SPACE" || legend == "RETURN" || legend == "HOME" ||
+        legend == "DEL") {
+        top = kPetRed, ink = kPetWord;
+    } else if (legend == "RVS" || legend == "STOP" || legend.starts_with("CRSR")) {
+        top = kPetBlue, ink = kPetWord;
     }
-    const ImVec2 centre{(ta.x + tb.x) / 2, (ta.y + tb.y) / 2};
-    const auto text = [&](std::string_view t, float size, float y, ImU32 colour) {
-        const ImVec2 e = font->CalcTextSizeA(size, FLT_MAX, 0, t.data(), t.data() + t.size());
-        list.AddText(font, size, {std::round(centre.x - e.x / 2), std::round(y - e.y / 2)}, colour,
-                     t.data(), t.data() + t.size());
+    list.AddRectFilled(ta, tb, top, 0.10f * u);
+    if (down) {
+        list.AddRectFilled(a, b, kPressed, 0.06f * u);
+    }
+    const float cx = (ta.x + tb.x) / 2, cy = (ta.y + tb.y) / 2;
+    const float px = std::max(6.0f, std::round(0.28f * u));
+    const float density = ImGui::GetWindowViewport()->FramebufferScale.x;
+    const auto centred = [&](std::string_view t, float y, float size = 0) {
+        const float sz = size > 0 ? size : px;
+        const ImVec2 e = font->CalcTextSizeA(sz, FLT_MAX, 0, t.data(), t.data() + t.size());
+        const ImVec2 at{std::round(cx - e.x / 2), std::round(y - e.y / 2)};
+        // Struck twice a device pixel apart: the 2001's legends are bold, the keycap font is not.
+        list.AddText(font, sz, at, ink, t.data(), t.data() + t.size());
+        list.AddText(font, sz, {at.x + 1 / density, at.y}, ink, t.data(), t.data() + t.size());
     };
-    const float word = std::max(6.0f, std::round(0.20f * u));
-    const float small = std::max(6.0f, std::round(0.17f * u));
-    switch (ArrowOf(legend)) {
-    case Arrow::Left:
-        DrawArrow(list, centre, 0.42f * u, 0.18f * u, false, true, false);
-        return;
-    case Arrow::Up:
-        DrawArrow(list, centre, 0.42f * u, 0.18f * u, true, true, false);
-        return;
-    case Arrow::UpDown:
-        text("CRSR", word, centre.y - 0.18f * u, kLegend);
-        DrawArrow(list, {centre.x, centre.y + 0.14f * u}, 0.30f * u, 0.12f * u, true, true, true);
-        return;
-    case Arrow::LeftRight:
-        text("CRSR", word, centre.y - 0.18f * u, kLegend);
-        DrawArrow(list, {centre.x, centre.y + 0.14f * u}, 0.40f * u, 0.12f * u, false, true, true);
-        return;
-    case Arrow::None:
-        break;
-    }
-    const bool isWord = legend.size() > 3;
-    if (!shifted.empty()) {
-        text(shifted, small, ta.y + 0.17f * u, kShifted);
-        text(legend, isWord ? word : std::max(6.0f, std::round(0.38f * u)), centre.y + 0.10f * u,
-             kLegend);
+    const auto twoLines = [&](std::string_view upper, std::string_view lower) {
+        const float sz = std::max(6.0f, std::round(0.19f * u));
+        centred(upper, cy - 0.12f * u, sz);
+        centred(lower, cy + 0.12f * u, sz);
+    };
+    if (legend == "RETURN") {  // two rows high, its letters stacked
+        const float sz = std::max(6.0f, std::round(0.20f * u));
+        constexpr std::string_view kWord = "RETURN";
+        const float step = std::min(0.22f * u, (tb.y - ta.y) / 7);
+        for (std::size_t i = 0; i < kWord.size(); ++i) {
+            centred(kWord.substr(i, 1), cy + (static_cast<float>(i) - 2.5f) * step, sz);
+        }
         return;
     }
-    text(legend, isWord ? word : std::max(6.0f, std::round(0.38f * u)), centre.y, kLegend);
+    if (legend == "SHIFT" || legend == "SPACE") {
+        centred(legend, cy, std::max(6.0f, std::round(0.19f * u)));
+        return;
+    }
+    if (legend == "RVS" || legend == "STOP" || legend == "HOME" || legend == "DEL") {
+        twoLines(legend == "RVS"    ? "OFF"
+                 : legend == "STOP" ? "RUN"
+                 : legend == "HOME" ? "CLR"
+                                    : "INST",
+                 legend);
+        return;
+    }
+    if (legend.starts_with("CRSR")) {
+        const bool vertical = legend == "CRSR DN";
+        centred("CRSR", cy, std::max(6.0f, std::round(0.18f * u)));
+        const float len = 0.24f * u, head = 0.09f * u;
+        if (vertical) {
+            DrawArrow(list, {cx, cy - 0.19f * u}, 0.12f * u, head, true, true, false, ink);
+            DrawArrow(list, {cx, cy + 0.19f * u}, 0.12f * u, head, true, false, true, ink);
+        } else {
+            DrawArrow(list, {cx, cy - 0.17f * u}, len, head, false, true, false, ink);
+            DrawArrow(list, {cx, cy + 0.17f * u}, len, head, false, false, true, ink);
+        }
+        return;
+    }
+    // A graphic above, the legend below: an arrow for ← and ↑, a slashed zero on the pad.
+    if (const auto* glyph = PetGraphicOf(legend)) {
+        // Each pixel whole device pixels (half points on a Retina display), so the check is even.
+        const float cell = std::max(1.0f, std::floor(0.036f * u * density)) / density;
+        const float gx = std::round(cx - 4 * cell), gy = std::round(ta.y + 0.04f * u);
+        for (int y = 0; y < 8; ++y) {
+            for (int x = 0; x < 8; ++x) {
+                if (((*glyph)[y] >> (7 - x)) & 1) {
+                    list.AddRectFilled({gx + x * cell, gy + y * cell},
+                                       {gx + (x + 1) * cell, gy + (y + 1) * cell}, ink);
+                }
+            }
+        }
+    }
+    const float ly = tb.y - 0.03f * u - px / 2;
+    if (legend == "_") {
+        DrawArrow(list, {cx, ly}, 0.26f * u, 0.11f * u, false, true, false, ink);
+    } else if (legend == "^") {
+        DrawArrow(list, {cx, ly}, 0.22f * u, 0.10f * u, true, true, false, ink);
+    } else {
+        centred(legend, ly);
+        if (pad && legend == "0") {  // the 2001's slashed zero
+            const ImVec2 e = font->CalcTextSizeA(px, FLT_MAX, 0, "0", nullptr);
+            list.AddLine({cx + e.x * 0.35f, ly - e.y * 0.32f}, {cx - e.x * 0.35f, ly + e.y * 0.32f},
+                         ink, std::max(1.0f, 0.025f * u));
+        }
+    }
 }
 
 }  // namespace
@@ -234,7 +271,7 @@ void MatrixKeyboardWindow::drawCaps(Session& session, const MatrixCapture& captu
     }
     for (const MatrixCap& cap : caps) {
         const ImVec2 a{keys.x + (cap.x + gap.x / 2) * u, keys.y + (cap.y + gap.y / 2) * u};
-        const ImVec2 b{a.x + (cap.width - gap.x) * u, a.y + (height - gap.y) * u};
+        const ImVec2 b{a.x + (cap.width - gap.x) * u, a.y + (cap.height * height - gap.y) * u};
         ImGui::SetCursorScreenPos(a);
         ImGui::PushID(static_cast<int>(cap.key));
         ImGui::InvisibleButton("key", {b.x - a.x, b.y - a.y},
@@ -278,9 +315,10 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
                  engraving.c_str());
     // The plates under the main block and the pad.
     const float lip = 0.12f * u;
-    list.AddRectFilled({keys.x - lip, keys.y - lip},
-                       {keys.x + 12 * u + lip, keys.y + kMatrixKeyboardRows * u + lip}, kPlate,
-                       0.1f * u);
+    list.AddRectFilled(
+        {keys.x - lip, keys.y - lip},
+        {keys.x + kMatrixMainWidth * u + lip, keys.y + kMatrixKeyboardRows * u + lip}, kPlate,
+        0.1f * u);
     list.AddRectFilled(
         {keys.x + kMatrixPadX * u - lip, keys.y - lip},
         {keys.x + (kMatrixPadX + 4) * u + lip, keys.y + kMatrixKeyboardRows * u + lip}, kPlate,
@@ -289,8 +327,8 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
     const auto all = Bw2001Keys();
     drawCaps(session, capture, Bw2001Caps(), *Bw2001KeyAt(8, 0), keys, u, {kGap, kGap}, 1,
              [&](const MatrixCap& cap, ImVec2 a, ImVec2 b, bool down) {
-                 const MatrixKey& key = all[cap.key];
-                 DrawChiclet(list, legends_, key.legend, key.shifted, a, b, u, down);
+                 DrawPetKey(list, legends_, all[cap.key].legend, a, b, u, down,
+                            cap.x >= kMatrixPadX);
              });
 }
 

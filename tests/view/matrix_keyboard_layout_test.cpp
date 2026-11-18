@@ -21,7 +21,7 @@ TEST_CASE("matrix keyboard layout: every key once, inside the keyboard, none ove
         CHECK(cap.x >= 0);
         CHECK(cap.x + cap.width <= kMatrixKeyboardWidth);
         CHECK(cap.y >= 0);
-        CHECK(cap.y < kMatrixKeyboardRows);
+        CHECK(cap.y + cap.height <= kMatrixKeyboardRows);
     }
     for (std::size_t k = 0; k < keys.size(); ++k) {
         INFO(keys[k].legend);
@@ -29,7 +29,9 @@ TEST_CASE("matrix keyboard layout: every key once, inside the keyboard, none ove
     }
     for (std::size_t i = 0; i < caps.size(); ++i) {
         for (std::size_t j = i + 1; j < caps.size(); ++j) {
-            const bool apart = caps[i].y != caps[j].y || caps[i].x + caps[i].width <= caps[j].x ||
+            const bool apart = caps[i].y + caps[i].height <= caps[j].y ||
+                               caps[j].y + caps[j].height <= caps[i].y ||
+                               caps[i].x + caps[i].width <= caps[j].x ||
                                caps[j].x + caps[j].width <= caps[i].x;
             INFO(keys[caps[i].key].legend << " and " << keys[caps[j].key].legend);
             CHECK(apart);
