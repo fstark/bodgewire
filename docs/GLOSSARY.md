@@ -280,6 +280,9 @@ _Avoid_: Probe (that is the Logic Probe)
 An Oscilloscope lead attached to one pad; it feeds one Channel.
 _Avoid_: Probe (that is the Logic Probe)
 
+**Test Point**:
+A place on the Board the Service Manual names in its `Test points` section, with what a working Board reads there (P6i).
+
 **Test Lead**:
 One of the two Multimeter tips (red, black), held on any copper.
 

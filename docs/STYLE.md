@@ -40,3 +40,18 @@ Naming rules: [NAMING.md](NAMING.md). Terminology: [GLOSSARY.md](GLOSSARY.md).
 - Catch2 v3. One test file per source file: `tests/sim/circuit_test.cpp` for `src/sim/circuit.cpp`.
 - Test names: `"<module>: <behaviour>"`, e.g. `"resolve: TTL contention reads 0"`. Tags: `[sim]`, `[slow]`.
 - Tests are deterministic: fixed seeds, no wall-clock time.
+
+## Manuals
+
+The player's manuals (`machines/NNN-name/manuals/`) are read by someone holding a probe, not by a programmer (P6i, the Counter's are the model). Sections: [ADD_MACHINE.md](recipes/ADD_MACHINE.md) §2.
+
+- One idea per sentence. Short sentences, no nested clauses.
+- The goal first: why this block is on the board, before any pin name.
+- A familiar picture before the mechanism: the Counter's five chips are a car's odometer.
+- No formulas: "when `U1` reaches 15, it warns `U2`", not `RCO = ENT · QA · QB · QC · QD`.
+- Leave out what the reader does not need to repair this Machine (synchronous against ripple counters).
+- Features the board does not use go in a table, out of the story.
+- End a mechanism with what the probe shows; `Test points` and `Troubleshooting` describe the working board and never name a fault.
+- Links: a part `` `U1` ``, a pin `` `U1` pin 15 `` or `` `U2.ENT` ``, a run `` `U1`–`U5` `` (en dash), a Net `` `C19` ``. A bare pin name (`` `QA` ``) is code, not a link. A misspelt Net is not reported: it just stays code.
+- Numbers as people read them: 1 048 576, "about once a second".
+- Bold is only a colour in the binder: a lead-in in bold barely stands out, so the sentence must not depend on it.
