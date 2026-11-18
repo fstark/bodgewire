@@ -30,6 +30,38 @@ constexpr ImU32 kPointer = IM_COL32(240, 240, 235, 255);
 constexpr ImU32 kTick = IM_COL32(190, 184, 170, 255);
 constexpr ImU32 kLabel = IM_COL32(210, 204, 190, 255);
 constexpr ImU32 kHover = IM_COL32(255, 255, 255, 30);
+// The PC keys that turn a knob, printed under its reference as two small caps (P6g).
+constexpr ImU32 kCapFace = IM_COL32(64, 61, 57, 255);
+constexpr ImU32 kCapEdge = IM_COL32(18, 17, 16, 255);
+constexpr ImU32 kCapLight = IM_COL32(96, 92, 86, 255);
+constexpr ImU32 kCapPrint = IM_COL32(225, 220, 208, 255);
+constexpr float kCapWidth = 20, kCapHeight = 17, kCapGap = 5;  // px at the first size
+
+// Two caps centred on `centreX` from `top`: `Q` and `A`, or (`arrows`) up and down triangles.
+void DrawKnobKeys(ImDrawList& list, float centreX, float top, float s, bool arrows) {
+    const float w = kCapWidth * s, h = kCapHeight * s, gap = kCapGap * s;
+    const float left = centreX - w - gap / 2;
+    for (int i = 0; i < 2; ++i) {
+        const ImVec2 a{left + static_cast<float>(i) * (w + gap), top};
+        const ImVec2 b{a.x + w, a.y + h};
+        list.AddRectFilled(a, b, kCapEdge, 3 * s);
+        list.AddRectFilled({a.x + s, a.y + s}, {b.x - s, b.y - 2 * s}, kCapFace, 3 * s);
+        list.AddLine({a.x + 3 * s, a.y + 1.5f * s}, {b.x - 3 * s, a.y + 1.5f * s}, kCapLight);
+        const ImVec2 c{(a.x + b.x) / 2, (a.y + b.y) / 2 - 0.5f * s};
+        if (arrows) {
+            const float t = 4 * s;
+            const float dir = i == 0 ? -1.0f : 1.0f;  // up, then down
+            list.AddTriangleFilled({c.x - t, c.y - dir * t * 0.6f}, {c.x + t, c.y - dir * t * 0.6f},
+                                   {c.x, c.y + dir * t * 0.6f}, kCapPrint);
+        } else {
+            const char* text = i == 0 ? "Q" : "A";
+            const float size = 12 * s;
+            const ImVec2 extent = ImGui::GetFont()->CalcTextSizeA(size, FLT_MAX, 0, text);
+            list.AddText(ImGui::GetFont(), size, {c.x - extent.x / 2, c.y - extent.y / 2},
+                         kCapPrint, text);
+        }
+    }
+}
 
 ImVec2 AtAngle(ImVec2 c, float r, float angle) {
     return {c.x + r * std::cos(angle), c.y + r * std::sin(angle)};
@@ -149,11 +181,14 @@ void KnobWindow::draw(bool& open, Session& session) {
         }
         const float angle = kStart + static_cast<float>(session.knob(reference)) * kSweep;
         list.AddLine(AtAngle(c, r * 0.2f, angle), AtAngle(c, r * 0.95f, angle), kPointer, 3 * s);
-        // Its reference under it.
+        // Its reference under it, then the keys that turn it (the first two knobs only).
         const float size = 15 * s;
         const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(size, FLT_MAX, 0, reference.c_str());
-        list.AddText(ImGui::GetFont(), size, {c.x - text.x / 2, max.y - 14 * s - text.y / 2},
+        list.AddText(ImGui::GetFont(), size, {c.x - text.x / 2, min.y + 140 * s - text.y / 2},
                      kLabel, reference.c_str());
+        if (i < 2) {
+            DrawKnobKeys(list, c.x, min.y + 154 * s, s, !(players && i == 0));
+        }
     }
     if (CaseClose()) {
         open = false;

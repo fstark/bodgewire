@@ -43,6 +43,11 @@ void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, 
 // `alpha`: every part's opacity (low with the back layer active: the Board seen from below).
 void DrawUseParts(ImDrawList& list, const LookMap& map, const BoardScene& scene,
                   const std::vector<bool>& own, std::optional<std::size_t> xray, float alpha);
+// The silkscreen's print: references, a button's legend (P6g). Its height on the Board, and in
+// pixels: clamped to 22 px, 0 (not printed) under 6 px.
+inline constexpr ImU32 kSilk = IM_COL32(235, 235, 225, 215);
+inline constexpr std::int64_t kSilkTextNm = 1'400'000;
+float SilkTextPx(const LookMap& map);
 // The references, beside each part: above everything else on the Board.
 void DrawUseReferences(ImDrawList& list, const LookMap& map, const BoardScene& scene);
 // The selected part's box, in gold: what stays marked while the mouse hovers elsewhere.

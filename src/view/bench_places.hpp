@@ -32,7 +32,7 @@ inline constexpr float kBenchMargin = 16;
 inline constexpr float kTvAspect = 0.96f;
 inline constexpr float kTvFirstWidth = 440;
 inline constexpr float kKeyboardFirstWidth = 640;
-inline constexpr Extent kKnobBox{140, 160};  // one paddle controller
+inline constexpr Extent kKnobBox{140, 184};  // one paddle controller, its keys printed (P6g)
 
 // Where an object comes out, every time (UX_DESIGN: muscle memory).
 Place DefaultPlace(BenchObject object, Extent bench);

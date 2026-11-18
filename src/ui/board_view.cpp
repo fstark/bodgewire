@@ -75,6 +75,10 @@ constexpr float kLedRadiusShare = 0.39f;  // of the courtyard's smaller side: 2.
 constexpr float kLedHalo = 1.6f;
 constexpr float kLedHaloAlpha = 0.35f;
 constexpr ImU32 kDigitBody = IM_COL32(28, 28, 30, 255);
+constexpr ImU32 kDigitRim = IM_COL32(105, 105, 110, 255);  // a digit's grey plastic case (P6g)
+constexpr ImU32 kDigitBevelLight = IM_COL32(150, 150, 155, 255);
+constexpr ImU32 kDigitBevelDark = IM_COL32(60, 60, 64, 255);
+constexpr float kDigitRimShare = 0.06f;  // of the courtyard's smaller side
 constexpr ImU32 kSegmentDim = IM_COL32(70, 22, 22, 255);
 constexpr ImU32 kButtonBody = IM_COL32(40, 40, 45, 255);
 constexpr ImU32 kButtonCap = IM_COL32(170, 170, 175, 255);
@@ -82,9 +86,28 @@ constexpr ImU32 kButtonCapDown = IM_COL32(95, 95, 100, 255);
 constexpr ImU32 kButtonRim = IM_COL32(230, 230, 235, 255);
 constexpr float kButtonCapShare = 0.35f;  // of the courtyard's smaller side
 constexpr float kButtonCapDownScale = 0.85f;
+// The real look's tactile switch (P6g): a black 6 x 3.5 mm body between its pads, a round
+// plunger.
+constexpr ImU32 kTactBody = IM_COL32(22, 22, 24, 255);
+constexpr ImU32 kTactEdge = IM_COL32(60, 60, 64, 255);
+constexpr ImU32 kTactLeg = IM_COL32(190, 190, 195, 255);
+constexpr ImU32 kTactShadow = IM_COL32(0, 0, 0, 90);
+constexpr ImU32 kPlunger = IM_COL32(185, 185, 190, 255);
+constexpr ImU32 kPlungerLight = IM_COL32(235, 235, 240, 200);
+constexpr ImU32 kPlungerDown = IM_COL32(110, 110, 115, 255);
+constexpr std::int64_t kTactInset = 250'000;  // the body's ends inside the pad centres
+constexpr std::int64_t kTactHalf = 1'750'000;
+constexpr std::int64_t kPlungerRadius = 1'100'000;
+constexpr std::int64_t kPlungerDownRadius = 950'000;
+constexpr std::int64_t kLegLength = 1'200'000;
+constexpr std::int64_t kLegHalf = 400'000;
+constexpr float kSwitchPrintMinPx = 6;
+constexpr float kSwitchPrintMinPartPx = 16;               // a switch smaller on screen: no print
+constexpr std::int64_t kLegendGap = 400'000;              // a legend under its part's courtyard
 constexpr ImU32 kSlideBody = IM_COL32(150, 30, 30, 255);  // a red DIP switch body
 constexpr ImU32 kSlideSlot = IM_COL32(45, 12, 12, 255);
 constexpr ImU32 kSlideKnob = IM_COL32(235, 232, 222, 255);
+constexpr ImU32 kSlideRidge = IM_COL32(150, 145, 135, 255);
 constexpr ImU32 kSlideText = IM_COL32(245, 235, 225, 255);
 constexpr float kSlideBodyShare = 0.78f;  // of the courtyard's height
 constexpr double kPadReachPx = 12;
@@ -370,8 +393,10 @@ void DrawPinNames(ImDrawList& list, const Mapper& map, const BoardScene& scene,
 // a half-lit address LED (Heartbeat) still looks half lit.
 float Perceived(float brightness) { return std::cbrt(std::clamp(brightness, 0.0f, 1.0f)); }
 
-// A slide switch in a red DIP body: a dark slot along its long side, the knob at the right
-// (ON) end while on, else at the left; ON printed by the right end, the legend under the slot.
+// A slide switch in a red DIP body: a dark slot along its long side, the ridged knob at the
+// right (ON) end while on, else at the left. The plain look prints ON by the right end and the
+// legend under the slot, inside the body; the real look prints them on the silkscreen
+// (`font` null: the caller does).
 void DrawSlide(ImDrawList& list, ImFont* font, ImVec2 a, ImVec2 b, const std::string& legend,
                bool on) {
     const float w = b.x - a.x;
@@ -385,11 +410,16 @@ void DrawSlide(ImDrawList& list, ImFont* font, ImVec2 a, ImVec2 b, const std::st
     const ImVec2 slotA{a.x + (w - slotW) / 2, a.y + h * 0.5f - slotH / 2 - h * 0.08f};
     const ImVec2 slotB{slotA.x + slotW, slotA.y + slotH};
     list.AddRectFilled(slotA, slotB, kSlideSlot, slotH * 0.15f);
-    const float knobW = slotW * 0.45f;
+    const float knobW = slotW * 0.55f;
     const float gap = slotH * 0.12f;
     const float knobX = on ? slotB.x - gap - knobW : slotA.x + gap;
     list.AddRectFilled({knobX, slotA.y + gap}, {knobX + knobW, slotB.y - gap}, kSlideKnob,
                        slotH * 0.1f);
+    for (const float r : {0.3f, 0.5f, 0.7f}) {  // the ridges across it
+        const float x = knobX + knobW * r;
+        list.AddLine({x, slotA.y + gap * 2}, {x, slotB.y - gap * 2}, kSlideRidge,
+                     std::max(1.0f, knobW * 0.05f));
+    }
     if (font == nullptr) {
         return;
     }
@@ -404,6 +434,113 @@ void DrawSlide(ImDrawList& list, ImFont* font, ImVec2 a, ImVec2 b, const std::st
         const float y = slotB.y + (bodyB.y - slotB.y - t.y) / 2;
         list.AddText(font, size, {a.x + (w - t.x) / 2, y}, kSlideText, legend.c_str());
     }
+}
+
+// A switch's print on the silkscreen: the references' size, but never below 6 px while the
+// switch itself is large enough to use (the player needs to tell START from RESET even where the
+// references are too small to print); 0 below that.
+float SwitchPrintPx(const LookMap& look, ImVec2 a, ImVec2 b) {
+    if (std::max(std::abs(b.x - a.x), std::abs(b.y - a.y)) < kSwitchPrintMinPartPx) {
+        return 0;
+    }
+    return std::clamp(look.pixels(kSilkTextNm), kSwitchPrintMinPx, 22.0f);
+}
+
+// The silkscreen's ON beside a slide switch's right end, centred on its slot (P6g).
+void DrawSlideOn(ImDrawList& list, const LookMap& look, ImVec2 a, ImVec2 b) {
+    const float size = SwitchPrintPx(look, a, b);
+    if (size == 0) {
+        return;
+    }
+    ImFont* font = ImGui::GetFont();
+    const ImVec2 t = font->CalcTextSizeA(size, FLT_MAX, 0, "ON");
+    const float h = b.y - a.y;
+    const float slotMid = a.y + h * 0.5f - h * 0.08f;
+    list.AddText(font, size, {b.x + size * 0.3f, slotMid - t.y / 2}, kSilk, "ON");
+}
+
+// A switch's legend on the silkscreen (P6g): centred under its courtyard, or, when under would
+// leave the Board, a line above its reference. Which, decided in Board nm with the print's
+// real height, so the zoom does not move it.
+void DrawSilkLegend(ImDrawList& list, const LookMap& look, const BoardScene& scene,
+                    std::size_t component, const std::string& legend) {
+    const auto courtyard = scene.courtyard(component);
+    if (legend.empty() || courtyard.empty()) {
+        return;
+    }
+    const auto [minX, maxX] = std::ranges::minmax(courtyard, {}, &Point::x);
+    const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
+    const float size = SwitchPrintPx(look, look({minX.x, minY.y}), look({maxX.x, maxY.y}));
+    if (size == 0) {
+        return;
+    }
+    const std::int64_t centreX = (minX.x + maxX.x) / 2;
+    ImFont* font = ImGui::GetFont();
+    const ImVec2 t = font->CalcTextSizeA(size, FLT_MAX, 0, legend.c_str());
+    const bool under = maxY.y + kLegendGap + kSilkTextNm <= scene.bounds().max.y;
+    ImVec2 at;
+    if (under) {
+        const ImVec2 top = look({centreX, maxY.y + kLegendGap});
+        at = {top.x - t.x / 2, top.y};
+    } else {
+        // DrawUseReferences prints the reference on the courtyard's top, 0.25 mm inside it (when
+        // large enough to print): the legend above it.
+        const float reference = SilkTextPx(look);
+        const float referenceHigh =
+            reference > 0 ? font->CalcTextSizeA(reference, FLT_MAX, 0, "SW").y + 1 : 0;
+        const ImVec2 top = look({centreX, minY.y + 250'000});
+        at = {top.x - t.x / 2, top.y - referenceHigh - t.y};
+    }
+    list.AddText(font, size, at, kSilk, legend.c_str());
+}
+
+// A tactile switch in the real look (P6g): from its two pad centres, its legs, a black body
+// between them and a round plunger, light while up, darker and smaller held.
+void DrawTactile(ImDrawList& list, const LookMap& look, const BoardComponent& component,
+                 bool pressed) {
+    if (component.pads.size() != 2) {
+        return;
+    }
+    const Point p1 = component.pads[0].position;
+    const Point p2 = component.pads[1].position;
+    const double length =
+        std::hypot(static_cast<double>(p2.x - p1.x), static_cast<double>(p2.y - p1.y));
+    if (length <= 2.0 * kTactInset) {
+        return;
+    }
+    const double ux = static_cast<double>(p2.x - p1.x) / length;
+    const double uy = static_cast<double>(p2.y - p1.y) / length;
+    // Board nm, from p1 along the pads' line (s) and across it (t).
+    const auto at = [&](double s, double t) {
+        return look({p1.x + std::llround(ux * s - uy * t), p1.y + std::llround(uy * s + ux * t)});
+    };
+    const auto quad = [&](double s0, double s1, double half, ImU32 colour, ImVec2 lift) {
+        const ImVec2 q[4] = {at(s0, -half), at(s1, -half), at(s1, half), at(s0, half)};
+        list.AddQuadFilled({q[0].x + lift.x, q[0].y + lift.y}, {q[1].x + lift.x, q[1].y + lift.y},
+                           {q[2].x + lift.x, q[2].y + lift.y}, {q[3].x + lift.x, q[3].y + lift.y},
+                           colour);
+    };
+    const double inset = kTactInset;
+    // The legs: from outside each pad's centre into the body.
+    quad(-(kLegLength - inset - kLegHalf), inset + kLegHalf, kLegHalf, kTactLeg, {0, 0});
+    quad(length - inset - kLegHalf, length + (kLegLength - inset - kLegHalf), kLegHalf, kTactLeg,
+         {0, 0});
+    const float lift = look.pixels(250'000);
+    quad(inset, length - inset, kTactHalf, kTactShadow, {lift, lift});
+    quad(inset, length - inset, kTactHalf, kTactBody, {0, 0});
+    // The light edge on the long side higher on the screen.
+    const ImVec2 sideA0 = at(inset, -kTactHalf), sideA1 = at(length - inset, -kTactHalf);
+    const ImVec2 sideB0 = at(inset, kTactHalf), sideB1 = at(length - inset, kTactHalf);
+    const bool aHigher = sideA0.y + sideA1.y <= sideB0.y + sideB1.y;
+    list.AddLine(aHigher ? sideA0 : sideB0, aHigher ? sideA1 : sideB1, kTactEdge, 1.0f);
+    const ImVec2 centre = at(length / 2, 0);
+    if (pressed) {
+        list.AddCircleFilled(centre, look.pixels(kPlungerDownRadius), kPlungerDown);
+        return;
+    }
+    const float r = look.pixels(kPlungerRadius);
+    list.AddCircleFilled(centre, r, kPlunger);
+    list.AddCircleFilled({centre.x - r * 0.35f, centre.y - r * 0.35f}, r * 0.3f, kPlungerLight);
 }
 
 }  // namespace
@@ -642,7 +779,21 @@ void BoardView::draw(ImVec2 size) {
             for (const Point p : courtyard) {
                 points.push_back(map(p));
             }
-            list.AddConvexPolyFilled(points.data(), static_cast<int>(points.size()), kDigitBody);
+            // The grey case, its black face inset, bevelled: lit along the top and left.
+            list.AddConvexPolyFilled(points.data(), static_cast<int>(points.size()), kDigitRim);
+            const auto [minX, maxX] = std::ranges::minmax(courtyard, {}, &Point::x);
+            const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
+            const auto inset = static_cast<std::int64_t>(
+                kDigitRimShare * static_cast<float>(std::min(maxX.x - minX.x, maxY.y - minY.y)));
+            const ImVec2 p = map({minX.x + inset, minY.y + inset});
+            const ImVec2 q = map({maxX.x - inset, maxY.y - inset});
+            const ImVec2 fa{std::min(p.x, q.x), std::min(p.y, q.y)};
+            const ImVec2 fb{std::max(p.x, q.x), std::max(p.y, q.y)};
+            list.AddRectFilled(fa, fb, kDigitBody);
+            list.AddLine({fa.x, fa.y}, {fb.x, fa.y}, kDigitBevelLight);
+            list.AddLine({fa.x, fa.y}, {fa.x, fb.y}, kDigitBevelLight);
+            list.AddLine({fa.x, fb.y}, {fb.x, fb.y}, kDigitBevelDark);
+            list.AddLine({fb.x, fa.y}, {fb.x, fb.y}, kDigitBevelDark);
             bodyDrawn = led.component;
         }
         points.clear();
@@ -664,9 +815,13 @@ void BoardView::draw(ImVec2 size) {
         const ImVec2 min = map({minX.x, minY.y});
         const ImVec2 max = map({maxX.x, maxY.y});
         if (button.look == SwitchLook::Slide) {
-            DrawSlide(list, legendFont_, {std::min(min.x, max.x), std::min(min.y, max.y)},
-                      {std::max(min.x, max.x), std::max(min.y, max.y)}, button.legend,
-                      button.pressed);
+            const ImVec2 a{std::min(min.x, max.x), std::min(min.y, max.y)};
+            const ImVec2 b{std::max(min.x, max.x), std::max(min.y, max.y)};
+            DrawSlide(list, real ? nullptr : legendFont_, a, b, button.legend, button.pressed);
+            if (real) {
+                DrawSlideOn(list, look, a, b);
+                DrawSilkLegend(list, look, *scene_, button.component, button.legend);
+            }
             continue;
         }
         if (button.look == SwitchLook::Key && legendFont_ != nullptr) {
@@ -676,6 +831,11 @@ void BoardView::draw(ImVec2 size) {
             const KeyCap cap{0, 0, 1, button.legend, "", CapKind::Character, 0};
             DrawKeyCap(list, legendFont_, cap, a, b, std::min(b.x - a.x, b.y - a.y),
                        button.pressed);
+            continue;
+        }
+        if (real) {
+            DrawTactile(list, look, board.components[button.component], button.pressed);
+            DrawSilkLegend(list, look, *scene_, button.component, button.legend);
             continue;
         }
         list.AddRectFilled({std::min(min.x, max.x), std::min(min.y, max.y)},

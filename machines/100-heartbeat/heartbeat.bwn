@@ -8,7 +8,7 @@ part J1  POWER
 part U1  6502
 part U2  74LS244
 part U3  74LS244
-part SW1 BUTTON
+part SW1 BUTTON legend=RESET
 part D1 LED
 part D2 LED
 part D3 LED

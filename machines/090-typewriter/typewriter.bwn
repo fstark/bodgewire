@@ -53,7 +53,7 @@ part U37 74LS27     # cursor compare
 part U38 74LS20     # MATCH_N, GO_N
 part U39 74LS74     # cursor, one character late
 part U40 74LS93     # blink
-part SW1 BUTTON     # Clear
+part SW1 BUTTON legend=CLEAR  # Clear
 part R1  R value=4k7
 part J1  POWER
 part J2  VIDEO

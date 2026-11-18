@@ -14,7 +14,7 @@ part U5  74LS138     # address decoder
 part U6  74LS02      # write strobes
 part U7  74LS273     # LED latch
 part U8  POR time=20ms
-part SW1 BUTTON      # Reset
+part SW1 BUTTON legend=RESET  # Reset
 part D1 LED          # L0
 part D2 LED          # L1
 part D3 LED          # L2

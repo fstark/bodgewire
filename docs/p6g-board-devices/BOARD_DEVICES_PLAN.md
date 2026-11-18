@@ -45,7 +45,7 @@ Fence: links checked by reading. Commit: `docs: P6g done, Board devices`.
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Machine keys, capacitor code, BUTTON legend | |
+| 1 | Machine keys, capacitor code, BUTTON legend | 2e2cd5b |
 | 2 | The looks | |
 | 3 | Keys to the bench or the Machine | |
 | 4 | Glossary, recipe, ARCHITECTURE | |
@@ -53,3 +53,5 @@ Fence: links checked by reading. Commit: `docs: P6g done, Board devices`.
 ## Implementation notes
 
 - Docs review (before the docs commit), fixed: what takes keys follows what is out (`setTakers` each frame; F2 brings an away keyboard out, as today); every event still reaches the captures (focus lost clears held keys); the `on` flags set again right after each change of the keys; F2 ignored while a text field is edited; the modifier keys reach ImGui (Shift-click); clicks from `InstrumentClicked()` (a press on a knob counts, the close corner not); the hint on `keyboardTyping`; the button drawn from its pad centres (its courtyard holds the pads); the legend's place decided in Board millimetres; the capacitor's capsule 3 mm; `CapacitorCode` on whole picofarads; the knob box given the legends font; a BUTTON's one-character legend gives no PC key, SLIDE legends up to 8; the plain look keeps today's button; `led.computer` in the fences; the BUTTON and KEY datasheets and ADD_CONNECTOR_DEVICE listed; manual references in backticks.
+- Phase 1: release and debug `-R "machine keys|board marks|switch"`. `CapacitorCode` rounds to two significant digits (999 pF → `102`).
+- Phase 2: a switch's legend and `ON` keep a 6 px floor where the references drop out (the BW-1 at fit zoom draws its silkscreen under 6 px: `SST` and `ON` vanished on the first screenshot); not printed when the switch is under 16 px on screen. The knob box's keys are drawn as two small caps of its own (`DrawKeyCap`'s legends scale with the cap: unreadable at 16 px), so `KnobWindow` needs no font. The digit's bevel lit top and left, as designed. Screenshots viewed: Stopwatch (START, STOP, RESET; rims), Dice (ROLL), Tennis (START above SW1 at the Board's edge; the knob keys Q A and ▲ ▼), Knob Meter (▲ ▼), BW-1 (SST and ON readable), BW-80 (C9, C11 printed 47). `-R "dice|stopwatch|tennis|typewriter|heartbeat|led.computer|manuals|bench places|switch"`: 141 passed.

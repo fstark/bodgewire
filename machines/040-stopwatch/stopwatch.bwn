@@ -5,9 +5,9 @@
 
 part X1 OSC freq=1MHz
 part J1 POWER
-part SW1 BUTTON
-part SW2 BUTTON
-part SW3 BUTTON
+part SW1 BUTTON legend=START
+part SW2 BUTTON legend=STOP
+part SW3 BUTTON legend=RESET
 part R1 R value=4k7
 part R2 R value=4k7
 part R3 R value=4k7

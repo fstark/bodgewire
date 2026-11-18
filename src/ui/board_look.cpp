@@ -15,6 +15,8 @@
 #include <vector>
 
 #include "board/copper.hpp"
+#include "netlist/units.hpp"
+#include "view/board_marks.hpp"
 
 namespace bw {
 namespace {
@@ -22,6 +24,7 @@ namespace {
 constexpr std::int64_t kMm = 1'000'000;
 constexpr float kXray = 0.22f;            // a see-through part's opacity
 constexpr float kSmallestPrintPx = 4.0f;  // print on a part, below which it is left out
+constexpr float kSmallestCodePx = 5.0f;   // a capacitor's code
 
 // The Board's colours (P6, the user's pick of three): a dark mask; the copper under it, the front
 // green and the back (seen through the board) teal, the active layer bright and on top, the
@@ -51,7 +54,9 @@ constexpr ImU32 kResistorBody = IM_COL32(214, 190, 150, 255);
 constexpr ImU32 kTerminal = IM_COL32(40, 135, 80, 255);  // a green screw terminal
 constexpr ImU32 kTerminalDark = IM_COL32(25, 95, 55, 255);
 constexpr ImU32 kHousing = IM_COL32(32, 32, 34, 255);
-constexpr ImU32 kSilk = IM_COL32(235, 235, 225, 215);
+constexpr ImU32 kCeramic = IM_COL32(196, 110, 40, 255);  // a ceramic disc capacitor
+constexpr ImU32 kCeramicEdge = IM_COL32(140, 72, 25, 255);
+constexpr ImU32 kCeramicPrint = IM_COL32(40, 25, 10, 255);
 
 // Resistor colour code, digit → colour.
 constexpr std::array<ImU32, 10> kBands = {
@@ -378,6 +383,56 @@ void DrawResistor(ImDrawList& list, const LookMap& map, const BoardScene& scene,
     }
 }
 
+// A ceramic disc capacitor standing between its two pads, seen from above: an orange-brown
+// capsule along them (the 3 x 1.6 mm body of C_Disc_D3.0mm_W1.6mm_P2.50mm), its code printed
+// on it ("47" for 47 pF, P6g).
+void DrawCapacitor(ImDrawList& list, const LookMap& map, const BoardScene& scene, std::size_t k) {
+    const auto& pads = scene.board().components[k].pads;
+    if (pads.size() != 2) {
+        return;
+    }
+    const ImVec2 a = map(pads[0].position);
+    const ImVec2 b = map(pads[1].position);
+    const float length = std::hypot(b.x - a.x, b.y - a.y);
+    const float inside = map.pixels(550'000);
+    if (length <= 2 * inside) {
+        return;
+    }
+    const ImVec2 along{(b.x - a.x) / length, (b.y - a.y) / length};
+    const ImVec2 across{-along.y, along.x};
+    const ImVec2 mid{(a.x + b.x) / 2, (a.y + b.y) / 2};
+    const float half = map.pixels(800'000);
+    const float end = length / 2 - inside;  // the centre line's half length
+    const auto at = [&](float s, float t, float lift) {
+        return ImVec2{mid.x + along.x * s + across.x * t + lift,
+                      mid.y + along.y * s + across.y * t + lift};
+    };
+    const float heading = std::atan2(along.y, along.x);
+    const float quarter = std::numbers::pi_v<float> / 2;
+    const auto capsule = [&](float lift, ImU32 colour) {
+        list.PathArcTo(at(end, 0, lift), half, heading - quarter, heading + quarter, 16);
+        list.PathArcTo(at(-end, 0, lift), half, heading + quarter, heading + 3 * quarter, 16);
+        list.PathFillConvex(colour);
+    };
+    capsule(map.pixels(250'000), kShadow);
+    capsule(0, kCeramic);
+    const float edge = std::max(1.0f, half * 0.12f);
+    for (const float side : {-1.0f, 1.0f}) {
+        const float t = side * (half - edge / 2);
+        list.AddLine(at(-end, t, 0), at(end, t, 0), kCeramicEdge, edge);
+    }
+    const auto picofarads = ParseFarads(scene.value(k));
+    if (!picofarads) {
+        return;
+    }
+    const std::string code = CapacitorCode(*picofarads);
+    const bool upright = std::abs(along.y) > std::abs(along.x);
+    const float size = FitText(code, 2 * half * 0.9f, (end + half) * 2 * 0.8f, 2 * half * 0.9f);
+    if (size >= kSmallestCodePx) {
+        Print(list, size, mid, kCeramicPrint, code, upright);
+    }
+}
+
 // The power input: a green two-way screw terminal over its pads.
 void DrawTerminal(ImDrawList& list, const LookMap& map, const BoardScene& scene, std::size_t k) {
     const BoardComponent& component = scene.board().components[k];
@@ -418,7 +473,7 @@ void DrawHeader(ImDrawList& list, const LookMap& map, const BoardScene& scene, s
     }
 }
 
-enum class Kind { Chip, Can, Resistor, Terminal, Header, Other };
+enum class Kind { Chip, Can, Resistor, Capacitor, Terminal, Header, Other };
 
 Kind KindOf(const BoardScene& scene, std::size_t k) {
     const std::string_view part = scene.partName(k);
@@ -427,6 +482,9 @@ Kind KindOf(const BoardScene& scene, std::size_t k) {
     }
     if (part == "R") {
         return Kind::Resistor;
+    }
+    if (part == "C") {
+        return Kind::Capacitor;
     }
     if (part == "POWER") {
         return Kind::Terminal;
@@ -454,6 +512,8 @@ std::optional<Box> SilkBox(const BoardScene& scene, std::size_t k) {
         return pads->grown(1'300'000);
     case Kind::Terminal:
         return pads->grown(2'300'000);
+    case Kind::Capacitor:
+        return pads->grown(1'000'000);
     case Kind::Header:
         return pads->grown(1'600'000);
     case Kind::Resistor:
@@ -559,6 +619,9 @@ void DrawUseParts(ImDrawList& list, const LookMap& map, const BoardScene& scene,
         case Kind::Resistor:
             DrawResistor(list, map, scene, k);
             break;
+        case Kind::Capacitor:
+            DrawCapacitor(list, map, scene, k);
+            break;
         case Kind::Terminal:
             DrawTerminal(list, map, scene, k);
             break;
@@ -587,9 +650,14 @@ void DrawUseSelection(ImDrawList& list, const LookMap& map, const BoardScene& sc
     }
 }
 
+float SilkTextPx(const LookMap& map) {
+    const float size = std::clamp(map.pixels(kSilkTextNm), 0.0f, 22.0f);
+    return size < 6 ? 0 : size;
+}
+
 void DrawUseReferences(ImDrawList& list, const LookMap& map, const BoardScene& scene) {
-    const float size = std::clamp(map.pixels(1'400'000), 0.0f, 22.0f);
-    if (size < 6) {
+    const float size = SilkTextPx(map);
+    if (size == 0) {
         return;
     }
     ImFont* font = ImGui::GetFont();

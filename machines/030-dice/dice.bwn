@@ -5,7 +5,7 @@
 
 part X1 OSC freq=1MHz
 part J1 POWER
-part SW1 BUTTON
+part SW1 BUTTON legend=ROLL
 part R1 R value=4k7
 part R2 R value=330
 part R3 R value=330

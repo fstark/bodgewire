@@ -68,7 +68,7 @@ part U55 74LS20     # T2_N, T4_N
 part U56 74LS20     # T1_N, T5_N
 part U57 74LS20     # T3_N
 part U58 74LS30     # GLYPH
-part SW1 BUTTON     # Start
+part SW1 BUTTON legend=START  # Start
 part R1  R value=1k # START_N pull-up
 
 net CLK         X1.OUT U1.CLK U2.CLK U3.CLK U4.CLK U5.CLK U11.1CLK U11.2CLK
