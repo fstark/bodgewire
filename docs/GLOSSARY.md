@@ -209,7 +209,7 @@ A Machine with one or more placed Faults, presented to the player to diagnose an
 _Avoid_: Scenario, level, case
 
 **Brief**:
-The player-facing text of a Puzzle: a title and the Symptom as a customer would report it. It never names the Fault. In `bw_ui` a post-it stuck on the Board's top-left corner, moving with the Board; its × puts it away into the Shelf.
+The player-facing text of a Puzzle: a title and the Symptom as a customer would report it. It never names the Fault. In `bw_ui` a post-it stuck on the Board near its top-left corner, moving with the Board; dragged elsewhere on it, it stays there for the run (P6o); its × puts it away into the Shelf.
 _Avoid_: Description, hint
 
 **User Manual**:
@@ -254,7 +254,7 @@ The objects brought out from the Shelf or put away: TV, keyboard, Logic Analyzer
 _Avoid_: instrument (for the TV, keyboard or manuals)
 
 **Focus**:
-What a click on a pin does: exactly one Board tool or Instrument owns it, shown by a gold frame on its Shelf drawing (red while a tool that needs the power off cannot work, the power being on; never the grease pencil). Clicking an Instrument gives it the Focus; taking a tool takes it back; `Esc` gives it to the Logic Probe. A pin link clicked in a manual or the chip panel goes to the Focus owner too, when it is the Logic Probe or an Instrument: the pin is probed, clipped, hooked or touched with the red lead, flashed in place, the Board view unmoved; a double-click also frames it, `Cmd`-click only frames it (2026-11-18). Not ImGui's keyboard focus, which the windows' `focused()` and Typing Mode mean (P6c).
+What a click on a pin does: exactly one Board tool or Instrument owns it, shown by a gold frame on its Shelf drawing, the only gold in `bw_ui` (P6o: never for keys). Clicking an Instrument gives it the Focus; taking a tool takes it back; putting the focused Instrument away gives it to the Logic Probe. A tool that needs the power off (puller, iron, cutters, wire) works with the power on too: its repair asks first, then power-cycles the Machine around it (P6o). A pin link clicked in a manual or the chip panel goes to the Focus owner too, when it is the Logic Probe or an Instrument: the pin is probed, clipped, hooked or touched with the red lead, flashed in place, the Board view unmoved; a double-click also frames it, `Cmd`-click only frames it (2026-11-18). Not ImGui's keyboard focus (P6c).
 
 **Logic Probe**:
 An Instrument showing the Logic Value and activity of one Net.
@@ -303,14 +303,17 @@ _Avoid_: Bus (that is the circuit's group of Nets)
 A time picked with a click on an Oscilloscope or Logic Analyzer screen, from which the cursor's `dt` is measured.
 
 **Pencil Mark**:
-A grey dot, cross or check the player puts on the Board with the grease pencil (a china marker, `G`), a note for the session (P6h): a click on bare Board or a part puts a dot, a click on a mark turns it to a check, a cross, then none; a Shift-click or right-click clears it. Drawn whatever the tool, layer or look; one on a chip's body leaves with the chip when it is swapped; nothing is saved.
+A grey dot, cross or check the player puts on the Board with the grease pencil (a china marker), a note for the session (P6h), on the Board only (P6o): a click on bare Board or a part puts a dot, a click on a mark turns it to a check, a cross, then none; a Shift-click or right-click clears it. Drawn whatever the tool, layer or look; one on a chip's body leaves with the chip when it is swapped; nothing is saved.
 _Avoid_: Marker (that is the Instruments' time), Mark (alone: a capacitor's printed code is also drawn by `board_marks`)
 
 **See-through Board**:
 The single top-down view of a Board showing every Layer at once, the back seen through the board rather than flipped.
 
 **Active Layer**:
-The Layer drawn on top and preferred by player actions such as probing, cutting and soldering. Where it has nothing under the cursor, actions fall through to another Layer.
+The Layer drawn on top and preferred by player actions such as probing, cutting and soldering. Where it has nothing under the cursor, actions fall through to another Layer. Changed by the Flip Corner or the `` ` `` key.
+
+**Flip Corner**:
+A dog-ear on the Board's bottom-right corner in `bw_ui` (P6o), 4 mm along each edge (24 px at least), drawn in the other Layer's copper colour: a click on it flips the Board (the Active Layer) whatever the tool; a control, not part of the PCB. No pad of any Machine lies under it.
 
 **Schematic**:
 Our own circuit diagram of a Machine, generated from its Nets and hand-adjusted. It is a view only, not a source of connectivity.
@@ -333,5 +336,5 @@ The ZX80 editor's way of typing: while the cursor is `K`, a letter key types the
 _Avoid_: Token entry
 
 **Typing**:
-The `bw_ui` mode in which every key the player presses goes to the Machine instead of the bench (P6g): its keyboard (either kind), its Board keys (a PC key held down holds the key with that `pc=`, several at once) and its knobs. A click on any of the Machine's objects (the TV, the keyboard, the knob box, a Board key with a PC key, the shelf's keyboard drawing) gives it the keys, framed in gold on each; a click on the Board, a tool or an instrument gives them back to the bench and its shortcuts; F2 toggles. Escape is a key of the Machine. The keyboard and the knobs take keys only while out.
+Every key the player presses goes to the Machine (P6o, replacing P6g's bench shortcuts and F2): its keyboard (either kind), its Board keys (a PC key held down holds the key with that `pc=`, several at once) and its knobs, whether its keyboard and knob box are out, put away or popped out. Escape is a key of the Machine. Four exceptions: a text field being edited (the analyzer's pattern, the scope's delay) takes the keys until it loses focus; Cmd combinations are the app's (quit, and the BW-2001's paste); Tab flips the plain look; `` ` `` flips the Board. A Machine with none of these ignores keys. Nothing shows the keys: there is no choice.
 _Avoid_: Keyboard capture (in player text)
