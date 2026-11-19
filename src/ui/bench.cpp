@@ -20,11 +20,11 @@ constexpr ImU32 kCloseDisc = IM_COL32(0, 0, 0, 120);
 
 float aspect_ = 1;  // read by the size callback during the next Begin
 constexpr std::size_t kObjects = static_cast<std::size_t>(BenchObject::Debug) + 1;
-std::array<bool, kObjects> home_{};                   // SendHome
 std::array<bool, kObjects> popped_{};                 // in its own desktop window (P6j)
 std::array<bool, kObjects> popAtStart_{};             // --pop: beside from its first place
 std::array<std::optional<ImVec2>, kObjects> at_{};    // PopOut: its next position, once
-std::array<std::optional<ImVec2>, kObjects> size_{};  // PopIn: its next size, once
+std::array<std::optional<ImVec2>, kObjects> size_{};  // popped in: its next size, once
+std::array<Place, kObjects> benchAt_{};  // its offset on the bench before it popped out (P6o)
 
 std::size_t Index(BenchObject object) { return static_cast<std::size_t>(object); }
 
@@ -42,6 +42,8 @@ std::vector<Area> Displays() {
 }
 
 void PopOutFrom(BenchObject object, Area rect) {
+    const BenchRect bench = BenchArea();
+    benchAt_[Index(object)] = {rect.x - bench.min.x, rect.y - bench.min.y, 0, 0};
     popped_[Index(object)] = true;
     if (const auto beside = BesidePlace(rect, MainArea(), Displays())) {
         at_[Index(object)] = ImVec2{beside->x, beside->y};
@@ -49,10 +51,12 @@ void PopOutFrom(BenchObject object, Area rect) {
 }
 
 void PopInSized(BenchObject object, ImVec2 size) {
+    const BenchRect bench = BenchArea();
     popped_[Index(object)] = false;
-    home_[Index(object)] = true;
-    const Extent fit = FitBench({size.x, size.y}, BenchArea().extent());
+    const Extent fit = FitBench({size.x, size.y}, bench.extent());
     size_[Index(object)] = ImVec2{fit.width, fit.height};
+    const Place at = ReturnPlace(benchAt_[Index(object)], fit, bench.extent());
+    at_[Index(object)] = ImVec2{bench.min.x + at.x, bench.min.y + at.y};
 }
 
 }  // namespace
@@ -90,10 +94,8 @@ void PlaceNext(BenchObject object, ImVec2 first) {
         at_[i].reset();
     } else {
         ImGui::SetNextWindowPos({bench.min.x + place.x, bench.min.y + place.y},
-                                home_[i] ? ImGuiCond_Always : ImGuiCond_FirstUseEver,
-                                {place.pivotX, place.pivotY});
+                                ImGuiCond_FirstUseEver, {place.pivotX, place.pivotY});
     }
-    home_[i] = false;
     if (size_[i]) {
         ImGui::SetNextWindowSize(*size_[i], ImGuiCond_Always);
         size_[i].reset();
@@ -112,22 +114,20 @@ void KeepAspect(float aspect, float minWidth) {
         &aspect_);
 }
 
-void SendHome(BenchObject object, const char* window) {
+void TogglePop(BenchObject object, const char* window) {
     const ImGuiWindow* found = window != nullptr ? ImGui::FindWindowByName(window) : nullptr;
-    if (popped_[Index(object)] && found != nullptr) {
+    if (found == nullptr) {
+        if (!popped_[Index(object)]) {
+            PopOutAtStart(object);  // never drawn: from its default place, when it first comes out
+        }
+        return;
+    }
+    if (popped_[Index(object)]) {
         PopInSized(object, found->Size);
     } else {
-        popped_[Index(object)] = false;
-        home_[Index(object)] = true;
+        PopOutFrom(object, {found->Pos.x, found->Pos.y, found->Size.x, found->Size.y});
     }
 }
-
-void PopOut(BenchObject object) {
-    const ImVec2 at = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
-    PopOutFrom(object, {at.x, at.y, size.x, size.y});
-}
-
-void PopIn(BenchObject object) { PopInSized(object, ImGui::GetWindowSize()); }
 
 bool PoppedOut(BenchObject object) { return popped_[Index(object)]; }
 

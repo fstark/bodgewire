@@ -4,11 +4,11 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <utility>
 
 #include "runner/runner.hpp"
 #include "session/session.hpp"
 #include "ui/board_view.hpp"
+#include "ui/shelf_drawings.hpp"
 #include "view/focus.hpp"
 
 namespace bw {
@@ -16,13 +16,18 @@ namespace bw {
 // The shelf's height along the bottom of the main window, logical px.
 inline constexpr float kShelfHeight = 64.0f;
 
-// The strip along the bottom (P6c): controls, the Board's tools, equipment, each a drawing in a
-// fixed place on every Machine; what does not apply is grayed. The focus owner is framed in
-// gold (red while it cannot work). A click on equipment brings its window out and to the front,
-// or puts it away when already in front. A short hint at the right end.
+// Power on with the run switch (P6o): at `‖` it jumps to `1×` first (powering on always runs).
+void PowerOn(Session& session, RunSwitch& run, std::uint64_t seed);
+
+// The strip along the bottom (P6c, regrouped in P6o): each group in its own tray, the controls,
+// the Board's tools, the instruments from the left; this Machine's brief, binder and Machine slot
+// (its TV, keyboard and knob box) at the right end; a short hint between. What does not apply is
+// grayed. The focus owner is framed in gold. A click on equipment brings it out and to the front,
+// or puts it away when already in front; a double-click pops it out to its own desktop window, or
+// back in.
 class Shelf {
 public:
-    void draw(Session& session, BoardView& board, Focus& focus, Speed& speed, std::uint64_t seed);
+    void draw(Session& session, BoardView& board, Focus& focus, RunSwitch& run, std::uint64_t seed);
     // A click the focus owner could not act on: the reason in amber for 2 s.
     void refused(std::string reason);
 
@@ -34,9 +39,12 @@ public:
 
 private:
     struct Devices {
-        bool keyboard, knob;
+        bool tv, keyboard, knob;
     };
-    std::optional<Devices> devices_;
+    void machineClick(bool second);
+
+    Devices devices_{};
+    bool found_ = false;  // devices_ found (a Machine's devices never change)
     std::chrono::steady_clock::time_point reasonUntil_{};
     std::string reason_;
 };

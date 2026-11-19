@@ -61,5 +61,9 @@ struct Area {
 std::optional<Area> BesidePlace(Area object, Area main, std::span<const Area> displays);
 // A size back on the bench: as is when it fits `bench`, else shrunk in proportion to fit.
 Extent FitBench(Extent size, Extent bench);
+// Where an object popped back in goes (P6o): its top left at `offset` (x, y; no pivot), where it
+// was on the bench before it popped out, moved just enough that `size` lies inside `bench` at
+// least kBenchMargin from its edges; centred on a side where it is too large for that margin.
+Place ReturnPlace(Place offset, Extent size, Extent bench);
 
 }  // namespace bw

@@ -12,8 +12,8 @@ Screenshots: `build/release/src/ui/bw_ui FILE --screenshot /tmp/p6o-NAME.png --a
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | Keys: every key to the Machine; shortcuts, F2, Esc, gold for keys, `--keys` gone; manuals, Machine docs, recipes | |
-| 2 | Shelf: trays, run switch, Machine slot, double-click pops out, power-off tools never blocked; binder control and home gone | |
+| 1 | Keys: every key to the Machine; shortcuts, F2, Esc, gold for keys, `--keys` gone; manuals, Machine docs, recipes | `4ca30fc` |
+| 2 | Shelf: trays, run switch, Machine slot, double-click pops out, power-off tools never blocked; binder control and home gone | this commit |
 | 3 | Board: the flip corner and `` ` ``; the pencil on the Board only | |
 | 4 | Repairs with the power on: the plan, the popup, the cycle | |
 | 5 | Bench objects: the binder's height, the brief dragged | |
@@ -98,3 +98,5 @@ Design §5.
 
 - Spec and design (2026-11-19): the user dropped home (an object moved stays moved), made the switch jump to `1×` at power on, and removed the binder's pop-out control. The Message's `F2` is a Net: three User Manuals, not four.
 - Review (2026-11-19), fixed: the flip corner 8 mm (10 mm covers the Typewriter's `SW1.2` and Tennis's `J4.4`) and winning at the press too; the popup's OK cycles on the next frame so an unpowered frame always happens, the power-on before `session.tv()`; `--run pause` through `powerOn`'s `pauseAt`, the switch kept at `‖`; the binder's stretch only from an active top or bottom border, its minimum height lowered; the Knob Meter's and Tennis's manuals and `ADD_INSTRUMENT.md`; `focus_test.cpp`'s pencil case; eight combinations; `--away` for the put-away screenshots, the BW-2001 popped out, the user's checks in phase 6. Also: a probe click on bare Board lifts the tip (Esc's last step), the iron acts only inside the outline, every cutters plan refuses as today, "Don't ask again" counts only with OK, the brief's drag spares its ×, `Contains` reused, `focused()` and the windows' return values removed, `TogglePop` without a first size, the right tray's divider, `RunSwitch` in `shelf_drawings.hpp`, the dead-key risk, the commit messages naming their tests.
+- Phase 1 (2026-11-19): the event loop takes Tab and `` ` `` first (by the character, `dropText` for their text), lets Cmd combinations through to ImGui but the matrix's paste, and drops every other key unless a text field is edited; `applyKeys` runs again right after `textField` updates, before the captures' `sync`. The BW-2001 runs at its known 0.33× in `bw_ui` (P5z: 0.36×).
+- Phase 2 (2026-11-19): every Machine's shelf viewed (the five slot drawings: a grayed monitor on 010–040, 100–120; the knob box on 045; the monitor on 050, 060, 080; monitor and knob box on 070; monitor and keyboard on 090, 130, 140). The pause sign is drawn as two bars (the UI font has no `‖`). `--run pause` stops at 0.2 s, the BW-2001's screen still booting there: enough to see the switch.

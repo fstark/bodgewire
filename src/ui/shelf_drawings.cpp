@@ -88,9 +88,6 @@ constexpr ImU32 kAmber = IM_COL32(255, 170, 0, 255);
 constexpr ImU32 kCopper = IM_COL32(205, 120, 60, 255);
 constexpr ImU32 kWhite = IM_COL32(235, 235, 235, 255);
 constexpr ImU32 kGrey = IM_COL32(150, 150, 150, 255);
-constexpr ImU32 kFrontCopper = IM_COL32(60, 170, 80, 255);  // as the Board's layers
-constexpr ImU32 kBackCopper = IM_COL32(40, 150, 160, 255);
-constexpr ImU32 kBoardGreen = IM_COL32(20, 80, 40, 255);
 
 void Power(Pen& p, const ItemLook& look) {
     p.box(10, 6, 46, 50, IM_COL32(60, 60, 64, 255), 4);
@@ -104,44 +101,23 @@ void Power(Pen& p, const ItemLook& look) {
     p.disc(41, 45, 3, look.limit ? kRed : kLampDark);  // LIMIT
 }
 
-void Run(Pen& p, const ItemLook& look) {
-    p.box(8, 8, 48, 48, IM_COL32(60, 60, 64, 255), 8);
-    if (look.lit) {  // running: pause bars
-        p.box(19, 17, 25, 39, kWhite, 1);
-        p.box(31, 17, 37, 39, kWhite, 1);
-    } else {
-        p.triangle(20, 16, 20, 40, 39, 28, kWhite);
+// A three-position slide across two cells: a pause sign, 1×, Max printed over its slot, the slider
+// at the chosen third; the pause sign grayed while the power is off (it cannot be chosen).
+void RunSlide(Pen& p, const ItemLook& look) {
+    constexpr std::array<float, 3> kAt{22, 58, 94};
+    const auto chosen = static_cast<std::size_t>(look.run);
+    const ImU32 pauseInk = !look.powered ? kLampDark : chosen == 0 ? kWhite : kGrey;
+    p.box(kAt[0] - 5, 8, kAt[0] - 1.5f, 20, pauseInk, 0.5f);
+    p.box(kAt[0] + 1.5f, 8, kAt[0] + 5, 20, pauseInk, 0.5f);
+    p.text(kAt[1], 14, 11, chosen == 1 ? kWhite : kGrey, "1×");
+    p.text(kAt[2], 14, 11, chosen == 2 ? kWhite : kGrey, "Max");
+    p.box(10, 31, 106, 41, kBlack, 5);
+    for (const float x : kAt) {
+        p.line(x, 43.5f, x, 46, kDarkMetal, 1.2f);
     }
-}
-
-void Speed(Pen& p, const ItemLook& look) {
-    p.text(15, 14, 11, look.maxSpeed ? kGrey : kWhite, "1×");
-    p.text(40, 14, 11, look.maxSpeed ? kWhite : kGrey, "Max");
-    p.box(8, 31, 48, 41, kBlack, 5);
-    const float x = look.maxSpeed ? 38 : 18;
-    p.box(x - 8, 28, x + 8, 44, kMetal, 3);
+    const float x = kAt[chosen];
+    p.box(x - 9, 28, x + 9, 44, kMetal, 3);
     p.line(x, 30, x, 42, kDarkMetal, 1.5f);
-}
-
-void Layer(Pen& p, const ItemLook& look) {
-    const ImU32 front = look.front ? kFrontCopper : kBackCopper;
-    const ImU32 back = look.front ? kBackCopper : kFrontCopper;
-    p.box(18, 8, 48, 38, (back & ~IM_COL32_A_MASK) | IM_COL32(0, 0, 0, 110), 3);
-    p.box(8, 18, 38, 48, front, 3);
-    p.text(23, 33, 16, kWhite, look.front ? "F" : "B");
-}
-
-void Fit(Pen& p) {
-    p.box(17, 19, 39, 37, kBoardGreen, 2);
-    const float a = 8, b = 48, l = 9;
-    p.line(a, a, a + l, a, kWhite, 2.5f);
-    p.line(a, a, a, a + l, kWhite, 2.5f);
-    p.line(b, a, b - l, a, kWhite, 2.5f);
-    p.line(b, a, b, a + l, kWhite, 2.5f);
-    p.line(a, b, a + l, b, kWhite, 2.5f);
-    p.line(a, b, a, b - l, kWhite, 2.5f);
-    p.line(b, b, b - l, b, kWhite, 2.5f);
-    p.line(b, b, b, b - l, kWhite, 2.5f);
 }
 
 void Probe(Pen& p, const ItemLook& look) {
@@ -386,17 +362,8 @@ void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLoo
     case Item::Power:
         Power(p, look);
         break;
-    case Item::Run:
-        Run(p, look);
-        break;
-    case Item::Speed:
-        Speed(p, look);
-        break;
-    case Item::Layer:
-        Layer(p, look);
-        break;
-    case Item::Fit:
-        Fit(p);
+    case Item::RunSwitch:
+        RunSlide(p, look);
         break;
     case Item::Probe:
         Probe(p, look);
@@ -416,12 +383,6 @@ void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLoo
     case Item::Pencil:
         Pencil(p, look);
         break;
-    case Item::Tv:
-        Tv(p, look);
-        break;
-    case Item::Keyboard:
-        Keyboard(p, look);
-        break;
     case Item::Analyzer:
         Analyzer(p, look);
         break;
@@ -434,9 +395,30 @@ void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLoo
     case Item::Manual:
         Manual(p, look);
         break;
-    case Item::Knob:
-        Knob(p, look);
+    case Item::Machine: {
+        // One cell a device, TV, keyboard, knob box, each lit while out; none: the monitor alone.
+        const SlotLook& slot = look.slot;
+        const std::array<bool, 3> has{slot.tv || (!slot.keyboard && !slot.knob), slot.keyboard,
+                                      slot.knob};
+        const std::array<bool, 3> lit{slot.tvLit, slot.keyboardLit, slot.knobLit};
+        const float cell = max.y - min.y;
+        const int count = static_cast<int>(std::ranges::count(has, true));
+        const float gap = count > 1 ? (max.x - min.x - cell * static_cast<float>(count)) /
+                                          static_cast<float>(count - 1)
+                                    : 0;
+        float x = min.x;
+        for (std::size_t d = 0; d < has.size(); ++d) {
+            if (!has[d]) {
+                continue;
+            }
+            Pen cellPen(list, {x, min.y}, {x + cell, max.y}, look.alpha);
+            ItemLook one = look;
+            one.lit = lit[d];
+            d == 0 ? Tv(cellPen, one) : d == 1 ? Keyboard(cellPen, one) : Knob(cellPen, one);
+            x += cell + gap;
+        }
         break;
+    }
     case Item::Brief:
         Brief(p, look);
         break;

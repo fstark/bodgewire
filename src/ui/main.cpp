@@ -78,6 +78,7 @@ constexpr std::string_view kUsage =
     "real|plain] "
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
     "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
+    "[--away tv|keyboard|knob,...] [--run pause|1x|max] "
     "[--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
@@ -107,7 +108,9 @@ struct Options {
     std::optional<Owner> focus;     // --focus: the owner at start (P6c)
     bool debug = false;             // --debug: the Debug window out (P6d)
     std::vector<std::pair<MarkShape, Point>> mark;  // --mark: pencil marks at start (P6h)
-    std::vector<BenchObject> pop;  // --pop: out in their own desktop windows at start (P6j)
+    std::vector<BenchObject> pop;   // --pop: out in their own desktop windows at start (P6j)
+    std::vector<BenchObject> away;  // --away: the Machine slot's objects put away at start (P6o)
+    RunSwitch run = RunSwitch::RealTime;  // --run: the run switch at start (P6o)
 };
 
 std::optional<BenchObject> ParseBenchObject(std::string_view name) {
@@ -324,6 +327,26 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                     return std::nullopt;
                 }
                 options.pop.push_back(*object);
+            }
+        } else if (arg == "--away") {
+            for (const std::string& text : SplitCommas(argv[++i])) {
+                const auto object = ParseBenchObject(text);
+                if (!object || (*object != BenchObject::Tv && *object != BenchObject::Keyboard &&
+                                *object != BenchObject::Knob)) {
+                    return std::nullopt;
+                }
+                options.away.push_back(*object);
+            }
+        } else if (arg == "--run") {
+            const std::string_view run = argv[++i];
+            if (run == "pause") {
+                options.run = RunSwitch::Pause;
+            } else if (run == "1x") {
+                options.run = RunSwitch::RealTime;
+            } else if (run == "max") {
+                options.run = RunSwitch::Max;
+            } else {
+                return std::nullopt;
             }
         } else if (arg == "--tv") {
             options.tv = ParseTvSettings(argv[++i]);
@@ -565,7 +588,7 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
             boardView.select(*component);
         }
     }
-    Speed speed = Speed::RealTime;
+    RunSwitch run = options.run;  // the shelf's switch (P6o)
     shelf.manualOut = options.manual.has_value();
     shelf.tvOut = session.tv() != nullptr;
     shelf.knobOut = !session.knobs().empty();
@@ -633,6 +656,11 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
         }
         PopOutAtStart(object);
     }
+    for (const BenchObject object : options.away) {
+        (object == BenchObject::Tv         ? shelf.tvOut
+         : object == BenchObject::Keyboard ? shelf.keyboardOut
+                                           : shelf.knobOut) = false;
+    }
     Owner lastOwner = focus.owner();
     ManualWindows manualWindows;
     if (options.manual) {
@@ -646,7 +674,16 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
     boardView.setTooltip([&loaded](const BoardScene& scene, const Hit& hit) {
         return Tooltip(scene, hit, loaded.manuals.manuals);
     });
-    session.powerOn(seed);
+    // --run pause: paused once a picture is drawn, the switch kept at `‖` (PowerOn would move it).
+    constexpr Time kPauseAt = 200 * kPicosPerSecond / 1000;
+    if (run == RunSwitch::Max) {
+        session.setSpeed(Speed::Max);
+    }
+    if (run == RunSwitch::Pause) {
+        session.powerOn(seed, kPauseAt);
+    } else {
+        PowerOn(session, run, seed);
+    }
     const auto start = std::chrono::steady_clock::now();
     SpeedRatio ratio;
     double uiMilliseconds = 0;
@@ -1047,7 +1084,7 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
                                uiMilliseconds,
                                lock,
                                StateName(status.state)};
-        shelf.draw(session, boardView, focus, speed, seed);
+        shelf.draw(session, boardView, focus, run, seed);
         ImGui::End();
         // The bench, back to front at start: brief, TV, knob, manuals, instruments, keyboard,
         // Debug.

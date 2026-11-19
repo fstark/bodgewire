@@ -5,6 +5,7 @@ add_library(bw_view STATIC
   board_scene.cpp
   digit_shape.cpp
   focus.cpp
+  machine_slot.cpp
   keyboard_layout.cpp
   matrix_keyboard_layout.cpp
   pencil_marks.cpp

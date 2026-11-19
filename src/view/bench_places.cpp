@@ -121,4 +121,15 @@ Extent FitBench(Extent size, Extent bench) {
     return {size.width * scale, size.height * scale};
 }
 
+Place ReturnPlace(Place offset, Extent size, Extent bench) {
+    const auto along = [](float at, float length, float room) {
+        if (length > room - 2 * kBenchMargin) {
+            return (room - length) / 2;
+        }
+        return std::clamp(at, kBenchMargin, room - kBenchMargin - length);
+    };
+    return {along(offset.x, size.width, bench.width), along(offset.y, size.height, bench.height), 0,
+            0};
+}
+
 }  // namespace bw

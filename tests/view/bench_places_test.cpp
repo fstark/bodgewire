@@ -161,3 +161,20 @@ TEST_CASE("bench places: on a display further left, at its edge nearest the main
     CHECK(place->x == Catch::Approx(-600));
     CHECK(place->y == Catch::Approx(-1114 + 1662 - 500));
 }
+
+TEST_CASE("bench places: popped back in, where it was, moved inside the bench", "[view]") {
+    const Place inside = ReturnPlace({300, 200}, {400, 300}, kBench);
+    CHECK(inside.x == Catch::Approx(300));
+    CHECK(inside.y == Catch::Approx(200));
+    // Past the right and bottom edges (the bench shrank since): moved in to the margin.
+    const Place past = ReturnPlace({1200, 700}, {400, 300}, kBench);
+    CHECK(past.x == Catch::Approx(kBench.width - kBenchMargin - 400));
+    CHECK(past.y == Catch::Approx(kBench.height - kBenchMargin - 300));
+    const Place before = ReturnPlace({-50, 2}, {400, 300}, kBench);
+    CHECK(before.x == Catch::Approx(kBenchMargin));
+    CHECK(before.y == Catch::Approx(kBenchMargin));
+    // As wide as the bench: centred on that side.
+    const Place wide = ReturnPlace({500, 100}, {kBench.width, 300}, kBench);
+    CHECK(wide.x == Catch::Approx(0));
+    CHECK(wide.y == Catch::Approx(100));
+}

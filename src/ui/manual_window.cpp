@@ -24,8 +24,6 @@ constexpr float kTabStep = 50;
 constexpr float kTabSetBack = 6;
 constexpr float kTabLabelScale = 0.85f;
 constexpr float kTitleScale = 1.3f;
-constexpr float kPopSize = 28;  // the pop-out control (P6j)
-constexpr float kPopLift = 28;  // its bottom above the binder's: clear of the resize grip
 constexpr float kPi = std::numbers::pi_v<float>;
 
 constexpr ImU32 kCover = IM_COL32(36, 60, 115, 255);
@@ -116,37 +114,6 @@ void DrawBinder(ImDrawList& list, ImVec2 at, float w, float h) {
     }
 }
 
-// The pop-out control (P6j), on the cover under the tabs: a box open at its top right, an arrow
-// out of it (on the bench) or into it (in its own window). A click pops the binder out or in.
-void PopControl(ImVec2 at, float w, float h) {
-    const float left = at.x + w - kTabStrip + kTabSetBack;
-    const float right = at.x + w - kCoverEdge - 2;
-    const ImVec2 min{(left + right - kPopSize) / 2, at.y + h - kPopLift - kPopSize};
-    ImGui::SetCursorScreenPos(min);
-    const bool clicked = ImGui::InvisibleButton("##pop out", {kPopSize, kPopSize});
-    const bool hovered = ImGui::IsItemHovered();
-    const bool out = PoppedOut(BenchObject::Manual);
-    const ImU32 colour = (kPaper & ~IM_COL32_A_MASK) | IM_COL32(0, 0, 0, hovered ? 255 : 150);
-    const float u = kPopSize / 16;
-    const auto P = [&](float x, float y) { return ImVec2{min.x + x * u, min.y + y * u}; };
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    const ImVec2 box[] = {P(8, 3), P(3, 3), P(3, 13), P(13, 13), P(13, 8)};
-    list.AddPolyline(box, 5, colour, ImDrawFlags_None, 2.0f);
-    const ImVec2 tail = out ? P(13, 3) : P(7, 9);
-    const ImVec2 head = out ? P(7, 9) : P(13, 3);
-    list.AddLine(tail, head, colour, 2.0f);
-    // The head's two strokes, along the box's sides from the arrow's point.
-    const float back = out ? 4 : -4;
-    list.AddLine(head, {head.x + back * u, head.y}, colour, 2.0f);
-    list.AddLine(head, {head.x, head.y - back * u}, colour, 2.0f);
-    if (hovered) {
-        ImGui::SetTooltip(out ? "Back on the bench" : "Own window");
-    }
-    if (clicked) {
-        out ? PopIn(BenchObject::Manual) : PopOut(BenchObject::Manual);
-    }
-}
-
 }  // namespace
 
 void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
@@ -225,7 +192,6 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     ImGui::EndChild();
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(kPaperColours);
-    PopControl(at, w, h);
     if (CaseClose()) {
         open = false;
     }
