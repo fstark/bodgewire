@@ -2,6 +2,8 @@
 
 How the Machine in [BW80.md](BW80.md) is built: netlist, Board, manuals, tests. The new code it needs (`MEMBRANEKB`, `EXPANSION`, the window's ZX80 look, `bw place`'s `at`) is P5x's: [BW80_MACHINE_DESIGN.md](../../../docs/p5x-bw80/BW80_MACHINE_DESIGN.md). The display chain and the netlist it grows from are P5v's: [BW80_VIDEO_DESIGN.md](../../../docs/p5v-bw80-video/BW80_VIDEO_DESIGN.md) §5. Recipe: [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md).
 
+Sources: Grant Searle's redrawn issue 2 schematic (searle.x10host.com/zx80/zx80.html, also on archive.org), and the 1982 schematic printed in Syntax Quarterly 1-1 (Winter 1982), PDF pages 34–35 (magazine pages 32–33). That scan, 153 MB, is not committed: keep a copy at `external/zx80/SQ Syntax Quarterly 1-1.pdf` (git-ignored). The two agree on every connection checked; IC5 pin 8 takes IC16 pin 6, not `D6'`.
+
 ## Files
 
 Machine name `bw80`:
