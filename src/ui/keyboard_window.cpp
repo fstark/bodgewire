@@ -71,6 +71,7 @@ void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
     if (CaseClose()) {
         open = false;
     }
+    PopOnDoubleClick(BenchObject::Keyboard);
     ImGui::End();
 }
 

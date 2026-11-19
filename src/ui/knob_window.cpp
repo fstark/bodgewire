@@ -211,6 +211,7 @@ void KnobWindow::draw(bool& open, Session& session) {
     if (CaseClose()) {
         open = false;
     }
+    PopOnDoubleClick(BenchObject::Knob);
     ImGui::End();
 }
 

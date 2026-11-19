@@ -115,32 +115,11 @@ void KeepAspect(float aspect, float minWidth) {
         &aspect_);
 }
 
-void KeepAspectStretched(float aspect, float minWidth, const char* window, float& stretch) {
-    struct Stretch {
-        float aspect;
-        float* stretch;
-        bool heightOnly;
-    };
-    static Stretch data{};
-    const ImGuiWindow* found = ImGui::FindWindowByName(window);
-    const ImGuiID active = ImGui::GetActiveID();
-    data = {aspect, &stretch,
-            found != nullptr && (active == ImGui::GetWindowResizeBorderID(
-                                               const_cast<ImGuiWindow*>(found), ImGuiDir_Down) ||
-                                 active == ImGui::GetWindowResizeBorderID(
-                                               const_cast<ImGuiWindow*>(found), ImGuiDir_Up))};
-    ImGui::SetNextWindowSizeConstraints(
-        {minWidth, minWidth * aspect * kMinStretch}, {FLT_MAX, FLT_MAX},
-        [](ImGuiSizeCallbackData* callback) {
-            auto& d = *static_cast<Stretch*>(callback->UserData);
-            const float natural = callback->DesiredSize.x * d.aspect;
-            if (d.heightOnly) {
-                *d.stretch =
-                    std::clamp(callback->DesiredSize.y / natural, kMinStretch, kMaxStretch);
-            }
-            callback->DesiredSize.y = natural * *d.stretch;
-        },
-        &data);
+void PopOnDoubleClick(BenchObject object) {
+    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered() &&
+        !ImGui::IsAnyItemHovered()) {
+        TogglePop(object, ImGui::GetCurrentWindow()->Name);
+    }
 }
 
 void TogglePop(BenchObject object, const char* window) {

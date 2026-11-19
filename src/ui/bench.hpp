@@ -25,11 +25,6 @@ BenchRect BenchArea();
 void PlaceNext(BenchObject object, ImVec2 first);
 // Before Begin: height = width * aspect, at least `minWidth` wide (a case keeps its proportions).
 void KeepAspect(float aspect, float minWidth);
-// The same, height = width * aspect * `stretch` (the binder, P6o): while the player drags the
-// window's top or bottom edge (`window`: its Begin name), the height alone moves and sets
-// `stretch` (kept within kMinStretch..kMaxStretch); the corners and sides scale in proportion.
-inline constexpr float kMinStretch = 0.7f, kMaxStretch = 2.5f;
-void KeepAspectStretched(float aspect, float minWidth, const char* window, float& stretch);
 // A case's put-away mark, last before End: a small circled × in the window's top-right corner,
 // faint until hovered. True when clicked.
 bool CaseClose(float inset = 6);
@@ -45,6 +40,10 @@ bool PoppedOut(BenchObject object);
 // window beside the main one (BesidePlace; else where it is), from its window's last place. From
 // the next frame. `window`: its Begin name.
 void TogglePop(BenchObject object, const char* window);
+// Inside a window, last before End: a double-click on its drag zone (its title bar, or its own
+// body off every control: where a drag moves it; not inside a child, a binder's page) pops it out,
+// or back in (P6o), as a double-click on its shelf drawing does.
+void PopOnDoubleClick(BenchObject object);
 // --pop: popped out before the object first comes out, beside from its default place and first
 // size (also TogglePop's, for a window never drawn).
 void PopOutAtStart(BenchObject object);

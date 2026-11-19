@@ -283,6 +283,7 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     if (CaseClose(capture.kind == KeyMatrixKind::Bw80 ? 3 : 6)) {
         open = false;
     }
+    PopOnDoubleClick(BenchObject::Keyboard);
     ImGui::End();
 }
 

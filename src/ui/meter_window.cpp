@@ -5,6 +5,7 @@
 
 #include <imgui.h>
 
+#include "ui/bench.hpp"
 #include "ui/board_view.hpp"
 #include "ui/instrument_marks.hpp"
 
@@ -83,6 +84,7 @@ bool MeterWindow::draw(bool& open, Session& session) {
     } else {
         ImGui::TextUnformatted(LeadText("black", session.black()).c_str());
     }
+    PopOnDoubleClick(BenchObject::Meter);
     ImGui::End();
     return clicked;
 }

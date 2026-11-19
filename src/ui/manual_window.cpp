@@ -1,6 +1,7 @@
 #include "ui/manual_window.hpp"
 
 #include <array>
+#include <cfloat>
 #include <numbers>
 #include <string_view>
 
@@ -127,7 +128,9 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
         indexed_ = true;
     }
     PlaceNext(BenchObject::Manual, {600, 600 * kAspect * stretch_});
-    KeepAspectStretched(kAspect, kMinWidth, kManualWindowName, stretch_);
+    // Resized freely, from any edge or corner (P6o): a taller or wider binder shows more.
+    ImGui::SetNextWindowSizeConstraints({kMinWidth, kMinWidth * kAspect * kMinStretch},
+                                        {FLT_MAX, FLT_MAX});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, kCover);
@@ -195,6 +198,7 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     if (CaseClose()) {
         open = false;
     }
+    PopOnDoubleClick(BenchObject::Manual);
     ImGui::End();
 }
 

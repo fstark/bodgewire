@@ -9,6 +9,7 @@
 
 #include <imgui.h>
 
+#include "ui/bench.hpp"
 #include "ui/board_view.hpp"
 #include "ui/instrument_marks.hpp"
 #include "view/time_text.hpp"
@@ -672,6 +673,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     if (changed) {
         session.setAnalyzer(settings);
     }
+    PopOnDoubleClick(BenchObject::Analyzer);
     ImGui::End();
     return clicked;
 }

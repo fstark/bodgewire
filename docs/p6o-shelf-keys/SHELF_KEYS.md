@@ -52,6 +52,14 @@ Decided before the design (2026-11-19), the user's answers:
 | The switch at `‖` when the power comes on | it jumps to `1×`: powering on always runs |
 | The binder's own pop-out control (P6j) | removed: a double-click on the shelf pops out every object the same way |
 
+Decided after the implementation (2026-11-19), the user's requests:
+
+| Question | Decision |
+|---|---|
+| The brief without a Puzzle | left out of the shelf, not grayed |
+| The binder's corner | resizes it freely too: no aspect kept from any edge or corner (replaces §15's "its corner still scales it in proportion") |
+| A double-click on a window | on its drag zone (an instrument's title bar, a case's body off its controls, the binder's cover; not inside a page) pops it out, or back in, as on the shelf |
+
 ## What the player sees
 
 ### Keys
@@ -103,7 +111,7 @@ Decided before the design (2026-11-19), the user's answers:
 
 ### Bench
 
-15. **The binder** gets taller or shorter by its bottom edge (the height only); its corner still scales it in proportion. The height is kept for the run, and works the same when popped out. A taller binder still reads as a binder: the one exception to "objects keep their proportions".
+15. **The binder** gets taller or shorter by its bottom edge (the height only); its corner resizes it freely too (decided after the implementation, above). The height is kept for the run, and works the same when popped out. A taller binder still reads as a binder: the one exception to "objects keep their proportions".
 16. **The brief** note can be dragged. It stays glued to the Board, panning with it from where it was dropped (an offset from the Board's corner in screen pixels), for the run, kept when folded away and brought back. Built only if it takes about 10 lines; otherwise left out without asking.
 
 ## What is new

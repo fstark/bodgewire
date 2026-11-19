@@ -11,6 +11,7 @@
 #include <imgui.h>
 
 #include "instruments/volts.hpp"
+#include "ui/bench.hpp"
 #include "ui/board_view.hpp"
 #include "ui/instrument_marks.hpp"
 #include "view/time_text.hpp"
@@ -447,6 +448,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     if (changed) {
         session.setScope(settings);
     }
+    PopOnDoubleClick(BenchObject::Scope);
     ImGui::End();
     return clicked;
 }

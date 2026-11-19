@@ -261,6 +261,7 @@ void TvWindow::draw(bool& open, TvView& view) {
     if (CaseClose()) {
         open = false;
     }
+    PopOnDoubleClick(BenchObject::Tv);
     ImGui::End();
 }
 
