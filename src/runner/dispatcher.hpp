@@ -14,7 +14,9 @@
 
 namespace bw {
 
-inline constexpr std::size_t kMaxWatched = 96;  // ring slots
+// Ring slots: every Clip, Hook, lead, the probe and a Machine's lamps (64 + 4 + 2 + 1 + up to
+// 32 LED Nets on the LED Machines, with room).
+inline constexpr std::size_t kMaxWatched = 128;
 
 enum class MarkerKind : std::uint8_t { PowerOn, SliceEnd, Watch, Rewatch, Unwatch, PowerOff };
 

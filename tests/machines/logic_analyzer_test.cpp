@@ -117,7 +117,7 @@ std::optional<std::uint32_t> Value(const Capture& capture, std::size_t point, st
     if ((bits.unknown & mask) != 0) {
         return std::nullopt;
     }
-    return (bits.high & mask) >> first;
+    return static_cast<std::uint32_t>((bits.high & mask) >> first);
 }
 
 // The data bus at the last point of the Trigger's cycle with PHI2 high.

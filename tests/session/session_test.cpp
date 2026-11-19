@@ -50,6 +50,32 @@ Point Along(const Machine& machine, double nm) {
                  H0Crack().at.y + static_cast<std::int64_t>(dy / length * nm)};
 }
 
+std::size_t Clipped(const Session& session);
+
+// Every Channel not yet clipped but `leave`, on the Board's pads in order (any pad with a lead,
+// none of `skip`'s): a full load.
+void ClipTheRest(Session& session, std::size_t leave = 0, std::string_view skip = "") {
+    for (const BoardComponent& component : session.machine()->board().components) {
+        if (component.reference == skip) {
+            continue;
+        }
+        for (const Pad& pad : component.pads) {
+            if (Clipped(session) + leave >= kChannels) {
+                return;
+            }
+            if (!session.clipAt(component.reference, pad.number) &&
+                session.padLead(component.reference, pad.number)) {
+                REQUIRE(session.clip(component.reference, pad.number).has_value());
+            }
+        }
+    }
+}
+
+std::size_t Clipped(const Session& session) {
+    return static_cast<std::size_t>(
+        std::ranges::count_if(session.clips(), [](const auto& c) { return c.has_value(); }));
+}
+
 }  // namespace
 
 TEST_CASE("session: repairs only with the power off", "[session]") {
@@ -147,7 +173,18 @@ TEST_CASE("session: clips", "[session]") {
         }
     }
     REQUIRE(next == kChannels);
-    CHECK_FALSE(session.clip("U1", "2").has_value());
+    // Every Channel used: a pin not yet clipped is refused.
+    bool refused = false;
+    for (const BoardComponent& component : session.machine()->board().components) {
+        for (const Pad& pad : component.pads) {
+            if (!refused && !session.clipAt(component.reference, pad.number) &&
+                session.padLead(component.reference, pad.number)) {
+                CHECK_FALSE(session.clip(component.reference, pad.number).has_value());
+                refused = true;
+            }
+        }
+    }
+    CHECK(refused);
     CHECK_FALSE(session.clip("U99", "1").has_value());
 }
 
@@ -244,6 +281,8 @@ TEST_CASE("session: group refused without enough channels", "[session]") {
     for (const char* pin : {"RW", "PHI0", "PHI1", "PHI2", "SYNC", "RDY"}) {
         REQUIRE(session.clip("U1", pin).has_value());  // 30
     }
+    ClipTheRest(session, 2, "U2");  // 62
+    REQUIRE(Clipped(session) == kChannels - 2);
     // U2 is the first 74LS244: 1A1-1A4 is a group of 4, 2 free.
     const auto result = session.clipGroup("U2", "1A1");
     REQUIRE_FALSE(result.has_value());
@@ -660,10 +699,13 @@ TEST_CASE("session: heartbeat with every instrument", "[session][slow]") {
     CHECK(session.leds()[0].reference == "D1");
     CHECK(session.leds()[15].reference == "D16");
 
-    // 32 LED Nets + 8 Clips + 2 Hooks + the probe = 43 watched; the meter lead's Net is an LED's.
+    // 32 LED Nets + 64 Clips + 2 Hooks + the probe = 99 watched, over P6o's former 96
+    // (kMaxWatched 128); the meter lead's Net is an LED's.
     for (int bit = 0; bit < 8; ++bit) {
         REQUIRE(session.clip("U1", "A" + std::to_string(bit)).has_value());
     }
+    ClipTheRest(session);
+    CHECK(Clipped(session) == kChannels);
     REQUIRE(session.hook("U1", "PHI0").has_value());
     REQUIRE(session.hook("U1", "SYNC").has_value());
     const auto rw = session.padLead("U1", "RW");
@@ -692,7 +734,7 @@ TEST_CASE("session: led computer with every instrument", "[session][slow]") {
     CHECK(session.leds()[0].reference == "D1");
     CHECK(session.leds()[7].reference == "D8");
 
-    // At most 16 LED Nets + 32 Clips + 4 Hooks + the probe = 53 watched (kMaxWatched 96); the
+    // At most 16 LED Nets + 32 Clips + 4 Hooks + the probe = 53 watched (kMaxWatched 128); the
     // meter lead's Net is an LED's.
     REQUIRE(session.clipGroup("U1", "A0").has_value());
     REQUIRE(session.clipGroup("U1", "D0").has_value());
@@ -700,7 +742,7 @@ TEST_CASE("session: led computer with every instrument", "[session][slow]") {
     for (const char* pin : {"RW", "SYNC", "RES_N", "IRQ_N", "NMI_N"}) {
         REQUIRE(session.clip("U1", pin).has_value());
     }
-    CHECK(std::ranges::all_of(session.clips(), [](const auto& c) { return c.has_value(); }));
+    CHECK(Clipped(session) == 32);
     REQUIRE(session.setGroupTrigger(0, "8000"));
     session.arm();
     REQUIRE(session.hook("U6", "4Y").has_value());  // LATCH_CLK
@@ -740,14 +782,14 @@ TEST_CASE("session: bw1 with every instrument", "[session][slow]") {
     // has its pad's own Net: 13 + 6 lamp Nets.
     REQUIRE(session.leds().size() == 48);
 
-    // 19 lamp Nets + 32 Clips + 4 Hooks + the probe + the meter = 57 watched (kMaxWatched 96).
+    // 19 lamp Nets + 32 Clips + 4 Hooks + the probe + the meter = 57 watched (kMaxWatched 128).
     REQUIRE(session.clipGroup("U1", "A0").has_value());
     REQUIRE(session.clipGroup("U1", "D0").has_value());
     REQUIRE(session.clipGroup("U1", "PHI0").has_value());
     for (const char* pin : {"RW", "SYNC", "RES_N", "IRQ_N", "NMI_N"}) {
         REQUIRE(session.clip("U1", pin).has_value());
     }
-    CHECK(std::ranges::all_of(session.clips(), [](const auto& c) { return c.has_value(); }));
+    CHECK(Clipped(session) == 32);
     REQUIRE(session.setGroupTrigger(0, "1F1F"));  // SCANDS
     session.arm();
     REQUIRE(session.hook("U1", "PHI0").has_value());
@@ -805,7 +847,7 @@ TEST_CASE("session: bw2001 with every instrument", "[session][slow]") {
     for (const char* pin : {"RW", "PHI2", "RES_N", "IRQ_N", "NMI_N", "SYNC", "RDY", "SO"}) {
         REQUIRE(session.clip("UF3", pin).has_value());
     }
-    CHECK(std::ranges::all_of(session.clips(), [](const auto& c) { return c.has_value(); }));
+    CHECK(Clipped(session) == 32);
     REQUIRE(session.hook("UC9", "QD").has_value());  // CLK1M
     REQUIRE(session.hook("UC5", "2Q").has_value());  // DIS_ON
     REQUIRE(session.hook("UC6", "3Y").has_value());  // VIDEO_ON
@@ -839,14 +881,20 @@ TEST_CASE("session: bw80 with every instrument", "[session][slow]") {
     CHECK(session.matrixKind("J3") == KeyMatrixKind::Bw80);
     CHECK(session.leds().empty());
 
-    // The Z80's address and data buses and its strobes: 32 Clips.
+    // The Z80's address and data buses and its strobes, the memory side of the data bus (MD0-MD7,
+    // the drawing's D0'-D7', at the ROM), then the rest of the Board: 64 Clips (P6o).
     REQUIRE(session.clipGroup("IC1", "A0").has_value());
     REQUIRE(session.clipGroup("IC1", "D0").has_value());
     for (const char* pin :
          {"M1_N", "MREQ_N", "IORQ_N", "RD_N", "WR_N", "RFSH_N", "HALT_N", "INT_N"}) {
         REQUIRE(session.clip("IC1", pin).has_value());
     }
-    CHECK(std::ranges::all_of(session.clips(), [](const auto& c) { return c.has_value(); }));
+    const auto memory = session.clipGroup("IC2", "O0");
+    REQUIRE(memory.has_value());
+    REQUIRE(memory->group.has_value());
+    CHECK(session.groups()[*memory->group].channels.size() == 8);
+    ClipTheRest(session);
+    CHECK(Clipped(session) == kChannels);
     REQUIRE(session.hook("IC18", "2Q").has_value());  // PHI
     REQUIRE(session.hook("IC19", "1Q").has_value());  // SYNC
     REQUIRE(session.hook("IC15", "1Y").has_value());  // NOP_EN

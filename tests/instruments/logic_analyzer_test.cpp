@@ -259,6 +259,22 @@ TEST_CASE("analyzer: channel 31", "[instruments]") {
     CHECK(Bit(state.capture(), kPre, 31) == true);
 }
 
+TEST_CASE("analyzer: channel 63, the last of 64", "[instruments]") {
+    static_assert(kChannels == 64);
+    constexpr ChannelMask kCh63 = ChannelMask{1} << 63;
+    AnalyzerState state;
+    AnalyzerSettings settings = Settings();
+    settings.trigger[63] = TriggerCondition::Fall;
+    state.arm(settings, {}, 0);
+    state.change(0, kCh63, One);
+    state.change(4500, kCh63, Zero);
+    state.advanceTo(kFar);
+    REQUIRE(state.phase() == AnalyzerPhase::Captured);
+    CHECK(state.capture().triggerTime == 5000);
+    CHECK(Bit(state.capture(), kPre - 1, 63) == true);
+    CHECK(Bit(state.capture(), kPre, 63) == false);
+}
+
 TEST_CASE("analyzer: mask trigger matches the per-Channel rule", "[instruments]") {
     // The P3c evaluator, Channel by Channel, as the reference.
     const auto reference = [](const AnalyzerSettings& settings, const ChannelBits* previous,

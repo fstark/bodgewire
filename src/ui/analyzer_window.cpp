@@ -81,7 +81,7 @@ CaptureRuns RunsOf(const Capture& capture, const std::vector<std::size_t>& chann
         bool unknown = false;
         for (std::size_t b = 0; b < channels.size(); ++b) {
             unknown = unknown || (bits.unknown >> channels[b] & 1) != 0;
-            value |= (bits.high >> channels[b] & 1) << b;
+            value |= static_cast<std::uint32_t>(bits.high >> channels[b] & 1) << b;  // b < 32
         }
         const std::pair now{unknown ? 0 : value, unknown};
         if (now != last) {

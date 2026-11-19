@@ -15,9 +15,9 @@
 
 namespace bw {
 
-inline constexpr std::size_t kChannels = 32;
+inline constexpr std::size_t kChannels = 64;   // both sides of the BW-80's data bus, its address
 inline constexpr std::size_t kDepth = 65'536;  // sample points per Capture
-using ChannelMask = std::uint32_t;             // bit c: Channel c
+using ChannelMask = std::uint64_t;             // bit c: Channel c
 // Sample periods, ps: 1 kHz … 100 MHz in 1-2-5 steps.
 inline constexpr std::array<Time, 16> kAnalyzerPeriods{
     1'000'000'000, 500'000'000, 200'000'000, 100'000'000, 50'000'000, 20'000'000,
