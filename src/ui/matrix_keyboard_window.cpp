@@ -75,14 +75,13 @@ constexpr ImU32 kCaseEdge = IM_COL32(250, 250, 248, 255);
 constexpr ImU32 kPlate = IM_COL32(16, 17, 20, 255);  // the black plate the keys stand on
 constexpr ImU32 kEngraving = IM_COL32(120, 120, 116, 255);
 // The PET 2001's point-of-sale keys (P6l2), from a photograph: a cream body, a rounded top set in
-// it (grey on the main block, near-white on the pad, red or blue on the keys with
-// words), black legends and graphics, white words on the coloured tops.
+// it (grey on the main block and the pad, red or blue on the keys with words), black
+// legends and graphics, white words on the coloured tops.
 constexpr ImU32 kPetBody = IM_COL32(232, 226, 206, 255);
 constexpr ImU32 kPetBodyShade = IM_COL32(196, 189, 168, 255);
 constexpr ImU32 kPetRim = IM_COL32(248, 244, 230, 255);     // the rim's highlight
 constexpr ImU32 kPetRecess = IM_COL32(120, 112, 100, 255);  // the recess's shadow
 constexpr ImU32 kPetGrey = IM_COL32(164, 164, 170, 255);    // the silver foil
-constexpr ImU32 kPetWhite = IM_COL32(240, 238, 230, 255);
 constexpr ImU32 kPetRed = IM_COL32(186, 60, 54, 255);
 constexpr ImU32 kPetBlue = IM_COL32(36, 158, 218, 255);
 constexpr ImU32 kPetWord = IM_COL32(248, 244, 244, 255);
@@ -126,7 +125,7 @@ ImU32 Lighter(ImU32 c) {
 
 // One PET key in its pitch `a`-`b`: the cream body, the coloured top, the graphic SHIFT gives above
 // the legend (from the character ROM), or the words of the keys that have them. `pad`: a key of
-// the numeric pad (near-white tops).
+// the numeric pad (the slashed zero).
 void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 a, ImVec2 b,
                 float u, bool down, bool pad) {
     const int first = list.VtxBuffer.Size;
@@ -141,7 +140,7 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
                                                   kPetRim, kPetBody);
     const ImVec2 ta{a.x + 0.14f * u, a.y + 0.14f * u}, tb{b.x - 0.14f * u, b.y - 0.14f * u};
     list.AddRectFilled({ta.x - 0.02f * u, ta.y - 0.02f * u}, tb, kPetRecess, 0.07f * u);
-    ImU32 top = pad ? kPetWhite : kPetGrey;
+    ImU32 top = kPetGrey;
     ImU32 ink = kLegend;
     if (legend == "SHIFT" || legend == "SPACE" || legend == "RETURN" || legend == "HOME" ||
         legend == "DEL") {
