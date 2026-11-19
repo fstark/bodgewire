@@ -2,7 +2,7 @@
 
 ## What it does
 
-Welcome to the Bouncing Ball, the first board on the bench that moves a picture. The TV shows a white box with a dashed line down the middle. A small square ball flies across it on a slant. It bounces off each of the four walls and never stops. It crosses the box in about a second.
+Welcome to the Bouncing Ball, the first board on the bench that moves a picture. The TV shows a white box with a dashed line down the middle. The box fills most of the screen, with a dark margin all round. A small square ball flies across it on a slant. It bounces off each of the four walls and never stops. It crosses the box in about a second.
 
 This is the ball of the first arcade tennis games, on its own: no paddles, no score. There is nothing to press. The picture locks within half a second of power-on. The ball starts anywhere, and may be out of sight for up to a second before it comes in through a wall.
 
@@ -22,7 +22,8 @@ This is the ball of the first arcade tennis games, on its own: no paddles, no sc
 **Sync.** The TV must know when each line and each picture starts.
 
 - `U6` makes `HSYNC_N` low for dots 104 to 111 of each line.
-- `U8` makes `VSYNC_N` low for lines 308 to 311.
+- `U14`, `U17` and `U10` make `VSYNC_N` low for lines 280 to 283, soon after the picture's last line.
+- The beam takes a while to fly back to the top. The dark lines after the sync give it that time, so it is back before line 0.
 - `U10` mixes the two into one wire, `SYNC_N_D`.
 - `U11` passes the sync and the video on together, at the clock, to `J2`: `SYNC_N` and `VIDEO`.
 
@@ -44,7 +45,7 @@ This is the ball of the first arcade tennis games, on its own: no paddles, no sc
 
 - `U18` and `U19` count every other dot. When they overflow, the ball's column is under the beam. That moment is `HBALL`.
 - At once, `U24` loads them again, on `HLOAD_N`. Normally they then take exactly one line to overflow again. So the ball stays in the same column, line after line.
-- Once a picture, on line 308, `MOVE` is high. On that line the counters load one step more or one step less. The ball's column then comes one step later or earlier: 2 dots right or left.
+- Once a picture, on line 308, `U8` pulls `TICK_N` low and `U17` makes `MOVE` high. On that line the counters load one step more or one step less. The ball's column then comes one step later or earlier: 2 dots right or left.
 - `HDIR` chooses. High: the ball goes right. Low: it goes left.
 
 **The ball up and down.** `U20`, `U21` and `U22` count lines the same way. Their round is a little longer or shorter than a picture.
@@ -73,7 +74,7 @@ This is the ball of the first arcade tennis games, on its own: no paddles, no sc
 |---|---|---|
 | `CLR_N` on the 74LS161 counters | reset the count to 0 | tied high: never resets |
 | `LOAD_N` on `U1` and `U2` | load a starting number | tied high: the dot counter never loads |
-| `U2.QD`, `U3.QD`, `U5.QB` to `U5.QD` | count higher | unused: the counts never get there |
+| `U2.QD`, `U5.QB` to `U5.QD` | count higher | unused: the counts never get there |
 | `U22`'s second flip-flop | a second flip-flop | inputs tied to 0 V |
 | `U23.QB`, `U23.QC` | middle bits of the count | unused: only the last bit and the stop matter |
 

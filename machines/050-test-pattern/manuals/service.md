@@ -10,8 +10,8 @@
 - `U5` line counter, bit 8: `V8`
 - `U6` line decoder: gate 1 pulls `LINE_END_N` low at dot 63, gate 2 pulls `HSYNC_N` low for dots 52 to 55
 - `U7` frame-end decoder: `FRAME_END_N` low at the end of line 311
-- `U8` frame sync decoder: `VSYNC_N` low for lines 308 to 311
-- `U9` inverters: `H3_N` and `V3_N` for the decoders, `LINE_END` for the line counter
+- `U8` frame sync decoder: `VSYNC_N` low for lines 288 to 291
+- `U9` inverters: `H3_N`, `V2_N`, `V3_N` and `V4_N` for the decoders, `LINE_END` for the line counter
 - `U10` sync mixer: mixes `HSYNC_N` and `VSYNC_N` into one sync, `SYNC_N_D`
 - `U11` blanking and video gate: `HBLANK`, `VBLANK`, and `VIDEO_D`, the grid inside the picture
 - `U12` grid ORs: join counter bits for the grid, then the two grid directions into `GRID`
@@ -36,6 +36,7 @@ What the logic probe shows on a working board. **P** is the pulse lamp. It stays
 | `U3.QA` | `V0` | P lit: it changes at every line |
 | `U5.QA` | `V8` | mostly L, with P lit: high for the last 56 lines of each frame |
 | `U7.Y` | `FRAME_END_N` | mostly H, with P lit: low for one dot per frame |
+| `U9.4Y`, `U9.5Y` | `V4_N`, `V2_N` | P lit; H and L flicker |
 | `U8.Y` | `VSYNC_N` | mostly H, with P lit |
 | `U14.1Q` (`J2`'s sync) | `SYNC_N` | mostly H, with P lit |
 | `U14.2Q` (`J2`'s video) | `VIDEO` | mostly L, with P lit |
@@ -47,7 +48,7 @@ The logic analyzer and the oscilloscope show what the probe cannot: when each pu
 |---|---|
 | A line, on the analyzer. Clip `U6.1Y` and trigger on its falling edge. Clip also `U1.QA`, `U1.QB`, `U1.QC`, `U1.QD`, `U2.QA`, `U2.QB`, `U6.2Y` and `U14.1Q`. Sample every 100 ns, view at 10 µs a division | The dot counter: each of `H0` to `H5` changes half as often as the one before. `U6.1Y` is low for one dot, every 64 µs, just as `H0`–`H5` are all high. `U6.2Y` is low for 4 µs, ending 7 µs before it. `U14.1Q` is the same pulse, one dot later |
 | A line, on the oscilloscope. Hook `U14.1Q` on channel 1 and `U14.2Q` on channel 2. Trigger on channel 1, rising edge, at 10 µs a division | Channel 1: a sync pulse low for 4 µs, every 64 µs. Channel 2, on most lines: six short pulses, one every 8 µs, the first 8 µs after the sync ends. On a grid line, channel 2 stays high for 48 µs instead. In the dark border at the bottom it stays low |
-| A frame, on the analyzer. Clip `U8.Y` and trigger on its falling edge. Clip also `U3.QA`, `U5.QA`, `U11.2Y` and `U14.1Q`. Sample every 10 µs, view at 2 ms a division | `U8.Y` is low for four lines, a quarter of a millisecond. During those lines `U14.1Q` turns over: mostly low, with short high notches. `U5.QA` goes high about 3.3 ms before the trigger and drops as `U8.Y` ends: the last 56 lines. `U11.2Y`, the dark border at the bottom, goes high about 1.3 ms before the trigger and drops with it. `U3.QA` changes at every line throughout |
+| A frame, on the analyzer. Clip `U8.Y` and trigger on its falling edge. Clip also `U3.QA`, `U5.QA`, `U11.2Y` and `U14.1Q`. Sample every 10 µs, view at 2 ms a division | `U8.Y` is low for four lines, a quarter of a millisecond. During those lines `U14.1Q` turns over: mostly low, with short high notches. `U5.QA` goes high about 2 ms before the trigger and drops about 1.5 ms after it: the last 56 lines. `U11.2Y`, the dark border at the bottom, goes high with the trigger and drops with `U5.QA`. `U3.QA` changes at every line throughout |
 | The supply, on the meter. Red lead on any chip's `VCC` pin | 5.00 V |
 
 ## Troubleshooting

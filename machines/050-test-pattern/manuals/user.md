@@ -2,7 +2,7 @@
 
 ## What it does
 
-Welcome to the Test Pattern Generator, the first board on the bench that drives a TV. The TV sits beside it on the bench. After power-up it shows a white grid on black, in the top-left part of the screen. There are 6 vertical lines and 18 horizontal ones. The picture locks within half a second and never rolls.
+Welcome to the Test Pattern Generator, the first board on the bench that drives a TV. The TV sits beside it on the bench. After power-up it shows a white grid on black that fills the screen. The board draws 6 vertical lines and 18 horizontal ones. The top horizontal line sits just above the screen's edge, hidden like the edges of any TV picture, so 17 of them show. The picture locks within half a second and never rolls.
 
 There is no processor and no memory on this board. A clock and a row of counter chips draw the whole picture. A few gates turn the counts into the grid and into the timing the TV needs.
 
@@ -21,7 +21,8 @@ There is no processor and no memory on this board. A clock and a row of counter 
 **The sync.** The TV needs a signal to know where a line and a frame begin. Without it, the picture slides sideways or rolls. That signal is the sync.
 
 - `U6` pulls `HSYNC_N` low for dots 52 to 55. That is the line sync: it tells the TV to jump back to the left.
-- `U8` pulls `VSYNC_N` low for lines 308 to 311. That is the frame sync: it tells the TV to jump back to the top.
+- `U8` pulls `VSYNC_N` low for lines 288 to 291, just after the picture's last line. That is the frame sync: it tells the TV to jump back to the top.
+- The sync comes early in the dark border on purpose. The beam takes a while to fly back, and the dark lines after the sync give it that time before line 0.
 - `U10` mixes the two into one wire, `SYNC_N_D`. The TV tells them apart by their length: a line sync is short, a frame sync lasts four lines.
 
 **The dark border.** Dots 48 to 63 and lines 288 to 311 are never lit. The beam is on its way back there, or off the edge of the screen. `U11` marks those dots on `HBLANK` and those lines on `VBLANK`. `U13` combines them into `ACTIVE`, high only inside the picture.

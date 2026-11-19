@@ -24,23 +24,25 @@ Decodes, as wired:
 | `LINE_END_N` | `U6` gate 1: NAND(`HC`, `H4`, `H5`, +5 V) | dot 63 |
 | `HSYNC_N` | `U6` gate 2: NAND(`H5`, `H4`, `H3_N`, `H2`) | dots 52–55 |
 | `FRAME_END_N` | `U7`: NAND(`V8`, `V5`, `V4`, `V2`, `V1`, `V0`, `LINE_END`, +5 V) | line 311 at its line end |
-| `VSYNC_N` | `U8`: NAND(`V8`, `V5`, `V4`, `V2`, `V3_N`, +5 V ×3) | lines 308–311 |
+| `VSYNC_N` | `U8`: NAND(`V8`, `V5`, `V4_N`, `V3_N`, `V2_N`, +5 V ×3), the inverted bits from `U9` gates 2, 4, 5 | lines 288–291 |
 | `HBLANK` | `U11` gate 1: AND(`H5`, `H4`) | high for dots 48–63 |
 | `VBLANK` | `U11` gate 2: AND(`V8`, `V5`) | high for lines 288–311 |
 | `GRIDH` | `U13` gate 2: NOR(`H21` = `H2` OR `H1`, `H0`) | high when dot mod 8 = 0 |
 | `GRIDV` | `U13` gate 3: NOR(`V32` = `V3` OR `V2`, `V10` = `V1` OR `V0`) | high when line mod 16 = 0 |
 
-`U4` `QC`, `QD` (`V6`, `V7`) drive nothing: the frame-end decode does not need them, since line 311 is reached before any value with them set. Unused gate inputs are tied to `GND`; the netlist loads without warnings.
+`U4` `QC`, `QD` (`V6`, `V7`) drive nothing: the frame-end decode does not need them, since line 311 is reached before any value with them set. Unused gate inputs (`U9` gate 6, `U10` gates 3–4, `U11` gate 4, `U13` gate 4) are tied to `GND`; the netlist loads without warnings.
+
+Where the picture lands on the TV (P6n, measured with `bw run --tv`): line 0 on row 24, the picture on rows 24–311 and columns 96–480. The monitor's window starts at row 28, so lines 0–3 (the top grid line) are always hidden: 17 of the 18 horizontal lines show.
 
 ## Board
 
-Exported with `bw export-kicad`, placed by hand and routed with Freerouting in KiCad 10 (P2a, `8d89c52`; connectors added in P2b, `129fd25`). Chips in two rows, counters along the front (`U1` `U9` `U3` `U2` `U4` `U5`), decoders and gates behind; `J1` at the left, `J2` at the back.
+Exported with `bw export-kicad`, placed by hand and routed with Freerouting in KiCad 10 (P2a, `8d89c52`; connectors added in P2b, `129fd25`). P6n kept the placement in `board/test_pattern.place` (`at REF X Y [ANGLE]`, rebuilt by `bw place`) and routed the whole Board again with Freerouting. Chips in two rows, counters along the front (`U1` `U9` `U3` `U2` `U4` `U5`), decoders and gates behind; `J1` at the left, `J2` at the back.
 
 - `bw check-board` clean; `drc_test_pattern` passes.
 - Cracks (placed by pads and position since P4e):
   - `H0`: `U1.QA U13.2B 79%`.
   - `VCC` at `U6`: `U6.VCC U10.VCC 24%`, cutting `U6` pin 14 off.
-  - `LINE_END`: `U9.6 U3.7 50%`, on the 17 mm F.Cu stretch from `U9` pin 6. `LINE_END` runs `U9` pin 6 → `U3` pin 7 → `U3` pin 10 → `U4` pin 7 → `U5` pin 7 on F.Cu, and `U9` pin 6 → `U7` pin 11 on B.Cu; this crack cuts the whole F.Cu chain off. A crack between `U3` pin 10 and `U4` pin 7 instead changes nothing visible: `U4` already gets the line end through `U3.RCO` on its `ENT`.
+  - `LINE_END`: `U9.6 U3.7 50%`, on the Trace that leaves `U9` pin 6. On the Board routed in P6n every other `LINE_END` pad hangs behind it: the crack cuts `U3` pins 7 and 10, `U4` pin 7, `U5` pin 7 and `U7` pin 11 off. A crack between `U3` pin 10 and `U4` pin 7 instead changes nothing visible: `U4` already gets the line end through `U3.RCO` on its `ENT`. After a reroute, check the crack's island again (`bw run puzzles/08-zips.bwp --probe U3.ENP,U7.G`: floating pins read `-`).
 
 ## Puzzles
 
@@ -74,12 +76,12 @@ Tests: `tests/machines/test_pattern_faults_test.cpp` (titles and briefs of all e
 
 - Missing grid lines: `U13` pin 5 alone on its island, no Driver: floating, reads high. `GRIDH` = NOR(`H21`, 1) is always low.
 - Picture breaks up: `U6` pin 14 on a `VCC~2` island with no supply pin: `U6` is not Powered, its Pins get private Nets. `LINE_END_N` and `HSYNC_N` hold only inputs: floating, read high. `U2` is never reloaded (the line runs 256 dots) and there is no horizontal sync.
-- Zips: `U3` pins 7 and 10, `U4` pin 7 and `U5` pin 7 share an island without a Driver: floating, read high. `U3` counts on every clock; `U4` on every `U3` carry, `U5` on every `U4` carry. `U7` still sees the real `LINE_END`, so `FRAME_END_N` only goes low if line value 311 meets dot 63, which happens at most once after power-on; then the counters run 0–511 every 512 dots. The grid decode follows `V0`–`V3` along each line, which draws the zips.
+- Zips: `U3` pins 7 and 10, `U4` pin 7, `U5` pin 7 and `U7` pin 11 share an island without a Driver: floating, read high. `U3` counts on every clock; `U4` on every `U3` carry, `U5` on every `U4` carry. `U7` sees `LINE_END` high too, so `FRAME_END_N` goes low as soon as the count reaches 311: the counters run 0–311 every 312 dots. The grid decode follows `V0`–`V3` along each line, which draws the zips.
 - Bridges join their two pads' islands in every build: a signal on `GND` (line bridge) is a Tie and wins; two outputs (sync bridge) are a Contention, 0 wins; `VCC` on `GND` (dead rail) is a Dead Rail.
 
 ## Manuals
 
 Written to STYLE's Manuals rules (P6k):
 
-- User: What it does (a welcome: the TV beside the board shows a steady grid of 6 vertical and 18 horizontal lines; a clock and counters draw it, no processor); How it works (the goal, the beam as an eye reading a page, the clock, the dot counter `U1` `U2` with `LINE_END_N`, the line counter `U3`–`U5` with `FRAME_END_N`, the sync, the dark border, the grid, the output register `U14`, no reset, the unused pins in a table). No Using it: nothing to operate.
-- Service: Components (every reference, netlist order); Test points (probe readings checked with `bw run --probe` at 0.3 s, 0.5 s, 0.6 s, 0.8 s, 1 s, 1.013 s and 1.1 s: every signal but the supply shows P, and its brighter lamp; four instrument setups checked in `bw_ui` screenshots after 1 s: a line on the analyzer (`--clip U6.1Y:f,…` at 100 ns, 10 µs a division), a line on the oscilloscope (`--hook U14.1Q,U14.2Q --timebase 10us`, after 1 s and 1.2 s), a frame on the analyzer (`--clip U8.Y:f,…` at 10 µs, 2 ms a division), the meter on `U6` pin 14); Troubleshooting (no picture, a picture that will not hold still, a steady but wrong grid: ordered checks, never naming a fault).
+- User: What it does (a welcome: the TV beside the board shows a steady grid filling the screen, 6 vertical and 18 horizontal lines, the top one hidden above the screen's edge (P6n); a clock and counters draw it, no processor); How it works (the goal, the beam as an eye reading a page, the clock, the dot counter `U1` `U2` with `LINE_END_N`, the line counter `U3`–`U5` with `FRAME_END_N`, the sync (lines 288–291, before the picture so the beam has flown back by line 0), the dark border, the grid, the output register `U14`, no reset, the unused pins in a table). No Using it: nothing to operate.
+- Service: Components (every reference, netlist order); Test points (probe readings checked with `bw run --probe` at 0.3 s, 0.5 s, 0.6 s, 0.8 s, 1 s, 1.013 s and 1.1 s: every signal but the supply shows P, and its brighter lamp; four instrument setups checked in `bw_ui` screenshots after 1 s: a line on the analyzer (`--clip U6.1Y:f,…` at 100 ns, 10 µs a division), a line on the oscilloscope (`--hook U14.1Q,U14.2Q --timebase 10us`, after 1 s and 1.2 s), a frame on the analyzer (`--clip U8.Y:f,…` at 10 µs, 2 ms a division), the meter on `U6` pin 14; P6n re-read `U8.Y`, `U9.4Y`, `U9.5Y` at 0.5 s, 1 s and 1.013 s and the frame setup's screenshot); Troubleshooting (no picture, a picture that will not hold still, a steady but wrong grid: ordered checks, never naming a fault).

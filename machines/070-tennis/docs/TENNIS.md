@@ -12,12 +12,14 @@ Faults show as rules going wrong (the ball goes through a paddle, always leaves 
 
 The beam counters, sync, net and ball of the 060 bouncing ball ([BOUNCING_BALL.md](../../060-bouncing-ball/docs/BOUNCING_BALL.md), Circuit), with the same timing (2 MHz dot clock, 128 dots × 312 lines, active picture dots 0–95, lines 0–255). What changes and what is new:
 
+- Vertical sync: lines 272–287, 16 lines (P6n): `U51` gate 4 makes `VSYNC_A` = NAND(`V8`, `V4`), `U38` gate 4 `VSYNC_N` = OR(`VSYNC_A`, `V5`), into `U10.1B`. Early in the blanking, so the beam is back at the top before line 0; Tennis has no spare inverter, NOR3 or XOR for 060's 4-line decode. `U8` gate 1 still decodes lines 308–311, as `TICK_N`, for `MOVE` and the controllers' triggers. The picture lands on TV rows 40–295, columns 96–480.
+
 | | Value |
 |---|---|
 | Court | top wall lines 0–15, bottom wall lines 240–255, dashed net at dots 48–49; no side walls drawn |
 | Goals | dots 0–3 (left) and 92–95 (right): the 060 side walls, still decoded, not drawn |
 | Paddles | 2 dots × 16 lines; left at dots 6–7, right at dots 88–89; top line 16 to 224 |
-| Controllers | `J3` (left), `J4` (right), triggered by `VSYNC_N`; the knob's right stop puts the paddle at the top |
+| Controllers | `J3` (left), `J4` (right), triggered by `TICK_N` (line 308); the knob's right stop puts the paddle at the top |
 | Ball | 2 dots × 8 lines, as on 060; 1 dot a frame across after a serve, 2 dots a frame after the ball has turned left twice; 2 or 4 lines a frame up or down |
 | Angles | the ball's 5th line (line 4 of 0–7) on paddle lines 0–3: steep up; 4–7: shallow up; 8–11: shallow down; 12–15: steep down |
 | Serve | a miss hides the ball at that edge for 28–32 frames (about 0.6 s), then it leaves that edge towards the scorer, slow |
@@ -26,7 +28,7 @@ The beam counters, sync, net and ball of the 060 bouncing ball ([BOUNCING_BALL.m
 
 ### Paddles
 
-Each controller is a `PADDLE` behind a 4-pin Connector ([PADDLE.md](../../../datasheets/PADDLE.md)): each fall of `TRIG_N` starts a high pulse on `OUT` whose length the knob sets. Both are triggered by `VSYNC_N`, at the start of line 308. They are wired the other way round (`reversed=yes`): the left stop gives the longest pulse, 14.56 ms, the right stop the shortest, 1.248 ms.
+Each controller is a `PADDLE` behind a 4-pin Connector ([PADDLE.md](../../../datasheets/PADDLE.md)): each fall of `TRIG_N` starts a high pulse on `OUT` whose length the knob sets. Both are triggered by `TICK_N`, at the start of line 308. They are wired the other way round (`reversed=yes`): the left stop gives the longest pulse, 14.56 ms, the right stop the shortest, 1.248 ms.
 
 - `U27` 74LS74 samples each pulse at every line start (`LINE_END_N` rises): `LWAIT` and `RWAIT` are the pulses moved to line boundaries.
 - `U28` (left) and `U29` (right) 74LS93 count the paddle's lines. Each is cleared while its `WAIT` is high, then counts on the start of dot 127 of each line (`LPAD_CK` = NOR(`LINE_END`, `LDONE`)): during the k-th line after the pulse it holds k. `LP0`–`LP3` and `RP0`–`RP3` are the paddle line, 0–15.
@@ -67,7 +69,7 @@ Mixer (`U16`): `BALLV_N`, `TOP_N`, `BOTTOM_N`, `PAD_N`, `NET_N`, `SCORE_N`; two 
 
 ## When it works
 
-- The TV shows the top and bottom walls, the dashed net, a paddle near each side edge and the two scores at the top. Turning the left knob towards its right stop (Q) moves the left paddle up, towards its left stop (A) down; the right knob (Up and Down) the same for the right paddle. The paddle follows the knob within two frames.
+- The TV shows, inside the monitor's window at the knobs' marks, the top and bottom walls, the dashed net, a paddle near each side edge and the two scores at the top. Turning the left knob towards its right stop (Q) moves the left paddle up, towards its left stop (A) down; the right knob (Up and Down) the same for the right paddle. The paddle follows the knob within two frames.
 - The ball bounces off the top and bottom walls and off the paddles. Where no paddle stops it, it reaches the edge (dots 2–3 or 92–93, the goals are not drawn). Hitting it with the top or bottom quarter of the paddle sends it off steeply, with the middle quarters at a shallow angle, up from the upper half and down from the lower half.
 - A rally starts slow (the ball crosses in about 1.6 s) and speeds up (about 0.8 s) after the ball has turned left twice: three or four hits.
 - A ball that gets past a paddle disappears; about 0.6 s later it comes back out of that edge, slow, heading for the player who just scored, whose score has gone up by one.
@@ -88,9 +90,9 @@ Faults that change the picture or what is on it, each seen within a few seconds 
 | Invisible ball | Broken Trace on `SERVING` between `U43` pin 10 and `U38` pin 10 | no ball, yet the game goes on: the scores go up | `BALL_N` pulses at `U38` pin 9; `SERVING` is driven at `U41` and `U43` but nothing at `U38` pin 10 (floating, read high, hides the ball): mend the Trace |
 | Double scores | `U10` output `4Y` (`HX`) stuck at 1 | each score drawn twice, 8 dots further out (left: dots 0–11 and 16–27; right: 64–75 and 80–91) | `HX` stays high at `U10` pin 11 while `H4` and `H6` pulse on its inputs: swap `U10` |
 | Folded digits | `U54` input `S` (`V4`) stuck at 1 | the digits are drawn as their bottom halves twice: no top bar, odd shapes that change with the score | `V4` pulses at `U54` pin 1, yet `A_TOP` (pin 12) never lights: swap `U54` |
-| Rolling picture | Dry Joint at `U10` pin 2 (`VSYNC_N`) | the picture rolls up the screen without stopping; the paddles and the game work | the paddles prove `VSYNC_N` is good (it triggers `J3` and `J4`): it pulses on `U10` pin 2's pad but not on the leg, so `SYNC_N` carries only the line syncs: resolder `U10` pin 2 |
-| Lost paddles | Dry Joint at `U7` pin 4 (`V2`) | the picture rolls, the paddles are gone, the ball never crosses the court | `FRAME_END_N` comes at line 307: the frame is 308 lines and line 308 never comes, so no `VSYNC_N` (no sync, no trigger) and no `MOVE`; `V2` pulses on pin 4's pad, not on the leg: resolder `U7` pin 4 |
+| Rolling picture | Dry Joint at `U10` pin 2 (`VSYNC_N`) | the picture rolls up the screen without stopping; the paddles and the game work | the paddles prove the frame count is good (`TICK_N` triggers `J3` and `J4`); `VSYNC_N` pulses at `U38` pin 11 and on `U10` pin 2's pad but not on the leg, so `SYNC_N` carries only the line syncs: resolder `U10` pin 2 |
+| Lost paddles | Dry Joint at `U7` pin 4 (`V2`) | a steady picture, but the paddles are gone and the ball never comes across the court | `FRAME_END_N` comes at line 307: the frame is 308 lines and line 308 never comes, so no `TICK_N` (no paddle trigger) and no `MOVE`; the sync (lines 272–287) still comes, so the picture holds; `V2` pulses on pin 4's pad, not on the leg: resolder `U7` pin 4 |
 
-Each teaches something different: a select input stuck (a multiplexer shows the wrong source), a bridge between two outputs (wired-AND of two pictures), a decoder input left open (one column becomes four), a counter clock cut (a stop flag never comes), a hidden signal that is still there, a decoder output stuck (a picture region repeated), a stroke selector stuck (a glyph folded), sync lost on the way out while the Machine is fine, and a frame counter cut short (everything timed by the frame's end goes at once).
+Each teaches something different: a select input stuck (a multiplexer shows the wrong source), a bridge between two outputs (wired-AND of two pictures), a decoder input left open (one column becomes four), a counter clock cut (a stop flag never comes), a hidden signal that is still there, a decoder output stuck (a picture region repeated), a stroke selector stuck (a glyph folded), sync lost on the way out while the Machine is fine, and a frame counter cut short (everything timed by line 308 goes at once, while the sync, earlier in the frame, still holds the picture).
 
-Netlist, Board and manuals: [TENNIS_DESIGN.md](TENNIS_DESIGN.md).
+Netlist, Board and manuals: [TENNIS_DESIGN.md](TENNIS_DESIGN.md). The vertical sync moved from lines 308–311 to 272–287 in P6n ([PICTURE_MARGINS.md](../../../docs/p6n-picture-margins/PICTURE_MARGINS.md)); before it, Lost paddles rolled too.

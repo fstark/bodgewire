@@ -35,7 +35,7 @@ part U34 74LS20     # PAD_N, REGION_N
 part U35 74LS27     # GO_RIGHT, GO_LEFT, PAD_HIT
 part U36 74LS08     # SIDES_N, TURN_N, HIT_LOW, SET_SHALLOW
 part U37 74LS02     # HIT_HIGH, SET_STEEP, VLOAD_C, MID_A
-part U38 74LS32     # GO_DOWN, GO_UP, BALLV_N
+part U38 74LS32     # GO_DOWN, GO_UP, BALLV_N, VSYNC_N
 part U39 74LS107    # SHALLOW, GAME_OVER
 part U40 74LS107    # TURN_ODD, FAST
 part U41 74LS04     # H6_N, PAD_HIT_N, MOVE_N, SERVING, START, REGION
@@ -48,7 +48,7 @@ part U47 74LS02     # COL3, SKIP, SERVING_N, H34_LOW
 part U48 74LS90     # left score units SL0-SL3
 part U49 74LS90     # right score units SR0-SR3
 part U50 74LS107    # TENS_L, TENS_R
-part U51 74LS00     # WIN_L_N, WIN_R_N, WIN
+part U51 74LS00     # WIN_L_N, WIN_R_N, WIN, VSYNC_A
 part U52 74LS157    # this half's units SC0-SC3
 part U53 74LS48     # SEG_A-SEG_G
 part U54 74LS157    # this half of the cell: FE, BC, GD, A_TOP
@@ -67,6 +67,8 @@ The netlist lists `J3` before `J4`: the Session lists knobs in netlist order, an
 | Where | 060 | 070 |
 |---|---|---|
 | `U3.QD` | unused | `V3` |
+| `U8` gate 1 | `VSYNC_N`, lines 308–311 | `TICK_N` (P6n): `MOVE` and the controllers' `TRIG_N` only |
+| `U10.1B` | `VSYNC_N` from `U8` | `VSYNC_N` from `U38` gate 4: lines 272–287 (§ New circuits, Sync) |
 | `U10` gates 3, 4 | spare | `SP_MID` = XOR(`SP2`, `SP3`); `HX` = XOR(`H4`, `H6`) |
 | `U13` gate 4 | spare | `H12_LOW` = NOR(`H1`, `H2`) |
 | `U16` `A`, `D`, `F` | `BALL_N`, `RIGHT_N`, `LEFT_N` | `BALLV_N`, `PAD_N`, `SCORE_N` (no side walls drawn; the ball hidden while serving) |
@@ -88,7 +90,7 @@ Paddles (`J3`/`U27` flip-flop 1/`U28`/`U30` flip-flop 1 left, `J4`/flip-flop 2/`
 
 | Net | Made by |
 |---|---|
-| `LPULSE`, `RPULSE` | `J3.OUT`, `J4.OUT`; `J3.TRIG_N`, `J4.TRIG_N` on `VSYNC_N` |
+| `LPULSE`, `RPULSE` | `J3.OUT`, `J4.OUT`; `J3.TRIG_N`, `J4.TRIG_N` on `TICK_N` |
 | `LWAIT`, `LWAIT_N` | `U27` flip-flop 1: `D` = `LPULSE`, `CLK` = `LINE_END_N`, `PRE_N`, `CLR_N` +5 V |
 | `LPAD_CK` | `U32` gate 1: NOR(`LINE_END`, `LDONE`) |
 | `LP0`–`LP3` | `U28`: `CKA` = `LPAD_CK`, `CKB` = `LP0`, `R01` = `R02` = `LWAIT` |
@@ -169,7 +171,16 @@ Score digits:
 | `SCORE_N` | `U42` gate 3: NAND(`GLYPH`, `REGION`) |
 | `H3_N` | `U42` gate 4: NAND(`H3`, `H3`) |
 
-Spare gates, inputs at 0 V: `U38` gate 4, `U51` gate 4, `U45` flip-flop 2.
+Sync (P6n): the vertical sync sits early in the blanking, so the beam is back at the top before line 0. 060's decode needs a spare inverter, NOR3 and XOR that Tennis uses, so it takes the two gates it has, 16 lines (1 0001 xxxx):
+
+| Net | Made by |
+|---|---|
+| `VSYNC_A` | `U51` gate 4: NAND(`V8`, `V4`): low on lines 272–287 and 304–311 |
+| `VSYNC_N` | `U38` gate 4: OR(`VSYNC_A`, `V5`): low on lines 272–287, to `U10.1B` |
+
+The TV starts its frame 16 µs into the pulse and takes the line syncs through it (the XOR mixing inverts them); line 0 lands on row 40, the picture on rows 40–295 and columns 96–480 (measured with `bw run --tv`), inside the monitor's window at the knobs' marks.
+
+Spare gates, inputs at 0 V: `U45` flip-flop 2.
 
 ### Load values of the ball vertical counter
 
@@ -188,7 +199,7 @@ All well inside a 500 ns dot:
 
 - `U27` is clocked by `LINE_END_N` rising (the start of dot 0); the paddle counters count on `LINE_END` rising (the start of dot 127), 127 dots after their clear is released and one dot before the next release: no race between clear and count. `LINE_END` already clocks `U23` on 060 through `U13`.
 - A paddle's line k is lines L + 1 + k: `LWAIT` falls at the start of line L + 1, the counter holds 0 for that line, steps to k at dot 127 of each line, and `LDONE` is set by `LP3` falling at dot 127 of line L + 16. `U28`'s ripple (`QD` 34 ns after `CKB`) settles in dot 127, which is blanked.
-- `TRIG_N` falls about 30 ns into line 308 (`VSYNC_N` through `U8`); the pulse starts 0.1 µs later. The pulse range keeps every paddle line inside lines 16–239: ⌊(0.1 µs + 1.248 ms) / 64 µs⌋ = 19 (top line 16), ⌊(0.1 µs + 14.56 ms) / 64 µs⌋ = 227 (top line 224); each end sits half a line from a boundary.
+- `TRIG_N` falls about 30 ns into line 308 (`TICK_N` through `U8`); the pulse starts 0.1 µs later. The pulse range keeps every paddle line inside lines 16–239: ⌊(0.1 µs + 1.248 ms) / 64 µs⌋ = 19 (top line 16), ⌊(0.1 µs + 14.56 ms) / 64 µs⌋ = 227 (top line 224); each end sits half a line from a boundary.
 - `GO_*`, `MISS_*`, `PAD_HIT`, `SET_*` are decoded combinationally and sampled only by flip-flops clocked on the falling edge of `CLK` (mid-dot), as 060's `HIT_*`. `U26` and `U44` sample `GO_RIGHT` and `MISS_LEFT` at the same edge, so the miss and the turn happen together; from the next dot `MISS_LEFT` is 0 (`HDIR` high) and the ball is hidden.
 - Apart from `LPAD_CK` and `RPAD_CK` (a NOR of `LINE_END`, as 060's `BALL_CK`), only flip-flop outputs and counter bits clock anything new: `HDIR` (`U40`), `TURN_ODD`, `FRAME0`, `FRAME1`, `LOST_*_N` (`U48`, `U49`), `SL3`, `SR3` (`U50`), `LP3`, `RP3` (`U30`).
 - `GO_DOWN` and `GO_UP` are never both high: a wall hit needs the ball on lines 0–15 or 240–255, a paddle hit on lines 16–239, and one dot is one line.
@@ -213,7 +224,7 @@ Placed by `bw place machines/070-tennis/tennis.bwn machines/070-tennis/board/ten
 
 - [tennis.place](../board/tennis.place): `J1` at the left, `J2` at the right end of the back edge; `J3` at the left end of the front edge, `J4` at the right end (each player's side); `SW1` in the middle of the front edge, `R1` beside it on its right.
 - The chips are where the annealing put them, not grouped by job: the Service Manual names chips by U-number, and the probe finds them by reference.
-- Puzzle constraints: `SERVING` is routed `U41` → `U43` → `U38`, so the Invisible ball crack (between `U43` and `U38`) cuts `U38` alone; a new layout must keep `U38` at an end of that Trace, or the Puzzle moves its crack (§ Puzzles).
+- Puzzle constraints: `U38` must sit at an end of the `SERVING` Trace, after `U43`, so the Invisible ball crack (between `U43` and `U38`) cuts `U38` alone; a new routing must keep it so, or the Puzzle moves its crack (§ Puzzles). P6n re-netted the Board (`tools/renet_board.py`, placement kept) and the user routed it whole again with Freerouting; both cracks were checked again (`bw run puzzles/05-invisible-ball.bwp --probe U43.3B,U38.3B`: `U43` pulses, `U38` reads `-`; `04-long-paddle.bwp --probe U32.1Y,U28.CKA`: `U28.CKA` reads `-`).
 - `bw check-board` clean; `drc_tennis` passes (picked up by the `machines/*/board/*.kicad_pcb` glob).
 
 ## Puzzles
@@ -242,7 +253,7 @@ Titles and briefs:
 - Double scores: "Each player's score is shown twice across the top of the court."
 - Folded digits: "The scores are drawn in strange shapes: no digit has its top bar, and they change as the score goes up."
 - Rolling picture: "The picture rolls up the screen and never holds still, though the game seems to play."
-- Lost paddles: "The picture rolls and the paddles are gone; the ball never comes across the court."
+- Lost paddles: "The paddles are gone and the ball never comes across the court."
 
 ### Electrical Nets on a damaged Board
 
@@ -253,12 +264,12 @@ Titles and briefs:
 - Invisible ball: `U38` pin 10 floats (reads high): `BALLV_N` = OR(`BALL_N`, 1) is always high. `BALL_N` itself, and so every hit, miss and score, is unchanged; `U43` (`HMOVE`) still gets `SERVING`.
 - Double scores: `HX` stuck at 1 (Strong): `REGION` no longer needs `H4` ≠ `H6`, so it also covers dots 0–3, 8–11 (left) and 80–83, 88–91 (right). `UNITS` (with `H3`) and the column bits work there as in the real cells.
 - Folded digits: `U54` reads `S` as 1, so it passes the B inputs on every row: `FE` = `SEG_E`, `BC` = `SEG_C`, `GD` = `SEG_D`, `A_TOP` = 0. Rows 0–3 draw e, c and d (on row 3); row 0 has no a. The `V4` Net is unchanged.
-- Rolling picture: `U10` pin 2 floats (reads high): `SYNC` = XOR(`HSYNC_N`, 1) = `HSYNC`, `SYNC_N_D` = `HSYNC_N`: line syncs only. The TV free-runs its frame at 21 ms against the Machine's 19.968 ms. `VSYNC_N` still triggers `J3`, `J4` and makes `MOVE` (`U17`).
-- Lost paddles: `U7` pin 4 floats (reads high): `FRAME_END_N` decodes line 307 (V8 V5 V4 V1 V0), reloading the line counter to 0: 308 lines a frame. `VSYNC_N` (lines 308–311) and `MOVE` (line 308) never come: no vertical sync, no controller triggers (`LWAIT` stays low, `LDONE` set: no paddles), no sideways step (the ball stays on its power-on column; its vertical counter, 308–316 lines, still drifts and bounces). `V8` still rises at line 256 and falls at the reload: the blanking and the serve timer work.
+- Rolling picture: `U10` pin 2 floats (reads high): `SYNC` = XOR(`HSYNC_N`, 1) = `HSYNC`, `SYNC_N_D` = `HSYNC_N`: line syncs only. The TV free-runs its frame at 21 ms against the Machine's 19.968 ms. `VSYNC_N` itself still pulses at `U38` pin 11, and `TICK_N` still triggers `J3`, `J4` and makes `MOVE` (`U17`).
+- Lost paddles: `U7` pin 4 floats (reads high): `FRAME_END_N` decodes line 307 (V8 V5 V4 V1 V0), reloading the line counter to 0: 308 lines a frame. `TICK_N` (lines 308–311) and `MOVE` (line 308) never come: no controller triggers (`LWAIT` stays low, `LDONE` set: no paddles), no sideways step (the ball stays on its power-on column; its vertical counter, 308–316 lines, still drifts and bounces). `V8` still rises at line 256 and falls at the reload: the blanking and the serve timer work. `VSYNC_N` (lines 272–287) still comes, so the picture holds (before P6n the sync was on line 308 too, and the picture rolled).
 
 ## Manuals
 
 Written to STYLE's Manuals rules (P6k, as the Counter's):
 
-- User: What it does (a welcome: the court, the ball, a point for a missed ball, first to 11; no computer on the board); Using it (the knobs `J3` and `J4`, right stop up, their keys Q/A and Up/Down in a table as the knob box prints them; the rally's speed and the four angles; the miss and serve; the end of a game; START (`SW1`); power-up); How it works (the goal: the board follows the beam; the clock, the beam counters, the sync, the court, the picture; the ball as a second clock; the paddles as kitchen timers wound by `VSYNC_N`; hits and angles; the speed; a miss and the serve; the scores and game over; the score digits as stencils; the unused pins in a table).
-- Service: Components (every reference, netlist order, formulas reworded); Test points (a table of probe readings, in play after START: `bw run --press SW1:100ms:200ms --probe` at 150 ms, 500 ms, 1 s, 2 s and 4 s, game over at 55 s and 59 s, a second START at 57 s read at 57.5 s; two logic analyzer setups viewed in `bw_ui` screenshots: a line, `--clip U6.2Y:f,U6.1Y,U11.1Q,U11.2Q --sample 100ns --view 10us`, and the controllers, `--knob J3:0%,J4:100% --clip U8.1Y:f,J3.OUT,J4.OUT,U27.1Q,U27.2Q --sample 1us --view 2ms`); Troubleshooting (no picture or no lock, a paddle missing or deaf to its knob, the ball through a paddle or one angle only, no speed-up, a miss not scoring or no serve, a digit drawn wrong, START doing nothing: ordered checks, never naming a fault).
+- User: What it does (a welcome: the court, the ball, a point for a missed ball, first to 11; no computer on the board); Using it (the knobs `J3` and `J4`, right stop up, their keys Q/A and Up/Down in a table as the knob box prints them; the rally's speed and the four angles; the miss and serve; the end of a game; START (`SW1`); power-up); How it works (the goal: the board follows the beam; the clock, the beam counters, the sync, the court, the picture; the ball as a second clock; the sync on lines 272–287, before the picture so the beam has flown back by line 0; the paddles as kitchen timers wound by `TICK_N`; hits and angles; the speed; a miss and the serve; the scores and game over; the score digits as stencils; the unused pins in a table).
+- Service: Components (every reference, netlist order, formulas reworded); Test points (a table of probe readings, in play after START: `bw run --press SW1:100ms:200ms --probe` at 150 ms, 500 ms, 1 s, 2 s and 4 s, game over at 55 s and 59 s, a second START at 57 s read at 57.5 s; two logic analyzer setups viewed in `bw_ui` screenshots: a line, `--clip U6.2Y:f,U6.1Y,U11.1Q,U11.2Q --sample 100ns --view 10us`, and the controllers, `--knob J3:0%,J4:100% --clip U8.1Y:f,J3.OUT,J4.OUT,U27.1Q,U27.2Q --sample 1us --view 2ms`; P6n re-read `U8.1Y` (`TICK_N`), `U51.4Y`, `U38.4Y` and `J3.TRIG_N` at 0.5 s, 1 s and 1.013 s, the controllers setup viewed again with `U38.4Y` added, low 1 ms ending about 1.3 ms before the trigger); Troubleshooting (no picture or no lock, a paddle missing or deaf to its knob, the ball through a paddle or one angle only, no speed-up, a miss not scoring or no serve, a digit drawn wrong, START doing nothing: ordered checks, never naming a fault).

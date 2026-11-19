@@ -10,7 +10,7 @@
 - `U5` vertical counter, bit 8: `V8`; with `U3` and `U4` reloaded with 0 after line 311
 - `U6` line decoder: `LINE_END_N` at dot 127, `HSYNC_N` for dots 104–111
 - `U7` frame-end decoder: `FRAME_END_N` low at the end of line 311
-- `U8` vertical decoders: `VSYNC_N` for lines 308–311, `BOTTOM_N` for lines 240–255
+- `U8` vertical decoders: `TICK_N` for lines 308–311, which starts the paddle timers and the ball's moves; `BOTTOM_N` for lines 240–255
 - `U9` inverters: `H4_N`, `LINE_END`, `VBALL`, `MR`, `MIX_N`, `HBLANK`
 - `U10` exclusive-OR gates: mixes `HSYNC_N` and `VSYNC_N` into one sync, inverted into `SYNC_N_D`; `SP_MID`, high when `SP2` and `SP3` differ; `HX`, high when `H4` and `H6` differ
 - `U11` output register: re-times `SYNC_N` and `VIDEO` on the clock
@@ -31,7 +31,7 @@
 - `U26` direction flip-flops: `HDIR` (high: right), set by `GO_RIGHT`, cleared by `GO_LEFT`; `VDIR_N` (high: up), from `GO_DOWN` and `GO_UP`
 - `J1` power connector: +5 V and 0 V for the whole board
 - `J2` monitor connector: `VIDEO` and `SYNC_N` out
-- `J3` left paddle controller connector: `TRIG_N` on `VSYNC_N`, its pulse back on `LPULSE`, about 1.25 ms at the right stop to about 14.6 ms at the left stop (wired the other way round); the controller runs on the board's +5 V
+- `J3` left paddle controller connector: `TRIG_N` on `TICK_N`, its pulse back on `LPULSE`, about 1.25 ms at the right stop to about 14.6 ms at the left stop (wired the other way round); the controller runs on the board's +5 V
 - `J4` right paddle controller connector: as `J3`, pulse on `RPULSE`
 - `U27` paddle line sync: `LWAIT`, `RWAIT`, the controllers' pulses taken at each line start
 - `U28` left paddle line counter: `LP0`–`LP3`, the paddle's line 0–15, cleared while `LWAIT` is high
@@ -44,7 +44,7 @@
 - `U35` hit detectors: `GO_RIGHT`, `GO_LEFT` (the ball on a goal or a paddle); `PAD_HIT` (the ball's line 4 on a paddle)
 - `U36` hit gates: `SIDES_N`, `TURN_N`, `HIT_LOW`, `SET_SHALLOW`
 - `U37` hit gates: `HIT_HIGH`, `SET_STEEP`, `VLOAD_C`, `MID_A`
-- `U38` hit gates: `GO_DOWN`, `GO_UP`; `BALLV_N`, the ball in the picture, hidden while serving
+- `U38` hit gates: `GO_DOWN`, `GO_UP`; `BALLV_N`, the ball in the picture, hidden while serving; `VSYNC_N`, the frame sync, low for lines 272–287
 - `U39` flip-flops: `SHALLOW` (`STEEP`), the ball's angle; `GAME_OVER` (`PLAY`), set by `WIN`, cleared by START
 - `U40` speed flip-flops: `TURN_ODD`, toggled by each turn to the left; `FAST`, set at the second; both cleared while serving
 - `U41` inverters: `H6_N`, `PAD_HIT_N`, `MOVE_N`, `SERVING`, `START`, `REGION`
@@ -57,7 +57,7 @@
 - `U48` left score counter: `SL0`–`SL3`, counts when the ball is lost on the right
 - `U49` right score counter: `SR0`–`SR3`, counts when the ball is lost on the left
 - `U50` tens flip-flops: `TENS_L`, `TENS_R`, set when the units go from 9 to 0
-- `U51` win gates: `WIN_L_N`, `WIN_R_N`, `WIN` at 11
+- `U51` win gates: `WIN_L_N`, `WIN_R_N`, `WIN` at 11; `VSYNC_A`, the first step of the frame sync
 - `U52` score select: this half of the line's units count `SC0`–`SC3`, by `H6`
 - `U53` score decoder: `SEG_A`–`SEG_G`, high for a lit segment
 - `U54` stroke select: `FE`, `BC`, `GD`, `A_TOP` for the top or bottom half of a digit, by `V4`
@@ -79,7 +79,9 @@ What the logic probe shows on a working board. **P** is the pulse lamp: it stays
 | `X1.OUT` | `CLK` | P lit |
 | `U6.2Y` | `HSYNC_N` | P lit |
 | `U6.1Y` | `LINE_END_N` | H, with P lit |
-| `U8.1Y` | `VSYNC_N` | H, with P lit |
+| `U8.1Y` | `TICK_N` | H, with P lit |
+| `U51.4Y` | `VSYNC_A` | H, with P lit |
+| `U38.4Y` | `VSYNC_N` | H, with P lit |
 | `U5.QA` | `V8` | P lit |
 | `U11.1Q` | `SYNC_N` | P lit |
 | `U11.2Q` | `VIDEO` | P lit |
@@ -105,7 +107,7 @@ What the logic probe shows on a working board. **P** is the pulse lamp: it stays
 **No picture, or the picture will not hold still.**
 
 1. Probe `X1.OUT`. It must show P.
-2. Probe `U6.2Y` and `U8.1Y`. Both must read H with P.
+2. Probe `U6.2Y` and `U38.4Y`. Both must read H with P.
 3. Probe `U11.1Q`, the sync to the TV. It must show P.
 4. Set up the first analyzer row of the Test points. Each line must last 64 µs, with one sync dip.
 5. Probe `U11.2Q`, the picture to the TV. It must show P.

@@ -19,7 +19,7 @@ PAL-like and progressive, one dot per clock, two dots per microsecond:
 | Frame | 312 lines = 19.968 ms (≈ 50.08 Hz) |
 | Active picture | dots 0–95, lines 0–255 |
 | Horizontal sync | dots 104–111 |
-| Vertical sync | lines 308–311 |
+| Vertical sync | lines 280–283 |
 | Walls | top lines 0–15, bottom lines 240–255, left dots 0–3, right dots 92–95 |
 | Net | dots 48–49, dashed: lines with `V2` high (4 on, 4 off) |
 | Ball | 2 dots × 8 lines; 2 dots and 4 lines per frame |
@@ -28,7 +28,7 @@ Sync, as on the 050 test pattern but twice the dot rate:
 
 - Horizontal counter `H0`–`H6`: `U1` 74LS161 (`H0`–`H3`, carry `HC`) and `U2` 74LS161 (`H4`–`H6`; its `QD` is unused) count freely: 128 dots per line, no reload. `U6` gate 1 decodes dot 127 into `LINE_END_N`; `U9` inverts it into `LINE_END`.
 - Vertical counter `V0`–`V8`: `U3`, `U4`, `U5` 74LS161, enabled by `LINE_END`; `U7` 74LS30 decodes line 311 at the line end into `FRAME_END_N`, which reloads them with 0.
-- `U6` gate 2 makes `HSYNC_N` for dots 104–111 (with `H4_N` from `U9`); `U8` gate 1 makes `VSYNC_N` for lines 308–311. `U10` 74LS86 mixes them into `SYNC_N_D`, as on 050.
+- `U6` gate 2 makes `HSYNC_N` for dots 104–111 (with `H4_N` from `U9`); `U14` gate 4, `U17` gate 3 and `U10` gate 4 make `VSYNC_N` for lines 280–283 (with `V3_N` from `U10` gate 3), early in the blanking, so the beam is back at the top before line 0 (P6n). `U8` gate 1 decodes lines 308–311 into `TICK_N`, for `MOVE` alone. `U10` 74LS86 mixes them into `SYNC_N_D`, as on 050.
 - Blanking: `HBLANK` (`H6` and `H5`: dots 96–127, `U14` and `U9`) and `V8` (lines 256–311).
 
 Playfield, decoded from the beam counters (each wall active low):
@@ -39,7 +39,7 @@ Playfield, decoded from the beam counters (each wall active low):
 - `RIGHT_N` (`U15` gate 1): `H6`, `H4`, `H3`, `H2` high, dots 92–95 (and 124–127, blanked).
 - `NET_N` (`U12` gate 3, `U15` gate 2): `H5`, `H4` high, `H3`–`H1` low, `V2` high: dots 48–49 (and 112–113, blanked), dashed.
 
-Ball horizontal: `U18` and `U19` 74LS161 make an 8-bit counter that steps every other dot (`ENP` on `H0`). Its carry `HBALL` is high for the two dots of count 255: that is the ball's column. `U24` gate 1 reloads it then (`HLOAD_N`). Normally it loads 192, so it counts 64 steps = 128 dots, exactly one line: the ball stays put. On line 308 (`MOVE`, `U17` gate 1) it loads 191 when moving right (65 steps: the ball comes 2 dots later every line after) or 193 when moving left (63 steps). The load value comes from `MOVE` and `MR` (move right) and `MR_N` (`U24` gate 4, `U9`), from the direction `HDIR`.
+Ball horizontal: `U18` and `U19` 74LS161 make an 8-bit counter that steps every other dot (`ENP` on `H0`). Its carry `HBALL` is high for the two dots of count 255: that is the ball's column. `U24` gate 1 reloads it then (`HLOAD_N`). Normally it loads 192, so it counts 64 steps = 128 dots, exactly one line: the ball stays put. On line 308 (`MOVE`, `U17` gate 1 from `TICK_N`) it loads 191 when moving right (65 steps: the ball comes 2 dots later every line after) or 193 when moving left (63 steps). The load value comes from `MOVE` and `MR` (move right) and `MR_N` (`U24` gate 4, `U9`), from the direction `HDIR`.
 
 Ball vertical: `U20` and `U21` 74LS161 and `U22` JK flip-flop 1 (bit 8, toggled each time `U21`'s carry falls) make a 9-bit counter that steps once per line (`ENP` on `LINE_END`; `ENT` only carries, so that `VRCO` is high for whole lines, without glitches). On the line of count 511 (`VRCO` and `BV8`, `U24` gate 2: `VLOAD_N`) it reloads at the end of the first dot: 195 when moving down (316 lines: the ball comes 4 lines later every frame) or 203 when moving up (308 lines). The load value's bit 3 is `VDIR_N`. There is no "still" value: the ball always moves vertically.
 
@@ -53,7 +53,7 @@ No reset: from any power-on state the beam counters fall into step within 512 li
 
 ## When it works
 
-The TV shows a white box with a dashed line down the middle and a small square ball moving diagonally inside. The ball bounces off each wall, crosses the screen in about a second and never stops. It locks within half a second and never rolls. At power-on the ball starts anywhere, going in any direction; it may be out of sight for up to a second.
+The TV shows a white box with a dashed line down the middle and a small square ball moving diagonally inside. The picture lands on TV rows 32–287 and columns 96–480, inside the monitor's window at the knobs' marks. The ball bounces off each wall, crosses the screen in about a second and never stops. It locks within half a second and never rolls. At power-on the ball starts anywhere, going in any direction; it may be out of sight for up to a second.
 
 ## Puzzles
 
@@ -67,4 +67,4 @@ The TV shows a white box with a dashed line down the middle and a small square b
 
 Each teaches something different: a dry Joint that only changes the picture, a stuck flip-flop that only changes the motion, a ripple counter's stop flag, the reload that makes motion (a counter's period against the frame's), and a bridge between two sources that look the same on the screen.
 
-Netlist, Board, Puzzle files and manuals: [BOUNCING_BALL_DESIGN.md](BOUNCING_BALL_DESIGN.md).
+Netlist, Board, Puzzle files and manuals: [BOUNCING_BALL_DESIGN.md](BOUNCING_BALL_DESIGN.md). The vertical sync moved from lines 308–311 to 280–283 in P6n ([PICTURE_MARGINS.md](../../../docs/p6n-picture-margins/PICTURE_MARGINS.md)).

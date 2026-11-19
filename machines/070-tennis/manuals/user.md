@@ -2,7 +2,7 @@
 
 ## What it does
 
-Welcome to Paddle Tennis, a game for two players on the TV. The picture is a court seen from above. A wall runs along the top and the bottom. A dashed net runs down the middle. Each player has a paddle near their own side edge, and their score at the top, on their side of the net.
+Welcome to Paddle Tennis, a game for two players on the TV. The picture is a court seen from above. It fills most of the screen, with a dark margin all round. A wall runs along the top and the bottom. A dashed net runs down the middle. Each player has a paddle near their own side edge, and their score at the top, on their side of the net.
 
 The ball bounces off the walls and off the paddles. A ball that gets past a paddle scores a point for the other player. The first player to 11 wins.
 
@@ -45,7 +45,7 @@ So most of the board is counters that follow the beam, and gates that notice whe
 
 The visible court is dots 0 to 95 and lines 0 to 255. The rest of each line and each frame is dark. It gives the TV's beam time to fly back.
 
-**The sync.** The TV must know when a line starts and when a frame starts. `U6` makes `HSYNC_N`, a short dip near the end of every line. `U8` makes `VSYNC_N`, a longer dip of four lines near the end of every frame. `U10` mixes the two into one signal, and `U11` sends it to the TV on `SYNC_N`.
+**The sync.** The TV must know when a line starts and when a frame starts. `U6` makes `HSYNC_N`, a short dip near the end of every line. `U51` and `U38` make `VSYNC_N`, a long dip on lines 272 to 287, soon after the court's last line. The beam takes a while to fly back to the top. The dark lines after the dip give it that time, so it is back before line 0. `U10` mixes the two into one signal, and `U11` sends it to the TV on `SYNC_N`.
 
 **The court.** Gates watch the beam counters. `U12`–`U14` notice the top wall, lines 0 to 15. `U8` notices the bottom wall, lines 240 to 255. `U15` notices the net, dots 48 and 49, and lets it through only on every other group of four lines, so it is dashed.
 
@@ -61,7 +61,7 @@ The visible court is dots 0 to 95 and lines 0 to 255. The rest of each line and 
 
 To move the ball, the board makes its counters run a little short or a little long, once a frame. Then the ball is drawn a little further along. `U26` remembers the ball's two directions: `HDIR` is high while it moves right, `VDIR_N` is high while it moves up. A wall flips `VDIR_N`; a paddle or a goal flips `HDIR`.
 
-**The paddles.** Each controller is a kitchen timer. At the end of every frame, `VSYNC_N` winds both timers. The knob sets how long each one runs: from about one millisecond to about fifteen. While a timer runs, its paddle waits. When it rings, the paddle is drawn on the next 16 lines.
+**The paddles.** Each controller is a kitchen timer. Near the end of every frame, on line 308, `U8` pulls `TICK_N` low. That winds both timers. The knob sets how long each one runs: from about one millisecond to about fifteen. While a timer runs, its paddle waits. When it rings, the paddle is drawn on the next 16 lines.
 
 - `U27` lines each timer up with the start of a line. Its outputs, `LWAIT` and `RWAIT`, are high while the paddle waits.
 - `U28` and `U29` then count the paddle's 16 lines, `LP0`–`LP3` and `RP0`–`RP3`.
@@ -104,6 +104,6 @@ START pulls `START_N` low. That clears both scores, both tens and `GAME_OVER`.
 | `U48.R91`, `U48.R92` (and `U49`'s) | set the score to 9 | tied low: never used |
 | `U53.LT_N`, `U53.BI_N`, `U53.RBI_N` | test or blank the segments | tied high: segments always follow the count |
 | `U31.G_N`, `U52.G_N`, `U54.G_N` | switch the outputs off | tied low: always on |
-| `U45`'s second flip-flop, a gate in `U38` and in `U51` | spare | inputs tied low |
+| `U45`'s second flip-flop | spare | inputs tied low |
 
 The Service Manual lists what the probe shows on a working board.

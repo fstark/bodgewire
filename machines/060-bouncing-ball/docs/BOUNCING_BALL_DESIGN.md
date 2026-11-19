@@ -15,7 +15,7 @@ puzzles/NN-*.bwp      5 Puzzles, easiest first
 
 ## Netlist
 
-`machines/060-bouncing-ball/ball.bwn` (BOUNCING_BALL.md, Circuit), with the header comment of [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md) step 2. 26 chips, `X1`, `J1`, `J2`; no resistors, no buttons. Every unused TTL input is tied (spare gates to `GND`, unused load inputs to `GND`), so the netlist loads without warnings; unused outputs stay unconnected (`U2.QD`, `U2.RCO`, `U3.QD` (`V3`), `U5` `QB`–`QD` and `RCO`, `U11` `1Q_N` `2Q_N`, `U18`–`U21` `QA`–`QD`, `U22` `1Q_N` and flip-flop 2, `U23` `QB` `QC`, `U26` `1Q_N`, `2Q`, the spare gates of `U10`, `U13`, `U14`, `U17`).
+`machines/060-bouncing-ball/ball.bwn` (BOUNCING_BALL.md, Circuit), with the header comment of [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md) step 2. 26 chips, `X1`, `J1`, `J2`; no resistors, no buttons. Every unused TTL input is tied (spare gates to `GND`, unused load inputs to `GND`), so the netlist loads without warnings; unused outputs stay unconnected (`U2.QD`, `U2.RCO`, `U5` `QB`–`QD` and `RCO`, `U11` `1Q_N` `2Q_N`, `U18`–`U21` `QA`–`QD`, `U22` `1Q_N` and flip-flop 2, `U23` `QB` `QC`, `U26` `1Q_N`, `2Q`, the spare gate of `U13`).
 
 ```
 part X1  OSC freq=2MHz
@@ -26,16 +26,16 @@ part U4  74LS161    # V4-V7
 part U5  74LS161    # V8
 part U6  74LS20     # LINE_END_N, HSYNC_N
 part U7  74LS30     # FRAME_END_N
-part U8  74LS20     # VSYNC_N, BOTTOM_N
+part U8  74LS20     # TICK_N, BOTTOM_N
 part U9  74LS04     # H4_N, LINE_END, VBALL, MR, MIX_N, HBLANK
-part U10 74LS86     # composite sync
+part U10 74LS86     # composite sync, V3_N, VSYNC_N
 part U11 74LS74     # output registers
 part U12 74LS27     # wall and net decodes
 part U13 74LS02     # wall decodes, ball height clock
-part U14 74LS00     # TOP_N, LEFT_N, HBLANK_N
+part U14 74LS00     # TOP_N, LEFT_N, HBLANK_N, VSYNC_A
 part U15 74LS20     # RIGHT_N, NET_N
 part U16 74LS30     # video mixer
-part U17 74LS27     # MOVE, VIDEO_D
+part U17 74LS27     # MOVE, VIDEO_D, VSYNC
 part U18 74LS161    # ball horizontal, low
 part U19 74LS161    # ball horizontal, high
 part U20 74LS161    # ball vertical, low
@@ -72,16 +72,26 @@ net VCC         U3.CLR_N U4.CLR_N U5.CLR_N U7.H
 net GND         U3.A U3.B U3.C U3.D U4.A U4.B U4.C U4.D U5.A U5.B U5.C U5.D
 net V0          U3.QA U7.F U17.1C
 net V1          U3.QB U7.E U17.1B
-net V2          U3.QC U7.D U8.1D U15.2D
+net V2          U3.QC U7.D U8.1D U15.2D U17.3C
+net V3          U3.QD U10.3A
 net VC1         U3.RCO U4.ENT
-net V4          U4.QA U7.C U8.1C U8.2D U12.1A
+net V4          U4.QA U7.C U8.1C U8.2D U12.1A U14.4B
 net V5          U4.QB U7.B U8.1B U8.2C U12.1B
 net V6          U4.QC U8.2B U12.1C
 net V7          U4.QD U8.2A U13.2A
 net VC2         U4.RCO U5.ENT
-net V8          U5.QA U7.A U8.1A U13.2B U17.2C
+net V8          U5.QA U7.A U8.1A U13.2B U17.2C U14.4A
 net FRAME_END_N U7.Y U3.LOAD_N U4.LOAD_N U5.LOAD_N
-net VSYNC_N     U8.1Y U10.1B U17.1A
+# Line 308, the frame's tick: MOVE steps the ball sideways there.
+net TICK_N      U8.1Y U17.1A
+
+# Vertical sync: lines 280-283 (V8, V4, V3 high, V2 low), early in the blanking, so the beam is
+# back at the top before line 0 (P6n).
+net VSYNC_A     U14.4Y U17.3A
+net VCC         U10.3B U10.4B
+net V3_N        U10.3Y U17.3B
+net VSYNC       U17.3Y U10.4A
+net VSYNC_N     U10.4Y U10.1B
 
 # Composite sync: HSYNC XOR VSYNC, then inverted.
 net SYNC        U10.1Y U10.2A
@@ -148,7 +158,7 @@ net VIDEO       U11.2Q J2.VIDEO
 net VCC         U11.1PRE_N U11.1CLR_N U11.2PRE_N U11.2CLR_N
 
 # Unused gate inputs.
-net GND         U10.3A U10.3B U10.4A U10.4B U13.4A U13.4B U14.4A U14.4B U17.3A U17.3B U17.3C
+net GND         U13.4A U13.4B
 ```
 
 Decodes, as wired:
@@ -158,18 +168,23 @@ Decodes, as wired:
 | `LINE_END_N` | `U6` gate 1: NAND(`HC`, `H4`, `H5`, `H6`) | dot 127 |
 | `HSYNC_N` | `U6` gate 2: NAND(`H6`, `H5`, `H4_N`, `H3`) | dots 104–111 |
 | `FRAME_END_N` | `U7`: NAND(`V8`, `V5`, `V4`, `V2`, `V1`, `V0`, `LINE_END`, +5 V) | line 311 at its line end |
-| `VSYNC_N` | `U8` gate 1: NAND(`V8`, `V5`, `V4`, `V2`) | lines 308–311 (nothing above 311 is reached once in step) |
+| `TICK_N` | `U8` gate 1: NAND(`V8`, `V5`, `V4`, `V2`) | lines 308–311 (nothing above 311 is reached once in step) |
+| `VSYNC_A` | `U14` gate 4: NAND(`V8`, `V4`) | lines 272–287 and 304–311 |
+| `V3_N` | `U10` gate 3: XOR(`V3`, +5 V) | high when `V3` is low |
+| `VSYNC_N` | `U17` gate 3: `VSYNC` = NOR(`VSYNC_A`, `V3_N`, `V2`), inverted by `U10` gate 4 (XOR with +5 V) | lines 280–283 |
 | `TOP_N` | `U14` gate 1: NAND(`TOP_A` = NOR(`V4`, `V5`, `V6`), `TOP_B` = NOR(`V7`, `V8`)) | lines 0–15 |
 | `BOTTOM_N` | `U8` gate 2: NAND(`V7`, `V6`, `V5`, `V4`) | lines 240–255 |
 | `LEFT_N` | `U14` gate 2: NAND(`LEFT_A` = NOR(`H2`, `H3`, `H4`), `H56_LOW` = NOR(`H5`, `H6`)) | dots 0–3 |
 | `RIGHT_N` | `U15` gate 1: NAND(`H6`, `H4`, `H3`, `H2`) | dots 92–95, 124–127 |
 | `NET_N` | `U15` gate 2: NAND(`NET_A` = NOR(`H1`, `H2`, `H3`), `H5`, `H4`, `V2`) | dots 48–49, 112–113, on lines with `V2` |
 | `HBLANK` | `U14` gate 3 NAND(`H6`, `H5`), inverted by `U9` | high for dots 96–127 |
-| `MOVE` | `U17` gate 1: NOR(`VSYNC_N`, `V1`, `V0`) | high on line 308 |
+| `MOVE` | `U17` gate 1: NOR(`TICK_N`, `V1`, `V0`) | high on line 308 |
 | `HBALL` | `U19.RCO` | high for the 2 dots of ball count 255 |
 | `HLOAD_N` | `U24` gate 1: NAND(`HBALL`, `H0`) | the second dot of count 255 |
 | `VLOAD_N` | `U24` gate 2: NAND(`VRCO`, `BV8`) | the whole line of ball count 511 (the load is at the end of its first dot) |
 | `BALL_CK` | `U13` gate 3: NOR(`LINE_END`, `BALL_OFF`) | falls at the start of dot 127 while the ball is drawn |
+
+The frame sync sits on lines 280–283, early in the blanking (P6n): the TV starts its frame 16 µs into it, so line 0 lands on row 32. Where the picture lands on the TV (measured with `bw run --tv`): rows 32–287, columns 96–480, inside the monitor's window (columns 80–496, rows from 28) at the knobs' marks. Line 308 keeps its decode as `TICK_N`, for `MOVE` alone.
 
 Load values (`A` lowest):
 
@@ -193,7 +208,7 @@ Timing notes (all well inside a 500 ns dot):
 
 ## Board
 
-`bw export-kicad machines/060-bouncing-ball/ball.bwn -o machines/060-bouncing-ball/board/ball.net`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md)), 2 layers, no zones:
+`bw export-kicad machines/060-bouncing-ball/ball.bwn -o machines/060-bouncing-ball/board/ball.net`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md)), 2 layers, no zones. P6n kept the placement in `board/ball.place` (`at REF X Y [ANGLE]`, rebuilt by `bw place`) and routed the whole Board again with Freerouting:
 
 - Three rows of DIP-14/16, grouped by job so the Service Manual reads on the Board: the beam counters and sync (`X1`, `U1`–`U11`) at the back with `J1` at the left and `J2` at the back edge; the playfield decoders and mixer (`U12`–`U17`) in the middle; the ball counters and bounce logic (`U18`–`U26`) along the front.
 - Wanted for the Puzzles (each a straight stretch away from pads, vias and corners):
@@ -202,7 +217,7 @@ Timing notes (all well inside a 500 ns dot):
   - `U16` pins 4 and 5: neighbouring pins, nothing else needed (the bridge is drawn on the solder side).
 - `bw check-board` clean; `drc_ball` passes (picked up by the `machines/*/board/*.kicad_pcb` glob).
 - Cracks (P4e syntax), from the routed Board:
-  - `VLOAD_N`: `U24.6 U21.9 50%` (routed `U24` pin 6 → `U21` pin 9 → `U20` pin 9: the 49 mm straight run on F.Cu).
+  - `VLOAD_N`: `U24.6 U21.9 50%`, on the Trace that leaves `U24` pin 6: it cuts `U20` pin 9 and `U21` pin 9 off (checked again on the Board routed in P6n: `bw run puzzles/04-jumping-ball.bwp --probe U20.LOAD_N,U21.LOAD_N` reads `-` on both).
 
 ## Puzzles
 
@@ -226,7 +241,7 @@ Titles and briefs:
 
 ## Electrical Nets on a damaged Board
 
-- Solid net: `U15` pin 13 off `V2` (dry Joint), on a Net of its own with no Driver: floating, reads high. `NET_N` = NAND(`NET_A`, `H5`, `H4`, 1): low at the net's 2 dots on every line, a solid line. `V2` still reaches `U3`, `U7` and `U8`: its pad and a B.Cu touch on pin 13 pulse, the F.Cu touch (the leg), a Clip or a Hook on pin 13 show nothing. Swapping `U15` does not fix it. `NET_N` only feeds the mixer: the ball moves and bounces as before.
+- Solid net: `U15` pin 13 off `V2` (dry Joint), on a Net of its own with no Driver: floating, reads high. `NET_N` = NAND(`NET_A`, `H5`, `H4`, 1): low at the net's 2 dots on every line, a solid line. `V2` still reaches `U3`, `U7`, `U8` and `U17`: its pad and a B.Cu touch on pin 13 pulse, the F.Cu touch (the leg), a Clip or a Hook on pin 13 show nothing. Swapping `U15` does not fix it. `NET_N` only feeds the mixer: the ball moves and bounces as before.
 - Solid net and Jumping ball: a floating Net lights no probe lamp (the probe shows nothing), while TTL inputs on it read high.
 - Wraparound: `HDIR` stuck at 1 (Strong). `MR_N` = NOT `MOVE`, so the ball H counter loads 191 on every `MOVE` line: right by 2 dots each frame. Through `HBLANK` it wraps round to dot 0 and comes in through the left wall (`HIT_LEFT`, already right). `U26`'s internal state still follows `J`/`K` (`1Q_N` toggles, unconnected).
 - Stripe: `BALL_OFF` stuck at 0: `VBALL` is high on every line, so `BALL_N` is low at `HBALL` on every line: a 2-dot column across the whole active height. It overlaps the top and bottom walls every frame (`VDIR` flips back and forth, unseen) and bounces off the side walls.
@@ -237,5 +252,5 @@ Titles and briefs:
 
 Written to STYLE's Manuals rules (P6k):
 
-- User: What it does (a welcome: a white box with a dashed net, a ball bouncing off the four walls, crossing in about a second; nothing to press; the ball may be out of sight for up to a second after power-on); no Using it; How it works (the goal, the clock, the beam counters as line and column numbers, sync, the dark edges, the walls and net as a stencil in a table, the ball's counters as two clocks one a little fast, across and up and down, its height, bounces as a meeting, the mixer, no reset, the unused pins in a table).
-- Service: Components (every reference, netlist order); Test points (probe readings, checked with `bw run --probe` at 0.5 s, 1 s, 1.5 s and 2 s; `HDIR` and `VDIR_N` and the hits sampled every 0.2 s from 0.1 s to 3.1 s, `HDIR` low from 0.3 s to 1.3 s, high from 1.5 s to 2.1 s; four setups: a line on the analyzer and on the oscilloscope, a picture and the ball on the analyzer, each viewed in a `bw_ui --clip`/`--hook --screenshot --after 1s`); Troubleshooting (dark or rolling picture, a wall or the net wrong, the ball missing or misshapen, the ball moving wrong: ordered checks, never naming a fault).
+- User: What it does (a welcome: a white box with a dashed net, a ball bouncing off the four walls, crossing in about a second; nothing to press; the ball may be out of sight for up to a second after power-on); no Using it; How it works (the goal, the clock, the beam counters as line and column numbers, sync (the frame sync on lines 280–283, before the picture so the beam has flown back by line 0; `TICK_N` on line 308 for `MOVE`), the dark edges, the walls and net as a stencil in a table, the ball's counters as two clocks one a little fast, across and up and down, its height, bounces as a meeting, the mixer, no reset, the unused pins in a table).
+- Service: Components (every reference, netlist order); Test points (probe readings, checked with `bw run --probe` at 0.5 s, 1 s, 1.5 s and 2 s; `HDIR` and `VDIR_N` and the hits sampled every 0.2 s from 0.1 s to 3.1 s, `HDIR` low from 0.3 s to 1.3 s, high from 1.5 s to 2.1 s; four setups: a line on the analyzer and on the oscilloscope, a picture and the ball on the analyzer, each viewed in a `bw_ui --clip`/`--hook --screenshot --after 1s`; P6n re-read `U8.1Y`, `U10.3Y`, `U14.4Y`, `U17.3Y`, `U10.4Y` at 0.5 s, 1 s and 1.013 s and the picture setup, `U10.4Y` added); Troubleshooting (dark or rolling picture, a wall or the net wrong, the ball missing or misshapen, the ball moving wrong: ordered checks, never naming a fault).
