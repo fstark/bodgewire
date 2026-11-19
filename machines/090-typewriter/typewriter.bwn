@@ -1,7 +1,8 @@
 # Machine 090, TV typewriter (machines/090-typewriter/docs/TYPEWRITER.md): what is typed on an ASCII
 # keyboard shows on the TV, 16 rows of 32 characters, the page held in shift registers as in the 1973
 # original. 080's video chain at a 4 MHz dot clock: 6 dots a character (U1 counts 10-15), 42
-# characters a line (U2, U3), 312 lines a frame (U6-U8, clocked at each line end).
+# characters a line (U2, U3), 312 lines a frame (U6-U8, clocked at each line end); line sync on
+# characters 34-35, vertical sync on lines 280-283, both early in the blanking (P6n).
 # The page is six 2524 512-bit recirculating shift registers (U16-U21), one per bit, clocked 32 times
 # on the first line of each text row (PHI1_N, PHI2_N from U15): once round a frame, in step with the
 # beam. On that line the 2518 row buffer (U22) takes the row's 32 codes; it goes round once a line,
@@ -17,7 +18,7 @@ part U1  74LS161    # dot counter 10-15
 part U2  74LS161    # C0-C3
 part U3  74LS161    # C4, C5
 part U4  74LS20     # LINE_END_N, HSYNC_N
-part U5  74LS04     # DOT_LOAD_N, QB_N, CLK_N, D1_N, D4_N
+part U5  74LS04     # DOT_LOAD_N, QB_N, CLK_N, D1_N, D4_N, C2_N
 part U6  74LS161    # V0-V3
 part U7  74LS161    # V4-V7
 part U8  74LS161    # V8
@@ -41,7 +42,7 @@ part U25 74LS175    # output registers, LINE_END
 part U26 74LS244    # keyboard onto the write bus
 part U27 74LS244    # spaces onto the write bus (Clear)
 part U28 74LS74     # KEY, WR
-part U29 74LS00     # WRK_N, WRITE, ROW_LOAD_N
+part U29 74LS00     # WRK_N, WRITE, ROW_LOAD_N, V2_N
 part U30 74LS30     # Return decoder
 part U31 74LS00     # PRINT, ADV, XC_N, YEN
 part U32 74LS161    # cursor X0-X3
@@ -75,13 +76,14 @@ net VCC         U15.1D
 net VCC         U2.CLR_N U2.ENT U3.CLR_N
 net GND         U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
 net C0          U2.QA U4.1D U35.1A
-net C1          U2.QB U35.2A
-net C2          U2.QC U35.3A
-net C3          U2.QD U4.1C U4.2B U35.4A
+net C1          U2.QB U35.2A U4.2B
+net C2          U2.QC U35.3A U5.6A
+net C3          U2.QD U4.1C U35.4A
 net CC          U2.RCO U3.ENT
 net C4          U3.QA U36.1A
 net C5          U3.QB U4.1B U4.2A U12.1A
-net VCC         U4.2C U4.2D
+net C2_N        U5.6Y U4.2C
+net VCC         U4.2D
 net LINE_END_N  U4.1Y U2.LOAD_N U3.LOAD_N U25.4D
 net LINE_END    U25.4Q_N U6.CLK U7.CLK U8.CLK
 net HSYNC_N     U4.2Y U11.1A
@@ -91,16 +93,17 @@ net VCC         U6.CLR_N U6.ENP U6.ENT U7.CLR_N U7.ENP U8.CLR_N U8.ENP U9.G U9.H
 net GND         U6.A U6.B U6.C U6.D U7.A U7.B U7.C U7.D U8.A U8.B U8.C U8.D
 net V0          U6.QA U9.F U14.1A
 net V1          U6.QB U9.E U13.1A U14.1B
-net V2          U6.QC U9.D U10.1D U13.2A U14.2A
-net V3          U6.QD U13.3A U14.2B
+net V2          U6.QC U9.D U13.2A U14.2A U29.4A U29.4B
+net V3          U6.QD U13.3A U14.2B U10.1B
 net VC1         U6.RCO U7.ENT
 net V4          U7.QA U9.C U10.1C U36.2A
-net V5          U7.QB U9.B U10.1B U36.3A
+net V5          U7.QB U9.B U36.3A
 net V6          U7.QC U11.3A
 net V7          U7.QD U11.4A
 net VC2         U7.RCO U8.ENT
 net V8          U8.QA U9.A U10.1A U12.1B U40.CKA
 net FRAME_END_N U9.Y U6.LOAD_N U7.LOAD_N U8.LOAD_N
+net V2_N        U29.4Y U10.1D
 net VSYNC_N     U10.1Y U11.1B
 
 # Composite sync: HSYNC XOR VSYNC, then inverted (as 060).
@@ -242,5 +245,5 @@ net BLINK       U40.QD U12.3B
 net CUR_SHOW    U12.3Y U36.4B
 
 # Spare gates.
-net GND         U5.6A U29.4A U29.4B U39.2D U39.2CLK
+net GND         U39.2D U39.2CLK
 net VCC         U39.2PRE_N U39.2CLR_N

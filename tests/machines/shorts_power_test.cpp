@@ -58,7 +58,7 @@ void CheckRepairs(const char* puzzle, const char* repair) {
 TEST_CASE("shorts power: each Puzzle is fixed by its Repair", "[machines]") {
     CheckRepairs("sync_bridge.bwp", "unbridge:U10.1:U10.2");
     CheckRepairs("line_bridge.bwp", "unbridge:U9.6:U9.7");
-    CheckRepairs("unpowered_chip.bwp", "mend:F.Cu:164.85:51.05");
+    CheckRepairs("unpowered_chip.bwp", "mend:B.Cu:110.66:35.78");
     CheckRepairs("dead_rail.bwp", "unbridge:U1.7:U1.8");
 }
 

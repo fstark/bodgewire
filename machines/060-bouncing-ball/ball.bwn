@@ -2,7 +2,7 @@
 # 128 dots x 312 lines, PAL-like progressive; a box with a dashed net and a ball bouncing inside.
 # Beam counters U1-U5 make sync as on 050; U12-U17 decode the walls and net and mix the video.
 # The ball has its own counters: U18/U19 (horizontal, reloaded each line, a step shorter or longer
-# on line 308) and U20/U21/U22 (vertical, 9 bits, a frame plus or minus 4 lines); U23 times its
+# on line 308, TICK_N) and U20/U21/U22 (vertical, 9 bits, a frame plus or minus 4 lines); U23 times its
 # 8 lines; U25 detects the ball meeting a wall and U26 holds the directions.
 
 part X1  OSC freq=2MHz
@@ -13,16 +13,16 @@ part U4  74LS161    # V4-V7
 part U5  74LS161    # V8
 part U6  74LS20     # LINE_END_N, HSYNC_N
 part U7  74LS30     # FRAME_END_N
-part U8  74LS20     # VSYNC_N, BOTTOM_N
+part U8  74LS20     # TICK_N, BOTTOM_N
 part U9  74LS04     # H4_N, LINE_END, VBALL, MR, MIX_N, HBLANK
-part U10 74LS86     # composite sync
+part U10 74LS86     # composite sync, V3_N, VSYNC_N
 part U11 74LS74     # output registers
 part U12 74LS27     # wall and net decodes
 part U13 74LS02     # wall decodes, ball height clock
-part U14 74LS00     # TOP_N, LEFT_N, HBLANK_N
+part U14 74LS00     # TOP_N, LEFT_N, HBLANK_N, VSYNC_A
 part U15 74LS20     # RIGHT_N, NET_N
 part U16 74LS30     # video mixer
-part U17 74LS27     # MOVE, VIDEO_D
+part U17 74LS27     # MOVE, VIDEO_D, VSYNC
 part U18 74LS161    # ball horizontal, low
 part U19 74LS161    # ball horizontal, high
 part U20 74LS161    # ball vertical, low
@@ -59,16 +59,26 @@ net VCC         U3.CLR_N U4.CLR_N U5.CLR_N U7.H
 net GND         U3.A U3.B U3.C U3.D U4.A U4.B U4.C U4.D U5.A U5.B U5.C U5.D
 net V0          U3.QA U7.F U17.1C
 net V1          U3.QB U7.E U17.1B
-net V2          U3.QC U7.D U8.1D U15.2D
+net V2          U3.QC U7.D U8.1D U15.2D U17.3C
+net V3          U3.QD U10.3A
 net VC1         U3.RCO U4.ENT
-net V4          U4.QA U7.C U8.1C U8.2D U12.1A
+net V4          U4.QA U7.C U8.1C U8.2D U12.1A U14.4B
 net V5          U4.QB U7.B U8.1B U8.2C U12.1B
 net V6          U4.QC U8.2B U12.1C
 net V7          U4.QD U8.2A U13.2A
 net VC2         U4.RCO U5.ENT
-net V8          U5.QA U7.A U8.1A U13.2B U17.2C
+net V8          U5.QA U7.A U8.1A U13.2B U17.2C U14.4A
 net FRAME_END_N U7.Y U3.LOAD_N U4.LOAD_N U5.LOAD_N
-net VSYNC_N     U8.1Y U10.1B U17.1A
+# Line 308, the frame's tick: MOVE steps the ball sideways there.
+net TICK_N      U8.1Y U17.1A
+
+# Vertical sync: lines 280-283 (V8, V4, V3 high, V2 low), early in the blanking, so the beam is
+# back at the top before line 0 (P6n).
+net VSYNC_A     U14.4Y U17.3A
+net VCC         U10.3B U10.4B
+net V3_N        U10.3Y U17.3B
+net VSYNC       U17.3Y U10.4A
+net VSYNC_N     U10.4Y U10.1B
 
 # Composite sync: HSYNC XOR VSYNC, then inverted.
 net SYNC        U10.1Y U10.2A
@@ -135,4 +145,4 @@ net VIDEO       U11.2Q J2.VIDEO
 net VCC         U11.1PRE_N U11.1CLR_N U11.2PRE_N U11.2CLR_N
 
 # Unused gate inputs.
-net GND         U10.3A U10.3B U10.4A U10.4B U13.4A U13.4B U14.4A U14.4B U17.3A U17.3B U17.3C
+net GND         U13.4A U13.4B

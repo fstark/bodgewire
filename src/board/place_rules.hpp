@@ -42,11 +42,13 @@ struct Upright {
     std::uint32_t line;
 };
 
-// `at REF X Y` (P5x): `reference`'s courtyard centre at (x, y) mm from the Board's back-left
-// corner, y toward the front, upright; needs `size`.
+// `at REF X Y [ANGLE]` (P5x): `reference`'s courtyard centre at (x, y) mm from the Board's
+// back-left corner, y toward the front; needs `size`. ANGLE (P6n) is KiCad's, 0 (upright, the
+// default), 90 or 180: a hand-made Board copied part by part.
 struct AtRule {
     std::string reference;
     double x, y;
+    int angle = 0;
 };
 
 struct PlaceRule {

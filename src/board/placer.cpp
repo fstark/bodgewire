@@ -167,6 +167,7 @@ private:
             } else if (const auto* at = std::get_if<AtRule>(&rule.rule)) {
                 mark(at->reference);
                 if (const auto it = index_.find(at->reference); it != index_.end()) {
+                    parts_[it->second].angle = at->angle;
                     atOf_[it->second] = at;
                     atParts_.push_back(it->second);
                 }

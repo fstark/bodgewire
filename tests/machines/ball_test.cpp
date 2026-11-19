@@ -20,6 +20,7 @@
 #include "machine/puzzle.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
+#include "tv_window.hpp"
 
 using namespace bw;
 using namespace bw::literals;
@@ -132,11 +133,6 @@ Picture Read(const TvFrame& frame) {
             }
             const bool inBox =
                 row >= box.top && row <= box.bottom && column >= box.left && column <= box.right;
-            // The top wall's first row is line 0, drawn 32 columns early (see `ball: box and
-            // dashed net`): its stray cells are not counted.
-            if (row == box.top - box.topWallRows) {
-                continue;
-            }
             const bool inWalls = row >= box.top - box.topWallRows &&
                                  row <= box.bottom + box.bottomWallRows && column >= box.leftWall &&
                                  column <= box.rightWall;
@@ -266,9 +262,11 @@ TEST_CASE("ball: box and dashed net", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2);
     auto loaded = BoardCircuit();
     std::optional<Picture> picture;
+    std::optional<LitBox> lit;
     bool locked = false;
     Watch(*loaded, seed, 400_ms, 445_ms, [&](const TvFrame& frame, bool isLocked) {
         picture = Read(frame);
+        lit = LitBounds(frame);
         locked = isLocked;
     });
     REQUIRE(picture.has_value());
@@ -279,8 +277,9 @@ TEST_CASE("ball: box and dashed net", "[machines]") {
     CHECK(box.rightWall - box.right == kWallColumns);
     CHECK(box.right - box.left + 1 == 88 * kDot);
     CHECK(box.leftWall == 96);  // 12 µs after the sync edge, as on 050
-    // The TV draws the first line after vertical sync 32 columns early (free-running until the
-    // next horizontal sync): line 0 is a full-width row, shifted left.
+    // The vertical sync on lines 280-283 (P6n): the frame starts 16 µs into line 280, line 0 on
+    // row 32, the top wall's first row; the box inside a monitor's window.
+    CHECK(box.top - box.topWallRows == 32);
     CHECK(box.topWallRows == kWallRows);
     CHECK(box.bottomWallRows == kWallRows);
     CHECK(box.bottom - box.top + 1 == 224);  // lines 16–239
@@ -291,6 +290,8 @@ TEST_CASE("ball: box and dashed net", "[machines]") {
         CHECK(((row - picture->netRows.front()) % 8) < 4);
     }
     CHECK(picture->litOutside == 0);
+    REQUIRE(lit.has_value());
+    CHECK(InsideWindow(*lit, 312));
 }
 
 namespace {

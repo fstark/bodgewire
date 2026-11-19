@@ -18,6 +18,7 @@
 #include "netlist/builder.hpp"
 #include "parts/rom_contents.hpp"
 #include "sim/simulator.hpp"
+#include "tv_window.hpp"
 
 using namespace bw;
 using namespace bw::literals;
@@ -194,11 +195,15 @@ TEST_CASE("message: the TV shows the page", "[machines][slow]") {
     const auto offset = FindPage(frames[1], page);
     REQUIRE(offset.has_value());
     INFO("left " << offset->left << ", top " << offset->top);
-    CHECK(offset->left >= 41);
-    CHECK(offset->left <= 47);
-    CHECK(offset->top <= 8);
+    CHECK(offset->left >= 89);
+    CHECK(offset->left <= 95);
+    CHECK(offset->top >= 30);
+    CHECK(offset->top <= 34);
     CHECK(LitOutside(frames[1], *offset) == 0);
     CHECK(frames[2].cells == frames[1].cells);
+    const auto lit = LitBounds(frames[1]);
+    REQUIRE(lit.has_value());
+    CHECK(InsideWindow(*lit, 312));
 }
 
 // Puzzles (MESSAGE.md, Puzzles): each from power-on (seed 1), faulty then repaired.
@@ -244,9 +249,10 @@ void CheckFaultyPage(const Machine& machine, const PageFault& fault) {
     CHECK_FALSE(ShowsPage(*loaded, ExpectedPage()).has_value());
     const auto offset = ShowsPage(*loaded, ExpectedPage(fault), &frame);
     REQUIRE(offset.has_value());
-    CHECK(offset->left >= 41);
-    CHECK(offset->left <= 47);
-    CHECK(offset->top <= 8);
+    CHECK(offset->left >= 89);
+    CHECK(offset->left <= 95);
+    CHECK(offset->top >= 30);
+    CHECK(offset->top <= 34);
     CHECK(LitOutside(frame, *offset) == 0);
 }
 
@@ -281,19 +287,22 @@ TEST_CASE("message: echo", "[machines][slow]") {
         const auto offset = ShowsPage(*loaded, page, &frame);
         REQUIRE(offset.has_value());  // the page itself is whole
         CHECK(LitOutside(frame, *offset) > 0);
-        // Lines 288–303 draw text row 2 again, the poem's first line.
-        const std::vector<std::vector<bool>> first(page.begin() + 2 * kCellLines,
-                                                   page.begin() + 3 * kCellLines);
+        // Lines 256–311 draw the page's lines 0–55 again. The frame starts at line 280 (the
+        // vertical sync, P6n), so line l >= 280 is on row l − 280, above the page: lines 288–311
+        // (the poem's first line, text row 2, and the top half of row 3) on rows 8–31, of which
+        // a monitor shows rows 28–31. Lines 256–279 (blank text rows 0–1) leave the rows under
+        // the page dark.
         bool echoed = true;
-        for (int y = 0; y < kCellLines; ++y) {
+        for (int line = 288; line < 312; ++line) {
+            const auto& dots = page[static_cast<std::size_t>(line - 256)];
             for (int x = 0; x < kPageDots; ++x) {
                 const int column = offset->left + kDot * x + kDot / 2;
                 echoed =
-                    echoed && Lit(frame, offset->top + 288 + y, column) ==
-                                  first[static_cast<std::size_t>(y)][static_cast<std::size_t>(x)];
+                    echoed && Lit(frame, line - 280, column) == dots[static_cast<std::size_t>(x)];
             }
         }
         CHECK(echoed);
+        CHECK_FALSE(LitBounds(frame, offset->top + static_cast<int>(page.size())).has_value());
     }
     REQUIRE(machine.swap("U12"));
     CheckRepaired(machine);

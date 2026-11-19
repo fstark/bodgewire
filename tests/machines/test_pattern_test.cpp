@@ -14,6 +14,8 @@
 #include "devices/tv_input.hpp"
 #include "netlist/builder.hpp"
 #include "sim/simulator.hpp"
+#include "tv_window.hpp"
+#include "view/tv_controls.hpp"
 
 using namespace bw;
 using namespace bw::literals;
@@ -35,7 +37,7 @@ struct Outputs {
 // S1/S2 decode of counter state (h, v), before the output register.
 constexpr Outputs Decode(int h, int v) {
     const bool hsync = h >= 52 && h <= 55;
-    const bool vsync = v >= 308 && v <= 311;
+    const bool vsync = v >= 288 && v <= 291;  // right after the grid (P6n)
     const bool active = h < 48 && v < 288;
     return {hsync == vsync, active && (h % 8 == 0 || v % 16 == 0)};
 }
@@ -117,7 +119,7 @@ TEST_CASE("test pattern: outputs match golden function", "[machines]") {
     const auto syncSamples = sim.recorder().samples(syncN);
     const auto videoSamples = sim.recorder().samples(video);
     const Time t0 = FindVsyncStart(syncSamples, 50_ms);
-    constexpr int n0 = 308 * kPixelsPerLine + 1;
+    constexpr int n0 = 288 * kPixelsPerLine + 1;
     constexpr int count = 3 * kPixelsPerFrame;
 
     int mismatches = 0;
@@ -156,7 +158,7 @@ TEST_CASE("test pattern: decode sanity", "[machines]") {
             syncPixels += Decode(h, v).syncN ? 0 : 1;
         }
         INFO("line " << v);
-        CHECK(syncPixels == (v >= 308 ? 60 : 4));
+        CHECK(syncPixels == (v >= 288 && v <= 291 ? 60 : 4));
     }
     int white = 0;
     for (int n = 0; n < kPixelsPerFrame; ++n) {
@@ -165,7 +167,9 @@ TEST_CASE("test pattern: decode sanity", "[machines]") {
     CHECK(white == 2'484);
 }
 
-// TV_DESIGN §5.5: pixel (h, v), v >= 1, h < 52 lands on row v + 4, columns 8 (h + 12) + 0..7.
+// TV_DESIGN §5.5: the frame starts 16 us into the vertical sync (line 288), so pixel (h, v),
+// h < 52, lands on row v + 24, columns 8 (h + 12) + 0..7. Line 0 no longer follows the inverted
+// sync pulses (P6n), so it is drawn where the others are.
 TEST_CASE("test pattern: TV shows the grid", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2, 3);
     INFO("seed " << seed);
@@ -203,16 +207,16 @@ TEST_CASE("test pattern: TV shows the grid", "[machines]") {
                                   expected, got);
         }
     };
-    for (int v = 1; v < 288; ++v) {
+    for (int v = 0; v < 288; ++v) {
         for (int h = 0; h < 52; ++h) {
             const float expected = Decode(h, v).video ? 1.0f : 0.0f;
             for (int sub = 1; sub <= 6; ++sub) {
-                check(v + 4, 8 * (h + 12) + sub, expected, std::format("v {} h {}", v, h));
+                check(v + 24, 8 * (h + 12) + sub, expected, std::format("v {} h {}", v, h));
             }
         }
     }
     for (int row = 0; row < kTvRows; ++row) {
-        if (row >= 4 && row < 292) {
+        if (row >= 24 && row < 312) {
             continue;
         }
         for (int column = 0; column < kTvColumns; ++column) {
@@ -221,4 +225,13 @@ TEST_CASE("test pattern: TV shows the grid", "[machines]") {
     }
     INFO(report);
     CHECK(mismatches == 0);
+
+    // A monitor's window shows the grid but its lines 0-3 (rows 24-27), the overscan (P6n).
+    const int lines = input.tv().completedStats().lines;
+    const auto shown = LitBounds(frame, static_cast<int>(kWindowTop));
+    REQUIRE(shown.has_value());
+    CHECK(InsideWindow(*shown, lines));
+    const auto all = LitBounds(frame);
+    REQUIRE(all.has_value());
+    CHECK(all->top == 24);
 }

@@ -10,7 +10,7 @@ part U5  74LS161    # V8
 part U6  74LS20     # LINE_END_N, HSYNC_N
 part U7  74LS30     # FRAME_END_N
 part U8  74LS30     # VSYNC_N
-part U9  74LS04     # H3_N, V3_N, LINE_END
+part U9  74LS04     # H3_N, V3_N, LINE_END, V4_N, V2_N
 part U10 74LS86     # composite sync
 part U11 74LS08     # blanking, video gate
 part U12 74LS32     # grid ORs
@@ -42,10 +42,10 @@ net VCC         U3.CLR_N U4.CLR_N U5.CLR_N U7.H
 net GND         U3.A U3.B U3.C U3.D U4.A U4.B U4.C U4.D U5.A U5.B U5.C U5.D
 net V0          U3.QA U7.F U12.3B
 net V1          U3.QB U7.E U12.3A
-net V2          U3.QC U7.D U8.D U12.2B
+net V2          U3.QC U7.D U12.2B U9.5A
 net V3          U3.QD U9.2A U12.2A
 net VC1         U3.RCO U4.ENT
-net V4          U4.QA U7.C U8.C
+net V4          U4.QA U7.C U9.4A
 net V5          U4.QB U7.B U8.B U11.2B
 net V6          U4.QC
 net V7          U4.QD
@@ -53,7 +53,11 @@ net VC2         U4.RCO U5.ENT
 net V8          U5.QA U7.A U8.A U11.2A
 net FRAME_END_N U7.Y U3.LOAD_N U4.LOAD_N U5.LOAD_N
 net V3_N        U9.2Y U8.E
+net V4_N        U9.4Y U8.C
+net V2_N        U9.5Y U8.D
 net VCC         U8.F U8.G U8.H
+# Vertical sync: lines 288-291, right after the grid's last line, so the beam is back at the
+# top before line 0 (P6n).
 net VSYNC_N     U8.Y U10.1B
 
 # Composite sync: HSYNC XOR VSYNC, then inverted.
@@ -79,4 +83,4 @@ net VIDEO       U14.2Q J2.VIDEO
 net VCC         U14.1PRE_N U14.1CLR_N U14.2PRE_N U14.2CLR_N
 
 # Unused gate inputs.
-net GND         U9.4A U9.5A U9.6A U10.3A U10.3B U10.4A U10.4B U11.4A U11.4B U13.4A U13.4B
+net GND         U9.6A U10.3A U10.3B U10.4A U10.4B U11.4A U11.4B U13.4A U13.4B

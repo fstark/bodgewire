@@ -1,6 +1,6 @@
 # Machine 070, paddle tennis (machines/070-tennis/docs/TENNIS.md): the 060 bouncing ball's
 # beam counters, sync, net and ball (U1-U26), grown in stages (TENNIS_DESIGN.md, Stages).
-# Two paddles from two controllers (J3, J4) triggered by VSYNC_N; the ball turns at a paddle or
+# Two paddles from two controllers (J3, J4) triggered by TICK_N (line 308); the ball turns at a paddle or
 # a goal, and leaves a paddle at an angle set by the quarter it hits; a miss hides the ball for a
 # serve and scores for the other player; the scores are drawn at the top from one decoder; at 11
 # the game is over until Start (SW1). No side walls are drawn: the 060 side walls are the goals.
@@ -13,7 +13,7 @@ part U4  74LS161    # V4-V7
 part U5  74LS161    # V8
 part U6  74LS20     # LINE_END_N, HSYNC_N
 part U7  74LS30     # FRAME_END_N
-part U8  74LS20     # VSYNC_N, BOTTOM_N
+part U8  74LS20     # TICK_N, BOTTOM_N
 part U9  74LS04     # H4_N, LINE_END, VBALL, MR, MIX_N, HBLANK
 part U10 74LS86     # composite sync
 part U11 74LS74     # output registers
@@ -47,7 +47,7 @@ part U34 74LS20     # PAD_N, REGION_N
 part U35 74LS27     # GO_RIGHT, GO_LEFT, PAD_HIT
 part U36 74LS08     # SIDES_N, TURN_N, HIT_LOW, SET_SHALLOW
 part U37 74LS02     # HIT_HIGH, SET_STEEP, VLOAD_C, MID_A
-part U38 74LS32     # GO_DOWN, GO_UP, BALLV_N
+part U38 74LS32     # GO_DOWN, GO_UP, BALLV_N, VSYNC_N
 part U39 74LS107    # SHALLOW, GAME_OVER
 part U40 74LS107    # TURN_ODD, FAST
 part U41 74LS04     # H6_N, PAD_HIT_N, MOVE_N, SERVING, START, REGION
@@ -60,7 +60,7 @@ part U47 74LS02     # SKIP, SERVING_N, H34_LOW
 part U48 74LS90     # left score units SL0-SL3
 part U49 74LS90     # right score units SR0-SR3
 part U50 74LS107    # TENS_L, TENS_R
-part U51 74LS00     # WIN_L_N, WIN_R_N, WIN
+part U51 74LS00     # WIN_L_N, WIN_R_N, WIN, VSYNC_A
 part U52 74LS157    # this half's units SC0-SC3
 part U53 74LS48     # SEG_A-SEG_G
 part U54 74LS157    # this half of the cell: FE, BC, GD, A_TOP
@@ -97,14 +97,20 @@ net V0          U3.QA U7.F U17.1C
 net V1          U3.QB U7.E U17.1B
 net V2          U3.QC U7.D U8.1D U15.2D
 net VC1         U3.RCO U4.ENT
-net V4          U4.QA U7.C U8.1C U8.2D U12.1A
-net V5          U4.QB U7.B U8.1B U8.2C U12.1B
+net V4          U4.QA U7.C U8.1C U8.2D U12.1A U51.4B
+net V5          U4.QB U7.B U8.1B U8.2C U12.1B U38.4B
 net V6          U4.QC U8.2B U12.1C
 net V7          U4.QD U8.2A U13.2A
 net VC2         U4.RCO U5.ENT
-net V8          U5.QA U7.A U8.1A U13.2B U17.2C
+net V8          U5.QA U7.A U8.1A U13.2B U17.2C U51.4A
 net FRAME_END_N U7.Y U3.LOAD_N U4.LOAD_N U5.LOAD_N
-net VSYNC_N     U8.1Y U10.1B U17.1A
+# Line 308, the frame's tick: MOVE and the controllers' triggers.
+net TICK_N      U8.1Y U17.1A
+
+# Vertical sync: lines 272-287 (V8, V4 high, V5 low), early in the blanking, so the beam is back
+# at the top before line 0 (P6n).
+net VSYNC_A     U51.4Y U38.4A
+net VSYNC_N     U38.4Y U10.1B
 
 # Composite sync: HSYNC XOR VSYNC, then inverted.
 net SYNC        U10.1Y U10.2A
@@ -176,10 +182,10 @@ net VCC         U11.1PRE_N U11.1CLR_N U11.2PRE_N U11.2CLR_N
 
 # Unused gate inputs.
 
-# Paddles. Each controller is triggered at line 308; LWAIT is its pulse taken at line starts.
+# Paddles. Each controller is triggered at line 308 (TICK_N); LWAIT is its pulse taken at line starts.
 # The paddle counter is cleared while LWAIT is high, then counts lines (at dot 127) until LP3
 # falls after line 15 and sets LDONE. A paddle is lit on its lines at its column.
-net VSYNC_N     J3.TRIG_N J4.TRIG_N
+net TICK_N      J3.TRIG_N J4.TRIG_N
 net LPULSE      J3.OUT U27.1D
 net RPULSE      J4.OUT U27.2D
 net LINE_END_N  U27.1CLK U27.2CLK
@@ -278,7 +284,6 @@ net SKIP        U47.2Y U43.3C
 net MOVE_N      U41.3Y U43.3A
 
 # Later stages and unused gates.
-net GND         U38.4A U38.4B
 
 # Misses: the ball meeting a goal while moving into it. LOST_LEFT and LOST_RIGHT are set with the
 # turn (same edge as HDIR), cleared by SERVE_END; while serving the ball is hidden from the
@@ -338,7 +343,7 @@ net SR0         U51.2B
 net WIN_L_N     U51.1Y U51.3A
 net WIN_R_N     U51.2Y U51.3B
 net WIN         U51.3Y U39.2J
-net GND         U39.2K U51.4A U51.4B
+net GND         U39.2K
 net CLK         U39.2CLK
 net START_N     U39.2CLR_N
 net GAME_OVER   U39.2Q

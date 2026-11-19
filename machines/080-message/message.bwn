@@ -1,6 +1,7 @@
 # Machine 080, message display (machines/080-message/docs/MESSAGE.md): a page of fixed text on the TV,
 # 16 rows of 16 characters. A 2 MHz dot clock, 6 dots a character
-# (U1 counts 10-15), 21 characters a line (U2, U3), 312 lines a frame (U6-U8, as on 060). The column
+# (U1 counts 10-15), 21 characters a line (U2, U3), 312 lines a frame (U6-U8, as on 060); line
+# sync on characters 18-19, vertical sync on lines 280-283, both early in the blanking (P6n). The column
 # and the text row address the message ROM (U14, a 2716), whose character code and the glyph line
 # (V1-V3, each line drawn twice) address the character ROM (U15, a 2513). The 74LS165 (U16) loads
 # the five dots on a character's last dot and shifts them out on the inverted clock; U17 re-times
@@ -11,7 +12,7 @@ part U1  74LS161    # dot counter 10-15
 part U2  74LS161    # C0-C3
 part U3  74LS161    # C4
 part U4  74LS20     # LINE_END_N, HSYNC_N
-part U5  74LS04     # DOT_LOAD_N, LINE_END, CLK_N
+part U5  74LS04     # DOT_LOAD_N, LINE_END, CLK_N, V2_N
 part U6  74LS161    # V0-V3
 part U7  74LS161    # V4-V7
 part U8  74LS161    # V8
@@ -39,8 +40,8 @@ net DOT_LOAD_N  U5.1Y U1.LOAD_N U16.SH_LD_N
 net VCC         U2.CLR_N U2.ENT U3.CLR_N
 net GND         U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
 net C0          U2.QA U14.A0
-net C1          U2.QB U14.A1
-net C2          U2.QC U14.A2 U4.1B U4.2A
+net C1          U2.QB U14.A1 U4.2A
+net C2          U2.QC U14.A2 U4.1B
 net C3          U2.QD U14.A3
 net CC          U2.RCO U3.ENT
 net C4          U3.QA U4.1C U4.2B U12.1A
@@ -54,16 +55,17 @@ net VCC         U6.CLR_N U7.CLR_N U8.CLR_N U9.H
 net GND         U6.A U6.B U6.C U6.D U7.A U7.B U7.C U7.D U8.A U8.B U8.C U8.D
 net V0          U6.QA U9.F
 net V1          U6.QB U9.E U13.1A
-net V2          U6.QC U9.D U10.1D U13.2A
-net V3          U6.QD U13.3A
+net V2          U6.QC U9.D U13.2A U5.4A
+net V3          U6.QD U13.3A U10.1B
 net VC1         U6.RCO U7.ENT
 net V4          U7.QA U9.C U10.1C U14.A4
-net V5          U7.QB U9.B U10.1B U14.A5
+net V5          U7.QB U9.B U14.A5
 net V6          U7.QC U14.A6
 net V7          U7.QD U14.A7
 net VC2         U7.RCO U8.ENT
 net V8          U8.QA U9.A U10.1A U12.1B
 net FRAME_END_N U9.Y U6.LOAD_N U7.LOAD_N U8.LOAD_N
+net V2_N        U5.4Y U10.1D
 net VSYNC_N     U10.1Y U11.1B
 net GND         U10.2A U10.2B U10.2C U10.2D
 
@@ -107,4 +109,4 @@ net VIDEO_D     U16.QH U17.2D
 net VCC         U17.1PRE_N U17.1CLR_N U17.2PRE_N U17.2CLR_N
 net SYNC_N      U17.1Q J2.SYNC_N
 net VIDEO       U17.2Q J2.VIDEO
-net GND         U5.4A U5.5A U5.6A
+net GND         U5.5A U5.6A

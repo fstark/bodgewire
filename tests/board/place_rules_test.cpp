@@ -105,6 +105,16 @@ TEST_CASE("place rules: size and at", "[board]") {
     CHECK(ic1.x == 64.0);
     CHECK(ic1.y == 66.2);
     CHECK(std::get<NextRule>(rules->rules[2].rule).other == "IC1");
+    CHECK(ic1.angle == 0);
+
+    const auto turned = ParsePlaceRules("size 50 50\nat J1 10 20 90\nat J2 30 20 180\n", "t.place");
+    REQUIRE(turned.has_value());
+    CHECK(std::get<AtRule>(turned->rules[0].rule).angle == 90);
+    CHECK(std::get<AtRule>(turned->rules[1].rule).angle == 180);
+    CHECK(Errors("size 10 20\nat IC1 5 5 45\n") ==
+          std::vector<std::string>{"t.place:2: error: bad angle '45': 0, 90 or 180"});
+    CHECK(Errors("size 10 20\nat IC1 5 5 90 x\n") ==
+          std::vector<std::string>{"t.place:2: error: expected: at REF X Y [ANGLE]"});
 
     CHECK(Errors("at IC1 64 66\n") == std::vector<std::string>{"t.place:1: error: at needs size"});
     CHECK(Errors("size 10 20\nat IC1 x 66\n") ==

@@ -223,8 +223,18 @@ private:
     }
 
     void atRule(const std::vector<std::string_view>& words) {
-        if (words.size() != 4) {
-            return error("expected: at REF X Y");
+        if (words.size() != 4 && words.size() != 5) {
+            return error("expected: at REF X Y [ANGLE]");
+        }
+        int angle = 0;
+        if (words.size() == 5) {
+            if (words[4] == "90") {
+                angle = 90;
+            } else if (words[4] == "180") {
+                angle = 180;
+            } else if (words[4] != "0") {
+                return error("bad angle '" + std::string(words[4]) + "': 0, 90 or 180");
+            }
         }
         double xy[2]{};
         for (int i = 0; i < 2; ++i) {
@@ -238,7 +248,7 @@ private:
             firstAt_ = line_;
         }
         if (claim(words[1])) {
-            rules_.rules.push_back({line_, AtRule{std::string(words[1]), xy[0], xy[1]}});
+            rules_.rules.push_back({line_, AtRule{std::string(words[1]), xy[0], xy[1], angle}});
         }
     }
 

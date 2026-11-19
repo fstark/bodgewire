@@ -21,6 +21,7 @@
 #include "parts/ls47.hpp"
 #include "parts/paddle.hpp"
 #include "sim/simulator.hpp"
+#include "tv_window.hpp"
 
 using namespace bw;
 using namespace bw::literals;
@@ -282,12 +283,15 @@ TEST_CASE("tennis: netlist loads without warnings", "[machines]") {
 TEST_CASE("tennis: court", "[machines][slow]") {
     auto loaded = BoardCircuit();
     int frames = 0, unlocked = 0, wallsMissing = 0;
-    int edgeDots = 0;  // lit cells on dots 0–1 and 94–95 inside the court
+    int edgeDots = 0;       // lit cells on dots 0–1 and 94–95 inside the court
+    int outsideWindow = 0;  // frames lit outside a monitor's window (P6n)
     bool inside = false;
     std::vector<Picture> pictures;
     Watch(*loaded, 1, 300_ms, 4'300_ms, [&](const TvFrame& frame, bool locked, Simulator&) {
         ++frames;
         unlocked += locked ? 0 : 1;
+        const auto lit = LitBounds(frame);
+        outsideWindow += lit && !InsideWindow(*lit, 312) ? 1 : 0;
         const Picture picture = Read(frame);
         if (!picture.walls) {
             ++wallsMissing;
@@ -311,6 +315,7 @@ TEST_CASE("tennis: court", "[machines][slow]") {
     CHECK(unlocked == 0);
     CHECK(wallsMissing == 0);
     CHECK(edgeDots == 0);
+    CHECK(outsideWindow == 0);
 }
 
 namespace {
@@ -1166,9 +1171,10 @@ TEST_CASE("tennis: rolling_picture", "[machines]") {
     const Point pin2 = *machine.padPosition("U10", "2");
     {
         auto loaded = Build(machine);
-        CHECK(machine.probeNet(*loaded, Layer::Back, pin2) == PinNet(*loaded, "U8", "1Y"));
-        CHECK(*PinNet(*loaded, "U10", "1B") != *PinNet(*loaded, "U8", "1Y"));  // the leg
-        // VSYNC_N pulses at U8 and still triggers the controllers; the leg floats.
+        CHECK(machine.probeNet(*loaded, Layer::Back, pin2) == PinNet(*loaded, "U38", "4Y"));
+        CHECK(*PinNet(*loaded, "U10", "1B") != *PinNet(*loaded, "U38", "4Y"));  // the leg
+        // TICK_N (line 308) pulses at U8 and triggers the controllers, apart from the sync
+        // (P6n): the paddles work; the leg floats.
         const Run run = Play(*loaded, 0.5, 0.5, 550_ms, 1'200_ms, {"U8.1Y", "J3.TRIG_N", "U10.1B"});
         CHECK(run.shots.size() >= 25);
         CHECK(run.count([](const Shot& s) { return s.locked; }) == 0);
@@ -1189,10 +1195,20 @@ TEST_CASE("tennis: short_frames", "[machines]") {
         CHECK(*PinNet(*loaded, "U7", "D") != *PinNet(*loaded, "U3", "QC"));  // the leg
         const Run run = Play(*loaded, 0.5, 0.5, 550_ms, 1'200_ms, {"U7.D", "U3.QC", "U8.1Y"});
         CHECK(run.shots.size() >= 25);
-        CHECK(run.count([](const Shot& s) { return s.locked; }) == 0);
         CHECK(run.lamps[0] == "-");
         CHECK(Pulses(run.lamps[1]));
-        CHECK(run.lamps[2].find("LOW") == std::string::npos);  // no VSYNC_N
+        CHECK(run.lamps[2].find("LOW") == std::string::npos);  // no TICK_N
+        // The sync (lines 272-287) still comes, so the picture holds (P6n); no paddle is drawn,
+        // and without MOVE the ball stays on its column.
+        CHECK(run.count([](const Shot& s) { return !s.locked || !s.picture.walls; }) == 0);
+        CHECK(run.count([](const Shot& s) { return s.picture.left || s.picture.right; }) == 0);
+        std::optional<int> column;
+        for (const Shot& shot : run.shots) {
+            if (shot.picture.ball) {
+                CHECK(shot.picture.ball->left == column.value_or(shot.picture.ball->left));
+                column = shot.picture.ball->left;
+            }
+        }
     }
     REQUIRE(machine.resolder({"U7", "4"}));
     auto loaded = Build(machine);

@@ -81,6 +81,7 @@ add_executable(bw_tests
   machines/test_pattern_faults_test.cpp
   machines/test_pattern_test.cpp
   machines/tv_page.cpp
+  machines/tv_window.cpp
   netlist/builder_test.cpp
   netlist/bw1_bench_test.cpp
   netlist/bw2001_bench_test.cpp

@@ -28,6 +28,7 @@
 #include "parts/shift_register_2524.hpp"
 #include "parts/switch.hpp"
 #include "sim/simulator.hpp"
+#include "tv_window.hpp"
 
 using namespace bw;
 using namespace bw::literals;
@@ -316,10 +317,16 @@ TEST_CASE("typewriter: the TV shows the page", "[machines][slow]") {
     const auto offset = ShownAt(frames[1], codes, *cursor);
     REQUIRE(offset.has_value());
     INFO("left " << offset->left << ", top " << offset->top);
-    CHECK(offset->left >= 30);
-    CHECK(offset->left <= 38);
-    CHECK(offset->top <= 8);
+    // The line sync on characters 34-35 and the vertical sync on lines 280-283 (P6n): the text
+    // 12 µs after the sync edge (column 106), line 0 on row 32, inside a monitor's window.
+    CHECK(offset->left >= 102);
+    CHECK(offset->left <= 110);
+    CHECK(offset->top >= 30);
+    CHECK(offset->top <= 34);
     CHECK(LitOutside(frames[1], *offset) == 0);
+    const auto lit = LitBounds(frames[1]);
+    REQUIRE(lit.has_value());
+    CHECK(InsideWindow(*lit, 312));
     CHECK(ShownAt(frames[2], codes, *cursor).has_value());
 }
 

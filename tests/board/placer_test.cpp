@@ -89,6 +89,14 @@ const PlacedPart& Part(const Placement& placement, std::string_view reference) {
 Box Courtyard(const Placement& placement, std::string_view reference) {
     const PlacedPart& part = Part(placement, reference);
     const Footprint& fp = *part.footprint;
+    if (part.angle == 90) {  // KiCad's +90°: (x, y) → (y, −x)
+        return {{part.origin.x + fp.courtyardMin.y, part.origin.y - fp.courtyardMax.x},
+                {part.origin.x + fp.courtyardMax.y, part.origin.y - fp.courtyardMin.x}};
+    }
+    if (part.angle == 180) {
+        return {{part.origin.x - fp.courtyardMax.x, part.origin.y - fp.courtyardMax.y},
+                {part.origin.x - fp.courtyardMin.x, part.origin.y - fp.courtyardMin.y}};
+    }
     return {{part.origin.x + fp.courtyardMin.x, part.origin.y + fp.courtyardMin.y},
             {part.origin.x + fp.courtyardMax.x, part.origin.y + fp.courtyardMax.y}};
 }
@@ -478,6 +486,24 @@ TEST_CASE("placer: size fixes the outline and at puts a part's centre where it s
         CHECK(part.origin.x % kSnap == 0);
         CHECK(part.origin.y % kSnap == 0);
     }
+}
+
+TEST_CASE("placer: at with an angle turns the part about its courtyard centre", "[board]") {
+    const Placement p =
+        Placed(kSized, "size 60 50\nat U1 20 20 90\nat U2 40 20 180\nat J1 10 40 90\n"
+                       "edge J2 back middle\n");
+    CHECK(Part(p, "U1").angle == 90);
+    CHECK(Part(p, "U2").angle == 180);
+    CHECK(Part(p, "J1").angle == 90);
+    const Box u1 = Courtyard(p, "U1");
+    const Box u2 = Courtyard(p, "U2");
+    CHECK(u1.max.x - u1.min.x > u1.max.y - u1.min.y);  // lying
+    CHECK(u2.max.y - u2.min.y > u2.max.x - u2.min.x);  // standing, notch at the bottom
+    CHECK(std::abs((u1.min.x + u1.max.x) / 2 - 35 * kMm) <= kSnap / 2);
+    CHECK(std::abs((u1.min.y + u1.max.y) / 2 - 35 * kMm) <= kSnap / 2);
+    CHECK(std::abs((u2.min.x + u2.max.x) / 2 - 55 * kMm) <= kSnap / 2);
+    CHECK(std::abs((u2.min.y + u2.max.y) / 2 - 35 * kMm) <= kSnap / 2);
+    CHECK(Part(p, "U2").origin.y > u2.min.y + (u2.max.y - u2.min.y) / 2);  // pin 1 at the bottom
 }
 
 TEST_CASE("placer: size and at refusals", "[board]") {

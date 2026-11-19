@@ -88,17 +88,18 @@ No footprint moves. For each Machine the pads that change Net (by reference and 
 | 080 | `U4.2A`, `U10.1B`, `U10.1D`, `U5.4A`, `U5.4Y` |
 | 090 | `U4.2B`, `U4.2C`, `U5.6A`, `U5.6Y`, `U10.1B`, `U10.1D`, `U29.4A`, `U29.4B`, `U29.4Y` |
 
-Steps ([ADD_MACHINE.md](../recipes/ADD_MACHINE.md) §3, "Parts added to a routed Board", with no part added):
+Steps (changed while implementing, 2026-11-19: the user routes whole Boards with Freerouting rather than editing stubs, and wants as few human steps as possible; [ADD_MACHINE.md](../recipes/ADD_MACHINE.md) §3, "Nets changed on a routed Board"):
 
-1. Agent: `bw export-kicad machines/NNN-name/<m>.bwn -o <scratch>/<m>.net` for each, the pad list above, the crack Traces to keep (spec, Puzzles).
-2. User, KiCad closed by the agent's side: File → Import → Netlist (replace and delete off). The pads take their new Nets; the track stubs still on the old Nets show as DRC shorts and unconnected items. Delete those stubs, lock the remaining tracks (so Freerouting keeps the crack Traces' routes), Freerouting on the open connections, DRC 0 errors.
-3. Agent: `bw check-board` prints `ok`; the Board's DRC case and its Puzzles' cases pass; a few connections left open go to `tools/route_missing.py`.
-
-`TICK_N` is not a pure rename: `VSYNC_N` lives on at `U10.1B`, so after the import the tracks from `U8.1Y` keep the name `VSYNC_N` while touching `TICK_N` pads (shorts). Delete the stub to `U10.1B` and give the rest of those tracks `TICK_N` (or delete and reroute them; on 070 they reach `J3` and `J4`).
+1. 050 and 060, laid out by hand, get a `.place` from their Boards: `size` and one `at REF X Y [ANGLE]` a part, each footprint's courtyard centre and angle (050's `J1` at 90, `J2` at 180: `at` takes an angle, `src/board/place_rules.{hpp,cpp}`, `placer.cpp`, with parser and placer cases). `bw place` gives the Board back unrouted, every part under 0.64 mm from where it was (the 1.27 mm grid), angles kept.
+2. 070, 080 and 090 keep their `.kicad_pcb` (tidied after `bw place`, which would anneal again): `tools/renet_board.py` deletes the tracks and vias and puts each pad on its Net from the netlist.
+3. User: Freerouting on each whole Board. Agent: `bw check-board` ok, KiCad's DRC clean, leftovers by `tools/route_missing.py` (080's `CH0`).
+4. Every crack Puzzle's crack resolved again on the new Traces and its symptom case run; `shorts power`'s typed `mend:` on 050's `VCC` crack moves to the crack's new point.
 
 ## Tests
 
-### The window check (`tests/machines/tv_page`)
+### The window check (`tests/machines/tv_window`)
+
+In its own file, not `tv_page`: `message_test.cpp` and `typewriter_test.cpp` have their own `FindPage` and `Matches`, which `tv_page.hpp`'s would make ambiguous. `InsideWindow(box, lines)` beside `LitBounds`.
 
 ```cpp
 // The lit part of `frame` (cells >= 0.5): rows and columns, inclusive; nullopt if nothing is lit.
@@ -136,4 +137,4 @@ Per Machine, written to STYLE's Manuals rules ([ADD_MACHINE.md](../recipes/ADD_M
 ## Recipes
 
 - ADD_MACHINE §2, after the TV page bullet: a TV Machine's sync sits early in its blanking: sync plus back porch 10–14 µs before the first dot, the last dot before 62 µs after the sync edge (TV columns 80–496), and the vertical sync at least 28 lines before the picture's first; decode it from the counters there, not on their last values (P6n). The fault-free case calls the window check.
-- ADD_MACHINE §3: changing the Nets of a routed Board's existing pads: the steps above (import with replace and delete off, stubs deleted, the rest locked, Freerouting on the open connections).
+- ADD_MACHINE §3: Nets changed on a routed Board, no part added: the steps above (a `.place` for a hand-made Board, `renet_board.py` for a tidied one, Freerouting on the whole Board, cracks checked again); `at`'s angle in the real-board bullet. Done with phase 2.
