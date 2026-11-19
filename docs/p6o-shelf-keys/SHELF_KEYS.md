@@ -1,6 +1,6 @@
 # P6o — Shelf and keys
 
-Roadmap step P6o ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): the PC keys always go to the Machine, the shelf regrouped around one slot for the Machine's own devices, the repair tools usable with the power on, and smaller bench fixes. It takes in the former P6p (the keys' inconsistencies left by P6g) and replaces the keyboard drawer. Design: `SHELF_KEYS_DESIGN.md`. Plan: `SHELF_KEYS_PLAN.md` (both to come). Terminology: [GLOSSARY.md](../GLOSSARY.md).
+Roadmap step P6o ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): the PC keys always go to the Machine, the shelf regrouped around one slot for the Machine's own devices, the repair tools usable with the power on, and smaller bench fixes. It takes in the former P6p (the keys' inconsistencies left by P6g) and replaces the keyboard drawer. Design: [SHELF_KEYS_DESIGN.md](SHELF_KEYS_DESIGN.md). Plan: [SHELF_KEYS_PLAN.md](SHELF_KEYS_PLAN.md). Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
 ## Why
 
@@ -44,6 +44,14 @@ Decided while grilling (2026-11-19), accepted by the user:
 - **What goes with the shortcuts**: F2, the clicks that took or gave back the keys, the gold for keys on the shelf and on the keyboard and knob windows, the shelf drawings' corner letters (`G`, `P`, `S`, `M`, `K`, `W`, `C`, `O`, `V`, `U`, `L`, `F`), Esc everywhere (back to the probe, clear a marker, cancel a wire), `+`/`−` zoom, and `--keys machine`. Each has a mouse equivalent: a click on the tool or instrument, the wheel, a right-click to clear a marker, a click on the wire's first pin again (or another tool) to cancel a wire. The BW-1's keyboard drawing no longer toggles anything.
 - **Only Tab keeps the plain look**; it has no shelf control.
 
+Decided before the design (2026-11-19), the user's answers:
+
+| Question | Decision |
+|---|---|
+| Home (a double-click putting an object back at its default place) | dropped: an object the player moved stays where it was moved, for the run. Popped back in, it returns where it was on the bench before it popped out (derived: nowhere else is its own) |
+| The switch at `‖` when the power comes on | it jumps to `1×`: powering on always runs |
+| The binder's own pop-out control (P6j) | removed: a double-click on the shelf pops out every object the same way |
+
 ## What the player sees
 
 ### Keys
@@ -51,7 +59,7 @@ Decided while grilling (2026-11-19), accepted by the user:
 1. Every key goes to the Machine: its keyboard (out, put away or popped out), its knob box (`Q`/`A`, `↑`/`↓`, out or not), its Board keys (the BW-1's `pc=` keys). A Machine with none of these ignores keys.
 2. Exceptions: a text field being edited; Cmd combinations; Tab flips the plain look; `` ` `` flips the Board.
 3. Nothing shows who has the keys: there is no longer a choice. Gold means only the focus.
-4. The User Manuals that mention F2 (Message, BW-1, BW-2001, BW-80) are reworded.
+4. The User Manuals that mention F2 (BW-1, BW-2001, BW-80) are reworded.
 
 ### The shelf
 
@@ -63,7 +71,7 @@ Decided while grilling (2026-11-19), accepted by the user:
    ```
 
    The left half is the bench, the right end is this Machine: its complaint, its manuals, its devices. The hint keeps the free space between. The trays' look is tuned on screenshots with the user.
-6. **Controls**: the power switch with its LIMIT lamp, unchanged; one three-position slide switch for pause and speed: `‖`, `1×`, `Max`. The pause button, the layer control and the fit button leave the shelf. A double-click on bare Board still fits.
+6. **Controls**: the power switch with its LIMIT lamp, unchanged; one three-position slide switch for pause and speed: `‖`, `1×`, `Max`. With the power off `‖` cannot be chosen (the switch stays where it is); when the power comes on a switch at `‖` jumps to `1×`. The pause button, the layer control and the fit button leave the shelf. A double-click on bare Board still fits.
 7. **The Machine slot** holds the TV, keyboard and knob box, at the shelf's right end, aligned right so its width moves nothing else:
 
    | Machines | Drawing | Cells |
@@ -79,7 +87,7 @@ Decided while grilling (2026-11-19), accepted by the user:
    - A double-click pops all of them out, each to its own desktop window, or brings them all back in.
    - Each object keeps its own `×` and can be put away alone.
    - The TV, keyboard and knob slots are gone.
-8. **Double-click** on an equipment slot (the Machine slot, analyzer, scope, meter, binder) pops the object out to a desktop window (P6j), and a double-click while it is out there brings it back into the main window. This replaces home: an object already comes back at its default place each time it comes out. On the brief, the tools and the switches a double-click does nothing.
+8. **Double-click** on an equipment slot (the Machine slot, analyzer, scope, meter, binder) pops the object out to a desktop window (P6j), and a double-click while it is out there brings it back into the main window. Home goes: an object stays where the player moved it, and popped back in returns where it was on the bench before it popped out. The binder's pop-out control goes too. On the brief, the tools and the switches a double-click does nothing.
 9. **The power-off tools** (puller, iron, cutters, wire) are never grayed or framed red with the power on. Their hint says the tool power-cycles the Machine.
 
 ### The Board
@@ -91,7 +99,7 @@ Decided while grilling (2026-11-19), accepted by the user:
 
 12. With the power on, a click that would apply a repair opens a small popup at the click. That is the puller on a chip, the iron on a pin or crack, the cutters on a trace or wire, or the wire on its second pin; the first pin is picked with the power on. A click that would do nothing, a cut on bare Board for instance, opens nothing.
 13. The popup reads: "This tool needs the power off. OK powers the Machine off, uses the tool and powers it on again; the Machine restarts." Its buttons are **OK** and **Cancel**, mouse only, since keys go to the Machine. A click elsewhere cancels. A "Don't ask again" checkbox holds for the run, for every tool, and is not saved. After it, such a click power-cycles at once.
-14. After OK the Machine is as a manual power cycle leaves it: restarted (a typed program or a score is lost), run or pause and the speed as they were, the instruments' captures and sweeps kept, the pencil marks kept (a swapped chip's leave with it).
+14. After OK the Machine is as a manual power cycle leaves it: restarted (a typed program or a score is lost), at the speed it had (a paused Machine comes back at `1×`, as the switch does at every power on), the instruments' captures and sweeps kept, the pencil marks kept (a swapped chip's leave with it).
 
 ### Bench
 
@@ -107,8 +115,8 @@ To be settled file by file in the design:
 3. **The Board view**: the flip corner and `` ` ``; the pencil limited to the Board.
 4. **Repairs**: the popup and the power cycle around `Session::repair`.
 5. **Bench objects**: the binder's height; the brief dragged.
-6. **Flags**: `--keys machine` removed; anything the screenshots need for the popup, the speed switch or the flipped Board, decided in the design.
-7. **Docs**: the four User Manuals, GLOSSARY (the Shelf, the Machine slot, the flip corner; the keys' terms), ARCHITECTURE.
+6. **Flags**: `--keys machine` removed; `--run`, `--side`, `--ask`, `--brief`, `--binder-height` for the screenshots (the design).
+7. **Docs**: the three User Manuals, GLOSSARY (the Shelf, the Machine slot, the flip corner; the keys' terms), ARCHITECTURE.
 
 The kernel, Parts, the builder, devices, Machines and Puzzles are untouched.
 
