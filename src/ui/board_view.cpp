@@ -2,6 +2,7 @@
 
 #include "ui/bench.hpp"
 #include "ui/board_look.hpp"
+#include "view/flip_corner.hpp"
 
 #include <algorithm>
 #include <array>
@@ -1094,6 +1095,23 @@ void BoardView::draw(ImVec2 size) {
                      {(min.x + max.x - text.x) / 2, (min.y + max.y - text.y) / 2}, IM_COL32_WHITE,
                      sign);
     }
+    {
+        // The flip corner (P6o), last: a control on the Board. The corner turned over, showing the
+        // other side's copper; a fold line and its shadow along the diagonal.
+        const Bounds b = scene_->bounds();
+        const std::int64_t side = FlipCornerSide(viewport_.pixelsPerMm());
+        const Layer other = active_ == Layer::Front ? Layer::Back : Layer::Front;
+        const ImU32 back =
+            plainLook_ ? (other == Layer::Front ? kFrontCopper : kBackCopper) : TraceColour(other);
+        const ImVec2 left = map({b.max.x - side, b.max.y});
+        const ImVec2 up = map({b.max.x, b.max.y - side});
+        const ImVec2 corner = map(b.max);
+        const ImVec2 inward{-2.5f, -2.5f};
+        list.AddLine({left.x + inward.x, left.y + inward.y}, {up.x + inward.x, up.y + inward.y},
+                     IM_COL32(0, 0, 0, 110), 4.0f);
+        list.AddTriangleFilled(left, up, corner, back);
+        list.AddLine(left, up, IM_COL32(255, 255, 255, 150), 1.5f);
+    }
     ImGui::EndChild();
 }
 
@@ -1133,12 +1151,19 @@ void BoardView::input(ImVec2 origin) {
     }
 
     const Point at = viewport_.toBoard(mouse);
+    // The flip corner (P6o): a control on the Board, whatever the tool.
+    const bool onCorner =
+        OnFlipCorner(at, scene_->bounds(), FlipCornerSide(viewport_.pixelsPerMm()));
     std::optional<Pick> picked;
     if (hoveredPanel || pressed_) {
         picked = scene_->pick(at, active_, reach());
     }
     if (pressed_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-        if (!dragging_) {
+        if (!dragging_ && cornerPressed_) {
+            if (onCorner) {
+                toggleLayer();
+            }
+        } else if (!dragging_) {
             std::optional<std::size_t> component;
             if (picked &&
                 (picked->hit.kind == HitKind::Pad || picked->hit.kind == HitKind::Component)) {
@@ -1149,6 +1174,7 @@ void BoardView::input(ImVec2 origin) {
             click_ = BoardClick{at, active_, picked, component, io.KeyShift};
         }
         pressed_ = false;
+        cornerPressed_ = false;
         dragging_ = false;
     }
     if (held_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
@@ -1160,8 +1186,8 @@ void BoardView::input(ImVec2 origin) {
     const auto buttonAt = [&]() -> std::optional<std::size_t> {
         const auto body = scene_->bodyAt(at);
         // Not under the Swap tool: a click on a switch body swaps it (P5i); nor the pencil: it
-        // marks it (P6h).
-        if (body && owner_ != Owner::Puller && owner_ != Owner::Pencil &&
+        // marks it (P6h); nor on the flip corner (P6o).
+        if (body && !onCorner && owner_ != Owner::Puller && owner_ != Owner::Pencil &&
             std::ranges::any_of(switches_,
                                 [&](const SwitchTag& b) { return b.component == *body; })) {
             return body;
@@ -1172,13 +1198,16 @@ void BoardView::input(ImVec2 origin) {
         io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Right] <
             io.MouseDragThreshold * io.MouseDragThreshold) {
         latchToggle_ = buttonAt();
-        rightClick_ = at;
+        if (!onCorner) {
+            rightClick_ = at;
+        }
     }
     if (io.MouseWheel != 0) {
         viewport_.zoomAt(mouse, io.MouseWheel);
     }
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         held_ = buttonAt();
+        cornerPressed_ = onCorner;
         if (held_ && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
                 return t.component == *held_ && t.look == SwitchLook::Slide;
             })) {
@@ -1191,10 +1220,15 @@ void BoardView::input(ImVec2 origin) {
         dragging_ = false;
     }
     // Not under the pencil: two quick clicks change a mark from dot to cross.
-    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked && owner_ != Owner::Pencil) {
+    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked && !onCorner &&
+        owner_ != Owner::Pencil) {
         fit();
     }
     if (dragging_) {
+        return;
+    }
+    if (onCorner) {
+        ImGui::SetTooltip("Flip the Board");
         return;
     }
     if (picked) {

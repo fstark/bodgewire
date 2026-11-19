@@ -153,6 +153,10 @@ EdgeDistance TraceEdgeDistance(const Trace& trace, Point at) {
 
 }  // namespace
 
+bool InsideOutline(std::span<const Point> outline, Point at) {
+    return outline.size() >= 3 && Contains(outline, at);
+}
+
 BoardScene::BoardScene(Board drawn, const Board& pristine, const LoadedCircuit& design)
     : board_(std::move(drawn)) {
     outline_ = OutlinePolygon(board_.outline);

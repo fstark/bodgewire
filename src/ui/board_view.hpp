@@ -185,7 +185,8 @@ private:
     std::optional<std::size_t> hovered_, selected_;
     std::optional<BoardTarget> outside_;
     std::optional<Flash> flash_;
-    bool pressed_ = false;  // left button went down on the panel
+    bool pressed_ = false;        // left button went down on the panel
+    bool cornerPressed_ = false;  // ... on the flip corner (P6o)
     bool dragging_ = false;
     std::optional<BoardClick> click_;
     std::optional<Point> tip_;

@@ -4,6 +4,7 @@ add_library(bw_view STATIC
   board_marks.cpp
   board_scene.cpp
   digit_shape.cpp
+  flip_corner.cpp
   focus.cpp
   machine_slot.cpp
   keyboard_layout.cpp

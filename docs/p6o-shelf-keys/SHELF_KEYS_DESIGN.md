@@ -191,8 +191,8 @@ The binder's `PopControl` and its constants go (`manual_window.cpp`).
 `src/view/flip_corner.hpp`:
 
 ```cpp
-inline constexpr std::int64_t kFlipCornerSide = 8'000'000;  // nm: 8 mm along each edge
-inline constexpr double kFlipCornerMinPx = 28;               // never smaller on screen
+inline constexpr std::int64_t kFlipCornerSide = 4'000'000;  // nm: 4 mm along each edge
+inline constexpr double kFlipCornerMinPx = 24;               // never smaller on screen
 // The dog-ear's side in nm at `pixelsPerMm`: kFlipCornerSide, at least kFlipCornerMinPx.
 std::int64_t FlipCornerSide(double pixelsPerMm);
 // The dog-ear: the triangle cut off the outline's bounds' bottom-right corner (Board y down).
@@ -204,7 +204,7 @@ bool OnFlipCorner(Point at, Bounds bounds, std::int64_t side);
 
 `BoardView::input`: a left click released on the corner (not dragged) toggles the layer and makes no `BoardClick`, whatever the owner, so the pencil, the tools and the instruments never see it; hovering it shows "Flip the Board" and no Board tooltip. A double-click on it is two flips (no fit). The corner also wins at the press: `buttonAt()` returns nothing on it (no button held, no slide moved, no latch toggled by a right-click), and a right-click on it sets no `rightClick_` (no pencil clear).
 
-**Its size** (spec "about 10 mm"): 8 mm. Every Board outline is a `gr_rect`; with 10 mm the dog-ear covers the Typewriter's `SW1.2` (`CLEAR`, 6.7 mm from the corner along the diagonal) and Tennis's `J4.4` (7.5 mm); 8 mm puts its diagonal 5.7 mm from the corner, clear of both. A test checks it on every Machine (phase 3): no pad of any Board within the dog-ear at 8 mm. Zoomed out until the pixel floor makes the corner larger than 8 mm, what lies under it is reached by zooming in: accepted.
+**Its size** (spec "about 10 mm"): 4 mm, a 24 px floor (phase 3). Every Board outline is a `gr_rect`; a point is on the dog-ear when its distances to the right and bottom edges sum to at most the side. The Typewriter's `SW1.2` (`CLEAR`) has its pad's corner at 4.5 mm, Tennis's `J4.4` at 5.5 mm, so 10 mm (and 8 mm, the review's first fix, which read the 6.7 mm sum as a distance along the diagonal) would cover them. A test checks every Machine: no pad within the dog-ear at 4 mm. Zoomed out until the pixel floor makes the corner larger, what lies under it is reached by zooming in: accepted.
 
 `--side back` (new) starts with the back as the Active Layer.
 

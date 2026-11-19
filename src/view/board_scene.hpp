@@ -17,6 +17,10 @@ struct Bounds {
     Point min, max;  // nm
 };
 
+// True when `at` is inside the closed polygon `outline` (even-odd): on the Board, for the grease
+// pencil and the iron (P6o).
+bool InsideOutline(std::span<const Point> outline, Point at);
+
 enum class HitKind : std::uint8_t { Pad, Via, Trace, Component };
 
 struct Hit {

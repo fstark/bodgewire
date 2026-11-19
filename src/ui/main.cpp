@@ -78,7 +78,7 @@ constexpr std::string_view kUsage =
     "real|plain] "
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
     "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
-    "[--away tv|keyboard|knob,...] [--run pause|1x|max] "
+    "[--away tv|keyboard|knob,...] [--run pause|1x|max] [--side front|back] "
     "[--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
@@ -111,6 +111,7 @@ struct Options {
     std::vector<BenchObject> pop;   // --pop: out in their own desktop windows at start (P6j)
     std::vector<BenchObject> away;  // --away: the Machine slot's objects put away at start (P6o)
     RunSwitch run = RunSwitch::RealTime;  // --run: the run switch at start (P6o)
+    bool back = false;                    // --side back: the Board flipped at start (P6o)
 };
 
 std::optional<BenchObject> ParseBenchObject(std::string_view name) {
@@ -337,6 +338,12 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 }
                 options.away.push_back(*object);
             }
+        } else if (arg == "--side") {
+            const std::string_view side = argv[++i];
+            if (side != "front" && side != "back") {
+                return std::nullopt;
+            }
+            options.back = side == "back";
         } else if (arg == "--run") {
             const std::string_view run = argv[++i];
             if (run == "pause") {
@@ -612,6 +619,9 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
     };
     shelf.hasBrief = shelf.briefOut = !loaded.brief.empty();
     boardView.setPlainLook(options.plainLook);
+    if (options.back) {
+        boardView.toggleLayer();
+    }
     Focus focus;
     if (!options.clip.empty() || !options.group.empty()) {
         focus.bringOut(Owner::Analyzer);
@@ -918,6 +928,9 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
                 break;
             }
             case Owner::Pencil:
+                if (!InsideOutline(boardView.scene()->outline(), click->at)) {
+                    break;  // on the Board only (P6o)
+                }
                 if (click->shift) {
                     marks.clear(click->at, boardView.markReach());
                 } else {
@@ -938,7 +951,9 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
                 boardView.refuse("Power off first");
             }
         }
-        if (const auto at = boardView.takeRightClick(); at && focus.owner() == Owner::Pencil) {
+        if (const auto at = boardView.takeRightClick();
+            at && focus.owner() == Owner::Pencil &&
+            InsideOutline(boardView.scene()->outline(), *at)) {
             marks.clear(*at, boardView.markReach());
         }
         boardView.setMarks(marks.marks());

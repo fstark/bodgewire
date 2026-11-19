@@ -531,3 +531,15 @@ TEST_CASE("view: bodyAt is a courtyard away from the pads", "[view]") {
     const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
     CHECK(maxY.y - minY.y >= 3'500'000);
 }
+
+TEST_CASE("board scene: inside the outline, the notch of an L outside", "[view]") {
+    const std::vector<Point> square{{0, 0}, {10, 0}, {10, 10}, {0, 10}};
+    CHECK(InsideOutline(square, {5, 5}));
+    CHECK_FALSE(InsideOutline(square, {11, 5}));
+    CHECK_FALSE(InsideOutline(square, {5, -1}));
+    // An L: the top-right quarter cut away.
+    const std::vector<Point> l{{0, 0}, {5, 0}, {5, 5}, {10, 5}, {10, 10}, {0, 10}};
+    CHECK(InsideOutline(l, {2, 2}));
+    CHECK(InsideOutline(l, {8, 8}));
+    CHECK_FALSE(InsideOutline(l, {8, 2}));
+}

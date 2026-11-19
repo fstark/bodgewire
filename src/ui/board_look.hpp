@@ -52,6 +52,9 @@ void DrawStraightTrace(ImDrawList& list, ImVec2 a, ImVec2 b, float width, ImU32 
                        std::optional<ImVec2> crackAtA, std::optional<ImVec2> crackAtB,
                        float crackPx);
 
+// A layer's traces' colour in the real look, active (the flip corner's, P6o).
+ImU32 TraceColour(Layer layer);
+
 // The mask, the copper under it, the board edge: below the pads.
 // `glowing`: Nets whose copper is drawn brighter, every other trace dimmed (the chip the player
 // works on: where it is wired, on both layers); empty for the plain colours. `cracks`: the

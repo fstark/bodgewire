@@ -739,4 +739,8 @@ void DrawUseReferences(ImDrawList& list, const LookMap& map, const BoardScene& s
     }
 }
 
+ImU32 TraceColour(Layer layer) {
+    return layer == Layer::Front ? Colours().frontActive : Colours().backActive;
+}
+
 }  // namespace bw
