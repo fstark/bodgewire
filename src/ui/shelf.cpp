@@ -236,6 +236,13 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         found_ = true;
     }
     const bool hasDevice = devices_.tv || devices_.keyboard || devices_.knob;
+    // The brief only on a Puzzle: not grayed, left out.
+    std::vector<Entry> items;
+    for (const Entry& entry : kItems) {
+        if (entry.item != Item::Brief || hasBrief) {
+            items.push_back(entry);
+        }
+    }
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::BeginChild("shelf", {0, kShelfHeight}, ImGuiChildFlags_None,
@@ -259,19 +266,19 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
     };
     const float machineGap = kGroupGap / 2;  // the Machine slot set apart in its tray
     float right = 0;
-    for (const Entry& entry : kItems) {
+    for (const Entry& entry : items) {
         if (entry.tray == Tray::Machine) {
             right += widthOf(entry) + (entry.item == Item::Machine ? machineGap : kCellGap);
         }
     }
     right -= kCellGap;
-    std::array<float, kItems.size()> xs{};
+    std::vector<float> xs(items.size());
     float x = origin.x + kGroupGap / 2;
     float rightX = origin.x + width - kGroupGap / 2 - right;
     float leftEnd = x;
-    for (std::size_t i = 0; i < kItems.size(); ++i) {
-        const Entry& entry = kItems[i];
-        if (i > 0 && kItems[i - 1].tray != entry.tray && entry.tray != Tray::Machine) {
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        const Entry& entry = items[i];
+        if (i > 0 && items[i - 1].tray != entry.tray && entry.tray != Tray::Machine) {
             x += kGroupGap - kCellGap;
         }
         if (entry.tray == Tray::Machine) {
@@ -288,20 +295,20 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
     }
     const float top = origin.y + (kShelfHeight - kCell) / 2;
     // The trays, under their items.
-    for (std::size_t i = 0; i < kItems.size();) {
+    for (std::size_t i = 0; i < items.size();) {
         std::size_t j = i;
-        while (j + 1 < kItems.size() && kItems[j + 1].tray == kItems[i].tray) {
+        while (j + 1 < items.size() && items[j + 1].tray == items[i].tray) {
             ++j;
         }
         const ImVec2 a{xs[i] - kTrayPad, top - kTrayPad};
-        const ImVec2 b{xs[j] + widthOf(kItems[j]) + kTrayPad, top + kCell + kTrayPad};
+        const ImVec2 b{xs[j] + widthOf(items[j]) + kTrayPad, top + kCell + kTrayPad};
         list.AddRectFilled(a, b, kTray, 6.0f);
         list.AddLine({a.x + 4, a.y + 1}, {b.x - 4, a.y + 1}, kTrayShadow, 2.0f);
         i = j + 1;
     }
 
-    for (std::size_t i = 0; i < kItems.size(); ++i) {
-        const Entry& entry = kItems[i];
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        const Entry& entry = items[i];
         const float w = widthOf(entry);
         const ImVec2 min{xs[i], top}, max{xs[i] + w, top + kCell};
         const std::optional<Owner> owner = OwnerOf(entry.item);
@@ -337,8 +344,6 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
             break;
         case Item::Brief:
             look.lit = briefOut;
-            inert = !hasBrief;
-            why = "No brief: not a Puzzle";
             break;
         default:
             break;

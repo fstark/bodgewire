@@ -244,7 +244,7 @@ A tool the player measures with: Logic Probe, Oscilloscope, Logic Analyzer, Mult
 _Avoid_: Tool (too broad); equipment (broader: also the TV, keyboard, manuals)
 
 **Shelf**:
-The strip along the bottom of `bw_ui`'s window (P6c, regrouped in P6o), each group in its own recessed tray: the controls (the power switch, the run switch `‖ · 1× · Max`), the Board's tools (grease pencil, probe, chip puller, soldering iron, cutters, wire) and the Instruments from the left; at the right end this Machine's brief, binder and Machine Slot; a hint between. Each item in the same place on every Machine; one that does not apply is grayed, not hidden. No keys: the PC keys go to the Machine (Typing).
+The strip along the bottom of `bw_ui`'s window (P6c, regrouped in P6o), each group in its own recessed tray: the controls (the power switch, the run switch `‖ · 1× · Max`), the Board's tools (grease pencil, probe, chip puller, soldering iron, cutters, wire) and the Instruments from the left; at the right end this Machine's brief (only on a Puzzle), binder and Machine Slot; a hint between. Each item in the same place on every Machine; one that does not apply is grayed, not hidden, but the brief, left out without a Puzzle. No keys: the PC keys go to the Machine (Typing).
 
 **Machine Slot**:
 The Shelf's last item (P6o): the Machine's own devices, its TV, keyboard and knob box, drawn together, one cell each, each lit while out (a grayed monitor on a Machine with none). A click brings them all out (any away), to the front (some behind), or puts them all away (all out in front); a double-click pops them all out to desktop windows, or all back in. Each object keeps its own `×`.
