@@ -20,15 +20,16 @@ PAL-like and progressive, one dot per clock, two dots per microsecond:
 | Frame | 312 lines = 19.656 ms (≈ 50.9 Hz) |
 | Text | 16 columns × 16 rows; a row is 16 lines (8 glyph lines, each drawn twice) |
 | Active picture | line characters 1–16 (the text, one character late), lines 0–255 |
-| Horizontal sync | character 20 (3 µs) |
-| Vertical sync | lines 308–311 |
+| Horizontal sync | characters 18–19 (6 µs) |
+| Vertical sync | lines 280–283 |
 
 Beam counters:
 
 - Dot counter `U1` 74LS161 counts 10 to 15 and reloads 10 (`LOAD_N` on `DOT_LOAD_N`): 6 dots a character. Its carry `DOT_END` is high on the last dot of each character; `U5` inverts it into `DOT_LOAD_N`.
 - Column counter `C0`–`C4`: `U2` 74LS161 (`C0`–`C3`, carry `CC`) and `U3` 74LS161 (`C4`; `QB`–`QD` unused), stepped by `DOT_END`, reloaded with 0 after character 20: `U4` gate 1 decodes `LINE_END_N` = NAND(`DOT_END`, `C4`, `C2`) (20 is the first count with `C4` and `C2` high), `U5` inverts it into `LINE_END`.
-- `U4` gate 2 makes `HSYNC_N` = NAND(`C4`, `C2`): character 20.
-- Line counter `V0`–`V8`: `U6`, `U7`, `U8` 74LS161, enabled by `LINE_END`, reloaded with 0 after line 311 by `U9` 74LS30 (`FRAME_END_N`); `U10` gate 1 decodes `VSYNC_N` for lines 308–311; `U11` 74LS86 mixes the two syncs into `SYNC_N_D`. All four are the 060 circuits ([BOUNCING_BALL.md](../../060-bouncing-ball/docs/BOUNCING_BALL.md), Circuit) under new references.
+- `U4` gate 2 makes `HSYNC_N` = NAND(`C4`, `C1`): characters 18–19 (the counter stops at 20, so they are the only counts with `C4` and `C1` high).
+- Line counter `V0`–`V8`: `U6`, `U7`, `U8` 74LS161, enabled by `LINE_END`, reloaded with 0 after line 311 by `U9` 74LS30 (`FRAME_END_N`); `U10` gate 1 decodes `VSYNC_N` = NAND(`V8`, `V4`, `V3`, `V2_N`) for lines 280–283, `U5` gate 4 inverting `V2` into `V2_N`; `U11` 74LS86 mixes the two syncs into `SYNC_N_D`. All four are the 060 circuits ([BOUNCING_BALL.md](../../060-bouncing-ball/docs/BOUNCING_BALL.md), Circuit) under new references.
+- Both syncs sit early in the blanking (P6n, [PICTURE_MARGINS.md](../../../docs/p6n-picture-margins/PICTURE_MARGINS.md)): the text starts 11.5 µs after the line sync's edge, and line 0 comes 32 lines after the vertical sync's start, so the window of a real monitor (10 µs and 28 lines of flyback) cuts nothing.
 - Within a text row, `V0` repeats each glyph line twice, `V1`–`V3` are the glyph line (0–7), `V4`–`V7` the text row (0–15).
 
 The chain:
@@ -46,7 +47,7 @@ No reset: from any power-on state the counters fall into step within a line (the
 
 ## When it works
 
-The TV shows the poem, 16 lines of 16 characters, upper case, white on black, still, with a dark border all round: the text a little left of the middle, starting near the top. It locks within half a second and never rolls. The same page at every power-on.
+The TV shows the poem, 16 lines of 16 characters, upper case, white on black, still, with a dark border all round: the text close to the left edge (TV column 92 of a window from 80), on TV rows 64–255, a band of dark above it and a wider one below. It locks within half a second and never rolls. The same page at every power-on.
 
 The page (`machines/080-message/roms/message.rom`), Emily Dickinson's "Hope" is the thing with feathers (1891, public domain), first stanza, rows 2 to 13, the other rows blank:
 
@@ -72,7 +73,7 @@ Six Puzzles (P4m, 2026-11-11), each a different Fault on a different link of the
 | Puzzle | Fault | Symptom | Path to the fix |
 |---|---|---|---|
 | Half letters | `U13` output `3Y` (`R3`) stuck at 0 | each line of the poem shows only the tops of its letters (glyph lines 1–3), twice, one above the other | `R3` stays low at `U13` pin 8 while `V3` pulses on pin 9: swap `U13` |
-| Echo | `U12` input `1B` (`V8`) stuck at 0 | the poem whole, and its first line again near the bottom of the screen | `V8` pulses on `U12` pin 3, leg and pad, yet `ACTIVE` (pin 1) goes on pulsing on lines 256–311: the chip reads its input wrong: swap `U12` |
+| Echo | `U12` input `1B` (`V8`) stuck at 0 | the poem whole, and a row of broken dots along the very top of the screen (the tops of the poem's second line) | `V8` pulses on `U12` pin 3, leg and pad, yet `ACTIVE` (pin 1) goes on pulsing on lines 256–311: the chip reads its input wrong: swap `U12` |
 | Gibberish | Broken Trace on `CH5` from `U14` pin 15 to `U15` pin 22 | the letters are digits and punctuation (`"(/0%"` for `"HOPE"`); spaces and punctuation stay where they were | `CH5` pulses at `U14` pin 15, nothing at `U15` pin 22: mend the Trace |
 | Stammer | Dry Joint at `U14` pin 8 (`A0`, `C0`) | every other character shown twice, the others gone (`HHPP""II  HH`) | `C0` pulses on pin 8's pad (B.Cu) but not on the leg (F.Cu): resolder `U14` pin 8 |
 | Thin letters | Solder Bridge between `U16` pin 13 (`C`, tied to GND) and pin 14 (`D`, `F1`) | every letter without its right-hand column of dots | `F1` reads 0 at both ends, and a new `U15` changes nothing; with the power off the meter finds `F1` connected to GND: cut the bridge on the solder side of `U16` |

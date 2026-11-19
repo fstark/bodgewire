@@ -444,8 +444,8 @@ Typewriter Typing(const Machine& machine, std::string_view text) {
 }
 
 // The TV shows `codes` (with the blinking cursor) and nothing outside it. The tests keep the cursor
-// off text row 0: the TV draws the frame's first line a few characters left, which only the cursor
-// shows.
+// off text row 0 from before P6n, when the frame's first line, drawn a few characters left, was
+// text row 0's; it is a blank line in the back porch now.
 void CheckShown(Typewriter& t, const Codes& codes) {
     const auto cursor = t.cursor();
     REQUIRE(cursor.has_value());

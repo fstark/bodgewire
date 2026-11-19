@@ -18,7 +18,7 @@ puzzles/NN-*.bwp                     6 Puzzles, easiest first
 
 ## Netlist
 
-`machines/080-message/message.bwn` (MESSAGE.md, Circuit), with the header comment of [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md) step 2. 17 chips, `X1`, `J1`, `J2`; no resistors, no buttons. Every unused TTL input is tied (spare gates to `GND`, unused load inputs to `GND`, unused NAND inputs to `VCC`), so the netlist loads without warnings. Unused outputs stay unconnected: `U1` `QA`–`QD`, `U3` `QB`–`QD` and `RCO`, `U8` `QB`–`QD` and `RCO`, `U5` gates 4–6, `U10` gate 2, `U11` gates 3–4, `U12` gates 2–4, `U13` gate 4, `U14` `O6` `O7`, `U16` `QH_N`, `U17` `1Q_N` `2Q_N`. The 2513's `VGG`, `VDD` and `NC` pins are no-connect.
+`machines/080-message/message.bwn` (MESSAGE.md, Circuit), with the header comment of [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md) step 2. 17 chips, `X1`, `J1`, `J2`; no resistors, no buttons. Every unused TTL input is tied (spare gates to `GND`, unused load inputs to `GND`, unused NAND inputs to `VCC`), so the netlist loads without warnings. Unused outputs stay unconnected: `U1` `QA`–`QD`, `U3` `QB`–`QD` and `RCO`, `U8` `QB`–`QD` and `RCO`, `U5` gates 5–6, `U10` gate 2, `U11` gates 3–4, `U12` gates 2–4, `U13` gate 4, `U14` `O6` `O7`, `U16` `QH_N`, `U17` `1Q_N` `2Q_N`. The 2513's `VGG`, `VDD` and `NC` pins are no-connect.
 
 ```
 part X1  OSC freq=2MHz
@@ -26,7 +26,7 @@ part U1  74LS161    # dot counter 10-15
 part U2  74LS161    # C0-C3
 part U3  74LS161    # C4
 part U4  74LS20     # LINE_END_N, HSYNC_N
-part U5  74LS04     # DOT_LOAD_N, LINE_END, CLK_N
+part U5  74LS04     # DOT_LOAD_N, LINE_END, CLK_N, V2_N
 part U6  74LS161    # V0-V3
 part U7  74LS161    # V4-V7
 part U8  74LS161    # V8
@@ -54,8 +54,8 @@ net DOT_LOAD_N  U5.1Y U1.LOAD_N U16.SH_LD_N
 net VCC         U2.CLR_N U2.ENT U3.CLR_N
 net GND         U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
 net C0          U2.QA U14.A0
-net C1          U2.QB U14.A1
-net C2          U2.QC U14.A2 U4.1B U4.2A
+net C1          U2.QB U14.A1 U4.2A
+net C2          U2.QC U14.A2 U4.1B
 net C3          U2.QD U14.A3
 net CC          U2.RCO U3.ENT
 net C4          U3.QA U4.1C U4.2B U12.1A
@@ -69,16 +69,17 @@ net VCC         U6.CLR_N U7.CLR_N U8.CLR_N U9.H
 net GND         U6.A U6.B U6.C U6.D U7.A U7.B U7.C U7.D U8.A U8.B U8.C U8.D
 net V0          U6.QA U9.F
 net V1          U6.QB U9.E U13.1A
-net V2          U6.QC U9.D U10.1D U13.2A
-net V3          U6.QD U13.3A
+net V2          U6.QC U9.D U13.2A U5.4A
+net V3          U6.QD U13.3A U10.1B
 net VC1         U6.RCO U7.ENT
 net V4          U7.QA U9.C U10.1C U14.A4
-net V5          U7.QB U9.B U10.1B U14.A5
+net V5          U7.QB U9.B U14.A5
 net V6          U7.QC U14.A6
 net V7          U7.QD U14.A7
 net VC2         U7.RCO U8.ENT
 net V8          U8.QA U9.A U10.1A U12.1B
 net FRAME_END_N U9.Y U6.LOAD_N U7.LOAD_N U8.LOAD_N
+net V2_N        U5.4Y U10.1D
 net VSYNC_N     U10.1Y U11.1B
 net GND         U10.2A U10.2B U10.2C U10.2D
 
@@ -122,7 +123,7 @@ net VIDEO_D     U16.QH U17.2D
 net VCC         U17.1PRE_N U17.1CLR_N U17.2PRE_N U17.2CLR_N
 net SYNC_N      U17.1Q J2.SYNC_N
 net VIDEO       U17.2Q J2.VIDEO
-net GND         U5.4A U5.5A U5.6A
+net GND         U5.5A U5.6A
 ```
 
 ### Timing notes
@@ -135,7 +136,7 @@ net GND         U5.4A U5.5A U5.6A
 
 ### Where the page lands on the TV
 
-The TV starts a line on the fall of `SYNC_N`. `SYNC_N_D` falls just after the edge that starts character 20, and `U17` takes it at the next edge, one dot later; `VIDEO` is re-timed the same way, but the first text dot is the one sampled at the end of character 0, so it shows from the start of character 1. The text therefore starts 2 characters less 1 dot after the line start: 11 dots, about TV column 44 (one dot is 4 columns), and is 384 columns wide (as on 060, where the left wall shows at column 96 for the same reason). The TV starts a frame during the vertical sync (lines 308–311); line 0 is about 4 rows later. The test reads both offsets from the picture rather than assuming them.
+The TV starts a line on the fall of `SYNC_N`. `SYNC_N_D` falls just after the edge that starts character 18, and `U17` takes it at the next edge, one dot later; `VIDEO` is re-timed the same way, but the first text dot is the one sampled at the end of character 0, so it shows from the start of character 1. The text therefore starts 4 characters less 1 dot after the line start: 23 dots, 11.5 µs, TV column 92 (one dot is 4 columns), and is 384 columns wide, to column 476 (P6n; measured with `bw run --tv`: lit columns 92–447, the widest line of the poem). The TV starts a frame 16 µs into the vertical sync (lines 280–283), so line `l` is on row `l` − 280 and line 0 on row 32 (lit rows 64–255: text rows 2–13). A monitor's window (columns 80–495, rows from 28) cuts nothing. The test reads both offsets from the picture rather than assuming them.
 
 ## ROM contents
 
@@ -177,7 +178,7 @@ Placed by `bw place machines/080-message/message.bwn machines/080-message/board/
 Titles and briefs:
 
 - Half letters: "Only the top of each letter shows, and it shows twice, one copy above the other."
-- Echo: "Near the bottom of the screen, under the poem, its first line shows a second time."
+- Echo: "A row of broken dots runs along the very top of the screen, above the poem."
 - Gibberish: "The poem has turned into digits and punctuation marks, though the words keep their lengths and places."
 - Stammer: "Each letter is printed twice over and half of them are missing: the poem reads like a stammer."
 - Thin letters: "Every letter has lost its right-hand edge: an O looks like a C, and an H like a squashed F."
@@ -186,13 +187,13 @@ Titles and briefs:
 ### Electrical Nets on a damaged Board
 
 - Half letters: `R3` stuck at 0 (Strong): the 2513 gets glyph lines 0–3 only, so a text row's 16 lines draw lines 0–3 twice (each line still twice); line 0 is blank, so each row shows the glyph's lines 1–3, a gap, and lines 1–3 again. The borders stay dark (line 0 there as before).
-- Echo: `U12` reads `1B` as 0, so `ACTIVE` = NOT `C4` on every line. Lines 256–307 draw text rows 0–3 again (`V4`–`V7` wrap with `V8` high): rows 0 and 1 blank, row 2 (the first line of the poem) on lines 288–303, the top of row 3 on lines 304–307; during the vertical sync (lines 308–311) row 3's glyph lines 2–3, which the TV shows along its top edge. The `V8` Net is unchanged (the leg reads it).
+- Echo: `U12` reads `1B` as 0, so `ACTIVE` = NOT `C4` on every line. Lines 256–311 draw text rows 0–3 again (`V4`–`V7` wrap with `V8` high): rows 0 and 1 blank (lines 256–287, before and through the vertical sync), row 2 (the first line of the poem) on lines 288–303, the top half of row 3 (the second line) on lines 304–311. The frame starts at line 280, so these land above the page on rows 8–31: the first line on rows 8–23, above a monitor's window, and row 3's glyph lines 2–3 (lines 308–311) on rows 28–31, a strip of broken dots along the screen's top edge. The `V8` Net is unchanged (the leg reads it).
 - Gibberish: `U15` pin 22 floats (reads high): every code gets 0x20, so letters 0x01–0x1A read as `!` to `:`; space and the punctuation and digits (0x20–0x3F) are unchanged.
 - Stammer: `U14` pin 8 floats (reads high): the message ROM reads column 2k + 1 for columns 2k and 2k + 1. The blanking is unchanged (it does not go through `C0`).
 - Thin letters: `F1` and the `C` tie are one Net with GND (Strong) winning against `U15`'s output: `F1` is always 0, `U16` loads 0 into stage `D`. A new `U15` drives the same Contention.
 - Block letters: `U16` `CLK` floats (reads high, never rises): no shift ever. The asynchronous load on each character's last dot puts `F5` on `QH`, where it stays: `U17` samples `F5` on all six dots of the next character.
 
-The test (`tests/machines/message_test.cpp`) builds each faulty page from the two ROM files with the same change and finds it on the TV where the real page is, with nothing outside it (Echo: the real page and row 2 again 288 lines lower); after the repair the real page is back.
+The test (`tests/machines/message_test.cpp`) builds each faulty page from the two ROM files with the same change and finds it on the TV where the real page is, with nothing outside it (Echo: the real page, and lines 288–311 of the faulty frame on rows 8–31 above it, nothing under it); after the repair the real page is back.
 
 ## Manuals
 

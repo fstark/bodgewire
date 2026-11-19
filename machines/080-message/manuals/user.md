@@ -2,7 +2,7 @@
 
 ## What it does
 
-Welcome to the Message Display. It shows a page of text on the TV: the first verse of a short poem by Emily Dickinson, "Hope" is the thing with feathers. The letters are white on black, in upper case, 16 lines of up to 16 characters. A dark border runs all round the page.
+Welcome to the Message Display. It shows a page of text on the TV: the first verse of a short poem by Emily Dickinson, "Hope" is the thing with feathers. The letters are white on black, in upper case, 16 lines of up to 16 characters. A dark border runs all round the page. The text starts close to the left edge of the screen, with a band of dark above it and a wider one below.
 
 Nothing moves. The picture settles within half a second of power-on, and the page is the same every time.
 
@@ -28,7 +28,7 @@ The line count has three parts:
 - `V1`, `V2` and `V3` pick the line within the letter, 0 to 7.
 - `V4` to `V7` pick the line of text, 0 to 15.
 
-**The sync.** The TV must know where each line and each picture starts. `U4` pulls `HSYNC_N` low during character 20 of every line. `U10` pulls `VSYNC_N` low during the last four lines of the picture. `U11` mixes the two into one sync signal.
+**The sync.** The TV must know where each line and each picture starts. `U4` pulls `HSYNC_N` low during characters 18 and 19 of every line. `U10` pulls `VSYNC_N` low during lines 280 to 283, with `U5` turning `V2` upside down for it. `U11` mixes the two into one sync signal. Both pulses come early in the dark part of the line and of the picture, well before the text: after each sync the TV's beam flies back to the left, or to the top, and whatever is drawn while it flies is lost.
 
 **The page.** The message ROM, `U14`, holds the page. It has one character code for each of the 16 × 16 places. Its address is the column, `C0` to `C3`, and the line of text, `V4` to `V7`. Out come the character codes, on `CH0`–`CH5`.
 

@@ -4,7 +4,7 @@
 
 Welcome to the TV Typewriter. It turns a keyboard and a TV into a typewriter: what you type on the keyboard `J3` shows on the screen.
 
-The page holds 16 lines of 32 characters. The letters are upper case, white on black, with a dark border all round. A blinking white block, the cursor, shows where the next character goes.
+The page holds 16 lines of 32 characters. The letters are upper case, white on black, with a dark border all round. The page fills the screen almost to its edges: the border is thin at the top and on the right, a little wider on the left and at the bottom. A blinking white block, the cursor, shows where the next character goes.
 
 The board has no computer and no memory with addresses. It is built like the TV Typewriter of 1973: the page is kept in shift registers, a kind of memory that goes round and round in step with the picture.
 
@@ -48,7 +48,7 @@ The board does it in four parts, each told below:
 
 **The text area.** `U12` raises `ACTIVE` while the beam is on the text: the first 32 characters of the first 256 lines.
 
-**The sync.** The TV needs a signal to start each line and each picture. `U4` makes `HSYNC_N`, low for characters 40 and 41 of every line. `U10` makes `VSYNC_N`, low for the last 4 lines of the picture. `U11` mixes them into one sync signal, and `U25` sends it to the TV on `SYNC_N`.
+**The sync.** The TV needs a signal to start each line and each picture. `U4` makes `HSYNC_N`, low for characters 34 and 35 of every line. `U10` makes `VSYNC_N`, low for lines 280 to 283. `U11` mixes them into one sync signal, and `U25` sends it to the TV on `SYNC_N`. Both pulses come early in the border, well before the text: after each sync the TV's beam flies back to the left, or to the top, and whatever is drawn while it flies is lost.
 
 **Part 2: the page, going round.**
 

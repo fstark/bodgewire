@@ -18,7 +18,7 @@ The font is 080's `machines/080-message/roms/2513.rom`, unchanged.
 
 ## Netlist
 
-`machines/090-typewriter/typewriter.bwn` (TYPEWRITER.md, Circuit), with the header comment of [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md) step 2. 40 chips, `X1`, `SW1`, `R1`, `J1`–`J3`. Every unused TTL input is tied (spare gates and unused data inputs to `GND`, unused NAND inputs to `VCC`), so the netlist loads without warnings. Unused outputs stay unconnected: `U1` `QA` `QD`, `U5` gate 6, `U3` `QC` `QD` `RCO`, `U8` `QB`–`QD` `RCO`, `U24` `QH_N`, `U25` `1Q_N`–`3Q_N` and `3Q`, `4Q`, `U26` and `U27` `2Y3` `2Y4`, `U28` `1Q_N`, `U29` gate 4, `U33` `QB`–`QD` `RCO`, `U34` `RCO`, `U39` `1Q_N` and half 2, `U40` `QB` `QC`. The negative supply pins (2513 `VGG` `VDD`, 2524 `VDD`, 2518 `VGG`) and the 2513's `NC` pins are no-connect.
+`machines/090-typewriter/typewriter.bwn` (TYPEWRITER.md, Circuit), with the header comment of [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md) step 2. 40 chips, `X1`, `SW1`, `R1`, `J1`–`J3`. Every unused TTL input is tied (spare gates and unused data inputs to `GND`, unused NAND inputs to `VCC`), so the netlist loads without warnings. Unused outputs stay unconnected: `U1` `QA` `QD`, `U3` `QC` `QD` `RCO`, `U8` `QB`–`QD` `RCO`, `U24` `QH_N`, `U25` `1Q_N`–`3Q_N` and `3Q`, `4Q`, `U26` and `U27` `2Y3` `2Y4`, `U28` `1Q_N`, `U33` `QB`–`QD` `RCO`, `U34` `RCO`, `U39` `1Q_N` and half 2, `U40` `QB` `QC`. The negative supply pins (2513 `VGG` `VDD`, 2524 `VDD`, 2518 `VGG`) and the 2513's `NC` pins are no-connect.
 
 ```
 part X1  OSC freq=4MHz
@@ -26,7 +26,7 @@ part U1  74LS161    # dot counter 10-15
 part U2  74LS161    # C0-C3
 part U3  74LS161    # C4, C5
 part U4  74LS20     # LINE_END_N, HSYNC_N
-part U5  74LS04     # DOT_LOAD_N, QB_N, CLK_N, D1_N, D4_N
+part U5  74LS04     # DOT_LOAD_N, QB_N, CLK_N, D1_N, D4_N, C2_N
 part U6  74LS161    # V0-V3
 part U7  74LS161    # V4-V7
 part U8  74LS161    # V8
@@ -50,7 +50,7 @@ part U25 74LS175    # output registers, LINE_END
 part U26 74LS244    # keyboard onto the write bus
 part U27 74LS244    # spaces onto the write bus (Clear)
 part U28 74LS74     # KEY, WR
-part U29 74LS00     # WRK_N, WRITE, ROW_LOAD_N
+part U29 74LS00     # WRK_N, WRITE, ROW_LOAD_N, V2_N
 part U30 74LS30     # Return decoder
 part U31 74LS00     # PRINT, ADV, XC_N, YEN
 part U32 74LS161    # cursor X0-X3
@@ -84,13 +84,14 @@ net VCC         U15.1D
 net VCC         U2.CLR_N U2.ENT U3.CLR_N
 net GND         U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
 net C0          U2.QA U4.1D U35.1A
-net C1          U2.QB U35.2A
-net C2          U2.QC U35.3A
-net C3          U2.QD U4.1C U4.2B U35.4A
+net C1          U2.QB U35.2A U4.2B
+net C2          U2.QC U35.3A U5.6A
+net C3          U2.QD U4.1C U35.4A
 net CC          U2.RCO U3.ENT
 net C4          U3.QA U36.1A
 net C5          U3.QB U4.1B U4.2A U12.1A
-net VCC         U4.2C U4.2D
+net C2_N        U5.6Y U4.2C
+net VCC         U4.2D
 net LINE_END_N  U4.1Y U2.LOAD_N U3.LOAD_N U25.4D
 net LINE_END    U25.4Q_N U6.CLK U7.CLK U8.CLK
 net HSYNC_N     U4.2Y U11.1A
@@ -100,16 +101,17 @@ net VCC         U6.CLR_N U6.ENP U6.ENT U7.CLR_N U7.ENP U8.CLR_N U8.ENP U9.G U9.H
 net GND         U6.A U6.B U6.C U6.D U7.A U7.B U7.C U7.D U8.A U8.B U8.C U8.D
 net V0          U6.QA U9.F U14.1A
 net V1          U6.QB U9.E U13.1A U14.1B
-net V2          U6.QC U9.D U10.1D U13.2A U14.2A
-net V3          U6.QD U13.3A U14.2B
+net V2          U6.QC U9.D U13.2A U14.2A U29.4A U29.4B
+net V3          U6.QD U13.3A U14.2B U10.1B
 net VC1         U6.RCO U7.ENT
 net V4          U7.QA U9.C U10.1C U36.2A
-net V5          U7.QB U9.B U10.1B U36.3A
+net V5          U7.QB U9.B U36.3A
 net V6          U7.QC U11.3A
 net V7          U7.QD U11.4A
 net VC2         U7.RCO U8.ENT
 net V8          U8.QA U9.A U10.1A U12.1B U40.CKA
 net FRAME_END_N U9.Y U6.LOAD_N U7.LOAD_N U8.LOAD_N
+net V2_N        U29.4Y U10.1D
 net VSYNC_N     U10.1Y U11.1B
 
 # Composite sync: HSYNC XOR VSYNC, then inverted (as 060).
@@ -251,7 +253,7 @@ net BLINK       U40.QD U12.3B
 net CUR_SHOW    U12.3Y U36.4B
 
 # Spare gates.
-net GND         U5.6A U29.4A U29.4B U39.2D U39.2CLK
+net GND         U39.2D U39.2CLK
 net VCC         U39.2PRE_N U39.2CLR_N
 ```
 
@@ -269,7 +271,7 @@ net VCC         U39.2PRE_N U39.2CLR_N
 
 ### Where the page lands on the TV
 
-As P4p: the text starts about TV column 34 (17 dots after the line start, one dot 2 columns) and is 384 columns wide; line 0 is about 4 rows below the frame start. The tests read both offsets from the picture.
+Since P6n the line sync is on characters 34–35 and the vertical sync on lines 280–283. `SYNC_N` falls one dot after character 34 starts; the first text dot shows from the start of character 1 (080's pipeline), 9 characters less a dot later: 53 dots, 13.25 µs, TV column 106 (one dot 2 columns), and the text is 384 columns wide, to column 490. The TV starts a frame 16 µs into the vertical sync, so line `l` is on row `l` − 280 and line 0 on row 32; the 16 text rows fill rows 32–287 (measured with `bw run --tv` on the power-on page: lit columns 106–487, rows 34–287). A monitor's window (columns 80–495, rows from 28) cuts nothing. The tests read both offsets from the picture.
 
 ## Board
 
@@ -288,7 +290,7 @@ Placed by `bw place machines/090-typewriter/typewriter.bwn machines/090-typewrit
   ```
 
 - The 2513 is a 600-mil DIP-24, too big for the chip grid (as on 080). The 2524s (DIP-8, P4q), the 2518 (DIP-16) and the 74LS244s (DIP-20) fit the grid. The 39 other chips and `X1` go in the annealed grid.
-- Puzzle constraints (P4r): `U18` pin 1 at the end of `PHI2_N`'s Trace (from `U17` pin 1, through a via) and `U30` pin 1 on its own branch of `CTL` (straight from `U12` pin 4); Zeros needs only `U20` pins 2 and 3 as wired (`OUT`, `READ` tied to VCC). A re-route keeps those or moves the cracks.
+- Puzzle constraints (P4r): `U18` pin 1 at the end of a `PHI2_N` Trace from `U17` pin 1, and `U30` pin 1 at the end of a `CTL` Trace from `U12` pin 4 that feeds no other pin; Zeros needs only `U20` pins 2 and 3 as wired (`OUT`, `READ` tied to VCC). A re-route keeps those or moves the cracks; P6n's whole re-route kept them (the Puzzles' tests pass).
 - `bw check-board` prints `ok`; `drc_typewriter` and `place_drc_typewriter` pass (picked up by the globs).
 
 ## Puzzles
@@ -322,7 +324,7 @@ Titles and briefs:
 - Zeros: `P4` and the `READ` tie are one Net with VCC (Supply) winning against `U20`'s output: `U22` takes bit 4 as 1 in every word. The page is right. A new `U20` drives the same Contention.
 - M is Return: `U30` pin 1 floats (reads high): `CR_N` is low for any code ending in `01101` (13, `-`, `M`). `PRINT` is unchanged, so `M` and `-` are written, then `CR_N` loads 0 into `U32`, `U33` and `YEN` steps the row at `WR`.
 
-The test (`tests/machines/typewriter_test.cpp`) presses Clear, types, and checks the page from the 2524s (or the TV, for Copies and Zeros, where the page is right and the picture is not); then the repair, and the fault-free page. The TV checks keep the cursor off text row 0: the TV draws the frame's first line about four characters to the left, which only a cursor on row 0 shows (a small bar in the left border; the Machine's timing is right, a VCD shows `CUR_SHOW` on line 0 at the cursor's column).
+The test (`tests/machines/typewriter_test.cpp`) presses Clear, types, and checks the page from the 2524s (or the TV, for Copies and Zeros, where the page is right and the picture is not); then the repair, and the fault-free page. The TV checks keep the cursor off text row 0, a habit from before P6n: then line 0 was the frame's first line, which the TV draws a few characters to the left, so a cursor on row 0 showed as a small bar in the left border. Since P6n the frame starts on line 280, in the blanking, and row 0 is drawn where the others are.
 
 ## Manuals
 

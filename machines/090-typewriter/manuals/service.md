@@ -6,13 +6,13 @@
 - `U1` dot counter: 6 dots a character (it counts 10 to 15), `DOT_END` on the last dot; its `QB` and `QC` time the page and row buffer clocks
 - `U2` column counter, low bits: `C0`–`C3`, carry `CC`
 - `U3` column counter, high bits: `C4`, `C5`; with `U2`, 42 characters a line, reloaded with 0 by `LINE_END_N`
-- `U4` line decoders: `LINE_END_N` on the last dot of character 41, `HSYNC_N` for characters 40–41
-- `U5` inverters: `DOT_LOAD_N`, `CLK_N`; `QB_N` for the page clocks; `D1_N`, `D4_N` for the Return decoder
+- `U4` line decoders: `LINE_END_N` on the last dot of character 41, `HSYNC_N` for characters 34–35
+- `U5` inverters: `DOT_LOAD_N`, `CLK_N`; `QB_N` for the page clocks; `D1_N`, `D4_N` for the Return decoder; `C2_N` for the line sync decoder
 - `U6` line counter, bits 0–3: `V0` (each glyph line drawn twice), `V1`–`V3` (glyph line); clocked by `LINE_END`
 - `U7` line counter, bits 4–7: `V4`–`V7`, the text row
 - `U8` line counter, bit 8: `V8`; with `U6` and `U7` reloaded with 0 after line 311
 - `U9` frame-end decoder: `FRAME_END_N` low during line 311
-- `U10` vertical sync decoder: `VSYNC_N` low for lines 308–311; `ROW_CLK`, the row buffer's clock, once a character in the text
+- `U10` vertical sync decoder: `VSYNC_N` low for lines 280–283 (`V8`, `V4`, `V3` high, `V2` low); `ROW_CLK`, the row buffer's clock, once a character in the text
 - `U11` sync mixer: composite sync from `HSYNC_N` and `VSYNC_N` into `SYNC_N_D`; two gates compare `V6`, `V7` with `Y2`, `Y3` (`NE7`, `NE8`)
 - `U12` text area `ACTIVE` (columns 0–31 of lines 0–255); `CTL`, high for control codes; `CUR_SHOW`, the blinking cursor; `MATCH`
 - `U13` row gates: `GL1`–`GL3`, the copy of `V1`–`V3` while `ACTIVE` is high, else 0; `ROW_TOP`, the first line of a text row
@@ -31,7 +31,7 @@
 - `U26` keyboard buffer: drives `D0`–`D5` onto the write bus `W0`–`W5` except during Clear
 - `U27` space buffer: drives the code of a space onto `W0`–`W5` while `CLEAR_N` is low
 - `U28` key flip-flops: `KEY` set by `STROBE`; `WR` after the key's cell is written, clears `KEY`
-- `U29` write gates: `WRK_N`, `WRITE` (a printable key's cell, or Clear); `ROW_LOAD_N`, low on a row's top line
+- `U29` write gates: `WRK_N`, `WRITE` (a printable key's cell, or Clear); `ROW_LOAD_N`, low on a row's top line; its fourth gate makes `V2_N` for the vertical sync decoder
 - `U30` Return decoder: `CR_N` low while the last key was Return
 - `U31` key gates: `PRINT`, `ADV` (printable or Return), `XC_N` (column 31), `YEN` (step the row)
 - `U32` cursor column, bits 0–3: `X0`–`X3`, carry `XRCO`; loaded with 0 by `CR_N`
@@ -91,9 +91,9 @@ Most signals here change thousands of times a second: the probe shows only P. Th
 
 | Clip | Trigger and timing | A working board shows |
 |---|---|---|
-| `U12.1Y` (`ACTIVE`), `U6.QB` (`V1`), `U25.1Q` (`SYNC_N`), `U25.2Q` (`VIDEO`), `U10.2Y` (`ROW_CLK`) | trigger on `U12.1Y` rising, with `U6.QB` at 1; sample every 100 ns; 10 µs a division | one line of text, 63 µs long. `ACTIVE` is high for the first 48 µs: the 32 characters. `ROW_CLK` pulses once a character while `ACTIVE` is high. `VIDEO` shows dots in the same stretch. `SYNC_N` is low for 3 µs near the end of the line |
+| `U12.1Y` (`ACTIVE`), `U6.QB` (`V1`), `U25.1Q` (`SYNC_N`), `U25.2Q` (`VIDEO`), `U10.2Y` (`ROW_CLK`) | trigger on `U12.1Y` rising, with `U6.QB` at 1; sample every 100 ns; 10 µs a division | one line of text, 63 µs long. `ACTIVE` is high for the first 48 µs: the 32 characters. `ROW_CLK` pulses once a character while `ACTIVE` is high. `VIDEO` shows dots in the same stretch. `SYNC_N` is low for 3 µs, starting 3 µs after `ACTIVE` falls |
 | `U15.1Y` (`PHI1_N`), `U15.2Y` (`PHI2_N`), `U13.4Y` (`ROW_TOP`), `U10.2Y` (`ROW_CLK`), `U29.3Y` (`ROW_LOAD_N`), `U16.OUT` (`P0`) | trigger on `U15.1Y` falling; sample every 100 ns; 10 µs a division | the top line of a text row. `ROW_TOP` is high for the whole line, and `ROW_LOAD_N` low. `PHI2_N` and then `PHI1_N` pulse low 32 times, once a character. `P0` changes from cell to cell. On the next line `ROW_TOP` falls and only `ROW_CLK` goes on |
-| `U10.1Y` (`VSYNC_N`), `U8.QA` (`V8`), `U13.4Y` (`ROW_TOP`), `U12.1Y` (`ACTIVE`) | trigger on `U10.1Y` falling; sample every 1 µs; 2 ms a division | one picture, about 20 ms. `VSYNC_N` is a short low pulse once a picture. `V8` is low for the first 16 ms, the text, and high for the rest. `ROW_TOP` pulses about once a millisecond. `ACTIVE` pulses only while `V8` is low |
+| `U10.1Y` (`VSYNC_N`), `U8.QA` (`V8`), `U13.4Y` (`ROW_TOP`), `U12.1Y` (`ACTIVE`) | trigger on `U10.1Y` falling; sample every 1 µs; 2 ms a division | one picture, about 20 ms. `VSYNC_N` is a short low pulse once a picture, while `V8` is high. `V8` falls 2 ms after the pulse and stays low for 16 ms, the text; it rises again 1.5 ms before the next pulse. `ROW_TOP` pulses about once a millisecond. `ACTIVE` pulses only while `V8` is low |
 | `U28.1CLK` (`STROBE`), `U28.1Q` (`KEY`), `U29.2Y` (`WRITE`), `U28.2Q` (`WR`), `U32.QA` (`X0`) | after CLEAR; trigger on `U28.1CLK` rising, then type a letter; sample every 1 µs; 5 ms a division | `STROBE` high for 25 ms. `KEY` rises with it and falls when the cursor's cell comes round, within 20 ms. At that moment `WRITE` and `WR` give one very short pulse each, and `X0` changes: the cursor has moved |
 
 ## Troubleshooting

@@ -22,16 +22,17 @@ PAL-like and progressive, one dot per clock, four dots per microsecond: 080's ti
 | Frame | 312 lines = 19.656 ms (≈ 50.9 Hz) |
 | Text | 32 columns × 16 rows; a row is 16 lines (8 glyph lines, each drawn twice) |
 | Active picture | line characters 1–32 (the text, one character late), lines 0–255 |
-| Horizontal sync | characters 40–41 (3 µs) |
-| Vertical sync | lines 308–311 |
+| Horizontal sync | characters 34–35 (3 µs) |
+| Vertical sync | lines 280–283 |
 | Page shifts | characters 0–31 of the first line of each text row: 32 a row, 512 a frame |
 
 ### Beam counters (080's, at 4 MHz)
 
 - Dot counter `U1` 74LS161 counts 10 to 15 and reloads 10: 6 dots a character, `DOT_END` on the last dot; `U5` inverts it into `DOT_LOAD_N`. Its outputs `QB`, `QC` and `DOT_END` also time the memory clocks within a character (dots 10 = `1010` to 15 = `1111` on `QD`–`QA`).
 - Column counter `C0`–`C5`: `U2` (`C0`–`C3`, carry `CC`) and `U3` (`C4`, `C5`) 74LS161, stepped by `DOT_END`, reloaded with 0 after character 41: `U4` gate 1 decodes `LINE_END_N` = NAND(`DOT_END`, `C5`, `C3`, `C0`). `U25`'s fourth flip-flop re-times it on the clock: its `4Q_N` is `LINE_END`, high for the first dot of each line, free of the decoder's glitches (it clocks counters).
-- `U4` gate 2 makes `HSYNC_N` = NAND(`C5`, `C3`): characters 40 and 41.
-- Line counter `V0`–`V8`: `U6`, `U7`, `U8` 74LS161 clocked by `LINE_END`, reloaded with 0 after line 311 by `U9` 74LS30 (`FRAME_END_N`). `U10` gate 1 decodes `VSYNC_N` for lines 308–311; `U11` mixes the syncs into `SYNC_N_D`.
+- `U4` gate 2 makes `HSYNC_N` = NAND(`C5`, `C1`, `C2_N`): characters 34 and 35 (`U5` gate 6 inverts `C2` into `C2_N`).
+- Line counter `V0`–`V8`: `U6`, `U7`, `U8` 74LS161 clocked by `LINE_END`, reloaded with 0 after line 311 by `U9` 74LS30 (`FRAME_END_N`). `U10` gate 1 decodes `VSYNC_N` = NAND(`V8`, `V4`, `V3`, `V2_N`) for lines 280–283 (`U29` gate 4, a spare NAND, inverts `V2` into `V2_N`); `U11` mixes the syncs into `SYNC_N_D`.
+- Both syncs sit early in the blanking (P6n, [PICTURE_MARGINS.md](../../../docs/p6n-picture-margins/PICTURE_MARGINS.md)): the text starts 13.25 µs after the line sync's edge, and line 0 comes 32 lines after the vertical sync's start, so the window of a real monitor (10 µs and 28 lines of flyback) cuts nothing.
 - Within a text row, `V0` repeats each glyph line twice, `V1`–`V3` are the glyph line, `V4`–`V7` the text row. `U12` gate 1 makes `ACTIVE` = NOR(`C5`, `V8`): characters 0–31 of lines 0–255.
 
 ### Page and row buffer
@@ -66,7 +67,7 @@ No reset: the beam counters fall into step within a frame as on 080. The page, t
 
 ## When it works
 
-The TV shows a page of random characters at power-on, locked within half a second, with a blinking block somewhere. Pressing Clear blanks the page and puts the block at the top left. Each key typed appears where the block was and the block moves one place right; after 32 characters it goes on at the start of the next line, Return starts the next line, other control keys (Backspace, Esc, CTRL) do nothing, and after the 16th line it goes back to the top line and types over what is there. Letters show in upper case, white on black, with a dark border all round. Keys typed faster than about 40 a second appear in turn, a little behind.
+The TV shows a page of random characters at power-on, locked within half a second, with a blinking block somewhere. Pressing Clear blanks the page and puts the block at the top left. Each key typed appears where the block was and the block moves one place right; after 32 characters it goes on at the start of the next line, Return starts the next line, other control keys (Backspace, Esc, CTRL) do nothing, and after the 16th line it goes back to the top line and types over what is there. Letters show in upper case, white on black, with a dark border all round; the page fills the screen almost to its edges (TV columns 106–490, rows 32–287), and nothing is cut. Keys typed faster than about 40 a second appear in turn, a little behind.
 
 ## Puzzles
 
