@@ -8,7 +8,7 @@ Spec: [PICTURE_MARGINS.md](PICTURE_MARGINS.md). Design: [PICTURE_MARGINS_DESIGN.
 |-------|-------------|--------|
 | 1 | Five netlists (no fence of its own: every picture case loads the Board) | with phase 2 |
 | 2 | Boards rebuilt unrouted (`.place` for 050, 060; `renet_board.py` for 070–090), routed whole by the user, every test updated, full release suite | see git log |
-| 3 | Puzzle files re-read | |
+| 3 | Puzzle files re-read | see git log |
 | 4 | Manuals and docs: Test Pattern, Bouncing Ball, Tennis | |
 | 5 | Manuals and docs: Message, Typewriter | |
 | 6 | Recipes, ARCHITECTURE, release check | |

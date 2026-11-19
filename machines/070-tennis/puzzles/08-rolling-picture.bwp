@@ -1,5 +1,5 @@
-# Rolling picture: dry Joint at U10 pin 2 (1B, VSYNC_N); it floats high, the composite sync is only
-# HSYNC_N, and the TV runs its frames free. The paddles, triggered from VSYNC_N itself, work.
+# Rolling picture: dry Joint at U10 pin 2 (1B, VSYNC_N from U38); it floats high, the composite sync is only
+# HSYNC_N, and the TV runs its frames free. The paddles, triggered from TICK_N (line 308), work.
 machine tennis
 title "Rolling picture"
 brief "The picture rolls up the screen and never holds still, though the game seems to play."

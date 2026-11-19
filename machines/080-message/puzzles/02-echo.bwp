@@ -1,6 +1,8 @@
-# Echo: U12 input 1B (V8) stuck at 0; ACTIVE no longer ends at line 256, so lines 256-307 draw text
-# rows 0-3 again (V4-V7 wrap): the poem's first line under the page. The V8 Net is unchanged.
+# Echo: U12 input 1B (V8) stuck at 0; ACTIVE no longer ends at line 256, so lines 256-311 draw text
+# rows 0-3 again (V4-V7 wrap). They come after the vertical sync (lines 280-283, P6n): the poem's
+# first line falls above the screen, and the top half of its second line (lines 304-311) shows as a
+# strip of broken dots along the screen's top edge. The V8 Net is unchanged.
 machine message
 title "Echo"
-brief "Near the bottom of the screen, under the poem, its first line shows a second time."
+brief "A row of broken dots runs along the very top of the screen, above the poem."
 fault stuck U12.1B 0
