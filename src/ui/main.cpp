@@ -48,12 +48,14 @@
 #include "ui/manual_window.hpp"
 #include "ui/matrix_keyboard_window.hpp"
 #include "ui/meter_window.hpp"
+#include "ui/power_cycle_popup.hpp"
 #include "ui/scope_window.hpp"
 #include "ui/shelf.hpp"
 #include "ui/tv_view.hpp"
 #include "ui/tv_window.hpp"
 #include "view/focus.hpp"
 #include "view/pencil_marks.hpp"
+#include "view/power_cycle.hpp"
 #include "view/time_view.hpp"
 #include "view/tv_controls.hpp"
 
@@ -78,7 +80,7 @@ constexpr std::string_view kUsage =
     "real|plain] "
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
     "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
-    "[--away tv|keyboard|knob,...] [--run pause|1x|max] [--side front|back] "
+    "[--away tv|keyboard|knob,...] [--run pause|1x|max] [--side front|back] [--ask REPAIR] "
     "[--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
@@ -112,6 +114,7 @@ struct Options {
     std::vector<BenchObject> away;  // --away: the Machine slot's objects put away at start (P6o)
     RunSwitch run = RunSwitch::RealTime;  // --run: the run switch at start (P6o)
     bool back = false;                    // --side back: the Board flipped at start (P6o)
+    std::optional<RepairAction> ask;      // --ask: the power-cycle popup open at start (P6o)
 };
 
 std::optional<BenchObject> ParseBenchObject(std::string_view name) {
@@ -338,6 +341,12 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 }
                 options.away.push_back(*object);
             }
+        } else if (arg == "--ask") {
+            auto repair = ParseRepair(argv[++i]);
+            if (!repair) {
+                return std::nullopt;
+            }
+            options.ask = std::move(*repair);
         } else if (arg == "--side") {
             const std::string_view side = argv[++i];
             if (side != "front" && side != "back") {
@@ -517,6 +526,15 @@ std::string_view StateName(RunState state) {
     return "";
 }
 
+// What a click with a tool that needs the power off would do (P6o): the repairs to try in order
+// (the first Done wins: the iron resolders a pin, else mends), the puller's component (its pencil
+// marks leave with it), the refusal when none is Done.
+struct RepairPlan {
+    std::vector<RepairAction> tries;
+    std::optional<std::size_t> swapped;
+    std::string unknown;
+};
+
 // Board hover text plus the Part's description, or the pin's Datasheet line.
 std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manuals) {
     std::string text = scene.hoverText(hit);
@@ -694,6 +712,13 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
     } else {
         PowerOn(session, run, seed);
     }
+    // The power-off tools with the power on (P6o): asked, then cycled at the next frame's clicks
+    // (so a frame is unpowered, as in a manual power cycle), powered on at the frame after.
+    PowerCyclePopup popup;
+    std::optional<RepairPlan> pending;    // asked, not answered
+    std::optional<RepairPlan> cycleNext;  // OK: cycled at the next frame's clicks
+    bool powerOnNext = false;
+    bool askAtStart = options.ask.has_value();
     const auto start = std::chrono::steady_clock::now();
     SpeedRatio ratio;
     double uiMilliseconds = 0;
@@ -704,6 +729,10 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
     while (running) {
         const auto frameStart = std::chrono::steady_clock::now();
         SDL_Event event;
+        if (powerOnNext) {  // before session.tv(): a repaired Machine's power-on rebuilds it
+            PowerOn(session, run, seed);
+            powerOnNext = false;
+        }
         applyKeys();
         while (SDL_PollEvent(&event)) {
             const bool keyDown = event.type == SDL_EVENT_KEY_DOWN;
@@ -792,6 +821,39 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
             boardView.refuse(reason);
             shelf.refused(std::move(reason));
         };
+        const auto applyPlan = [&](const RepairPlan& plan) {
+            for (const RepairAction& repair : plan.tries) {
+                if (session.repair(repair) == RepairResult::Done) {
+                    if (plan.swapped) {
+                        marks.swapped(*plan.swapped);  // its marks leave with it (P6h)
+                    }
+                    return;
+                }
+            }
+            if (!plan.unknown.empty()) {
+                refuse(plan.unknown);
+            }
+        };
+        const auto cycle = [&](const RepairPlan& plan) {
+            session.powerOff();
+            applyPlan(plan);
+            powerOnNext = true;
+        };
+        if (cycleNext) {
+            cycle(*cycleNext);
+            cycleNext.reset();
+        }
+        if (askAtStart) {  // --ask: as if clicked with the power on, at the bench's centre
+            askAtStart = false;
+            RepairPlan plan{{*options.ask}, std::nullopt, ""};
+            if (const auto* swap = std::get_if<SwapRepair>(&*options.ask);
+                swap && boardView.scene()) {
+                plan.swapped = boardView.scene()->componentIndex(swap->reference);
+            }
+            pending = std::move(plan);
+            const BenchRect area = BenchArea();
+            popup.open({(area.min.x + area.max.x) / 2, (area.min.y + area.max.y) / 2});
+        }
         if (const auto click = boardView.takeClick()) {
             const auto& pick = click->pick;
             // A click on a part selects it (its pins too, as a probe touches them); on the
@@ -805,7 +867,7 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
                     boardView.select(*click->component);
                 }
             }
-            RepairResult result = RepairResult::Done;
+            std::optional<RepairPlan> plan;  // a tool that needs the power off (P6o)
             switch (focus.owner()) {
             case Owner::Probe:
                 if (!pick) {
@@ -816,60 +878,52 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
                 break;
             case Owner::Puller:
                 if (click->component) {
-                    result = session.repair(
-                        SwapRepair{session.drawnBoard()->components[*click->component].reference});
-                    if (result == RepairResult::Done) {
-                        marks.swapped(*click->component);  // its marks leave with it (P6h)
-                    }
+                    plan = RepairPlan{
+                        {SwapRepair{session.drawnBoard()->components[*click->component].reference}},
+                        click->component,
+                        ""};
                 }
                 break;
             case Owner::Iron: {
-                // A chip pin is resoldered; anywhere else, a crack is mended.
-                if (session.powered()) {
-                    result = RepairResult::Refused;
+                // A chip pin is resoldered, else a crack mended (a mend is always Done: Session);
+                // on the Board only, so a click beside it never power-cycles.
+                if (!InsideOutline(boardView.scene()->outline(), click->at)) {
                     break;
                 }
-                result = RepairResult::Unknown;
+                plan = RepairPlan{};
                 if (pick && pick->hit.kind == HitKind::Pad) {
                     const BoardComponent& part =
                         session.drawnBoard()->components[pick->hit.component];
-                    result = session.repair(
+                    plan->tries.push_back(
                         ResolderRepair{{part.reference, part.pads[pick->hit.index].number}});
                 }
-                if (result == RepairResult::Unknown) {  // a mend is always Done (Session)
-                    result = pick && pick->hit.kind == HitKind::Trace
-                                 ? session.repair(MendRepair{pick->layer, pick->contact})
-                                 : session.repair(MendRepair{click->active, click->at});
-                }
+                plan->tries.push_back(pick && pick->hit.kind == HitKind::Trace
+                                          ? MendRepair{pick->layer, pick->contact}
+                                          : MendRepair{click->active, click->at});
                 break;
             }
-            case Owner::Cutters:
-                if (session.powered()) {
-                    result = RepairResult::Refused;
-                    break;
-                }
+            case Owner::Cutters: {
+                constexpr std::string_view kCutRefusal = "Cut: click a trace or a wire";
                 if (const auto wire = boardView.wireAt(click->at)) {
                     const WireEnds& w = machine->wires()[*wire];
-                    result = session.repair(UnwireRepair{w.a, w.b});
+                    plan = RepairPlan{
+                        {UnwireRepair{w.a, w.b}}, std::nullopt, std::string(kCutRefusal)};
                 } else if (const auto bridge = boardView.bridgeAt(click->at)) {
                     const WireEnds& b = machine->bridges()[*bridge];
-                    result = session.repair(UnbridgeRepair{b.a, b.b});
+                    plan = RepairPlan{
+                        {UnbridgeRepair{b.a, b.b}}, std::nullopt, std::string(kCutRefusal)};
                 } else if (!pick || pick->hit.kind != HitKind::Trace) {
-                    refuse("Cut: click a trace or a wire");
+                    refuse(std::string(kCutRefusal));
                 } else if (boardView.scene()->board().traces[pick->hit.index].mid) {
                     refuse("Cut: straight traces only");
                 } else {
-                    result = session.repair(CutRepair{pick->layer, pick->contact});
-                }
-                if (result == RepairResult::Unknown) {
-                    refuse("Cut: click a trace or a wire");
+                    plan = RepairPlan{{CutRepair{pick->layer, pick->contact}},
+                                      std::nullopt,
+                                      std::string(kCutRefusal)};
                 }
                 break;
+            }
             case Owner::Wire: {
-                if (session.powered()) {
-                    result = RepairResult::Refused;
-                    break;
-                }
                 if (!pick || pick->hit.kind != HitKind::Pad) {
                     refuse("Wire: solder to pins only");
                     break;
@@ -877,15 +931,15 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
                 const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
                 const Pad& pad = part.pads[pick->hit.index];
                 const PinRef end{part.reference, pad.number};
-                if (!wireStart) {
+                if (!wireStart) {  // the first pin, with the power on too
                     wireStart = end;
                     wireStartAt = pad.position;
                     break;
                 }
                 if (wireStart->reference != end.reference || wireStart->pin != end.pin) {
-                    result = session.repair(WireRepair{*wireStart, end});
+                    plan = RepairPlan{{WireRepair{*wireStart, end}}, std::nullopt, ""};
                 }
-                wireStart.reset();
+                wireStart.reset();  // the same pin again: cancelled
                 break;
             }
             case Owner::Analyzer:
@@ -946,9 +1000,19 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
                 }
                 break;
             }
-            if (result == RepairResult::Refused) {
-                shelf.refused("Power off first");
-                boardView.refuse("Power off first");
+            if (plan) {
+                switch (*StepFor(true, session.powered(), popup.dontAsk())) {
+                case RepairStep::Apply:
+                    applyPlan(*plan);
+                    break;
+                case RepairStep::Ask:
+                    pending = std::move(plan);
+                    popup.open(ImGui::GetIO().MousePos);
+                    break;
+                case RepairStep::Cycle:
+                    cycle(*plan);
+                    break;
+                }
             }
         }
         if (const auto at = boardView.takeRightClick();
@@ -1133,6 +1197,17 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
             shelf.keyboardOut = false;  // closed by its window
         }
         DrawDebug(debugOut, session, stats, seed);
+        switch (popup.draw()) {  // last: above every window
+        case PopupAnswer::Ok:
+            cycleNext = std::move(pending);
+            pending.reset();
+            break;
+        case PopupAnswer::Cancel:
+            pending.reset();
+            break;
+        case PopupAnswer::None:
+            break;
+        }
         // A text field takes the keys from the next event on (P6o).
         textField = ImGui::GetIO().WantTextInput;
         applyKeys();
@@ -1289,6 +1364,11 @@ int main(int argc, char** argv) {
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
+    }
+    if (options->ask && !session.machine()) {
+        std::println(stderr, "bw_ui: no Board to repair");
+        std::println(stderr, "{}", kUsage);
+        return kExitUsage;
     }
     if (!options->mark.empty() && !session.machine()) {
         std::println(stderr, "bw_ui: no Board to mark");

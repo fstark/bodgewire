@@ -14,8 +14,8 @@ Screenshots: `build/release/src/ui/bw_ui FILE --screenshot /tmp/p6o-NAME.png --a
 |-------|-------------|--------|
 | 1 | Keys: every key to the Machine; shortcuts, F2, Esc, gold for keys, `--keys` gone; manuals, Machine docs, recipes | `4ca30fc` |
 | 2 | Shelf: trays, run switch, Machine slot, double-click pops out, power-off tools never blocked; binder control and home gone | `3c95d58` |
-| 3 | Board: the flip corner and `` ` ``; the pencil on the Board only | this commit |
-| 4 | Repairs with the power on: the plan, the popup, the cycle | |
+| 3 | Board: the flip corner and `` ` ``; the pencil on the Board only | `eb0c3a7` |
+| 4 | Repairs with the power on: the plan, the popup, the cycle | this commit |
 | 5 | Bench objects: the binder's height, the brief dragged | |
 | 6 | Docs, release check, full release suite | |
 
@@ -101,3 +101,4 @@ Design §5.
 - Phase 1 (2026-11-19): the event loop takes Tab and `` ` `` first (by the character, `dropText` for their text), lets Cmd combinations through to ImGui but the matrix's paste, and drops every other key unless a text field is edited; `applyKeys` runs again right after `textField` updates, before the captures' `sync`. The BW-2001 runs at its known 0.33× in `bw_ui` (P5z: 0.36×).
 - Phase 2 (2026-11-19): every Machine's shelf viewed (the five slot drawings: a grayed monitor on 010–040, 100–120; the knob box on 045; the monitor on 050, 060, 080; monitor and knob box on 070; monitor and keyboard on 090, 130, 140). The pause sign is drawn as two bars (the UI font has no `‖`). `--run pause` stops at 0.2 s, the BW-2001's screen still booting there: enough to see the switch.
 - Phase 3 (2026-11-19): the flip corner is 4 mm, not 8: the pad test found the Typewriter's `SW1.2` and Tennis's `J4.3`, `J4.4` under 8 mm (a point is on the dog-ear when its distances to the two edges sum to at most the side; the review's 6.7 mm was that sum). 4 mm clears every pad; the floor is 24 px. Drawn as the corner in the other side's copper colour, a light fold line and a shadow inside it.
+- Phase 4 (2026-11-19): the plan's tries replace the iron's resolder-then-mend chain; every cutters plan refuses "Cut: click a trace or a wire" if none is Done, as before. `--ask` opens the popup at the bench's centre; the checkbox's box is drawn lighter (ImGui's frame colour vanished on the popup's dark). OK's cycle and "Don't ask again" are checked by reading here and by the user (phase 6): a screenshot cannot click.

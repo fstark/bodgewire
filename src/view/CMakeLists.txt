@@ -10,6 +10,7 @@ add_library(bw_view STATIC
   keyboard_layout.cpp
   matrix_keyboard_layout.cpp
   pencil_marks.cpp
+  power_cycle.cpp
   time_text.cpp
   time_view.cpp
   tv_controls.cpp
