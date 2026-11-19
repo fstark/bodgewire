@@ -60,6 +60,7 @@ public:
     bool type(std::u32string_view text) override;
     // One character; false (nothing queued) when `c` has no key or kMatrixWaiting presses wait.
     bool type(char32_t c);
+    bool press(MatrixPress press) override { return press.key < keyCount() && queue_.push(press); }
     void dropWaiting() override { queue_.dropWaiting(); }
     bool scripted(std::size_t key) const override { return queue_.scripted(key, shiftKey()); }
 

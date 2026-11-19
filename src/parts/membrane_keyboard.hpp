@@ -42,6 +42,9 @@ public:
     bool held(std::size_t key) const override { return held_[key].load(std::memory_order_relaxed); }
     // Zx80Presses(text) queued; false when none was.
     bool type(std::u32string_view text) override;
+    bool press(MatrixPress press) override {
+        return press.key < kZx80KeyCount && queue_.push(press);
+    }
     void dropWaiting() override { queue_.dropWaiting(); }
     bool scripted(std::size_t key) const override { return queue_.scripted(key, shiftKey()); }
 

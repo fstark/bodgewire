@@ -19,9 +19,10 @@ namespace bw {
 // simulation time (Session::type: held, then released, so every key is seen however slow the
 // Machine runs). On the BW-2001: Return, Backspace, Escape, Home and the arrows type RETURN, DEL,
 // STOP, HOME and CRSR (left and up with SHIFT). On the BW-80: Return NEW LINE, Shift+Return EDIT,
-// Backspace RUBOUT, Escape BREAK, Home HOME, the arrows the cursor keys. Cmd+V or Ctrl+V pastes the
-// clipboard as presses (the keyboard's own map: a BASIC listing keyword by keyword on the BW-80).
-// F2 is main.cpp's.
+// Backspace RUBOUT, Escape BREAK, Home HOME, the arrows the cursor keys; Shift with a letter is
+// SHIFT with that key (the graphics, the symbols, OR and **: the ROM gives the meaning). Cmd+V
+// or Ctrl+V pastes the clipboard as presses (the keyboard's own map: a BASIC listing keyword by
+// keyword on the BW-80). F2 is main.cpp's.
 struct MatrixCapture {
     bool on = false;
     std::string reference;  // the first of Session::matrixKeyboards(); empty: none
@@ -42,6 +43,7 @@ private:
 
     SDL_Window* started_ = nullptr;
     std::optional<SDL_Scancode> lastDown_;  // the key whose text event is due
+    bool dropText_ = false;                 // the text event due was typed as a press already
     std::map<SDL_Scancode, MatrixPress> held_;
 };
 

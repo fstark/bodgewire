@@ -195,6 +195,9 @@ public:
     // `text` typed: on a key matrix as a whole (the BW-80's keyboard reads keywords out of it:
     // Zx80Presses), on a KEYBOARD one character at a time. False when nothing was sent.
     bool typeText(std::string_view reference, std::u32string_view text);
+    // One press on key matrix `reference` as it is (a key, SHIFT with it or not), queued in
+    // simulation time as type's are. False when nothing was sent.
+    bool press(std::string_view reference, MatrixPress press);
 
     // Every key matrix Part (MATRIXKB, the BW-2001 keyboard, P5q; MEMBRANEKB, the BW-80's, P5x),
     // in netlist order.

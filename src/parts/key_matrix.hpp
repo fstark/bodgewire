@@ -42,6 +42,9 @@ public:
     // nothing was queued (no key for any character, the queue full). Follow with a wake: an idle
     // keyboard takes it at its next evaluation.
     virtual bool type(std::u32string_view text) = 0;
+    // One press queued as it is (SHIFT with a key: the PC's Shift with a letter on the BW-80);
+    // false when nothing was queued (no such key, the queue full).
+    virtual bool press(MatrixPress press) = 0;
     // Producer side, any time: the presses waiting now are skipped (power-off).
     virtual void dropWaiting() = 0;
     // Any thread: the scripted press held now includes `key` (SHIFT with a shifted press).

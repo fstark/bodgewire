@@ -153,6 +153,22 @@ TEST_CASE("membrane keyboard: a typed key is held 60 ms, then released 120 ms", 
     CHECK_FALSE(keyboard->type(U"{}"));
 }
 
+TEST_CASE("membrane keyboard: a press queued as it is", "[parts]") {
+    auto loaded = Bench((1u << 1) | (1u << 0));  // A9 and A8 low
+    KeyMatrix* keyboard = KeyMatrixOf(*loaded, "J3");
+    Simulator sim(loaded->circuit);
+    sim.powerOn(1);
+    REQUIRE(keyboard->press({Key("A"), true}));  // SHIFT with A: the grey graphic
+    sim.wake(keyboard->component().id());
+    sim.runUntil(10_ms);
+    CHECK(sim.value(loaded->nets.at("KB0")) == Zero);  // SHIFT (0, 0) and A (1, 0)
+    CHECK(keyboard->scripted(Key("SHIFT")));
+    CHECK(keyboard->scripted(Key("A")));
+    sim.runUntil(70_ms);
+    CHECK(sim.value(loaded->nets.at("KB0")) == One);
+    CHECK_FALSE(keyboard->press({kZx80KeyCount, false}));
+}
+
 TEST_CASE("membrane keyboard: the dropped queue", "[parts]") {
     auto loaded = Bench(1u << 1);
     KeyMatrix* keyboard = KeyMatrixOf(*loaded, "J3");

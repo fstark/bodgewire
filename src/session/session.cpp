@@ -671,6 +671,15 @@ bool Session::typeText(std::string_view reference, std::u32string_view text) {
     return any;
 }
 
+bool Session::press(std::string_view reference, MatrixPress press) {
+    KeyMatrix* matrix = KeyMatrixOf(*live_->circuit, reference);
+    if (matrix == nullptr || !powered_ || !matrix->press(press)) {
+        return false;
+    }
+    live_->runner->wake(matrix->component().id(), PressJitter());
+    return true;
+}
+
 std::vector<std::string> Session::matrixKeyboards() const {
     std::vector<std::string> references;
     const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;

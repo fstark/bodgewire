@@ -58,6 +58,11 @@ bool MatrixCapture::handle(const SDL_Event& event, Session& session) {
     }
     switch (event.type) {
     case SDL_EVENT_TEXT_INPUT:
+        if (dropText_) {
+            dropText_ = false;
+            lastDown_.reset();
+            return true;
+        }
         for (const char* c = event.text.text; *c != '\0'; ++c) {
             const auto byte = static_cast<unsigned char>(*c);
             if (byte >= 0x20 && byte < 0x7F) {
@@ -71,6 +76,7 @@ bool MatrixCapture::handle(const SDL_Event& event, Session& session) {
     case SDL_EVENT_KEY_DOWN: {
         const SDL_Scancode scancode = event.key.scancode;
         const bool shift = (event.key.mod & SDL_KMOD_SHIFT) != 0;
+        dropText_ = false;
         if ((event.key.mod & (SDL_KMOD_GUI | SDL_KMOD_CTRL)) != 0 && event.key.key == SDLK_V) {
             if (char* text = SDL_GetClipboardText()) {
                 session.typeText(reference, DecodeUtf8(text));  // the keyboard's own map
@@ -79,6 +85,22 @@ bool MatrixCapture::handle(const SDL_Event& event, Session& session) {
             return true;
         }
         const bool bw80 = kind == KeyMatrixKind::Bw80;
+        if (bw80 && shift && event.key.key >= SDLK_A && event.key.key <= SDLK_Z) {
+            // SHIFT with the letter's key, whatever the ROM makes of it: the text event that
+            // follows (the letter) is dropped.
+            const char letter = static_cast<char>('A' + (event.key.key - SDLK_A));
+            const auto keys = Zx80Keys();
+            for (std::size_t k = 0; k < keys.size(); ++k) {
+                if (keys[k].legend.size() == 1 && keys[k].legend[0] == letter) {
+                    const MatrixPress press{k, true};
+                    session.press(reference, press);  // refused with the power off
+                    held_[scancode] = press;
+                    break;
+                }
+            }
+            dropText_ = true;
+            return true;
+        }
         switch (event.key.key) {
         case SDLK_RETURN:
         case SDLK_KP_ENTER:
