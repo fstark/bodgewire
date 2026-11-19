@@ -115,7 +115,7 @@ Debug: P5v's picture cases run about 75–135 s each in debug and are release-on
 
 | File | Fault line | Symptom (seeds 1–3 the same) | Repair |
 |---|---|---|---|
-| `q_everywhere.bwp` | `fault stuck IC16.3B 1` | every cell past a row's text drawn as `Q` (`$36`, the `HALT`'s low bits), the margins full | swap `IC16` |
+| `q_everywhere.bwp` | `fault stuck IC16.3B 1` | after a row's text its `HALT`'s glyph (`Q`, `$36`), then the glyph of the byte after the `HALT` to the row's end (the next row's first code, or what follows the display file), the margins full | swap `IC16` |
 | `doubled_lines.bwp` | `fault stuck IC21.QB 0` | glyph rows `0 0 2 2 4 4 6 6` | swap `IC21` |
 | `bottom_halves.bwp` | `fault crack IC21.QD IC8.4A 50%` | glyph rows `4 5 6 7 4 5 6 7` | mend |
 | `wrong_letters.bwp` | `fault bridge IC5.15 IC5.16` | the glyph of the code with bits 1 and 2 cleared unless both set: `;< LRILT "DCLLK <;23"` | cut the bridge |
@@ -127,7 +127,7 @@ Debug: P5v's picture cases run about 75–135 s each in debug and are release-on
 | `no_print.bwp` | `fault crack J3.A13 IC1.A13 50%` | `PRINT 2+2` leaves `2+s2l` in the edit line (the O key dead) | mend |
 | `rolling_screen.bwp` | `fault crack IC17.4Y IC11.4B 90%` | the display file right, the TV never locked; `IC10` keeps `KBD_N` | mend |
 | `torn_picture.bwp` | `fault stuck IC18.1Q_N 1` | the display file right, the TV never locked | swap `IC18` |
-| `still_starting.bwp` | `fault column IC3.IO4 0` | unlocked, over 2000 ink points at 700 ms; `IC3`'s bit 3 clear in every word | swap `IC3` |
+| `still_starting.bwp` | `fault column IC3.IO4 0` | unlocked and blank at 700 ms (under 2000 ink points: the unblanked sync only); `IC3`'s bit 3 clear in every word | swap `IC3` |
 | `vertical_stripes.bwp` | `fault crack IC6.2Y IC2.CS1 50%` | unlocked; `ROM_CS1` moves at `IC6.2Y`, high and still at `IC2.CS1` | mend |
 | `white_screen.bwp` | `fault stuck IC14.3Y 0` | unlocked, under 1500 ink points (the frame's edges); `D3` low and still at `IC1` while `CLK` runs | swap `IC14` |
 

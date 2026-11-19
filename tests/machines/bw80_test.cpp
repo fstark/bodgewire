@@ -92,16 +92,18 @@ TEST_CASE("bw80: the ZX80 ROM shows its K cursor", "[machines][slow]") {
     REQUIRE(at.has_value());
     INFO("left " << at->first << ", top " << at->second);
     // The page: the 24 rows ending with the K's (the edit line is the last row: LISTING ED-COPY),
-    // 32 cells from its left edge. No ink there but the K's. The margins are not looked at: the
-    // TV draws the sync periods too, unblanked (Design §7).
+    // with the left margin and the 8 lines under it, where the ROM's code runs between the page
+    // and the bottom margin (no glyph loads: IC5 latches the character fetch). No ink there but
+    // the K's. The right edge and the frame sync are not looked at: the TV draws the sync periods
+    // too, unblanked (Design §7).
     const double columnsPerDot = 1e12 / 6.5e6 / static_cast<double>(Tv::kColumnTime);
-    const int left = static_cast<int>(std::floor(at->first));
+    const int left = 0;
     const int right =
         std::min(static_cast<int>(std::ceil(at->first + 256 * columnsPerDot)), kTvColumns - 1);
     const int cellRight = static_cast<int>(std::ceil(at->first + 8 * columnsPerDot));
     const int top = std::max(at->second - (kBw80TvRows - 1) * 8, 0);
     int stray = 0;
-    for (int row = top; row < at->second + 8; ++row) {
+    for (int row = top; row < std::min(at->second + 16, kTvRows); ++row) {
         int inRow = 0;
         for (int column = left; column <= right; ++column) {
             const bool inCell = row >= at->second && column <= cellRight;

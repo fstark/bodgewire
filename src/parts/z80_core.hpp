@@ -52,7 +52,7 @@ struct Z80Bus {
     std::uint8_t data = 0;      // Write, Out
     std::uint16_t refresh = 0;  // Fetch, Acknowledge: I:R as driven in T3 and T4
     std::uint8_t length = 0;    // Internal: its T-states
-    bool halted = false;        // Fetch: a halted CPU's NOP at the HALT (data ignored, PC kept)
+    bool halted = false;        // Fetch: a halted CPU's NOP (data ignored, PC kept)
 };
 
 // NMOS Z80 instruction core, one M-cycle at a time (docs/p5s-z80/Z80_DESIGN.md): every opcode

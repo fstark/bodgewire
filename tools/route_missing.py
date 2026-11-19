@@ -51,6 +51,53 @@ def first(node, head):
 
 
 
+def source_island(pads, segs, vias, NET, FREF, FPAD):
+    """The copper of NET joined to pad FREF.FPAD: {("pad", ref, num), ("seg", k), ("via", k)}.
+    Joined: a track's end on a pad, a via or another track's end (same layer), as KiCad draws them.
+    Without it, the copper next to the source pad would count as a goal and the search would stop
+    at once (a connector's two ground pads already joined to each other, P5v2)."""
+    def onPad(q, p, grow):
+        (x, y), w, h = p[2], p[3], p[4]
+        return abs(q[0] - x) <= w / 2 + grow and abs(q[1] - y) <= h / 2 + grow
+
+    items = [("pad", p[0], p[1]) for p in pads if p[5] == NET]
+    items += [("seg", k) for k, s in enumerate(segs) if s[4] == NET]
+    items += [("via", k) for k, v in enumerate(vias) if v[3] == NET]
+    padOf = {(p[0], p[1]): p for p in pads}
+
+    def touch(a, b):
+        if a[0] == "seg" and b[0] != "seg":
+            a, b = b, a
+        if a[0] == "pad" and b[0] == "pad":
+            return False
+        if b[0] == "seg":
+            s = segs[b[1]]
+            ends = (s[0], s[1])
+            if a[0] == "pad":
+                return any(onPad(e, padOf[(a[1], a[2])], 0.001) for e in ends)
+            if a[0] == "via":
+                v = vias[a[1]]
+                return any(math.dist(e, v[0]) <= v[1] / 2 + 0.001 for e in ends)
+            t = segs[a[1]]
+            return t[3] == s[3] and any(math.dist(e, f) <= 0.001 for e in ends for f in (t[0], t[1]))
+        if a[0] == "via" and b[0] == "via":
+            return False
+        if a[0] == "via":
+            a, b = b, a
+        v = vias[b[1]]
+        return onPad(v[0], padOf[(a[1], a[2])], 0.001)
+
+    seen = {("pad", FREF, FPAD)}
+    todo = [("pad", FREF, FPAD)]
+    while todo:
+        a = todo.pop()
+        for b in items:
+            if b not in seen and touch(a, b):
+                seen.add(b)
+                todo.append(b)
+    return seen
+
+
 def route(text, NET, FREF, FPAD, MARGIN, STEP):
     """The Board's text with one new track of NET from pad FREF.FPAD, or None if none found."""
     root = parse(text)
@@ -91,12 +138,20 @@ def route(text, NET, FREF, FPAD, MARGIN, STEP):
                 pads.append((ref, p[1], (ox + px * cs + py * sn, oy - px * sn + py * cs), w, h,
                              net[1] if net else None))
 
-    # --- the grid over the area of the connection -----------------------------------------------
+    # --- the source pad's island: the net's copper already joined to it is not a goal -----------
     source = [p for p in pads if p[0] == FREF and p[1] == FPAD]
     if not source or source[0][5] != NET:
         return None
     sx, sy = source[0][2]
-    targets_xy = [p[2] for p in pads if p[5] == NET and not (p[0] == FREF and p[1] == FPAD)]
+    island = source_island(pads, segs, vias, NET, FREF, FPAD)
+    pads = [p for p in pads if ("pad", p[0], p[1]) not in island]
+    segs = [s for k, s in enumerate(segs) if ("seg", k) not in island]
+    vias = [v for k, v in enumerate(vias) if ("via", k) not in island]
+
+    # --- the grid over the area of the connection -----------------------------------------------
+    targets_xy = [p[2] for p in pads if p[5] == NET]
+    if not targets_xy:
+        return None
     tx = min(targets_xy, key=lambda q: math.hypot(q[0] - sx, q[1] - sy))
     x0 = max(edges[0], min(sx, tx[0]) - MARGIN)
     x1 = min(edges[2], max(sx, tx[0]) + MARGIN)
@@ -158,11 +213,9 @@ def route(text, NET, FREF, FPAD, MARGIN, STEP):
             disk(blocked[li], at[0], at[1], size / 2 + CLEAR + half + SAFE)
         disk(noVia, at[0], at[1], max(size / 2 + CLEAR + VIA_D / 2, drill / 2 + HOLE_CLEAR + VIA_DRILL / 2) + SAFE)
     for (ref, num, at, w, h, net) in pads:
-        if net == NET and not (ref == FREF and num == FPAD):
+        if net == NET:
             for li in range(2):
                 rect(goal[li], at[0], at[1], w, h, 0)
-            continue
-        if ref == FREF and num == FPAD:
             continue
         for li in range(2):
             rect(blocked[li], at[0], at[1], w, h, CLEAR + half + SAFE)
@@ -262,7 +315,7 @@ def route(text, NET, FREF, FPAD, MARGIN, STEP):
     # point of a track's centreline on the final layer.
     end = xy(path[-1])
     endLayer = LAYERS[path[-1][2]]
-    cands = [p[2] for p in pads if p[5] == NET and not (p[0] == FREF and p[1] == FPAD)]
+    cands = [p[2] for p in pads if p[5] == NET]
     cands += [v[0] for v in vias if v[3] == NET]
     for (a, b, w, layer, net) in segs:
         if net == NET and layer == endLayer:

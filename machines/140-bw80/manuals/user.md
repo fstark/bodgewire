@@ -76,7 +76,7 @@ To draw a row, the program jumps into the display file, at its copy above $C000.
 
 1. The processor reads the code. `A15` is high, and the code is a character. So `IC16` and `IC17` raise `NOP_EN`.
 2. The gates of `IC14` and `IC15` pull the processor's data lines low. The processor reads 0. To a Z80, 0 is NOP: do nothing. So it does nothing, and moves on to the next code.
-3. Meanwhile, the real code stays on the memory's side, on `MD0`–`MD7`. The latch `IC5` keeps it, on `CH0`–`CH7`.
+3. Meanwhile, the real code stays on the memory's side, on `MD0`–`MD7`. The latch `IC5` keeps it, on `CH0`–`CH7`. In place of bit 6 it keeps the answer to "was this a character?", on `CHAR_FETCH_N`, low for yes.
 4. Then comes the refresh. Now the multiplexers `IC6`–`IC8` give the ROM a different address. In place of the processor's address, they give it the kept code and the line counter.
 5. The ROM answers with one line of the character's shape, eight dots.
 6. The shift register `IC9` takes the eight dots, at the next tick of `PHI`. It sends them to the TV one by one, at 6½ million a second.
@@ -85,7 +85,7 @@ Each code takes four ticks of the processor. That is just the time for eight dot
 
 **The character shapes.** The shapes sit in the ROM from $0E00 on, like a book of stencils. Each character has a page of eight lines, one byte per line. The code picks the page. The line counter `IC21` picks the line, on `LC0`–`LC2`. The processor walks the same row of codes eight times, once for each line of the characters.
 
-A code with bit 6 set is not a character. $76, the HALT, is one of those. It is not turned into a NOP, so the processor really halts. That ends the row.
+A code with bit 6 set is not a character. $76, the HALT, is one of those. It is not turned into a NOP, so the processor really halts. That ends the row. A halted Z80 keeps reading the next byte, again and again, but `HALT_N` is low, so that byte is neither turned into a NOP nor drawn. The shift register only loads after a character: the program's own instructions, in the ROM, never draw anything.
 
 **Inverse characters.** A code with bit 7 set is drawn white on black, like the cursor. `IC12` keeps that bit while the character is drawn, on `INV`. `IC20` turns the dots over when it is set. The result goes to the TV on `VIDEO`: high for white, low for black.
 

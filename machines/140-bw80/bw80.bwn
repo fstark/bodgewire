@@ -12,11 +12,13 @@
 # up to $FFFF. The CPU's data bus D0-D7 meets the memories' MD0-MD7 (the drawing's D0'-D7')
 # through 1K resistors R4-R11, so the eight open-collector NOP gates (IC14, IC15) can pull D low
 # while the RAM drives MD: a fetch from the display file's echo (A15 high) of a code with bit 6
-# clear runs as a NOP, and the data latch IC5 keeps the code. In the refresh, the multiplexers
-# IC6-IC8 give the ROM the line counter (IC21) and the code in place of A0-A8, I = $0E on A9-A11:
-# the glyph row comes out of the character set at $0E00. At the next rise of the CPU clock,
-# C11/R25 make a short pulse that loads the glyph into IC9 from the CPU side of the bus, and
-# C9/R2 shift it at each rise of 6.5 MHz. Bit 7 of the code inverts the dots through the IC12
+# clear runs as a NOP, and the data latch IC5 keeps the code, its eighth bit holding the NOP
+# condition itself (CHAR_FETCH_N: the drawing's IC16 pin 6 into IC5 pin 8). In the refresh, the
+# multiplexers IC6-IC8 give the ROM the line counter (IC21) and the code in place of A0-A8, I = $0E
+# on A9-A11: the glyph row comes out of the character set at $0E00. At the next rise of the CPU
+# clock, C11/R25 make a short pulse that loads the glyph into IC9 from the CPU side of the bus,
+# only after a character fetch (the ROM's own code and the halted CPU never load it), and C9/R2
+# shift it at each rise of 6.5 MHz. Bit 7 of the code inverts the dots through the IC12
 # latch and IC20. The HALT that ends a row is not forced; when R takes A6 low in a refresh, the
 # interrupt's acknowledge presets IC18's latch and IC19 counts two M1s to start and two to end
 # HSYNC (SYNC low). An IN from an even port (KBD_N) resets the IC11 latch: SYNC held low (VSYNC)
@@ -147,7 +149,7 @@ net MD2       IC2.O2 IC3.IO4 IC5.7D R8.1 J4.D2
 net MD3       IC2.O3 IC4.IO2 IC5.8D R5.1 J4.D3
 net MD4       IC2.O4 IC4.IO1 IC5.1D R4.1 J4.D4
 net MD5       IC2.O5 IC4.IO3 IC5.2D R6.1 J4.D5
-net MD6       IC2.O6 IC4.IO4 IC5.4D R7.1 R28.2 IC13.3A J4.D6
+net MD6       IC2.O6 IC4.IO4 R7.1 R28.2 IC13.3A J4.D6
 net MD7       IC2.O7 IC3.IO1 IC5.5D R9.1 J4.D7
 net VCC       R28.1
 
@@ -174,6 +176,8 @@ net RAM_CS_N  R19.2 IC3.CS_N IC4.CS_N J4.RAMCS_N
 net ROM_SEL_N IC12.4Y IC6.2B
 
 # Data latch: transparent while MREQ is low with RFSH_N high and phi low; frozen in the refresh.
+# Bits 0-5 and 7 are the code read from MD; bit 6's place holds NOP_COND_N, so CHAR_FETCH_N is
+# low after a character fetch (A15 high, not halted, bit 6 clear) and high after anything else.
 net LE_N      IC16.1Y IC13.2A
 net LE        IC13.2Y IC5.LE
 net GND       IC5.OE_N
@@ -183,19 +187,19 @@ net CH2       IC5.7Q IC7.2A
 net CH3       IC5.8Q IC7.1A
 net CH4       IC5.1Q IC7.4A
 net CH5       IC5.2Q IC6.1A
-net CH6       IC5.4Q IC13.5A
+net CHAR_FETCH_N IC5.4Q IC13.5A
 net CH7       IC5.5Q IC11.2A
-net CH6_N     IC13.5Y IC16.3B
+net CHAR_FETCH IC13.5Y IC16.3B
 
 # NOP: an M1 fetch in the echo (A15) of a code with bit 6 clear, not halted.
 net MD6_N     IC13.3Y IC16.2C
-net NOP_COND_N IC16.2Y IC17.3A
+net NOP_COND_N IC16.2Y IC17.3A IC5.4D
 net NOP_N     IC17.3Y IC15.1A
 net NOP_EN    IC15.1Y R3.2 IC14.1A IC14.2A IC14.3A IC14.4A IC14.5A IC14.6A IC15.2A IC15.3A
 net VCC       R3.1
 
-# Dots: the load pulse at each rise of phi (C11, R25) loads IC9 when the latched code is a
-# character and MREQ_N is high; C9 and R2 clock it at each rise of 2-phi; QH_N (link A-C:
+# Dots: the load pulse at each rise of phi (C11, R25) loads IC9 when the last memory access was a
+# character fetch (CHAR_FETCH) and MREQ_N is high; C9 and R2 clock it at each rise of 2-phi; QH_N (link A-C:
 # black on white) through IC20 with the inverse latch to VIDEO.
 net SHIFT_CLK IC9.CLK C9.2 R2.1
 net LOAD_PULSE IC16.3A IC11.1B C11.2 R25.1

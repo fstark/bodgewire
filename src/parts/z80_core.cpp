@@ -152,14 +152,10 @@ void Z80Core::step(std::uint8_t data) {
 
 void Z80Core::fetch() { bus_ = Z80Bus{Z80CycleKind::Fetch, pc_, 0, Word(i_, r_), 0, false}; }
 
-// While halted the address bus shows the HALT itself, re-read as $76, PC staying past it for the
-// interrupt to push (P5v): the ZX80's display loads a glyph at any fetch whose code has bit 6
-// clear, HALT or not, and shows the rest of a short row blank (Searle), which only the HALT's own
-// address gives; MAME's Z80 refetches the HALT too.
-void Z80Core::haltedFetch() {
-    bus_ =
-        Z80Bus{Z80CycleKind::Fetch, static_cast<std::uint16_t>(pc_ - 1), 0, Word(i_, r_), 0, true};
-}
+// While halted the address bus shows the byte after the HALT, PC, fetched again and again and
+// ignored. The ZX80 relies on it: its NOP gate and its glyph load (through IC5's latched character
+// fetch) see HALT_N low, so that byte, the next row's first, is neither forced nor drawn.
+void Z80Core::haltedFetch() { bus_ = Z80Bus{Z80CycleKind::Fetch, pc_, 0, Word(i_, r_), 0, true}; }
 
 void Z80Core::read(std::uint16_t address) { bus_ = Z80Bus{Z80CycleKind::Read, address}; }
 
@@ -613,7 +609,7 @@ void Z80Core::run() {
         }
         if (X(op_) == 1) {
             if (op_ == 0x76) {
-                halted_ = true;  // PC is past the HALT; halted fetches at the HALT follow
+                halted_ = true;  // PC is past the HALT; halted fetches at it follow
                 goto boundary;
             }
             if (Y(op_) == 6) {

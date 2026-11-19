@@ -9,7 +9,6 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -54,9 +53,9 @@ const CodeMap kSameCode = [](unsigned code) { return code; };
 
 // The page the display file predicts through `glyphs`, each code through `map` (the inverse
 // bit included). The cells past a row's end are blank whatever the chain does to a space (no
-// code is loaded there) unless `fill` names a code (Q everywhere: the HALT's glyph).
+// code is loaded there).
 PageDots PageOf(const LoadedCircuit& loaded, std::span<const std::uint8_t> glyphs,
-                const CodeMap& map = kSameCode, std::optional<unsigned> fill = std::nullopt) {
+                const CodeMap& map = kSameCode) {
     const auto rows = Bw80DisplayCodes(loaded);
     const auto has = [&](int row, int column) {
         const auto r = static_cast<std::size_t>(row), c = static_cast<std::size_t>(column);
@@ -64,23 +63,46 @@ PageDots PageOf(const LoadedCircuit& loaded, std::span<const std::uint8_t> glyph
     };
     PageDots page = ExpectedPage(glyphs, kBw80TvColumns, kBw80TvRows, [&](int row, int column) {
         const auto r = static_cast<std::size_t>(row), c = static_cast<std::size_t>(column);
-        return map(has(row, column) ? rows[r][c] : fill.value_or(0));
+        return map(has(row, column) ? rows[r][c] : 0);
     });
-    if (!fill) {
-        for (int row = 0; row < kBw80TvRows; ++row) {
-            for (int column = 0; column < kBw80TvColumns; ++column) {
-                if (!has(row, column)) {
-                    for (int line = 0; line < 8; ++line) {
-                        auto& dots = page[static_cast<std::size_t>(row * 8 + line)];
-                        for (int dot = 0; dot < 8; ++dot) {
-                            dots[static_cast<std::size_t>(column * 8 + dot)] = false;
-                        }
+    for (int row = 0; row < kBw80TvRows; ++row) {
+        for (int column = 0; column < kBw80TvColumns; ++column) {
+            if (!has(row, column)) {
+                for (int line = 0; line < 8; ++line) {
+                    auto& dots = page[static_cast<std::size_t>(row * 8 + line)];
+                    for (int dot = 0; dot < 8; ++dot) {
+                        dots[static_cast<std::size_t>(column * 8 + dot)] = false;
                     }
                 }
             }
         }
     }
     return page;
+}
+
+// The page with the load gate always open (Q everywhere): each row's codes, then its HALT ($76,
+// drawn as $36, Q), then the byte the halted Z80 fetches again and again after the HALT (the next
+// row's first code, or what follows the display file), to the row's end.
+PageDots HaltFillPage(const LoadedCircuit& loaded) {
+    const auto rows = Bw80DisplayCodes(loaded);
+    auto address =
+        static_cast<std::uint16_t>(Bw80Ram(loaded, 0x400C) | Bw80Ram(loaded, 0x400D) << 8);
+    address = static_cast<std::uint16_t>(address + 1);  // the top margin's HALT
+    std::vector<std::uint8_t> after;                    // the byte after each row's HALT
+    for (const auto& codes : rows) {
+        address = static_cast<std::uint16_t>(address + codes.size() + 1);
+        after.push_back(Bw80Ram(loaded, address));
+    }
+    return ExpectedPage(Bw80Glyphs(), kBw80TvColumns, kBw80TvRows, [&](int row, int column) {
+        const auto r = static_cast<std::size_t>(row), c = static_cast<std::size_t>(column);
+        if (r >= rows.size()) {
+            return 0x76u;
+        }
+        if (c < rows[r].size()) {
+            return unsigned{rows[r][c]};
+        }
+        return c == rows[r].size() ? 0x76u : unsigned{after[r]};
+    });
 }
 
 // The fault-free check: from power-on, the K cursor screen locked by a second, as the display
@@ -204,11 +226,12 @@ TEST_CASE("bw80: q_everywhere", "[machines][slow]") {
 #ifndef NDEBUG
     SKIP("about 6 s simulated: runs in the release build");
 #endif
-    // The HALT ending each row loads the glyph of $36, Q, which repeats to the row's end.
+    // The HALT ending each row loads its glyph, $36 (Q), then the byte the halted Z80 fetches
+    // after it repeats to the row's end: mostly the next row's HALT, Q again.
     Machine machine = LoadPuzzle("q_everywhere");
     {
         const Typed t = TypeAndLook(machine);
-        CheckPicture(t, PageOf(*t.loaded, Bw80Glyphs(), kSameCode, 0x36));
+        CheckPicture(t, HaltFillPage(*t.loaded));
     }
     REQUIRE(machine.swap("IC16"));
     CheckKScreen(machine);
@@ -414,7 +437,8 @@ TEST_CASE("bw80: still_starting", "[machines][slow]") {
     SKIP("about 3 s simulated: runs in the release build");
 #endif
     // Bit 2 of every RAM byte stuck low: the ROM's clear-and-check of its RAM never ends, and
-    // the power-on pattern stays (the fault-free K screen locks by 450 ms).
+    // the screen stays blank and unlocked (the fault-free K screen locks by 450 ms): the ROM's
+    // own code never loads a glyph, so only the TV's unblanked sync shows.
     Machine machine = LoadPuzzle("still_starting");
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
         INFO("seed " << seed);
@@ -422,7 +446,7 @@ TEST_CASE("bw80: still_starting", "[machines][slow]") {
         Bw80Run run(*loaded, seed);
         run.runTo(700_ms);
         CHECK_FALSE(run.tv->tv().isLocked());
-        CHECK(InkCount(run.tv->tv().completedFrame()) > 2000);
+        CHECK(InkCount(run.tv->tv().completedFrame()) < 2000);
         const auto* ram = dynamic_cast<const Ram2114*>(loaded->components.at("IC3"));
         REQUIRE(ram != nullptr);
         int set = 0;
