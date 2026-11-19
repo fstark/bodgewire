@@ -24,6 +24,9 @@ public:
     void draw(bool& open, const Manuals& manuals, BoardView& board, const LoadedCircuit& design,
               std::span<const std::string> log);
     void show(Divider divider) { binder_.show(divider); }  // --manual: the divider it comes out at
+    // --binder-height: its height for its width, 1 its proportions (P6o: dragged by its top or
+    // bottom edge, kept for the run).
+    void setStretch(float stretch) { stretch_ = stretch; }
 
 private:
     void tabs(bool board);
@@ -35,6 +38,7 @@ private:
     ChipPanel chip_;
     std::vector<IndexEntry> index_;
     bool indexed_ = false;
+    float stretch_ = 1;
 };
 
 }  // namespace bw

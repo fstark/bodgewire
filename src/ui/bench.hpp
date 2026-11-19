@@ -25,6 +25,11 @@ BenchRect BenchArea();
 void PlaceNext(BenchObject object, ImVec2 first);
 // Before Begin: height = width * aspect, at least `minWidth` wide (a case keeps its proportions).
 void KeepAspect(float aspect, float minWidth);
+// The same, height = width * aspect * `stretch` (the binder, P6o): while the player drags the
+// window's top or bottom edge (`window`: its Begin name), the height alone moves and sets
+// `stretch` (kept within kMinStretch..kMaxStretch); the corners and sides scale in proportion.
+inline constexpr float kMinStretch = 0.7f, kMaxStretch = 2.5f;
+void KeepAspectStretched(float aspect, float minWidth, const char* window, float& stretch);
 // A case's put-away mark, last before End: a small circled × in the window's top-right corner,
 // faint until hovered. True when clicked.
 bool CaseClose(float inset = 6);

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -81,6 +82,7 @@ constexpr std::string_view kUsage =
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
     "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
     "[--away tv|keyboard|knob,...] [--run pause|1x|max] [--side front|back] [--ask REPAIR] "
+    "[--binder-height N%] [--brief DX:DY] "
     "[--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
@@ -115,6 +117,8 @@ struct Options {
     RunSwitch run = RunSwitch::RealTime;  // --run: the run switch at start (P6o)
     bool back = false;                    // --side back: the Board flipped at start (P6o)
     std::optional<RepairAction> ask;      // --ask: the power-cycle popup open at start (P6o)
+    float binderHeight = 1;               // --binder-height: the binder's stretch (P6o)
+    std::optional<ImVec2> brief;          // --brief: the note's offset on the Board, px (P6o)
 };
 
 std::optional<BenchObject> ParseBenchObject(std::string_view name) {
@@ -341,6 +345,27 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 }
                 options.away.push_back(*object);
             }
+        } else if (arg == "--binder-height") {
+            const std::string_view text = argv[++i];
+            float percent = 0;
+            const auto [end, error] =
+                std::from_chars(text.data(), text.data() + text.size(), percent);
+            if (error != std::errc{} || std::string_view(end, text.data() + text.size()) != "%" ||
+                percent < kMinStretch * 100 || percent > kMaxStretch * 100) {
+                return std::nullopt;
+            }
+            options.binderHeight = percent / 100;
+        } else if (arg == "--brief") {
+            const std::string_view text = argv[++i];
+            const std::size_t colon = text.find(':');
+            float x = 0, y = 0;
+            const char* last = text.data() + text.size();
+            if (colon == std::string_view::npos ||
+                std::from_chars(text.data(), text.data() + colon, x).ptr != text.data() + colon ||
+                std::from_chars(text.data() + colon + 1, last, y).ptr != last) {
+                return std::nullopt;
+            }
+            options.brief = ImVec2{x, y};
         } else if (arg == "--ask") {
             auto repair = ParseRepair(argv[++i]);
             if (!repair) {
@@ -693,6 +718,11 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
     ManualWindows manualWindows;
     if (options.manual) {
         manualWindows.show(*options.manual);
+    }
+    manualWindows.setStretch(options.binderHeight);
+    BriefNote briefNote;
+    if (options.brief) {
+        briefNote.offset = *options.brief;
     }
     AnalyzerWindow analyzerWindow;
     MeterWindow meterWindow;
@@ -1168,7 +1198,7 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
         // The bench, back to front at start: brief, TV, knob, manuals, instruments, keyboard,
         // Debug.
         knobWindow.keys(session, knobKeys, knobsOn);
-        DrawBrief(shelf.briefOut, loaded, boardView.corner());
+        DrawBrief(shelf.briefOut, loaded, boardView.corner(), briefNote);
         tvWindow.draw(shelf.tvOut, view);
         knobWindow.draw(shelf.knobOut, session);
         manualWindows.draw(shelf.manualOut, loaded.manuals.manuals, boardView, DesignOf(session),

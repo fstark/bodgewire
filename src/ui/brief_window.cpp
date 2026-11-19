@@ -12,7 +12,6 @@ namespace {
 constexpr float kWidth = 230;
 constexpr float kPad = 12;
 constexpr float kStrip = 16;  // the glued band along the top, a shade darker
-constexpr float kInset = 10;  // from the Board's corner
 constexpr float kCurl = 14;   // the lifted bottom-right corner
 constexpr float kTitleScale = 1.2f;
 constexpr ImU32 kPaper = IM_COL32(253, 236, 120, 255);
@@ -23,13 +22,14 @@ constexpr ImVec4 kInk{0.12f, 0.11f, 0.09f, 1.0f};
 
 }  // namespace
 
-void DrawBrief(bool& open, const Loaded& loaded, std::optional<ImVec2> corner) {
+void DrawBrief(bool& open, const Loaded& loaded, std::optional<ImVec2> corner, BriefNote& note) {
     if (!open || loaded.brief.empty()) {
         return;
     }
     if (corner) {
         OnBench();
-        ImGui::SetNextWindowPos({corner->x + kInset, corner->y + kInset}, ImGuiCond_Always);
+        ImGui::SetNextWindowPos({corner->x + note.offset.x, corner->y + note.offset.y},
+                                ImGuiCond_Always);
     } else {
         PlaceNext(BenchObject::Brief, {kWidth, 0});
     }
@@ -49,6 +49,18 @@ void DrawBrief(bool& open, const Loaded& loaded, std::optional<ImVec2> corner) {
     if (!visible) {
         ImGui::End();
         return;
+    }
+    // Dragged by the note, not its × (P6o): an open popup keeps it from being hovered.
+    if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+        !ImGui::IsAnyItemHovered()) {
+        note.dragging = true;
+    }
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        note.dragging = false;
+    }
+    if (note.dragging) {
+        note.offset.x += ImGui::GetIO().MouseDelta.x;
+        note.offset.y += ImGui::GetIO().MouseDelta.y;
     }
     const ImVec2 at = ImGui::GetWindowPos();
     const ImVec2 size = ImGui::GetWindowSize();

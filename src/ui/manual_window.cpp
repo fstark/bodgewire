@@ -126,8 +126,8 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
         index_ = DatasheetIndex(design);
         indexed_ = true;
     }
-    PlaceNext(BenchObject::Manual, {600, 500});
-    KeepAspect(kAspect, kMinWidth);
+    PlaceNext(BenchObject::Manual, {600, 600 * kAspect * stretch_});
+    KeepAspectStretched(kAspect, kMinWidth, kManualWindowName, stretch_);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, kCover);
