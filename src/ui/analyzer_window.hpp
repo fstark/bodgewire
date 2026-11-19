@@ -39,7 +39,6 @@ public:
     // drawn whenever the mouse is not over the waveforms.
     void preset(std::optional<TimeView> view, std::optional<Time> marker,
                 std::optional<Time> cursor);
-    bool focused() const { return focused_; }  // last frame: its Esc is not the Board's
 
 private:
     struct Row {
@@ -63,7 +62,6 @@ private:
     float pressX_ = 0;            // canvas press, to tell a click from a drag
     bool moved_ = false;
     float wheelRest_ = 0;
-    bool focused_ = false;
     std::optional<TimeView> presetView_;
     std::optional<Time> presetMarker_, presetCursor_;
     std::set<std::size_t> selected_;                        // Channels picked for a hand group

@@ -6,7 +6,6 @@ add_library(bw_view STATIC
   digit_shape.cpp
   focus.cpp
   keyboard_layout.cpp
-  machine_keys.cpp
   matrix_keyboard_layout.cpp
   pencil_marks.cpp
   time_text.cpp

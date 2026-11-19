@@ -30,41 +30,39 @@ constexpr ImU32 kShelfWood = IM_COL32(48, 38, 30, 255);
 constexpr ImU32 kShelfEdge = IM_COL32(92, 74, 58, 255);
 constexpr ImU32 kFocusBlocked = IM_COL32(230, 50, 40, 255);  // the focus on a tool that can't work
 constexpr ImU32 kHover = IM_COL32(255, 255, 255, 40);
-constexpr ImU32 kKeyLetter = IM_COL32(200, 190, 175, 200);
 constexpr ImVec4 kAmber{1.0f, 0.7f, 0.1f, 1.0f};
 constexpr ImVec4 kPlain{0.92f, 0.92f, 0.92f, 1.0f};
 
 struct Entry {
     Item item;
     const char* name;
-    const char* key;  // shown in the cell's corner; nullptr: none
-    float width;      // in cells
+    float width;  // in cells
 };
 
 // The fixed order, the same on every Machine; a group ends at each nullptr name.
 constexpr std::array<Entry, 19> kItems{{
-    {Item::Power, "Power", nullptr, 1},
-    {Item::Run, "Run / pause", nullptr, 1},
-    {Item::Speed, "Speed: real time or as fast as possible", nullptr, 1},
-    {Item::Layer, "Copper layer seen and worked on", "L", 1},
-    {Item::Fit, "Fit the Board in view", "F", 1},
+    {Item::Power, "Power", 1},
+    {Item::Run, "Run / pause", 1},
+    {Item::Speed, "Speed: real time or as fast as possible", 1},
+    {Item::Layer, "Copper layer seen and worked on", 1},
+    {Item::Fit, "Fit the Board in view", 1},
     {Item::Pencil,
      "Grease pencil: mark the Board; click a mark: dot, check, cross, none; shift- or "
      "right-click: clear",
-     "G", 1},
-    {Item::Probe, "Logic probe: touch any copper; HIGH, LOW, PULSE", "P", 2},
-    {Item::Puller, "Chip puller: swap a chip", "S", 1},
-    {Item::Iron, "Soldering iron: mend a crack, resolder a chip pin", "M", 1},
-    {Item::Cutters, "Cutters: cut a trace or a wire", "K", 1},
-    {Item::Wire, "Wire: solder a bodge wire between two pins", "W", 1},
-    {Item::Tv, "TV", nullptr, 1},
-    {Item::Keyboard, "Keyboard", nullptr, 1},
-    {Item::Analyzer, "Logic Analyzer: click a chip pin; shift-click: its whole bus", "C", 1},
-    {Item::Scope, "Oscilloscope: click a chip pin (4 channels)", "O", 1},
-    {Item::Meter, "Multimeter: volts, or continuity with the power off", "V", 1},
-    {Item::Manual, "Manuals binder: User and Service Manuals, datasheets, repairs", "U", 1},
-    {Item::Knob, "Knob: drag it, mouse wheel, or the arrow keys", nullptr, 1},
-    {Item::Brief, "Puzzle brief", nullptr, 1},
+     1},
+    {Item::Probe, "Logic probe: touch any copper; HIGH, LOW, PULSE", 2},
+    {Item::Puller, "Chip puller: swap a chip", 1},
+    {Item::Iron, "Soldering iron: mend a crack, resolder a chip pin", 1},
+    {Item::Cutters, "Cutters: cut a trace or a wire", 1},
+    {Item::Wire, "Wire: solder a bodge wire between two pins", 1},
+    {Item::Tv, "TV", 1},
+    {Item::Keyboard, "Keyboard", 1},
+    {Item::Analyzer, "Logic Analyzer: click a chip pin; shift-click: its whole bus", 1},
+    {Item::Scope, "Oscilloscope: click a chip pin (4 channels)", 1},
+    {Item::Meter, "Multimeter: volts, or continuity with the power off", 1},
+    {Item::Manual, "Manuals binder: User and Service Manuals, datasheets, repairs", 1},
+    {Item::Knob, "Knob: drag it, mouse wheel, or the arrow keys", 1},
+    {Item::Brief, "Puzzle brief", 1},
 }};
 
 bool GroupEnds(Item item) { return item == Item::Fit || item == Item::Wire; }
@@ -169,40 +167,6 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
     const bool hasTv = session.tv() != nullptr;
     const bool hasKeyboard = devices_->keyboard;
     const bool hasKnob = devices_->knob;
-    const ImGuiIO& io = ImGui::GetIO();
-
-    // Keys, as the toolbar's before (the typing modes take key events before ImGui).
-    if (!io.WantTextInput) {
-        if (hasBoard) {
-            constexpr std::array<std::pair<ImGuiKey, Owner>, 7> kTools{
-                {{ImGuiKey_P, Owner::Probe},
-                 {ImGuiKey_S, Owner::Puller},
-                 {ImGuiKey_M, Owner::Iron},
-                 {ImGuiKey_R, Owner::Iron},
-                 {ImGuiKey_K, Owner::Cutters},
-                 {ImGuiKey_W, Owner::Wire},
-                 {ImGuiKey_G, Owner::Pencil}}};
-            for (const auto& [key, owner] : kTools) {
-                if (ImGui::IsKeyPressed(key, false)) {
-                    focus.take(owner);
-                }
-            }
-            constexpr std::array<std::pair<ImGuiKey, Owner>, 3> kInstruments{{
-                {ImGuiKey_C, Owner::Analyzer},
-                {ImGuiKey_O, Owner::Scope},
-                {ImGuiKey_V, Owner::Meter},
-            }};
-            for (const auto& [key, owner] : kInstruments) {
-                if (ImGui::IsKeyPressed(key, false)) {
-                    focus.key(owner);
-                    BringToFront(WindowOf(owner));
-                }
-            }
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_U, false)) {
-            ToggleWindow(manualOut, kManualWindowName);
-        }
-    }
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::BeginChild("shelf", {0, kShelfHeight}, ImGuiChildFlags_None,
@@ -253,8 +217,8 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
             why = "No TV on this Machine";
             break;
         case Item::Keyboard:
-            look.lit = keyboardOut || (boardKeys && keyboardTyping);
-            inert = !hasKeyboard && !boardKeys;
+            look.lit = keyboardOut;
+            inert = !hasKeyboard;
             why = "No keyboard on this Machine";
             break;
         case Item::Manual:
@@ -298,22 +262,13 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
             list.AddRectFilled(min, max, kHover, 6.0f);
         }
         DrawItem(list, entry.item, min, max, look);
-        if (entry.item == Item::Keyboard && keyboardTyping && !inert) {
-            list.AddRect({min.x - 2, min.y - 2}, {max.x + 2, max.y + 2}, kFocusGold, 6.0f, 0, 2.0f);
-        }
         if (owner && !inert && focus.owner() == *owner) {
             // Red while the tool that owns the focus cannot work (the power is on).
             list.AddRect({min.x - 2, min.y - 2}, {max.x + 2, max.y + 2},
                          unpowered ? kFocusBlocked : kFocusGold, 6.0f, 0, 2.0f);
         }
-        if (entry.key != nullptr) {
-            const float size = ImGui::GetFontSize() * 0.8f;
-            list.AddText(ImGui::GetFont(), size, {max.x - size * 0.75f, min.y}, kKeyLetter,
-                         entry.key);
-        }
         if (hovered) {
-            std::string tip =
-                entry.key ? std::format("{} ({})", entry.name, entry.key) : std::string(entry.name);
+            std::string tip(entry.name);
             if (entry.item == Item::Power && look.limit) {
                 tip += "\nBench supply in current limit";
             }
@@ -373,15 +328,8 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                      : ToggleWindow(tvOut, kTvWindowName);
                 break;
             case Item::Keyboard:
-                if (!hasKeyboard) {  // the Board's keys: no window, the keys toggled
-                    keysClick_ = KeysClick::Toggle;
-                    break;
-                }
                 home ? Home(keyboardOut, keyboardWindow, BenchObject::Keyboard)
                      : ToggleWindow(keyboardOut, keyboardWindow);
-                if (keyboardOut) {
-                    keysClick_ = KeysClick::Front;
-                }
                 break;
             case Item::Manual:
                 home ? Home(manualOut, kManualWindowName, BenchObject::Manual)
@@ -395,7 +343,6 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
                 ToggleWindow(briefOut, kBriefWindowName);  // glued to the Board: no home
                 break;
             default:
-                keysClick_ = KeysClick::Bench;
                 if (IsInstrument(*owner) && home) {
                     focus.key(*owner);  // out with the focus
                     BringToFront(WindowOf(*owner));
@@ -420,8 +367,6 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, Speed& speed,
     if (std::chrono::steady_clock::now() < reasonUntil_) {
         hint = reason_;
         amber = true;
-    } else if (keyboardTyping) {
-        hint = "Keys to the Machine · F2 gives them back";
     } else if (hasBoard && NeedsPowerOff(focus.owner()) && powered) {
         hint = "Power off first";
         amber = true;

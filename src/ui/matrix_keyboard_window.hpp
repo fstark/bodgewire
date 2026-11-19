@@ -22,7 +22,7 @@ inline constexpr const char* kMatrixKeyboardWindowName = "###matrix keyboard";
 
 // A key matrix keyboard as a floating window of drawn keys: the BW-2001's point-of-sale keys, as
 // the PET 2001's (P5q, P6l2), or the BW-80's membrane in its cream case, as the ZX80's (P5x, P6l),
-// by the capture's kind. Typing while it is focused (MatrixCapture), F2 toggles; a click holds a
+// by the capture's kind. Typed on from the PC keys (MatrixCapture); a click holds a
 // key while the mouse is down, a right-click latches it (SHIFT for a sequence) until clicked again.
 class MatrixKeyboardWindow {
 public:
@@ -30,9 +30,8 @@ public:
     MatrixKeyboardWindow(ImFont* legends, ImFont* petLegends)
         : legends_(legends), petLegends_(petLegends) {}
 
-    // `capture.on` is main.cpp's (the Machine's keys: P6g); its frame gold while on. Nothing drawn
-    // without a MATRIXKB. True when the case was clicked (not its ×).
-    bool draw(bool& open, Session& session, MatrixCapture& capture);
+    // Nothing drawn without a MATRIXKB.
+    void draw(bool& open, Session& session, MatrixCapture& capture);
 
 private:
     void drawKeys(Session& session, const MatrixCapture& capture);

@@ -23,7 +23,7 @@ A blinking square under `READY` is the cursor. The BW-2001 is waiting for you to
 
 **The keyboard.** It is the PET 2001's keyboard. The letters and the top row's symbols are on the left. The digits and `/ * + - = .` are on the pad at the right.
 
-On a PC keyboard, click the keyboard's window, or press F2. Each PC key then types the BW-2001 key with the same character. Return is RETURN, Backspace is DEL, Escape is STOP and Home is HOME. The arrows are the cursor keys. Cmd+V (Ctrl+V) pastes text, typed one key at a time.
+On a PC keyboard, each key types the BW-2001 key with the same character, with the keyboard's window out or put away. Return is RETURN, Backspace is DEL, Escape is STOP and Home is HOME. The arrows are the cursor keys. Cmd+V (Ctrl+V) pastes text, typed one key at a time.
 
 **BASIC.** Type a line and press RETURN.
 

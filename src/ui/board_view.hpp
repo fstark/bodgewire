@@ -93,11 +93,6 @@ struct BoardClick {
     bool fromPage = false;  // a pin link in a manual or the chip panel: the selection stays
 };
 
-// A left press on the Board panel (P6g): on a switch's body (the one under the cursor), or not.
-struct BoardPress {
-    std::optional<std::size_t> component;
-};
-
 using TooltipText = std::function<std::string(const BoardScene&, const Hit&)>;
 
 // The Board panel: ImGui drawing and input over a BoardScene and a Viewport.
@@ -116,7 +111,6 @@ public:
     void setPlainLook(bool on) { plainLook_ = on; }
     bool plainLook() const { return plainLook_; }
     std::optional<BoardClick> takeClick();  // released without dragging
-    bool takeEscape();                      // Esc pressed since the last call
     std::optional<std::size_t> chip() const { return hovered_ ? hovered_ : selected_; }
     void select(std::size_t component) { selected_ = component; }
     void deselect() { selected_.reset(); }
@@ -145,10 +139,6 @@ public:
     void setLegendFont(ImFont* font) { legendFont_ = font; }   // keycap legends
     std::optional<std::size_t> held() const { return held_; }  // left button down on a body
     std::optional<std::size_t> takeLatchToggle();  // right-clicked body; any click on a slide
-    std::optional<BoardPress> takePress();         // the left press since the last call
-    // The keys' frame around the Board's keypad (the switches drawn as keycaps): the Machine has
-    // the keys (P6g).
-    void setKeypadGold(bool gold) { keypadGold_ = gold; }
     void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
     // The Puzzle's cracks: their Traces drawn with square ends, a hairline apart.
     void setCracks(std::span<const CutMark> cracks) {
@@ -179,7 +169,6 @@ private:
         std::chrono::steady_clock::time_point until;
     };
 
-    void keys();                // L, F, +, -, Esc
     void input(ImVec2 origin);  // hover, zoom, pan, click while the panel is hovered or dragged
     PickReach reach() const;
 
@@ -198,7 +187,6 @@ private:
     std::optional<Flash> flash_;
     bool pressed_ = false;  // left button went down on the panel
     bool dragging_ = false;
-    bool escape_ = false;
     std::optional<BoardClick> click_;
     std::optional<Point> tip_;
     std::vector<SolderBlob> blobs_;
@@ -209,8 +197,6 @@ private:
     std::vector<SwitchTag> switches_;
     ImFont* legendFont_ = nullptr;
     std::optional<std::size_t> held_, latchToggle_;
-    std::optional<BoardPress> press_;
-    bool keypadGold_ = false;
     std::vector<CutMark> cuts_;
     std::vector<CutMark> cracks_;
     std::vector<PencilMark> marks_;

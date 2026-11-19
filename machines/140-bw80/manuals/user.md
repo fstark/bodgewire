@@ -16,7 +16,7 @@ At power-on, the TV shows nothing steady for about a fifth of a second: the BW-8
 
 ## Using it
 
-**The keyboard.** It has 40 keys, as the ZX80's. Click a key to press it. Or click the keyboard window, or press F2, and type on the PC keyboard: each PC key presses the BW-80 key with the same character. The BW-80 adds SHIFT where it needs it: a `"` presses SHIFT and Y.
+**The keyboard.** It has 40 keys, as the ZX80's. Click a key to press it, or type on the PC keyboard, with the keyboard's window out or put away: each PC key presses the BW-80 key with the same character. The BW-80 adds SHIFT where it needs it: a `"` presses SHIFT and Y.
 
 On the PC keyboard, Enter is NEW LINE and Backspace is RUBOUT. The arrows are the cursor keys, Home is HOME, and Escape is BREAK. Shift+Enter is EDIT. Shift with a letter is SHIFT with that key on the BW-80: Shift+A types the grey graphic, Shift+B types OR. Cmd+V (Ctrl+V) pastes a listing: each keyword is typed as its key, so a program copied from a book runs.
 

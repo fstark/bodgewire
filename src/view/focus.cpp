@@ -48,15 +48,4 @@ void Focus::closed(Owner instrument) {
     }
 }
 
-EscapeStep Focus::escape(bool wireStarted) {
-    if (wireStarted) {
-        return EscapeStep::CancelWire;
-    }
-    if (owner_ != Owner::Probe) {
-        owner_ = Owner::Probe;
-        return EscapeStep::ToProbe;
-    }
-    return EscapeStep::LiftTip;
-}
-
 }  // namespace bw

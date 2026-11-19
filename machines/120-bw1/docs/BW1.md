@@ -38,7 +38,7 @@ As on the KIM, from the top:
 | `4` `SW5` | `5` `SW6` | `6` `SW7` | `7` `SW8` |
 | `0` `SW1` | `1` `SW2` | `2` `SW3` | `3` `SW4` |
 
-`SW(n+1)` is the key whose code (`GETKEY`) is `n`. PC keys (Typing, F2): the hex digits, Enter GO, `+`, `/` AD, `*` DA, `P` PC, Escape ST, Backspace RS.
+`SW(n+1)` is the key whose code (`GETKEY`) is `n`. PC keys (Typing, always): the hex digits, Enter GO, `+`, `/` AD, `*` DA, `P` PC, Escape ST, Backspace RS.
 
 ## When it works
 

@@ -12,7 +12,7 @@ The knob sits in its own box on the bench, labelled `J2`. There are three ways t
 
 - drag it up or down with the mouse: up turns it right, towards 99;
 - roll the mouse wheel over it: each notch moves the reading by about one;
-- click the box, then hold the Up or Down key: going from one stop to the other takes about a second.
+- hold the Up or Down key: going from one stop to the other takes about a second.
 
 Just after power-on, the digits may show any number, or odd shapes. After a fifth of a second they show the knob.
 

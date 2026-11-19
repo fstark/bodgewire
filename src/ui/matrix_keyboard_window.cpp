@@ -250,9 +250,9 @@ void DrawPetKey(ImDrawList& list, ImFont* font, std::string_view legend, ImVec2 
 
 }  // namespace
 
-bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& capture) {
+void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& capture) {
     if (capture.reference.empty() || !open) {
-        return false;
+        return;
     }
     const float aspect = HeightU(capture.kind) / WidthU(capture.kind);
     const Extent first = FirstSize(BenchObject::Keyboard, BenchArea().extent(), aspect);
@@ -271,9 +271,8 @@ bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     ImGui::PopStyleVar();
     if (!visible || !open) {
         ImGui::End();
-        return false;
+        return;
     }
-    const bool clicked = InstrumentClicked();
     SharpFont(legends_);
     SharpFont(petLegends_);
     if (capture.kind == KeyMatrixKind::Bw80) {
@@ -285,7 +284,6 @@ bool MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
         open = false;
     }
     ImGui::End();
-    return clicked;
 }
 
 template <class Draw>
@@ -338,9 +336,6 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
                                                   {caseA.x, caseB.y}, kCaseTop, kCaseBottom);
     list.AddLine({caseA.x + 0.2f * u, caseA.y + 0.5f}, {caseB.x - 0.2f * u, caseA.y + 0.5f},
                  kCaseEdge);
-    if (capture.on) {
-        list.AddRect(caseA, caseB, kFocusGold, 0.2f * u, 0, 2.0f);
-    }
     const ImVec2 keys{origin.x + kMargin * u, origin.y + (kMargin + kLabel) * u};
     const std::string engraving = "BW-2001 \xc2\xb7 " + capture.reference;
     list.AddText(legends_, std::max(6.0f, std::round(0.24f * u)),
@@ -553,9 +548,6 @@ void MatrixKeyboardWindow::drawMembrane(Session& session, const MatrixCapture& c
     list.AddRectFilled(caseA, caseB, kCream, 0.12f * u);
     ImGui::ShadeVertsLinearColorGradientKeepAlpha(&list, first, list.VtxBuffer.Size, caseA,
                                                   {caseA.x, caseB.y}, kCream, kCreamShade);
-    if (capture.on) {
-        list.AddRect(caseA, caseB, kFocusGold, 0.12f * u, 0, 2.0f);
-    }
     // The membrane, a shadow line along its top where it goes under the case.
     const ImVec2 panelA{origin.x + kLipSide * u, origin.y + kLipTop * u};
     const ImVec2 panelB{caseB.x - kLipSide * u, caseB.y - kLipBottom * u};

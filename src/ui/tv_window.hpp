@@ -16,8 +16,7 @@ inline constexpr const char* kTvWindowName = "TV";
 class TvWindow {
 public:
     // Every frame, out or away: the tone first (a --tv tone shows on the first picture).
-    // `gold`: the Machine has the keys (P6g). True when the case was clicked (not its ×).
-    bool draw(bool& open, TvView& view, bool gold);
+    void draw(bool& open, TvView& view);
     TvControls& controls() { return controls_; }  // --tv
 
 private:

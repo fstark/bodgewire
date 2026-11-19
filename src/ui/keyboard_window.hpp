@@ -22,14 +22,13 @@ extern const std::size_t kKeycapFontSize;
 inline constexpr const char* kKeyboardWindowName = "Keyboard";
 
 // The Machine's ASCII keyboard as a floating window of drawn caps (the first KEYBOARD). Typing
-// while it is focused (KeyboardCapture), F2 toggles; clicks type caps; --type keys flash.
+// from the PC keys (KeyboardCapture); clicks type caps; --type keys flash.
 class KeyboardWindow {
 public:
     explicit KeyboardWindow(ImFont* legends) : legends_(legends) {}
 
-    // `capture.on` is main.cpp's (the Machine's keys: P6g); its frame gold while on. Nothing drawn
-    // without a keyboard. True when the case was clicked (not its ×).
-    bool draw(bool& open, Session& session, KeyboardCapture& capture);
+    // Nothing drawn without a keyboard.
+    void draw(bool& open, Session& session, KeyboardCapture& capture);
     // A code sent other than by this window (--type): its cap and modifiers down 150 ms, or
     // until the next flash.
     void flash(std::uint8_t code);

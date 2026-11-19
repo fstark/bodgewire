@@ -42,7 +42,7 @@ SST is a slide switch, not a key. Each key acts once per press. Let go of a key 
 
 **Starting again.** RS resets the computer. The digits show 0200 again. The memory keeps what you typed.
 
-**From the PC keyboard.** Click the keypad or the shelf's keyboard first, or press F2. Then the keys 0–9 and A–F are the hex keys. Enter is GO, + is +, / is AD, * is DA, P is PC. Escape is ST and Backspace is RS.
+**From the PC keyboard.** The keys 0–9 and A–F are the hex keys. Enter is GO, + is +, / is AD, * is DA, P is PC. Escape is ST and Backspace is RS.
 
 **The self-test.** Run it when the BW-1 will not start, or behaves oddly. It checks the memory, the two programs and the display. It uses no memory itself, so it runs even when the monitor cannot.
 

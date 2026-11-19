@@ -93,7 +93,6 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     if (session.sweeps().update() && !stopped_) {
         shown_ = session.sweeps().front();
     }
-    focused_ = false;
     if (!open) {
         return false;
     }
@@ -292,10 +291,6 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         }
         pressed_.reset();
     }
-    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
-        ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-        marker_.reset();
-    }
     const TimeView view = ScopeView(settings);
     const double span = static_cast<double>(view.span());
     const auto x = [&](Time t) {
@@ -322,7 +317,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     DrawGrid(list, grid, x, top.y, top.y + height, kGrid);
     if (bands.empty()) {
         list.AddText({top.x + 8, top.y + bandHeight / 2 - 8}, ImGui::GetColorU32(kHintGrey),
-                     "Hook (O), then click a chip pin.");
+                     "Hook, then click a chip pin.");
     }
 
     // The stored Sweep at the current settings: columns where its samples fall now.
@@ -449,7 +444,6 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     }
     StatusLine(cursor, marker_, kGestures);
 
-    focused_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     if (changed) {
         session.setScope(settings);
     }

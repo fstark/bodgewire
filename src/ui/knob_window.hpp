@@ -14,9 +14,9 @@ namespace bw {
 // The knob window's name, for the shelf to bring it to the front.
 inline constexpr const char* kKnobWindowName = "Knob";
 
-// The PC keys held down for the knobs (P6g): from SDL's events, while the Machine has the keys
-// and the knob box is out. Forgotten when the window loses the system's focus (their key-ups go
-// to another application).
+// The PC keys held down for the knobs (P6g): from SDL's events, always but while a text field
+// is edited (P6o), the knob box out or not. Forgotten when the window loses the system's focus
+// (their key-ups go to another application).
 class KnobKeys {
 public:
     void handle(const SDL_Event& event, bool on);  // every event, before ImGui
@@ -32,11 +32,10 @@ private:
 // the boxes, resized from the corner keeping their proportions, put away by the × on the case.
 class KnobWindow {
 public:
-    // Up and Down turn the knob (Q and A the first of two) while held and `on` (the Machine has
-    // the keys and the box is out: P6g). Every frame.
+    // Up and Down turn the knob (Q and A the first of two) while held and `on` (no text field
+    // edited: P6o). Every frame.
     void keys(Session& session, const KnobKeys& held, bool on);
-    // `gold`: the Machine has the keys. True when the box was clicked (not its ×).
-    bool draw(bool& open, Session& session, bool gold);
+    void draw(bool& open, Session& session);
 
 private:
     const std::vector<std::string>& knobs(const Session& session);

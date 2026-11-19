@@ -22,7 +22,6 @@ public:
     // From bw_ui, for screenshots: a marker, and a cursor drawn whenever the mouse is not over
     // the screen.
     void preset(std::optional<Time> marker, std::optional<Time> cursor);
-    bool focused() const { return focused_; }  // last frame: its Esc is not the Board's
 
 private:
     // "H 3.5 V", "Z 1.4 V", "X", the rail's volts; "" outside the Sweep. `t`: ps from the Trigger.
@@ -31,7 +30,6 @@ private:
     std::optional<Sweep> shown_;  // kept across rebuilds and power-off; frozen while stopped
     std::optional<Time> marker_;  // ps from the Trigger
     std::optional<Time> presetCursor_;
-    bool focused_ = false;
     bool stopped_ = false;
     float wheelRest_ = 0;
     float panRest_ = 0;                     // px of horizontal wheel not yet a delay step

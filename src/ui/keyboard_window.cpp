@@ -44,9 +44,9 @@ void KeyboardWindow::flash(std::uint8_t code) {
     flashUntil_ = std::chrono::steady_clock::now() + kFlash;
 }
 
-bool KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture) {
+void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture) {
     if (capture.reference.empty() || !open) {
-        return false;
+        return;
     }
 
     const float aspect = kHeightU / kWidthU;
@@ -64,16 +64,14 @@ bool KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
     ImGui::PopStyleVar();
     if (!visible || !open) {
         ImGui::End();
-        return false;
+        return;
     }
-    const bool clicked = InstrumentClicked();
     SharpFont(legends_);
     drawCaps(session, capture);
     if (CaseClose()) {
         open = false;
     }
     ImGui::End();
-    return clicked;
 }
 
 void KeyboardWindow::drawCaps(Session& session, const KeyboardCapture& capture) {
@@ -93,9 +91,6 @@ void KeyboardWindow::drawCaps(Session& session, const KeyboardCapture& capture) 
                                                   {caseA.x, caseB.y}, kCaseTop, kCaseBottom);
     list.AddLine({caseA.x + caseRounding, caseA.y + 0.5f}, {caseB.x - caseRounding, caseA.y + 0.5f},
                  kCaseEdge);
-    if (capture.on) {
-        list.AddRect(caseA, caseB, kFocusGold, caseRounding, 0, 2.0f);
-    }
     const ImVec2 keys{origin.x + kCaseMargin * u, origin.y + (kCaseMargin + kLabelStrip) * u};
     // The well: a dark opening a little larger than the keys, its top lip in shadow.
     const float lip = 0.10f * u;

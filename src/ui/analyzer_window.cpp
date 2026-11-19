@@ -32,8 +32,7 @@ constexpr ImVec4 kRefused{0.55f, 0.1f, 0.1f, 1.0f};
 constexpr std::array<const char*, 5> kConditions{"any", "0", "1", "rise", "fall"};
 constexpr std::array<TriggerPosition, 3> kPositions{TriggerPosition::Early, TriggerPosition::Middle,
                                                     TriggerPosition::Late};
-constexpr const char* kEmptyHint =
-    "Clip (C), then click a chip pin. Shift-click: the pin's whole bus.";
+constexpr const char* kEmptyHint = "Clip, then click a chip pin. Shift-click: the pin's whole bus.";
 constexpr const char* kGestures =
     "wheel: zoom   drag: pan   click: marker   right-click: clear   double-click: fit";
 
@@ -168,7 +167,6 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         shownPeriod_ = shown_->period;
         marker_ = std::exchange(presetMarker_, std::nullopt);
     }
-    focused_ = false;
     if (!open) {
         return false;
     }
@@ -364,10 +362,6 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         }
         if (ImGui::IsItemDeactivated() && !moved_) {
             marker_ = timeAt(mouseX);
-        }
-        if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
-            ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-            marker_.reset();
         }
         view_ = Clamp(view_, record);
         if (ImGui::IsItemHovered()) {
@@ -670,7 +664,6 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         }
     }
 
-    focused_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     if (shown_) {
         StatusLine(cursor, marker_, kGestures);
     } else {

@@ -19,7 +19,7 @@ Drag a knob up or down, or use the mouse wheel over it. The keys are printed und
 | `J3`, left player | Q | A |
 | `J4`, right player | Up arrow | Down arrow |
 
-The keys work once you have clicked on the knob box.
+The keys work whenever the Machine is on, with the knob box out or put away.
 
 **The game.** A rally starts slow: the ball takes about a second and a half to cross the court. After three or four hits it goes twice as fast.
 

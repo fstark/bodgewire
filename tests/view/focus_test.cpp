@@ -69,24 +69,11 @@ TEST_CASE("focus: closing a window puts it away, the probe takes the focus from 
     CHECK_FALSE(focus.out(Owner::Scope));
 }
 
-TEST_CASE("focus: Esc steps back", "[view]") {
-    Focus focus;
-    focus.take(Owner::Wire);
-    CHECK(focus.escape(true) == EscapeStep::CancelWire);
-    CHECK(focus.owner() == Owner::Wire);
-    focus.key(Owner::Scope);
-    CHECK(focus.escape(false) == EscapeStep::ToProbe);
-    CHECK(focus.owner() == Owner::Probe);
-    CHECK(focus.out(Owner::Scope));
-    CHECK(focus.escape(false) == EscapeStep::LiftTip);
-    CHECK(focus.owner() == Owner::Probe);
-}
-
 TEST_CASE("focus: the pencil is a tool", "[view]") {
     Focus focus;
     CHECK_FALSE(IsInstrument(Owner::Pencil));
     focus.take(Owner::Pencil);
     CHECK(focus.owner() == Owner::Pencil);
-    CHECK(focus.escape(false) == EscapeStep::ToProbe);
+    focus.take(Owner::Probe);
     CHECK(focus.owner() == Owner::Probe);
 }
