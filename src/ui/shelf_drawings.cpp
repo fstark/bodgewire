@@ -145,45 +145,61 @@ void Probe(Pen& p, const ItemLook& look) {
     }
 }
 
-void Puller(Pen& p) {
-    // A chip extractor: two prongs from a bow, hooked under a DIP's ends.
+void Puller(Pen& p, const ItemLook& look) {
+    // A chip extractor: two prongs from a bow, hooked under a DIP's ends; held (lit), the chip
+    // lifted off an empty socket.
+    const float lift = look.lit ? 5 : 0;
+    if (look.lit) {
+        p.box(14, 47, 42, 51, IM_COL32(70, 70, 76, 255), 1);
+    }
     p.line(14, 10, 42, 10, kMetal, 3);
-    p.line(14, 10, 12, 36, kMetal, 3);
-    p.line(42, 10, 44, 36, kMetal, 3);
-    p.line(12, 36, 15, 39, kMetal, 3);
-    p.line(44, 36, 41, 39, kMetal, 3);
-    p.box(15, 34, 41, 44, kBlack, 1);
+    p.line(14, 10, 12, 36 - lift, kMetal, 3);
+    p.line(42, 10, 44, 36 - lift, kMetal, 3);
+    p.line(12, 36 - lift, 15, 39 - lift, kMetal, 3);
+    p.line(44, 36 - lift, 41, 39 - lift, kMetal, 3);
+    p.box(15, 34 - lift, 41, 44 - lift, kBlack, 1);
     for (float x = 18; x < 40; x += 5) {
-        p.line(x, 44, x, 49, kMetal, 1.5f);
+        p.line(x, 44 - lift, x, 49 - lift, kMetal, 1.5f);
     }
 }
 
-void Iron(Pen& p) {
-    // Handle bottom right, the shaft and copper tip to the upper left, a drop of solder.
+void Iron(Pen& p, const ItemLook& look) {
+    // Handle bottom right, the shaft and copper tip to the upper left, a drop of solder; held
+    // (lit), the tip glowing hot.
+    constexpr ImU32 kHot = IM_COL32(255, 120, 30, 255);
     p.line(48, 48, 32, 32, IM_COL32(40, 70, 140, 255), 9);
     p.line(33, 33, 30, 30, kDarkMetal, 6);
     p.line(30, 30, 15, 15, kMetal, 3);
-    p.line(15, 15, 9, 9, kCopper, 2.5f);
+    if (look.lit) {
+        p.disc(11, 11, 6, IM_COL32(255, 120, 30, 70));
+    }
+    p.line(15, 15, 9, 9, look.lit ? kHot : kCopper, 2.5f);
     p.disc(11, 18, 3, IM_COL32(200, 200, 210, 255));
 }
 
-void Cutters(Pen& p) {
-    // Two jaws meeting at the top, a pivot, two red handles spreading down.
-    p.quad(28, 6, 22, 14, 25, 26, 28, 24, kDarkMetal);
-    p.quad(28, 6, 34, 14, 31, 26, 28, 24, kMetal);
+void Cutters(Pen& p, const ItemLook& look) {
+    // Two jaws meeting at the top, a pivot, two red handles spreading down; held (lit), the jaws
+    // open and the handles wider.
+    const float open = look.lit ? 6 : 0;
+    p.quad(28 - open, 6, 22 - open / 2, 14, 25, 26, 28, 24, kDarkMetal);
+    p.quad(28 + open, 6, 34 + open / 2, 14, 31, 26, 28, 24, kMetal);
     p.disc(28, 26, 3.5f, kDarkMetal);
-    p.line(27, 28, 15, 50, kRed, 6);
-    p.line(29, 28, 41, 50, kRed, 6);
+    p.line(27, 28, 15 - open / 2, 50, kRed, 6);
+    p.line(29, 28, 41 + open / 2, 50, kRed, 6);
 }
 
-void Wire(Pen& p) {
-    // A coil of green wire, its end stripped to copper.
+void Wire(Pen& p, const ItemLook& look) {
+    // A coil of green wire, its end stripped to copper; held (lit), the end tinned, a bead of
+    // solder on it.
     for (int i = 0; i < 3; ++i) {
         const float x = 20 + static_cast<float>(i) * 5;
         p.ellipse(x, 28, 10, 16, IM_COL32(40, 170, 70, 255), 2.5f);
     }
     p.line(40, 32, 48, 44, IM_COL32(40, 170, 70, 255), 2.5f);
-    p.line(48, 44, 51, 49, kCopper, 2);
+    p.line(48, 44, 51, 49, look.lit ? kMetal : kCopper, 2);
+    if (look.lit) {
+        p.disc(51.5f, 49.5f, 2.5f, IM_COL32(200, 200, 210, 255));
+    }
 }
 
 void Pencil(Pen& p, const ItemLook& look) {
@@ -369,16 +385,16 @@ void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLoo
         Probe(p, look);
         break;
     case Item::Puller:
-        Puller(p);
+        Puller(p, look);
         break;
     case Item::Iron:
-        Iron(p);
+        Iron(p, look);
         break;
     case Item::Cutters:
-        Cutters(p);
+        Cutters(p, look);
         break;
     case Item::Wire:
-        Wire(p);
+        Wire(p, look);
         break;
     case Item::Pencil:
         Pencil(p, look);

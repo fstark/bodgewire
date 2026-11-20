@@ -353,8 +353,8 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
             why = "No Board";
             if (IsInstrument(*owner)) {
                 look.lit = focus.out(*owner);
-            } else if (*owner == Owner::Pencil) {
-                look.lit = focus.owner() == Owner::Pencil;  // held: the check drawn
+            } else {
+                look.lit = focus.owner() == *owner;  // held: drawn in use (the probe: its lamps)
             }
         }
         look.lit = look.lit && !inert;  // nothing to show: never drawn on

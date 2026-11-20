@@ -38,7 +38,7 @@ struct SlotLook {
 
 struct ItemLook {
     float alpha = 1.0f;                   // 0.35 grayed
-    bool lit = false;                     // equipment out, power on
+    bool lit = false;                     // equipment out, power on, a tool held
     ProbeLamps lamps{};                   // Probe only
     RunSwitch run = RunSwitch::RealTime;  // RunSwitch only
     bool powered = false;                 // RunSwitch only: `‖` printed grayed while off
