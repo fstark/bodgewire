@@ -1,0 +1,3 @@
+# Message: what the binder's Contents page opens each chip at (P6p). U14, the message, opens in
+# hex with its text in ASCII; U15, the 2513, at its glyphs.
+chip U15 glyphs 0

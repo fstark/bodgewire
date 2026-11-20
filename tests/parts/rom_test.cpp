@@ -492,7 +492,10 @@ TEST_CASE("rom: stuck cell and column", "[parts]") {
         const Component& chip = *bench.rom;
         CHECK(bench.rom->dataBit(chip.pinIndex("O3")) == 3u);
         CHECK_FALSE(bench.rom->dataBit(chip.pinIndex("A0")).has_value());
+        CHECK(bench.rom->wordBits(0) == 8);
+        CHECK(bench.rom->read(0, 5) == 35);
         bench.rom->stick(0, 5, 1, false);
+        CHECK(bench.rom->read(0, 5) == 33);  // P6p: read through the stuck cell
         Simulator sim(bench.circuit);
         sim.powerOn(1);
         sim.runUntil(2_us);
@@ -503,9 +506,11 @@ TEST_CASE("rom: stuck cell and column", "[parts]") {
         Bench bench("2513", {{"A1", {One, {}}}, {"A2", {Zero, {{3_us, One}}}}});
         const Component& chip = *bench.rom;
         CHECK(bench.rom->dataBit(chip.pinIndex("O1")) == 0u);
+        CHECK(bench.rom->wordBits(0) == 5);
         for (std::size_t word = 0; word < bench.rom->wordCount(0); ++word) {
             bench.rom->stick(0, word, 0, false);
         }
+        CHECK(bench.rom->read(0, 1) == 6);
         Simulator sim(bench.circuit);
         sim.powerOn(high ? 2 : 1);
         sim.runUntil(2_us);

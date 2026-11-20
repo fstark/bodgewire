@@ -1,0 +1,2 @@
+# Typewriter: what the binder's Contents page opens each chip at (P6p).
+chip U23 glyphs 0

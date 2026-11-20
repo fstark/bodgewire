@@ -50,6 +50,8 @@ public:
     std::size_t wordCount(std::size_t memory) const override;
     std::optional<unsigned> dataBit(PinIndex pin) const override;  // D0..D7: 0..7
     void stick(std::size_t memory, std::size_t word, unsigned bit, bool one) override;
+    std::uint8_t read(std::size_t memory, std::size_t word) const override;
+    unsigned wordBits(std::size_t memory) const override;
 
 private:
     struct Access {

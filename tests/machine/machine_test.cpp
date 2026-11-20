@@ -558,3 +558,37 @@ TEST_CASE("machine: a swap removes the chip's memory Faults", "[machine]") {
     }
     CHECK(cellEverLow);  // random again
 }
+
+TEST_CASE("machine: contents of a ROM through its stuck cells, clean after a swap", "[machine]") {
+    Puzzle puzzle = LedComputer();
+    puzzle.cells = {{2, {"U2", "O0"}, 0x10, LogicValue::One},
+                    {3, {"U2", "O7"}, std::nullopt, LogicValue::Zero}};
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
+    REQUIRE(machine.has_value());
+    const auto& rom = dynamic_cast<const MemoryCells&>(
+        *machine->designCircuit().components.at("U2"));  // the design: no Faults
+    const auto held = machine->contents("U2");
+    REQUIRE(held.has_value());
+    CHECK(held->bits == 8);
+    REQUIRE(held->words.size() == 2048);
+    bool same = true;
+    for (std::size_t w = 0; w < held->words.size(); ++w) {
+        auto expected = static_cast<std::uint8_t>(rom.read(0, w) & 0x7F);  // the column
+        if (w == 0x10) {
+            expected |= 1;  // the cell
+        }
+        same = same && held->words[w] == expected;
+    }
+    CHECK(same);
+    CHECK(machine->swap("U2"));
+    const auto clean = machine->contents("U2");
+    REQUIRE(clean.has_value());
+    bool design = true;
+    for (std::size_t w = 0; w < clean->words.size(); ++w) {
+        design = design && clean->words[w] == rom.read(0, w);
+    }
+    CHECK(design);
+    CHECK_FALSE(machine->contents("U3").has_value());   // a 2114: a RAM
+    CHECK_FALSE(machine->contents("U5").has_value());   // a 74LS138
+    CHECK_FALSE(machine->contents("U99").has_value());  // none
+}

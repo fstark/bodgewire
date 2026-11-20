@@ -15,6 +15,8 @@
 #include "machine/electrical.hpp"
 #include "netlist/rom_directory.hpp"
 #include "parts/memory_cells.hpp"
+#include "parts/mos6530.hpp"
+#include "parts/rom.hpp"
 
 namespace bw {
 
@@ -287,6 +289,39 @@ bool Machine::swap(std::string_view reference) {
     std::erase_if(cells_, [&](const StuckCell& c) { return c.reference == reference; });
     std::erase_if(switches_, [&](const StuckSwitch& s) { return s.reference == reference; });
     return true;
+}
+
+std::optional<ChipContents> Machine::contents(std::string_view reference) const {
+    const auto it = designCircuit_->components.find(reference);
+    if (it == designCircuit_->components.end() ||
+        (dynamic_cast<const Rom*>(it->second) == nullptr &&
+         dynamic_cast<const Mos6530*>(it->second) == nullptr)) {
+        return std::nullopt;
+    }
+    // The design build is never run: its cells are the netlist's, read on this thread.
+    const auto& memory = dynamic_cast<const MemoryCells&>(*it->second);
+    ChipContents contents{std::vector<std::uint8_t>(memory.wordCount(0)), memory.wordBits(0)};
+    for (std::size_t w = 0; w < contents.words.size(); ++w) {
+        contents.words[w] = memory.read(0, w);
+    }
+    // The current stuck cells and columns of its ROM (memory 0), as the builder sticks them.
+    for (const StuckCell& cell : cells_) {
+        const auto bit = memory.dataBit(cell.pin);
+        if (cell.reference != reference || cell.memory != 0 || !bit) {
+            continue;
+        }
+        const auto mask = static_cast<std::uint8_t>(1u << *bit);
+        const auto set = [&](std::uint8_t& word) {
+            word = static_cast<std::uint8_t>(cell.value == LogicValue::One ? word | mask
+                                                                           : word & ~mask);
+        };
+        if (cell.word) {
+            set(contents.words[*cell.word]);
+        } else {
+            std::ranges::for_each(contents.words, set);
+        }
+    }
+    return contents;
 }
 
 bool Machine::mend(Layer layer, Point at) {

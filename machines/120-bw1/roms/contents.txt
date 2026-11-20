@@ -1,0 +1,5 @@
+# BW-1: what the binder's Contents page opens each chip at (P6p). The 6530s' ROMs, as the
+# monitor and the self-test are assembled (A13-A15 not decoded: mirrored up to $FFFF).
+cpu 6502
+chip U2 address $1C00   # the 002: the monitor
+chip U3 address $1800   # the 003: the self-test

@@ -1,0 +1,4 @@
+# LED Computer: what the binder's Contents page opens each chip at (P6p). U2 is mirrored through
+# $E000-$FFFF; the program is assembled at $F800 (led_computer.asm).
+cpu 6502
+chip U2 address $F800

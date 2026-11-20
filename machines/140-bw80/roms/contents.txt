@@ -1,0 +1,5 @@
+# BW-80: what the binder's Contents page opens each chip at (P6p). IC2 is Sinclair's ZX80 ROM: the
+# program from $0000, its character set at $0E00 (zx80_ic2.md).
+cpu z80
+charset zx80
+chip IC2 address $0000 glyphs $0E00

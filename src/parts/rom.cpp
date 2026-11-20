@@ -302,4 +302,14 @@ void Rom::stick(std::size_t memory, std::size_t word, unsigned bit, bool one) {
     block_.stick(word, bit, one);
 }
 
+std::uint8_t Rom::read(std::size_t memory, std::size_t word) const {
+    Check(memory == 0 && word < block_.size(), "rom: no such word");
+    return block_[word];
+}
+
+unsigned Rom::wordBits(std::size_t memory) const {
+    Check(memory == 0, "rom: one memory");
+    return static_cast<unsigned>(spec_.data.size());
+}
+
 }  // namespace bw

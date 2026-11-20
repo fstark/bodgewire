@@ -260,6 +260,8 @@ TEST_CASE("2114: a stuck cell holds its value through writes and power-on", "[pa
         CHECK_FALSE(bench.ram->dataBit(Ram2114::kAddress[0]).has_value());
         bench.ram->stick(0, 3, 2, true);
         CHECK((bench.ram->word(3) & 0b0100) != 0);
+        CHECK((bench.ram->read(0, 3) & 0b0100) != 0);
+        CHECK(bench.ram->wordBits(0) == 4);
         Simulator sim(bench.circuit);
         sim.powerOn(seed);
         CHECK((bench.ram->word(3) & 0b0100) != 0);

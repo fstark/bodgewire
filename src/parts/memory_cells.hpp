@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -27,6 +28,11 @@ public:
     // From now on bit `bit` of word `word` of memory `memory` reads `one`, whatever is written or
     // powered on.
     virtual void stick(std::size_t memory, std::size_t word, unsigned bit, bool one) = 0;
+    // The word as the chip holds it now, a stuck cell included (P6p). Not while the Circuit runs
+    // for a RAM: the Runner's thread writes it.
+    virtual std::uint8_t read(std::size_t memory, std::size_t word) const = 0;
+    // Bits in a word of `memory`: a 2716's 8, a 2513's 5, a 2114's 4, a 6102's 1.
+    virtual unsigned wordBits(std::size_t memory) const = 0;
 };
 
 }  // namespace bw

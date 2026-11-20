@@ -1,0 +1,12 @@
+# BW-2001: what the binder's Contents page opens each chip at (P6p). Addresses as the netlist's
+# comments give them; UA2 is the character ROM 901447-08, on no CPU bus.
+cpu 6502
+charset petscii
+chip UH1 address $C000
+chip UH5 address $C800
+chip UH2 address $D000
+chip UH6 address $D800
+chip UH3 address $E000
+chip UH4 address $F000
+chip UH7 address $F800
+chip UA2 glyphs 0

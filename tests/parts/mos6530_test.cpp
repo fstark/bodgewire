@@ -478,8 +478,11 @@ TEST_CASE("6530: stuck cells in the ROM and the RAM", "[parts]") {
     CHECK(bench.chip->wordCount(1) == 64);
     CHECK(bench.chip->dataBit(Mos6530::kData[3]) == 3u);
     CHECK_FALSE(bench.chip->dataBit(Mos6530::kPortA[3]).has_value());
-    bench.chip->stick(0, 5, 0, true);  // ROM $005 = $26: bit 0 set → $27
-    bench.chip->stick(1, 3, 7, true);  // RAM $03 bit 7
+    bench.chip->stick(0, 5, 0, true);        // ROM $005 = $26: bit 0 set → $27
+    bench.chip->stick(1, 3, 7, true);        // RAM $03 bit 7
+    CHECK(bench.chip->read(0, 5) == 0x27u);  // P6p: read through the stuck cell
+    CHECK(bench.chip->wordBits(0) == 8);
+    CHECK(bench.chip->wordBits(1) == 8);
     Simulator sim(bench.circuit);
     sim.powerOn(1);
     const auto reads = RunReads(bench, sim, script);

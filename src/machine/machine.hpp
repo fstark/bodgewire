@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <memory>
@@ -20,6 +21,12 @@
 namespace bw {
 
 class Machine;
+
+// A ROM chip's words (P6p).
+struct ChipContents {
+    std::vector<std::uint8_t> words;
+    unsigned bits = 8;  // per word
+};
 
 // A Bodge Wire with its ends as pin numbers.
 struct WireEnds {
@@ -63,6 +70,10 @@ public:
     const Board& pristineBoard() const { return pristine_; }  // fault-free Copper, for the view
     const LoadedCircuit& designCircuit() const { return *designCircuit_; }
     const BoardPower& power() const { return power_; }  // of the current Copper
+    // A ROM chip's words as it holds them now (P6p): the design's, through the current stuck
+    // cells and columns of its ROM (a swap clears them at once, before the next build). nullopt:
+    // no such chip, or not a ROM (a RAM's cells belong to the running Machine).
+    std::optional<ChipContents> contents(std::string_view reference) const;
 
     // Electrical Net under `at` in `built` (this Machine's build()), in the current Copper: a pad
     // or via on either Layer, else a Trace on `layer`. nullopt off Copper or on an unnamed island.

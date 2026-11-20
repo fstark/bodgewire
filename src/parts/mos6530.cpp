@@ -90,6 +90,16 @@ void Mos6530::stick(std::size_t memory, std::size_t word, unsigned bit, bool one
     }
 }
 
+std::uint8_t Mos6530::read(std::size_t memory, std::size_t word) const {
+    Check(word < wordCount(memory), "6530: no such word");
+    return memory == 0 ? rom_[word] : ram_[word];
+}
+
+unsigned Mos6530::wordBits(std::size_t memory) const {
+    Check(memory < s_memories.size(), "6530: no such memory");
+    return 8;
+}
+
 void Mos6530::powerOn(PowerOnContext& ctx) {
     // A real NMOS chip powers up undefined until RES; this one with random registers.
     ram_.powerOn(ctx);

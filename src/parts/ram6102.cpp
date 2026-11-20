@@ -62,6 +62,16 @@ void Ram6102::stick(std::size_t memory, std::size_t word, unsigned bit, bool one
     cells_.stick(word, bit, one);
 }
 
+std::uint8_t Ram6102::read(std::size_t memory, std::size_t word) const {
+    Check(memory == 0 && word < cells_.size(), "6102: no such word");
+    return cells_[word];
+}
+
+unsigned Ram6102::wordBits(std::size_t memory) const {
+    Check(memory == 0, "6102: one memory");
+    return 1;
+}
+
 void Ram6102::evaluate(EvalContext& ctx) {
     // A write in progress just before now: keep the bit it was writing (zero hold time).
     if (!ctx.readBitBefore(kCeN) && !ctx.readBitBefore(kRw)) {

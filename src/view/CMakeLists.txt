@@ -1,5 +1,6 @@
 add_library(bw_view STATIC
   bench_places.cpp
+  contents_defaults.cpp
   binder.cpp
   board_marks.cpp
   board_scene.cpp

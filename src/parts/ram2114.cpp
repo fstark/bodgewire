@@ -65,6 +65,16 @@ void Ram2114::stick(std::size_t memory, std::size_t word, unsigned bit, bool one
     cells_.stick(word, bit, one);
 }
 
+std::uint8_t Ram2114::read(std::size_t memory, std::size_t word) const {
+    Check(memory == 0 && word < cells_.size(), "2114: no such word");
+    return cells_[word];
+}
+
+unsigned Ram2114::wordBits(std::size_t memory) const {
+    Check(memory == 0, "2114: one memory");
+    return 4;
+}
+
 void Ram2114::evaluate(EvalContext& ctx) {
     if (quiet_) {
         // Woken by CS_N after a quiet spell: the address changes it slept through set when the
