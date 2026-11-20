@@ -55,11 +55,11 @@ constexpr std::array<Entry, 14> kItems{{
      "Grease pencil: mark the Board; click a mark: dot, check, cross, none; shift- or "
      "right-click: clear",
      Tray::Tools, 1},
-    {Item::Probe, "Logic probe: touch any copper; HIGH, LOW, PULSE", Tray::Tools, 2},
     {Item::Puller, "Chip puller: swap a chip", Tray::Tools, 1},
     {Item::Iron, "Soldering iron: mend a crack, resolder a chip pin", Tray::Tools, 1},
     {Item::Cutters, "Cutters: cut a trace or a wire", Tray::Tools, 1},
     {Item::Wire, "Wire: solder a bodge wire between two pins", Tray::Tools, 1},
+    {Item::Probe, "Logic probe: touch any copper; HIGH, LOW, PULSE", Tray::Instruments, 2},
     {Item::Analyzer, "Logic Analyzer: click a chip pin; shift-click: its whole bus",
      Tray::Instruments, 1},
     {Item::Scope, "Oscilloscope: click a chip pin (4 channels)", Tray::Instruments, 1},
