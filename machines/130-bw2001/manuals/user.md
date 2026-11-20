@@ -59,6 +59,8 @@ On a PC keyboard, each key types the BW-2001 key with the same character, with t
 
 **The killer poke.** On the PET 2001, `POKE 59458,62` made printing much faster, and filled the screen with white specks while it printed. It does the same here. How it works explains why.
 
+To read a ROM, point at its chip and click the round window that shows on it (`UH1` to `UH7` hold BASIC, the editor and the kernel; `UA2` the character set): the binder opens at Contents, as 6502 code, in hex with the text in PETSCII, or as glyphs.
+
 ## How it works
 
 **The goal.** The board holds two machines that share one memory. The first draws the picture: it reads the screen memory sixty times a second and turns each byte into a character on the TV. The second is the computer: it runs the programs and writes into the screen memory what they print. Neither waits for the other, so the board must keep them out of each other's way.

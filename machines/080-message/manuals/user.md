@@ -8,6 +8,8 @@ Nothing moves. The picture settles within half a second of power-on, and the pag
 
 There is no computer on this board. Two memory chips hold the page and the shapes of the letters. A handful of counters read them out, dot by dot, fifty times a second.
 
+To read what a ROM holds, click the round window on its chip (`U14`, the message; `U15`, the letters' shapes, whose window shows while you point at it): the binder opens at Contents, in hex with the text beside it, or as glyphs.
+
 ## How it works
 
 **The goal.** The TV draws its picture as a beam sweeping across the screen, line after line, top to bottom. It knows nothing about letters. At every moment, the board must say one thing: is this dot white or black? So the board has to know, at every moment, which letter the beam is on, which line of that letter, and which dot of that line.

@@ -8,58 +8,10 @@ Spec: [MEMORY_CONTENTS.md](MEMORY_CONTENTS.md). Design: [MEMORY_CONTENTS_DESIGN.
 |-------|-------------|--------|
 | 1 | The read and the defaults: `MemoryCells::read`, `Machine::contents`, `roms/contents.txt` and its parser | `6d1619a` |
 | 2 | The views' logic: the Z80 disassembler moved, the 6502's, `memory_contents` | `f38727a` |
-| 3 | The window and the page: the click, the Contents divider, the three views, `--contents` | this commit |
-| 4 | Docs, release check, full release suite | |
+| 3 | The window and the page: the click, the Contents divider, the three views, `--contents` | `97a3420` |
+| 4 | Docs, release check, full release suite | this commit |
 
 The row's split ("the page, hex and graphics; then the disassembly") is kept in the other order: the logic, the disassemblers included, before the page, so the page never ships with a placeholder Code view (design review, 2026-11-20).
-
-## Phase 1 — The read and the defaults
-
-Design §1, §2.
-
-1. `MemoryCells::read`, `wordBits`; `Rom`, `Mos6530`, `Ram2114`, `Ram6102`.
-2. `ChipContents`, `Machine::contents` (ROM chips only).
-3. `src/view/contents_defaults.{hpp,cpp}`: `Cpu`, `CharacterSet`, `ChipDefaults`, `ContentsDefaults`, `ParseContentsDefaults`.
-4. The six `roms/contents.txt` (design §2's table).
-5. Tests: `rom:`, `6530:`, `2114:`, `6102:` (`read` through a `stick`, `wordBits`); `machine: contents …` (Odd E's UA2 `$2A` reads `$44`, `$40` after the swap; a column; a RAM and an unknown reference nullopt); `contents defaults: …` (the parser; every Machine's file against its netlist, ROM chips by `FindRomSpec` or `6530`).
-
-**Fence**: release build; `ctest --preset release -j -R "^(rom|6530|2114|6102|machine|contents defaults): "`; debug build and the same `-R` in debug (Parts and Machine C++; the anchored names reach no BW-2001 case); the full release suite (shared code: `MemoryCells`, `Machine`). Commit: `parts, machine, view: a ROM's contents as held now; roms/contents.txt on six Machines (P6p phase 1)`.
-
-## Phase 2 — The views' logic
-
-Design §6, §7.
-
-1. `git mv tests/asm/z80_disassembler.{hpp,cpp} src/asm/`; `src/asm/disassembled.hpp` (`Z80Text` renamed `Disassembled`); `Z80DocumentedOpcodes` to `tests/asm/z80_opcodes.{hpp,cpp}`.
-2. `Mos6502OperandBytes` in `mos6502_core.*`, `asm6502.cpp` on it; `Disassemble6502`.
-3. `src/view/memory_contents.{hpp,cpp}`: settings, `DefaultSettings`, `SizeText`, `CharacterOf`, `HexColumns`, `HexLine`, `GlyphLayout`, `GlyphDot`, `GlyphCount`, `CodeLine`, `Disassembly`; `bw_view` links `bw_asm`.
-4. Tests: `disassembler 6502: …`; `asm z80: …` as today; `contents: …`.
-
-**Fence**: release build; `ctest --preset release -j -R "^(asm|asm z80|disassembler 6502|contents): "`; debug the same `-R`; the full release suite (shared code: `mos6502_core`, the assembler). Commit: `asm, view: the 6502 and Z80 disassemblers in bw_asm; the Contents views' logic (P6p phase 2)`.
-
-## Phase 3 — The window and the page
-
-Design §3, §4, §5, §8.
-
-1. `src/view/chip_body.{hpp,cpp}`: the body moved from `board_look.cpp` (`BodyBox`), `MemoryLook`, `MemoryWindowOf`, `MemoryWindowAt`; `board_look.cpp` on them. Screenshot: the BW-80's IC2 x-rayed and the LED Computer's U2 look as before.
-2. `Binder`: `Divider::Contents`, `openContents`, `contents()`.
-3. `BoardView`: the window's press, `takeContentsClick`, the tooltip, the double-click fit off windows; `main.cpp`'s handling.
-4. `src/ui/contents_page.{hpp,cpp}` with the three views; `ManualWindows`' tab, page, `openContents`, `setContentsDefaults`, `PushPaper`'s widget colours; `main.cpp` reads `roms/contents.txt`.
-5. `--contents REF[:view]`.
-6. Tests: `chip body: …`, `binder: …`.
-7. Screenshots, viewed: the BW-80's IC2 in Code (`$0038` on the first screen) and `IC2:glyphs`; the BW-2001's `UH4:hex` (PETSCII) and UA2 on Odd E (`machines/130-bw2001/puzzles/01-odd-e.bwp --contents UA2`); the Message's U15, the Typewriter's U23 (5-bit glyphs); the BW-1's `U2:hex` on Odd seven (`$1FEE` reads `8F`); the BW-1's U2 in Code at `$1C00`; the LED Computer's U2.
-
-**Fence**: release build; `ctest --preset release -j -R "^(chip body|binder|contents|contents defaults): "`; screenshots viewed. Commit: `ui: a memory chip's window opens the binder at its contents: Hex, Code and Glyphs (P6p phase 3)`.
-
-## Phase 4 — Docs and release check
-
-Design §9.
-
-1. The six User Manuals (end of Using it), GLOSSARY, ADD_MACHINE, ADD_PUZZLE.
-2. The manual tests (`ctest -R "^manual"`).
-3. The release check: the BW-2001 running with the binder out at Contents (speed ratio and UI ms printed by `--screenshot`); the full release suite.
-4. ARCHITECTURE's row done with the date and links; this plan cut down to the phase table and notes.
-
-**Fence**: `ctest --preset release -j` (full). Commit: `docs: P6p done, the Contents divider in the manuals and recipes (P6p phase 4)`.
 
 ## Implementation notes
 
@@ -67,3 +19,5 @@ Design §9.
 - Phase 1 (2026-11-20): `Machine::contents` reads only a `Rom` or a `Mos6530` of the design build; its test uses the LED Computer's U2 (a cell and a column), the BW-2001 left to the phase 3 screenshot (its Machine loads slowly in debug). The defaults test skips non-directories under `machines/` (`.DS_Store`). Checks: release and debug `-R "^(rom|6530|2114|6102|machine|contents defaults): "` (78), full release suite 1472/1472.
 - Phase 2 (2026-11-20): `DefaultSettings` takes the word width only (the chip's size is not needed for a default). `HexLine` and `CharacterOf` give UTF-8; `src/ui` swaps `£` for `.` if the font lacks it. The Z80 test of the real ROM: `$0038` reads `DEC C`, `JP NZ,$0045`. Checks: release and debug `-R "^(asm|asm z80|disassembler 6502|contents): "` (29), full release suite 1479/1479.
 - Phase 3 (2026-11-20): `PopupBg` (the paper) is pushed around each combo only, not in `PushPaper`: `PageTooltip` draws light text on the tooltip's dark background, which a paper `PopupBg` would hide. Address is hidden in the Glyphs view (glyphs count the chip's own words); Go to starts at the chip's address. The open view's button is framed in ink. `board_look.cpp` keeps its `Box` as an alias of `BodyBox`. Screenshots viewed: the BW-80's IC2 in Code (`$0000` `LD HL,$7FFF`, `$0038` on the second screen) and Glyphs at `$0E00` (the ZX80's set); UA2 on Odd E (`05` with its dot); UH4 in Hex PETSCII; the Message's U15 and the Typewriter's U23 (5-bit, 16 a row); the BW-1's U2 in Hex and in Code (`SAVE`, `JMP ($17FA)`); the LED Computer's U2; IC2 x-rayed on the Board, the window as before. Checks: release `-R "^(chip body|binder|contents|contents defaults): "` (17).
+- Phase 4 (2026-11-20): the six User Manuals end Using it (the Message, What it does: it has no Using it) with the window, pointed at first on a mask ROM, addresses plain (ADD_MACHINE's rule); GLOSSARY (Contents, Equipment's binder); ADD_MACHINE (`roms/contents.txt`), ADD_PUZZLE (the views and a ROM Fault). Release check: the BW-2001 on Odd E, 4 s, 0.36× and UI 0.9 ms with the binder at UH1's Code, 0.37× and 0.9 ms without. Full release suite 1482/1482.
+- For the user to check (a screenshot cannot click or type): the window's click under each tool, the tooltip, Go to in Hex and Code, a Combo's list on the paper, the settings kept per chip, the head's link framing the chip, 16 words a row in a widened binder.

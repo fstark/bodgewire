@@ -19,6 +19,8 @@ The board has no computer and no memory with addresses. It is built like the TV 
 - After the last line, typing goes on at the top line, over what is already there. The page never scrolls.
 - Keys typed faster than about 40 a second still appear, in turn, a little behind.
 
+To read what the character ROM holds, point at `U23` and click the round window that shows on it: the binder opens at Contents, the letters' shapes drawn as glyphs, or in hex.
+
 ## How it works
 
 **The goal.** The TV draws the picture as a beam sweeping across the screen, line after line, 50 times a second. The board must say, for every dot of every line, whether it is white or black. And it must remember the 512 characters of the page while it does.

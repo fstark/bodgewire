@@ -63,6 +63,8 @@ Some examples. 123408 means address $0234, bit 3. 27D501 means address $17D5, bi
 
 Each main memory chip holds one bit of every byte. `U5` holds bit 7, `U6` bit 6, and so on down to `U12`, bit 0. One bad bit at every address points at one chip. Several bits at once point at something they share. `U13` passes bits 0 to 3, `U14` bits 4 to 7.
 
+To read the monitor or the self-test, point at `U2` or `U3` and click the round window that shows on it: the binder opens at Contents, the ROM as 6502 code at $1C00 or $1800, or in hex.
+
 ## How it works
 
 **The goal.** A computer must read a program, keep notes, and talk to you. On the BW-1 that means a processor, a few memory chips, and one display that also reads the keys. The tricky part is that every chip shares the same wires. The board's job is to decide who talks, and when.

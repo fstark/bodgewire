@@ -13,6 +13,8 @@ Welcome to the LED computer, the first real computer on the bench. A row of eigh
 
 RESET (`SW1`) restarts the computer. While you hold it, the LEDs go dark. When you let go, the light starts again at `D1`.
 
+To read the program, click the window on the EPROM `U2`: the binder opens at Contents, the program as 6502 code from $F800, or in hex.
+
 ## How it works
 
 **The goal.** The light must move by one LED about eight times a second. Nothing on the board knows how to do that by itself. A program does it, one small instruction at a time. The board's job is to let the processor read that program, keep a few notes, and show a byte on the LEDs.

@@ -42,6 +42,8 @@ The screen shows 42, and the report 0/20: no error, last line 20. LIST shows the
 
 **The edge connector.** `J4`, at the back, is the ZX80's expansion connector. Nothing is plugged in.
 
+To read the ROM, point at `IC2` and click the round window that shows on it: the binder opens at Contents, the program as Z80 code from $0000, in hex with the text in the BW-80's characters, or its character set as glyphs from $0E00.
+
 ## How it works
 
 **The goal.** A home computer must run BASIC, read the keys, and draw a page of text on a TV. Most computers have a video chip for the picture. In 1980 that was too dear for Sinclair. So the ZX80 lets the processor draw the picture itself. The price: while the processor draws, it can do nothing else.
