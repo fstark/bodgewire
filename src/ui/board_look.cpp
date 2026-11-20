@@ -193,8 +193,102 @@ std::optional<Box> ResistorBodyOf(const BoardComponent& component) {
     return Box{{c.x - width, c.y - half}, {c.x + width, c.y + half}};
 }
 
+// A chip holding a program or a character set: an EPROM shows its quartz window, a mask ROM
+// only while x-rayed (its die seen through the epoxy). Either has its part number beside the
+// window, the same whether the window shows or not.
+enum class Memory { None, Eprom, Mask };
+
+Memory MemoryOf(std::string_view part) {
+    if (part == "2716") {
+        return Memory::Eprom;
+    }
+    if (part == "2332" || part == "2316B" || part == "2513" || part == "6530") {
+        return Memory::Mask;
+    }
+    return Memory::None;
+}
+
+// The window's radius: 30 % of the body's width.
+std::int64_t WindowRadius(const ChipBody& shape) {
+    const std::int64_t across = shape.horizontal ? shape.box.height() : shape.box.width();
+    return across * 3 / 10;
+}
+
+constexpr ImU32 kWindowSeal = IM_COL32(150, 152, 158, 255);
+constexpr ImU32 kQuartz = IM_COL32(24, 30, 44, 255);
+constexpr ImU32 kDie = IM_COL32(128, 132, 140, 255);
+constexpr ImU32 kDieArray = IM_COL32(78, 90, 122, 255);
+constexpr ImU32 kDieGrid = IM_COL32(110, 124, 160, 255);
+constexpr ImU32 kBond = IM_COL32(215, 185, 90, 255);
+
+// The quartz window at the body's centre, the die inside it, long along the body: two memory
+// arrays, bond pads along its long edges wired out to the window's rim.
+void DrawMemoryWindow(ImDrawList& list, const LookMap& map, const BoardScene& scene, std::size_t k,
+                      bool xray) {
+    const Memory memory = MemoryOf(scene.partName(k));
+    const auto shape = BodyOf(scene.board().components[k]);
+    if (memory == Memory::None || !shape || (memory == Memory::Mask && !xray)) {
+        return;
+    }
+    const ImVec2 c = map(shape->box.centre());
+    const float r = map.pixels(WindowRadius(*shape));
+    if (r < 2) {
+        return;
+    }
+    list.AddCircleFilled(c, r * 1.15f, kWindowSeal, 32);
+    list.AddCircleFilled(c, r, kQuartz, 32);
+    // Half sizes along and across the body, in pixels; a point at (u, v) in those axes.
+    const float along = r * 0.58f, across = r * 0.40f;
+    const auto at = [&](float u, float v) {
+        return shape->horizontal ? ImVec2{c.x + u, c.y + v} : ImVec2{c.x + v, c.y + u};
+    };
+    const auto box = [&](float u0, float v0, float u1, float v1, ImU32 colour) {
+        const ImVec2 a = at(u0, v0), b = at(u1, v1);
+        list.AddRectFilled({std::min(a.x, b.x), std::min(a.y, b.y)},
+                           {std::max(a.x, b.x), std::max(a.y, b.y)}, colour);
+    };
+    // The bond wires first, under the die's edge.
+    constexpr int kPads = 5;
+    const float wire = std::max(1.0f, r * 0.03f);
+    for (int i = 0; i < kPads; ++i) {
+        const float u = -along * 0.8f + along * 1.6f * static_cast<float>(i) / (kPads - 1);
+        for (const float side : {-1.0f, 1.0f}) {
+            const float rim = std::sqrt(std::max(0.0f, r * r * 0.86f - u * u * 0.3f));
+            list.AddLine(at(u, side * across * 0.85f), at(u * 1.3f, side * rim), kBond, wire);
+        }
+    }
+    box(-along, -across, along, across, kDie);
+    // Two arrays with the decoder between them.
+    const float gap = along * 0.12f;
+    for (const float sign : {-1.0f, 1.0f}) {
+        const float u0 = sign * gap, u1 = sign * along * 0.88f;
+        box(u0, -across * 0.62f, u1, across * 0.62f, kDieArray);
+        if (r >= 10) {
+            constexpr int kLines = 4;
+            for (int i = 1; i < kLines; ++i) {
+                const float t = static_cast<float>(i) / kLines;
+                const float u = u0 + (u1 - u0) * t;
+                list.AddLine(at(u, -across * 0.62f), at(u, across * 0.62f), kDieGrid, 1.0f);
+                const float v = -across * 0.62f + across * 1.24f * t;
+                list.AddLine(at(u0, v), at(u1, v), kDieGrid, 1.0f);
+            }
+        }
+    }
+    for (int i = 0; i < kPads; ++i) {
+        const float u = -along * 0.8f + along * 1.6f * static_cast<float>(i) / (kPads - 1);
+        const float h = std::max(0.75f, r * 0.045f);
+        for (const float side : {-1.0f, 1.0f}) {
+            box(u - h, side * across * 0.85f - h, u + h, side * across * 0.85f + h, kBond);
+        }
+    }
+    // The light on the quartz.
+    const float pi = std::numbers::pi_v<float>;
+    list.PathArcTo(c, r * 0.86f, pi * 1.05f, pi * 1.45f, 12);
+    list.PathStroke(IM_COL32(255, 255, 255, 70), 0, std::max(1.0f, r * 0.08f));
+}
+
 // A dual-in-line chip: the epoxy body between the pad rows, legs into the pads, the notch at
-// pin 1's end, the part number along the body.
+// pin 1's end, the part number along the body (beside a memory's window).
 void DrawChip(ImDrawList& list, const LookMap& map, const BoardScene& scene, std::size_t k) {
     const BoardComponent& component = scene.board().components[k];
     const Pad* one = PadOne(component);
@@ -230,28 +324,35 @@ void DrawChip(ImDrawList& list, const LookMap& map, const BoardScene& scene, std
     const float pi = std::numbers::pi_v<float>;
     ImVec2 notchAt;
     float from = 0;
+    bool oneAtMin = false;  // pin 1 at the left or top end
     if (horizontal) {
-        const bool left =
-            std::abs(one->position.x - body.min.x) < std::abs(one->position.x - body.max.x);
-        notchAt = map({left ? body.min.x : body.max.x, body.centre().y});
-        from = left ? -pi / 2 : pi / 2;
+        oneAtMin = std::abs(one->position.x - body.min.x) < std::abs(one->position.x - body.max.x);
+        notchAt = map({oneAtMin ? body.min.x : body.max.x, body.centre().y});
+        from = oneAtMin ? -pi / 2 : pi / 2;
     } else {
-        const bool top =
-            std::abs(one->position.y - body.min.y) < std::abs(one->position.y - body.max.y);
-        notchAt = map({body.centre().x, top ? body.min.y : body.max.y});
-        from = top ? 0 : pi;
+        oneAtMin = std::abs(one->position.y - body.min.y) < std::abs(one->position.y - body.max.y);
+        notchAt = map({body.centre().x, oneAtMin ? body.min.y : body.max.y});
+        from = oneAtMin ? 0 : pi;
     }
     list.PathArcTo(notchAt, notch, from, from + pi, 16);
     list.PathFillConvex(kNotch);
 
-    // The part number along the body, as large as the body takes, readable when zoomed out.
-    const ImVec2 a = map(body.min);
-    const ImVec2 b = map(body.max);
+    // The part number along the body, as large as the body takes, readable when zoomed out; on a
+    // memory, between the window and the end away from pin 1.
+    const std::string part(scene.partName(k));
+    Box space = body;
+    if (MemoryOf(part) != Memory::None) {
+        const std::int64_t edge = WindowRadius(*shape) * 23 / 20;  // the seal's
+        std::int64_t& end = horizontal ? (oneAtMin ? space.min.x : space.max.x)
+                                       : (oneAtMin ? space.min.y : space.max.y);
+        end = (horizontal ? body.centre().x : body.centre().y) + (oneAtMin ? edge : -edge);
+    }
+    const ImVec2 a = map(space.min);
+    const ImVec2 b = map(space.max);
     const float along = horizontal ? std::abs(b.x - a.x) : std::abs(b.y - a.y);
     const float across = horizontal ? std::abs(b.y - a.y) : std::abs(b.x - a.x);
-    const std::string part(scene.partName(k));
     if (const float size = FitText(part, map.pixels(2'200'000), along * 0.85f, across * 0.6f)) {
-        Print(list, size, map(body.centre()), kPrint, part, !horizontal);
+        Print(list, size, map(space.centre()), kPrint, part, !horizontal);
     }
 }
 
@@ -697,13 +798,22 @@ void DrawUseParts(ImDrawList& list, const LookMap& map, const BoardScene& scene,
             break;
         }
         // See-through: the part the player works on, or every part from the back.
-        const float fade = xray == k ? std::min(alpha, kXray) : alpha;
-        if (fade < 1) {
-            for (int v = start; v < list.VtxBuffer.Size; ++v) {
-                ImU32& colour = list.VtxBuffer[v].col;
-                const auto a = static_cast<float>((colour >> IM_COL32_A_SHIFT) & 0xFF) * fade;
-                colour = (colour & ~IM_COL32_A_MASK) | (static_cast<ImU32>(a) << IM_COL32_A_SHIFT);
+        const auto fade = [&](int from, float by) {
+            if (by < 1) {
+                for (int v = from; v < list.VtxBuffer.Size; ++v) {
+                    ImU32& colour = list.VtxBuffer[v].col;
+                    const auto a = static_cast<float>((colour >> IM_COL32_A_SHIFT) & 0xFF) * by;
+                    colour =
+                        (colour & ~IM_COL32_A_MASK) | (static_cast<ImU32>(a) << IM_COL32_A_SHIFT);
+                }
             }
+        };
+        fade(start, xray == k ? std::min(alpha, kXray) : alpha);
+        // A memory's window stays solid through the x-ray: the die is what it shows.
+        if (KindOf(scene, k) == Kind::Chip) {
+            const int window = list.VtxBuffer.Size;
+            DrawMemoryWindow(list, map, scene, k, xray == k);
+            fade(window, alpha);
         }
     }
 }
