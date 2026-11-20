@@ -46,21 +46,6 @@ std::string_view FormName(Mos6502Operand form) {
     return "?";
 }
 
-std::size_t OperandBytes(Mos6502Operand form) {
-    switch (form) {
-    case None:
-    case Accumulator:
-        return 0;
-    case Absolute:
-    case AbsoluteX:
-    case AbsoluteY:
-    case Indirect:
-        return 2;
-    default:
-        return 1;
-    }
-}
-
 // (mnemonic, form) → opcode, documented opcodes only.
 class Encodings {
 public:
@@ -149,7 +134,7 @@ public:
         }
         const std::int64_t at = context.pc();
         context.emit(*opcode);
-        switch (OperandBytes(form)) {
+        switch (Mos6502OperandBytes(form)) {
         case 0:
             break;
         case 1: {

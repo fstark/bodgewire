@@ -1107,6 +1107,21 @@ bool Mos6502Core::branchTaken() const {
     }
 }
 
+std::size_t Mos6502OperandBytes(Mos6502Operand operand) {
+    switch (operand) {
+    case Mos6502Operand::None:
+    case Mos6502Operand::Accumulator:
+        return 0;
+    case Mos6502Operand::Absolute:
+    case Mos6502Operand::AbsoluteX:
+    case Mos6502Operand::AbsoluteY:
+    case Mos6502Operand::Indirect:
+        return 2;
+    default:
+        return 1;
+    }
+}
+
 Mos6502Instruction Mos6502Decode(std::uint8_t opcode) {
     const Opcode& o = kOpcodes[opcode];
     const bool documented =

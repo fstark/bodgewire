@@ -8,6 +8,7 @@ add_library(bw_view STATIC
   flip_corner.cpp
   focus.cpp
   machine_slot.cpp
+  memory_contents.cpp
   keyboard_layout.cpp
   matrix_keyboard_layout.cpp
   pencil_marks.cpp
@@ -17,4 +18,4 @@ add_library(bw_view STATIC
   tv_controls.cpp
   viewport.cpp
 )
-target_link_libraries(bw_view PUBLIC bw_board bw_devices bw_instruments PRIVATE bw_warnings)
+target_link_libraries(bw_view PUBLIC bw_asm bw_board bw_devices bw_instruments PRIVATE bw_warnings)

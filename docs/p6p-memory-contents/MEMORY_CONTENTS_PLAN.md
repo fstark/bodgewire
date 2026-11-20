@@ -6,8 +6,8 @@ Spec: [MEMORY_CONTENTS.md](MEMORY_CONTENTS.md). Design: [MEMORY_CONTENTS_DESIGN.
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | The read and the defaults: `MemoryCells::read`, `Machine::contents`, `roms/contents.txt` and its parser | this commit |
-| 2 | The views' logic: the Z80 disassembler moved, the 6502's, `memory_contents` | |
+| 1 | The read and the defaults: `MemoryCells::read`, `Machine::contents`, `roms/contents.txt` and its parser | `6d1619a` |
+| 2 | The views' logic: the Z80 disassembler moved, the 6502's, `memory_contents` | this commit |
 | 3 | The window and the page: the click, the Contents divider, the three views, `--contents` | |
 | 4 | Docs, release check, full release suite | |
 
@@ -34,7 +34,7 @@ Design §6, §7.
 3. `src/view/memory_contents.{hpp,cpp}`: settings, `DefaultSettings`, `SizeText`, `CharacterOf`, `HexColumns`, `HexLine`, `GlyphLayout`, `GlyphDot`, `GlyphCount`, `CodeLine`, `Disassembly`; `bw_view` links `bw_asm`.
 4. Tests: `disassembler 6502: …`; `asm z80: …` as today; `contents: …`.
 
-**Fence**: release build; `ctest --preset release -j -R "^(asm|disassembler 6502|contents): "`; debug the same `-R`; the full release suite (shared code: `mos6502_core`, the assembler). Commit: `asm, view: the 6502 and Z80 disassemblers in bw_asm; the Contents views' logic (P6p phase 2)`.
+**Fence**: release build; `ctest --preset release -j -R "^(asm|asm z80|disassembler 6502|contents): "`; debug the same `-R`; the full release suite (shared code: `mos6502_core`, the assembler). Commit: `asm, view: the 6502 and Z80 disassemblers in bw_asm; the Contents views' logic (P6p phase 2)`.
 
 ## Phase 3 — The window and the page
 
@@ -65,3 +65,4 @@ Design §9.
 
 - Review (2026-11-20), fixed: Odd seven's byte is `$87` (reads `$8F`); phase 1's test finds ROM chips without `MemoryLookOf` (phase 3); `CharacterOf` returns UTF-8 (`£`), the font checked in `src/ui`; anchored `-R` fences, the new cases named; the full release suite at the shared-code fences (1, 2); the head link frames the chip without selecting it; `openContents` sets `shown_` only while away; `PushPaper` gains the widgets' colours; 8 words a row at the default width, no narrow-binder screenshot (no width flag); plain `x` and `-` (no `×`, `–` in the UI font); the phases reordered (no placeholder); `Machine::contents` ROMs only, `Session::contents` dropped (no Board without a Machine); `ManualWindows::openContents(k, view)`, `setContentsDefaults`; `ChipContents` in `bw`; the User Manuals' sentence in Using it; absolute 6502 operands 4 digits, Z80 displacements decimal; `Disassembled` defined once; the glyph grid at least 3 px a dot; Go to outside the chip ignored; `Ram2114`/`Ram6102` `read` tested; `BodyBox`, not a public `Box`.
 - Phase 1 (2026-11-20): `Machine::contents` reads only a `Rom` or a `Mos6530` of the design build; its test uses the LED Computer's U2 (a cell and a column), the BW-2001 left to the phase 3 screenshot (its Machine loads slowly in debug). The defaults test skips non-directories under `machines/` (`.DS_Store`). Checks: release and debug `-R "^(rom|6530|2114|6102|machine|contents defaults): "` (78), full release suite 1472/1472.
+- Phase 2 (2026-11-20): `DefaultSettings` takes the word width only (the chip's size is not needed for a default). `HexLine` and `CharacterOf` give UTF-8; `src/ui` swaps `£` for `.` if the font lacks it. The Z80 test of the real ROM: `$0038` reads `DEC C`, `JP NZ,$0045`. Checks: release and debug `-R "^(asm|asm z80|disassembler 6502|contents): "` (29), full release suite 1479/1479.

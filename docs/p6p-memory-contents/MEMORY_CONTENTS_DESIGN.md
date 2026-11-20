@@ -235,7 +235,7 @@ struct ContentsSettings {
 };
 // §10's first view and §6–9's defaults, from the Machine's file and the chip's size.
 ContentsSettings DefaultSettings(const ContentsDefaults& defaults, std::string_view reference,
-                                 std::size_t words, unsigned bits);
+                                 unsigned bits);
 std::string SizeText(std::size_t words, unsigned bits);  // "2K x 8", "512 x 5"
 // UTF-8: one ASCII character, "£", or "." when none (§7).
 std::string_view CharacterOf(CharacterSet set, std::uint8_t code);

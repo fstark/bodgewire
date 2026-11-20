@@ -8,7 +8,8 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(bw_tests
   asm/asm6502_test.cpp
   asm/asmz80_test.cpp
-  asm/z80_disassembler.cpp
+  asm/mos6502_disassembler_test.cpp
+  asm/z80_opcodes.cpp
   board/board_check_test.cpp
   board/boards_test.cpp
   board/copper_test.cpp
@@ -189,6 +190,7 @@ add_executable(bw_tests
   view/focus_test.cpp
   view/keyboard_layout_test.cpp
   view/machine_slot_test.cpp
+  view/memory_contents_test.cpp
   view/matrix_keyboard_layout_test.cpp
   view/pencil_marks_test.cpp
   view/power_cycle_test.cpp

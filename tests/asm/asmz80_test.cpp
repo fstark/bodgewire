@@ -10,8 +10,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "asm/assembler.hpp"
+#include "asm/z80_disassembler.hpp"
 #include "parts/z80_core.hpp"
-#include "z80_disassembler.hpp"
+#include "z80_opcodes.hpp"
 
 using namespace bw;
 

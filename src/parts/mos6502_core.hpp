@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <string_view>
 
@@ -36,6 +37,8 @@ struct Mos6502Instruction {
 };
 
 Mos6502Instruction Mos6502Decode(std::uint8_t opcode);
+// Bytes after the opcode: 0, 1 or 2 (the assembler's and the disassembler's, P6p).
+std::size_t Mos6502OperandBytes(Mos6502Operand operand);
 
 // One bus cycle as the CPU drives it.
 struct Mos6502Bus {
