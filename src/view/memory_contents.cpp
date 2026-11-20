@@ -32,12 +32,10 @@ constexpr std::string_view kZx80Signs = "()-+*/=><;,.";
 
 }  // namespace
 
-ContentsSettings DefaultSettings(const ContentsDefaults& defaults, std::string_view reference,
-                                 unsigned bits) {
+ContentsSettings DefaultSettings(const ContentsDefaults& defaults, std::string_view reference) {
     ContentsSettings s;
     s.charset = defaults.charset;
     s.cpu = defaults.cpu.value_or(Cpu::Mos6502);
-    s.glyphBits = bits;
     const auto chip = defaults.chips.find(reference);
     const ChipDefaults found = chip == defaults.chips.end() ? ChipDefaults{} : chip->second;
     s.address = found.address.value_or(0);
@@ -142,8 +140,8 @@ std::vector<CodeLine> Disassembly(std::span<const std::uint8_t> words, const Con
     return lines;
 }
 
-GlyphGrid GlyphLayout(float width, unsigned bits) {
-    const auto across = static_cast<float>(bits + 2);
+GlyphGrid GlyphLayout(float width) {
+    constexpr auto across = static_cast<float>(kGlyphDots + 2);
     for (const int columns : {16, 8}) {
         const float dot = std::floor(width / (static_cast<float>(columns) * across));
         if (dot >= 3) {
@@ -163,10 +161,10 @@ std::size_t GlyphCount(std::size_t words, const ContentsSettings& s) {
 bool GlyphDot(std::span<const std::uint8_t> words, const ContentsSettings& s, std::size_t glyph,
               unsigned row, unsigned column) {
     const std::size_t word = s.glyphFrom + glyph * s.glyphRows + row;
-    if (word >= words.size() || row >= s.glyphRows || column >= s.glyphBits) {
+    if (word >= words.size() || row >= s.glyphRows || column >= kGlyphDots) {
         return false;
     }
-    return ((words[word] >> (s.glyphBits - 1 - column)) & 1u) != 0;
+    return ((words[word] >> (kGlyphDots - 1 - column)) & 1u) != 0;
 }
 
 }  // namespace bw

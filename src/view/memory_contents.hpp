@@ -24,15 +24,14 @@ struct ContentsSettings {
     Cpu cpu = Cpu::Mos6502;
     std::size_t codeFrom = 0, codeLength = 0;  // words; length 0: to the chip's end
     std::size_t glyphFrom = 0;                 // the first glyph's word
-    unsigned glyphRows = 8, glyphBits = 8;     // words a glyph, low bits a row
+    unsigned glyphRows = 8;                    // words a glyph, one a row
     bool operator==(const ContentsSettings&) const = default;
 };
 
 // The first view and the settings a chip opens at: the Machine's CPU (else the 6502) and character
-// set, the chip's address and glyphs (else 0), 8 rows of the word's width; Code when the chip has
-// an address and the Machine a CPU, else Glyphs when it has glyphs, else Hex.
-ContentsSettings DefaultSettings(const ContentsDefaults& defaults, std::string_view reference,
-                                 unsigned bits);
+// set, the chip's address and glyphs (else 0), 8 rows; Code when the chip has an address and the
+// Machine a CPU, else Glyphs when it has glyphs, else Hex.
+ContentsSettings DefaultSettings(const ContentsDefaults& defaults, std::string_view reference);
 
 std::string SizeText(std::size_t words, unsigned bits);  // "2K x 8", "512 x 5"
 
@@ -57,16 +56,20 @@ struct CodeLine {
 // past the range, is one ".byte $XX" word.
 std::vector<CodeLine> Disassembly(std::span<const std::uint8_t> words, const ContentsSettings& s);
 
+// A glyph's row is always 8 dots wide, a word's bit 7 the leftmost (the user, 2026-11-20: which
+// bits reach the screen is the circuit's business, not the ROM's: a 2513's 5-bit glyph sits in
+// the right five columns).
+inline constexpr unsigned kGlyphDots = 8;
 // The glyph grid at a page `width` px: 16, 8 or 4 glyphs a row, the most whose dot is at least
-// 3 px; a glyph takes bits + 2 dots across.
+// 3 px; a glyph takes kGlyphDots + 2 dots across.
 struct GlyphGrid {
     int columns;
     float dot;  // px
 };
-GlyphGrid GlyphLayout(float width, unsigned bits);
+GlyphGrid GlyphLayout(float width);
 std::size_t GlyphCount(std::size_t words, const ContentsSettings& s);
-// A lit dot: row `row` (a word) of glyph `glyph` from glyphFrom, column 0 the leftmost (bit
-// glyphBits - 1). False past the chip's end.
+// A lit dot: row `row` (a word) of glyph `glyph` from glyphFrom, column 0 the leftmost (bit 7).
+// False past the chip's end.
 bool GlyphDot(std::span<const std::uint8_t> words, const ContentsSettings& s, std::size_t glyph,
               unsigned row, unsigned column);
 

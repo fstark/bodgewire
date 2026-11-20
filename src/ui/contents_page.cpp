@@ -111,8 +111,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     }
     const std::size_t words = chip->words.size();
     ContentsSettings& s =
-        settings_.try_emplace(reference, DefaultSettings(defaults_, reference, chip->bits))
-            .first->second;
+        settings_.try_emplace(reference, DefaultSettings(defaults_, reference)).first->second;
     if (reference != shown_) {
         shown_ = reference;
         outlined_.reset();
@@ -231,7 +230,6 @@ void ContentsPage::settingsLine(ContentsSettings& s, std::size_t words) {
             s.glyphFrom = std::min<std::size_t>(from, words - 1);
         }
         Slider(row, "Rows", "##rows", s.glyphRows, 1, 16);
-        Slider(row, "Bits", "##bits", s.glyphBits, 1, 8);
         break;
     }
     }
@@ -333,10 +331,10 @@ void ContentsPage::codeView(const std::string& reference, const ChipContents& ch
 
 void ContentsPage::glyphView(const ChipContents& chip, const ContentsSettings& s) {
     const float width = ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ScrollbarSize;
-    const GlyphGrid grid = GlyphLayout(width, s.glyphBits);
+    const GlyphGrid grid = GlyphLayout(width);
     const float dot = grid.dot;
     const float labelSize = ImGui::GetStyle().FontSizeBase * kLabelScale;
-    const float cellW = dot * static_cast<float>(s.glyphBits + 2);
+    const float cellW = dot * static_cast<float>(kGlyphDots + 2);
     const float cellH = dot * static_cast<float>(s.glyphRows + 1) + labelSize + 2;
     const std::size_t count = GlyphCount(chip.words.size(), s);
     const auto columns = static_cast<std::size_t>(grid.columns);
@@ -353,12 +351,12 @@ void ContentsPage::glyphView(const ChipContents& chip, const ContentsSettings& s
                     break;
                 }
                 const ImVec2 at{origin.x + static_cast<float>(c) * cellW, origin.y};
-                const ImVec2 size{dot * static_cast<float>(s.glyphBits),
+                const ImVec2 size{dot * static_cast<float>(kGlyphDots),
                                   dot * static_cast<float>(s.glyphRows)};
                 list.AddRectFilled(at, {at.x + size.x, at.y + size.y}, kGlyphBack);
                 const float inset = dot >= 4 ? 0.5f : 0.0f;  // a hairline between dots
                 for (unsigned y = 0; y < s.glyphRows; ++y) {
-                    for (unsigned x = 0; x < s.glyphBits; ++x) {
+                    for (unsigned x = 0; x < kGlyphDots; ++x) {
                         if (GlyphDot(chip.words, s, g, y, x)) {
                             const ImVec2 p{at.x + static_cast<float>(x) * dot,
                                            at.y + static_cast<float>(y) * dot};

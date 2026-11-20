@@ -209,12 +209,12 @@ Each frame: `machine.contents(reference)` (a copy of at most 4K words: cheap at 
 
 1. Head: the reference as a `TextFlow` link (`kPageLink`; hover returned as the index's, `manual_window.cpp:index`; a click calls `board.focus` itself), then `" " + part + "  " + SizeText(words, bits)`, then the address range when the chip has an address (`$C000-$C7FF`, a plain hyphen: the UI font has no en dash). `Title` scale for the reference line.
 2. Three `SmallButton`s, the current one drawn as pressed (its `ButtonActive` colour).
-3. The settings line: `Address` (`$` field, 4 hex digits, `InputText` with `CharsHexadecimal`), then the view's own: Hex `Characters` (`Combo`); Code `CPU` (`Combo`), `From`, `Length`; Glyphs `From`, `Rows` (`SliderInt` 1–16), `Bits` (`SliderInt` 1–8). Hex and Code end with `Go to`. The fields are narrow (`SetNextItemWidth`), wrapping with `SameLine` only while they fit.
+3. The settings line: `Address` (`$` field, 4 hex digits, `InputText` with `CharsHexadecimal`), then the view's own: Hex `Characters` (`Combo`); Code `CPU` (`Combo`), `From`, `Length`; Glyphs `From`, `Rows` (`SliderInt` 1–16); no bits per row (the user, after the implementation: always 8). Hex and Code end with `Go to`. The fields are narrow (`SetNextItemWidth`), wrapping with `SameLine` only while they fit.
 4. The view in a child (`BeginChild("view")`), `ImGuiListClipper` over its lines; the page's fixed-width look: the UI font, columns placed by measured `CalcTextSize("0")` (the default font is monospaced).
 
 **Hex** (§7): words per row `HexColumns(width / CalcTextSize("0").x)`: 8 at the default width (the page about 448 px, 62 characters; a row of 16 needs 71), 16 when widened; a line `AAAA  WW WW …  text`, the text column's `£` drawn only when `ImGui::GetFont()` has U+00A3 (`IsGlyphInFont`), else `.`. Go to: the row of `address`, scrolled to with `SetScrollY(row * lineHeight)`, its word outlined (`AddRect`) until another Go to; an address outside the chip is ignored.
 **Code** (§8): the cached lines, `AAAA  BB BB BB  TEXT`, bytes padded to the longest (3 for the 6502, 4 for the Z80). Go to: the line whose range covers the address.
-**Glyphs** (§9): `GlyphLayout(width, bits)`: 16, 8 or 4 glyphs a row, the most whose dot is at least 3 px, the dot then `floor(width / (columns × (bits + 2)))` (an 8-bit set at the default width: 8 a row, 5 px dots); each glyph a dark square with lit dots (`IM_COL32(255, 200, 80, 255)` on `IM_COL32(30, 28, 26, 255)`: a lit phosphor on the paper), its index below in small print. Hover: `PageTooltip("$05: words $028-$02F")`, the words the chip's own (the CPU address would mislead on a character ROM).
+**Glyphs** (§9): `GlyphLayout(width)`: 16, 8 or 4 glyphs a row, the most whose dot is at least 3 px, the dot then `floor(width / (columns × 10))` (8 dots and a gap of 2; at the default width 8 a row, 5 px dots); each glyph a dark square with lit dots (`IM_COL32(255, 200, 80, 255)` on `IM_COL32(30, 28, 26, 255)`: a lit phosphor on the paper), its index below in small print. Hover: `PageTooltip("$05: words $028-$02F")`, the words the chip's own (the CPU address would mislead on a character ROM).
 
 The Contents link is the page's only Board target; its hits go to `board.route` as the other pages'.
 
@@ -230,18 +230,17 @@ struct ContentsSettings {
     Cpu cpu = Cpu::Mos6502;
     std::size_t codeFrom = 0, codeLength = 0;  // words; length 0: to the end
     std::size_t glyphFrom = 0;
-    unsigned glyphRows = 8, glyphBits = 8;
+    unsigned glyphRows = 8;  // a row always kGlyphDots (8) wide, bit 7 the leftmost
     bool operator==(const ContentsSettings&) const = default;
 };
 // §10's first view and §6–9's defaults, from the Machine's file and the chip's size.
-ContentsSettings DefaultSettings(const ContentsDefaults& defaults, std::string_view reference,
-                                 unsigned bits);
+ContentsSettings DefaultSettings(const ContentsDefaults& defaults, std::string_view reference);
 std::string SizeText(std::size_t words, unsigned bits);  // "2K x 8", "512 x 5"
 // UTF-8: one ASCII character, "£", or "." when none (§7).
 std::string_view CharacterOf(CharacterSet set, std::uint8_t code);
 int HexColumns(float characters);                         // 16, 8 or 4 that fit a row
 struct GlyphGrid { int columns; float dot; };              // dot in px
-GlyphGrid GlyphLayout(float width, unsigned bits);
+GlyphGrid GlyphLayout(float width);
 std::string HexLine(std::span<const std::uint8_t> words, std::uint32_t address, std::size_t from,
                     int columns, CharacterSet set);       // one row
 struct CodeLine {
@@ -251,17 +250,17 @@ struct CodeLine {
 };
 std::vector<CodeLine> Disassembly(std::span<const std::uint8_t> words, const ContentsSettings& s);
 // Lit dot of a glyph: row `row` (a word) of glyph `glyph` from glyphFrom, column 0 the leftmost
-// (bit glyphBits − 1). False past the chip's end.
+// (bit 7). False past the chip's end.
 bool GlyphDot(std::span<const std::uint8_t> words, const ContentsSettings& s, std::size_t glyph,
               unsigned row, unsigned column);
 std::size_t GlyphCount(std::size_t words, const ContentsSettings& s);
 ```
 
-`DefaultSettings`: `address` the chip's (else 0); `charset` the Machine's; `cpu` the Machine's (else 6502); `glyphFrom` the chip's `glyphs` (else 0), `glyphRows` 8, `glyphBits` the word width; `view` Code when the chip has an address and the Machine a CPU, else Glyphs when it has `glyphs`, else Hex (§10).
+`DefaultSettings`: `address` the chip's (else 0); `charset` the Machine's; `cpu` the Machine's (else 6502); `glyphFrom` the chip's `glyphs` (else 0), `glyphRows` 8; `view` Code when the chip has an address and the Machine a CPU, else Glyphs when it has `glyphs`, else Hex (§10).
 
 `Disassembly`: from `codeFrom` to `codeFrom + codeLength` (or the end), each instruction from `Disassemble6502` or `DisassembleZ80` over the words left in the range, at `address + offset`; nullopt (undocumented, or past the range) gives `.byte $XX` for one word.
 
-**Test** (`tests/view/memory_contents_test.cpp`, cases `contents: …`): `DefaultSettings` for the six Machines' chips (§ table: IC2 Code Z80 `$0000` glyphs `$0E00`; UA2 Glyphs 8 × 8; U15 Glyphs 8 × 5; U14 Hex); `CharacterOf` for each set's edges (§7's list); `HexColumns(62)` 8, `HexColumns(71)` 16; `GlyphLayout(434, 8)` 8 columns of 5 px; `HexLine` text; `Disassembly` over a few bytes (a branch's target, `.byte` at the range's end, `$FF` as `.byte`); `GlyphDot` on the real files: the 2513's `@` (word 1 `.###.`), UA2's `E` (screen code 5, the cell Odd E sticks), IC2's `K` at `$0E00 + $30 × 8`.
+**Test** (`tests/view/memory_contents_test.cpp`, cases `contents: …`): `DefaultSettings` for the six Machines' chips (§ table: IC2 Code Z80 `$0000` glyphs `$0E00`; UA2 Glyphs 8 × 8; U15 Glyphs; U14 Hex); `CharacterOf` for each set's edges (§7's list); `HexColumns(62)` 8, `HexColumns(71)` 16; `GlyphLayout(434)` 8 columns of 5 px; `HexLine` text; `Disassembly` over a few bytes (a branch's target, `.byte` at the range's end, `$FF` as `.byte`); `GlyphDot` on the real files: the 2513's `@` (word 1 `.###.` in columns 4–6 of 0–7), UA2's `E` (screen code 5, the cell Odd E sticks), IC2's `K` at `$0E00 + $30 × 8`.
 
 ## 7. Disassembly, `src/asm`
 

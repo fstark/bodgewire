@@ -29,6 +29,7 @@ Settled at the step's start (the user, 2026-11-20):
 | A mask ROM's window while one of its pins is hovered | kept: any x-ray shows the die (the body, a pin or the selection) |
 | The ROM-fault Puzzles | all three kept: none is given away (below) |
 | The text column's codes with no letter | a dot: letters, digits and punctuation in the UI font, everything else `.`; an inverse ZX80 letter as its letter |
+| Bits per row (after the implementation) | none: a glyph is always 8 dots wide, bit 7 the leftmost. Which bits reach the screen is the circuit's business, not the ROM's |
 
 The ROM-fault Puzzles, checked against the views (the user agreed, 2026-11-20):
 
@@ -65,15 +66,15 @@ Derived in the design (2026-11-20), reported to the user:
    - `£` is drawn if the UI font has the glyph, else a dot.
    - ZX80: `$00` space, `$01` `"`, `$0C` `£`, `$0D` `$`, `$0E` `:`, `$0F` `?`, `$10`–`$1B` `( ) - + * / = > < ; , .`, `$1C`–`$25` digits, `$26`–`$3F` letters; bit 7 (inverse) as the same character; the block graphics `$02`–`$0B` and the tokens (`$40`–`$7F`, `$C0`–`$FF`) a dot.
 8. **Code**: one line per instruction: address, its bytes in hex, the instruction (upper case, `$` hex, MOS and Zilog syntax: `LDA ($FA),Y`, `LDA $0034` for an absolute operand, always four digits, `LD HL,($4004)`, an index displacement in decimal as Zilog writes it, `LD B,(IX-3)`, branch targets as addresses). Settings: **CPU** (6502, Z80), **From** (an offset into the chip, hex), **Length** (words, hex), and the Go to field. An undocumented opcode, or an instruction running past the length, is a `.byte $XX` line. Default: the Machine's CPU (6502 on a Machine without one), the whole chip.
-9. **Glyphs**: the words from **From**, cut into glyphs of **Rows** words each, one word a row of the **Bits** low bits, the highest the leftmost dot; drawn as lit dots on dark squares, 16, 8 or 4 glyphs to a row (the most that keep a dot at least 3 px), each with its index under it (`$05`). Hovering a glyph tells its index and its words in the chip (`$05: words $028-$02F`). Default: from the chip's `glyphs` in `contents.txt` (else 0), 8 rows, the word's width (8, or 5 for the 2513).
+9. **Glyphs**: the words from **From**, cut into glyphs of **Rows** words each, one word a row, always 8 dots wide, bit 7 the leftmost (a 2513's 5-bit glyph in the right five columns); drawn as lit dots on dark squares, 16, 8 or 4 glyphs to a row (the most that keep a dot at least 3 px), each with its index under it (`$05`). Hovering a glyph tells its index and its words in the chip (`$05: words $028-$02F`). Default: from the chip's `glyphs` in `contents.txt` (else 0), 8 rows.
 10. Which view a chip opens at, the first time in the run: Code when the chip has an address and the Machine a CPU; else Glyphs when it has `glyphs`; else Hex. After that the page keeps each chip's view and settings for the run.
 
 ### What the chips show
 
 | Machine | Chip | Opens at |
 |---|---|---|
-| Message | U14 (message 2716), U15 (2513) | Hex ASCII; Glyphs 8 × 5 |
-| Typewriter | U23 (2513) | Glyphs 8 × 5 |
+| Message | U14 (message 2716), U15 (2513) | Hex ASCII; Glyphs |
+| Typewriter | U23 (2513) | Glyphs |
 | LED Computer | U2 (2716) | Code 6502 at `$F800` |
 | BW-1 | U2 (6530-002's ROM), U3 (6530-003's) | Code 6502 at `$1C00`, `$1800` |
 | BW-2001 | UH1, UH5, UH2, UH6, UH3, UH4, UH7; UA2 | Code 6502 at `$C000`, `$C800`, `$D000`, `$D800`, `$E000`, `$F000`, `$F800`, PETSCII; Glyphs 8 × 8 (901447-08) |
