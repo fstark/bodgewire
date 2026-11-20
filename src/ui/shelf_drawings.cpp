@@ -164,8 +164,8 @@ void Puller(Pen& p, const ItemLook& look) {
 }
 
 void Iron(Pen& p, const ItemLook& look) {
-    // Handle bottom right, the shaft and copper tip to the upper left, a drop of solder; held
-    // (lit), the tip glowing hot.
+    // Handle bottom right, the shaft and copper tip to the upper left; held (lit), the tip glowing
+    // hot, a drop of solder beside it.
     constexpr ImU32 kHot = IM_COL32(255, 120, 30, 255);
     p.line(48, 48, 32, 32, IM_COL32(40, 70, 140, 255), 9);
     p.line(33, 33, 30, 30, kDarkMetal, 6);
@@ -174,7 +174,9 @@ void Iron(Pen& p, const ItemLook& look) {
         p.disc(11, 11, 6, IM_COL32(255, 120, 30, 70));
     }
     p.line(15, 15, 9, 9, look.lit ? kHot : kCopper, 2.5f);
-    p.disc(11, 18, 3, IM_COL32(200, 200, 210, 255));
+    if (look.lit) {
+        p.disc(11, 18, 3, IM_COL32(200, 200, 210, 255));
+    }
 }
 
 void Cutters(Pen& p, const ItemLook& look) {
@@ -189,16 +191,16 @@ void Cutters(Pen& p, const ItemLook& look) {
 }
 
 void Wire(Pen& p, const ItemLook& look) {
-    // A coil of green wire, its end stripped to copper; held (lit), the end tinned, a bead of
-    // solder on it.
+    // A coil of green wire, its end stripped to copper at the upper left (clear of the tooltip);
+    // held (lit), the end tinned, a bead of solder on it.
     for (int i = 0; i < 3; ++i) {
-        const float x = 20 + static_cast<float>(i) * 5;
+        const float x = 26 + static_cast<float>(i) * 5;
         p.ellipse(x, 28, 10, 16, IM_COL32(40, 170, 70, 255), 2.5f);
     }
-    p.line(40, 32, 48, 44, IM_COL32(40, 170, 70, 255), 2.5f);
-    p.line(48, 44, 51, 49, look.lit ? kMetal : kCopper, 2);
+    p.line(16, 24, 8, 12, IM_COL32(40, 170, 70, 255), 2.5f);
+    p.line(8, 12, 5, 7, look.lit ? kMetal : kCopper, 2);
     if (look.lit) {
-        p.disc(51.5f, 49.5f, 2.5f, IM_COL32(200, 200, 210, 255));
+        p.disc(4.5f, 6.5f, 2.5f, IM_COL32(200, 200, 210, 255));
     }
 }
 
