@@ -193,9 +193,9 @@ std::optional<Box> ResistorBodyOf(const BoardComponent& component) {
     return Box{{c.x - width, c.y - half}, {c.x + width, c.y + half}};
 }
 
-// A chip holding a program or a character set: an EPROM shows its quartz window, a mask ROM
-// only while x-rayed (its die seen through the epoxy). Either has its part number beside the
-// window, the same whether the window shows or not.
+// A chip holding a program or a character set: an EPROM shows its quartz window, its part
+// number beside it; a mask ROM shows it only while x-rayed (its die seen through the epoxy),
+// over its part number, which stays centred.
 enum class Memory { None, Eprom, Mask };
 
 Memory MemoryOf(std::string_view part) {
@@ -338,10 +338,10 @@ void DrawChip(ImDrawList& list, const LookMap& map, const BoardScene& scene, std
     list.PathFillConvex(kNotch);
 
     // The part number along the body, as large as the body takes, readable when zoomed out; on a
-    // memory, between the window and the end away from pin 1.
+    // an EPROM, between the window and the end away from pin 1.
     const std::string part(scene.partName(k));
     Box space = body;
-    if (MemoryOf(part) != Memory::None) {
+    if (MemoryOf(part) == Memory::Eprom) {
         const std::int64_t edge = WindowRadius(*shape) * 23 / 20;  // the seal's
         std::int64_t& end = horizontal ? (oneAtMin ? space.min.x : space.max.x)
                                        : (oneAtMin ? space.min.y : space.max.y);
