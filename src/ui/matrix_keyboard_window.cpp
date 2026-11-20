@@ -289,16 +289,18 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
 
 template <class Draw>
 void MatrixKeyboardWindow::drawCaps(Session& session, const MatrixCapture& capture,
-                                    std::span<const MatrixCap> caps, std::size_t shift, ImVec2 keys,
-                                    float u, ImVec2 gap, float height, Draw&& draw) {
+                                    std::span<const MatrixCap> caps,
+                                    std::span<const std::size_t> shifts, ImVec2 keys, float u,
+                                    ImVec2 gap, float height, Draw&& draw) {
     latched_.resize(std::max(latched_.size(), caps.size()), false);
+    shiftClicked_.resize(latched_.size(), false);
     std::vector<bool> down(latched_.size(), false);
     for (const MatrixPress& p : capture.held()) {
         if (p.key < down.size()) {
             down[p.key] = true;
         }
-        if (p.shift && shift < down.size()) {
-            down[shift] = true;
+        if (p.shift && shifts.front() < down.size()) {
+            down[shifts.front()] = true;
         }
     }
     for (const MatrixCap& cap : caps) {
@@ -313,8 +315,16 @@ void MatrixKeyboardWindow::drawCaps(Session& session, const MatrixCapture& captu
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
             latched_[cap.key] = !latched_[cap.key];
         }
+        const bool isShift = std::ranges::contains(shifts, cap.key);
+        if (isShift && ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+            shiftClicked_[cap.key] = !shiftClicked_[cap.key];
+        }
+        if (!isShift && ImGui::IsItemDeactivated() &&
+            ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+            std::ranges::fill(shiftClicked_, false);  // down until the key it shifted is up
+        }
         const bool mouse = ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
-        const bool held = mouse || latched_[cap.key];
+        const bool held = mouse || latched_[cap.key] || shiftClicked_[cap.key];
         if (held != session.matrixKeyHeld(capture.reference, cap.key)) {
             session.setMatrixKeyHeld(capture.reference, cap.key, held);  // ignored when off
         }
@@ -354,7 +364,8 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
         0.1f * u);
 
     const auto all = Bw2001Keys();
-    drawCaps(session, capture, Bw2001Caps(), *Bw2001KeyAt(8, 0), keys, u, {kGap, kGap}, 1,
+    const std::array<std::size_t, 2> shifts{*Bw2001KeyAt(8, 0), *Bw2001KeyAt(8, 5)};
+    drawCaps(session, capture, Bw2001Caps(), shifts, keys, u, {kGap, kGap}, 1,
              [&](const MatrixCap& cap, ImVec2 a, ImVec2 b, bool down) {
                  DrawPetKey(list, petLegends_, all[cap.key].legend, a, b, u, down,
                             cap.x >= kMatrixPadX);
@@ -568,8 +579,9 @@ void MatrixKeyboardWindow::drawMembrane(Session& session, const MatrixCapture& c
 
     const ImVec2 keys{panelA.x + kMembraneSide * u, panelA.y + kMembraneTop * u};
     const auto all = Zx80Keys();
-    drawCaps(session, capture, Zx80Caps(), *Zx80KeyAt(0, 0), keys, u, {1 - kZx80CapWidth, 0},
-             kZx80CapHeight, [&](const MatrixCap& cap, ImVec2 a, ImVec2 b, bool down) {
+    const std::array<std::size_t, 1> shifts{*Zx80KeyAt(0, 0)};
+    drawCaps(session, capture, Zx80Caps(), shifts, keys, u, {1 - kZx80CapWidth, 0}, kZx80CapHeight,
+             [&](const MatrixCap& cap, ImVec2 a, ImVec2 b, bool down) {
                  DrawMembraneKey(list, legends_, all[cap.key], a, b, u, down);
              });
 }

@@ -21,7 +21,7 @@ A blinking square under `READY` is the cursor. The BW-2001 is waiting for you to
 
 ## Using it
 
-**The keyboard.** It is the PET 2001's keyboard. The letters and the top row's symbols are on the left. The digits and `/ * + - = .` are on the pad at the right.
+**The keyboard.** It is the PET 2001's keyboard. The letters and the top row's symbols are on the left. The digits and `/ * + - = .` are on the pad at the right. Click a key to press it. A click on SHIFT keeps it down until the next key you click is up, or until you click SHIFT again. A right-click keeps any key down until you right-click it again.
 
 On a PC keyboard, each key types the BW-2001 key with the same character, with the keyboard's window out or put away. Return is RETURN, Backspace is DEL, Escape is STOP and Home is HOME. The arrows are the cursor keys. Cmd+V (Ctrl+V) pastes text, typed one key at a time.
 
