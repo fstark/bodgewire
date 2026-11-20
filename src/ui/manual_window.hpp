@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -7,6 +8,7 @@
 #include "manual/manual.hpp"
 #include "ui/board_view.hpp"
 #include "ui/chip_panel.hpp"
+#include "ui/contents_page.hpp"
 #include "ui/manual_view.hpp"
 #include "view/binder.hpp"
 
@@ -19,15 +21,23 @@ inline constexpr float kMinStretch = 0.7f, kMaxStretch = 2.5f;
 
 // The manuals binder (P6e): a drawn ring binder with four dividers, the User Manual, the Service
 // Manual, the Datasheets (the hovered or selected chip's page, else an index of the Machine's
-// Parts) and the Repairs log. Out at the User Manual; a chip selected while it is out turns it to
-// that chip's page.
+// Parts) and the Repairs log; a fifth, Contents, once a memory chip's window was clicked (P6p).
+// Out at the User Manual; a chip selected while it is out turns it to that chip's page.
 class ManualWindows {
 public:
+    // `machine`: the Contents page's words; null without a Machine (no Board, no Contents).
     void draw(bool& open, const Manuals& manuals, BoardView& board, const LoadedCircuit& design,
-              std::span<const std::string> log);
+              std::span<const std::string> log, const Machine* machine);
     void show(Divider divider) { binder_.show(divider); }  // --manual: the divider it comes out at
     // --binder-height: its first height for its width, 1 its proportions (P6o: resized freely).
     void setStretch(float stretch) { stretch_ = stretch; }
+    // A memory chip's window clicked, or --contents (P6p): the Contents divider at that chip, at
+    // `view` (else the chip's default the first time, then the player's last).
+    void openContents(const BoardScene& scene, std::size_t component,
+                      std::optional<ContentsView> view = std::nullopt);
+    void setContentsDefaults(ContentsDefaults defaults) {
+        contents_.setDefaults(std::move(defaults));
+    }
 
 private:
     void tabs(bool board);
@@ -37,6 +47,7 @@ private:
     Binder binder_;
     ManualView user_, service_, sheet_;
     ChipPanel chip_;
+    ContentsPage contents_;
     std::vector<IndexEntry> index_;
     bool indexed_ = false;
     float stretch_ = 1;

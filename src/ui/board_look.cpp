@@ -17,6 +17,7 @@
 #include "board/copper.hpp"
 #include "netlist/units.hpp"
 #include "view/board_marks.hpp"
+#include "view/chip_body.hpp"
 
 namespace bw {
 namespace {
@@ -68,27 +69,7 @@ constexpr std::array<ImU32, 10> kBands = {
 constexpr ImU32 kGold = IM_COL32(200, 160, 60, 255);
 constexpr ImU32 kSilver = IM_COL32(190, 190, 195, 255);
 
-struct Box {
-    Point min, max;  // nm
-    std::int64_t width() const { return max.x - min.x; }
-    std::int64_t height() const { return max.y - min.y; }
-    Point centre() const { return {(min.x + max.x) / 2, (min.y + max.y) / 2}; }
-    Box grown(std::int64_t by) const {
-        return {{min.x - by, min.y - by}, {max.x + by, max.y + by}};
-    }
-};
-
-std::optional<Box> PadCentres(const BoardComponent& component) {
-    if (component.pads.empty()) {
-        return std::nullopt;
-    }
-    Box box{component.pads[0].position, component.pads[0].position};
-    for (const Pad& pad : component.pads) {
-        box.min = {std::min(box.min.x, pad.position.x), std::min(box.min.y, pad.position.y)};
-        box.max = {std::max(box.max.x, pad.position.x), std::max(box.max.y, pad.position.y)};
-    }
-    return box;
-}
+using Box = BodyBox;
 
 const Pad* PadOne(const BoardComponent& component) {
     const auto it = std::ranges::find(component.pads, "1", &Pad::number);
@@ -150,30 +131,6 @@ float FitText(const std::string& text, float preferred, float along, float acros
     return size >= kSmallestPrintPx ? size : 0;
 }
 
-struct ChipBody {
-    Box box;
-    bool horizontal;  // pad rows along x
-};
-
-// The epoxy body between a DIP's pad rows, past its end pins.
-std::optional<ChipBody> BodyOf(const BoardComponent& component) {
-    const auto pads = PadCentres(component);
-    if (!pads) {
-        return std::nullopt;
-    }
-    const bool horizontal = pads->width() >= pads->height();
-    const std::int64_t inset = 650'000;       // body edge from a row's pad centres
-    const std::int64_t overhang = 1'270'000;  // body past the end pins
-    if (horizontal) {
-        return ChipBody{{{pads->min.x - overhang, pads->min.y + inset},
-                         {pads->max.x + overhang, pads->max.y - inset}},
-                        true};
-    }
-    return ChipBody{{{pads->min.x + inset, pads->min.y - overhang},
-                     {pads->max.x - inset, pads->max.y + overhang}},
-                    false};
-}
-
 // An axial resistor's body: centred between its two pads, along them.
 std::optional<Box> ResistorBodyOf(const BoardComponent& component) {
     if (component.pads.size() != 2) {
@@ -196,24 +153,6 @@ std::optional<Box> ResistorBodyOf(const BoardComponent& component) {
 // A chip holding a program or a character set: an EPROM shows its quartz window, its part
 // number beside it; a mask ROM shows it only while x-rayed (its die seen through the epoxy),
 // over its part number, which stays centred.
-enum class Memory { None, Eprom, Mask };
-
-Memory MemoryOf(std::string_view part) {
-    if (part == "2716") {
-        return Memory::Eprom;
-    }
-    if (part == "2332" || part == "2316B" || part == "2513" || part == "6530") {
-        return Memory::Mask;
-    }
-    return Memory::None;
-}
-
-// The window's radius: 30 % of the body's width.
-std::int64_t WindowRadius(const ChipBody& shape) {
-    const std::int64_t across = shape.horizontal ? shape.box.height() : shape.box.width();
-    return across * 3 / 10;
-}
-
 constexpr ImU32 kWindowSeal = IM_COL32(150, 152, 158, 255);
 constexpr ImU32 kQuartz = IM_COL32(24, 30, 44, 255);
 constexpr ImU32 kDie = IM_COL32(128, 132, 140, 255);
@@ -225,13 +164,13 @@ constexpr ImU32 kBond = IM_COL32(215, 185, 90, 255);
 // arrays, bond pads along its long edges wired out to the window's rim.
 void DrawMemoryWindow(ImDrawList& list, const LookMap& map, const BoardScene& scene, std::size_t k,
                       bool xray) {
-    const Memory memory = MemoryOf(scene.partName(k));
-    const auto shape = BodyOf(scene.board().components[k]);
-    if (memory == Memory::None || !shape || (memory == Memory::Mask && !xray)) {
+    const MemoryLook memory = MemoryLookOf(scene.partName(k));
+    const auto shape = MemoryWindowOf(scene.board().components[k], scene.partName(k));
+    if (!shape || (memory == MemoryLook::Mask && !xray)) {
         return;
     }
-    const ImVec2 c = map(shape->box.centre());
-    const float r = map.pixels(WindowRadius(*shape));
+    const ImVec2 c = map(shape->centre);
+    const float r = map.pixels(shape->quartz);
     if (r < 2) {
         return;
     }
@@ -341,8 +280,8 @@ void DrawChip(ImDrawList& list, const LookMap& map, const BoardScene& scene, std
     // an EPROM, between the window and the end away from pin 1.
     const std::string part(scene.partName(k));
     Box space = body;
-    if (MemoryOf(part) == Memory::Eprom) {
-        const std::int64_t edge = WindowRadius(*shape) * 23 / 20;  // the seal's
+    if (MemoryLookOf(part) == MemoryLook::Eprom) {
+        const std::int64_t edge = MemoryWindowOf(component, part)->seal;
         std::int64_t& end = horizontal ? (oneAtMin ? space.min.x : space.max.x)
                                        : (oneAtMin ? space.min.y : space.max.y);
         end = (horizontal ? body.centre().x : body.centre().y) + (oneAtMin ? edge : -edge);

@@ -15,4 +15,13 @@ void Binder::frame(bool out, std::optional<std::size_t> selected) {
     out_ = out;
 }
 
+void Binder::openContents(std::size_t component) {
+    contents_ = component;
+    if (out_) {
+        divider_ = Divider::Contents;
+    } else {
+        shown_ = Divider::Contents;
+    }
+}
+
 }  // namespace bw

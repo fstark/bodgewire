@@ -111,6 +111,8 @@ public:
     void setPlainLook(bool on) { plainLook_ = on; }
     bool plainLook() const { return plainLook_; }
     std::optional<BoardClick> takeClick();  // released without dragging
+    // A memory chip's window clicked (P6p), whatever the tool: no takeClick() for it.
+    std::optional<std::size_t> takeContentsClick();
     std::optional<std::size_t> chip() const { return hovered_ ? hovered_ : selected_; }
     void select(std::size_t component) { selected_ = component; }
     void deselect() { selected_.reset(); }
@@ -185,8 +187,10 @@ private:
     std::optional<std::size_t> hovered_, selected_;
     std::optional<BoardTarget> outside_;
     std::optional<Flash> flash_;
-    bool pressed_ = false;        // left button went down on the panel
-    bool cornerPressed_ = false;  // ... on the flip corner (P6o)
+    bool pressed_ = false;                      // left button went down on the panel
+    bool cornerPressed_ = false;                // ... on the flip corner (P6o)
+    std::optional<std::size_t> windowPressed_;  // ... on a memory chip's window (P6p)
+    std::optional<std::size_t> contentsClick_;
     bool dragging_ = false;
     std::optional<BoardClick> click_;
     std::optional<Point> tip_;

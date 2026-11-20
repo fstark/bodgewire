@@ -185,6 +185,7 @@ add_executable(bw_tests
   view/board_marks_test.cpp
   view/contents_defaults_test.cpp
   view/board_scene_test.cpp
+  view/chip_body_test.cpp
   view/digit_shape_test.cpp
   view/flip_corner_test.cpp
   view/focus_test.cpp

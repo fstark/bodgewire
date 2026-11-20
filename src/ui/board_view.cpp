@@ -2,6 +2,7 @@
 
 #include "ui/bench.hpp"
 #include "ui/board_look.hpp"
+#include "view/chip_body.hpp"
 #include "view/flip_corner.hpp"
 
 #include <algorithm>
@@ -1154,6 +1155,10 @@ void BoardView::input(ImVec2 origin) {
     // The flip corner (P6o): a control on the Board, whatever the tool.
     const bool onCorner =
         OnFlipCorner(at, scene_->bounds(), FlipCornerSide(viewport_.pixelsPerMm()));
+    // A memory chip's window (P6p): a control too, where it is drawn (the real look); the corner
+    // wins.
+    const std::optional<std::size_t> onWindow =
+        plainLook_ || onCorner ? std::nullopt : MemoryWindowAt(*scene_, at);
     std::optional<Pick> picked;
     if (hoveredPanel || pressed_) {
         picked = scene_->pick(at, active_, reach());
@@ -1162,6 +1167,10 @@ void BoardView::input(ImVec2 origin) {
         if (!dragging_ && cornerPressed_) {
             if (onCorner) {
                 toggleLayer();
+            }
+        } else if (!dragging_ && windowPressed_) {
+            if (onWindow == windowPressed_) {
+                contentsClick_ = windowPressed_;
             }
         } else if (!dragging_) {
             std::optional<std::size_t> component;
@@ -1175,6 +1184,7 @@ void BoardView::input(ImVec2 origin) {
         }
         pressed_ = false;
         cornerPressed_ = false;
+        windowPressed_.reset();
         dragging_ = false;
     }
     if (held_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
@@ -1208,6 +1218,7 @@ void BoardView::input(ImVec2 origin) {
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         held_ = buttonAt();
         cornerPressed_ = onCorner;
+        windowPressed_ = onWindow;
         if (held_ && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
                 return t.component == *held_ && t.look == SwitchLook::Slide;
             })) {
@@ -1220,7 +1231,7 @@ void BoardView::input(ImVec2 origin) {
         dragging_ = false;
     }
     // Not under the pencil: two quick clicks change a mark from dot to cross.
-    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked && !onCorner &&
+    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked && !onCorner && !onWindow &&
         owner_ != Owner::Pencil) {
         fit();
     }
@@ -1240,7 +1251,10 @@ void BoardView::input(ImVec2 origin) {
         } else if (hit.kind == HitKind::Component) {
             hovered_ = hit.component;
         }
-        const std::string text = tooltip_ ? tooltip_(*scene_, hit) : scene_->hoverText(hit);
+        const std::string text =
+            onWindow   ? "Read " + scene_->board().components[*onWindow].reference + "'s contents"
+            : tooltip_ ? tooltip_(*scene_, hit)
+                       : scene_->hoverText(hit);
         // A refusal is drawn where the tooltip would go: it wins while it shows.
         const bool refusing = refusal_ && std::chrono::steady_clock::now() < refusal_->until;
         if (!text.empty() && !refusing) {
@@ -1258,6 +1272,10 @@ void BoardView::refuse(std::string reason) {
 }
 
 std::optional<BoardClick> BoardView::takeClick() { return std::exchange(click_, std::nullopt); }
+
+std::optional<std::size_t> BoardView::takeContentsClick() {
+    return std::exchange(contentsClick_, std::nullopt);
+}
 
 std::optional<Point> BoardView::takeRightClick() {
     return std::exchange(rightClick_, std::nullopt);

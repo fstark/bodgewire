@@ -33,7 +33,7 @@ string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," bytes "${pet_font_hex}")
 configure_file(pet_font.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/pet_font.cpp @ONLY)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS fonts/Saira-ExpandedBold.ttf)
 
-add_executable(bw_ui main.cpp gpu_render.cpp window_order.cpp analyzer_window.cpp board_look.cpp board_view.cpp chip_panel.cpp instrument_marks.cpp keyboard_capture.cpp
+add_executable(bw_ui main.cpp gpu_render.cpp window_order.cpp analyzer_window.cpp board_look.cpp board_view.cpp chip_panel.cpp contents_page.cpp instrument_marks.cpp keyboard_capture.cpp
                      keyboard_window.cpp matrix_capture.cpp matrix_keyboard_window.cpp keycap.cpp board_keys.cpp manual_view.cpp meter_window.cpp scope_window.cpp
                      shelf.cpp shelf_drawings.cpp tv_view.cpp tv_window.cpp knob_window.cpp bench.cpp
                      manual_window.cpp brief_window.cpp debug_window.cpp power_cycle_popup.cpp

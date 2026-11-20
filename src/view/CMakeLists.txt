@@ -4,6 +4,7 @@ add_library(bw_view STATIC
   binder.cpp
   board_marks.cpp
   board_scene.cpp
+  chip_body.cpp
   digit_shape.cpp
   flip_corner.cpp
   focus.cpp

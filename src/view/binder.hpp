@@ -8,8 +8,9 @@
 
 namespace bw {
 
-// The manuals binder's dividers, front to back (P6e).
-enum class Divider : std::uint8_t { User, Service, Datasheets, Repairs };
+// The manuals binder's dividers, front to back (P6e); Contents once a memory chip's window was
+// clicked (P6p).
+enum class Divider : std::uint8_t { User, Service, Datasheets, Repairs, Contents };
 
 // Which divider is open and which Part's sheet the index opened.
 class Binder {
@@ -26,12 +27,18 @@ public:
     const std::optional<std::string>& part() const { return part_; }
     void openPart(std::string part) { part_ = std::move(part); }  // a Part's name in the index
     void closePart() { part_.reset(); }                           // All datasheets
+    // A memory chip's window clicked (P6p): the Contents divider shows it, at once if the binder
+    // is out, else when it comes out (the click brings it out); a later coming out from the shelf
+    // is at the User Manual again.
+    void openContents(std::size_t component);
+    std::optional<std::size_t> contents() const { return contents_; }  // its tab shows once set
 
 private:
     Divider divider_ = Divider::User;
     std::optional<Divider> shown_;
     std::optional<std::size_t> selected_;
     std::optional<std::string> part_;
+    std::optional<std::size_t> contents_;
     bool out_ = false;
 };
 

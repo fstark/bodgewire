@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <print>
@@ -54,7 +55,10 @@
 #include "ui/shelf.hpp"
 #include "ui/tv_view.hpp"
 #include "ui/tv_window.hpp"
+#include "ui/window_order.hpp"
+#include "view/contents_defaults.hpp"
 #include "view/focus.hpp"
+#include "view/memory_contents.hpp"
 #include "view/pencil_marks.hpp"
 #include "view/power_cycle.hpp"
 #include "view/time_view.hpp"
@@ -82,7 +86,7 @@ constexpr std::string_view kUsage =
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
     "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
     "[--away tv|keyboard|knob,...] [--run pause|1x|max] [--side front|back] [--ask REPAIR] "
-    "[--binder-height N%] [--brief DX:DY] "
+    "[--binder-height N%] [--brief DX:DY] [--contents REF[:hex|code|glyphs]] "
     "[--debug] "
     "[--screenshot OUT.png [--after 1s]]";
 
@@ -119,6 +123,8 @@ struct Options {
     std::optional<RepairAction> ask;      // --ask: the power-cycle popup open at start (P6o)
     float binderHeight = 1;               // --binder-height: the binder's stretch (P6o)
     std::optional<ImVec2> brief;          // --brief: the note's offset on the Board, px (P6o)
+    // --contents: the binder out at a memory chip's Contents, at a view (P6p).
+    std::optional<std::pair<std::string, std::optional<ContentsView>>> contents;
 };
 
 std::optional<BenchObject> ParseBenchObject(std::string_view name) {
@@ -345,6 +351,23 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 }
                 options.away.push_back(*object);
             }
+        } else if (arg == "--contents") {
+            const std::string_view text = argv[++i];
+            const std::size_t colon = text.find(':');
+            std::optional<ContentsView> view;
+            if (colon != std::string_view::npos) {
+                const std::string_view name = text.substr(colon + 1);
+                if (name == "hex") {
+                    view = ContentsView::Hex;
+                } else if (name == "code") {
+                    view = ContentsView::Code;
+                } else if (name == "glyphs") {
+                    view = ContentsView::Glyphs;
+                } else {
+                    return std::nullopt;
+                }
+            }
+            options.contents.emplace(std::string(text.substr(0, colon)), view);
         } else if (arg == "--binder-height") {
             const std::string_view text = argv[++i];
             float percent = 0;
@@ -720,6 +743,24 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
         manualWindows.show(*options.manual);
     }
     manualWindows.setStretch(options.binderHeight);
+    // The Contents page's defaults (P6p): none without the file; a bad one is ignored.
+    if (const auto path = MachineDir(options.file) / "roms" / "contents.txt";
+        std::filesystem::exists(path)) {
+        std::ifstream in(path);
+        const std::string text{std::istreambuf_iterator<char>(in),
+                               std::istreambuf_iterator<char>()};
+        if (auto defaults = ParseContentsDefaults(text, "contents.txt")) {
+            manualWindows.setContentsDefaults(std::move(*defaults));
+        } else {
+            std::println(stderr, "bw_ui: warning: {}", defaults.error());
+        }
+    }
+    if (options.contents) {  // a memory chip on the Board: checked in main()
+        const BoardScene& scene = *boardView.scene();
+        manualWindows.openContents(scene, *scene.componentIndex(options.contents->first),
+                                   options.contents->second);
+        shelf.manualOut = true;
+    }
     BriefNote briefNote;
     if (options.brief) {
         briefNote.offset = *options.brief;
@@ -883,6 +924,12 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
             pending = std::move(plan);
             const BenchRect area = BenchArea();
             popup.open({(area.min.x + area.max.x) / 2, (area.min.y + area.max.y) / 2});
+        }
+        // A memory chip's window (P6p): the binder at its contents, whatever the tool.
+        if (const auto chip = boardView.takeContentsClick()) {
+            manualWindows.openContents(*boardView.scene(), *chip);
+            shelf.manualOut = true;
+            BringToFront(kManualWindowName);
         }
         if (const auto click = boardView.takeClick()) {
             const auto& pick = click->pick;
@@ -1202,7 +1249,7 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
         tvWindow.draw(shelf.tvOut, view);
         knobWindow.draw(shelf.knobOut, session);
         manualWindows.draw(shelf.manualOut, loaded.manuals.manuals, boardView, DesignOf(session),
-                           session.log());
+                           session.log(), session.machine());
         if (session.machine()) {
             const auto instrument = [&](Owner owner, auto& window) {
                 bool open = focus.out(owner);
@@ -1298,6 +1345,14 @@ int main(int argc, char** argv) {
             return kExitUsage;
         }
         session.touch(ProbeTip{*at, Layer::Front});
+    }
+    if (options->contents) {
+        const std::string& reference = options->contents->first;
+        if (!session.machine() || !session.machine()->contents(reference)) {  // a ROM on a Board
+            std::println(stderr, "bw_ui: no memory chip '{}'", reference);
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
     }
     AnalyzerSettings analyzer;
     if (options->sample) {

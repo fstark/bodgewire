@@ -87,3 +87,27 @@ TEST_CASE("binder: a Part opened from the index, closed by a selection or coming
     binder.frame(true, 6);
     CHECK_FALSE(binder.part());
 }
+
+TEST_CASE("binder: a memory chip's window opens Contents, out or away", "[binder]") {
+    Binder away;
+    CHECK_FALSE(away.contents().has_value());
+    away.frame(false, std::nullopt);
+    away.openContents(4);
+    away.frame(true, std::nullopt);  // the click brings it out
+    CHECK(away.divider() == Divider::Contents);
+    CHECK(away.contents() == std::size_t{4});
+
+    Binder out;
+    out.frame(true, std::nullopt);
+    out.turn(Divider::Service);
+    out.openContents(7);
+    CHECK(out.divider() == Divider::Contents);
+    out.frame(true, std::nullopt);
+    CHECK(out.divider() == Divider::Contents);
+    out.frame(true, 2);  // a chip selected: its datasheet
+    CHECK(out.divider() == Divider::Datasheets);
+    CHECK(out.contents() == std::size_t{7});  // the tab stays
+    out.frame(false, 2);
+    out.frame(true, 2);  // out again from the shelf: the User Manual, not Contents
+    CHECK(out.divider() == Divider::User);
+}

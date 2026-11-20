@@ -182,7 +182,7 @@ void setContentsDefaults(ContentsDefaults defaults);  // the Machine's roms/cont
 
 The `--manual` flag is unchanged.
 
-**The paper's widgets**: `PushPaper` (`manual_window.cpp:69`) pushes text colours only, and no page had a field before. It gains the frame (`FrameBg`, `FrameBgHovered`, `FrameBgActive`: a lighter tan), `PopupBg` (the paper), `SliderGrab`, `SliderGrabActive` (the tan of the buttons, darker), `CheckMark` and `TextSelectedBg` (a pale blue), so a field reads as ink on paper and a combo's list as a slip of paper; `kPaperColours` follows.
+**The paper's widgets**: `PushPaper` (`manual_window.cpp:69`) pushes text colours only, and no page had a field before. It gains the frame (`FrameBg`, `FrameBgHovered`, `FrameBgActive`: a lighter paper), `SliderGrab`, `SliderGrabActive` (the tan of the buttons, darker), `CheckMark` and `TextSelectedBg` (a pale blue), so a field reads as ink on paper; `kPaperColours` follows. `PopupBg` (the paper) is pushed around each combo only: `PageTooltip`'s light text needs the tooltips' dark background.
 
 ## 5. The page, `src/ui/contents_page.{hpp,cpp}`
 

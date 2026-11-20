@@ -42,11 +42,12 @@ struct Tab {
     const char* label;
     ImU32 colour;
 };
-constexpr std::array<Tab, 4> kTabs{{
+constexpr std::array<Tab, 5> kTabs{{
     {Divider::User, "User\nManual", IM_COL32(240, 225, 140, 255)},
     {Divider::Service, "Service\nManual", IM_COL32(170, 215, 160, 255)},
     {Divider::Datasheets, "Datasheets", IM_COL32(165, 195, 235, 255)},
     {Divider::Repairs, "Repairs", IM_COL32(235, 175, 190, 255)},
+    {Divider::Contents, "Contents", IM_COL32(200, 185, 235, 255)},  // P6p: once opened
 }};
 
 const char* PageId(Divider divider) {
@@ -59,6 +60,8 @@ const char* PageId(Divider divider) {
         return "page datasheets";
     case Divider::Repairs:
         return "page repairs";
+    case Divider::Contents:
+        return "page contents";
     }
     return "page";
 }
@@ -85,8 +88,16 @@ void PushPaper() {
     ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, IM_COL32(170, 160, 140, 255));
     ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, IM_COL32(150, 140, 120, 255));
     ImGui::PushStyleColor(ImGuiCol_Separator, IM_COL32(200, 190, 170, 255));
+    // The Contents page's fields and sliders (P6p): ink on a lighter paper.
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(252, 249, 240, 255));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, IM_COL32(255, 253, 246, 255));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, IM_COL32(255, 255, 255, 255));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(170, 160, 140, 255));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(140, 130, 110, 255));
+    ImGui::PushStyleColor(ImGuiCol_CheckMark, kInk);
+    ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, IM_COL32(150, 185, 235, 160));
 }
-constexpr int kPaperColours = 13;
+constexpr int kPaperColours = 20;
 
 void Title(const char* text) {
     ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kTitleScale);
@@ -117,8 +128,17 @@ void DrawBinder(ImDrawList& list, ImVec2 at, float w, float h) {
 
 }  // namespace
 
+void ManualWindows::openContents(const BoardScene& scene, std::size_t component,
+                                 std::optional<ContentsView> view) {
+    binder_.openContents(component);
+    if (view) {
+        contents_.open(scene.board().components[component].reference, *view);
+    }
+}
+
 void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
-                         const LoadedCircuit& design, std::span<const std::string> log) {
+                         const LoadedCircuit& design, std::span<const std::string> log,
+                         const Machine* machine) {
     binder_.frame(open, board.selected());
     if (!open) {
         return;
@@ -181,6 +201,13 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
         case Divider::Datasheets:
             datasheets(manuals, board, design);
             break;
+        case Divider::Contents:
+            if (const auto chip = binder_.contents(); chip && scene && machine) {
+                ImGui::PushID("contents");
+                board.route(contents_.draw(board, *chip, *machine));
+                ImGui::PopID();
+            }
+            break;
         case Divider::Repairs:
             Title("Repairs");
             if (log.empty()) {
@@ -212,6 +239,9 @@ void ManualWindows::tabs(bool board) {
     for (std::size_t i = 0; i < kTabs.size(); ++i) {
         const Tab& tab = kTabs[i];
         const bool open = binder_.divider() == tab.divider;
+        if (tab.divider == Divider::Contents && !binder_.contents()) {
+            continue;  // no memory chip's window clicked yet
+        }
         const bool enabled = tab.divider != Divider::Repairs || board;
         const float top = at.y + kTabTop + kTabStep * static_cast<float>(i);
         const ImVec2 min{open ? pageRight - 2 : pageRight + kTabSetBack, top};
