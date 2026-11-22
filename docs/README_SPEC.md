@@ -61,9 +61,10 @@ a cause", may appear once.
 
 From a clean machine to the game running, as commands to copy:
 
-- what is needed: git, CMake ≥ 3.28, Ninja, a C++23 compiler with `<print>` (Apple clang ≥ 17,
-  clang ≥ 17 or GCC ≥ 14, as `docs/STYLE.md`); on macOS the Xcode command line tools plus
-  `brew install cmake ninja`;
+- what is needed: git, CMake ≥ 3.28, Ninja and clang, the only compiler supported on every
+  platform (the user, 2026-11-23; `docs/STYLE.md`): Apple's on macOS, clang 23 on Linux; no
+  version list for other compilers; on macOS the Xcode command line tools plus
+  `brew install cmake ninja`; on Linux, below;
 - a very powerful machine, said plainly before the Mac commands, with the numbers: on the
   development Mac (an Apple M5 Max) the BW-2001 runs at 0.25× and the BW-80 at 0.16× (the speed
   ratio `bw_ui --screenshot` prints; take it again at each regeneration), the small boards at
@@ -73,8 +74,23 @@ From a clean machine to the game running, as commands to copy:
 - `git clone https://github.com/fstark/bodgewire.git`, `cmake --preset release`,
   `cmake --build --preset release`, then `build/release/src/ui/bw_ui`;
 - optional: `ctest --preset release -j` (a few minutes);
-- honest platform note: developed and tested on macOS only. Linux should work in principle (SDL3
-  needs its usual X11/Wayland development packages) but nobody has tried; Windows, same.
+- a `### Linux` subsection after the Mac commands (P8a, 2026-11-22), tried on Ubuntu 24.04 (X11)
+  on an Intel i7-6700K, kept short (the user, 2026-11-23):
+  - clang 23 assumed installed, not explained (it comes from apt.llvm.org);
+  - one short `sudo apt install` line with the main dependencies only: `git cmake ninja-build`,
+    `libstdc++-14-dev` (clang takes `<print>` from it: `clang-23` itself pulls GCC 13's library,
+    which has none) and SDL3's main X11, Wayland and sound packages (`libx11-dev libxext-dev
+    libxrandr-dev libxcursor-dev libxi-dev libxkbcommon-dev libwayland-dev libdecor-0-dev
+    libasound2-dev libpulse-dev`);
+  - the first configure names the compiler, `CC=clang-23 CXX=clang++-23 cmake --preset release`
+    (CMake remembers it), then the same build and run lines as on the Mac;
+  - the speeds there, said to be a very slow machine (the user, 2026-11-22), from the same
+    `bw_ui --screenshot` ratio and README shots, built with clang 23: on the i7-6700K the small
+    boards at 1.00×, Paddle Tennis 0.76×, the BW-2001 0.12× and the BW-80 0.08× (take them again
+    when Linux is tried on another machine);
+  - the tests: an older KiCad than 8 (Ubuntu's own is 7) fails the Board checks (`drc_*`); with
+    no KiCad they are left out;
+- honest platform note: developed on macOS; Linux builds and runs (above); Windows untried.
 
 ### 5. What it is
 

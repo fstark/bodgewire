@@ -1305,7 +1305,7 @@ std::optional<Point> BoardView::takeRightClick() {
 
 std::int64_t BoardView::markReach() const {
     const double nmPerPixel = 1e6 / viewport_.pixelsPerMm();
-    return std::max(kMarkSize / 2, std::llround(kMarkMinPx / 2 * nmPerPixel));
+    return std::max<std::int64_t>(kMarkSize / 2, std::llround(kMarkMinPx / 2 * nmPerPixel));
 }
 
 std::optional<std::size_t> BoardView::takeLatchToggle() {

@@ -171,7 +171,8 @@ TEST_CASE("chaser: gap", "[machines][slow]") {
     CHECK(std::ranges::count_if(stages, [](const std::string& e) { return e[4] == '0'; }) == 1);
 
     REQUIRE(machine.mend(LedA5Crack().layer, LedA5Crack().at));
-    for (const Sample& s : Record(machine, 1_ms, {"D5.A"}).at("D5.A")) {
+    const Recorded mended = Record(machine, 1_ms, {"D5.A"});
+    for (const Sample& s : mended.at("D5.A")) {
         CHECK_FALSE(s.floating);
     }
 }

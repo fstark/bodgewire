@@ -4,7 +4,7 @@ Naming rules: [NAMING.md](NAMING.md). Terminology: [GLOSSARY.md](GLOSSARY.md).
 
 ## Language Standard
 
-- C++23. Compilers: Apple clang ≥ 17, clang ≥ 17, GCC ≥ 14.
+- C++23. Compiler: clang only, on every platform (the user, 2026-11-23): Apple's on macOS, clang 23 on Linux.
 - Modern interfaces: `std::string_view` for read-only strings, `std::span` for read-only ranges, `enum class`, `constexpr`, return values instead of output parameters.
 - No `#define` constants or function-like macros. Macros only for things the language can't do (none yet).
 - No raw owning pointers: `std::unique_ptr` / containers. Raw pointers and references are non-owning.
