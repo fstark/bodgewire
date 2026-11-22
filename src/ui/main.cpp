@@ -24,7 +24,6 @@
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
-#include <imgui_impl_sdlgpu3.h>
 
 #include "board/kicad_board.hpp"
 #include "machine/knob_setting.hpp"
@@ -620,7 +619,7 @@ struct BenchResult {
 BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session& session,
                       const Options& options, ImFont* legends, ImFont* petLegends, bool canLeave) {
     ResetBench();
-    TvView view(gpu.device());
+    TvView view(gpu);
     Shelf shelf;
     TvWindow tvWindow;
     tvWindow.setLoupe(options.loupe);
@@ -916,8 +915,7 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
         const RunnerStatus status = session.runner().status();
         const double speedRatio = ratio.update(status.simTime);
 
-        ImGui_ImplSDLGPU3_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
+        gpu.newFrame();
         ImGui::NewFrame();
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         OnBench();
@@ -1559,18 +1557,8 @@ public:
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.IniFilename = nullptr;
-        // Multi-viewports, docking off (P6j): a popped-out object in its own desktop window, not
-        // tied to the main one (ImGui's default), with no title bar.
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // ConfigViewportsNoDefaultParent: true
-        ImGui_ImplSDL3_InitForSDLGPU(window);
+        gpu.initImGui();
         KeepFocusFromTooltips();
-        ImGui_ImplSDLGPU3_InitInfo gpuInfo;
-        gpuInfo.Device = gpu.device();
-        gpuInfo.ColorTargetFormat = gpu.format();
-        // The popped-out windows never wait for their display's vsync: one on a slower display (a
-        // 30 Hz monitor) would pace the whole UI at its rate. The main window's vsync paces it.
-        gpuInfo.PresentMode = gpu.unpacedMode();
-        ImGui_ImplSDLGPU3_Init(&gpuInfo);
         // The UI font first, as NewFrame would pick it lazily (13 px at the framebuffer scale:
         // vector from 15 px); AddFontDefault() itself, before the first frame, assumes Retina on
         // macOS.
@@ -1592,9 +1580,7 @@ public:
                                             static_cast<int>(kTitleFontSize), 0.0f, &legendConfig);
     }
     ~ImGuiScreen() {
-        SDL_WaitForGPUIdle(gpu_.device());
-        ImGui_ImplSDL3_Shutdown();  // the popped-out windows destroyed with it
-        ImGui_ImplSDLGPU3_Shutdown();
+        gpu_.shutdownImGui();
         ImGui::DestroyContext();
     }
     ImGuiScreen(const ImGuiScreen&) = delete;
@@ -1621,7 +1607,7 @@ struct LauncherResult {
 LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen& screen,
                            Launcher& launcher, const Options& options) {
     SDL_SetWindowTitle(window, "Bodgewire");
-    TvView view(gpu.device());
+    TvView view(gpu);
     SpeedRatio ratio;
     double speedRatio = 0;
     double uiMilliseconds = 0;
@@ -1638,8 +1624,7 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
                 return {};
             }
         }
-        ImGui_ImplSDLGPU3_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
+        gpu.newFrame();
         ImGui::NewFrame();
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -1771,6 +1756,7 @@ int main(int argc, char** argv) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         return kExitErrors;
     }
+    // The web: the canvas sized by the page's CSS, the whole page (web/shell.html).
     SDL_Window* window = SDL_CreateWindow("Bodgewire", kWindowWidth, kWindowHeight,
                                           SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (window == nullptr) {

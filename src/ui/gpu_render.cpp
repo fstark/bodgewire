@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <imgui.h>
+#include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlgpu3.h>
 #include <imgui_internal.h>
 
@@ -125,6 +126,33 @@ GpuRender::GpuRender(SDL_Window* main) : main_(main) {
     SDL_SetGPUSwapchainParameters(device_, main_, SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
                                   SDL_GPU_PRESENTMODE_VSYNC);
     format_ = SDL_GetGPUSwapchainTextureFormat(device_, main_);
+}
+
+bool GpuRender::ready() const { return device_ != nullptr; }
+
+void GpuRender::initImGui() {
+    // Multi-viewports, docking off (P6j): a popped-out object in its own desktop window, not
+    // tied to the main one (ImGui's default), with no title bar.
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // NoDefaultParent: true
+    ImGui_ImplSDL3_InitForSDLGPU(main_);
+    ImGui_ImplSDLGPU3_InitInfo info;
+    info.Device = device_;
+    info.ColorTargetFormat = format_;
+    // The popped-out windows never wait for their display's vsync: one on a slower display (a
+    // 30 Hz monitor) would pace the whole UI at its rate. The main window's vsync paces it.
+    info.PresentMode = unpacedMode();
+    ImGui_ImplSDLGPU3_Init(&info);
+}
+
+void GpuRender::newFrame() {
+    ImGui_ImplSDLGPU3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+}
+
+void GpuRender::shutdownImGui() {
+    SDL_WaitForGPUIdle(device_);
+    ImGui_ImplSDL3_Shutdown();  // the popped-out windows destroyed with it
+    ImGui_ImplSDLGPU3_Shutdown();
 }
 
 SDL_GPUPresentMode GpuRender::unpacedMode() const {

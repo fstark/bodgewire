@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bodgewire</title>
+<!-- Cross-origin isolation for the Runner's threads (shared memory): GitHub Pages sends no
+     COOP/COEP headers, so this service worker adds them, reloading the page once. -->
+<script src="coi-serviceworker.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; outline: none; width: 100vw; height: 100vh; }
+  #status {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #6ff; font: 16px/1.4 system-ui, sans-serif; text-align: center; padding: 16px;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+<div id="status">Loading Bodgewire…</div>
+<script>
+  const status = document.getElementById('status');
+  var Module = {
+    canvas: document.getElementById('canvas'),
+    // bw_ui's command line from the address: ?arg=/machines/070-tennis/tennis.bwn
+    arguments: new URLSearchParams(location.search).getAll('arg'),
+    setStatus(text) {
+      status.textContent = text;
+      status.style.display = text ? 'flex' : 'none';
+    },
+    print: (text) => console.log(text),
+    printErr: (text) => console.warn(text),
+  };
+  if (window.crossOriginIsolated === false && !window.isSecureContext) {
+    Module.setStatus('Bodgewire needs HTTPS (or localhost) to run its threads.');
+  }
+  window.addEventListener('error', () => Module.setStatus('Bodgewire stopped: see the console.'));
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

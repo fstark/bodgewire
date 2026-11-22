@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "sim/check.hpp"
+#include "ui/gpu_render.hpp"
 
 namespace bw {
 
@@ -12,6 +13,7 @@ namespace {
 
 constexpr Uint32 kBytes = static_cast<Uint32>(kTvColumns) * kTvRows * 4;
 
+#ifndef __EMSCRIPTEN__
 SDL_GPUTexture* MakeTexture(SDL_GPUDevice* device) {
     SDL_GPUTextureCreateInfo info{};
     info.type = SDL_GPU_TEXTURETYPE_2D;
@@ -30,11 +32,24 @@ SDL_GPUTransferBuffer* MakeTransfer(SDL_GPUDevice* device) {
     info.size = kBytes;
     return SDL_CreateGPUTransferBuffer(device, &info);
 }
+#endif
 
 }  // namespace
 
-TvView::TvView(SDL_GPUDevice* device)
-    : device_(device), texture_(MakeTexture(device)), transfer_(MakeTransfer(device)),
+#ifdef __EMSCRIPTEN__
+TvView::TvView(const GpuRender& gpu)
+    : texture_(SDL_CreateTexture(gpu.renderer(), SDL_PIXELFORMAT_RGBA32,
+                                 SDL_TEXTUREACCESS_STREAMING, kTvColumns, kTvRows)),
+      pixels_(kBytes) {
+    Check(texture_ != nullptr, "tv view: cannot create texture");
+    SDL_SetTextureScaleMode(texture_, SDL_SCALEMODE_LINEAR);
+    show(TvPicture{});
+}
+
+TvView::~TvView() { SDL_DestroyTexture(texture_); }
+#else
+TvView::TvView(const GpuRender& gpu)
+    : device_(gpu.device()), texture_(MakeTexture(device_)), transfer_(MakeTransfer(device_)),
       pixels_(kBytes) {
     Check(texture_ != nullptr && transfer_ != nullptr, "tv view: cannot create texture");
     show(TvPicture{});
@@ -44,6 +59,7 @@ TvView::~TvView() {
     SDL_ReleaseGPUTransferBuffer(device_, transfer_);
     SDL_ReleaseGPUTexture(device_, texture_);
 }
+#endif
 
 void TvView::show(const TvPicture& picture) {
     cells_ = picture.frame.cells;
@@ -78,6 +94,13 @@ void TvView::fill() {
     dirty_ = true;
 }
 
+#ifdef __EMSCRIPTEN__
+void TvView::upload() {
+    if (dirty_ && SDL_UpdateTexture(texture_, nullptr, pixels_.data(), kTvColumns * 4)) {
+        dirty_ = false;
+    }
+}
+#else
 void TvView::upload(SDL_GPUCommandBuffer* commands) {
     if (!dirty_) {
         return;
@@ -100,5 +123,6 @@ void TvView::upload(SDL_GPUCommandBuffer* commands) {
     SDL_EndGPUCopyPass(copy);
     dirty_ = false;
 }
+#endif
 
 }  // namespace bw
