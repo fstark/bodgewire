@@ -35,8 +35,11 @@ constexpr float kNoteGap = 20;   // between the Puzzles' post-its; above them on
 constexpr float kNoteLeft = 24;  // "Start the Machine"
 constexpr float kRowGap = 32;    // from it to the Puzzles' row
 constexpr float kNoteMinHeight = 120;
-constexpr float kLift = 8;  // the selected post-it, raised
-constexpr float kLiftShadow = 6;
+constexpr float kLiftShadow = 6;                            // the selected post-it's, deeper
+constexpr ImU32 kCardPaper = IM_COL32(244, 242, 235, 255);  // "Start the Machine": an index card
+constexpr ImU32 kCardRed = IM_COL32(214, 96, 96, 255);      // its rule under the title
+constexpr ImU32 kCardBlue = IM_COL32(150, 180, 214, 255);   // its lines
+constexpr ImU32 kCardShadow = IM_COL32(0, 0, 0, 110);
 constexpr float kChevron = 18;                            // px tall
 constexpr float kChevronGap = 10;                         // px outside the picture
 constexpr auto kSettle = std::chrono::milliseconds(150);  // the selection at rest: load it
@@ -101,20 +104,38 @@ float NoteHeight(const std::string& title, const std::string& brief) {
            briefHeight + kNotePad;
 }
 
+// A Puzzle's post-it, or "Start the Machine"'s white index card (`card`: a red rule under the
+// title, blue lines under the text). The selected one casts a deeper shadow.
 void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& title,
-                const std::string& brief, bool lifted) {
+                const std::string& brief, bool selected, bool card) {
     const ImVec2 end{at.x + kNoteWidth, at.y + height};
-    DrawNote(list, at, end, lifted ? kLiftShadow : 0);
+    if (card) {
+        const float shadow = selected ? kLiftShadow : 2;
+        list.AddRectFilled({at.x + shadow, at.y + shadow}, {end.x + shadow, end.y + shadow},
+                           kCardShadow, 2.0f);
+        list.AddRectFilled(at, end, kCardPaper, 2.0f);
+    } else {
+        DrawNote(list, at, end, selected ? kLiftShadow : 0);
+    }
     const float wrap = kNoteWidth - 2 * kNotePad;
     ImFont* font = ImGui::GetFont();
     const float size = ImGui::GetFontSize();
+    const float spacing = ImGui::GetStyle().ItemSpacing.y;
     const ImU32 ink = ImGui::ColorConvertFloat4ToU32(kNoteInk);
     list.PushClipRect(at, end, true);
     float y = at.y + kNotePad + (kNoteStrip - 4);
+    const float titleHeight =
+        font->CalcTextSizeA(size * kNoteTitleScale, FLT_MAX, wrap, title.c_str()).y;
+    if (card) {
+        const float rule = y + titleHeight + spacing / 2;
+        list.AddLine({at.x, rule}, {end.x, rule}, kCardRed, 1.0f);
+        for (float line = rule + spacing / 2 + size + 1; line < end.y - 2; line += size) {
+            list.AddLine({at.x, line}, {end.x, line}, kCardBlue, 1.0f);
+        }
+    }
     list.AddText(font, size * kNoteTitleScale, {at.x + kNotePad, y}, ink, title.c_str(), nullptr,
                  wrap);
-    y += font->CalcTextSizeA(size * kNoteTitleScale, FLT_MAX, wrap, title.c_str()).y +
-         ImGui::GetStyle().ItemSpacing.y;
+    y += titleHeight + spacing;
     list.AddText(font, size, {at.x + kNotePad, y}, ink, brief.c_str(), nullptr, wrap);
     list.PopClipRect();
 }
@@ -499,7 +520,16 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
     const float noteTop = laneBottom + kNoteGap;
     const float rowLeft = origin.x + kNoteLeft + kNoteWidth + kRowGap;
     const float visible = woodEnd.x - rowLeft;
-    const float pitch = kNoteWidth + kNoteGap;
+    // More Puzzles than fit: the gap widened so the last one in view is cut about in half at the
+    // window's edge, showing that the row scrolls.
+    float gap = kNoteGap;
+    const std::size_t puzzles = titles.size() - 1;
+    if (static_cast<float>(puzzles) * (kNoteWidth + kNoteGap) - kNoteGap > visible) {
+        const float whole =
+            std::max(1.0f, std::floor((visible - kNoteWidth / 2) / (kNoteWidth + kNoteGap)));
+        gap = std::clamp((visible - kNoteWidth / 2) / whole - kNoteWidth, kNoteGap, 4 * kNoteGap);
+    }
+    const float pitch = kNoteWidth + gap;
     if (lanes_.machine() != rowMachine_) {  // another Machine's row starts at its first Puzzle
         rowMachine_ = lanes_.machine();
         postIts_.jump(0);
@@ -509,8 +539,8 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
         double target = postIts_.target;
         if (at - target < 0) {
             target = at;
-        } else if (at + kNoteWidth - target > visible - kNoteGap) {
-            target = at + kNoteWidth - (visible - kNoteGap);
+        } else if (at + kNoteWidth - target > visible - gap) {
+            target = at + kNoteWidth - (visible - gap);
         }
         postIts_.target = std::max(0.0, target);
     }
@@ -523,10 +553,10 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
     const std::size_t selected = lanes_.postIt();
     std::optional<std::size_t> clickedPostIt;
     const auto postIt = [&](std::size_t k, float x) {
-        const bool lifted = k == selected;
-        const ImVec2 at{x, noteTop - (lifted ? kLift : 0)};
-        DrawPostIt(list, at, noteHeight, titles[k], briefs[k], lifted);
-        if (lifted && lanes_.lane() == Lane::PostIts) {
+        const bool chosenOne = k == selected;
+        const ImVec2 at{x, noteTop};
+        DrawPostIt(list, at, noteHeight, titles[k], briefs[k], chosenOne, k == 0);
+        if (chosenOne && lanes_.lane() == Lane::PostIts) {
             const float barY = at.y + noteHeight + 6;
             list.AddRectFilled({at.x, barY}, {at.x + kNoteWidth, barY + 4}, kFocusGold, 2.0f);
         }
@@ -557,10 +587,13 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
     list.PopClipRect();
     ImGui::PopID();
 
-    // Clicks, applied after the drawing (the frame shows what was there when clicked).
+    // Clicks, applied after the drawing (the frame shows what was there when clicked). A post-it
+    // not selected is selected (it starts running above); the selected one opens.
     if (clickedPostIt) {
+        if (*clickedPostIt == lanes_.postIt()) {
+            chosen = entryFile();
+        }
         lanes_.selectPostIt(*clickedPostIt);
-        chosen = entryFile();
     } else if (clickedMachine) {
         lanes_.selectMachine(*clickedMachine);
     } else if (clickedLive) {
