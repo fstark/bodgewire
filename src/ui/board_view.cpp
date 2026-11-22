@@ -639,6 +639,10 @@ void BoardView::draw(ImVec2 size) {
             needFit_ = false;
         } else if (needFit_) {
             viewport_.fit(scene_->bounds(), panelSize);
+            if (zoomAtStart_) {
+                viewport_.frame(*zoomAtStart_, 1.0, 0);
+                zoomAtStart_.reset();
+            }
             needFit_ = false;
         } else if (panel.x != panel_.x || panel.y != panel_.y) {
             viewport_.resize(panelSize);

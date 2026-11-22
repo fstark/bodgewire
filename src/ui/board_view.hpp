@@ -119,6 +119,8 @@ public:
     Layer activeLayer() const { return active_; }
     void toggleLayer() { active_ = active_ == Layer::Front ? Layer::Back : Layer::Front; }
     void fit() { needFit_ = true; }
+    // The first fit framed on `box` instead (--zoom, for screenshots); input as usual after.
+    void zoomAtStart(Bounds box) { zoomAtStart_ = box; }
     // The plain look (P6 prototype): copper, pads and outlines only, for specialists; else the
     // parts drawn as the real ones, out of the way where the player works.
     void setPlainLook(bool on) { plainLook_ = on; }
@@ -195,6 +197,7 @@ private:
     Owner owner_ = Owner::Probe;
     bool needFit_ = true;  // first draw knows the panel size
     std::optional<Bounds> still_;
+    std::optional<Bounds> zoomAtStart_;
     ImVec2 panel_{};
     std::optional<NetId> highlight_;
     std::optional<BoardTarget> hoverTarget_;  // drawn highlighted: hovered pad or Component

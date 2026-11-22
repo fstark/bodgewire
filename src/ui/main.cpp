@@ -85,9 +85,10 @@ constexpr std::string_view kUsage =
     "[--clip REF.PIN[:0|1|r|f],...] [--group REF.PIN[:E0xx],...] [--sample 100ns] "
     "[--view 1us[:+20us]] [--marker +2us] [--cursor +3.7us] "
     "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
-    "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
+    "[--meter REF.PIN[,REF.PIN]] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
     "[--type REF:START:TEXT] [--roms DIR] [--manual user|service|datasheet|repairs] "
-    "[--tv hpos:N%,vpos:N%,bright:N%,contrast:N%,off,underscan] [--loupe X%:Y%] [--look "
+    "[--tv hpos:N%,vpos:N%,bright:N%,contrast:N%,off,underscan] [--loupe X%:Y%] [--zoom X:Y:W] "
+    "[--look "
     "real|plain] "
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
     "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
@@ -108,16 +109,17 @@ struct Options {
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
     std::optional<std::string> probe;  // REF.PIN
     std::vector<std::string> repair;
-    std::vector<std::string> clip;     // REF.PIN[:T]
-    std::vector<std::string> group;    // REF.PIN[:PATTERN]
-    std::optional<Time> sample;        // Analyzer sample period, ps
-    std::optional<TimeView> view;      // Analyzer view at its first Capture
-    std::optional<Time> marker;        // ps from the Trigger, both instrument windows
-    std::optional<Time> cursor;        // a fake hover, ps from the Trigger
-    std::optional<std::string> meter;  // REF.PIN: red Test Lead, V mode
-    std::vector<std::string> hook;     // REF.PIN, at most kScopeChannels
-    std::optional<Time> timebase;      // Oscilloscope ps per division
-    std::optional<Time> delay;         // Oscilloscope Trigger delay, ps
+    std::vector<std::string> clip;   // REF.PIN[:T]
+    std::vector<std::string> group;  // REF.PIN[:PATTERN]
+    std::optional<Time> sample;      // Analyzer sample period, ps
+    std::optional<TimeView> view;    // Analyzer view at its first Capture
+    std::optional<Time> marker;      // ps from the Trigger, both instrument windows
+    std::optional<Time> cursor;      // a fake hover, ps from the Trigger
+    // REF.PIN: red Test Lead, V mode; two: red and black, Continuity, the power off.
+    std::vector<std::string> meter;
+    std::vector<std::string> hook;  // REF.PIN, at most kScopeChannels
+    std::optional<Time> timebase;   // Oscilloscope ps per division
+    std::optional<Time> delay;      // Oscilloscope Trigger delay, ps
     std::vector<ButtonPress> press;
     std::vector<KnobSetting> knob;
     std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
@@ -125,6 +127,7 @@ struct Options {
     std::optional<Divider> manual;        // --manual: the binder out at this divider (P6e)
     std::optional<TvControls> tv;         // --tv: the monitor's controls at start (P6f)
     std::optional<ScreenFraction> loupe;  // --loupe: the TV's loupe there (screenshots)
+    std::optional<Bounds> zoom;           // --zoom: the Board framed on this box at start
     bool plainLook = false;      // --look plain: the specialist's Board, no parts drawn (P6)
     std::optional<Owner> focus;  // --focus: the owner at start (P6c)
     bool debug = false;          // --debug: the Debug window out (P6d)
@@ -193,6 +196,23 @@ std::optional<std::pair<MarkShape, Point>> ParseMark(std::string_view text) {
         return std::nullopt;
     }
     return std::pair{shape->second, Point{*x, *y}};
+}
+
+// "192.6:122:12" (Board millimetres, as --mark): a box W wide centred on X, Y, as tall.
+std::optional<Bounds> ParseZoom(std::string_view text) {
+    const std::size_t first = text.find(':');
+    const std::size_t second = first == std::string_view::npos ? first : text.find(':', first + 1);
+    if (second == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const auto x = ParseMillimetres(text.substr(0, first));
+    const auto y = ParseMillimetres(text.substr(first + 1, second - first - 1));
+    const auto width = ParseMillimetres(text.substr(second + 1));
+    if (!x || !y || !width || *width <= 0) {
+        return std::nullopt;
+    }
+    const std::int64_t half = *width / 2;
+    return Bounds{{*x - half, *y - half}, {*x + half, *y + half}};
 }
 
 std::vector<std::string> SplitCommas(std::string_view list) {
@@ -337,7 +357,10 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             }
             (arg == "--marker" ? options.marker : options.cursor) = *time;
         } else if (arg == "--meter") {
-            options.meter = argv[++i];
+            options.meter = SplitCommas(argv[++i]);
+            if (options.meter.size() > 2) {
+                return std::nullopt;
+            }
         } else if (arg == "--hook") {
             options.hook = SplitCommas(argv[++i]);
             if (options.hook.size() > kScopeChannels) {
@@ -356,6 +379,11 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                     return std::nullopt;
                 }
                 options.press.push_back(std::move(*press));
+            }
+        } else if (arg == "--zoom") {
+            options.zoom = ParseZoom(argv[++i]);
+            if (!options.zoom) {
+                return std::nullopt;
             }
         } else if (arg == "--mark") {
             for (const std::string& text : SplitCommas(argv[++i])) {
@@ -668,6 +696,9 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
     };
     shelf.hasBrief = shelf.briefOut = !loaded.brief.empty();
     boardView.setPlainLook(options.plainLook);
+    if (options.zoom) {
+        boardView.zoomAtStart(*options.zoom);
+    }
     if (options.back) {
         boardView.toggleLayer();
     }
@@ -678,7 +709,7 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
     if (!options.hook.empty()) {
         focus.bringOut(Owner::Scope);
     }
-    if (options.meter) {
+    if (!options.meter.empty()) {
         focus.bringOut(Owner::Meter);
     }
     if (options.focus && IsInstrument(*options.focus)) {
@@ -776,9 +807,10 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
     if (run == RunSwitch::Max) {
         session.setSpeed(Speed::Max);
     }
-    if (run == RunSwitch::Pause) {
+    const bool continuity = options.meter.size() == 2;  // the power left off: Continuity needs it
+    if (!continuity && run == RunSwitch::Pause) {
         session.powerOn(seed, kPauseAt);
-    } else {
+    } else if (!continuity) {
         PowerOn(session, run, seed);
     }
     // The power-off tools with the power on (P6o): asked, then cycled at the next frame's clicks
@@ -1428,14 +1460,16 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
         }
         session.setScope(scope);
     }
-    if (options.meter) {
-        const std::size_t dot = options.meter->find('.');
-        const auto lead =
-            dot == std::string::npos
-                ? std::nullopt
-                : session.padLead(options.meter->substr(0, dot), options.meter->substr(dot + 1));
+    if (options.meter.size() == 2) {  // red then black, before the power-on: none for these
+        session.setMeterMode(MeterMode::Continuity);
+    }
+    for (const std::string& pin : options.meter) {
+        const std::size_t dot = pin.find('.');
+        const auto lead = dot == std::string::npos
+                              ? std::nullopt
+                              : session.padLead(pin.substr(0, dot), pin.substr(dot + 1));
         if (!lead) {
-            std::println(stderr, "bw_ui: unknown pin '{}'", *options.meter);
+            std::println(stderr, "bw_ui: unknown pin '{}'", pin);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
