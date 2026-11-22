@@ -19,6 +19,12 @@ check_cxx_compiler_flag(-Wmissing-designated-field-initializers BW_HAS_MISSING_D
 if(BW_HAS_MISSING_DESIGNATED)
   target_compile_options(bw_warnings INTERFACE -Wno-missing-designated-field-initializers)
 endif()
+# Clang 23 calls __COUNTER__ a C2y extension under -Wpedantic; Catch2's TEST_CASE and the Z80
+# core's resumable cycles both use it.
+check_cxx_compiler_flag(-Wc2y-extensions BW_HAS_C2Y_EXTENSIONS)
+if(BW_HAS_C2Y_EXTENSIONS)
+  target_compile_options(bw_warnings INTERFACE -Wno-c2y-extensions)
+endif()
 
 add_subdirectory(src/sim)
 add_subdirectory(src/devices)
