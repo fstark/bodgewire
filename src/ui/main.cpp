@@ -53,7 +53,7 @@
 #include "ui/manual_window.hpp"
 #include "ui/matrix_keyboard_window.hpp"
 #include "ui/meter_window.hpp"
-#include "ui/power_cycle_popup.hpp"
+#include "ui/question_popup.hpp"
 #include "ui/scope_window.hpp"
 #include "ui/shelf.hpp"
 #include "ui/tv_view.hpp"
@@ -89,6 +89,7 @@ constexpr std::string_view kUsage =
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
     "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
     "[--away tv|keyboard|knob,...] [--run pause|1x|max] [--side front|back] [--ask REPAIR] "
+    "[--leave] "
     "[--binder-height N%] [--brief DX:DY] [--contents REF[:hex|code|glyphs]] "
     "[--debug] "
     "[--screenshot OUT.png [--after 1s]]";
@@ -128,8 +129,9 @@ struct Options {
     RunSwitch run = RunSwitch::RealTime;  // --run: the run switch at start (P6o)
     bool back = false;                    // --side back: the Board flipped at start (P6o)
     std::optional<RepairAction> ask;      // --ask: the power-cycle popup open at start (P6o)
-    float binderHeight = 1;               // --binder-height: the binder's stretch (P6o)
-    std::optional<ImVec2> brief;          // --brief: the note's offset on the Board, px (P6o)
+    bool leave = false;      // --leave: the question going back to the launcher open at start (P7a)
+    float binderHeight = 1;  // --binder-height: the binder's stretch (P6o)
+    std::optional<ImVec2> brief;  // --brief: the note's offset on the Board, px (P6o)
     // --contents: the binder out at a memory chip's Contents, at a view (P6p).
     std::optional<std::pair<std::string, std::optional<ContentsView>>> contents;
 };
@@ -245,8 +247,8 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
         const bool launcherFlag =
             arg == "--machines" || arg == "--screenshot" || arg == "--after" || arg == "--visit";
         benchFlag = benchFlag || !launcherFlag;
-        if (arg == "--debug") {  // a flag without a value
-            options.debug = true;
+        if (arg == "--debug" || arg == "--leave") {  // the flags without a value
+            (arg == "--debug" ? options.debug : options.leave) = true;
             continue;
         }
         if (i + 1 >= argc) {
@@ -459,7 +461,7 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
         return std::nullopt;
     }
     if ((benchFlag && !options.file) || (!options.visit.empty() && options.file) ||
-        (!options.visit.empty() && !options.screenshot)) {
+        (!options.visit.empty() && !options.screenshot) || (options.leave && options.ask)) {
         return std::nullopt;
     }
     return options;
@@ -641,7 +643,7 @@ struct BenchResult {
 };
 
 BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session& session,
-                      const Options& options, ImFont* legends, ImFont* petLegends) {
+                      const Options& options, ImFont* legends, ImFont* petLegends, bool canLeave) {
     ResetBench();
     TvView view(gpu.device());
     Shelf shelf;
@@ -694,6 +696,7 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
         }
     }
     RunSwitch run = options.run;  // the shelf's switch (P6o)
+    shelf.canLeave = canLeave;
     shelf.manualOut = options.manual.has_value();
     shelf.tvOut = session.tv() != nullptr;
     shelf.knobOut = !session.knobs().empty();
@@ -817,11 +820,20 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
     }
     // The power-off tools with the power on (P6o): asked, then cycled at the next frame's clicks
     // (so a frame is unpowered, as in a manual power cycle), powered on at the frame after.
-    PowerCyclePopup popup;
+    QuestionPopup popup("##power cycle",
+                        "This tool needs the power off. OK powers the Machine off, uses the tool "
+                        "and powers it on again; the Machine restarts.",
+                        true);
     std::optional<RepairPlan> pending;    // asked, not answered
     std::optional<RepairPlan> cycleNext;  // OK: cycled at the next frame's clicks
     bool powerOnNext = false;
     bool askAtStart = options.ask.has_value();
+    // Back to the launcher (P7a): at once, or asked first when the Board holds work.
+    QuestionPopup leaveQuestion(
+        "##leave", "Back to the Machines? The repairs and pencil marks on this Board are lost.",
+        false);
+    bool leaveAtStart = options.leave;
+    bool leaving = false;  // Back at the end of this frame
     const auto start = std::chrono::steady_clock::now();
     SpeedRatio ratio;
     double uiMilliseconds = 0;
@@ -1274,6 +1286,16 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
                                lock,
                                StateName(status.state)};
         shelf.draw(session, boardView, focus, run, seed);
+        if (shelf.leaveClicked || leaveAtStart) {
+            // Opening upwards from above the arrow, so it stays inside the main window and
+            // leaves the shelf seen.
+            if (shelf.leaveClicked && session.log().empty() && marks.marks().empty()) {
+                leaving = true;
+            } else {
+                leaveQuestion.open(shelf.leaveAt, {0, 1});
+            }
+            shelf.leaveClicked = leaveAtStart = false;
+        }
         ImGui::End();
         // The bench, back to front at start: brief, TV, knob, manuals, instruments, keyboard,
         // Debug.
@@ -1318,6 +1340,9 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
         case PopupAnswer::None:
             break;
         }
+        if (leaveQuestion.draw() == PopupAnswer::Ok) {
+            leaving = true;
+        }
         // A text field takes the keys from the next event on (P6o).
         textField = ImGui::GetIO().WantTextInput;
         applyKeys();
@@ -1335,6 +1360,10 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
                 .count();
         gpu.present(&view);
         ++frames;
+        if (leaving) {
+            ending = BenchEnd::Back;
+            break;
+        }
         const auto now = std::chrono::steady_clock::now();
         const bool visited = options.visitFor && now - start >= *options.visitFor;
         if (visited || (options.screenshot && now - start >= options.after)) {
@@ -1683,6 +1712,11 @@ int main(int argc, char** argv) {
         }
     }
     const std::optional<std::filesystem::path> machinesDir = MachinesDirFor(options);
+    if (options.leave && !machinesDir) {
+        std::println(stderr, "bw_ui: --leave: no machines/ to go back to");
+        std::println(stderr, "{}", kUsage);
+        return kExitUsage;
+    }
     Launcher launcher;
     if (machinesDir) {
         MachineList list = ListMachines(*machinesDir);
@@ -1784,7 +1818,7 @@ int main(int argc, char** argv) {
         {
             ImGuiScreen screen(window, *gpu);
             result = RunWindow(window, *gpu, *loaded, *loaded->session, *benchOptions,
-                               screen.legends(), screen.petLegends());
+                               screen.legends(), screen.petLegends(), machinesDir.has_value());
         }
         left = *benchOptions->file;
         loaded.reset();

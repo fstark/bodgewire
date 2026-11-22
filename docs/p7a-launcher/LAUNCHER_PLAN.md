@@ -7,8 +7,8 @@ Spec: [LAUNCHER.md](LAUNCHER.md). Design: [LAUNCHER_DESIGN.md](LAUNCHER_DESIGN.m
 | Phase | Description | Commit |
 |-------|-------------|--------|
 | 1 | The list: `machine_list`, its tests | `c36d5ce` |
-| 2 | The loop and the launcher: ImGui per screen, `ResetBench`, `present(TvView*)`, `RunLauncher`, no file, `--machines`, `--visit` | this commit |
-| 3 | The way back: the shelf's Leave tray, `QuestionPopup`, the leave question, `--leave` | |
+| 2 | The loop and the launcher: ImGui per screen, `ResetBench`, `present(TvView*)`, `RunLauncher`, no file, `--machines`, `--visit` | `4538aaf` |
+| 3 | The way back: the shelf's Leave tray, `QuestionPopup`, the leave question, `--leave` | this commit |
 | 4 | Docs, release check, debug `--visit`, full release suite | |
 
 ## Phase 1 — The list
@@ -59,3 +59,4 @@ Design §6.
 
 - Phase 1 (2026-11-22): as designed. Checks: release and debug `-R "^machine list: "` (4), full release suite 1481/1481.
 - Phase 2 (2026-11-22): an entry is a plain `Selectable` with its title and brief drawn over it by the draw list (no `AllowOverlap`: nothing else is an item there). `Launcher::list()` gives the loop the list for `--visit`'s check and the working Machine's title. Screenshots viewed: the launcher at start (the Counter, its 3 Puzzles); `--visit` of Odd E (the BW-2001 selected, its 16 Puzzles, the pane scrolling); the Stopwatch's Stuck at zero from the command line as before. Usage errors as designed (`--probe U1.1`, `--run 1x`, `--visit` without `--screenshot`, with a file, of an unknown file, `--machines` of a directory without Machines or missing). Debug `--visit` of Dark LED, the Test Pattern and the Typewriter: exit 0, no ASan report. UBSan reports signed overflows in `flip_corner.cpp:19` and `chip_body.cpp:64` (a Board point at `INT64_MIN`, seemingly the mouse outside the window); a single command-line bench reports the same 3 before this step's code runs anything new: not P7a's, left for the user.
+- Phase 3 (2026-11-22): the question opens just above the Leave tray (`Shelf::leaveAt`), not at the click: at the click its bottom-left covered the arrow and the left of the shelf. Screenshots viewed: the Counter's Dark LED (the tray, the arrow live); `--leave --mark` on it (the question above the arrow, inside the window); `--ask swap:U5` (the power-cycle question as before, its box). `--leave --ask` a usage error. Debug `--visit` of the three Machines again: exit 0, no ASan report (UBSan's `flip_corner`/`chip_body` reports as in phase 2).

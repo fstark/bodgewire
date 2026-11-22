@@ -202,9 +202,9 @@ QuestionPopup leaveQuestion("##leave", "Back to the Machines? The repairs and pe
                             "this Board are lost.", false);
 ```
 
-In `RunWindow`, after `shelf.draw`: on `leaveClicked`, work is `!session.log().empty() || !marks.marks().empty()`; no work: return Back at the end of this frame (after `Render` and `present`, so ImGui's frame is closed); work: `leaveQuestion.open(MousePos, {0, 1})`, its bottom-left at the click, so it opens upwards over the bench (the arrow is at most 56 px above the window's bottom: opened downwards it would leave the main window, and ImGui would give it a desktop window of its own, which macOS shows under the main one). Its `Ok`: Back at the end of the frame; `Cancel`: nothing. Drawn last with the power-cycle question.
+In `RunWindow`, after `shelf.draw`: on `leaveClicked`, work is `!session.log().empty() || !marks.marks().empty()`; no work: return Back at the end of this frame (after `Render` and `present`, so ImGui's frame is closed); work: `leaveQuestion.open(shelf.leaveAt, {0, 1})`, its bottom-left just above the Leave tray (`Shelf::leaveAt`, set by `draw`), so it opens upwards over the bench and leaves the shelf seen (the arrow is at most 56 px above the window's bottom: opened downwards it would leave the main window, and ImGui would give it a desktop window of its own, which macOS shows under the main one). Its `Ok`: Back at the end of the frame; `Cancel`: nothing. Drawn last with the power-cycle question.
 
-`--leave` (with a file): the question open at start, at the Leave arrow's centre with the same pivot, so the screenshot shows where a click puts it (no check of work: it is for the screenshot). With `--ask` a usage error (one popup at a time); without a `machines/` known a usage error.
+`--leave` (with a file): the question open at start, at the same place, so the screenshot shows where a click puts it (no check of work: it is for the screenshot). With `--ask` a usage error (one popup at a time); without a `machines/` known a usage error.
 
 ## 5. Options (spec decisions)
 

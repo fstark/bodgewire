@@ -58,7 +58,7 @@ Derived in the design (2026-11-22), reported to the user:
 
 7. The shelf gains a tray at its left end, before the power switch, holding one item: an arrow pointing left. Tooltip "Back to the Machines".
 8. A click on it, with nothing to lose, closes the bench and shows the launcher at once.
-9. With a repair Done or a pencil mark on the Board, it asks first, just above the click (opening upwards, so it stays inside the window): "Back to the Machines? The repairs and pencil marks on this Board are lost." **OK** leaves, **Cancel** or a click elsewhere stays. Mouse only, as the power-cycle question.
+9. With a repair Done or a pencil mark on the Board, it asks first, just above the arrow (opening upwards, so it stays inside the window and the shelf stays seen): "Back to the Machines? The repairs and pencil marks on this Board are lost." **OK** leaves, **Cancel** or a click elsewhere stays. Mouse only, as the power-cycle question.
 10. Leaving closes everything of the bench: its popped-out windows, the instruments, the Machine. Nothing is saved; opening the same entry again starts it fresh.
 11. With no `machines/` known (a `bw_ui` copied out of the repository, run on a netlist outside the tree), the arrow is grayed: "No Machines directory". From the build tree the executable's own search always finds the repository's `machines/`.
 

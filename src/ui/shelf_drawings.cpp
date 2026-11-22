@@ -321,6 +321,13 @@ void Meter(Pen& p, const ItemLook& look) {
 }
 
 // The manuals binder: closed, a blue ring binder with its dividers' tabs; out, open flat.
+// An arrow pointing left, in the light wood of the shelf's edge: back to the launcher (P7a).
+void Leave(Pen& p) {
+    constexpr ImU32 kArrow = IM_COL32(214, 192, 160, 255);
+    p.triangle(9, 28, 27, 12, 27, 44, kArrow);
+    p.box(26, 22, 47, 34, kArrow, 2);
+}
+
 void Manual(Pen& p, const ItemLook& look) {
     constexpr ImU32 kCover = IM_COL32(40, 70, 130, 255);
     constexpr ImU32 kSpine = IM_COL32(25, 45, 90, 255);
@@ -377,6 +384,9 @@ void Brief(Pen& p, const ItemLook& look) {
 void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLook& look) {
     Pen p(list, min, max, look.alpha);
     switch (item) {
+    case Item::Leave:
+        Leave(p);
+        break;
     case Item::Power:
         Power(p, look);
         break;

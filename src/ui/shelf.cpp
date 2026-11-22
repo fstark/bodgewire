@@ -38,7 +38,7 @@ constexpr ImU32 kHover = IM_COL32(255, 255, 255, 40);
 constexpr ImVec4 kAmber{1.0f, 0.7f, 0.1f, 1.0f};
 constexpr ImVec4 kPlain{0.92f, 0.92f, 0.92f, 1.0f};
 
-enum class Tray : std::uint8_t { Controls, Tools, Instruments, Machine };
+enum class Tray : std::uint8_t { Leave, Controls, Tools, Instruments, Machine };
 
 struct Entry {
     Item item;
@@ -48,7 +48,8 @@ struct Entry {
 };
 
 // The fixed order, the same on every Machine.
-constexpr std::array<Entry, 14> kItems{{
+constexpr std::array<Entry, 15> kItems{{
+    {Item::Leave, "Back to the Machines", Tray::Leave, 1},
     {Item::Power, "Power", Tray::Controls, 1},
     {Item::RunSwitch, "Pause, real time, or as fast as possible", Tray::Controls, 2},
     {Item::Pencil,
@@ -311,6 +312,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         const Entry& entry = items[i];
         const float w = widthOf(entry);
         const ImVec2 min{xs[i], top}, max{xs[i] + w, top + kCell};
+        if (entry.item == Item::Leave) {
+            leaveAt = {min.x - kTrayPad, origin.y - kCellGap};
+        }
         const std::optional<Owner> owner = OwnerOf(entry.item);
         if (entry.item == Item::Machine) {
             const float divider = min.x - machineGap / 2;
@@ -322,6 +326,10 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         bool inert = false;
         ItemLook look;
         switch (entry.item) {
+        case Item::Leave:
+            inert = !canLeave;
+            why = "No Machines directory";
+            break;
         case Item::Power:
             look.lit = powered;
             look.limit = session.currentLimited();
@@ -412,6 +420,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
             clicked && ImGui::GetIO().MouseClickedLastCount[ImGuiMouseButton_Left] >= 2;
         if (clicked) {
             switch (entry.item) {
+            case Item::Leave:
+                leaveClicked = true;
+                break;
             case Item::Power:
                 if (powered) {
                     session.powerOff();

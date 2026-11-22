@@ -8,9 +8,11 @@
 
 namespace bw {
 
-// Everything on the shelf (P6c; regrouped in P6o), left to right: the controls, the Board's tools,
-// the instruments; at the right end this Machine's brief, binder and Machine slot.
+// Everything on the shelf (P6c; regrouped in P6o), left to right: the way back to the launcher
+// (P7a), the controls, the Board's tools, the instruments; at the right end this Machine's brief,
+// binder and Machine slot.
 enum class Item : std::uint8_t {
+    Leave,  // back to the launcher (P7a)
     Power,
     RunSwitch,  // pause, real time, as fast as possible
     Pencil,     // the grease pencil (P6h), the first of the Board's tools

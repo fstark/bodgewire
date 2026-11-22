@@ -19,12 +19,12 @@ inline constexpr float kShelfHeight = 64.0f;
 // Power on with the run switch (P6o): at `‖` it jumps to `1×` first (powering on always runs).
 void PowerOn(Session& session, RunSwitch& run, std::uint64_t seed);
 
-// The strip along the bottom (P6c, regrouped in P6o): each group in its own tray, the controls,
-// the Board's tools, the instruments from the left; this Machine's brief (only on a Puzzle),
-// binder and Machine slot (its TV, keyboard and knob box) at the right end; a short hint between.
-// What does not apply is grayed. The focus owner is framed in gold. A click on equipment brings it
-// out and to the front, or puts it away when already in front; a double-click pops it out to its
-// own desktop window, or back in.
+// The strip along the bottom (P6c, regrouped in P6o): each group in its own tray, the way back to
+// the launcher (P7a), the controls, the Board's tools, the instruments from the left; this
+// Machine's brief (only on a Puzzle), binder and Machine slot (its TV, keyboard and knob box) at
+// the right end; a short hint between. What does not apply is grayed. The focus owner is framed in
+// gold. A click on equipment brings it out and to the front, or puts it away when already in front;
+// a double-click pops it out to its own desktop window, or back in.
 class Shelf {
 public:
     void draw(Session& session, BoardView& board, Focus& focus, RunSwitch& run, std::uint64_t seed);
@@ -36,6 +36,9 @@ public:
     bool hasBrief = false;                 // a Puzzle: the brief note is on the shelf
     const char* keyboardWindow = nullptr;  // the Machine's keyboard window, by name
     bool wireStarted = false;              // Wire tool: first pin clicked
+    bool canLeave = false;      // a machines/ known: the Leave tray's arrow is live (P7a)
+    bool leaveClicked = false;  // set by draw() on a click on it, reset by its caller
+    ImVec2 leaveAt{};  // above the Leave arrow, screen px: where its question opens upwards
 
 private:
     struct Devices {
