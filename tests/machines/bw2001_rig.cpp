@@ -20,6 +20,12 @@ std::unique_ptr<LoadedCircuit> Bw2001BoardCircuit() {
     return Bw2001Built(*machine);
 }
 
+std::unique_ptr<LoadedCircuit> Bw2001DebugCircuit() {
+    auto machine = LoadNetlistMachine(Bw2001NetlistPath(), test::DebugRomDir("bw2001"));
+    REQUIRE(machine.has_value());
+    return Bw2001Built(*machine);
+}
+
 std::unique_ptr<LoadedCircuit> Bw2001Built(const Machine& machine) {
     auto built = machine.build();
     if (!built) {
@@ -43,7 +49,7 @@ NetId NetOf(const LoadedCircuit& loaded, std::string_view reference, std::string
 
 SnowWatch::SnowWatch(const LoadedCircuit& loaded)
     : sel8(NetOf(loaded, "UE5", "4Y")), videoOn(NetOf(loaded, "UC6", "3Y")),
-      disOn(NetOf(loaded, "UC5", "2Q")) {}
+      disOn(NetOf(loaded, "UC5", "2Q")), blankTv(NetOf(loaded, "UG8", "CA2")) {}
 
 void SnowWatch::feed(const Simulator& sim) {
     struct Edge {
@@ -52,8 +58,8 @@ void SnowWatch::feed(const Simulator& sim) {
         LogicValue value;
     };
     std::vector<Edge> edges;
-    const NetId nets[3]{sel8, videoOn, disOn};
-    for (int n = 0; n < 3; ++n) {
+    const NetId nets[4]{sel8, videoOn, disOn, blankTv};
+    for (int n = 0; n < 4; ++n) {
         for (const Sample& sample : sim.recorder().samples(nets[n])) {
             if (sample.time > fedUntil) {
                 edges.push_back({sample.time, n, sample.value});
@@ -61,10 +67,14 @@ void SnowWatch::feed(const Simulator& sim) {
         }
     }
     std::ranges::stable_sort(edges, {}, &Edge::time);
+    const auto seen = [&] {
+        return s == LogicValue::One && v == LogicValue::One && d == LogicValue::One &&
+               b == LogicValue::One;
+    };
     for (const Edge& e : edges) {
-        const bool before = s == LogicValue::One && v == LogicValue::One && d == LogicValue::One;
-        (e.net == 0 ? s : e.net == 1 ? v : d) = e.value;
-        const bool after = s == LogicValue::One && v == LogicValue::One && d == LogicValue::One;
+        const bool before = seen();
+        (e.net == 0 ? s : e.net == 1 ? v : e.net == 2 ? d : b) = e.value;
+        const bool after = seen();
         accesses += !before && after && e.net == 0 ? 1 : 0;
         all += e.net == 0 && e.value == LogicValue::One ? 1 : 0;
     }
@@ -92,7 +102,7 @@ Running::Running(std::uint64_t seed, std::unique_ptr<LoadedCircuit> circuit, boo
     }
     if (watchSnow) {
         snow.emplace(*loaded);
-        for (const NetId net : {snow->sel8, snow->videoOn, snow->disOn}) {
+        for (const NetId net : {snow->sel8, snow->videoOn, snow->disOn, snow->blankTv}) {
             sim->record(net);
         }
     }
@@ -156,6 +166,17 @@ void Bw2001Type(Running& m, std::string_view text) {
     }
     m.sim->wake(keyboard->id());
     m.runUntil(m.sim->now() + static_cast<Time>(text.size()) * (kMatrixHold + kMatrixGap) + 20_ms);
+}
+
+bool Bw2001WaitForRows(Running& m, const std::vector<std::string>& rows, Time limit) {
+    const Time until = m.sim->now() + limit;
+    while (Bw2001ScreenRows(m) != rows) {
+        if (m.sim->now() >= until) {
+            return false;
+        }
+        m.runUntil(m.sim->now() + 1_ms);
+    }
+    return true;
 }
 
 }  // namespace bw

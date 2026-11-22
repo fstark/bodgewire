@@ -1,5 +1,5 @@
-# Snow: the VIA UA5 reads its PB5 input (VIDEO_ON, the beam outside the text) as 0, though the pin's Net is fine: its input has failed. The editor waits for PB5 low before every screen store, so it never waits: every store lands also while the beam draws the text, as after the killer poke. The probe: VIDEO_ON toggles at UA5's leg; a VIA swap repairs it.
+# Snow: the VIA UA5 reads its PB5 input (VIDEO_ON, the beam outside the text) as 0, though the pin's Net is fine: its input has failed. The editor waits for PB5 low before every character it stores, so it never waits: the stores land also while the beam draws the text, as after the killer poke. Scrolling stays clean: BASIC 1 blanks the picture while it scrolls. The probe: VIDEO_ON toggles at UA5's leg; a VIA swap repairs it.
 machine bw2001
 title "Snow"
-brief "The BW-2001 works, but whenever it prints or scrolls, white specks flicker all over the text, as if someone had typed the old POKE 59458,62."
+brief "The BW-2001 works, but whenever it prints, white specks flicker over the text, as if someone had typed the old POKE 59458,62."
 fault stuck UA5.PB5 0 input

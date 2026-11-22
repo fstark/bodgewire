@@ -18,7 +18,7 @@ ParseRomContents(std::string_view text, std::string_view file, std::size_t size,
 
 // The same from a file; "cannot read '<path>'" if it cannot be opened. Errors name the file's
 // filename only. A `.bin` file (any case) is a raw dump instead: one byte a word, exactly `size`
-// bytes, `width` 8 (P5n: real ROM dumps kept in git-ignored external/roms/).
+// bytes, `width` 8 (P5n: real ROM dumps, as the PET's in machines/130-bw2001/roms/).
 std::expected<std::vector<std::uint8_t>, std::string>
 ReadRomContents(const std::filesystem::path& path, std::size_t size, int width);
 

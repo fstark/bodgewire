@@ -24,18 +24,25 @@ namespace bw {
 
 std::filesystem::path Bw2001NetlistPath();
 
-// The Circuit built from the Board's Copper, with no Faults.
+// The Circuit built from the Board's Copper, with no Faults: the Machine as it ships, on
+// Commodore's BASIC 1 (roms/).
 std::unique_ptr<LoadedCircuit> Bw2001BoardCircuit();
+
+// The same on our own firmware (debug-roms/, --roms): its banner, its self-test, and the
+// harness signal the typist waits on.
+std::unique_ptr<LoadedCircuit> Bw2001DebugCircuit();
 
 // The Puzzle's or repaired Machine's Circuit (REQUIREd).
 std::unique_ptr<LoadedCircuit> Bw2001Built(const Machine& machine);
 
-// Screen accesses while the beam draws the text (SEL8, VIDEO_ON and DIS_ON all high): the PET's
-// snow. Fed each slice's samples before they are trimmed. The Nets are found by their drivers'
-// pins: on a damaged Board Nets are named from the Copper.
+// Screen accesses while the beam draws the text (SEL8, VIDEO_ON, DIS_ON and BLANK_TV all high):
+// the PET's snow. BLANK_TV low hides it: BASIC 1 blanks the picture while it scrolls. Fed each
+// slice's samples before they are trimmed. The Nets are found by their drivers' pins: on a damaged
+// Board Nets are named from the Copper.
 struct SnowWatch {
-    NetId sel8, videoOn, disOn;
-    LogicValue s = LogicValue::Zero, v = LogicValue::Zero, d = LogicValue::Zero;
+    NetId sel8, videoOn, disOn, blankTv;
+    LogicValue s = LogicValue::Zero, v = LogicValue::Zero, d = LogicValue::Zero,
+               b = LogicValue::Zero;
     Time fedUntil = -1;
     int accesses = 0;  // rises into all three high
     int all = 0;       // SEL8's rises: every screen access
@@ -55,9 +62,7 @@ struct Running final : Bw2001Target {
     const Ram2114* videoHigh = nullptr;
     std::vector<const Ram2114*> low, high;
 
-    explicit Running(std::uint64_t seed,
-                     std::unique_ptr<LoadedCircuit> circuit = Bw2001BoardCircuit(),
-                     bool watchSnow = false);
+    Running(std::uint64_t seed, std::unique_ptr<LoadedCircuit> circuit, bool watchSnow = false);
     void runUntil(Time t);
     void run(std::uint64_t us) override;
     void setKey(Bw2001Key key, bool held) override;
@@ -65,13 +70,20 @@ struct Running final : Bw2001Target {
     std::uint8_t screen(std::size_t offset) const override;
 };
 
+// Our firmware's banner (Bw2001DebugCircuit) and Commodore's (BASIC 1, the Machine's own ROMs).
 inline const std::vector<std::string> kBw2001Banner{"*** BW-2001 TINY BASIC ***", "",
                                                     "7166 BYTES FREE", "", "READY"};
+inline const std::vector<std::string> kPetBanner{"*** COMMODORE BASIC ***", "", " 7167 BYTES FREE",
+                                                 "", "READY."};
 
 // The video RAM as text rows, as typist.rows() (P5p's screen codes; BASIC 1 uses the same).
 std::vector<std::string> Bw2001ScreenRows(const Running& m);
 
 // Types `text` on J5 (40 ms down, 40 ms up a character) and runs until it is all typed.
 void Bw2001Type(Running& m, std::string_view text);
+
+// Runs, a millisecond at a time, until the video RAM's rows are `rows`; false after `limit`.
+// Commodore's BASIC 1 has no harness signal: the screen is all a test can wait on.
+bool Bw2001WaitForRows(Running& m, const std::vector<std::string>& rows, Time limit);
 
 }  // namespace bw

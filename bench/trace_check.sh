@@ -74,11 +74,22 @@ netlist_path() {
     done
 }
 
+# tree_args <tree> <run>: options a checkout needs to run what the reference ran. The BW-2001
+# runs Commodore's BASIC 1 since 2026-11-22; our firmware, which the reference runs, is then
+# its debug ROMs.
+tree_args() {
+    case "$(run_netlist "$2")" in
+    bw2001) [[ -f "$1/machines/130-bw2001/debug-roms/sockets.txt" ]] &&
+        echo " --roms $1/machines/130-bw2001/debug-roms" ;;
+    esac
+    return 0
+}
+
 # record <bw> <tree> <out dir> <run>: the VCD, then the options and counts in <run>.txt
 record() {
     local bw="$1" tree="$2" out="$3" run="$4"
     local args
-    args="$(run_args "$run")"
+    args="$(run_args "$run")$(tree_args "$tree" "$run")"
     if [[ "$args" != *--record* ]]; then
         args+=" --record-all"
     fi

@@ -11,7 +11,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#include "../netlist/external_rom.hpp"
+#include "../paths.hpp"
 #include "bw2001_harness.hpp"
 #include "bw2001_rig.hpp"
 #include "bw2001_screen.hpp"
@@ -19,6 +19,7 @@
 #include "machine/machine.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
+#include "netlist/rom_directory.hpp"
 #include "parts/matrix_keyboard.hpp"
 #include "parts/ram2114.hpp"
 #include "sim/simulator.hpp"
@@ -36,11 +37,12 @@ std::string NetlistText() {
     return text.str();
 }
 
-// The netlist edited as text (a test's variant: DIAG grounded, BASIC 1 in the sockets), built.
+// The netlist edited as text (a test's variant: DIAG grounded), on our firmware, built.
 std::unique_ptr<LoadedCircuit> VariantCircuit(const std::string& text) {
     auto netlist = ParseNetlist(text, "bw2001.bwn");
     REQUIRE(netlist.has_value());
     ResolveContentsPaths(*netlist, Bw2001NetlistPath().parent_path());
+    REQUIRE(ApplyRomDirectory(*netlist, test::DebugRomDir("bw2001")).has_value());
     auto result = BuildCircuit(*netlist);
     if (!result) {
         for (const Diagnostic& d : result.error()) {
@@ -50,34 +52,6 @@ std::unique_ptr<LoadedCircuit> VariantCircuit(const std::string& text) {
     REQUIRE(result.has_value());
     CHECK((*result)->warnings.empty());
     return std::move(*result);
-}
-
-// Commodore's BASIC 1 in the seven sockets, the empty UH2 and UH6 fitted as UH1 and UH5 are
-// (their selects on SELD_N); nullptr without the user's ROMs.
-std::unique_ptr<LoadedCircuit> Basic1Circuit() {
-    for (const PetRom& rom : kPetBasic1) {
-        if (!ExternalRom(rom.file)) {
-            return nullptr;
-        }
-    }
-    // A ROM directory as --roms takes it (P5q2): a link per socket, named by its reference.
-    const auto dir = std::filesystem::temp_directory_path() / "bw2001_basic1_roms";
-    std::filesystem::remove_all(dir);
-    std::filesystem::create_directories(dir);
-    for (const PetRom& rom : kPetBasic1) {
-        std::filesystem::create_symlink(*ExternalRom(rom.file),
-                                        dir / (std::string(rom.socket) + ".bin"));
-    }
-    auto machine = LoadNetlistMachine(Bw2001NetlistPath(), dir);  // on the Board
-    if (!machine) {
-        for (const Diagnostic& d : machine.error()) {
-            UNSCOPED_INFO(Format(d));
-        }
-    }
-    REQUIRE(machine.has_value());
-    auto built = machine->build();
-    REQUIRE(built.has_value());
-    return std::move(*built);
 }
 
 std::unique_ptr<LoadedCircuit> DesignCircuit() {
@@ -102,7 +76,7 @@ TEST_CASE("bw2001 machine: the netlist loads without warnings", "[machines]") {
 }
 
 TEST_CASE("bw2001 machine: stage 1, the TV locks on 260 lines at 60 Hz", "[machines][slow]") {
-    Running m(1);
+    Running m(1, Bw2001BoardCircuit());
     const NetId hdrive = *ConnectorNet(*m.loaded, "MONITOR", "HDRIVE");
     const NetId vdrive = *ConnectorNet(*m.loaded, "MONITOR", "VDRIVE");
     m.sim->record(hdrive);
@@ -140,7 +114,7 @@ TEST_CASE("bw2001 machine: stage 1, the TV locks on 260 lines at 60 Hz", "[machi
 TEST_CASE("bw2001 machine: stage 1, the picture is the video RAM", "[machines][slow]") {
     const std::uint64_t seed = GENERATE(1u, 2u, 3u);
     INFO("seed " << seed);
-    Running m(seed);
+    Running m(seed, Bw2001BoardCircuit());
     m.runUntil(150_ms);
     REQUIRE(m.tv->tv().isLocked());
     const TvFrame& frame = m.tv->tv().completedFrame();
@@ -156,8 +130,9 @@ TEST_CASE("bw2001 machine: stage 1, the picture is the video RAM", "[machines][s
     CHECK(wrong == 0);
 }
 
-TEST_CASE("bw2001 machine: stage 2, our firmware's banner on the TV, no snow", "[machines][slow]") {
-    Running m(1, Bw2001BoardCircuit(), true);
+TEST_CASE("bw2001 machine: stage 2, the debug ROMs' banner on the TV, no snow",
+          "[machines][slow]") {
+    Running m(1, Bw2001DebugCircuit(), true);
     const NetId led = m.loaded->nets.at("DIAG_LED_N");
     Bw2001Typist typist(m);
     REQUIRE(typist.waitForLine(3'000'000));
@@ -175,7 +150,7 @@ TEST_CASE("bw2001 machine: stage 3, typing through the keyboard connector", "[ma
 #ifndef NDEBUG
     SKIP("about 1.3 s simulated: minutes in debug; runs in the release build");
 #endif
-    Running m(2);
+    Running m(2, Bw2001DebugCircuit());
     Bw2001Typist typist(m);
     REQUIRE(typist.waitForLine());
     Bw2001Type(m, "PRINT 2+2\r");
@@ -193,7 +168,7 @@ TEST_CASE("bw2001 machine: stage 3, a scrolling screen without snow", "[machines
 #ifndef NDEBUG
     SKIP("about 6 s simulated: runs in the release build");
 #endif
-    Running m(3, Bw2001BoardCircuit(), true);
+    Running m(3, Bw2001DebugCircuit(), true);
     Bw2001Typist typist(m);
     REQUIRE(typist.waitForLine());
     // From the banner: before reset ends (1 ms) the 6502's address is its power-on state, which
@@ -230,15 +205,11 @@ TEST_CASE("bw2001 machine: stage 3, the self-test by DIAG on the user port", "[m
     CHECK(rows[11] == "KEY");
 }
 
-TEST_CASE("bw2001 machine: the real BASIC 1 and its killer poke", "[machines][slow]") {
+TEST_CASE("bw2001 machine: Commodore's BASIC 1 and its killer poke", "[machines][slow]") {
 #ifndef NDEBUG
     SKIP("seconds simulated: runs in the release build");
 #endif
-    auto circuit = Basic1Circuit();
-    if (!circuit) {
-        SKIP(kNoPetRoms);
-    }
-    Running m(1, std::move(circuit), true);
+    Running m(1, Bw2001BoardCircuit(), true);
     m.runUntil(1500_ms);
     auto rows = Bw2001ScreenRows(m);
     REQUIRE(rows.size() >= 5);
@@ -255,11 +226,12 @@ TEST_CASE("bw2001 machine: the real BASIC 1 and its killer poke", "[machines][sl
     CHECK(m.snow->accesses == before);
 
     // POKE 59458,62: PB5 an output, its 0 against the video's gate. The wait reads 0 at once and
-    // printing snows; the gate wins the line, so the retrace interrupt and the keyboard go on.
+    // printing snows (scrolling stays blanked); the gate wins the line, so the retrace interrupt
+    // and the keyboard go on.
     Bw2001Type(m, "POKE 59458,62\r");
     Bw2001Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");
     m.runUntil(m.sim->now() + 1500_ms);
-    CHECK(m.snow->accesses > before + 100);
+    CHECK(m.snow->accesses > before + 40);
     CHECK(m.sim->value(m.loaded->nets.at("VIDEO_ON")) != LogicValue::X);
     Bw2001Type(m, "PRINT 777\r");
     m.runUntil(m.sim->now() + 500_ms);
@@ -275,7 +247,7 @@ TEST_CASE("bw2001 machine: stage 3, a P5o session on the Machine", "[machines][s
 #ifndef NDEBUG
     SKIP("tens of seconds simulated: runs in the release build");
 #endif
-    Running m(2);
+    Running m(2, Bw2001DebugCircuit());
     const auto difference =
         RunBw2001Session(m, std::filesystem::path(BW_ROOT_DIR) / "tests/data/basic/27_cls.txt");
     INFO(difference.value_or(""));

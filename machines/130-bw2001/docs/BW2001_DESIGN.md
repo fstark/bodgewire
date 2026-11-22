@@ -8,8 +8,12 @@ Machine name `bw2001`:
 
 ```
 bw2001.bwn                              design netlist (grown in three stages)
-roms/bw2001_*.asm, .rom                 P5p's firmware (the editor's retrace wait, P5q)
+roms/901447-01.bin … -07.bin            Commodore's BASIC 1, the Machine's ROMs (2026-11-22)
 roms/901447-08.bin                      the character ROM (P5n)
+roms/contents.txt                       the binder's first view of each chip (P6p)
+debug-roms/bw2001_*.asm, .rom, .inc     P5p's firmware, the debug ROMs (the editor's retrace wait, P5q)
+debug-roms/empty.rom                    UH2 and UH6 under the debug ROMs
+debug-roms/sockets.txt                  which debug image fills which socket (--roms)
 board/bw2001.place                      connectors, the PET grid, resistors beside their chips
 board/bw2001.kicad_pcb, .kicad_pro      Board (placed by bw place, routed by the user)
 manuals/user.md, service.md
@@ -44,7 +48,7 @@ As P5p's ([BW2001_FIRMWARE.md](../../../docs/p5p-bw2001-firmware/BW2001_FIRMWARE
 | sheet 2's `R12` 10K on `SEL1_N` past the 8K jumper (the same reference as sheet 3's 1K `R12`) | left out, the jumper closed | the 8K machine; `R12` stays sheet 3's |
 | cassette motor transistors (`Q1`–`Q6`, `VR1`, `VR2`, …) | `CASS1_MOTOR` = PIA1 `CB2` straight to `J6` pin 3, `CASS2_MOTOR` = VIA `PB4` to `J3` pin 3 | logic-only equivalents (GAME_DESIGN): the control level, not the 9 V |
 | `UF3.SO` not drawn | on `VCC` | as on P5n's bench |
-| `UH2`, `UH6` | `contents=roms/empty.rom` (every word `$FF`) | our firmware leaves them empty; Commodore's BASIC 1 fills them (`--roms`, P5q2). P5q left them out, against the board: fitted again in P5q2 |
+| `UH2`, `UH6` | `contents=roms/901447-03.bin`, `-04.bin` | BASIC 1's second half. Our firmware (the debug ROMs) leaves them empty (`debug-roms/empty.rom`, every word `$FF`). P5q left them out, against the board: fitted again in P5q2 |
 | the 2114s | `access=300ns` (the 2114-3) | at 450 ns the video path misses every 64th character (P5q plan, phase 8) |
 | spare gate inputs | tied to `VCC` or `GND` | loads without warnings |
 
@@ -75,14 +79,14 @@ Pads: the table's numbers are the PET's (1–12, then its letters A B C D E F H 
 
 `machines/130-bw2001/board/bw2001.place` (P5q1, [BW2001_BOARD.md](../../../docs/p5q1-bw2001-board/BW2001_BOARD.md)): laid out after PET-Shack's "PET CPU BOARD" drawing of a PET 2001 board. `grid pet`: every chip at its PET location, columns J (left) to A (right), rows 9 (the back) to 1 (the front), lying with the notch at the left; eight upright as drawn (`UF3`, `UB8`, `UA5`, `UG2`, `UE6`, `UA2` notch at the bottom; `UG8`, `UG9` at the top). IEEE-488 (`J1`), user port (`J2`) and cassette #2 (`J3`) down the right edge; power (`J8`), cassette #1 (`J6`), the keyboard (`J5`: inside the board on the PET), `DS1` and the monitor (`J7`) along the back. Pull-ups beside their chips, chained along the resistor bands away from the upright chips; `X1`, `UDE9` and `R99` in the empty cells nearest their Nets. 293 × 269 mm, 35.2 m of wire; routed by the user on two layers (P5q's first Board, on a guessed grid, is `1f8e110`).
 
-Running other ROMs (P5q2): `--roms DIR`, the files named by socket (`UH1.bin` …); Commodore's BASIC 1 as `external/roms/pet-basic1/` (tests/data/pet_roms.md). `UH2` and `UH6` were imported into the routed Board and routed by the user; the two connections that rerouting broke (`BD_TO_D_N`, `CASS_WRITE`) were routed by a script on a 0.1 mm grid (P5q2 plan).
+Running other ROMs (P5q2): `--roms DIR`, the files named by socket (`UH1.bin` …) or a `sockets.txt` naming them; our firmware as `--roms machines/130-bw2001/debug-roms`. Commodore's BASIC 1 has been the netlist's own since 2026-11-22 (tests/data/pet_roms.md). `UH2` and `UH6` were imported into the routed Board and routed by the user; the two connections that rerouting broke (`BD_TO_D_N`, `CASS_WRITE`) were routed by a script on a 0.1 mm grid (P5q2 plan).
 
 ## Manuals
 
 Written to STYLE's Manuals rules (P6k):
 
-- User: What it does (a welcome: the PET 2001 copied chip for chip; the 6502, 8 KB, the five ROMs, the 40 × 25 screen; the banner); Using it (the keyboard and the PC mapping, BASIC, the screen editor's keys, the monitor's `.M` and `.X`, the self-test by a wire from `J2.DIAG` to `J2.GND1` or `.T`, Commodore's ROMs by `--roms`, the killer poke); How it works (the goal: two machines sharing one memory; the clock; the picture: beam counters, video address and `UE6`'s row start, screen memory, character ROM, shift register, reverse video, the output; the computer: the 6502, the buffers, the decoder with a memory map table, the memory, the ROMs, start-up, the keyboard matrix, the retrace interrupt, `DS1`; sharing the screen memory: the multiplexers, snow, the editor's wait; the unused features in a table).
-- Service: Components (every reference, netlist order; formulas and test-point wording tightened); Test points (probe readings idle at `READY`, checked with `bw run --probe` at 1.5 s and 2 s, the clock and video side also at 0.2 s; `SEL8` and `RES_N` from a `--record` VCD over 3 s: `SEL8` high 2 µs every third of a second, from the cursor blink; `KIN0` with `--type 'J5:1.4s:AAAA…'` read at 1.9 s. Five logic analyzer setups, each checked with `bw_ui --clip/--group … --sample … --view … --screenshot --after 2s` and the picture viewed: a line (`--clip UC5.1Q_N:r,UC6.3Y:1,UC5.2Q,UE9.1Y --sample 100ns --view 10us:+30us`), a frame (`--clip UD8.4Y:f,UC6.3Y,UC5.1Q_N --sample 10us --view 2ms:+8ms`), the video address (`--group UC3.A0 --clip UC5.2Q:r,UC6.3Y:1 --sample 100ns --view 1us:+4us`: 000, 001…), the 6502 starting (`--group UF3.A0,UF3.D0 --clip UF3.SYNC:r,UF3.RW`: FFFD F8, F806 78, F807 D8), the 6502 writing the screen (`--clip UE5.4Y:r,UF3.RW,UC6.3Y` with both buses: 8000, `RW` low the second microsecond, `VIDEO_ON` low)); Troubleshooting (no picture; the picture rolls; every character wrong the same way; no banner; wrong bytes free; specks while printing; no cursor blink or dead keys: ordered checks, never naming a fault).
+- User (on Commodore's BASIC 1 since 2026-11-22): What it does (a welcome: the PET 2001 copied chip for chip; the 6502, 8 KB, Commodore's seven ROMs, the 40 × 25 screen; the banner); Using it (the keyboard and the PC mapping, BASIC with `PEEK` and `POKE`, the screen editor's keys, the killer poke); How it works (the goal: two machines sharing one memory; the clock; the picture: beam counters, video address and `UE6`'s row start, screen memory, character ROM, shift register, reverse video, the output; the computer: the 6502, the buffers, the decoder with a memory map table, the memory, the ROMs, start-up, the keyboard matrix, the retrace interrupt, `DS1`; sharing the screen memory: the multiplexers, snow, the editor's wait, the blanking while it scrolls; the unused features in a table).
+- Service: Components (every reference, netlist order; formulas and test-point wording tightened); Test points (probe readings idle at `READY`, checked with `bw run --probe` at 1.5 s and 2 s, the clock and video side also at 0.2 s; `SEL8` and `RES_N` from a `--record` VCD over 3 s: `SEL8` high 2 µs every third of a second, from the cursor blink; `KIN0` with `--type 'J5:1.4s:AAAA…'` read at 1.9 s. Five logic analyzer setups, each checked with `bw_ui --clip/--group … --sample … --view … --screenshot --after 2s` and the picture viewed: a line (`--clip UC5.1Q_N:r,UC6.3Y:1,UC5.2Q,UE9.1Y --sample 100ns --view 10us:+30us`), a frame (`--clip UD8.4Y:f,UC6.3Y,UC5.1Q_N --sample 10us --view 2ms:+8ms`), the video address (`--group UC3.A0 --clip UC5.2Q:r,UC6.3Y:1 --sample 100ns --view 1us:+4us`: 000, 001…), the 6502 starting (`--group UF3.A0,UF3.D0 --clip UF3.SYNC:r,UF3.RW`; on BASIC 1, 2026-11-22: FFFC 38, FFFD FD, FD38 A2, FD3A 9A, FD3B D8, the stack writes of FD3C's JSR), the 6502 writing the screen (`--clip UE5.4Y:r,UF3.RW,UC6.3Y` with both buses; on BASIC 1 the cursor blink: a read of 80C8, a write of it 28 µs later, `VIDEO_ON` low)). BASIC 1's readings were taken from a test harness (`Running`, sampled every 20 ns) rather than `bw_ui`; it leaves `DS1.K` steady, where our firmware glitches it once a frame. Troubleshooting (no picture; the picture rolls; every character wrong the same way; no banner; wrong bytes free; specks while printing; no cursor blink or dead keys: ordered checks, never naming a fault; the debug ROMs and their self-test, last).
 
 ## Tests
 
@@ -91,38 +95,38 @@ Written to STYLE's Manuals rules (P6k):
 - **Stage 1**: loads without warnings; the TV locks within 3 frames (`isLocked`), 260 lines a frame, `HORZ_DRIVE` period 64 µs high 24 µs, `VERT_DRIVE` low 1.28 ms every 16.64 ms (recorded Nets); the frame has a 320 × 200 window of dots and nothing outside it; the screen reader returns 1000 cells that match the video RAM's power-on bytes (read through `MemoryCells`), seeds 1–3.
 The screen reader reads the first character set (`GRAPHIC` low, as the firmware and BASIC 1 set it).
 
-- **Stage 2**: the banner and `READY` on the TV and in the video RAM by 1.5 s (our firmware: the RAM sizing, then the screen); the cursor blinks (the cell under it inverse in one frame, plain in a frame 1/3 s later); no snow at power-on: `SEL8` is never high while `VIDEO_ON` and `DIS_ON` are both high (recorded over the boot); `DS1` dark.
+- **Stage 2** (on the debug ROMs since 2026-11-22, as stage 3 but the BASIC 1 case): the banner and `READY` on the TV and in the video RAM by 1.5 s (our firmware: the RAM sizing, then the screen); the cursor blinks (the cell under it inverse in one frame, plain in a frame 1/3 s later); no snow at power-on: `SEL8` is never high while `VIDEO_ON` and `DIS_ON` are both high (recorded over the boot); `DS1` dark.
 - **Stage 3**:
   - `PRINT 2+2` typed through `J5`'s queue (`MatrixKeyboard::type`) shows ` 4`, `READY`;
   - a 30-line program `LIST`ed scrolls with no snow (the `SEL8` check over the listing);
   - the self-test by a Net from `J2` pin 5 to `GND` (the netlist line rewritten, as the BW-1's strap test) shows every row `OK`;
-  - with the real BASIC 1 in the sockets (`ExternalRom`, skipped without): the banner on the TV; `POKE 59458,62` then `FOR I=1 TO 20:PRINT "HELLO":NEXT`: snow (some frame differs from the video RAM's own rendering, `SEL8` high during the display), and a key typed afterwards still echoes (the retrace interrupt survives: the port's drive strength, P5q).
+  - on the Machine's own BASIC 1: the banner on the TV; `POKE 59458,62` then `FOR I=1 TO 20:PRINT "HELLO":NEXT`: snow (some frame differs from the video RAM's own rendering, `SEL8` high during the display), and a key typed afterwards still echoes (the retrace interrupt survives: the port's drive strength, P5q).
 - **Board** (after the routing): `check-board` ok; the Machine cases built from the Board; the per-Machine Board loops; `session: bw2001 with every instrument` (`tests/session/session_test.cpp`).
 
 Debug: a guess of 0.005–0.01× under ASan (0.24× release); phase 8 measures it and records it. Each case is kept to what it shows (stage 1 a few frames); a case that would run past about 10 minutes in debug is release-only (`#ifndef NDEBUG` → `SKIP`, ADD_MACHINE): the BASIC 1 and listing cases at least, likely the typing and self-test ones. Cases are named `bw2001 machine: stage N …`.
 
 ## Puzzles
 
-`machine bw2001` in each file (BW2001.md, Puzzles); tests in `tests/machines/bw2001_puzzles_test.cpp` (release-only but the title and build cases), helpers in `tests/machines/bw2001_rig.{hpp,cpp}`. Each Fault was tried with `bw run --tv` and `bw_ui` before its brief was written (P5r plan notes); the dead ones on seeds 1–3.
+`machine bw2001` in each file (BW2001.md, Puzzles); tests in `tests/machines/bw2001_puzzles_test.cpp` (release-only but the title and build cases), helpers in `tests/machines/bw2001_rig.{hpp,cpp}`. Each Fault was tried with `bw run --tv` and `bw_ui` before its brief was written (P5r plan notes); the dead ones on seeds 1–3. On 2026-11-22 every Puzzle moved to BASIC 1 and was run again there (the symptoms below); BASIC 1 has no harness signal, so the tests wait on the screen's rows (`Bw2001WaitForRows`), and the snow watch counts only what `BLANK_TV` lets through.
 
 | File | Fault line | Symptom (seed 1; seeds 1–3 the same where run) | Repair |
 |---|---|---|---|
 | `odd_e.bwp` | `fault cell UA2.O2 $2A 1` | every `E` with a dot at line 2, bit 2 | swap `UA2` |
 | `striped_screen.bwp` | `fault crack UA2.O3 UB2.D 50%` | dot bit 3 lit on all lines of every cell | mend |
 | `rolling_text.bwp` | `fault crack J7.VDRIVE UD8.4Y 50%` | the TV never locks | mend |
-| `stutter.bwp` | `fault stuck UD2.3Y 0` | TV row 0 `**  WW2200  IIYYBBSSCC****` | swap `UD2` |
+| `stutter.bwp` | `fault stuck UD2.3Y 0` | TV row 0 `**  OOMMDDRR  AAII  ****` | swap `UD2` |
 | `negative_screen.bwp` | `fault stuck UC1.1Q 1` | every cell reversed | swap `UC1` |
-| `short_memory.bwp` | `fault column UI5.IO1 0` | `2046 BYTES FREE`; self-test `RAM BAD 0C00 01` | swap `UI5` |
+| `short_memory.bwp` | `fault column UI5.IO1 1` | ` 2047 BYTES FREE` (stuck at 0, BASIC 1's sizing misses it) | swap `UI5` |
 | `missing_keys.bwp` | `fault crack J5.COL0 UG8.PB0 50%` | `QWERTYASDF` types `ERTYDF` | mend |
 | `frozen_cursor.bwp` | `fault stuck UG8.CB1 0` | no blink, no key | swap `UG8` |
-| `random_screen.bwp` | `fault stuck UDE9.RST_N 0` | the power-on screen unchanged; `RES_N` low; no self-test | swap `UDE9` |
-| `snow.bwp` | `fault stuck UA5.PB5 0 input` | over 1000 screen accesses in the display over a 30-line loop; `VIDEO_ON` toggles at `UA5` | swap `UA5` |
-| `bad_zero_page.bwp` | `fault column UI8.IO1 1` | cleared, under 100 stray cells, no banner; self-test `ZERO PAGE BAD 0001 01` | swap `UI8` |
+| `random_screen.bwp` | `fault stuck UDE9.RST_N 0` | the power-on screen unchanged; `RES_N` low | swap `UDE9` |
+| `snow.bwp` | `fault stuck UA5.PB5 0 input` | over 40 visible screen accesses over a 30-line loop (53; 10 repaired, at the scrolls' edges); `VIDEO_ON` toggles at `UA5` | swap `UA5` |
+| `bad_zero_page.bwp` | `fault column UI8.IO1 1` | the power-on screen kept, over 1000 visible screen accesses in half a second, no `READY.` | swap `UI8` |
 | `wrong_chip.bwp` | `fault joint UH8.2A4` | as `bad_zero_page`; a `UI8` swap changes nothing | resolder `UH8` pin 17 |
-| `ghost_letter.bwp` | `fault cell UC3.IO2 $00C 1` | `*** BW-2001 VINY BASIC ***`; self-test `VIDEO RAM BAD 800C 02` | swap `UC3` |
-| `garbled_text.bwp` | `fault column UC3.IO1 1` | TV row 0 `+++!CW-3111!UIOY!CASIC!+++` and `!` everywhere; the self-test's row `WIEEO!SAM!CAE!…` | swap `UC3` |
+| `ghost_letter.bwp` | `fault cell UC3.IO2 $00C 1` | `*** COMMODORG BASIC ***` | swap `UC3` |
+| `garbled_text.bwp` | `fault column UC3.IO1 1` | TV row 0 `+++!COMMOEOSE!CASIC!+++` and `!` everywhere | swap `UC3` |
 | `no_clock.bwp` | `fault crack X1.OUT UE2.2B 50%` | black, unlocked; `CLK8` still, `OSC8` at `X1` running | mend |
-| `joined_bits.bwp` | `fault bridge UF3.D0 UF3.D1` | the power-on screen unchanged; `RES_N` high; no self-test | cut the bridge |
+| `joined_bits.bwp` | `fault bridge UF3.D0 UF3.D1` | the power-on screen unchanged; `RES_N` high | cut the bridge |
 
 Missing keys depends on two readings the transcription assumed (Netlist above): `J5`'s column order and `R18`–`R25`'s (`R18` on `KIN0`). The player's manuals never discuss the transcription, so the note is here: if the real PET differs, the Puzzle still holds on our Board, which is what the player probes.
 

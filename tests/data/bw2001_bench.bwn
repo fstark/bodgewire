@@ -5,7 +5,7 @@
 # (free-running, PB7 a 2 ms square wave), and PIA1 CB1, the retrace (X2, a 60 Hz stand-in for
 # P5q's video), where it reads the keys (SW1 row 3 to PIA2 PA, SW2 row 8 to PIA2 CA2) and counts
 # on the VIA's port A. The VIA's shift register runs in mode 4 on CB1/CB2. The BASIC 1 test puts
-# the real ROMs (external/roms/pet) in the seven sockets.
+# the real ROMs (machines/130-bw2001/roms, tests/data/pet_roms.md) in the seven sockets.
 
 part X1   OSC freq=1MHz                              # PHI0 (the PET divides 8 MHz: P5q)
 part X2   OSC freq=60Hz                              # RETRACE, a stand-in for the video

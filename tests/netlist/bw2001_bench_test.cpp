@@ -1,6 +1,5 @@
 // The P5n bench (tests/data/bw2001_bench.bwn): the PET 2001's bus, running
-// machines/130-bw2001/debug-roms/bw2001_bench.asm, and the real BASIC 1 when the user has placed it
-// (external/roms/pet, tests/data/pet_roms.md).
+// machines/130-bw2001/debug-roms/bw2001_bench.asm, and the real BASIC 1 (tests/data/pet_roms.md).
 
 #include <cstddef>
 #include <cstdint>
@@ -15,11 +14,11 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "external_rom.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
 #include "parts/ram2114.hpp"
 #include "parts/switch.hpp"
+#include "pet_roms.hpp"
 #include "sim/simulator.hpp"
 
 using namespace bw;
@@ -40,7 +39,7 @@ struct Bench {
     std::unique_ptr<LoadedCircuit> loaded;
     std::unique_ptr<Simulator> sim;
 
-    // `basic1`: the seven sockets hold the real ROMs (the caller checked they exist).
+    // `basic1`: the seven sockets hold the real ROMs.
     explicit Bench(std::uint64_t seed, std::span<const StuckCell> cells = {}, bool basic1 = false) {
         std::ifstream in(BenchPath());
         REQUIRE(in);
@@ -56,7 +55,7 @@ struct Bench {
                     }
                     for (PartParam& param : part.params) {
                         if (param.name == "contents") {
-                            param.value = ExternalRom(rom.file)->string();
+                            param.value = PetRomPath(rom).string();
                         }
                     }
                 }
@@ -236,11 +235,6 @@ TEST_CASE("bw2001 bench: stuck RAM and video RAM cells fail their tests", "[netl
 }
 
 TEST_CASE("bw2001 bench: the real BASIC 1 boots to READY.", "[netlist][slow]") {
-    for (const PetRom& rom : kPetBasic1) {
-        if (!ExternalRom(rom.file)) {
-            SKIP(kNoPetRoms);
-        }
-    }
     Bench bench(1, {}, true);
     bench.sim->runUntil(600_ms);
     std::vector<std::string> rows;

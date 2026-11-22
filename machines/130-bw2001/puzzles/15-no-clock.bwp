@@ -1,5 +1,5 @@
-# No clock: the OSC8 Trace from the 8 MHz oscillator X1 to the clock gate UE2 (pin 5) is cracked: UE2's input floats high and CLK8 never moves. Nothing on the board runs: no picture, no sync, and the self-test cannot run.
+# No clock: the OSC8 Trace from the 8 MHz oscillator X1 to the clock gate UE2 (pin 5) is cracked: UE2's input floats high and CLK8 never moves. Nothing on the board runs: no picture, no sync.
 machine bw2001
 title "No clock"
-brief "The BW-2001 shows nothing at all: the monitor stays dark and cannot find a picture. The self-test shows nothing either."
+brief "The BW-2001 shows nothing at all: the monitor stays dark and cannot find a picture."
 fault crack X1.OUT UE2.2B 50%

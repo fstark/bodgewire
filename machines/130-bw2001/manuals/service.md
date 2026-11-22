@@ -99,13 +99,13 @@
 - `UJ3` RAM: the high 4 bits of each byte at $1400, on `BBD4`–`BBD7`, as `UI3`
 - `UJ2` RAM: the high 4 bits of each byte at $1800, on `BBD4`–`BBD7`, as `UI2`
 - `UJ1` RAM: the high 4 bits of each byte at $1C00, on `BBD4`–`BBD7`, as `UI1`
-- `UH1` ROM: BASIC, $C000–$C7FF
-- `UH5` ROM: BASIC, $C800–$CFFF
-- `UH2` ROM socket: $D000–$D7FF, an empty ROM with our firmware (Commodore's BASIC 1 has 901447-03 here)
-- `UH6` ROM socket: $D800–$DFFF, an empty ROM with our firmware (901447-04 in BASIC 1)
-- `UH3` ROM: the screen editor and keyboard, $E000–$E7FF
-- `UH4` ROM: the machine-code monitor, $F000–$F7FF
-- `UH7` ROM: reset, interrupts and the self-test, $F800–$FFFF (the 6502's vectors)
+- `UH1` ROM: BASIC, $C000–$C7FF (901447-01)
+- `UH5` ROM: BASIC, $C800–$CFFF (901447-02)
+- `UH2` ROM: BASIC, $D000–$D7FF (901447-03)
+- `UH6` ROM: BASIC, $D800–$DFFF (901447-04)
+- `UH3` ROM: the screen editor and keyboard, $E000–$E7FF (901447-05)
+- `UH4` ROM: the operating system, cassettes and the IEEE-488 port, $F000–$F7FF (901447-06)
+- `UH7` ROM: the operating system, reset and interrupts, $F800–$FFFF (901447-07, the 6502's vectors)
 - `UI9` RAM decoder: `SEL0_N`, `SEL1_N`, `BA10`, `BA11` select one 1 KB pair of RAM chips
 - `UH8` RAM buffer: `BD0`–`BD3` and the RAM's `BBD0`–`BBD3`, each way
 - `UH9` RAM buffer: `BD4`–`BD7` and `BBD4`–`BBD7`, each way
@@ -150,16 +150,16 @@ What the logic probe shows on a working board, idle at `READY`. **P** is the pul
 | `UG8.PA7` | `DIAG` | H, steady |
 | `UG8.CA2` | `BLANK_TV` | H, steady |
 | `UA5.CA2` | `GRAPHIC` | L, steady |
-| `DS1.K` | `DIAG_LED_N` | H: the LED is dark. P lit: a glitch of a few billionths of a second once a frame, far too short to light it |
+| `DS1.K` | `DIAG_LED_N` | H, steady: the LED is dark |
 | Logic analyzer, a line: clip `UC5.1Q_N` triggered on its rising edge, `UC6.3Y` triggered while high, `UC5.2Q` and `UE9.1Y` | `HORZ_DRIVE`, `VIDEO_ON`, `DIS_ON`, `TV_VIDEO` | sample every 100 ns, 10 µs a division. `HORZ_DRIVE` is high 24 µs in every 64. `DIS_ON` is low while it is high, and high for the 40 µs between. `TV_VIDEO` drops in short pulses, the lit dots, only while `DIS_ON` is high |
 | Logic analyzer, a frame: clip `UD8.4Y` triggered on its falling edge, `UC6.3Y` and `UC5.1Q_N` | `VERT_DRIVE`, `VIDEO_ON`, `HORZ_DRIVE` | sample every 10 µs, 2 ms a division. `VERT_DRIVE` is low for about 1.3 ms, then high until the next frame, 16.6 ms later. `VIDEO_ON` rises about 2.6 ms after `VERT_DRIVE` falls and stays high about 12.8 ms: the 200 lines of text. `HORZ_DRIVE` is a dense comb all the way |
 | Logic analyzer, the video address: shift-click `UC3.A0` to clip the screen memory's whole address; clip `UC5.2Q` triggered on its rising edge, and `UC6.3Y` triggered while high | `SA0`–`SA9` | sample every 100 ns, 1 µs a division. The address lane counts up by one each microsecond: 000, 001, 002… on the top line of the text. A later row starts 40 further on each time: 028, 050… |
-| Logic analyzer, the 6502 starting: shift-click `UF3.A0` and `UF3.D0` to clip both buses; clip `UF3.SYNC` triggered on its rising edge, and `UF3.RW`. Press Arm, then switch the power off and on | `A0`–`A15`, `D0`–`D7` | sample every 100 ns, 1 µs a division. The address reads FFFD, with F8 on the data: the top half of the start address. Then the first instruction: F806 with 78, then F807 with D8. `SYNC` goes high at each new instruction. `RW` stays high |
-| Logic analyzer, the 6502 writing the screen: the same buses; clip `UE5.4Y` triggered on its rising edge, `UF3.RW` and `UC6.3Y`. Press Arm, then switch the power off and on | `SEL8`, `RW`, `VIDEO_ON` | sample every 100 ns, 1 µs a division. `SEL8` is high 2 µs, while the address reads 8000. `RW` drops low for the second microsecond: a write. `VIDEO_ON` stays low: the beam is outside the text |
+| Logic analyzer, the 6502 starting: shift-click `UF3.A0` and `UF3.D0` to clip both buses; clip `UF3.SYNC` triggered on its rising edge, and `UF3.RW`. Press Arm, then switch the power off and on | `A0`–`A15`, `D0`–`D7` | sample every 100 ns, 1 µs a division. The address reads FFFC with 38 on the data, then FFFD with FD: the start address, FD38. Then the first instructions: FD38 with A2, FD3A with 9A, FD3B with D8. `SYNC` goes high at each new instruction. `RW` stays high until FD3C's subroutine call stores its return address, at 01FF and 01FE |
+| Logic analyzer, the 6502 writing the screen: the same buses; clip `UE5.4Y` triggered on its rising edge, `UF3.RW` and `UC6.3Y`. At `READY.`, press Arm and wait for the cursor to blink | `SEL8`, `RW`, `VIDEO_ON` | sample every 100 ns, 10 µs a division. `SEL8` is high 1 µs, while the address reads 80C8, the cursor's place: the editor reads the character there. About 28 µs later it is high 2 µs at the same address, `RW` low for the second: it writes the character back, reversed. `VIDEO_ON` stays low: the blink runs in the retrace interrupt, after the text |
 
 ## Troubleshooting
 
-Start from the TV. A rolling or black screen points at the picture. A steady picture that shows the wrong thing points at the computer or the screen memory. The self-test, in the User Manual, names a bad memory chip or ROM directly.
+Start from the TV. A rolling or black screen points at the picture. A steady picture that shows the wrong thing points at the computer or the screen memory. The debug ROMs' self-test, at the end of this section, names a bad memory chip or ROM directly.
 
 **The TV shows nothing, and the picture does not lock.**
 
@@ -181,23 +181,23 @@ Start from the TV. A rolling or black screen points at the picture. A steady pic
 2. Probe the scan-line counter, `UA1.QB`, `UA1.QC` and `UA1.QD`. Each must show P.
 3. Probe the character ROM's outputs, `UA2.O1` to `UA2.O6`. Each must show P, as the text changes along a line. `UA2.O0` and `UA2.O7` read L: letters leave their first and last dot dark. Then probe the same Nets at the shift register, `UB2.B` to `UB2.G`.
 4. Probe `UC1.2Q`, the reverse-video bit. On a mostly plain screen it reads mostly L.
-5. Run the self-test. A VIDEO RAM row that is not OK names the bad bit.
+5. Run the debug ROMs' self-test. A VIDEO RAM row that is not OK names the bad bit.
 
-**The power-on characters stay on the screen, or the screen clears but no banner comes.**
+**The power-on characters stay on the screen, and no banner comes.**
 
 1. Probe `UF3.PHI0`. It must show P.
 2. Probe `UF3.RES_N`. It must read H.
 3. Probe `UF3.RDY` and `UF3.NMI_N`. Each must read H.
 4. Probe `UF3.SYNC`. It must show P. If it does not, the 6502 has stopped.
 5. Hook the logic analyzer on the 6502 starting, as in Test points. Compare the addresses and bytes with a working board's. The first wrong one points at an address line, a data line or a ROM.
-6. Run the self-test. If it runs, its rows name the bad memory or ROM.
+6. Run the debug ROMs' self-test. If it runs, its rows name the bad memory or ROM.
 
-**The banner shows a wrong number of bytes free.** The start-up code stops counting memory at the first bad kilobyte. Run the self-test: its RAM row names the address and the bad bits.
+**The banner shows a wrong number of bytes free.** The start-up code stops counting memory at the first byte that does not read back what it wrote. 2047 bytes free means the memory from $0C00 failed. Run the debug ROMs' self-test: its RAM row names the address and the bad bits.
 
 **The picture shows specks while the BW-2001 prints.**
 
 1. Probe `UC6.3Y`, then `UA5.PB5`. Both must show P.
-2. Hook the logic analyzer on the 6502 writing the screen, as in Test points. `VIDEO_ON` must be low at every screen write.
+2. Hook the logic analyzer on the 6502 writing the screen, as in Test points, and type a key. `VIDEO_ON` must be low at every screen write.
 
 **The cursor does not blink, or keys do nothing.**
 
@@ -205,4 +205,14 @@ Start from the TV. A rolling or black screen points at the picture. A steady pic
 2. Probe `UG8.PA0`. It must show P: the program scans the keyboard.
 3. Hold down a key that does nothing. Probe the eight columns at PIA1, `UG8.PB0` to `UG8.PB7`. One of them must show P.
 4. If none does, probe the columns at the keyboard connector, `J5.COL0` to `J5.COL7`. A column that shows P there but not at `UG8` has lost its wire between them.
-5. Run the self-test and hold the key: its KEY row must show the key's legend.
+5. Run the debug ROMs' self-test and hold the key: its KEY row must show the key's legend.
+
+**The debug ROMs and their self-test.** The BW-2001 can also run a set of test programs instead of Commodore's: a small BASIC, a screen editor, a machine-code monitor and a self-test. Start it with `--roms machines/130-bw2001/debug-roms`. The banner then reads `*** BW-2001 TINY BASIC ***`.
+
+- The self-test lives in the same chip as the start-up code, `UH7`, so it runs even when BASIC, the editor or the monitor cannot. It needs no working memory to report the first faults.
+- To run it, join the user port's DIAG pin, `J2.DIAG`, to one of its ground pins, `J2.GND1`, with a wire. Then switch the power off and on. Remove the wire to return to BASIC. `PRINT USR(61440)` enters the monitor, and `.T` there runs it too.
+- Each test writes its row: ZERO PAGE, VIDEO RAM, RAM, then each ROM by its address. A row ending in OK passed.
+- A memory failure writes the address and the bad bits, then stops. `RAM BAD 1234 08` means bit 3 at $1234. The bits are those that came back different from what was written.
+- A ROM row gives its sum, which should be 00. With the debug ROMs fitted, a ROM row checks the debug chip in that socket, not Commodore's. The test then goes on.
+- Last, the KEY row shows the first key held, for as long as the test runs: its row and column in the keyboard, and its legend (`KEY 40 A`). With no key held it shows KEY alone.
+- Memory keeps the low 4 bits of each byte in one row of chips and the high 4 bits in another. A bad bit at every address of a 1 KB block points at one chip.

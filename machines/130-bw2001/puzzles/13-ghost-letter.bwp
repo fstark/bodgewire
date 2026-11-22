@@ -1,5 +1,5 @@
-# Ghost letter: a cell of the video RAM UC3 (word $00C, bit 1) reads 1: the top row's thirteenth cell always shows a character with bit 1 set (the banner's T as V). The self-test: VIDEO RAM BAD 800C 02.
+# Ghost letter: a cell of the video RAM UC3 (word $00C, bit 1) reads 1: the top row's thirteenth cell always shows a character with bit 1 set (the banner's E, screen code 5, as G, 7).
 machine bw2001
 title "Ghost letter"
-brief "The BW-2001 works, but its banner reads VINY BASIC instead of TINY BASIC, and that place on the screen often shows the wrong letter when something else is printed there."
+brief "The BW-2001 works, but its banner reads COMMODORG BASIC instead of COMMODORE BASIC, and that place on the screen often shows the wrong letter when something else is printed there."
 fault cell UC3.IO2 $00C 1

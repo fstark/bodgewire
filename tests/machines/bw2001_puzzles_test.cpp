@@ -1,5 +1,5 @@
 // Machine 130 BW-2001 Puzzles (machines/130-bw2001/docs/BW2001_DESIGN.md, Puzzles): each from
-// power-on, faulty, read as the player reads it (the TV, the video RAM, the self-test's rows),
+// power-on on Commodore's BASIC 1, faulty, read as the player reads it (the TV, the video RAM),
 // then repaired. Release-only but the first two: debug runs the Machine at about 0.004x.
 
 #include <algorithm>
@@ -14,7 +14,6 @@
 
 #include "../machine/test_points.hpp"
 #include "../paths.hpp"
-#include "bw2001_harness.hpp"
 #include "bw2001_rig.hpp"
 #include "bw2001_screen.hpp"
 #include "machine/machine.hpp"
@@ -32,27 +31,23 @@ Machine LoadPuzzle(const std::string& name) {
     return std::move(*machine);
 }
 
-// The self-test by the user manual's wire (user port DIAG to a ground pin of J2), from power-on
-// with `seed`: the video RAM's rows at 1.5 s (a working Machine reaches KEY by then).
-std::vector<std::string> SelfTest(Machine& machine, std::uint64_t seed = 1) {
-    REQUIRE(machine.addWire({"J2", "DIAG"}, {"J2", "1"}));
-    auto circuit = Bw2001Built(machine);
-    REQUIRE(machine.removeWire({"J2", "DIAG"}, {"J2", "1"}));
-    Running m(seed, std::move(circuit));
-    m.runUntil(1500_ms);
-    return Bw2001ScreenRows(m);
-}
+// Commodore's banner and READY. by 1.5 s: the fault-free check after a repair.
+bool Banner(Running& m) { return Bw2001WaitForRows(m, kPetBanner, 1500_ms); }
 
-// The banner and READY by 1.5 s: the fault-free check after a repair.
-bool Banner(Running& m) {
-    Bw2001Typist typist(m);
-    return typist.waitForLine(1'500'000) && typist.rows() == kBw2001Banner;
+// After the banner: `typed`, what BASIC 1 answers, a blank row and READY. (its way).
+std::vector<std::string> Answered(const std::string& typed, const std::string& answer) {
+    auto rows = kPetBanner;
+    for (const std::string& row : {typed, answer, std::string(), std::string("READY.")}) {
+        rows.push_back(row);
+    }
+    return rows;
 }
 
 // The Puzzles, in BW2001.md's order.
-constexpr std::array kPuzzles{
-    "odd_e",        "striped_screen", "rolling_text",  "stutter",       "negative_screen",
-    "short_memory", "missing_keys",   "frozen_cursor", "random_screen", "snow"};
+constexpr std::array kPuzzles{"odd_e",           "striped_screen", "rolling_text",  "stutter",
+                              "negative_screen", "short_memory",   "missing_keys",  "frozen_cursor",
+                              "random_screen",   "snow",           "bad_zero_page", "wrong_chip",
+                              "ghost_letter",    "garbled_text",   "no_clock",      "joined_bits"};
 
 // The Puzzle's Machine powered on with `seed`, run to `until`; the snow watch on if asked.
 Running Run(const Machine& machine, std::uint64_t seed = 1, Time until = 700_ms,
@@ -77,14 +72,19 @@ int Marks(const Running& m) {
     return marks;
 }
 
-// Bad zero page and Wrong chip on `seed`: the screen cleared, a few stray characters, no banner.
-void CheckBlankDead(const Machine& machine, std::uint64_t seed) {
+// Bad zero page and Wrong chip on `seed`: BASIC 1 never starts. Its start-up runs wild through
+// memory, the screen's among it, before it clears the screen: the power-on jumble stays, under
+// snow. No banner.
+void CheckNeverStarts(const Machine& machine, std::uint64_t seed) {
     INFO("seed " << seed);
-    Running m(seed, Bw2001Built(machine));
+    Running m(seed, Bw2001Built(machine), true);
+    m.runUntil(1000_ms);
+    const int before = m.snow->accesses;
     m.runUntil(1500_ms);
-    CHECK(Marks(m) > 0);
-    CHECK(Marks(m) < 100);
-    CHECK(Bw2001ScreenRows(m) != kBw2001Banner);
+    CHECK(m.snow->accesses - before > 1000);
+    CHECK(Marks(m) > 500);
+    const auto rows = Bw2001ScreenRows(m);
+    CHECK(std::ranges::find(rows, "READY.") == rows.end());
 }
 
 const TvFrame& Frame(Running& m) {
@@ -127,7 +127,7 @@ TEST_CASE("bw2001: odd_e", "[machines][slow]") {
     Machine machine = LoadPuzzle("odd_e");
     {
         Running m = Run(machine);
-        CHECK(Bw2001ScreenRows(m) == kBw2001Banner);  // the video RAM is right
+        CHECK(Bw2001ScreenRows(m) == kPetBanner);  // the video RAM is right
         const TvFrame& frame = Frame(m);
         auto e = Bw2001Glyph(0x05);
         e[2] = static_cast<std::uint8_t>(e[2] | 0x04);  // a dot in the upper half
@@ -142,11 +142,11 @@ TEST_CASE("bw2001: odd_e", "[machines][slow]") {
                 CHECK(Bw2001CellDots(frame, cell) == Bw2001Glyph(code));
             }
         }
-        CHECK(es == 4);  // BYTES FREE, READY
+        CHECK(es == 5);  // COMMODORE, BYTES FREE, READY.
     }
     REQUIRE(machine.swap("UA2"));
     Running m = Run(machine);
-    CHECK(Bw2001TvRows(Frame(m)) == kBw2001Banner);
+    CHECK(Bw2001TvRows(Frame(m)) == kPetBanner);
 }
 
 TEST_CASE("bw2001: striped_screen", "[machines][slow]") {
@@ -156,7 +156,7 @@ TEST_CASE("bw2001: striped_screen", "[machines][slow]") {
     Machine machine = LoadPuzzle("striped_screen");
     {
         Running m = Run(machine);
-        CHECK(Bw2001ScreenRows(m) == kBw2001Banner);
+        CHECK(Bw2001ScreenRows(m) == kPetBanner);
         const TvFrame& frame = Frame(m);
         const std::size_t cursor = 5 * kBw2001Columns;  // drawn reversed in one blink phase
         for (int cell = 0; cell < kBw2001Rows * kBw2001Columns; ++cell) {
@@ -173,7 +173,7 @@ TEST_CASE("bw2001: striped_screen", "[machines][slow]") {
     }
     REQUIRE(machine.mend(StripedScreenCrack().layer, StripedScreenCrack().at));
     Running m = Run(machine);
-    CHECK(Bw2001TvRows(Frame(m)) == kBw2001Banner);
+    CHECK(Bw2001TvRows(Frame(m)) == kPetBanner);
 }
 
 TEST_CASE("bw2001: rolling_text", "[machines][slow]") {
@@ -183,7 +183,7 @@ TEST_CASE("bw2001: rolling_text", "[machines][slow]") {
     Machine machine = LoadPuzzle("rolling_text");
     {
         Running m = Run(machine);
-        CHECK(Bw2001ScreenRows(m) == kBw2001Banner);
+        CHECK(Bw2001ScreenRows(m) == kPetBanner);
         for (int i = 0; i < 50; ++i) {  // a second
             m.runUntil(m.sim->now() + 20_ms);
             CHECK_FALSE(m.tv->tv().isLocked());
@@ -192,7 +192,7 @@ TEST_CASE("bw2001: rolling_text", "[machines][slow]") {
     REQUIRE(machine.mend(RollingTextCrack().layer, RollingTextCrack().at));
     Running m = Run(machine);
     CHECK(m.tv->tv().isLocked());
-    CHECK(Bw2001TvRows(Frame(m)) == kBw2001Banner);
+    CHECK(Bw2001TvRows(Frame(m)) == kPetBanner);
 }
 
 TEST_CASE("bw2001: stutter", "[machines][slow]") {
@@ -204,7 +204,7 @@ TEST_CASE("bw2001: stutter", "[machines][slow]") {
         Running m = Run(machine);
         const auto rows = Bw2001TvRows(Frame(m));
         REQUIRE(rows.size() >= 3);
-        CHECK(rows[0] == "**  WW2200  IIYYBBSSCC****");
+        CHECK(rows[0] == "**  OOMMDDRR  AAII  ****");
         const TvFrame& frame = m.tv->tv().completedFrame();
         for (int cell = 0; cell < kBw2001Rows * kBw2001Columns; cell += 2) {  // drawn in pairs
             CHECK(Bw2001CellDots(frame, cell) == Bw2001CellDots(frame, cell + 1));
@@ -212,7 +212,7 @@ TEST_CASE("bw2001: stutter", "[machines][slow]") {
     }
     REQUIRE(machine.swap("UD2"));
     Running m = Run(machine);
-    CHECK(Bw2001TvRows(Frame(m)) == kBw2001Banner);
+    CHECK(Bw2001TvRows(Frame(m)) == kPetBanner);
 }
 
 TEST_CASE("bw2001: negative_screen", "[machines][slow]") {
@@ -226,14 +226,14 @@ TEST_CASE("bw2001: negative_screen", "[machines][slow]") {
     {
         Running m = Run(machine);
         const TvFrame& frame = Frame(m);
-        CHECK(Bw2001TvRows(frame) == kBw2001Banner);  // read as reversed text
+        CHECK(Bw2001TvRows(frame) == kPetBanner);  // read as reversed text
         CHECK(Bw2001CellDots(frame, blank) == lit);
-        CHECK(Bw2001CellDots(frame, 4) == Bw2001Glyph(0x82));  // B, reversed
+        CHECK(Bw2001CellDots(frame, 4) == Bw2001Glyph(0x83));  // C, reversed
     }
     REQUIRE(machine.swap("UC1"));
     Running m = Run(machine);
     const TvFrame& frame = Frame(m);
-    CHECK(Bw2001TvRows(frame) == kBw2001Banner);
+    CHECK(Bw2001TvRows(frame) == kPetBanner);
     CHECK(Bw2001CellDots(frame, blank) == dark);
 }
 
@@ -244,14 +244,10 @@ TEST_CASE("bw2001: short_memory", "[machines][slow]") {
     Machine machine = LoadPuzzle("short_memory");
     {
         Running m(1, Bw2001Built(machine));
-        Bw2001Typist typist(m);
-        REQUIRE(typist.waitForLine(1'500'000));
-        auto banner = kBw2001Banner;
-        banner[2] = "2046 BYTES FREE";
-        CHECK(typist.rows() == banner);
-        const auto rows = SelfTest(machine);
-        REQUIRE(rows.size() >= 5);
-        CHECK(rows[4] == "RAM BAD 0C00 01");
+        auto banner = kPetBanner;
+        banner[2] = " 2047 BYTES FREE";
+        CHECK(Bw2001WaitForRows(m, banner, 1500_ms));
+        CHECK(m.ram(0x0C00) % 2 == 1);  // the bit at the first word of UI5
     }
     REQUIRE(machine.swap("UI5"));
     Running m(1, Bw2001Built(machine));
@@ -293,7 +289,7 @@ TEST_CASE("bw2001: frozen_cursor", "[machines][slow]") {
         }
         Bw2001Type(m, "PRINT 2+2\r");
         m.runUntil(m.sim->now() + 200_ms);
-        CHECK(Bw2001ScreenRows(m) == kBw2001Banner);
+        CHECK(Bw2001ScreenRows(m) == kPetBanner);
     }
     REQUIRE(machine.swap("UG8"));
     Running m(1, Bw2001Built(machine));
@@ -306,9 +302,7 @@ TEST_CASE("bw2001: frozen_cursor", "[machines][slow]") {
     }
     CHECK(blinked);
     Bw2001Type(m, "PRINT 2+2\r");
-    Bw2001Typist typist(m);
-    REQUIRE(typist.waitForLine());
-    CHECK(Row(m, 6) == "4");
+    CHECK(Bw2001WaitForRows(m, Answered("PRINT 2+2", " 4"), 500_ms));
 }
 
 TEST_CASE("bw2001: random_screen", "[machines][slow]") {
@@ -323,10 +317,8 @@ TEST_CASE("bw2001: random_screen", "[machines][slow]") {
         const auto atPowerOn = Bw2001ScreenRows(m);
         m.runUntil(1000_ms);
         CHECK(Bw2001ScreenRows(m) == atPowerOn);  // nothing writes the screen
-        CHECK(Bw2001ScreenRows(m) != kBw2001Banner);
+        CHECK(Bw2001ScreenRows(m) != kPetBanner);
         CHECK(m.sim->value(*PinNet(*m.loaded, "UF3", "RES_N")) == LogicValue::Zero);
-        const auto selfTest = SelfTest(machine, seed);
-        CHECK((selfTest.empty() || selfTest[0] != "BW-2001 SELF-TEST"));
     }
     REQUIRE(machine.swap("UDE9"));
     Running m(1, Bw2001Built(machine));
@@ -339,26 +331,27 @@ TEST_CASE("bw2001: snow", "[machines][slow]") {
 #endif
     Machine machine = LoadPuzzle("snow");
     const auto loop = [](Running& m) {
-        Bw2001Typist typist(m);
-        REQUIRE(typist.waitForLine(1'500'000));
+        REQUIRE(Banner(m));
         const int before = m.snow->accesses;  // from the banner (the power-on address)
         Bw2001Type(m, "FOR I=1 TO 30:PRINT I:NEXT\r");
-        REQUIRE(typist.waitForLine(10'000'000));
-        const auto rows = typist.rows();
-        REQUIRE(rows.size() == 24);
-        CHECK(rows[22] == "30");
-        CHECK(rows[23] == "READY");
+        m.runUntil(m.sim->now() + 6000_ms);
+        const auto rows = Bw2001ScreenRows(m);
+        REQUIRE(rows.size() >= 3);
+        CHECK(rows[rows.size() - 3] == " 30");
+        CHECK(rows.back() == "READY.");
         return m.snow->accesses - before;
     };
+    // BASIC 1 blanks the picture while it scrolls (BLANK_TV): only the printing shows snow, and a
+    // working Machine shows a few specks at the scrolls' edges (10 here; 53 with the fault).
     {
         Running m(1, Bw2001Built(machine), true);
-        CHECK(loop(m) > 1000);
+        CHECK(loop(m) > 40);
         // The Net is fine: VIDEO_ON still toggles at the VIA's leg (the retrace interrupt too).
         CHECK(m.sim->value(*PinNet(*m.loaded, "UA5", "PB5")) != LogicValue::X);
     }
     REQUIRE(machine.swap("UA5"));
     Running m(1, Bw2001Built(machine), true);
-    CHECK(loop(m) == 0);
+    CHECK(loop(m) < 20);
 }
 
 TEST_CASE("bw2001: bad_zero_page", "[machines][slow]") {
@@ -367,11 +360,8 @@ TEST_CASE("bw2001: bad_zero_page", "[machines][slow]") {
 #endif
     Machine machine = LoadPuzzle("bad_zero_page");
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
-        CheckBlankDead(machine, seed);
+        CheckNeverStarts(machine, seed);
     }
-    const auto rows = SelfTest(machine);
-    REQUIRE(rows.size() >= 3);
-    CHECK(rows[2] == "ZERO PAGE BAD 0001 01");
     REQUIRE(machine.swap("UI8"));
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
@@ -383,15 +373,10 @@ TEST_CASE("bw2001: wrong_chip", "[machines][slow]") {
 #endif
     Machine machine = LoadPuzzle("wrong_chip");
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
-        CheckBlankDead(machine, seed);
+        CheckNeverStarts(machine, seed);
     }
-    auto rows = SelfTest(machine);
-    REQUIRE(rows.size() >= 3);
-    CHECK(rows[2] == "ZERO PAGE BAD 0001 01");
-    REQUIRE(machine.swap("UI8"));  // the self-test's suspect: no better
-    rows = SelfTest(machine);
-    REQUIRE(rows.size() >= 3);
-    CHECK(rows[2] == "ZERO PAGE BAD 0001 01");
+    REQUIRE(machine.swap("UI8"));  // Bad zero page's chip: no better
+    CheckNeverStarts(machine, 1);
     REQUIRE(machine.resolder({"UH8", "2A4"}));
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
@@ -404,16 +389,10 @@ TEST_CASE("bw2001: ghost_letter", "[machines][slow]") {
     Machine machine = LoadPuzzle("ghost_letter");
     {
         Running m(1, Bw2001Built(machine));
-        Bw2001Typist typist(m);
-        REQUIRE(typist.waitForLine(1'500'000));
-        auto banner = kBw2001Banner;
-        banner[0] = "*** BW-2001 VINY BASIC ***";
-        CHECK(typist.rows() == banner);
+        auto banner = kPetBanner;
+        banner[0] = "*** COMMODORG BASIC ***";
+        CHECK(Bw2001WaitForRows(m, banner, 1500_ms));
         CHECK(Bw2001TvRows(Frame(m)) == banner);
-        const auto rows = SelfTest(machine);
-        REQUIRE(rows.size() >= 4);
-        CHECK(rows[0] == "BW-2001 SELF/TEST");  // its own title's - shows as /
-        CHECK(rows[3] == "VIDEO RAM BAD 800C 02");
     }
     REQUIRE(machine.swap("UC3"));
     Running m(1, Bw2001Built(machine));
@@ -427,18 +406,14 @@ TEST_CASE("bw2001: garbled_text", "[machines][slow]") {
     Machine machine = LoadPuzzle("garbled_text");
     {
         Running m(1, Bw2001Built(machine));
-        Bw2001Typist typist(m);
-        REQUIRE(typist.waitForLine(1'500'000));
+        m.runUntil(1000_ms);
         const auto rows = Bw2001TvRows(Frame(m));
         REQUIRE(rows.size() == kBw2001Rows);  // every row full of !
-        CHECK(rows[0] == "+++!CW-3111!UIOY!CASIC!+++!!!!!!!!!!!!!!");
+        CHECK(rows[0] == "+++!COMMOEOSE!CASIC!+++!!!!!!!!!!!!!!!!!");
+        CHECK(rows[2] == "!7177!CYUES!GSEE!!!!!!!!!!!!!!!!!!!!!!!!");
         for (std::size_t cell = 0; cell < kBw2001Rows * kBw2001Columns; ++cell) {
             CHECK((m.screen(cell) & 1) == 1);
         }
-        const auto selfTest = SelfTest(machine);
-        REQUIRE(selfTest.size() >= 4);
-        UNSCOPED_INFO(selfTest[3]);
-        CHECK(selfTest[3].starts_with("WIEEO!SAM!CAE!"));  // the report garbled too
     }
     REQUIRE(machine.swap("UC3"));
     Running m(1, Bw2001Built(machine));
@@ -491,8 +466,6 @@ TEST_CASE("bw2001: joined_bits", "[machines][slow]") {
         CHECK(Marks(m) > 500);
         CHECK(m.sim->value(*PinNet(*m.loaded, "UF3", "RES_N")) == LogicValue::One);
     }
-    const auto rows = SelfTest(machine);
-    CHECK((rows.empty() || rows[0] != "BW-2001 SELF-TEST"));
     REQUIRE(machine.removeBridge({"UF3", "D0"}, {"UF3", "D1"}));
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));

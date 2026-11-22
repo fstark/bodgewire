@@ -1,5 +1,5 @@
-# Random screen: the power-on reset UDE9's output RES_N is stuck low: the 6502, the PIAs and the VIA are held in reset forever. The video runs on its own and shows the video RAM's random power-on contents. The self-test cannot start either.
+# Random screen: the power-on reset UDE9's output RES_N is stuck low: the 6502, the PIAs and the VIA are held in reset forever. The video runs on its own and shows the video RAM's random power-on contents.
 machine bw2001
 title "Random screen"
-brief "The BW-2001's screen fills with random characters at power-on and stays that way. The self-test does not start either."
+brief "The BW-2001's screen fills with random characters at power-on and stays that way."
 fault stuck UDE9.RST_N 0

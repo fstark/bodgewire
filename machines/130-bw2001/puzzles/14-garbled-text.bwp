@@ -1,5 +1,5 @@
-# Garbled text: bit 0 of the video RAM UC3 reads 1 in every word: every character on the screen is the next one in the character set (B as C, T as U), spaces as !. The self-test's own report comes out garbled the same way.
+# Garbled text: bit 0 of the video RAM UC3 reads 1 in every word: every character on the screen with an even code is the next one in the character set (B as C, D as E), spaces as !.
 machine bw2001
 title "Garbled text"
-brief "The BW-2001 seems to start, but every character on its screen is wrong, one letter along (CASIC for BASIC), and the empty screen is full of exclamation marks."
+brief "The BW-2001 seems to start, but many characters on its screen are wrong, one letter along (CASIC for BASIC), and the empty screen is full of exclamation marks."
 fault column UC3.IO1 1

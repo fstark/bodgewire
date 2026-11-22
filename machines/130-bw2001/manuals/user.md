@@ -6,18 +6,18 @@ Welcome to the BW-2001, the first computer on the bench with a screen. Its board
 
 - The processor is a 6502, `UF3`, running a million steps a second.
 - It has 8 KB of memory for programs, and 1 KB more for the screen.
-- Its programs sit in five ROM chips: Tiny BASIC, a screen editor, a machine-code monitor and a self-test.
+- Its programs sit in seven ROM chips, Commodore's own: BASIC, the screen editor and the operating system of the first PET.
 - The screen shows 25 rows of 40 characters. A separate group of chips draws it, sixty times a second.
 
 At power-on the screen fills with random characters for a moment. That is the screen memory as it wakes up. Then the BW-2001 checks its memory, clears the screen and prints:
 
-`*** BW-2001 TINY BASIC ***`
+`*** COMMODORE BASIC ***`
 
-`7166 BYTES FREE`
+`7167 BYTES FREE`
 
-`READY`
+`READY.`
 
-A blinking square under `READY` is the cursor. The BW-2001 is waiting for you to type.
+A blinking square under `READY.` is the cursor. The BW-2001 is waiting for you to type.
 
 ## Using it
 
@@ -25,12 +25,13 @@ A blinking square under `READY` is the cursor. The BW-2001 is waiting for you to
 
 On a PC keyboard, each key types the BW-2001 key with the same character, with the keyboard's window out or put away. Return is RETURN, Backspace is DEL, Escape is STOP and Home is HOME. The arrows are the cursor keys. Cmd+V (Ctrl+V) pastes text, typed one key at a time.
 
-**BASIC.** Type a line and press RETURN.
+**BASIC.** It is Commodore's BASIC of 1977. Type a line and press RETURN.
 
 - A line without a number runs at once: `PRINT 2+2` prints 4.
 - A line with a number is kept as part of the program.
 - `LIST` shows the program, `RUN` runs it and `NEW` clears it.
 - STOP stops a running program.
+- `PEEK` reads a byte of memory and `POKE` writes one: `PRINT PEEK(32768)` reads the screen's first character.
 
 **The screen editor.** The cursor can go anywhere on the screen.
 
@@ -39,27 +40,9 @@ On a PC keyboard, each key types the BW-2001 key with the same character, with t
 - DEL deletes a character. SHIFT and DEL (INST) inserts a space.
 - RETURN on a line already on the screen enters it again. So to change a listed line, type over it and press RETURN.
 
-**The monitor.** It shows the memory byte by byte.
-
-- `PRINT USR(61440)` enters it. It answers `C*`.
-- `.M 0400 0420` shows the memory from $0400 to $0420.
-- `.X` goes back to BASIC.
-
-**The self-test.** Run it when the BW-2001 will not start or behaves oddly. It lives in the same chip as the start-up code, so it runs even when BASIC, the editor or the monitor cannot. It needs no working memory to report the first faults.
-
-- To run it, join the user port's DIAG pin, `J2.DIAG`, to one of its ground pins, `J2.GND1`, with a wire. Then switch the power off and on. Remove the wire to return to BASIC.
-- On a working machine, `.T` in the monitor runs it too.
-- Each test writes its row: ZERO PAGE, VIDEO RAM, RAM, then each ROM by its address. A row ending in OK passed.
-- A memory failure writes the address and the bad bits, then stops. `RAM BAD 1234 08` means bit 3 at $1234. The bits are those that came back different from what was written.
-- A ROM row gives its sum, which should be 00. The test then goes on.
-- Last, the KEY row shows the first key held, for as long as the test runs: its row and column in the keyboard, and its legend (`KEY 40 A`). With no key held it shows KEY alone.
-- Memory keeps the low 4 bits of each byte in one row of chips and the high 4 bits in another. A bad bit at every address of a 1 KB block points at one chip.
-
-**Commodore's own ROMs.** The BW-2001 also runs the PET 2001's original ROMs, if you have them. Put the seven ROM files in one directory, each named after its socket: UH1.bin for $C000, UH5.bin for $C800, UH2.bin for $D000, UH6.bin for $D800, UH3.bin for $E000, UH4.bin for $F000 and UH7.bin for $F800. Then start with `--roms` and that directory.
-
 **The killer poke.** On the PET 2001, `POKE 59458,62` made printing much faster, and filled the screen with white specks while it printed. It does the same here. How it works explains why.
 
-To read a ROM, point at its chip and click the round window that shows on it (`UH1` to `UH7` hold BASIC, the editor and the kernel; `UA2` the character set): the binder opens at Contents, as 6502 code, in hex with the text in PETSCII, or as glyphs.
+To read a ROM, point at its chip and click the round window that shows on it (`UH1`, `UH5`, `UH2` and `UH6` hold BASIC, `UH3` the screen editor, `UH4` and `UH7` the operating system; `UA2` the character set): the binder opens at Contents, as 6502 code, in hex with the text in PETSCII, or as glyphs.
 
 ## How it works
 
@@ -103,28 +86,27 @@ To read a ROM, point at its chip and click the round window that shows on it (`U
 |---|---|---|
 | $0000–$1FFF | memory, 8 KB | `UI1`–`UI8`, `UJ1`–`UJ8` |
 | $8000–$83FF | screen memory, 1 KB (seen four times, up to $8FFF) | `UC3`, `UC4` |
-| $C000–$CFFF | Tiny BASIC | `UH1`, `UH5` |
-| $D000–$DFFF | two empty sockets | `UH2`, `UH6` |
+| $C000–$DFFF | BASIC | `UH1`, `UH5`, `UH2`, `UH6` |
 | $E000–$E7FF | the screen editor and the keyboard | `UH3` |
-| $E810 | PIA1: the keyboard, the self-test pin, the retrace | `UG8` |
+| $E810 | PIA1: the keyboard, the blanking, the retrace | `UG8` |
 | $E820 | PIA2: the IEEE-488 port | `UB8` |
 | $E840 | VIA: the user port, the retrace wait | `UA5` |
-| $F000–$F7FF | the monitor | `UH4` |
-| $F800–$FFFF | start-up, interrupts and the self-test | `UH7` |
+| $F000–$F7FF | the operating system: cassettes and the IEEE-488 port | `UH4` |
+| $F800–$FFFF | the operating system: start-up and interrupts | `UH7` |
 
 Nothing answers at the other addresses.
 
 **The memory.** Sixteen 2114 chips hold 1 KB of 4 bits each. They work in pairs: `UI8` keeps the low 4 bits of the first kilobyte, `UJ8` the high 4 bits, and so on. `UI9` picks the pair from the address. `UH8` and `UH9` link the memory's own data bus, `BBD0`–`BBD7`, to the board's. `UJ9` makes `RW_RAM`, which tells the memory when to write.
 
-**The ROMs.** Seven sockets hold 2 KB each. With the BW-2001's own programs, `UH2` and `UH6` hold empty chips; Commodore's BASIC uses them.
+**The ROMs.** Seven sockets hold 2 KB each, Commodore's chips 901447-01 to 901447-07.
 
-**Start-up.** `UDE9` holds `RES_N` low for a moment at power-on. Then the 6502 reads where to start from the top of `UH7`. The start-up code there finds how much memory works, clears the screen and prints the banner.
+**Start-up.** `UDE9` holds `RES_N` low for a moment at power-on. Then the 6502 reads where to start from the top of `UH7`: $FD38. The start-up code there finds how much memory works, clears the screen and prints the banner.
 
 **The keyboard.** The keys sit on a grid of 10 rows and 8 columns, like the squares of a chessboard. PIA1, `UG8`, picks a row with a number on `KEY_A` to `KEY_D`. `UG9` pulls that row low, through `J5`. A key held in that row pulls its column low too. The columns come back on `KIN0` to `KIN7`, each held high by a resistor when no key is pressed. The program checks the 10 rows one after the other, sixty times a second.
 
 **The retrace interrupt.** At the end of the text of each frame, `VIDEO_ON` falls. PIA1 sees it on `UG8.CB1` and pulls `IRQ_N` low. The 6502 stops what it is doing, reads the keyboard, blinks the cursor, and goes back.
 
-**The diagnostic LED.** `DS1` lights only if a program selects keyboard row 11, which does not exist. Programs can use it as a signal. The BW-2001's own programs leave it dark.
+**The diagnostic LED.** `DS1` lights only if a program selects keyboard row 11, which does not exist. Programs can use it as a signal. BASIC leaves it dark.
 
 **Part three: sharing the screen memory.** The two machines meet here.
 
@@ -132,17 +114,18 @@ Nothing answers at the other addresses.
 
 **Snow.** The picture never waits. If the 6502 touches the screen while the beam draws text, the beam draws the byte the 6502 touched, in the wrong place. That shows as a brief white speck. Many of them look like snow.
 
-**The wait.** So the editor writes to the screen only while the beam is outside the text. The VIA, `UA5`, reads `VIDEO_ON` on `UA5.PB5`. The editor waits for it to go low before each write. That is why printing and scrolling are slow, six or seven rows a second, and the picture stays clean. The killer poke turns that pin of the VIA into an output, so the editor never waits.
+**The wait.** So the editor writes a character to the screen only while the beam is outside the text. The VIA, `UA5`, reads `VIDEO_ON` on `UA5.PB5`. The editor waits for it to go low before each character. That is why printing is slow, and the picture stays clean. The killer poke turns that pin of the VIA into an output, so the editor never waits.
+
+**The blanking.** Scrolling moves the whole screen up a row: 1000 bytes, far too many to wait for the beam each time. So the editor blanks the picture instead. PIA1 pulls `BLANK_TV` low on `UG8.CA2`, and `UE9` lets no dot through. The screen goes dark for a moment at each scroll.
 
 **Features the board does not use.** Some of the PET's features have nothing connected here:
 
 | Feature | What it can do | Here |
 |---|---|---|
 | `SEL2_N`–`SEL7_N`, `SEL9_N`–`SEL11_N` | select memory added on an expansion board | no expansion connector: nothing answers |
-| `BLANK_TV` from `UG8.CA2` | blank the whole picture | held high by the BW-2001's programs; Commodore's BASIC blanks while it scrolls |
 | `GRAPHIC` from `UA5.CA2` | choose the second character set | held low: the first set |
 | `J1`, PIA2 `UB8`, `UA7`–`UA9` | IEEE-488 printers and disk drives | nothing plugged in |
 | `J3`, `J6` | two cassette recorders | nothing plugged in |
-| `J2` | the user port | only its DIAG pin is used, for the self-test |
+| `J2` | the user port | nothing plugged in. Its DIAG pin starts the self-test of the debug ROMs (Service Manual) |
 
 The Service Manual lists what the probe and the logic analyzer show on a working board.
