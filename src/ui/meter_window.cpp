@@ -67,7 +67,8 @@ bool MeterWindow::draw(bool& open, Session& session) {
             ImGui::TextColored(kGrey, "- - -");
         }
     } else if (session.powered()) {
-        ImGui::TextColored(kAmber, "power off");
+        ImGui::TextColored(kGrey, "- - -");  // the instruction below: beside the switch, the
+                                             // large words read as its label
     } else if (const auto beep = session.continuity()) {
         const float size = ImGui::GetFontSize();
         const ImVec2 at = ImGui::GetCursorScreenPos();
@@ -84,6 +85,11 @@ bool MeterWindow::draw(bool& open, Session& session) {
         ImGui::TextColored(kGrey, "- - -");
     }
     ImGui::PopFont();
+    if (mode == MeterMode::Continuity && session.powered()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, kAmber);
+        ImGui::TextWrapped("Needs the power off: click the switch");
+        ImGui::PopStyleColor();
+    }
 
     ImGui::TextUnformatted(LeadText("red", session.red()).c_str());
     if (session.red() || session.black()) {

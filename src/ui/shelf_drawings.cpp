@@ -92,17 +92,21 @@ constexpr ImU32 kRed = IM_COL32(230, 45, 40, 255);
 constexpr ImU32 kAmber = IM_COL32(255, 170, 0, 255);
 constexpr ImU32 kCopper = IM_COL32(205, 120, 60, 255);
 constexpr ImU32 kWhite = IM_COL32(235, 235, 235, 255);
+constexpr ImU32 kDimInk = IM_COL32(118, 118, 124, 255);  // a word printed, not lit
 constexpr ImU32 kGrey = IM_COL32(150, 150, 150, 255);
 
 void Power(Pen& p, const ItemLook& look) {
     p.box(10, 6, 46, 50, IM_COL32(60, 60, 64, 255), 4);
     p.frame(10, 6, 46, 50, IM_COL32(110, 110, 115, 255), 1, 4);
-    p.disc(28, 28, 7, kBlack);
-    // The lever from its bush, up when on.
-    const float tipY = look.lit ? 11 : 45;
+    // Both positions printed where the lever points, ON above, OFF below, the one it is at lit:
+    // one word alone read as the way to push (2026-11-22).
+    p.text(28, 12, 8, look.lit ? kGreen : kDimInk, "ON");
+    p.text(28, 44, 8, look.lit ? kDimInk : kWhite, "OFF");
+    p.disc(28, 28, 6, kBlack);
+    // The lever from its bush, short of the words, up when on.
+    const float tipY = look.lit ? 19 : 37;
     p.line(28, 28, 28, tipY, kMetal, 4);
     p.disc(28, tipY, 3.5f, kWhite);
-    p.text(28, look.lit ? 45 : 11, 9, look.lit ? kGreen : kGrey, look.lit ? "ON" : "OFF");
     p.disc(41, 45, 3, look.limit ? kRed : kLampDark);  // LIMIT
 }
 
