@@ -32,11 +32,17 @@ file(READ "${CMAKE_CURRENT_SOURCE_DIR}/fonts/Saira-ExpandedBold.ttf" pet_font_he
 string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," bytes "${pet_font_hex}")
 configure_file(pet_font.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/pet_font.cpp @ONLY)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS fonts/Saira-ExpandedBold.ttf)
+# The launcher's title, embedded: Audiowide (fonts/README.md).
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/fonts/Audiowide-Regular.ttf" title_font_hex HEX)
+string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," bytes "${title_font_hex}")
+configure_file(title_font.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/title_font.cpp @ONLY)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS fonts/Audiowide-Regular.ttf)
 
 add_executable(bw_ui main.cpp gpu_render.cpp window_order.cpp analyzer_window.cpp board_look.cpp board_view.cpp chip_panel.cpp contents_page.cpp instrument_marks.cpp keyboard_capture.cpp
                      keyboard_window.cpp matrix_capture.cpp matrix_keyboard_window.cpp keycap.cpp board_keys.cpp manual_view.cpp meter_window.cpp scope_window.cpp
                      shelf.cpp shelf_drawings.cpp tv_view.cpp tv_window.cpp knob_window.cpp bench.cpp
-                     manual_window.cpp brief_window.cpp debug_window.cpp question_popup.cpp launcher.cpp loaded.cpp board_tags.cpp title_plate.cpp
-                     ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp ${CMAKE_CURRENT_BINARY_DIR}/pet_font.cpp)
+                     manual_window.cpp brief_window.cpp debug_window.cpp question_popup.cpp launcher.cpp loaded.cpp board_tags.cpp title.cpp
+                     ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp ${CMAKE_CURRENT_BINARY_DIR}/pet_font.cpp
+                     ${CMAKE_CURRENT_BINARY_DIR}/title_font.cpp)
 target_link_libraries(bw_ui PRIVATE bw_session bw_machine bw_manual bw_runner bw_view bw_imgui
                                     bw_warnings)

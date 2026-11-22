@@ -1,0 +1,11 @@
+// Generated from src/ui/title_font.cpp.in: Audiowide (SIL OFL 1.1), src/ui/fonts.
+#include <cstddef>
+
+namespace bw {
+
+extern const unsigned char kTitleFont[];
+extern const std::size_t kTitleFontSize;
+const unsigned char kTitleFont[] = {@bytes@};
+const std::size_t kTitleFontSize = sizeof(kTitleFont);
+
+}  // namespace bw

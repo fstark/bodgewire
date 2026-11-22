@@ -13,7 +13,7 @@
 #include "ui/brief_window.hpp"
 #include "ui/manual_view.hpp"
 #include "ui/shelf.hpp"
-#include "ui/title_plate.hpp"
+#include "ui/title.hpp"
 #include "ui/tv_window.hpp"
 #include "view/bench_places.hpp"
 #include "view/output_frame.hpp"
@@ -25,9 +25,9 @@ namespace {
 
 constexpr float kMinTopShare = 0.5f;      // of the window's height: the Machines' lane at least
 constexpr float kAreaMargin = 24;         // px below the picture area
-constexpr float kPlateTop = 10;           // px: the title plate from the window's top
-constexpr float kPlateHeight = 56;        // px: BODGEWIRE in traces
-constexpr float kTitleBand = 76;          // px: the plate's band, above the picture area
+constexpr float kTitleTop = 10;           // px: the title from the window's top
+constexpr float kTitleSize = 56;          // px: BODGEWIRE's font
+constexpr float kTitleBand = 76;          // px: the title's band, above the picture area
 constexpr float kParagraphLeft = 0.04f;   // of the width: from the picture to the paragraph
 constexpr float kParagraphRight = 0.02f;  // from the paragraph to the next Machine's hint
 constexpr float kMonitorShare = 0.92f;    // of the area's height: a TV Machine's monitor
@@ -337,7 +337,8 @@ void Launcher::updateLive(TvView& tv) {
     }
 }
 
-std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends) {
+std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
+                                                    ImFont* titleFont) {
     std::optional<std::filesystem::path> chosen;
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const ImVec2 origin = ImGui::GetWindowPos();
@@ -349,7 +350,7 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
         std::floor(std::max(size.y * kMinTopShare, size.y - (kNoteGap + noteHeight + kWoodBelow)));
     const float laneBottom = origin.y + topHeight;
     list.AddRectFilled(origin, {origin.x + width, laneBottom}, kPanelBackground);
-    DrawTitlePlate(list, {origin.x + width / 2, origin.y + kPlateTop}, kPlateHeight);
+    DrawTitle(list, titleFont, {origin.x + width / 2, origin.y + kTitleTop}, kTitleSize);
     if (list_.machines.empty()) {
         list.AddText({origin.x + kNoteLeft, origin.y + kTitleBand}, kName, "No Machines.");
         return std::nullopt;

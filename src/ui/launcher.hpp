@@ -70,7 +70,7 @@ public:
     const MachineList& list() const { return list_; }
     // Each frame, inside a window filling the main one with no padding: keys, clicks, the loads,
     // the live run, both lanes. The entry to open (a .bwn or a .bwp).
-    std::optional<std::filesystem::path> draw(TvView& tv, ImFont* legends);
+    std::optional<std::filesystem::path> draw(TvView& tv, ImFont* legends, ImFont* titleFont);
     // The live run stopped and every load waited for: before a bench loads, and on quitting.
     void stop();
     std::optional<RunnerStatus> liveStatus();

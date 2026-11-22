@@ -57,6 +57,7 @@
 #include "ui/question_popup.hpp"
 #include "ui/scope_window.hpp"
 #include "ui/shelf.hpp"
+#include "ui/title.hpp"
 #include "ui/tv_view.hpp"
 #include "ui/tv_window.hpp"
 #include "ui/window_order.hpp"
@@ -1553,6 +1554,8 @@ public:
         petLegends_ =
             fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kPetFont),
                                        static_cast<int>(kPetFontSize), 0.0f, &legendConfig);
+        title_ = fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kTitleFont),
+                                            static_cast<int>(kTitleFontSize), 0.0f, &legendConfig);
     }
     ~ImGuiScreen() {
         SDL_WaitForGPUIdle(gpu_.device());
@@ -1565,11 +1568,13 @@ public:
 
     ImFont* legends() const { return legends_; }
     ImFont* petLegends() const { return petLegends_; }
+    ImFont* title() const { return title_; }  // the launcher's (Audiowide)
 
 private:
     GpuRender& gpu_;
     ImFont* legends_ = nullptr;
     ImFont* petLegends_ = nullptr;
+    ImFont* title_ = nullptr;
 };
 
 struct LauncherResult {
@@ -1612,7 +1617,7 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus |
                          ImGuiWindowFlags_NoScrollWithMouse);
         ImGui::PopStyleVar();
-        const auto chosen = launcher.draw(view, screen.legends());
+        const auto chosen = launcher.draw(view, screen.legends(), screen.title());
         ImGui::End();
         ImGui::Render();
         uiMilliseconds =
