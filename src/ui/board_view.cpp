@@ -24,7 +24,6 @@ namespace bw {
 namespace {
 
 // Look and feel: first guesses.
-constexpr ImU32 kPanelBackground = IM_COL32(20, 20, 24, 255);
 constexpr ImU32 kBoardGreen = IM_COL32(18, 66, 38, 255);
 constexpr ImU32 kFrontCopper = IM_COL32(200, 125, 60, 255);
 constexpr ImU32 kBackCopper = IM_COL32(70, 120, 200, 255);
@@ -614,8 +613,10 @@ void DrawPencilMark(ImDrawList& list, ImVec2 c, float size, MarkShape shape, std
 }  // namespace
 
 void BoardView::draw(ImVec2 size) {
+    // A still (P7b) lets the mouse through to the launcher's buttons under it.
     ImGui::BeginChild("board", size, ImGuiChildFlags_None,
-                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                          (still_ ? ImGuiWindowFlags_NoInputs : ImGuiWindowFlags_None));
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const ImVec2 panel = ImGui::GetContentRegionAvail();
     ImDrawList& list = *ImGui::GetWindowDrawList();
@@ -632,7 +633,11 @@ void BoardView::draw(ImVec2 size) {
 
     const ScreenPoint panelSize{panel.x, panel.y};
     if (panel.x > 0 && panel.y > 0) {
-        if (needFit_) {
+        if (still_ && (needFit_ || panel.x != panel_.x || panel.y != panel_.y)) {
+            viewport_.fit(scene_->bounds(), panelSize);
+            viewport_.frame(*still_, 1.0, 0);
+            needFit_ = false;
+        } else if (needFit_) {
             viewport_.fit(scene_->bounds(), panelSize);
             needFit_ = false;
         } else if (panel.x != panel_.x || panel.y != panel_.y) {
@@ -640,7 +645,9 @@ void BoardView::draw(ImVec2 size) {
         }
         panel_ = panel;
     }
-    input(origin);
+    if (!still_) {
+        input(origin);
+    }
     const std::optional<BoardTarget> outside = std::exchange(outside_, std::nullopt);
     if (!ImGui::IsWindowHovered() && outside) {
         hoverTarget_ = outside;
@@ -1096,7 +1103,7 @@ void BoardView::draw(ImVec2 size) {
                      {(min.x + max.x - text.x) / 2, (min.y + max.y - text.y) / 2}, IM_COL32_WHITE,
                      sign);
     }
-    {
+    if (!still_) {
         // The flip corner (P6o), last: a control on the Board. The corner turned over, showing the
         // other side's copper; a fold line and its shadow along the diagonal.
         const Bounds b = scene_->bounds();

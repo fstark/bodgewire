@@ -24,6 +24,9 @@
 
 namespace bw {
 
+// The Board panel's background, also the launcher's top lane (P7b).
+inline constexpr ImU32 kPanelBackground = IM_COL32(20, 20, 24, 255);
+
 // Analyzer Channel colours, readable on the green Board; shared with the Analyzer window.
 inline constexpr std::array<ImU32, 8> kChannelColours{
     IM_COL32(255, 230, 0, 255),   IM_COL32(0, 230, 255, 255),   IM_COL32(255, 60, 220, 255),
@@ -101,6 +104,13 @@ public:
     explicit BoardView(std::optional<BoardScene> scene) : scene_(std::move(scene)) {}
 
     void draw(ImVec2 size);  // child region: input, Board, tooltip
+    // The launcher's Board (P7b): no input (no hover, tooltip, click, pan or zoom; the mouse goes
+    // through it), no flip corner, the view framed on `box` (filling the panel, centred) at every
+    // resize. nullopt: the bench's Board.
+    void setStill(std::optional<Bounds> box) {
+        still_ = box;
+        needFit_ = true;
+    }
     // The focus owner, set each frame: under the chip puller a click on a switch swaps it.
     void setOwner(Owner owner) { owner_ = owner; }
     Layer activeLayer() const { return active_; }
@@ -181,6 +191,7 @@ private:
     bool plainLook_ = false;
     Owner owner_ = Owner::Probe;
     bool needFit_ = true;  // first draw knows the panel size
+    std::optional<Bounds> still_;
     ImVec2 panel_{};
     std::optional<NetId> highlight_;
     std::optional<BoardTarget> hoverTarget_;  // drawn highlighted: hovered pad or Component

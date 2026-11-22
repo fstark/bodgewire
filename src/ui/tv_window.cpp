@@ -3,6 +3,7 @@
 #include <cfloat>
 #include <cmath>
 #include <numbers>
+#include <optional>
 
 #include <imgui.h>
 
@@ -72,35 +73,14 @@ void Label(ImDrawList& list, ImVec2 centre, float size, const char* text) {
 
 }  // namespace
 
-void TvWindow::draw(bool& open, TvView& view) {
-    view.setTone(controls_.tone());
-    if (!open) {
-        return;
-    }
-    PlaceNext(BenchObject::Tv, {kTvFirstWidth, kTvFirstWidth * kTvAspect});
-    KeepAspect(kTvAspect, kMinWidth);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, kShell);
-    const bool visible =
-        ImGui::Begin(kTvWindowName, &open,
-                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings |
-                         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
-                         ImGuiWindowFlags_NoCollapse);
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar(2);
-    if (!visible) {
-        ImGui::End();
-        return;
-    }
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    const ImGuiIO& io = ImGui::GetIO();
-    const ImVec2 at = ImGui::GetWindowPos();
-    const float w = ImGui::GetWindowWidth();
-    const float h = ImGui::GetWindowHeight();
+void DrawMonitor(ImDrawList& list, ImVec2 at, float width, const TvControls& controls,
+                 const TvView* view, std::optional<TvKnob> hoveredKnob) {
+    const float w = width;
+    const float h = width * kTvAspect;
     const auto P = [&](float x, float y) { return ImVec2{at.x + x * w, at.y + y * w}; };
 
     // The shell and the front.
+    list.AddRectFilled(at, {at.x + w, at.y + h}, kShell, 6.0f);
     list.AddRect(at, {at.x + w, at.y + h}, kShellEdge, 6.0f, 0, 1.0f);
     const ImVec2 frontMin = P(kShellInset, kShellInset);
     const ImVec2 frontMax{at.x + w - kShellInset * w, at.y + h};
@@ -116,14 +96,14 @@ void TvWindow::draw(bool& open, TvView& view) {
     list.AddRectFilled({screenMin.x - grow, screenMin.y - grow},
                        {screenMax.x + grow, screenMax.y + grow}, kBezel, 0.06f * w);
     list.PushClipRect(screenMin, screenMax, true);
-    if (controls_.on()) {
+    if (controls.on() && view != nullptr) {
         list.AddRectFilled(screenMin, screenMax, kBlack);
-        const PictureWindow window = controls_.window(view.lines());
-        const PictureShift shift = controls_.shift();
+        const PictureWindow window = controls.window(view->lines());
+        const PictureShift shift = controls.shift();
         const ImVec2 scale{size.x / (window.x1 - window.x0), size.y / (window.y1 - window.y0)};
         const ImVec2 imageMin{screenMin.x + shift.x * size.x - window.x0 * scale.x,
                               screenMin.y + shift.y * size.y - window.y0 * scale.y};
-        list.AddImage(view.texture(), imageMin,
+        list.AddImage(view->texture(), imageMin,
                       {imageMin.x + static_cast<float>(kTvColumns) * scale.x,
                        imageMin.y + static_cast<float>(kTvRows) * scale.y});
     } else {
@@ -171,32 +151,12 @@ void TvWindow::draw(bool& open, TvView& view) {
         const auto i = static_cast<std::size_t>(knob);
         const ImVec2 c = P(kKnobX[i], kKnobY);
         Label(list, P(kKnobX[i], kLabelY), font, ::bw::Label(knob));
-        const float hit = kKnobHit * w;
-        ImGui::SetCursorScreenPos({c.x - hit, c.y - hit});
-        ImGui::PushID(static_cast<int>(i));
-        ImGui::InvisibleButton("##knob", {2 * hit, 2 * hit});
-        ImGui::PopID();
-        const bool hovered = ImGui::IsItemHovered();
-        if (ImGui::IsItemActive() && io.MouseDelta.y != 0.0f) {
-            controls_.set(knob, controls_.turn(knob) - io.MouseDelta.y / kDragTurn);
-        }
-        if (hovered) {
-            ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
-            if (io.MouseWheel != 0.0f) {
-                controls_.set(knob, controls_.turn(knob) + io.MouseWheel * kWheelStep);
-            }
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                controls_.reset(knob);
-            }
-            ImGui::SetTooltip("%s %.0f %%\ndrag up or down, or the mouse wheel; double-click: back "
-                              "to its mark",
-                              ::bw::Label(knob), controls_.turn(knob) * 100.0);
-        }
+        const bool hovered = hoveredKnob == knob;
         const float skirt = kSkirt * w, cap = kCap * w;
         list.AddCircleFilled(c, skirt, kSkirtColour, 32);
         list.AddCircleFilled(c, cap, kCapColour, 32);
         list.AddCircleFilled({c.x - cap * 0.3f, c.y - cap * 0.3f}, cap * 0.45f, kCapHighlight, 24);
-        const float angle = kStart + static_cast<float>(controls_.turn(knob)) * kSweep;
+        const float angle = kStart + static_cast<float>(controls.turn(knob)) * kSweep;
         list.AddLine(AtAngle(c, cap * 0.6f, angle), AtAngle(c, cap, angle), kNotch,
                      std::max(1.0f, 0.004f * w));
         if (hovered) {
@@ -206,7 +166,7 @@ void TvWindow::draw(bool& open, TvView& view) {
 
     // The pilot lamp.
     const ImVec2 lamp = P(kLampX, kKnobY);
-    if (controls_.on()) {
+    if (controls.on()) {
         list.AddCircleFilled(lamp, 2 * kLamp * w, kLampHalo, 24);
         list.AddCircleFilled(lamp, kLamp * w, kLampOn, 16);
     } else {
@@ -224,20 +184,12 @@ void TvWindow::draw(bool& open, TvView& view) {
                  "OFF");
     list.AddRectFilled(slotMin, slotMax, kSlot, 0.004f * w);
     const float half = (slotMax.x - slotMin.x) / 2;
-    const float sliderX = controls_.on() ? slotMin.x : slotMin.x + half;
+    const float sliderX = controls.on() ? slotMin.x : slotMin.x + half;
     const float inset = 0.003f * w;
     list.AddRectFilled({sliderX + inset, slotMin.y + inset},
                        {sliderX + half - inset, slotMax.y - inset}, kSlider, 0.003f * w);
     list.AddLine({sliderX + inset, slotMin.y + inset + 0.5f},
                  {sliderX + half - inset, slotMin.y + inset + 0.5f}, kSliderTop, 1.0f);
-    ImGui::SetCursorScreenPos(slotMin);
-    ImGui::InvisibleButton("##power", {slotMax.x - slotMin.x, slotMax.y - slotMin.y});
-    if (ImGui::IsItemClicked()) {
-        controls_.setOn(!controls_.on());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("POWER: the monitor's own switch (the Machine's is on the shelf)");
-    }
 
     // The underscan trimmer: unlabelled, below the strip's right end.
     const ImVec2 trimmer = P(kTrimmerX, kTrimmerY);
@@ -246,6 +198,72 @@ void TvWindow::draw(bool& open, TvView& view) {
     const float slant = std::numbers::pi_v<float> / 6;
     list.AddLine(AtAngle(trimmer, tr, slant),
                  AtAngle(trimmer, tr, slant + std::numbers::pi_v<float>), kTrimmerSlot, 1.0f);
+}
+
+void TvWindow::draw(bool& open, TvView& view) {
+    view.setTone(controls_.tone());
+    if (!open) {
+        return;
+    }
+    PlaceNext(BenchObject::Tv, {kTvFirstWidth, kTvFirstWidth * kTvAspect});
+    KeepAspect(kTvAspect, kMinWidth);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, kShell);
+    const bool visible =
+        ImGui::Begin(kTvWindowName, &open,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings |
+                         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                         ImGuiWindowFlags_NoCollapse);
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar(2);
+    if (!visible) {
+        ImGui::End();
+        return;
+    }
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImVec2 at = ImGui::GetWindowPos();
+    const float w = ImGui::GetWindowWidth();
+    const auto P = [&](float x, float y) { return ImVec2{at.x + x * w, at.y + y * w}; };
+
+    // The controls first (their items), then the drawing (P7b: DrawMonitor draws only).
+    std::optional<TvKnob> hoveredKnob;
+    for (const TvKnob knob : kTvKnobs) {
+        const auto i = static_cast<std::size_t>(knob);
+        const ImVec2 c = P(kKnobX[i], kKnobY);
+        const float hit = kKnobHit * w;
+        ImGui::SetCursorScreenPos({c.x - hit, c.y - hit});
+        ImGui::PushID(static_cast<int>(i));
+        ImGui::InvisibleButton("##knob", {2 * hit, 2 * hit});
+        ImGui::PopID();
+        if (ImGui::IsItemActive() && io.MouseDelta.y != 0.0f) {
+            controls_.set(knob, controls_.turn(knob) - io.MouseDelta.y / kDragTurn);
+        }
+        if (ImGui::IsItemHovered()) {
+            hoveredKnob = knob;
+            ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
+            if (io.MouseWheel != 0.0f) {
+                controls_.set(knob, controls_.turn(knob) + io.MouseWheel * kWheelStep);
+            }
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                controls_.reset(knob);
+            }
+            ImGui::SetTooltip("%s %.0f %%\ndrag up or down, or the mouse wheel; double-click: back "
+                              "to its mark",
+                              ::bw::Label(knob), controls_.turn(knob) * 100.0);
+        }
+    }
+    const ImVec2 slotMin = P(kSlotLeft, kSlotTop), slotMax = P(kSlotRight, kSlotBottom);
+    ImGui::SetCursorScreenPos(slotMin);
+    ImGui::InvisibleButton("##power", {slotMax.x - slotMin.x, slotMax.y - slotMin.y});
+    if (ImGui::IsItemClicked()) {
+        controls_.setOn(!controls_.on());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("POWER: the monitor's own switch (the Machine's is on the shelf)");
+    }
+    const ImVec2 trimmer = P(kTrimmerX, kTrimmerY);
     const float trimmerHit = kTrimmerHit * w;
     ImGui::SetCursorScreenPos({trimmer.x - trimmerHit, trimmer.y - trimmerHit});
     ImGui::InvisibleButton("##trimmer", {2 * trimmerHit, 2 * trimmerHit});
@@ -257,6 +275,7 @@ void TvWindow::draw(bool& open, TvView& view) {
                               ? "UNDERSCAN trimmer: the picture as a real monitor shows it"
                               : "UNDERSCAN trimmer: the whole frame");
     }
+    DrawMonitor(list, at, w, controls_, &view, hoveredKnob);
 
     if (CaseClose()) {
         open = false;

@@ -20,8 +20,9 @@ public:
     TvView(const TvView&) = delete;
     TvView& operator=(const TvView&) = delete;
 
-    void show(const TvPicture& picture);          // keeps the frame, uploads it through the tone
-    void setTone(TvTone tone);                    // a change uploads the kept frame again
+    void show(const TvPicture& picture);  // keeps the frame, uploads it through the tone
+    void clear();               // a blank frame, no lines: another Machine's picture to come (P7b)
+    void setTone(TvTone tone);  // a change uploads the kept frame again
     void upload(SDL_GPUCommandBuffer* commands);  // what changed, before the frame's draws
     int lines() const { return lines_; }  // the last locked frame's line count, 0 before one
     ImTextureID texture() const {

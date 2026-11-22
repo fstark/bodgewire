@@ -13,6 +13,11 @@
 
 namespace bw {
 
+// The shelf's wood and its trays' shadow, also the launcher's post-its' lane (P7b).
+inline constexpr ImU32 kShelfWood = IM_COL32(48, 38, 30, 255);
+inline constexpr ImU32 kShelfEdge = IM_COL32(92, 74, 58, 255);
+inline constexpr ImU32 kTrayShadow = IM_COL32(28, 22, 17, 255);
+
 // The shelf's height along the bottom of the main window, logical px.
 inline constexpr float kShelfHeight = 64.0f;
 

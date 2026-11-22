@@ -7,7 +7,7 @@ Spec: [LAUNCHER_LOOK.md](LAUNCHER_LOOK.md). Design: [LAUNCHER_LOOK_DESIGN.md](LA
 | Phase | Description | Commit |
 |-------|-------------|--------|
 | 1 | The logic: `LauncherLanes`, `Glide`, `PictureLeft`, `OutputFrame`, `BoardScene::lamp`, `HasTv`, their tests | |
-| 2 | Shared pieces, the bench unchanged: `Load` moved, `board_tags`, `BoardView::setStill`, `DrawMonitor`, `DrawNote`, `TvView::clear`, the shelf's and panel's colours | |
+| 2 | Shared pieces, the bench unchanged: `Load` moved, `board_tags`, `BoardView::setStill`, `DrawMonitor`, `DrawNote`, `TvView::clear`, the shelf's and panel's colours | this commit |
 | 3 | The launcher: stills and the live run loaded in the background, the two lanes, keys and clicks, `--select`, the speed line | |
 | 4 | Docs, release check with screenshots, debug, full release suite | |
 
@@ -50,3 +50,5 @@ Fence: full release suite. Commit: `docs: P7b done, the launcher's look in the g
 ## Implementation notes
 
 - Review (2026-11-22), fixed: loads off the UI thread (the BW-2001 loads in 0.26 s, not 30 ms): a still loader thread, the live run loaded by `std::async` once the selection rests 0.15 s; clicks reach the launcher through `NoInputs` children; the monitor and the error box in an overlay child (a parent's drawing is under its children); `loaded.hpp` exists (only `loaded.cpp` new); a Machine without a Board; `liveStatus` not `const`; the launcher window without wheel scrolling or padding, its top lane in `kPanelBackground`; the TV Machine's Board rect; the chevrons beside the picture; the glide's numbers and per-lane snap; `HasTv` beside `makeLive`; the output frame tests on the cheap fixture (no `LoadMachine` in debug); the `view: ` cases in the fence; screenshots as `src/ui`'s check and in phase 4; commit bodies naming the checks; P7a's three named; the longest brief 204; Odd E for the speed; `DrawMonitor` fills the shell; `kTrayShadow` exported; the error line cleared on any change; `select` of a file not listed; `Loaded` reset then emplaced; no `NoNav` (navigation is off).
+- Phase 1 (2026-11-22): as designed; the repository's Machines agree with the design's expectations. `HasTv` works on `LoadNetlistFile` alone (the BW-2001's netlist loads without its ROMs). Checks: release and debug `-R "^(launcher lanes|output frame|board scene|view): "` (28), full release suite 1493/1493.
+- Phase 2 (2026-11-22): `SwitchTagsOf` reads the design Circuit (as `Session::switches` does) where `RunWindow` read the built one: the same Parts and Switches. `RunWindow`'s slide test is by the Part's name only. The refusal needs no guard in a still (`refuse` is never called on one). Screenshots viewed, as before: the Stopwatch, Odd E (the monitor, the brief), the BW-1 (keys, the slide switch). Debug `--visit` of P7a's three: exit 0, only the known `flip_corner`/`chip_body` UBSan reports.

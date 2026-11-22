@@ -1,5 +1,6 @@
 #include "ui/tv_view.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstring>
 
@@ -49,6 +50,12 @@ void TvView::show(const TvPicture& picture) {
     if (picture.locked) {
         lines_ = picture.lines;  // the window keeps still until the next locked frame
     }
+    fill();
+}
+
+void TvView::clear() {
+    std::ranges::fill(cells_, 0.0f);
+    lines_ = 0;
     fill();
 }
 

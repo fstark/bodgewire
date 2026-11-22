@@ -27,12 +27,9 @@ constexpr float kCell = kShelfHeight - 16.0f;  // a square cell's side
 constexpr float kCellGap = 4.0f;
 constexpr float kGroupGap = 20.0f;
 constexpr float kGrayed = 0.35f;
-constexpr ImU32 kShelfWood = IM_COL32(48, 38, 30, 255);
-constexpr ImU32 kShelfEdge = IM_COL32(92, 74, 58, 255);
 // The trays (P6o): recessed, a shade lighter than the wood, a dark line along the top.
 constexpr float kTrayPad = 4.0f;
 constexpr ImU32 kTray = IM_COL32(62, 50, 40, 255);
-constexpr ImU32 kTrayShadow = IM_COL32(28, 22, 17, 255);
 constexpr ImU32 kTrayDivider = IM_COL32(36, 29, 23, 255);
 constexpr ImU32 kHover = IM_COL32(255, 255, 255, 40);
 constexpr ImVec4 kAmber{1.0f, 0.7f, 0.1f, 1.0f};

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <optional>
+
+#include <imgui.h>
+
 #include "ui/tv_view.hpp"
 #include "view/tv_controls.hpp"
 
@@ -7,6 +11,14 @@ namespace bw {
 
 // The TV window's name, for the shelf to bring it to the front.
 inline constexpr const char* kTvWindowName = "TV";
+
+// The monitor's case (P6f) with its top-left at `at`, `width` wide (height width * kTvAspect): the
+// cream shell filled and its edge, front, bezel, screen, strip, knobs at `controls`' turns, lamp,
+// power switch, trimmer. The picture from `view` when `controls.on()` and `view` is not null,
+// else the dark glass; `hoveredKnob` a knob drawn hovered. Draws only: no item, no input (the TV
+// window's and the launcher's, P7b).
+void DrawMonitor(ImDrawList& list, ImVec2 at, float width, const TvControls& controls,
+                 const TvView* view, std::optional<TvKnob> hoveredKnob = std::nullopt);
 
 // The TV as an object on the bench (P6d): a monitor case with no title bar, dragged by its body,
 // resized from its corner keeping its proportions, put away by the × on the case. Drawn in the

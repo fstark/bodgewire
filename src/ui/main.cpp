@@ -42,6 +42,7 @@
 #include "ui/analyzer_window.hpp"
 #include "ui/bench.hpp"
 #include "ui/board_keys.hpp"
+#include "ui/board_tags.hpp"
 #include "ui/board_view.hpp"
 #include "ui/brief_window.hpp"
 #include "ui/debug_window.hpp"
@@ -465,76 +466,6 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
         return std::nullopt;
     }
     return options;
-}
-
-void Print(std::span<const Diagnostic> diagnostics) {
-    for (const Diagnostic& d : diagnostics) {
-        std::println(stderr, "{}", Format(d));
-    }
-}
-
-// Diagnostics printed; no session on errors.
-Loaded Load(const std::filesystem::path& file, const std::optional<std::filesystem::path>& roms) {
-    std::expected<Machine, std::vector<Diagnostic>> machine =
-        std::unexpected(std::vector<Diagnostic>{});
-    std::string title, brief;
-    if (file.extension() == ".bwp") {
-        const auto puzzle = ReadPuzzleFile(file);
-        if (!puzzle) {
-            Print(puzzle.error());
-            return {};
-        }
-        title = puzzle->title;
-        brief = puzzle->brief;
-        machine = LoadMachine(*puzzle, MachineDir(file), roms);
-    } else if (HasBoard(file)) {
-        machine = LoadNetlistMachine(file, roms);
-    } else {
-        LoadResult result = LoadNetlistFile(file);
-        if (roms) {
-            std::ifstream in(file, std::ios::binary);
-            std::stringstream text;
-            text << in.rdbuf();
-            auto netlist = ParseNetlist(text.str(), file.filename().string());
-            if (!netlist) {
-                Print(netlist.error());
-                return {};
-            }
-            ResolveContentsPaths(*netlist, std::filesystem::absolute(file).parent_path());
-            if (const auto applied = ApplyRomDirectory(*netlist, *roms); !applied) {
-                std::println(stderr, "bw_ui: {}", applied.error());
-                return {};
-            }
-            result = BuildCircuit(*netlist);
-        }
-        if (!result) {
-            Print(result.error());
-            return {};
-        }
-        Print((*result)->warnings);
-        const auto dir = MachineDir(file);
-        LoadedManuals manuals = LoadManuals(dir, DatasheetDir(dir), **result);
-        Print(manuals.problems);
-        return {Session(std::nullopt, std::move(*result)), file.stem().string(), "",
-                std::move(manuals)};
-    }
-    if (!machine) {
-        Print(machine.error());
-        return {};
-    }
-    auto built = machine->build();
-    if (!built) {
-        Print(built.error());
-        return {};
-    }
-    if (title.empty()) {
-        title = machine->name();
-    }
-    const auto dir = MachineDir(file);
-    LoadedManuals manuals = LoadManuals(dir, DatasheetDir(dir), machine->designCircuit());
-    Print(manuals.problems);
-    return {Session(std::move(*machine), std::move(*built)), std::move(title), std::move(brief),
-            std::move(manuals)};
 }
 
 // A tooltip past the main window's edge is a desktop window of its own (multi-viewports, P6j).
@@ -1170,13 +1101,7 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
         }
         boardView.setLeads(leadTags);
         if (const BoardScene* scene = boardView.scene()) {
-            std::vector<LedTag> ledTags;
-            for (const LedLight& led : session.leds()) {
-                if (const auto component = scene->componentIndex(led.reference)) {
-                    ledTags.push_back({*component, led.shape, led.brightness});
-                }
-            }
-            boardView.setLeds(ledTags);
+            boardView.setLeds(LedTagsOf(*scene, session));
         }
         {
             // Buttons: held or latched on the Board, or scripted by --press (also without a
@@ -1186,18 +1111,14 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
                 latched.clear();
             }
             const auto toggled = boardView.takeLatchToggle();
-            std::vector<SwitchTag> switchTags;
             for (const std::string& reference : session.switches()) {
                 const auto component =
                     scene ? scene->componentIndex(reference) : std::optional<std::size_t>();
                 const auto part =
                     std::ranges::find(session.circuit().parts, reference, &LoadedPart::reference);
-                const std::string_view type =
-                    part != session.circuit().parts.end() ? part->info->name : "";
-                const SwitchLook look = type == "KEY"     ? SwitchLook::Key
-                                        : type == "SLIDE" ? SwitchLook::Slide
-                                                          : SwitchLook::Button;
-                if (look == SwitchLook::Slide) {
+                const bool slide =
+                    part != session.circuit().parts.end() && part->info->name == "SLIDE";
+                if (slide) {
                     // A slide stays where it is moved, powered or not.
                     if (component && toggled == component && !slid.erase(reference)) {
                         slid.insert(reference);
@@ -1214,14 +1135,9 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
                                                   slid.contains(reference) || scripted ||
                                                   (component && boardView.held() == component) ||
                                                   boardKeys.holds(reference));
-                if (component) {
-                    const Switch* sw = SwitchOf(session.circuit(), reference);
-                    switchTags.push_back({*component, session.pressed(reference), look,
-                                          sw ? std::string(sw->legend()) : std::string()});
-                }
             }
             if (scene) {
-                boardView.setSwitches(switchTags);
+                boardView.setSwitches(SwitchTagsOf(*scene, session));
             }
         }
         {
@@ -1253,26 +1169,7 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
             wasPowered = session.powered();
         }
         if (machine) {
-            std::vector<CutMark> cuts;
-            for (const Crack& cut : machine->cuts()) {
-                cuts.push_back({cut.layer, cut.at});
-            }
-            boardView.setCuts(cuts);
-            std::vector<CutMark> cracks;
-            for (const Crack& crack : machine->cracks()) {
-                cracks.push_back({crack.layer, crack.at});
-            }
-            boardView.setCracks(cracks);
-            std::vector<BodgeWire> wires;
-            for (const WireEnds& w : machine->wires()) {
-                wires.push_back(w.wire);
-            }
-            boardView.setBodgeWires(wires);
-            std::vector<BodgeWire> bridges;
-            for (const WireEnds& b : machine->bridges()) {
-                bridges.push_back(b.wire);
-            }
-            boardView.setBridges(bridges);
+            ShowRepairs(boardView, *machine);
         }
         boardView.setWireStart(wireStart ? std::optional(wireStartAt) : std::nullopt);
         shelf.wireStarted = wireStart.has_value();

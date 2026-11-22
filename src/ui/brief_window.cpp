@@ -11,16 +11,40 @@ namespace {
 
 constexpr float kWidth = 230;
 constexpr float kPad = 12;
-constexpr float kStrip = 16;  // the glued band along the top, a shade darker
-constexpr float kCurl = 14;   // the lifted bottom-right corner
+constexpr float kCurl = 14;  // the lifted bottom-right corner
 constexpr float kTitleScale = 1.2f;
 constexpr ImU32 kPaper = IM_COL32(253, 236, 120, 255);
 constexpr ImU32 kGlue = IM_COL32(240, 218, 95, 255);
 constexpr ImU32 kCurlUnder = IM_COL32(205, 180, 60, 255);
 constexpr ImU32 kShadow = IM_COL32(0, 0, 0, 70);
-constexpr ImVec4 kInk{0.12f, 0.11f, 0.09f, 1.0f};
+constexpr ImU32 kLiftShadow = IM_COL32(0, 0, 0, 90);
 
 }  // namespace
+
+void DrawNote(ImDrawList& list, ImVec2 at, ImVec2 end, float lift) {
+    if (lift > 0) {  // the whole note lifted off the wood: its shadow below and right
+        list.PathLineTo({at.x + lift, at.y + lift});
+        list.PathLineTo({end.x + lift, at.y + lift});
+        list.PathLineTo({end.x + lift, end.y + lift - kCurl});
+        list.PathLineTo({end.x + lift - kCurl, end.y + lift});
+        list.PathLineTo({at.x + lift, end.y + lift});
+        list.PathFillConvex(kLiftShadow);
+    }
+    // A shadow under the lifted corner, the note with its corner cut, the corner curled up.
+    list.PushClipRectFullScreen();
+    list.AddTriangleFilled({end.x - kCurl, end.y + 3}, {end.x + 3, end.y - kCurl},
+                           {end.x + 2, end.y + 2}, kShadow);
+    list.PopClipRect();
+    list.PathLineTo(at);
+    list.PathLineTo({end.x, at.y});
+    list.PathLineTo({end.x, end.y - kCurl});
+    list.PathLineTo({end.x - kCurl, end.y});
+    list.PathLineTo({at.x, end.y});
+    list.PathFillConvex(kPaper);
+    list.AddRectFilled(at, {end.x, at.y + kNoteStrip}, kGlue);
+    list.AddTriangleFilled({end.x, end.y - kCurl}, {end.x - kCurl, end.y},
+                           {end.x - kCurl, end.y - kCurl}, kCurlUnder);
+}
 
 void DrawBrief(bool& open, const Loaded& loaded, std::optional<ImVec2> corner, BriefNote& note) {
     if (!open || loaded.brief.empty()) {
@@ -65,24 +89,10 @@ void DrawBrief(bool& open, const Loaded& loaded, std::optional<ImVec2> corner, B
     const ImVec2 at = ImGui::GetWindowPos();
     const ImVec2 size = ImGui::GetWindowSize();
     const ImVec2 end{at.x + size.x, at.y + size.y};
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    // A shadow under the lifted corner, the note with its corner cut, the corner curled up.
-    list.PushClipRectFullScreen();
-    list.AddTriangleFilled({end.x - kCurl, end.y + 3}, {end.x + 3, end.y - kCurl},
-                           {end.x + 2, end.y + 2}, kShadow);
-    list.PopClipRect();
-    list.PathLineTo(at);
-    list.PathLineTo({end.x, at.y});
-    list.PathLineTo({end.x, end.y - kCurl});
-    list.PathLineTo({end.x - kCurl, end.y});
-    list.PathLineTo({at.x, end.y});
-    list.PathFillConvex(kPaper);
-    list.AddRectFilled(at, {end.x, at.y + kStrip}, kGlue);
-    list.AddTriangleFilled({end.x, end.y - kCurl}, {end.x - kCurl, end.y},
-                           {end.x - kCurl, end.y - kCurl}, kCurlUnder);
+    DrawNote(*ImGui::GetWindowDrawList(), at, end);
 
-    ImGui::Dummy({0, kStrip - 4});  // under the glue
-    ImGui::PushStyleColor(ImGuiCol_Text, kInk);
+    ImGui::Dummy({0, kNoteStrip - 4});  // under the glue
+    ImGui::PushStyleColor(ImGuiCol_Text, kNoteInk);
     ImGui::PushTextWrapPos(kWidth - kPad);
     ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kTitleScale);
     ImGui::TextUnformatted(loaded.title.c_str());
