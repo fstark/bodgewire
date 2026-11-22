@@ -24,7 +24,7 @@ Tests: `tests/parts/<part>_test.cpp`, `tests/devices/<x>_test.cpp`, `tests/runne
 
 ## Input device (pressed on the Board): switches
 
-Buttons and keys are one Part since P5i ([SWITCHES.md](../p5i-switches/SWITCHES.md)): a new kind of switch is a catalogue row of `Switch`, not a new chain. Reference commits: P4d button `28ecaea` → `175929e`; P5i switches (phases 1, 2, 5 of [SWITCHES_PLAN.md](../p5i-switches/SWITCHES_PLAN.md)).
+Buttons and keys are one Part since P5i: a new kind of switch is a catalogue row of `Switch`, not a new chain. Reference commits: P4d button `28ecaea` → `175929e`; P5i switches `bce6852` (kernel: switched Pin, external drives), `7248627` (`Switch`, `SwitchNetwork`, builder, Session), `ce5d88b` (`bw_ui`: keycaps, PC keys).
 
 - Part `src/parts/switch.{hpp,cpp}`: `Switch`, two legs `1`, `2` (TTL Outputs that never drive: the same random draws as the P4d button); `BUTTON` takes `legend=` (1–8 characters, not `#`, printed on the silkscreen under it, or above its reference at the Board's edge: P6g) and `pc=`, `KEY` (`MX-1U`, Cherry MX 1u) takes `legend=` (1–4 characters: it fills the cap) and `pc=` (a KEY's defaults to a one-character legend; `IsPcKey` lists the names); Faults `SwitchFault::StuckClosed`, `NeverCloses`.
 - Joining: the builder (`wireSwitches`) adds one `SwitchNetwork` with a `PinKind::Switched` Pin on every Net a leg is on. Closed switches group Nets; each group is driven at Supply strength with the merged drives of its Nets read without the network's own (`EvalContext::external`), so a rail beats a TTL output, a pull-up reaches the other Net, and ghosts, cracks and bridges follow from the copper. The kernel wakes the network when a Net's other drives change, never on its own drive.

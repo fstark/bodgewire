@@ -220,7 +220,7 @@ Each stage loads without warnings and is tested before the next (plan phases 4�
 
 ## Board
 
-Placed by `bw place machines/070-tennis/tennis.bwn machines/070-tennis/board/tennis.place -o machines/070-tennis/board/tennis.kicad_pcb` (P4k, seed 1, 4 tries: a 12 × 5 chip grid, 11.07 m of wire), then routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md) steps 7–8), 2 layers, no zones. The first Board (chips grouped by job, placed by hand) had 15.1 m.
+Placed by `bw place machines/070-tennis/tennis.bwn machines/070-tennis/board/tennis.place -o machines/070-tennis/board/tennis.kicad_pcb` (P4k, seed 1, 4 tries: a 12 × 5 chip grid, 11.07 m of wire), then routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/KICAD_GUIDE.md) steps 7–8), 2 layers, no zones. The first Board (chips grouped by job, placed by hand) had 15.1 m.
 
 - [tennis.place](../board/tennis.place): `J1` at the left, `J2` at the right end of the back edge; `J3` at the left end of the front edge, `J4` at the right end (each player's side); `SW1` in the middle of the front edge, `R1` beside it on its right.
 - The chips are where the annealing put them, not grouped by job: the Service Manual names chips by U-number, and the probe finds them by reference.

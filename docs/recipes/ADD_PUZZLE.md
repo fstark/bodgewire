@@ -2,7 +2,7 @@
 
 A hand-placed fault on an existing Machine. Content work: no new code.
 
-Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice), `b1c73bc` (BW-1 RAM Puzzles, the self-test as a symptom). Crack syntax and placement: [CRACK_PLACEMENT.md](../p4e-crack-placement/CRACK_PLACEMENT.md).
+Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice), `b1c73bc` (BW-1 RAM Puzzles, the self-test as a symptom). Crack placement (P4e, `fault crack A B N%`): under Faults below.
 
 ## Design rules
 
@@ -11,7 +11,7 @@ Reference commits: `cf595a6` (four chaser Puzzles), `fad45c7` (dice), `b1c73bc` 
 - The player has a fair way to find it with the probe and the Board. Hard because the Machine is complex is fine; hard because the clue is missing is a bug.
 - Seed-independent: the symptom shows for every power-on seed.
 - A memory Fault belongs where the Machine shows the memory (a character or message ROM, video RAM): in program memory it mostly crashes the program, which only tells the player "swap". Check which words the program really uses: an address line that aliases unused words shows nothing.
-- On a CPU's bus a cut data line keeps its bus charge (the last value driven or pulled): where only resistors drive it (100 Heartbeat) a crack shows nothing; use `stuck` on the CPU's pin. A Fault that sends a CPU wandering through the open bus and random RAM depends on the power-on seed. `bw_ui` always powers on with seed 1 (another only from the Debug panel), so the brief describes seed 1; run other seeds too (`bw run --seed N`) as a robustness check, note what they do in the Machine design and test a seed of each kind (110 `blackout`).
+- On a CPU's bus a cut data line keeps its bus charge (the last value driven or pulled): where only resistors drive it (the Heartbeat, now the fixture `tests/data/heartbeat`) a crack shows nothing; use `stuck` on the CPU's pin. A Fault that sends a CPU wandering through the open bus and random RAM depends on the power-on seed. `bw_ui` always powers on with seed 1 (another only from the Debug panel), so the brief describes seed 1; run other seeds too (`bw run --seed N`) as a robustness check, note what they do in the Machine design and test a seed of each kind (110 `blackout`).
 - Each Puzzle on a Machine should teach something different (stuck output, stuck input, broken trace, bridge, dead rail, dry Joint).
 - Showing a fault may take an action the manuals document: pressing a button, typing, running a self-test (BW-1: "it works, but the self-test fails" is a Puzzle). The User Manual then says how to run it and read it (BW-1: the self-test at the end of What it does): the player reads both manuals in the binder, but the Service Manual only lists roles: how to run and read a test belongs in the User Manual.
 - A self-test points at a place, not a part: pair a Puzzle where the swap it suggests repairs it with one where that swap fails (BW-1 `dead_machine` and `wrong_suspect`: the same bad bit, a chip and a cracked Trace).
@@ -45,14 +45,14 @@ fault crack R6.2 D5.2 51%
   - `fault stuck U8.D 0`: chip input stuck at 0/1: the chip reads the value, its Net and the other pins on it are unchanged; repaired by swapping the chip;
   - `fault stuck UA5.PB5 0 input`: the same on a pin that can also drive (a port pin): the chip reads the value, the Net is left alone, the pin drives nothing; without `input` such a pin forces its Net;
   - `fault joint U15.13`: dry Joint on a chip signal pin: the pin is off its pad's Net (an input floats high, an output drives only its leg); repaired by resoldering, not by a swap;
-  - `fault crack A B N%`: Broken Trace on the Copper between pads A and B, `N%` along its crackable straight stretches; repaired by mending;
+  - `fault crack A B N%`: Broken Trace on the Copper between pads A and B, `N%` along its crackable straight stretches; repaired by mending. Two different pads joined by Copper on the fault-free Board; `N` from 0 to 100, decimals allowed; the Layer is that of the Trace it lands on. The path is the Copper from A to B with the fewest pieces; its crackable stretches (straight Trace whose gap touches no other Copper: away from pads, vias, corners, junctions; never arcs) are put end to end, `0%` nearest A. The crack must separate A from B, or the Puzzle does not load (as for pads not joined or nothing crackable). A new layout keeps the crack between the same two pads, so it breaks the same connection; only which other pads lose the signal may change;
   - `fault bridge U5.3 U5.4`: solder bridge between neighbouring pins of one chip (not a resistor's or a connector's); repaired by the Cut tool.
   - `fault cell U3.IO2 $1FF 0`: inside a RAM or ROM (2114, 2716, 2513, 2316B, 6102, 6530), bit `IO2` of word `$1FF` (the chip's own address: its `A` pins, bit 0 first; `$` hex or decimal) always reads 0; writes do not change it; repaired by swapping the chip;
   - `fault column U15.O1 0`: the same bit stuck in every word, inside the chip: the pin is fine while another chip drives the line; repaired by swapping;
   - `fault cell U2.D3 ram $3F 0`, `fault column U2.D0 rom 1`: a chip with several memories (the 6530's `rom` and `ram`) needs the memory's name before the word; the word is that memory's own address (`ram` `$00`–`$3F`); a chip with one memory takes no name;
   - an internal address line (the chip ignores `A0`, words pair up) is a stuck input: `fault stuck U3.A0 0`;
   - `fault switch SW1 closed` (stuck closed: joined from power-on, a press changes nothing) or `fault switch SW1 open` (never closes): on a `BUTTON` or `KEY`; repaired by swapping the switch. A stuck-closed key in a scanned matrix shows on every scan, and with two other held keys can make a ghost.
-- Check it loads and shows the symptom: `./build/debug/src/cli/bw run machines/NNN-name/puzzles/NN-name.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`). `--probe` reads the leg (the pin's own Net).
+- Check it loads and shows the symptom: `./build/release/src/cli/bw run machines/NNN-name/puzzles/NN-name.bwp --time 2s --probe U5.QD` (or `bw_ui` release with `--screenshot`). `--probe` reads the leg (the pin's own Net).
 - A typed command on a ZX80-like editor: the first key after a report is taken to leave the report, so a case types one command from a fresh power-on.
 - `bw_ui --press` is read once per UI frame: hold a scripted press at least 100 ms (`--press SW1:50ms:200ms`), or it may be missed. `bw run --tv x.bmp` writes the last TV frame alone, quicker to read than a cropped screenshot. Convert it to view it (`sips -s format png x.bmp --out x.png`).
 - A crack or dry Joint leaves a TTL input high, but a Net with only MOS inputs (2513, 2518, 2524) reads X, a random bit at every read: on a data or control input that gives noise, not a symptom. Cut a MOS clock (it never rises: a 2524 fades), or use `stuck` on a MOS input (typewriter `lookalikes`, `copies`).

@@ -275,7 +275,7 @@ Since P6n the line sync is on characters 34–35 and the vertical sync on lines 
 
 ## Board
 
-Placed by `bw place machines/090-typewriter/typewriter.bwn machines/090-typewriter/board/typewriter.place -o machines/090-typewriter/board/typewriter.kicad_pcb` (P4k), then routed by the user in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md) steps 7–8), 2 layers, no zones.
+Placed by `bw place machines/090-typewriter/typewriter.bwn machines/090-typewriter/board/typewriter.place -o machines/090-typewriter/board/typewriter.kicad_pcb` (P4k), then routed by the user in KiCad ([KICAD_GUIDE.md](../../../docs/KICAD_GUIDE.md) steps 7–8), 2 layers, no zones.
 
 - `typewriter.place`:
 

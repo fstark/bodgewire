@@ -96,7 +96,7 @@ net DS1_G    U8.SG_N DS1.G
 
 ## Board
 
-`bw export-kicad machines/040-stopwatch/stopwatch.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md)):
+`bw export-kicad machines/040-stopwatch/stopwatch.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/KICAD_GUIDE.md)):
 
 - `DS1` `DS2` `DS3` in a row near the front edge, upright: the pad 1 row (pins 1–5) at the bottom. The Board view draws each digit standing on its pad 1 side.
 - `SW1` Start, `SW2` Stop, `SW3` Reset along the front edge below the digits, with `R1`–`R3`.

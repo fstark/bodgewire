@@ -147,7 +147,7 @@ Both files use the contents format of [ROM_PARTS.md](../../../docs/p4l-rom-parts
 
 ## Board
 
-Placed by `bw place machines/080-message/message.bwn machines/080-message/board/message.place -o machines/080-message/board/message.kicad_pcb` (P4k), then routed by the user in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md) steps 7–8), 2 layers, no zones.
+Placed by `bw place machines/080-message/message.bwn machines/080-message/board/message.place -o machines/080-message/board/message.kicad_pcb` (P4k), then routed by the user in KiCad ([KICAD_GUIDE.md](../../../docs/KICAD_GUIDE.md) steps 7–8), 2 layers, no zones.
 
 - `message.place`:
 

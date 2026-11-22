@@ -58,7 +58,7 @@ net LED_A8   R9.2 D8.A
 
 ## Board
 
-`bw export-kicad machines/020-led-chaser/chaser.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md)):
+`bw export-kicad machines/020-led-chaser/chaser.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/KICAD_GUIDE.md)):
 
 - `D1`–`D8` in one row, left to right, with `R2`–`R9` beside them; `U5` and `U6` next to the row; `U1`–`U4`, `X1`, `J1`, `R1` as on the counter.
 - `bw check-board` clean; `drc_chaser` passes (picked up by the `machines/*/board/*.kicad_pcb` glob).

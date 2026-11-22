@@ -60,7 +60,7 @@ net LED_A7   R8.2 D7.A
 
 ## Board
 
-`bw export-kicad machines/030-dice/dice.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md)):
+`bw export-kicad machines/030-dice/dice.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/KICAD_GUIDE.md)):
 
 - `D1`–`D7` as a die face: `D1` top left, `D2` top right, `D3` `D4` `D5` across the middle, `D6` bottom left, `D7` bottom right; `R2`–`R8` around them.
 - `SW1` at the front edge, below the face, with `R9` next to it; `U1`–`U4`, `X1`, `J1`, `R1` behind the face.

@@ -208,7 +208,7 @@ Timing notes (all well inside a 500 ns dot):
 
 ## Board
 
-`bw export-kicad machines/060-bouncing-ball/ball.bwn -o machines/060-bouncing-ball/board/ball.net`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md)), 2 layers, no zones. P6n kept the placement in `board/ball.place` (`at REF X Y [ANGLE]`, rebuilt by `bw place`) and routed the whole Board again with Freerouting:
+`bw export-kicad machines/060-bouncing-ball/ball.bwn -o machines/060-bouncing-ball/board/ball.net`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/KICAD_GUIDE.md)), 2 layers, no zones. P6n kept the placement in `board/ball.place` (`at REF X Y [ANGLE]`, rebuilt by `bw place`) and routed the whole Board again with Freerouting:
 
 - Three rows of DIP-14/16, grouped by job so the Service Manual reads on the Board: the beam counters and sync (`X1`, `U1`–`U11`) at the back with `J1` at the left and `J2` at the back edge; the playfield decoders and mixer (`U12`–`U17`) in the middle; the ball counters and bounce logic (`U18`–`U26`) along the front.
 - Wanted for the Puzzles (each a straight stretch away from pads, vias and corners):

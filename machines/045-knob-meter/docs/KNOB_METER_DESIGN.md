@@ -100,7 +100,7 @@ net DS2_G    U12.SG_N DS2.G
 
 ## Board
 
-`bw export-kicad machines/045-knob-meter/knob.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md)):
+`bw export-kicad machines/045-knob-meter/knob.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/KICAD_GUIDE.md)):
 
 - `DS1` `DS2` in a row near the front edge, upright: the pad 1 row (pins 1–5) at the bottom.
 - `J2` on the left edge (the controller's cable), `J1` at the back.

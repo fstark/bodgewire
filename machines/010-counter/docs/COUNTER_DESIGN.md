@@ -36,7 +36,7 @@ net LED_A    R2.2 D1.A
 
 ## Board
 
-`bw export-kicad machines/010-counter/counter.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/p2a-board-layout/KICAD_GUIDE.md)): 140 segments, no vias. `bw check-board` is clean and `drc_counter` passes.
+`bw export-kicad machines/010-counter/counter.bwn`, then placed and routed by hand in KiCad ([KICAD_GUIDE.md](../../../docs/KICAD_GUIDE.md)): 140 segments, no vias. `bw check-board` is clean and `drc_counter` passes.
 
 ## Puzzles
 
