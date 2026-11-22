@@ -111,6 +111,9 @@ public:
         still_ = box;
         needFit_ = true;
     }
+    // The objects out on the bench when it opens, px from the panel's sides: the fitted Board
+    // centred between them (Viewport::setCovered); later moves of the objects change nothing.
+    void setCovered(float left, float right) { viewport_.setCovered(left, right); }
     // The focus owner, set each frame: under the chip puller a click on a switch swaps it.
     void setOwner(Owner owner) { owner_ = owner; }
     Layer activeLayer() const { return active_; }

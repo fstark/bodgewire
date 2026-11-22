@@ -20,7 +20,14 @@ public:
     static constexpr double kFitMargin = 0.95;      // share of the panel the fitted Board fills
 
     void fit(Bounds board, ScreenPoint panel);  // whole outline, centred; sets the minimum zoom
-    void resize(ScreenPoint panel);             // refits if fitted, else keeps the centre point
+    // Pixels at the panel's left and right that objects cover when the bench opens (the knob box,
+    // the TV): a fit, its size unchanged, centres the Board across the width between them, moved
+    // no closer than kFitMargin's gap to the panel's edges. Kept for later fits (resizes).
+    void setCovered(double left, double right) {
+        coveredLeft_ = left;
+        coveredRight_ = right;
+    }
+    void resize(ScreenPoint panel);  // refits if fitted, else keeps the centre point
     void zoomAt(ScreenPoint cursor, double notches);  // the board point under the cursor stays
     void pan(ScreenPoint delta);
     // Centres `box` and zooms so it fills `share` of the panel, but at least `minPixelsPerMm`;
@@ -40,6 +47,7 @@ private:
     Bounds board_{};
     ScreenPoint panel_{};
     bool fitted_ = true;  // still the fitted view: resize refits
+    double coveredLeft_ = 0, coveredRight_ = 0;
 };
 
 }  // namespace bw

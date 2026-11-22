@@ -712,6 +712,21 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
          : object == BenchObject::Keyboard ? shelf.keyboardOut
                                            : shelf.knobOut) = false;
     }
+    // The Board fitted beside the TV and the knob box when they come out on the bench at start
+    // (their default places: the TV top right, the knob box top left), not under them.
+    {
+        const auto onBench = [&](BenchObject object) {
+            return std::ranges::find(options.pop, object) == options.pop.end();
+        };
+        const float covered = 2 * kBenchMargin;
+        const float left = shelf.knobOut && onBench(BenchObject::Knob)
+                               ? covered + FirstSize(BenchObject::Knob, {}, 1,
+                                                     static_cast<int>(session.knobs().size()))
+                                               .width
+                               : 0;
+        const float right = shelf.tvOut && onBench(BenchObject::Tv) ? covered + kTvFirstWidth : 0;
+        boardView.setCovered(left, right);
+    }
     Owner lastOwner = focus.owner();
     ManualWindows manualWindows;
     if (options.manual) {

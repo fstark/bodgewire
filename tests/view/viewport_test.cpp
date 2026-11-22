@@ -31,6 +31,25 @@ TEST_CASE("view: viewport fit centres the Board with the margin", "[view]") {
     CHECK(v.fitted());
 }
 
+TEST_CASE("view: viewport fit beside the objects covering the panel", "[view]") {
+    constexpr Bounds kTall{{0, 0}, {50 * kMm, 100 * kMm}};  // 50 × 100 mm: 5.7 px/mm, 285 px wide
+    const auto centreX = [&](double left, double right) {
+        Viewport v;
+        v.setCovered(left, right);
+        v.fit(kTall, kPanel);
+        CHECK(v.pixelsPerMm() == Catch::Approx(Viewport::kFitMargin * 6));  // the size unchanged
+        const ScreenPoint min = v.toScreen(kTall.min);
+        const ScreenPoint max = v.toScreen(kTall.max);
+        CHECK((min.y + max.y) / 2 == Catch::Approx(300));
+        return (min.x + max.x) / 2;
+    };
+    CHECK(centreX(0, 0) == Catch::Approx(400));
+    CHECK(centreX(0, 300) == Catch::Approx(250));  // centred in the 500 px left free
+    CHECK(centreX(200, 0) == Catch::Approx(500));
+    // Too little room: as far as the edge's margin allows (half the Board + 2.5 % of the panel).
+    CHECK(centreX(0, 700) == Catch::Approx(142.5 + 20));
+}
+
 TEST_CASE("view: viewport round trip", "[view]") {
     Viewport v;
     v.fit(kBoard, kPanel);

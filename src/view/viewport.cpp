@@ -17,7 +17,13 @@ void Viewport::fit(Bounds board, ScreenPoint panel) {
     }
     const double cx = (static_cast<double>(board.min.x) + static_cast<double>(board.max.x)) / 2;
     const double cy = (static_cast<double>(board.min.y) + static_cast<double>(board.max.y)) / 2;
-    offset_ = {panel.x / 2 - cx * nmToPixel_, panel.y / 2 - cy * nmToPixel_};
+    double centreX = panel.x / 2;
+    if (coveredLeft_ > 0 || coveredRight_ > 0) {
+        const double half = width * nmToPixel_ / 2 + (1 - kFitMargin) / 2 * panel.x;
+        const double wanted = (coveredLeft_ + panel.x - coveredRight_) / 2;
+        centreX = half >= panel.x / 2 ? panel.x / 2 : std::clamp(wanted, half, panel.x - half);
+    }
+    offset_ = {centreX - cx * nmToPixel_, panel.y / 2 - cy * nmToPixel_};
     fitted_ = true;
 }
 
