@@ -25,7 +25,7 @@ public:
         std::uint32_t ramTop = 0x2000;  // RAM is $0000 to ramTop - 1, at most 8 KB
         bool diag = false;              // true: DIAG (PA7) held low from power-on
         // Each ROM window by its base ($C000, $E000, $F000); empty: the three committed
-        // roms/bw2001_*.rom. A window not given is empty sockets.
+        // debug-roms/bw2001_*.rom. A window not given is empty sockets.
         std::map<std::uint16_t, std::vector<std::uint8_t>> roms;
     };
 

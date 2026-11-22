@@ -118,3 +118,56 @@ TEST_CASE("rom directory: refusals", "[netlist]") {
         CHECK(applied.error().find("two files for UH1") != std::string::npos);
     }
 }
+
+TEST_CASE("rom directory: sockets.txt fills sockets from one file with offset=", "[netlist]") {
+    const auto base = TempDir("sockets");
+    Netlist netlist = TwoSockets(base);
+    std::filesystem::create_directories(base / "set");
+    Write(base / "set" / "debug.rom", "@0000 33\n@0800 44\n");
+    Write(base / "set" / "UH1.bin", "ignored: the manifest alone says what goes where");
+    Write(base / "set" / "sockets.txt",
+          "# our firmware\nUH1 debug.rom offset=0\n\nUH5 debug.rom offset=$800  # the second\n");
+    REQUIRE(ApplyRomDirectory(netlist, base / "set").has_value());
+    CHECK(Param(netlist, "UH1", "contents") == (base / "set" / "debug.rom").lexically_normal());
+    CHECK(Param(netlist, "UH1", "offset") == "0");
+    CHECK(Param(netlist, "UH5", "contents") == (base / "set" / "debug.rom").lexically_normal());
+    CHECK(Param(netlist, "UH5", "offset") == "$800");
+    auto built = BuildCircuit(netlist);
+    if (!built) {
+        for (const Diagnostic& d : built.error()) {
+            UNSCOPED_INFO(Format(d));
+        }
+    }
+    REQUIRE(built.has_value());
+}
+
+TEST_CASE("rom directory: sockets.txt without offset= takes the file as one chip", "[netlist]") {
+    const auto base = TempDir("sockets_plain");
+    Netlist netlist = TwoSockets(base);
+    std::filesystem::create_directories(base / "set");
+    Write(base / "set" / "one.rom", "@0000 55\n");
+    Write(base / "set" / "sockets.txt", "UH5 one.rom\n");
+    REQUIRE(ApplyRomDirectory(netlist, base / "set").has_value());
+    CHECK(Param(netlist, "UH5", "contents").ends_with("one.rom"));
+    CHECK(Param(netlist, "UH5", "offset").empty());
+    CHECK(Param(netlist, "UH1", "offset") == "0");  // not listed: as the netlist says
+}
+
+TEST_CASE("rom directory: sockets.txt refusals", "[netlist]") {
+    const auto base = TempDir("sockets_refusals");
+    std::filesystem::create_directories(base / "set");
+    Write(base / "set" / "a.rom", "@0000 00\n");
+    const auto refused = [&](const std::string& manifest) {
+        Netlist netlist = TwoSockets(base);
+        Write(base / "set" / "sockets.txt", manifest);
+        const auto applied = ApplyRomDirectory(netlist, base / "set");
+        REQUIRE_FALSE(applied.has_value());
+        return applied.error();
+    };
+    CHECK(refused("UH1\n").ends_with("sockets.txt line 1: expected REF FILE [offset=N]"));
+    CHECK(refused("UH1 a.rom $800\n").ends_with("line 1: expected REF FILE [offset=N]"));
+    CHECK(refused("UH1 a.rom offset=0 x\n").ends_with("line 1: expected REF FILE [offset=N]"));
+    CHECK(refused("\nR1 a.rom\n").ends_with("line 2: R1 is no ROM in t.bwn"));
+    CHECK(refused("UH1 a.rom\nUH1 a.rom\n").ends_with("line 2: UH1 twice"));
+    CHECK(refused("UH1 b.rom\n").ends_with("line 1: no file b.rom"));
+}

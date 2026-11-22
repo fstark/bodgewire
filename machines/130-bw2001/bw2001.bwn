@@ -103,13 +103,13 @@ part UJ4  2114 access=300ns                             # $1000-$13FF BBD4-BBD7 
 part UJ3  2114 access=300ns                             # $1400-$17FF BBD4-BBD7 (8K only, *)
 part UJ2  2114 access=300ns                             # $1800-$1BFF BBD4-BBD7 (8K only, *)
 part UJ1  2114 access=300ns                             # $1C00-$1FFF BBD4-BBD7 (8K only, *)
-part UH1  2316B select=LLH contents=roms/bw2001_basic.rom offset=0 # $C000-$C7FF
-part UH5  2316B select=LHH contents=roms/bw2001_basic.rom offset=$800 # $C800-$CFFF
-part UH2  2316B select=LLH contents=roms/empty.rom # $D000-$D7FF: empty with our firmware
-part UH6  2316B select=LHH contents=roms/empty.rom # $D800-$DFFF: empty with our firmware
-part UH3  2316B select=LLH contents=roms/bw2001_edit.rom # $E000-$E7FF
-part UH4  2316B select=LLH contents=roms/bw2001_kernel.rom offset=0 # $F000-$F7FF
-part UH7  2316B select=LHH contents=roms/bw2001_kernel.rom offset=$800 # $F800-$FFFF
+part UH1  2316B select=LLH contents=debug-roms/bw2001_basic.rom offset=0 # $C000-$C7FF
+part UH5  2316B select=LHH contents=debug-roms/bw2001_basic.rom offset=$800 # $C800-$CFFF
+part UH2  2316B select=LLH contents=debug-roms/empty.rom # $D000-$D7FF: empty with our firmware
+part UH6  2316B select=LHH contents=debug-roms/empty.rom # $D800-$DFFF: empty with our firmware
+part UH3  2316B select=LLH contents=debug-roms/bw2001_edit.rom # $E000-$E7FF
+part UH4  2316B select=LLH contents=debug-roms/bw2001_kernel.rom offset=0 # $F000-$F7FF
+part UH7  2316B select=LHH contents=debug-roms/bw2001_kernel.rom offset=$800 # $F800-$FFFF
 part UI9  74LS139                                       # dual 2-to-4 decoder, RAM 1 KB blocks (no datasheet: pins by number)
 part UH8  74LS244                                       # RAM data buffer, BD0-BD3 <-> BBD0-BBD3
 part UH9  74LS244                                       # RAM data buffer, BD4-BD7 <-> BBD4-BBD7

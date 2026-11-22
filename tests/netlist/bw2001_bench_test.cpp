@@ -1,5 +1,5 @@
 // The P5n bench (tests/data/bw2001_bench.bwn): the PET 2001's bus, running
-// machines/130-bw2001/roms/bw2001_bench.asm, and the real BASIC 1 when the user has placed it
+// machines/130-bw2001/debug-roms/bw2001_bench.asm, and the real BASIC 1 when the user has placed it
 // (external/roms/pet, tests/data/pet_roms.md).
 
 #include <cstddef>

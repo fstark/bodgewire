@@ -1,0 +1,11 @@
+# BW-2001: our own firmware, the debug ROMs (docs/p5p-bw2001-firmware/BW2001_FIRMWARE.md): Tiny
+# BASIC, the editor, the monitor and the self-test, with the harness the tests drive. The
+# Machine runs Commodore's BASIC 1 (roms/); these run instead with --roms
+# machines/130-bw2001/debug-roms (bw_ui, bw run). A socket a line, as the netlist's contents=.
+UH1 bw2001_basic.rom offset=0       # $C000-$C7FF
+UH5 bw2001_basic.rom offset=$800    # $C800-$CFFF
+UH2 empty.rom                       # $D000-$D7FF
+UH6 empty.rom                       # $D800-$DFFF
+UH3 bw2001_edit.rom                 # $E000-$E7FF
+UH4 bw2001_kernel.rom offset=0      # $F000-$F7FF
+UH7 bw2001_kernel.rom offset=$800   # $F800-$FFFF

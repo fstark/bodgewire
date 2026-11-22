@@ -23,7 +23,7 @@ constexpr std::uint64_t kTextFirst = 23, kTextLast = 62;
 constexpr std::uint8_t kCrbFlag = 0x80, kCrbEnable = 0x01, kSelectOr = 0x04;
 
 std::vector<std::uint8_t> LoadRom(std::string_view name, std::size_t size) {
-    const auto words = ReadRomContents(test::RomPath("bw2001", name), size, 8);
+    const auto words = ReadRomContents(test::DebugRomPath("bw2001", name), size, 8);
     if (!words) {
         FAIL(words.error());
     }

@@ -47,7 +47,7 @@ struct Machine {
 };
 
 std::vector<std::uint8_t> Rom(std::string_view name, std::size_t size) {
-    const auto words = ReadRomContents(test::RomPath("bw2001", name), size, 8);
+    const auto words = ReadRomContents(test::DebugRomPath("bw2001", name), size, 8);
     REQUIRE(words.has_value());
     return *words;
 }

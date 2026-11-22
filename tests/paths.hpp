@@ -35,6 +35,15 @@ inline std::filesystem::path RomPath(std::string_view machine, std::string_view 
     return MachineDir(machine) / "roms" / std::string(file);
 }
 
+// A Machine's own debug firmware (the BW-2001's, --roms machines/130-bw2001/debug-roms).
+inline std::filesystem::path DebugRomDir(std::string_view machine) {
+    return MachineDir(machine) / "debug-roms";
+}
+
+inline std::filesystem::path DebugRomPath(std::string_view machine, std::string_view file) {
+    return DebugRomDir(machine) / std::string(file);
+}
+
 // bench/<file>: the benchmark netlists and their ROMs.
 inline std::filesystem::path BenchPath(std::string_view file) {
     return RootDir() / "bench" / std::string(file);

@@ -31,13 +31,13 @@ part UJ7  2114                                       # $1800 D4-D7
 part UJ8  2114                                       # $1C00 D4-D7
 part UC3  2114                                       # video RAM D0-D3
 part UC4  2114                                       # video RAM D4-D7
-part UH1  2316B select=LLH contents=../../machines/130-bw2001/roms/bw2001_basic.rom offset=0      # $C000
-part UH5  2316B select=LHH contents=../../machines/130-bw2001/roms/bw2001_basic.rom offset=$800   # $C800
+part UH1  2316B select=LLH contents=../../machines/130-bw2001/debug-roms/bw2001_basic.rom offset=0      # $C000
+part UH5  2316B select=LHH contents=../../machines/130-bw2001/debug-roms/bw2001_basic.rom offset=$800   # $C800
 part UH2  2316B select=LLH contents=empty.rom        # $D000
 part UH6  2316B select=LHH contents=empty.rom        # $D800
-part UH3  2316B select=LLH contents=../../machines/130-bw2001/roms/bw2001_edit.rom              # $E000
-part UH4  2316B select=LLH contents=../../machines/130-bw2001/roms/bw2001_kernel.rom offset=0     # $F000
-part UH7  2316B select=LHH contents=../../machines/130-bw2001/roms/bw2001_kernel.rom offset=$800  # $F800
+part UH3  2316B select=LLH contents=../../machines/130-bw2001/debug-roms/bw2001_edit.rom              # $E000
+part UH4  2316B select=LLH contents=../../machines/130-bw2001/debug-roms/bw2001_kernel.rom offset=0     # $F000
+part UH7  2316B select=LHH contents=../../machines/130-bw2001/debug-roms/bw2001_kernel.rom offset=$800  # $F800
 part UG8  6520                                       # PIA1 $E810
 part UB8  6520                                       # PIA2 $E820
 part UA5  6522                                       # VIA $E840
