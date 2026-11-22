@@ -36,7 +36,7 @@ struct TvTone {
 };
 
 // The monitor's controls: the knobs' turns (0..1), its power switch and the hidden underscan
-// trimmer, for the run.
+// trimmer, for the bench.
 class TvControls {
 public:
     double turn(TvKnob knob) const { return turns_[static_cast<std::size_t>(knob)]; }

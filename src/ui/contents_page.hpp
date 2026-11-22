@@ -17,7 +17,7 @@
 namespace bw {
 
 // The binder's Contents page (P6p): one ROM chip's words, in hex, as code or as glyphs, each
-// chip's view and settings kept for the run (docs/p6p-memory-contents/MEMORY_CONTENTS_DESIGN.md
+// chip's view and settings kept for the bench (docs/p6p-memory-contents/MEMORY_CONTENTS_DESIGN.md
 // §5).
 class ContentsPage {
 public:

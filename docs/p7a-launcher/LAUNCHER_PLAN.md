@@ -8,50 +8,8 @@ Spec: [LAUNCHER.md](LAUNCHER.md). Design: [LAUNCHER_DESIGN.md](LAUNCHER_DESIGN.m
 |-------|-------------|--------|
 | 1 | The list: `machine_list`, its tests | `c36d5ce` |
 | 2 | The loop and the launcher: ImGui per screen, `ResetBench`, `present(TvView*)`, `RunLauncher`, no file, `--machines`, `--visit` | `4538aaf` |
-| 3 | The way back: the shelf's Leave tray, `QuestionPopup`, the leave question, `--leave` | this commit |
-| 4 | Docs, release check, debug `--visit`, full release suite | |
-
-## Phase 1 — The list
-
-Design §1.
-
-1. `src/machine/machine_list.{hpp,cpp}`: `PuzzleEntry`, `MachineEntry`, `MachineList`, `ListMachines`, `FindMachinesDir`, `MachineIndexOf`, `EntryOf`; `bw_machine` links `bw_manual` PRIVATE.
-2. `tests/machine/machine_list_test.cpp` (added to `tests/CMakeLists.txt`'s list): `machine list: a directory`, `the repository`, `find machines`, `machine index`.
-
-**Fence**: release build; `ctest --preset release -j -R "^machine list: "`; debug build and the same `-R` in debug; the full release suite (shared code: `bw_machine`'s link). Commit: `machine: the Machines and Puzzles of a machines/ directory, for the launcher (P7a phase 1)`.
-
-## Phase 2 — The loop and the launcher
-
-Design §2, §3, §5.
-
-1. `ResetBench()` in `bench.{hpp,cpp}`; `GpuRender::present(TvView*)`.
-2. `main.cpp`: `Options::file` optional, `benchFlag`, `--machines`, `--visit`, `visitFor`, the usage line; `PrepareBench` out of `main`; `ImGuiScreen`; `RunWindow` returning `BenchResult` (Back only from a visit in this phase); `RunLauncher`; `main`'s loop with `std::optional<Loaded>`; the window's title per screen; `machinesDir`'s search before `SDL_Init`; the exit code of a failed visit.
-3. `src/ui/launcher.{hpp,cpp}`.
-4. Screenshots, viewed: `bw_ui --screenshot` (the Counter selected, its 3 Puzzles); `bw_ui --visit machines/130-bw2001/puzzles/01-odd-e.bwp --screenshot` (the BW-2001 selected, 16 Puzzles); `bw_ui machines/040-stopwatch/puzzles/01-stuck-at-zero.bwp --screenshot` as before.
-5. Usage errors checked by hand: `bw_ui --probe U1.1`, `bw_ui --run 1x`, `bw_ui --visit x.bwp` (no screenshot), `bw_ui FILE --visit …`, `bw_ui --visit nowhere.bwp --screenshot x`, `bw_ui --machines /tmp`.
-
-**Fence**: release build; screenshots viewed; the debug build and its `--visit` of the Counter's Dark LED, the Test Pattern and the Typewriter (design, Checks) with no sanitizer report. Commit: `ui: bw_ui with no file opens a launcher of the Machines and Puzzles (P7a phase 2)`.
-
-## Phase 3 — The way back
-
-Design §4.
-
-1. `git mv src/ui/power_cycle_popup.{hpp,cpp} src/ui/question_popup.{hpp,cpp}`; `QuestionPopup`'s constructor and `open`'s pivot; `main.cpp`'s power-cycle question on it.
-2. `Item::Leave`, its drawing; `Tray::Leave`, `kItems`, `canLeave`, `leaveClicked`; `Item::Leave`'s own case in both of `Shelf::draw`'s switches.
-3. `RunWindow`: the leave click, work or not, the leave question opening upwards, Back; `--leave` (usage errors with `--ask`, without a `machines/`).
-4. Screenshots, viewed: the Counter's Dark LED (the new tray, the arrow live); `--leave --repair swap:U5` on Dark LED (the question above the arrow, inside the window). The grayed arrow is unreachable from the build tree (design §2): checked by reading.
-
-**Fence**: release build; screenshots viewed; the debug `--visit` again. Commit: `ui: a tray at the shelf's left end goes back to the launcher, asking when work is lost (P7a phase 3)`.
-
-## Phase 4 — Docs and release check
-
-Design §6.
-
-1. GLOSSARY (Launcher, the Shelf, "for the bench"), ADD_MACHINE, ADD_PUZZLE, ADD_INSTRUMENT; the "for the run" comments (design §6).
-2. Release check: the BW-2001 opened from `--visit` and from the command line, the speed ratio and UI ms printed alike.
-3. ARCHITECTURE's row done with the date and links, its "ImGui kept" clause corrected; this plan cut down to the phase table and notes.
-
-**Fence**: `ctest --preset release -j` (full). Commit: `docs: P7a done, the launcher in the glossary and recipes (P7a phase 4)`.
+| 3 | The way back: the shelf's Leave tray, `QuestionPopup`, the leave question, `--leave` | `343e65a` |
+| 4 | Docs, release check, debug `--visit`, full release suite | this commit |
 
 ## Implementation notes
 
@@ -60,3 +18,5 @@ Design §6.
 - Phase 1 (2026-11-22): as designed. Checks: release and debug `-R "^machine list: "` (4), full release suite 1481/1481.
 - Phase 2 (2026-11-22): an entry is a plain `Selectable` with its title and brief drawn over it by the draw list (no `AllowOverlap`: nothing else is an item there). `Launcher::list()` gives the loop the list for `--visit`'s check and the working Machine's title. Screenshots viewed: the launcher at start (the Counter, its 3 Puzzles); `--visit` of Odd E (the BW-2001 selected, its 16 Puzzles, the pane scrolling); the Stopwatch's Stuck at zero from the command line as before. Usage errors as designed (`--probe U1.1`, `--run 1x`, `--visit` without `--screenshot`, with a file, of an unknown file, `--machines` of a directory without Machines or missing). Debug `--visit` of Dark LED, the Test Pattern and the Typewriter: exit 0, no ASan report. UBSan reports signed overflows in `flip_corner.cpp:19` and `chip_body.cpp:64` (a Board point at `INT64_MIN`, seemingly the mouse outside the window); a single command-line bench reports the same 3 before this step's code runs anything new: not P7a's, left for the user.
 - Phase 3 (2026-11-22): the question opens just above the Leave tray (`Shelf::leaveAt`), not at the click: at the click its bottom-left covered the arrow and the left of the shelf. Screenshots viewed: the Counter's Dark LED (the tray, the arrow live); `--leave --mark` on it (the question above the arrow, inside the window); `--ask swap:U5` (the power-cycle question as before, its box). `--leave --ask` a usage error. Debug `--visit` of the three Machines again: exit 0, no ASan report (UBSan's `flip_corner`/`chip_body` reports as in phase 2).
+- Phase 4 (2026-11-22): GLOSSARY (Launcher, the Shelf's arrow, "for the bench" in Brief, Contents and Equipment), ADD_MACHINE (the title and first paragraph, a Machine's directory, the test's count), ADD_PUZZLE (title and brief listed, a wrong `machine` left out), ADD_INSTRUMENT and the comments ("for the bench": `bench.hpp`, `brief_window.hpp`, `contents_page.hpp`, `memory_contents.hpp`, `tv_controls.hpp`). Release check: the BW-2001's Odd E for 4 s, 0.26× and UI 1.4 ms from the command line, 0.26× and 1.3 ms from `--visit`. Full release suite 1481/1481.
+- For the user to check (a screenshot cannot click): clicking through the launcher; the arrow with no work (back at once) and with a repair or a mark (the question, OK and Cancel, a click elsewhere); a popped-out window closed on leaving; typing on the Typewriter or the BW-2001 after coming back; a broken Puzzle's red line.

@@ -12,7 +12,7 @@ namespace bw {
 inline constexpr const char* kBriefWindowName = "###brief";
 
 // Where the note sits on the Board (P6o): its offset from the Board's top-left corner in screen
-// px, moved by dragging the note, kept for the run (folded away too).
+// px, moved by dragging the note, kept for the bench (folded away too).
 struct BriefNote {
     ImVec2 offset{10, 10};
     bool dragging = false;

@@ -16,7 +16,7 @@ namespace bw {
 
 enum class ContentsView : std::uint8_t { Hex, Code, Glyphs };
 
-// One chip's display choices, kept for the run.
+// One chip's display choices, kept for the bench.
 struct ContentsSettings {
     ContentsView view = ContentsView::Hex;
     std::uint16_t address = 0;  // where the CPU sees word 0: the hex and code views' numbering

@@ -36,7 +36,8 @@ fault crack R6.2 D5.2 51%
 ```
 
 - File name: `NN-` its place among the Machine's Puzzles, easiest first and in the order of the Machine doc's Puzzle list (renumber the later ones when one is inserted), then the name in lowercase with hyphens. The number is never shown to the player; tests find a Puzzle by its name alone (`test::PuzzlePath("gap")`, `tests/paths.hpp`).
-- `machine`: the Machine's netlist name; the Puzzle must sit in that Machine's `puzzles/`.
+- `machine`: the Machine's netlist name; the Puzzle must sit in that Machine's `puzzles/` (the Launcher leaves out, and reports on stderr, a Puzzle naming another Machine or failing to parse).
+- The Launcher (P7a) lists a Machine's Puzzles in file name order with their `title` and `brief`: both are needed (`machine list: the repository` checks).
 - Line 1: comment for authors only: the cause and why it gives the symptom.
 - `brief`: what the owner sees, never the cause.
 - Faults (pins by number or name):

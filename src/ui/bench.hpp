@@ -20,7 +20,7 @@ BenchRect BenchArea();
 
 // Before Begin: on the bench (locked to the main window, clipped at its edge) or, popped out, in
 // its own desktop window (P6j); at its default place and `first` its size the first time it comes
-// out; after that where and as large as the player left it, for the run (FirstUseEver), unless
+// out; after that where and as large as the player left it, for the bench (FirstUseEver), unless
 // TogglePop moved it.
 void PlaceNext(BenchObject object, ImVec2 first);
 // Before Begin: height = width * aspect, at least `minWidth` wide (a case keeps its proportions).
@@ -33,7 +33,7 @@ bool CaseClose(float inset = 6);
 // font, else ImGui bakes it at 1x and a Retina display shows it blurred (P6l).
 void SharpFont(ImFont* font);
 
-// P6j: true while `object` is in its own desktop window, for the run.
+// P6j: true while `object` is in its own desktop window, for the bench.
 bool PoppedOut(BenchObject object);
 // The shelf's double-click (P6o): popped out, back on the bench where it was before it popped out
 // (ReturnPlace), its size kept or shrunk in proportion to fit (FitBench); else to its own desktop
