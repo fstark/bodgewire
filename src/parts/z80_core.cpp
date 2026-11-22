@@ -59,6 +59,10 @@ enum Resume : int { kStart = -1 };
     case (n):;                                                                                     \
     } while (false)
 #define Z80_CYCLE(setup) Z80_CYCLE_AT(setup, __COUNTER__ + 1)
+// Newer clangs (Emscripten's) call __COUNTER__ a C2y extension under -Wpedantic.
+#if defined(__clang__) && __has_warning("-Wcounter-extension")
+#pragma clang diagnostic ignored "-Wcounter-extension"
+#endif
 
 void Z80Core::start(const Z80Registers& r) {
     af_ = Word(r.a, r.f);

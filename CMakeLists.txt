@@ -10,6 +10,13 @@ option(BW_BUILD_UI "Build bw_ui" ON)
 
 add_library(bw_warnings INTERFACE)
 target_compile_options(bw_warnings INTERFACE -Wall -Wextra -Wpedantic -Wshadow -Werror)
+# Newer clangs (Emscripten's) put this in -Wextra; designated initializers here leave fields out
+# on purpose, to their defaults.
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-Wmissing-designated-field-initializers BW_HAS_MISSING_DESIGNATED)
+if(BW_HAS_MISSING_DESIGNATED)
+  target_compile_options(bw_warnings INTERFACE -Wno-missing-designated-field-initializers)
+endif()
 
 add_subdirectory(src/sim)
 add_subdirectory(src/devices)
