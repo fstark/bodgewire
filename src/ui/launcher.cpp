@@ -375,6 +375,7 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
     const bool clicksOn = !chosen;
     std::optional<std::size_t> clickedMachine;
     bool clickedLive = false;
+    std::optional<std::size_t> doubleClicked;
     for (std::size_t i = 0; i < list_.machines.size(); ++i) {
         const double d = static_cast<double>(i) - machines_.value;
         if (std::abs(d) >= 1.6 || area.x <= 0 || area.y <= 0) {
@@ -444,7 +445,9 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
         if (clicksOn) {
             ImGui::SetCursorScreenPos(at);
             if (ImGui::InvisibleButton("##picture", picture)) {
-                if (i == lanes_.machine()) {
+                if (ImGui::GetIO().MouseClickedLastCount[ImGuiMouseButton_Left] >= 2) {
+                    doubleClicked = i;  // its Machine opened, no Puzzle
+                } else if (i == lanes_.machine()) {
                     clickedLive = true;
                 } else {
                     clickedMachine = i;
@@ -594,6 +597,9 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
             chosen = entryFile();
         }
         lanes_.selectPostIt(*clickedPostIt);
+    } else if (doubleClicked) {
+        lanes_.selectMachine(*doubleClicked);
+        chosen = entryFile();
     } else if (clickedMachine) {
         lanes_.selectMachine(*clickedMachine);
     } else if (clickedLive) {
