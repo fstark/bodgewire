@@ -1,5 +1,5 @@
-# Joined bits: a solder bridge between the 6502 UF3's data pins D0 and D1 (pins 33 and 32): every byte the 6502 reads has its two low bits forced alike, its first instructions too. It never clears the screen: the random characters of power-on stay. RES_N is high (unlike Random screen).
+# Frozen jumble (titled Joined bits until 2026-11-22: the title named the cause): a solder bridge between the 6502 UF3's data pins D0 and D1 (pins 33 and 32): every byte the 6502 reads has its two low bits forced alike, its first instructions too. It never clears the screen: the random characters of power-on stay. RES_N is high (unlike Random screen).
 machine bw2001
-title "Joined bits"
+title "Frozen jumble"
 brief "The BW-2001's screen fills with random characters at power-on and stays that way."
 fault bridge UF3.D0 UF3.D1

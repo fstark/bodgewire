@@ -1,5 +1,5 @@
-# Wrong suspect: the DOUT3 Trace from U9 to U13 is cracked: U13's input floats high and bit 3 of main RAM always reads 1. The self-test shows 100008, but U9 itself is fine: swapping it changes nothing.
+# Frozen pattern (titled Wrong suspect until 2026-11-22: the title named the cause): the DOUT3 Trace from U9 to U13 is cracked: U13's input floats high and bit 3 of main RAM always reads 1. The self-test shows 100008, but U9 itself is fine: swapping it changes nothing.
 machine bw1
-title "Wrong suspect"
+title "Frozen pattern"
 brief "At power-on the first digits freeze on a meaningless pattern, the rest dark, and no key does anything."
 fault crack U9.DOUT U13.3A 50%

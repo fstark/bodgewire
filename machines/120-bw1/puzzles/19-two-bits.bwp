@@ -1,5 +1,5 @@
-# Two bits: a solder bridge joins the 6502's D2 and D3 (pins 31 and 30): every byte on the bus, the ROM's too, has the two bits fighting. The program never runs; the self-test cannot run either.
+# Dark or frozen (titled Two bits until 2026-11-22: the title named the cause): a solder bridge joins the 6502's D2 and D3 (pins 31 and 30): every byte on the bus, the ROM's too, has the two bits fighting. The program never runs; the self-test cannot run either.
 machine bw1
-title "Two bits"
+title "Dark or frozen"
 brief "The BW-1 powers on with the digits dark, or one digit lit and frozen. RS and the self-test strap change nothing."
 fault bridge U1.31 U1.30

@@ -1,4 +1,4 @@
-# Fizzing jumble (a bad zero page; its old title, a spoiler): bit 0 of the RAM UI8 ($0000-$03FF, the low nibble) reads 1 in every word: the zero page and the stack are broken. Commodore's start-up crashes before it clears the screen: the 6502 runs wild through memory, touching the screen tens of thousands of times a second. The video RAM's power-on jumble stays, covered in snow. No banner.
+# Fizzing jumble (titled Bad zero page until 2026-11-22: the title named the cause): bit 0 of the RAM UI8 ($0000-$03FF, the low nibble) reads 1 in every word: the zero page and the stack are broken. Commodore's start-up crashes before it clears the screen: the 6502 runs wild through memory, touching the screen tens of thousands of times a second. The video RAM's power-on jumble stays, covered in snow. No banner.
 machine bw2001
 title "Fizzing jumble"
 brief "The BW-2001 never starts: its screen fills with random characters at power-on, they never clear, and white specks fizz all over them. No banner appears."

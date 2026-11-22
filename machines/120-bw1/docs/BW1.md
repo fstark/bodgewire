@@ -64,7 +64,7 @@ Seen in use:
 - AD and GO dead: the seven keys of `ROW2` dead: cracked at `U24`.
 - Deaf keypad: no key works, because `+` is stuck closed and the monitor waits for every key's release. The self-test's keypad shows `PA5512` with no hand on it.
 - Bad byte: `$0300` keeps bit 7 set (`DA 00` shows `80`): one cell of `U5`. Self-test `130080`.
-- Aliased page: starts on `1D27`, and `AD 0300` shows `0320`: `U7`'s `A8` stuck inside, page 1 (the stack) on page 0 in bit 5. Self-test `100020`.
+- Wandering address (`09-aliased-page`, titled Aliased page until 2026-11-22): starts on `1D27`, and `AD 0300` shows `0320`: `U7`'s `A8` stuck inside, page 1 (the stack) on page 0 in bit 5. Self-test `100020`.
 - No stop: `BRK` stops, ST does not (a meaningless address): `U2`'s RAM holds `NMIV`, one bit stuck. Self-test `27FA01`.
 
 Named by the self-test:
@@ -72,15 +72,15 @@ Named by the self-test:
 - Self-test fails: works, self-test `379504`: test 3 is `U3`'s RAM.
 - ROM test fails: works, self-test `5800FF`: `U3`'s ROM sum.
 - Dead machine: dark; self-test `110008`: bit 3 of main RAM is `U9`. The standard RAM Puzzle: swap it.
-- Wrong suspect: frozen nonsense; self-test `100008`, bit 3 again, but swapping `U9` repairs nothing: `DOUT3` is cracked between `U9` and its buffer `U13`.
-- Half a byte: shows `PA55` at power-on; self-test `11000E`: bits 0–3 together, so `U13`, not a RAM chip: `BUF_N` cracked off its enables.
+- Frozen pattern (`14-wrong-suspect`, titled Wrong suspect until 2026-11-22): frozen nonsense; self-test `100008`, bit 3 again, but swapping `U9` repairs nothing: `DOUT3` is cracked between `U9` and its buffer `U13`.
+- PA55 (`15-half-byte`, titled Half a byte until 2026-11-22): shows `PA55` at power-on; self-test `11000E`: bits 0–3 together, so `U13`, not a RAM chip: `BUF_N` cracked off its enables.
 
 Dead with the strap too, found with the instruments:
 
-- Wrong block: dark: `U4`'s input `A10` stuck inside: its leg reads high while it selects `K6`; `K5` and `K7` never fall.
-- Held reset: dark: RS stuck closed holds `RES_N` low.
+- Dark, no self-test (`16-wrong-block`, titled Wrong block until 2026-11-22): dark: `U4`'s input `A10` stuck inside: its leg reads high while it selects `K6`; `K5` and `K7` never fall.
+- Dark, deaf keypad (`17-held-reset`, titled Held reset until 2026-11-22): dark: RS stuck closed holds `RES_N` low.
 - SST kills it: works until SST is at ON, then one digit lit and no key; back at OFF it shows `1C00`: `U15`'s `K7` input stuck, so SST stops inside the monitor.
-- Two bits: dark: `U1`'s `D2` and `D3` bridged; the logic analyzer shows them equal.
+- Dark or frozen (`19-two-bits`, titled Two bits until 2026-11-22): dark: `U1`'s `D2` and `D3` bridged; the logic analyzer shows them equal.
 
 Files, Fault lines and seeds: [BW1_DESIGN.md](BW1_DESIGN.md#puzzles).
 

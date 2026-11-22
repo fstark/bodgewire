@@ -1,5 +1,5 @@
-# Half a byte: the BUF_N Trace is cracked between U14 and U13: U13's four enables float high, so D0-D3 of main RAM never reach the bus (they read the bus's charge). The monitor wanders into the self-test's keypad loop; the self-test shows 11000E.
+# PA55 (titled Half a byte until 2026-11-22: the title named the cause): the BUF_N Trace is cracked between U14 and U13: U13's four enables float high, so D0-D3 of main RAM never reach the bus (they read the bus's charge). The monitor wanders into the self-test's keypad loop; the self-test shows 11000E.
 machine bw1
-title "Half a byte"
+title "PA55"
 brief "At power-on the BW-1 shows PA55 instead of 0200, and the keys do not change it."
 fault crack U14.1 U13.4 50%

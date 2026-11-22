@@ -1,5 +1,5 @@
-# Aliased page: U7's A8 is stuck at 0 inside the chip: in bit 5, page 1 (the stack) is page 0 and page 3 is page 2. The stack overwrites bit 5 of the monitor's address (POINTL, POINTH at $FA, $FB share cells with $1FA, $1FB): it starts on 1D27, and AD 0300 shows 0320. The self-test shows 100020.
+# Wandering address (titled Aliased page until 2026-11-22: the title named the cause): U7's A8 is stuck at 0 inside the chip: in bit 5, page 1 (the stack) is page 0 and page 3 is page 2. The stack overwrites bit 5 of the monitor's address (POINTL, POINTH at $FA, $FB share cells with $1FA, $1FB): it starts on 1D27, and AD 0300 shows 0320. The self-test shows 100020.
 machine bw1
-title "Aliased page"
+title "Wandering address"
 brief "At power-on the BW-1 shows 1D27 46 instead of 0200 and a byte. The keys work, but the address goes wrong: AD 0300 shows 0320."
 fault stuck U7.A8 0

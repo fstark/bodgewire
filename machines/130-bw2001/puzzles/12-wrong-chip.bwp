@@ -1,5 +1,5 @@
-# Wrong chip: a dry Joint on UH8 pin 17 (2A4), the RAM buffer's read input from BBD0: it floats high, so bit 0 of every RAM read is 1. The same symptom as Bad zero page, but swapping UI8 repairs nothing: UH8's leg differs from its pad.
+# Fizzing jumble again (titled Wrong chip until 2026-11-22: the title named the cause): a dry Joint on UH8 pin 17 (2A4), the RAM buffer's read input from BBD0: it floats high, so bit 0 of every RAM read is 1. The same symptom as Fizzing jumble, but swapping UI8 repairs nothing: UH8's leg differs from its pad.
 machine bw2001
-title "Wrong chip"
+title "Fizzing jumble again"
 brief "The BW-2001 never starts: its screen fills with random characters at power-on, they never clear, and white specks fizz all over them. No banner appears."
 fault joint UH8.2A4

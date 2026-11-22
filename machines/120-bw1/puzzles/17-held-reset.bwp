@@ -1,5 +1,5 @@
-# Held reset: the RS key (SW23) is stuck closed: RES_N is held low, so the 6502 and both 6530s stay in reset.
+# Dark, deaf keypad (titled Held reset until 2026-11-22: the title named the cause): the RS key (SW23) is stuck closed: RES_N is held low, so the 6502 and both 6530s stay in reset.
 machine bw1
-title "Held reset"
+title "Dark, deaf keypad"
 brief "The BW-1 powers on with every digit dark, and nothing on the keypad changes it. The self-test strap does not help."
 fault switch SW23 closed
