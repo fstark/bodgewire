@@ -421,6 +421,11 @@ bool BoardScene::chip(std::size_t component) const {
     return part != nullptr && part->kind == PartKind::Chip;
 }
 
+bool BoardScene::lamp(std::size_t component) const {
+    const PartInfo* part = info_[component].part;
+    return part != nullptr && !part->lamps.empty();
+}
+
 bool BoardScene::powerPin(std::size_t component, std::size_t pad) const {
     return info_[component].powerPins[pad];
 }

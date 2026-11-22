@@ -65,6 +65,13 @@ std::optional<NetId> ConnectedNet(const LoadedCircuit& loaded, std::string_view 
 
 }  // namespace
 
+bool HasTv(const LoadedCircuit& circuit) {
+    return (ConnectorNet(circuit, "VIDEO", "VIDEO") && ConnectorNet(circuit, "VIDEO", "SYNC_N")) ||
+           (ConnectorNet(circuit, "MONITOR", "VIDEO_N") &&
+            ConnectorNet(circuit, "MONITOR", "HDRIVE") &&
+            ConnectorNet(circuit, "MONITOR", "VDRIVE"));
+}
+
 Session::Session(std::optional<Machine> machine, std::unique_ptr<LoadedCircuit> circuit)
     : machine_(std::move(machine)) {
     if (machine_) {
@@ -79,6 +86,7 @@ Session::~Session() = default;
 std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> circuit) const {
     auto live = std::make_unique<Live>();
     live->circuit = std::move(circuit);
+    // The same test as HasTv's: the two must agree (P7b).
     const auto video = ConnectorNet(*live->circuit, "VIDEO", "VIDEO");
     const auto syncN = ConnectorNet(*live->circuit, "VIDEO", "SYNC_N");
     std::vector<Consumer*> consumers;

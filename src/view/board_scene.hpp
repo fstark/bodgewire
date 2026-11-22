@@ -89,6 +89,8 @@ public:
     std::string_view pinName(std::size_t component, std::size_t pad) const;  // "" if unknown
     bool powerPin(std::size_t component, std::size_t pad) const;             // PinKind::Power
     bool chip(std::size_t component) const;  // a PartKind::Chip of the design
+    // A Part with lamps (an LED, a digit): what the launcher frames (P7b).
+    bool lamp(std::size_t component) const;
     std::optional<std::size_t> componentIndex(std::string_view reference) const;
     // Pad by number, else by pin name.
     std::optional<std::size_t> padIndex(std::size_t component, std::string_view pin) const;

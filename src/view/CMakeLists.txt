@@ -8,8 +8,10 @@ add_library(bw_view STATIC
   digit_shape.cpp
   flip_corner.cpp
   focus.cpp
+  launcher_lanes.cpp
   machine_slot.cpp
   memory_contents.cpp
+  output_frame.cpp
   keyboard_layout.cpp
   matrix_keyboard_layout.cpp
   pencil_marks.cpp

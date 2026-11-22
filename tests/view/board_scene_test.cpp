@@ -543,3 +543,10 @@ TEST_CASE("board scene: inside the outline, the notch of an L outside", "[view]"
     CHECK(InsideOutline(l, {8, 8}));
     CHECK_FALSE(InsideOutline(l, {8, 2}));
 }
+
+TEST_CASE("board scene: lamp", "[view]") {
+    const Fixture counter = Load("counter");
+    const BoardScene scene = Scene(counter);
+    CHECK(scene.lamp(*scene.componentIndex("D1")));
+    CHECK_FALSE(scene.lamp(*scene.componentIndex("U1")));
+}

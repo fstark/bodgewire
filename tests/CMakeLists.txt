@@ -191,8 +191,10 @@ add_executable(bw_tests
   view/flip_corner_test.cpp
   view/focus_test.cpp
   view/keyboard_layout_test.cpp
+  view/launcher_lanes_test.cpp
   view/machine_slot_test.cpp
   view/memory_contents_test.cpp
+  view/output_frame_test.cpp
   view/matrix_keyboard_layout_test.cpp
   view/pencil_marks_test.cpp
   view/power_cycle_test.cpp

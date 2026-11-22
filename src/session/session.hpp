@@ -68,6 +68,11 @@ struct SwitchKey {
     std::string pc;  // IsPcKey
 };
 
+// A TV hangs on the circuit: a VIDEO connector's VIDEO and SYNC_N, or a MONITOR connector's
+// VIDEO_N, HDRIVE and VDRIVE (Session makes its TvConsumer on the same test). The launcher's
+// framing (P7b).
+bool HasTv(const LoadedCircuit& circuit);
+
 struct LedLight {
     std::string reference;  // "D1", "DS1"
     LampShape shape;        // which lamp of the Part
