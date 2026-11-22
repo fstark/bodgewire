@@ -15,8 +15,8 @@ out of the circuit on their own. Nothing is scripted. Every fault has a cause, a
 
 ## Building it
 
-You need git, CMake 3.28 or later, Ninja, and a C++23 compiler that has `<print>` (Apple clang 17+,
-clang 17+ or GCC 14+).
+You need git, CMake 3.28 or later, Ninja, and a C++23 compiler that has `<print>` (Apple clang 17+
+or clang 17+).
 
 You also need a very powerful machine. Every chip is simulated signal by signal, and the big
 computers are hungry: on an Apple M5 Max, the BW-2001 runs at a quarter of its real speed and the
@@ -43,8 +43,41 @@ The first configure downloads SDL3, Dear ImGui and Catch2, so it needs the netwo
 the computers need are already in the repository. If you want to run the tests,
 `ctest --preset release -j` takes a few minutes.
 
-It's developed and tested on macOS only. Linux should work in principle (SDL3 will want its usual
-X11/Wayland development packages), but nobody has tried yet. Same for Windows.
+### Linux
+
+It builds and runs on Ubuntu 24.04. First the tools, and the development packages SDL3 wants for
+X11, Wayland and sound:
+
+```sh
+sudo apt install git cmake ninja-build clang-19 g++-14 \
+    libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev \
+    libxtst-dev libxkbcommon-dev libwayland-dev libdecor-0-dev libasound2-dev libpulse-dev \
+    libpipewire-0.3-dev libdrm-dev libgbm-dev libgl1-mesa-dev libegl1-mesa-dev libdbus-1-dev \
+    libudev-dev
+```
+
+Both compilers are on purpose. Ubuntu's own `c++` is GCC 13, which has no `<print>`. Clang 19
+builds the game, but it takes `<print>` from GCC 14's library, and `clang-19` alone doesn't
+install that.
+
+Tell CMake to use clang on the first configure (it remembers after that):
+
+```sh
+git clone https://github.com/fstark/bodgewire.git
+cd bodgewire
+CC=clang-19 CXX=clang++-19 cmake --preset release
+cmake --build --preset release
+build/release/src/ui/bw_ui
+```
+
+It was tried on a very slow machine, an Intel i7-6700K from 2015. The small boards still keep up,
+but Paddle Tennis runs at four fifths of its real speed, the BW-2001 at an eighth and the BW-80 at
+a tenth.
+
+If you run the tests with a KiCad older than 8 installed (Ubuntu's own is 7), the Board checks
+(`drc_*`) fail. Without KiCad they're skipped.
+
+It's developed on macOS. Windows hasn't been tried yet.
 
 ## What it is
 
