@@ -1,0 +1,57 @@
+# The web build (`web` preset: bw_ui through Emscripten) published on GitHub Pages: the page,
+# its wasm, the packed Machines and the service worker that cross-origin isolates it.
+# Pages must be set to deploy from GitHub Actions (Settings → Pages → Source).
+name: web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  EMSDK_VERSION: 7.0.1  # the version the web build was made with
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Emscripten SDK
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install "$EMSDK_VERSION"
+          "$RUNNER_TEMP/emsdk/emsdk" activate "$EMSDK_VERSION"
+          sudo apt-get install -y ninja-build
+      - name: Build
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          cmake --preset web
+          cmake --build --preset web
+      - name: Site
+        run: |
+          mkdir site
+          cp build/web/src/ui/bw_ui.html site/index.html
+          cp build/web/src/ui/bw_ui.js build/web/src/ui/bw_ui.wasm build/web/src/ui/bw_ui.data \
+             build/web/src/ui/coi-serviceworker.js site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

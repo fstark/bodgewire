@@ -18,11 +18,25 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
       }
+    },
+    {
+      "name": "web",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BW_BUILD_TESTS": "OFF",
+        "CMAKE_C_FLAGS": "-pthread",
+        "CMAKE_CXX_FLAGS": "-pthread -fwasm-exceptions",
+        "CMAKE_EXE_LINKER_FLAGS": "-pthread -fwasm-exceptions"
+      }
     }
   ],
   "buildPresets": [
     { "name": "debug", "configurePreset": "debug" },
-    { "name": "release", "configurePreset": "release" }
+    { "name": "release", "configurePreset": "release" },
+    { "name": "web", "configurePreset": "web", "targets": ["bw_ui"] }
   ],
   "testPresets": [
     { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },

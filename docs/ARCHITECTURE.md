@@ -276,6 +276,7 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | P7c | Launcher transitions | wanted, after P7b (the user, 2026-11-22: left out of P7b): the zoom from the launcher's live picture into the bench, the post-it flying to its place on the Board, and back. The launcher and the bench are separate ImGui screens (P7a), so the animation crosses them |
 | P8 | Ports | the game beyond the author's Mac, where it has been built and run so far |
 | P8a | Linux port | wanted (the user, 2026-11-22): `bw`, `bw_ui` and the tests built and run on Linux (Ubuntu, x86-64) |
+| P8b | Web port | done (2026-11-23): `bw_ui` in the browser through Emscripten, every Machine, on GitHub Pages from `main` (https://fstark.github.io/bodgewire/); SDL_Renderer on WebGL in place of SDL GPU, no pop-outs, no screenshot; about 0.4× native speed. [WEB.md](p8b-web/WEB.md) |
 | P9 | Freezer | wanted, but on top of a finished game, not before (decided 2026-11-15): |
 | — | Kernel: oscillator lane | potential (P5z, 2026-11-16): a fixed-period clock's self-wake kept out of the general event queue; estimated 3–6 % on the BW-2001 and BW-80 |
 | — | Kernel: event apply trimmed | potential (P5z): `driveChanged` and the event apply's bookkeeping (generation, pending); 1–3 %, lines P5b found hard to move |
