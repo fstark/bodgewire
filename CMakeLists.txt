@@ -4,6 +4,8 @@ project(bodgewire LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+# No C++ modules: without this CMake scans every file with clang-scan-deps on Linux clang.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 option(BW_BUILD_TESTS "Build unit tests" ON)
 option(BW_BUILD_UI "Build bw_ui" ON)
