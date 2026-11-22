@@ -100,8 +100,9 @@ private:
     LauncherLanes lanes_;
     Glide machines_;
     Glide postIts_{0, 0, 0.5};
-    std::size_t rowMachine_ = 0;  // whose post-its the row's scroll is for
-    bool jump_ = true;            // the glides jump at the next draw (shown, selected from outside)
+    std::size_t rowMachine_ = 0;     // whose post-its the row's scroll is for
+    std::vector<float> noteScroll_;  // each post-it's text scrolled, px (a long brief)
+    bool jump_ = true;  // the glides jump at the next draw (shown, selected from outside)
     std::string error_;
     std::map<std::filesystem::path, Still> stills_;
     Live live_;

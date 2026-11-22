@@ -13,6 +13,7 @@
 #include "ui/brief_window.hpp"
 #include "ui/manual_view.hpp"
 #include "ui/shelf.hpp"
+#include "ui/title_plate.hpp"
 #include "ui/tv_window.hpp"
 #include "view/bench_places.hpp"
 #include "view/output_frame.hpp"
@@ -22,8 +23,11 @@ namespace bw {
 
 namespace {
 
-constexpr float kTopShare = 0.66f;        // of the window's height: the Machines' lane
-constexpr float kAreaMargin = 24;         // px above and below the picture area
+constexpr float kMinTopShare = 0.5f;      // of the window's height: the Machines' lane at least
+constexpr float kAreaMargin = 24;         // px below the picture area
+constexpr float kPlateTop = 10;           // px: the title plate from the window's top
+constexpr float kPlateHeight = 56;        // px: BODGEWIRE in traces
+constexpr float kTitleBand = 76;          // px: the plate's band, above the picture area
 constexpr float kParagraphLeft = 0.04f;   // of the width: from the picture to the paragraph
 constexpr float kParagraphRight = 0.02f;  // from the paragraph to the next Machine's hint
 constexpr float kMonitorShare = 0.92f;    // of the area's height: a TV Machine's monitor
@@ -31,11 +35,12 @@ constexpr float kNameScale = 1.5f;
 constexpr float kNoteWidth = 190;
 constexpr float kNotePad = 12;
 constexpr float kNoteTitleScale = 1.2f;
-constexpr float kNoteGap = 20;   // between the Puzzles' post-its; above them on the wood
-constexpr float kNoteLeft = 24;  // "Start the Machine"
-constexpr float kRowGap = 32;    // from it to the Puzzles' row
-constexpr float kNoteMinHeight = 120;
-constexpr float kLiftShadow = 6;                            // the selected post-it's, deeper
+constexpr float kNoteGap = 20;    // between the Puzzles' post-its; above them on the wood
+constexpr float kNoteLeft = 24;   // "Start the Machine"
+constexpr float kRowGap = 32;     // from it to the Puzzles' row
+constexpr int kNoteLines = 8;     // of brief: every post-it this tall, a longer brief scrolled
+constexpr float kWoodBelow = 26;  // px under the post-its: the gold bar and a margin
+constexpr float kLiftShadow = 6;  // the selected post-it's, deeper
 constexpr ImU32 kCardPaper = IM_COL32(244, 242, 235, 255);  // "Start the Machine": an index card
 constexpr ImU32 kCardRed = IM_COL32(214, 96, 96, 255);      // its rule under the title
 constexpr ImU32 kCardBlue = IM_COL32(150, 180, 214, 255);   // its lines
@@ -92,7 +97,14 @@ ImU32 WithAlpha(ImU32 colour, float alpha) {
            (static_cast<ImU32>(std::clamp(a, 0.0f, 255.0f)) << IM_COL32_A_SHIFT);
 }
 
-// A post-it's height for its title and brief at the note's width.
+// Every post-it's height: a one-line title and kNoteLines of brief.
+float FixedNoteHeight() {
+    const float size = ImGui::GetFontSize();
+    return kNotePad + (kNoteStrip - 4) + size * kNoteTitleScale + ImGui::GetStyle().ItemSpacing.y +
+           static_cast<float>(kNoteLines) * size + kNotePad;
+}
+
+// The height a post-it's title and brief need at the note's width.
 float NoteHeight(const std::string& title, const std::string& brief) {
     const float wrap = kNoteWidth - 2 * kNotePad;
     ImFont* font = ImGui::GetFont();
@@ -106,8 +118,11 @@ float NoteHeight(const std::string& title, const std::string& brief) {
 
 // A Puzzle's post-it, or "Start the Machine"'s white index card (`card`: a red rule under the
 // title, blue lines under the text). The selected one casts a deeper shadow.
+// `scroll`: px of its text scrolled up, out of `overflow` (the text past the note's height): a
+// small ink arrow at the bottom while more is below, at the top once scrolled.
 void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& title,
-                const std::string& brief, bool selected, bool card) {
+                const std::string& brief, bool selected, bool card, float scroll = 0,
+                float overflow = 0) {
     const ImVec2 end{at.x + kNoteWidth, at.y + height};
     if (card) {
         const float shadow = selected ? kLiftShadow : 2;
@@ -122,8 +137,11 @@ void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& ti
     const float size = ImGui::GetFontSize();
     const float spacing = ImGui::GetStyle().ItemSpacing.y;
     const ImU32 ink = ImGui::ColorConvertFloat4ToU32(kNoteInk);
-    list.PushClipRect(at, end, true);
-    float y = at.y + kNotePad + (kNoteStrip - 4);
+    // The text clipped above the bottom margin, and below the glue strip (and its arrow, once
+    // scrolled): the arrows stand in the margins, never on the text.
+    list.PushClipRect({at.x, at.y + (card ? 0 : kNoteStrip) + (scroll > 0.5f ? 8 : 0)},
+                      {end.x, end.y - kNotePad}, true);
+    float y = at.y + kNotePad + (kNoteStrip - 4) - scroll;
     const float titleHeight =
         font->CalcTextSizeA(size * kNoteTitleScale, FLT_MAX, wrap, title.c_str()).y;
     if (card) {
@@ -138,6 +156,16 @@ void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& ti
     y += titleHeight + spacing;
     list.AddText(font, size, {at.x + kNotePad, y}, ink, brief.c_str(), nullptr, wrap);
     list.PopClipRect();
+    const float midX = at.x + kNoteWidth / 2;
+    const ImU32 arrow = WithAlpha(ink, 0.55f);
+    if (scroll < overflow - 0.5f) {
+        const float tipY = end.y - 3;
+        list.AddTriangleFilled({midX - 5, tipY - 6}, {midX + 5, tipY - 6}, {midX, tipY}, arrow);
+    }
+    if (scroll > 0.5f) {
+        const float tipY = at.y + kNoteStrip + 1;
+        list.AddTriangleFilled({midX - 5, tipY + 6}, {midX + 5, tipY + 6}, {midX, tipY}, arrow);
+    }
 }
 
 // A chevron pointing left (`dir` -1) or right (1), its tip at `tip`.
@@ -315,11 +343,15 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
     const ImVec2 origin = ImGui::GetWindowPos();
     const ImVec2 size = ImGui::GetWindowSize();
     const float width = size.x;
-    const float topHeight = std::floor(size.y * kTopShare);
+    // The wood as tall as its post-its need, the Machines' lane the rest, under the title.
+    const float noteHeight = FixedNoteHeight();
+    const float topHeight =
+        std::floor(std::max(size.y * kMinTopShare, size.y - (kNoteGap + noteHeight + kWoodBelow)));
     const float laneBottom = origin.y + topHeight;
     list.AddRectFilled(origin, {origin.x + width, laneBottom}, kPanelBackground);
+    DrawTitlePlate(list, {origin.x + width / 2, origin.y + kPlateTop}, kPlateHeight);
     if (list_.machines.empty()) {
-        list.AddText({origin.x + kNoteLeft, origin.y + kAreaMargin}, kName, "No Machines.");
+        list.AddText({origin.x + kNoteLeft, origin.y + kTitleBand}, kName, "No Machines.");
         return std::nullopt;
     }
 
@@ -369,9 +401,9 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
     machines_.update(dt);
 
     // The top lane's pictures.
-    const float areaTop = origin.y + kAreaMargin;
+    const float areaTop = origin.y + kTitleBand;
     const ImVec2 area{(static_cast<float>(kPictureTo - kPictureFrom)) * width,
-                      topHeight - 2 * kAreaMargin};
+                      topHeight - kTitleBand - kAreaMargin};
     const bool clicksOn = !chosen;
     std::optional<std::size_t> clickedMachine;
     bool clickedLive = false;
@@ -493,7 +525,7 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
                 font->CalcTextSizeA(fontSize * kNameScale, FLT_MAX, wrap, name.c_str()).y;
             const float lineHeight = font->CalcTextSizeA(fontSize, FLT_MAX, wrap, line.c_str()).y;
             const float gap = line.empty() ? 0 : fontSize;
-            float y = origin.y + (topHeight - nameHeight - gap - lineHeight) / 2;
+            float y = areaTop + (area.y - nameHeight - gap - lineHeight) / 2;
             list.AddText(font, fontSize * kNameScale, {left, y}, WithAlpha(kName, alpha),
                          name.c_str(), nullptr, wrap);
             y += nameHeight + gap;
@@ -516,11 +548,6 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
         titles.push_back(Displayable(puzzle.title));
         briefs.push_back(Displayable(puzzle.brief));
     }
-    float noteHeight = kNoteMinHeight;
-    for (std::size_t k = 0; k < titles.size(); ++k) {
-        noteHeight = std::max(noteHeight, NoteHeight(titles[k], briefs[k]));
-    }
-    noteHeight = std::min(noteHeight, std::max(kNoteMinHeight, woodEnd.y - laneBottom - 32));
     const float noteTop = laneBottom + kNoteGap;
     const float rowLeft = origin.x + kNoteLeft + kNoteWidth + kRowGap;
     const float visible = woodEnd.x - rowLeft;
@@ -537,6 +564,7 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
     if (lanes_.machine() != rowMachine_) {  // another Machine's row starts at its first Puzzle
         rowMachine_ = lanes_.machine();
         postIts_.jump(0);
+        noteScroll_.clear();
     }
     if (const auto puzzle = lanes_.puzzle()) {
         // In view, with half of its neighbour on that side when there is one (the row still
@@ -564,7 +592,16 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
     const auto postIt = [&](std::size_t k, float x) {
         const bool chosenOne = k == selected;
         const ImVec2 at{x, noteTop};
-        DrawPostIt(list, at, noteHeight, titles[k], briefs[k], chosenOne, k == 0);
+        // A brief longer than the note: the wheel over it scrolls its text.
+        noteScroll_.resize(titles.size(), 0.0f);
+        const float overflow = std::max(0.0f, NoteHeight(titles[k], briefs[k]) - noteHeight);
+        float& scroll = noteScroll_[k];
+        if (overflow > 0 && ImGui::IsWindowHovered() &&
+            ImGui::IsMouseHoveringRect(at, {at.x + kNoteWidth, at.y + noteHeight})) {
+            scroll -= ImGui::GetIO().MouseWheel * ImGui::GetFontSize() * 2;
+        }
+        scroll = std::clamp(scroll, 0.0f, overflow);
+        DrawPostIt(list, at, noteHeight, titles[k], briefs[k], chosenOne, k == 0, scroll, overflow);
         if (chosenOne && lanes_.lane() == Lane::PostIts) {
             const float barY = at.y + noteHeight + 6;
             list.AddRectFilled({at.x, barY}, {at.x + kNoteWidth, barY + 4}, kFocusGold, 2.0f);
