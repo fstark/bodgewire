@@ -5,7 +5,7 @@
 ;
 ; The program from $0400 in P5o's layout, its top MEMTOP (the kernel's RAM sizing); the
 ; variables at VARS; the direct line tokenised into DIRBUF; FOR and GOSUB in CSTACK. The editor
-; is reached through its entry points only (machines/130-bw2001/debug-roms/bw2001.inc). Zero page $00-$3F.
+; is reached through its entry points only (machines/130-bw2001/debug-roms/src/bw2001.inc). Zero page $00-$3F.
 
         .rom $C000, $2000
         .include "bw2001.inc"

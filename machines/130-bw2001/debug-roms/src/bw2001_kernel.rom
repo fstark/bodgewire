@@ -2,7 +2,7 @@
 ; ; BW-2001 kernel (docs/p5p-bw2001-firmware/BW2001_FIRMWARE.md; design §4): the PET 2001's
 ; ; $F000 sockets. UH4 ($F000-$F7FF) holds the monitor; UH7 ($F800-$FFFF) the reset, the
 ; ; interrupts, the self-test and the vectors, so the self-test runs even when UH4, UH3 or BASIC
-; ; is dead. Memory, I/O and the entry points: machines/130-bw2001/debug-roms/bw2001.inc.
+; ; is dead. Memory, I/O and the entry points: machines/130-bw2001/debug-roms/src/bw2001.inc.
 ; ;
 ; ; Reset: PIA1 set (rows out, DIAG in); DIAG (PA7) low runs the self-test before any RAM is used.
 ; ; Else the RAM is sized from $0400 ($55 then $AA a byte, up to $2000), the editor started, the

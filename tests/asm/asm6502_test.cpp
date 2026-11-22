@@ -335,7 +335,7 @@ TEST_CASE("asm: .incbin", "[asm]") {
 TEST_CASE("asm: every ROM program matches its committed .rom", "[asm]") {
     std::vector<std::filesystem::directory_entry> programs;
     for (const auto& machine : std::filesystem::directory_iterator(test::RootDir() / "machines")) {
-        for (const char* dir : {"roms", "debug-roms"}) {
+        for (const char* dir : {"roms", "debug-roms/src"}) {
             if (std::filesystem::is_directory(machine.path() / dir)) {
                 for (const auto& entry :
                      std::filesystem::directory_iterator(machine.path() / dir)) {

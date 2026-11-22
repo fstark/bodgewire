@@ -79,7 +79,7 @@ netlist_path() {
 # its debug ROMs.
 tree_args() {
     case "$(run_netlist "$2")" in
-    bw2001) [[ -f "$1/machines/130-bw2001/debug-roms/sockets.txt" ]] &&
+    bw2001) [[ -f "$1/machines/130-bw2001/debug-roms/UH1.bin" ]] &&
         echo " --roms $1/machines/130-bw2001/debug-roms" ;;
     esac
     return 0

@@ -11,9 +11,9 @@ bw2001.bwn                              design netlist (grown in three stages)
 roms/901447-01.bin … -07.bin            Commodore's BASIC 1, the Machine's ROMs (2026-11-22)
 roms/901447-08.bin                      the character ROM (P5n)
 roms/contents.txt                       the binder's first view of each chip (P6p)
-debug-roms/bw2001_*.asm, .rom, .inc     P5p's firmware, the debug ROMs (the editor's retrace wait, P5q)
-debug-roms/empty.rom                    UH2 and UH6 under the debug ROMs
-debug-roms/sockets.txt                  which debug image fills which socket (--roms)
+debug-roms/UH1.bin … UH7.bin            the debug ROMs, a file per socket (--roms); UH2, UH6 empty
+debug-roms/build.sh                     assembles src/ and cuts the images into the UH*.bin
+debug-roms/src/bw2001_*.asm, .rom, .inc P5p's firmware (the editor's retrace wait, P5q)
 board/bw2001.place                      connectors, the PET grid, resistors beside their chips
 board/bw2001.kicad_pcb, .kicad_pro      Board (placed by bw place, routed by the user)
 manuals/user.md, service.md
@@ -48,7 +48,7 @@ As P5p's ([BW2001_FIRMWARE.md](../../../docs/p5p-bw2001-firmware/BW2001_FIRMWARE
 | sheet 2's `R12` 10K on `SEL1_N` past the 8K jumper (the same reference as sheet 3's 1K `R12`) | left out, the jumper closed | the 8K machine; `R12` stays sheet 3's |
 | cassette motor transistors (`Q1`–`Q6`, `VR1`, `VR2`, …) | `CASS1_MOTOR` = PIA1 `CB2` straight to `J6` pin 3, `CASS2_MOTOR` = VIA `PB4` to `J3` pin 3 | logic-only equivalents (GAME_DESIGN): the control level, not the 9 V |
 | `UF3.SO` not drawn | on `VCC` | as on P5n's bench |
-| `UH2`, `UH6` | `contents=roms/901447-03.bin`, `-04.bin` | BASIC 1's second half. Our firmware (the debug ROMs) leaves them empty (`debug-roms/empty.rom`, every word `$FF`). P5q left them out, against the board: fitted again in P5q2 |
+| `UH2`, `UH6` | `contents=roms/901447-03.bin`, `-04.bin` | BASIC 1's second half. Our firmware (the debug ROMs) leaves them empty (`debug-roms/UH2.bin`, `UH6.bin`, every byte `$FF`). P5q left them out, against the board: fitted again in P5q2 |
 | the 2114s | `access=300ns` (the 2114-3) | at 450 ns the video path misses every 64th character (P5q plan, phase 8) |
 | spare gate inputs | tied to `VCC` or `GND` | loads without warnings |
 
@@ -79,7 +79,7 @@ Pads: the table's numbers are the PET's (1–12, then its letters A B C D E F H 
 
 `machines/130-bw2001/board/bw2001.place` (P5q1, [BW2001_BOARD.md](../../../docs/p5q1-bw2001-board/BW2001_BOARD.md)): laid out after PET-Shack's "PET CPU BOARD" drawing of a PET 2001 board. `grid pet`: every chip at its PET location, columns J (left) to A (right), rows 9 (the back) to 1 (the front), lying with the notch at the left; eight upright as drawn (`UF3`, `UB8`, `UA5`, `UG2`, `UE6`, `UA2` notch at the bottom; `UG8`, `UG9` at the top). IEEE-488 (`J1`), user port (`J2`) and cassette #2 (`J3`) down the right edge; power (`J8`), cassette #1 (`J6`), the keyboard (`J5`: inside the board on the PET), `DS1` and the monitor (`J7`) along the back. Pull-ups beside their chips, chained along the resistor bands away from the upright chips; `X1`, `UDE9` and `R99` in the empty cells nearest their Nets. 293 × 269 mm, 35.2 m of wire; routed by the user on two layers (P5q's first Board, on a guessed grid, is `1f8e110`).
 
-Running other ROMs (P5q2): `--roms DIR`, the files named by socket (`UH1.bin` …) or a `sockets.txt` naming them; our firmware as `--roms machines/130-bw2001/debug-roms`. Commodore's BASIC 1 has been the netlist's own since 2026-11-22 (tests/data/pet_roms.md). `UH2` and `UH6` were imported into the routed Board and routed by the user; the two connections that rerouting broke (`BD_TO_D_N`, `CASS_WRITE`) were routed by a script on a 0.1 mm grid (P5q2 plan).
+Running other ROMs (P5q2): `--roms DIR`, the files named by socket (`UH1.bin` …); our firmware as `--roms machines/130-bw2001/debug-roms`. Commodore's BASIC 1 has been the netlist's own since 2026-11-22 (tests/data/pet_roms.md). `UH2` and `UH6` were imported into the routed Board and routed by the user; the two connections that rerouting broke (`BD_TO_D_N`, `CASS_WRITE`) were routed by a script on a 0.1 mm grid (P5q2 plan).
 
 ## Manuals
 

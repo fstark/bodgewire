@@ -5,7 +5,7 @@
 ; ; keyboard read at each retrace (PIA1, the PET 2001's matrix), STOP the break key. It keeps the
 ; ; P5o editor contract (docs/p5o-tiny-basic/TINY_BASIC.md, "The editor contract").
 ; ;
-; ; Entry points at $E000 (machines/130-bw2001/debug-roms/bw2001.inc); the key table KEYTAB at $E700; the checksum at $E7FF.
+; ; Entry points at $E000 (machines/130-bw2001/debug-roms/src/bw2001.inc); the key table KEYTAB at $E700; the checksum at $E7FF.
 ; ; Zero page $40-$5F.
 
 ;         .rom $E000, $800

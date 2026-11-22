@@ -88,6 +88,33 @@ TEST_CASE("bw2001 roms: each chip sums to 0, each entry point is a JMP", "[bw200
     }
 }
 
+TEST_CASE("bw2001 roms: the socket files are the assembled images' chips", "[bw2001]") {
+    // debug-roms/build.sh cuts them; a .asm changed without running it fails here.
+    struct Chip {
+        const char* socket;
+        const char* image;
+        std::size_t size, offset;
+    };
+    for (const Chip c :
+         {Chip{"UH1", "bw2001_basic.rom", 0x2000, 0},
+          Chip{"UH5", "bw2001_basic.rom", 0x2000, 0x800}, Chip{"UH3", "bw2001_edit.rom", 0x800, 0},
+          Chip{"UH4", "bw2001_kernel.rom", 0x1000, 0},
+          Chip{"UH7", "bw2001_kernel.rom", 0x1000, 0x800}, Chip{"UH2", nullptr, 0, 0},
+          Chip{"UH6", nullptr, 0, 0}}) {
+        INFO(c.socket);
+        const auto file = ReadRomContents(
+            test::DebugRomDir("bw2001") / (std::string(c.socket) + ".bin"), 0x800, 8);
+        REQUIRE(file.has_value());
+        std::vector<std::uint8_t> expected(0x800, 0xFF);  // UH2, UH6: empty
+        if (c.image != nullptr) {
+            const auto image = Rom(c.image, c.size);
+            expected.assign(image.begin() + static_cast<std::ptrdiff_t>(c.offset),
+                            image.begin() + static_cast<std::ptrdiff_t>(c.offset + 0x800));
+        }
+        CHECK(*file == expected);
+    }
+}
+
 TEST_CASE("bw2001 roms: the editor's KEYTAB is the harness's matrix", "[bw2001]") {
     const auto edit = Rom("bw2001_edit.rom", 0x800);
     for (int row = 0; row < 10; ++row) {

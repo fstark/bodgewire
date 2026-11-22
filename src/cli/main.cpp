@@ -58,7 +58,7 @@ constexpr std::string_view kUsage =
     "       bw check-board <file.bwn> <file.kicad_pcb>\n"
     "       bw place <file.bwn> <file.place> -o <file.kicad_pcb> [--seed 1] [--tries 4] "
     "[--footprints DIR] [--force]\n"
-    "       bw asm <file.asm> -o <file.rom>";
+    "       bw asm <file.asm> -o <file.rom|file.bin>";
 
 struct Options {
     std::string file;
@@ -321,7 +321,7 @@ std::optional<std::string> ReadText(const std::filesystem::path& path) {
 
 int AsmCommand(std::span<char*> args) {
     if (args.size() != 5 || std::string_view(args[3]) != "-o") {
-        return UsageError("asm needs <file.asm> -o <file.rom>");
+        return UsageError("asm needs <file.asm> -o <file.rom|file.bin>");
     }
     const std::string_view out = args[4];
     const auto rom = AssembleFile(args[2]);
@@ -329,8 +329,14 @@ int AsmCommand(std::span<char*> args) {
         std::println(stderr, "bw: {}", rom.error());
         return kExitNetlistErrors;
     }
+    // A .bin is the raw image, a byte a word; anything else the .rom text with its listing.
     std::ofstream file{std::string(out), std::ios::binary};
-    file << rom->text;
+    if (out.ends_with(".bin")) {
+        file.write(reinterpret_cast<const char*>(rom->words.data()),
+                   static_cast<std::streamsize>(rom->words.size()));
+    } else {
+        file << rom->text;
+    }
     if (!file) {
         std::println(stderr, "bw: cannot write '{}'", out);
         return kExitNetlistErrors;

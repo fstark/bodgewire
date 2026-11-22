@@ -225,7 +225,7 @@ endforeach()
 
 # bw asm on every ROM program: its output must be the committed .rom beside it.
 file(GLOB programs CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/machines/*/roms/*.asm
-     ${PROJECT_SOURCE_DIR}/machines/*/debug-roms/*.asm
+     ${PROJECT_SOURCE_DIR}/machines/*/debug-roms/src/*.asm
      ${PROJECT_SOURCE_DIR}/bench/*.asm)
 foreach(program ${programs})
   get_filename_component(name ${program} NAME_WE)

@@ -20,4 +20,4 @@ The tests reach them through `tests/netlist/pet_roms.hpp`: `tests/netlist/pet_ro
 
 ## Our firmware, the debug ROMs
 
-P5p's firmware (Tiny BASIC, the editor, the monitor, the self-test, and the harness signal the typist waits on) is in `machines/130-bw2001/debug-roms/`. `--roms machines/130-bw2001/debug-roms` (`bw run`, `bw_ui`) runs it: its `sockets.txt` says which image fills which socket. The tests that drive the firmware load it the same way (`Bw2001DebugCircuit`, `tests/machines/bw2001_rig.hpp`).
+P5p's firmware (Tiny BASIC, the editor, the monitor, the self-test, and the harness signal the typist waits on) is in `machines/130-bw2001/debug-roms/`. `--roms machines/130-bw2001/debug-roms` (`bw run`, `bw_ui`) runs it: `debug-roms/` holds one file per socket, `UH1.bin` to `UH7.bin`, which `debug-roms/build.sh` cuts from the images it assembles in `debug-roms/src/`. The tests that drive the firmware load it the same way (`Bw2001DebugCircuit`, `tests/machines/bw2001_rig.hpp`).

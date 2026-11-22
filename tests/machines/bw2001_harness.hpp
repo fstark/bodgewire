@@ -32,7 +32,7 @@ std::optional<Bw2001Key> Bw2001KeyFor(char c);
 // The legend the spec gives each matrix place (row 0 PB0 first), "" for an unused place.
 std::string_view Bw2001KeyLegend(Bw2001Key key);
 
-// Zero page addresses of the harness signal (machines/130-bw2001/debug-roms/bw2001.inc; a test
+// Zero page addresses of the harness signal (machines/130-bw2001/debug-roms/src/bw2001.inc; a test
 // checks they agree).
 inline constexpr std::uint16_t kBw2001Waiting = 0x40, kBw2001Lines = 0x41;
 
@@ -70,7 +70,7 @@ private:
 };
 
 // The address `{RAM}` stands for in the sessions (USRRAM,
-// machines/130-bw2001/debug-roms/bw2001.inc).
+// machines/130-bw2001/debug-roms/src/bw2001.inc).
 inline constexpr int kBw2001SessionRam = 1008;
 
 // Runs a P5o conformance session (tests/data/basic/) from power-on, compares the full view and

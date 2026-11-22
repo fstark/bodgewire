@@ -35,13 +35,14 @@ inline std::filesystem::path RomPath(std::string_view machine, std::string_view 
     return MachineDir(machine) / "roms" / std::string(file);
 }
 
-// A Machine's own debug firmware (the BW-2001's, --roms machines/130-bw2001/debug-roms).
+// A Machine's own debug firmware (the BW-2001's): debug-roms/ holds a file per socket, for
+// --roms machines/130-bw2001/debug-roms; debug-roms/src/ its sources and assembled images.
 inline std::filesystem::path DebugRomDir(std::string_view machine) {
     return MachineDir(machine) / "debug-roms";
 }
 
 inline std::filesystem::path DebugRomPath(std::string_view machine, std::string_view file) {
-    return DebugRomDir(machine) / std::string(file);
+    return DebugRomDir(machine) / "src" / std::string(file);
 }
 
 // tests/data/heartbeat/heartbeat.bwn: a 6502 free-running on NOPs, with its Board (board/), a
