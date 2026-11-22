@@ -111,6 +111,19 @@ std::uint8_t Grey(float cell, TvTone tone) {
         std::lround(std::clamp(tone.black + tone.gain * cell, 0.0f, 1.0f) * 255.0f));
 }
 
+std::optional<ScreenFraction> ParseLoupe(std::string_view text) {
+    const std::size_t colon = text.find(':');
+    if (colon == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const auto x = ParsePercent(text.substr(0, colon));
+    const auto y = ParsePercent(text.substr(colon + 1));
+    if (!x || !y) {
+        return std::nullopt;
+    }
+    return ScreenFraction{*x, *y};
+}
+
 std::optional<TvControls> ParseTvSettings(std::string_view list, TvControls start) {
     TvControls controls = start;
     for (std::size_t from = 0;;) {

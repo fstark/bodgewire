@@ -70,4 +70,12 @@ std::uint8_t Grey(float cell, TvTone tone);
 // allowed), `off` and `underscan`, applied over `start`; nullopt on any bad item.
 std::optional<TvControls> ParseTvSettings(std::string_view list, TvControls start = {});
 
+// --loupe: `X%:Y%`, a point of the screen (0..100 % of its width and height, from its top left)
+// where the TV's loupe shows at start, for screenshots (2026-11-22); as fractions 0..1.
+struct ScreenFraction {
+    double x = 0, y = 0;
+    bool operator==(const ScreenFraction&) const = default;
+};
+std::optional<ScreenFraction> ParseLoupe(std::string_view text);
+
 }  // namespace bw

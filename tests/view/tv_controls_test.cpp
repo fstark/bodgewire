@@ -105,3 +105,11 @@ TEST_CASE("tv controls: --tv parsing", "[view]") {
         CHECK_FALSE(ParseTvSettings(bad));
     }
 }
+
+TEST_CASE("tv controls: ParseLoupe", "[view]") {
+    CHECK(ParseLoupe("50%:25.5%") == ScreenFraction{0.5, 0.255});
+    CHECK(ParseLoupe("0%:100%") == ScreenFraction{0, 1});
+    CHECK_FALSE(ParseLoupe("50%"));
+    CHECK_FALSE(ParseLoupe("50:25%"));
+    CHECK_FALSE(ParseLoupe("50%:101%"));
+}

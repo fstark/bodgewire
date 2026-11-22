@@ -35,6 +35,10 @@ constexpr float kSlotLeft = 0.70f, kSlotRight = 0.82f, kSlotTop = 0.845f, kSlotB
 constexpr float kPowerY = 0.80f;
 constexpr float kTrimmerX = 0.87f, kTrimmerY = 0.945f, kTrimmer = 0.009f, kTrimmerHit = 0.014f;
 
+constexpr float kLoupeSource = 16;  // px of the picture across the loupe
+constexpr float kLoupeZoom = 6;     // its magnification: 96 px across
+constexpr ImU32 kLoupeRim = IM_COL32(20, 20, 22, 255);
+constexpr ImU32 kLoupeGlint = IM_COL32(255, 255, 255, 60);
 constexpr ImU32 kShell = IM_COL32(226, 220, 200, 255);
 constexpr ImU32 kShellEdge = IM_COL32(170, 164, 148, 255);
 constexpr ImU32 kFront = IM_COL32(48, 49, 52, 255);
@@ -74,7 +78,8 @@ void Label(ImDrawList& list, ImVec2 centre, float size, const char* text) {
 }  // namespace
 
 void DrawMonitor(ImDrawList& list, ImVec2 at, float width, const TvControls& controls,
-                 const TvView* view, std::optional<TvKnob> hoveredKnob) {
+                 const TvView* view, std::optional<TvKnob> hoveredKnob,
+                 std::optional<ImVec2> loupe) {
     const float w = width;
     const float h = width * kTvAspect;
     const auto P = [&](float x, float y) { return ImVec2{at.x + x * w, at.y + y * w}; };
@@ -95,6 +100,10 @@ void DrawMonitor(ImDrawList& list, ImVec2 at, float width, const TvControls& con
     const float grow = kBezelGrow * w;
     list.AddRectFilled({screenMin.x - grow, screenMin.y - grow},
                        {screenMax.x + grow, screenMax.y + grow}, kBezel, 0.06f * w);
+    struct Magnified {
+        ImVec2 mouse, imageMin, imageMax;
+    };
+    std::optional<Magnified> magnified;  // drawn last, over the case
     list.PushClipRect(screenMin, screenMax, true);
     if (controls.on() && view != nullptr) {
         list.AddRectFilled(screenMin, screenMax, kBlack);
@@ -103,9 +112,13 @@ void DrawMonitor(ImDrawList& list, ImVec2 at, float width, const TvControls& con
         const ImVec2 scale{size.x / (window.x1 - window.x0), size.y / (window.y1 - window.y0)};
         const ImVec2 imageMin{screenMin.x + shift.x * size.x - window.x0 * scale.x,
                               screenMin.y + shift.y * size.y - window.y0 * scale.y};
-        list.AddImage(view->texture(), imageMin,
-                      {imageMin.x + static_cast<float>(kTvColumns) * scale.x,
-                       imageMin.y + static_cast<float>(kTvRows) * scale.y});
+        const ImVec2 imageMax{imageMin.x + static_cast<float>(kTvColumns) * scale.x,
+                              imageMin.y + static_cast<float>(kTvRows) * scale.y};
+        list.AddImage(view->texture(), imageMin, imageMax);
+        if (loupe && loupe->x >= screenMin.x && loupe->x < screenMax.x && loupe->y >= screenMin.y &&
+            loupe->y < screenMax.y) {
+            magnified = Magnified{*loupe, imageMin, imageMax};
+        }
     } else {
         list.AddRectFilled(screenMin, screenMax, kGlass);
     }
@@ -198,6 +211,32 @@ void DrawMonitor(ImDrawList& list, ImVec2 at, float width, const TvControls& con
     const float slant = std::numbers::pi_v<float> / 6;
     list.AddLine(AtAngle(trimmer, tr, slant),
                  AtAngle(trimmer, tr, slant + std::numbers::pi_v<float>), kTrimmerSlot, 1.0f);
+    // The loupe: the pixels under the mouse magnified, nearest-neighbour (each one a sharp square),
+    // in a dark rim, the cursor hidden (the user, 2026-11-22).
+    if (magnified) {
+        const Magnified& m = *magnified;
+        const ImVec2 span{m.imageMax.x - m.imageMin.x, m.imageMax.y - m.imageMin.y};
+        const ImVec2 uv{(m.mouse.x - m.imageMin.x) / span.x, (m.mouse.y - m.imageMin.y) / span.y};
+        const ImVec2 halfUv{kLoupeSource / 2 / span.x, kLoupeSource / 2 / span.y};
+        const float radius = kLoupeSource * kLoupeZoom / 2;
+        list.PushClipRectFullScreen();
+        list.AddCircleFilled(m.mouse, radius, kBlack);
+        const ImGuiPlatformIO& platform = ImGui::GetPlatformIO();
+        if (platform.DrawCallback_SetSamplerNearest != nullptr) {
+            list.AddCallback(platform.DrawCallback_SetSamplerNearest, nullptr);
+        }
+        list.AddImageRounded(view->texture(), {m.mouse.x - radius, m.mouse.y - radius},
+                             {m.mouse.x + radius, m.mouse.y + radius},
+                             {uv.x - halfUv.x, uv.y - halfUv.y}, {uv.x + halfUv.x, uv.y + halfUv.y},
+                             IM_COL32_WHITE, radius);
+        if (platform.DrawCallback_SetSamplerLinear != nullptr) {
+            list.AddCallback(platform.DrawCallback_SetSamplerLinear, nullptr);
+        }
+        list.AddCircle(m.mouse, radius, kLoupeRim, 0, 4.0f);
+        list.AddCircle(m.mouse, radius - 3, kLoupeGlint, 0, 1.0f);
+        list.PopClipRect();
+        ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+    }
 }
 
 void TvWindow::draw(bool& open, TvView& view) {
@@ -275,7 +314,16 @@ void TvWindow::draw(bool& open, TvView& view) {
                               ? "UNDERSCAN trimmer: the picture as a real monitor shows it"
                               : "UNDERSCAN trimmer: the whole frame");
     }
-    DrawMonitor(list, at, w, controls_, &view, hoveredKnob);
+    // The loupe while the mouse is free over the window: no control under it, no button held
+    // (a drag moves the case).
+    const bool free = ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered() &&
+                      !ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    std::optional<ImVec2> loupe = free ? std::optional(io.MousePos) : std::nullopt;
+    if (loupeAt_) {
+        loupe = P(kScreenLeft + static_cast<float>(loupeAt_->x) * kScreenWidth,
+                  kScreenTop + static_cast<float>(loupeAt_->y) * kScreenWidth * 0.75f);
+    }
+    DrawMonitor(list, at, w, controls_, &view, hoveredKnob, loupe);
 
     if (CaseClose()) {
         open = false;

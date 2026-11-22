@@ -86,7 +86,7 @@ constexpr std::string_view kUsage =
     "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
     "[--meter REF.PIN] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
     "[--type REF:START:TEXT] [--roms DIR] [--manual user|service|datasheet|repairs] "
-    "[--tv hpos:N%,vpos:N%,bright:N%,contrast:N%,off,underscan] [--look "
+    "[--tv hpos:N%,vpos:N%,bright:N%,contrast:N%,off,underscan] [--loupe X%:Y%] [--look "
     "real|plain] "
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
     "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
@@ -121,11 +121,12 @@ struct Options {
     std::vector<KnobSetting> knob;
     std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
     std::vector<Typing> type;
-    std::optional<Divider> manual;  // --manual: the binder out at this divider (P6e)
-    std::optional<TvControls> tv;   // --tv: the monitor's controls at start (P6f)
-    bool plainLook = false;         // --look plain: the specialist's Board, no parts drawn (P6)
-    std::optional<Owner> focus;     // --focus: the owner at start (P6c)
-    bool debug = false;             // --debug: the Debug window out (P6d)
+    std::optional<Divider> manual;        // --manual: the binder out at this divider (P6e)
+    std::optional<TvControls> tv;         // --tv: the monitor's controls at start (P6f)
+    std::optional<ScreenFraction> loupe;  // --loupe: the TV's loupe there (screenshots)
+    bool plainLook = false;      // --look plain: the specialist's Board, no parts drawn (P6)
+    std::optional<Owner> focus;  // --focus: the owner at start (P6c)
+    bool debug = false;          // --debug: the Debug window out (P6d)
     std::vector<std::pair<MarkShape, Point>> mark;  // --mark: pencil marks at start (P6h)
     std::vector<BenchObject> pop;   // --pop: out in their own desktop windows at start (P6j)
     std::vector<BenchObject> away;  // --away: the Machine slot's objects put away at start (P6o)
@@ -441,6 +442,11 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             } else {
                 return std::nullopt;
             }
+        } else if (arg == "--loupe") {
+            options.loupe = ParseLoupe(argv[++i]);
+            if (!options.loupe) {
+                return std::nullopt;
+            }
         } else if (arg == "--tv") {
             options.tv = ParseTvSettings(argv[++i]);
             if (!options.tv) {
@@ -588,6 +594,7 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
     TvView view(gpu.device());
     Shelf shelf;
     TvWindow tvWindow;
+    tvWindow.setLoupe(options.loupe);
     if (options.tv) {
         tvWindow.controls() = *options.tv;
     }
