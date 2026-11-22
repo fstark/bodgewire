@@ -6,7 +6,7 @@
 
 namespace bw {
 
-inline constexpr std::int64_t kFrameMargin = 30'000'000;      // nm of Board around the lamps
+inline constexpr std::int64_t kFrameMargin = 45'000'000;      // nm of Board around the lamps
 inline constexpr std::int64_t kSmallBoardSide = 130'000'000;  // nm: both sides at most: whole
 inline constexpr double kWholeShare = 0.6;                    // a frame covering more: whole
 

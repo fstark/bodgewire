@@ -75,7 +75,7 @@ inline constexpr double kGlideTau = 0.064;  // s: e^(-0.25 / 0.064) ≈ 2 %
 // The top lane's anchors, as shares of the lane's width: the selected picture centred in
 // [kPictureFrom, kPictureTo]; the previous one's right edge at kHintLeft, the next one's left edge
 // at kHintRight (P7b).
-inline constexpr double kPictureFrom = 0.06, kPictureTo = 0.64, kHintLeft = 0.045,
+inline constexpr double kPictureFrom = 0.07, kPictureTo = 0.64, kHintLeft = 0.035,
                         kHintRight = 0.955;
 // The x of a picture's left edge, as a share of the lane's width, for its distance `d` (its index
 // minus the glide's value) and its width `w` (a share): piecewise linear through the three anchors
@@ -93,7 +93,7 @@ double PictureLeft(double d, double w);
 ```cpp
 namespace bw {
 
-inline constexpr std::int64_t kFrameMargin = 30'000'000;     // nm of Board around the lamps
+inline constexpr std::int64_t kFrameMargin = 45'000'000;     // nm of Board around the lamps
 inline constexpr std::int64_t kSmallBoardSide = 130'000'000;  // nm: both sides at most: whole
 inline constexpr double kWholeShare = 0.6;                     // a frame covering more: whole
 
@@ -195,7 +195,7 @@ The kept frame blanked (black cells), `lines_ = 0`, uploaded at the next frame: 
 - **The window**: `RunLauncher`'s full-window window gains `ImGuiWindowFlags_NoScrollWithMouse` (the wheel would scroll it: `NoDecoration` has only `NoScrollbar`) and a zero `WindowPadding` (pushed around its `Begin`), so the hints and the wood reach the window's edges.
 - **Top lane**: the work area's top `kTopShare = 0.66` of the height, filled with `kPanelBackground` (the Board panel's colour, exported from `board_view.hpp`), so a still's panel fill does not show as a rectangle.
 - **Picture area**: `kPictureTo - kPictureFrom` of the width, the lane's height less 24 px above and below. Each Machine's picture is its frame's aspect fitted into it (a TV Machine, or one without a still yet or without a Board: the whole area), so its width share `w` differs per Machine.
-- **Paragraph**: from `kPictureTo + 0.02` to `kHintRight - 0.02` of the width, centred vertically in the lane: the name (P7a's 1.5× font), the paragraph wrapped (`Displayable`), both at alpha `1 - 2|d|` (clamped to [0, 1]) of the selected Machine's `d`, its x following the picture's `PictureLeft(d, w)` shift.
+- **Paragraph**: from `kPictureTo + 0.04` to `kHintRight - 0.02` of the width, centred vertically in the lane: the name (P7a's 1.5× font), the paragraph wrapped (`Displayable`), both at alpha `1 - 2|d|` (clamped to [0, 1]) of the selected Machine's `d`, its x following the picture's `PictureLeft(d, w)` shift.
 - **Bottom lane**: the rest; the wood (`kShelfWood`) with a 2 px `kShelfEdge` line along its top.
 - **Post-its**: 190 px wide; all of a Machine as tall as its tallest (its title at 1.2× wrapped, `Spacing`, its brief wrapped, at 168 px; at least 120 px, at most the lane's height less 32), top at the lane's top + 20; "Start the Machine" at x = 24; the Puzzles from x = 24 + 190 + 32 (a 2 px `kTrayShadow` groove at x = 24 + 190 + 16), 20 px apart, clipped to `[24 + 190 + 32, width)`. The row's scroll (a `Glide` in px, `snap` 0.5) keeps the selected Puzzle's post-it inside the clipped part with 20 px to spare; post-it 0 leaves it where it is.
 - **Selected post-it**: drawn 8 px higher, `DrawNote(…, lift 6)`; with the bottom lane active, a 4 px `kFocusGold` bar 6 px under it.
@@ -296,7 +296,7 @@ Clicks, on the launcher's window (the Board and overlay children take no input, 
 ## 4. Docs
 
 - GLOSSARY: **Launcher** rewritten (two lanes, the live run, post-its, the keys; P7a, P7b); **Still** (a Machine's Board drawn unpowered in the launcher, its neighbours', P7b).
-- ADD_MACHINE: the launcher frames a Machine on its lamps by itself (30 mm around, whole when small or with a TV): look at the launcher's screenshot (`--select` of the netlist) when adding a Machine.
+- ADD_MACHINE: the launcher frames a Machine on its lamps by itself (45 mm around, whole when small or with a TV): look at the launcher's screenshot (`--select` of the netlist) when adding a Machine.
 - ADD_PUZZLE: the brief is read on a post-it 190 px wide: at most about 220 characters (the longest today, the BW-80's Blank page, 204); `--select` of the Puzzle shows it.
 - ARCHITECTURE: P7b done with the date and links; a row **P7c** (wanted): the zoom from the live picture into the bench, the post-it flying to its place on the Board, and back.
 

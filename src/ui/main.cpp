@@ -77,7 +77,8 @@ constexpr int kExitUsage = 2;
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 800;
 constexpr std::string_view kUsage =
-    "usage: bw_ui [file.bwn|file.bwp] [--machines DIR] [--visit FILE,...] [--probe REF.PIN] "
+    "usage: bw_ui [file.bwn|file.bwp] [--machines DIR] [--visit FILE,...] [--select FILE] "
+    "[--probe REF.PIN] "
     "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,"
     "unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
     "[--clip REF.PIN[:0|1|r|f],...] [--group REF.PIN[:E0xx],...] [--sample 100ns] "
@@ -100,6 +101,7 @@ struct Options {
     std::optional<std::filesystem::path> file;
     std::optional<std::filesystem::path> machines;     // --machines DIR: the launcher's (P7a)
     std::vector<std::filesystem::path> visit;          // --visit: opened in turn from the launcher
+    std::optional<std::filesystem::path> select;       // --select: the launcher's entry at start
     std::optional<std::chrono::nanoseconds> visitFor;  // a visited bench: Back after this long
     std::optional<std::filesystem::path> screenshot;
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
@@ -245,8 +247,8 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
     bool benchFlag = false;  // a flag only a bench takes: a usage error without a file (P7a)
     for (int i = first; i < argc; ++i) {
         const std::string_view arg = argv[i];
-        const bool launcherFlag =
-            arg == "--machines" || arg == "--screenshot" || arg == "--after" || arg == "--visit";
+        const bool launcherFlag = arg == "--machines" || arg == "--screenshot" ||
+                                  arg == "--after" || arg == "--visit" || arg == "--select";
         benchFlag = benchFlag || !launcherFlag;
         if (arg == "--debug" || arg == "--leave") {  // the flags without a value
             (arg == "--debug" ? options.debug : options.leave) = true;
@@ -261,6 +263,8 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             for (const std::string& file : SplitCommas(argv[++i])) {
                 options.visit.emplace_back(file);
             }
+        } else if (arg == "--select") {
+            options.select = argv[++i];
         } else if (arg == "--roms") {
             options.roms = argv[++i];
         } else if (arg == "--screenshot") {
@@ -462,7 +466,8 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
         return std::nullopt;
     }
     if ((benchFlag && !options.file) || (!options.visit.empty() && options.file) ||
-        (!options.visit.empty() && !options.screenshot) || (options.leave && options.ask)) {
+        (!options.visit.empty() && !options.screenshot) || (options.leave && options.ask) ||
+        (options.select && (options.file || !options.visit.empty()))) {
         return std::nullopt;
     }
     return options;
@@ -1522,12 +1527,18 @@ struct LauncherResult {
 };
 
 // The launcher's frames (P7a), until an entry is clicked, the window closed, or --screenshot
-// taken --after it shows.
-LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, Launcher& launcher,
-                           const Options& options) {
+// taken --after it shows (with the live run's speed line, P7b).
+LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen& screen,
+                           Launcher& launcher, const Options& options) {
     SDL_SetWindowTitle(window, "Bodgewire");
+    TvView view(gpu.device());
+    SpeedRatio ratio;
+    double speedRatio = 0;
+    double uiMilliseconds = 0;
+    long frames = 0;
     const auto start = std::chrono::steady_clock::now();
     while (true) {
+        const auto frameStart = std::chrono::steady_clock::now();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
@@ -1543,17 +1554,38 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, Launcher& launche
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
         ImGui::SetNextWindowSize(viewport->WorkSize);
+        // No padding (the lanes reach the window's edges), no wheel scrolling (P7b).
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
         ImGui::Begin("Launcher", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
-                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
-        const auto chosen = launcher.draw();
+                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                         ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::PopStyleVar();
+        const auto chosen = launcher.draw(view, screen.legends());
         ImGui::End();
         ImGui::Render();
-        gpu.present(nullptr);
+        uiMilliseconds =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - frameStart)
+                .count();
+        const auto status = launcher.liveStatus();
+        if (status) {
+            speedRatio = ratio.update(status->simTime);
+        }
+        gpu.present(&view);
+        ++frames;
         if (chosen) {
             return {chosen};
         }
-        if (options.screenshot && std::chrono::steady_clock::now() - start >= options.after) {
+        const auto now = std::chrono::steady_clock::now();
+        if (options.screenshot && now - start >= options.after) {
+            if (status) {
+                std::println("bw_ui: t {:.3f} s  {:.2f}\u00d7  ui {:.1f} ms  {:.0f} fps",
+                             static_cast<double>(status->simTime) /
+                                 static_cast<double>(kPicosPerSecond),
+                             speedRatio, uiMilliseconds,
+                             static_cast<double>(frames) /
+                                 std::chrono::duration<double>(now - start).count());
+            }
             if (!gpu.screenshot(*options.screenshot)) {
                 std::println(stderr, "bw_ui: {}", SDL_GetError());
                 return {std::nullopt, kExitErrors};
@@ -1638,6 +1670,12 @@ int main(int argc, char** argv) {
         }
         visits.push_back(file);
     }
+    if (options.select && !EntryOf(launcher.list(), *options.select)) {
+        std::println(stderr, "bw_ui: '{}' is not a Machine or Puzzle of '{}'",
+                     options.select->string(), machinesDir->string());
+        std::println(stderr, "{}", kUsage);
+        return kExitUsage;
+    }
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
@@ -1664,7 +1702,8 @@ int main(int argc, char** argv) {
     if (loaded) {
         benchOptions = options;
     }
-    std::optional<std::filesystem::path> left;  // the last bench's file: its Machine selected
+    // The last bench's file: its entry selected; at start --select's (P7b).
+    std::optional<std::filesystem::path> left = options.select;
     while (true) {
         if (!loaded) {
             std::filesystem::path file;
@@ -1675,13 +1714,13 @@ int main(int argc, char** argv) {
             } else {
                 MachineList list = ListMachines(*machinesDir);
                 Print(list.problems);
-                const auto at = left ? MachineIndexOf(list, *left) : std::nullopt;
                 launcher.setList(std::move(list));
-                if (at) {
-                    launcher.select(*at);
+                if (left) {
+                    launcher.select(*left);
                 }
                 ImGuiScreen screen(window, *gpu);
-                const LauncherResult chosen = RunLauncher(window, *gpu, launcher, options);
+                const LauncherResult chosen = RunLauncher(window, *gpu, screen, launcher, options);
+                launcher.stop();  // the live run's Session ends before the bench's Load
                 if (!chosen.file) {
                     exitCode = chosen.exitCode != 0 ? chosen.exitCode : exitCode;
                     break;

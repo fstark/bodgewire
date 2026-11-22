@@ -52,7 +52,7 @@ struct Glide {
 // The top lane's anchors, as shares of the lane's width: the selected picture centred in
 // [kPictureFrom, kPictureTo]; the previous one's right edge at kHintLeft, the next one's left edge
 // at kHintRight (P7b).
-inline constexpr double kPictureFrom = 0.06, kPictureTo = 0.64, kHintLeft = 0.045,
+inline constexpr double kPictureFrom = 0.07, kPictureTo = 0.64, kHintLeft = 0.035,
                         kHintRight = 0.955;
 // The x of a picture's left edge, as a share of the lane's width, for its distance `d` (its index
 // minus the glide's value) and its width `w` (a share): piecewise linear through the three anchors

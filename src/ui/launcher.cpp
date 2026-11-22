@@ -1,107 +1,580 @@
 #include "ui/launcher.hpp"
 
 #include <algorithm>
+#include <cfloat>
+#include <cmath>
+#include <string_view>
 #include <utility>
 
-#include <imgui.h>
-
+#include "machine/machine.hpp"
+#include "session/session.hpp"
+#include "ui/bench.hpp"
+#include "ui/board_tags.hpp"
+#include "ui/brief_window.hpp"
 #include "ui/manual_view.hpp"
+#include "ui/shelf.hpp"
+#include "ui/tv_window.hpp"
+#include "view/bench_places.hpp"
+#include "view/output_frame.hpp"
+#include "view/tv_controls.hpp"
 
 namespace bw {
 
 namespace {
 
-constexpr float kListWidth = 220;
+constexpr float kTopShare = 0.66f;        // of the window's height: the Machines' lane
+constexpr float kAreaMargin = 24;         // px above and below the picture area
+constexpr float kParagraphLeft = 0.04f;   // of the width: from the picture to the paragraph
+constexpr float kParagraphRight = 0.02f;  // from the paragraph to the next Machine's hint
+constexpr float kMonitorShare = 0.92f;    // of the area's height: a TV Machine's monitor
 constexpr float kNameScale = 1.5f;
-constexpr float kBriefIndent = 12;
-constexpr ImVec4 kError{1.0f, 0.35f, 0.3f, 1.0f};
+constexpr float kNoteWidth = 190;
+constexpr float kNotePad = 12;
+constexpr float kNoteTitleScale = 1.2f;
+constexpr float kNoteGap = 20;   // between the Puzzles' post-its; above them on the wood
+constexpr float kNoteLeft = 24;  // "Start the Machine"
+constexpr float kRowGap = 32;    // from it to the Puzzles' row
+constexpr float kNoteMinHeight = 120;
+constexpr float kLift = 8;  // the selected post-it, raised
+constexpr float kLiftShadow = 6;
+constexpr float kChevron = 18;                            // px tall
+constexpr float kChevronGap = 10;                         // px outside the picture
+constexpr auto kSettle = std::chrono::milliseconds(150);  // the selection at rest: load it
+constexpr ImU32 kName = IM_COL32(235, 235, 235, 255);
+constexpr ImU32 kParagraph = IM_COL32(200, 200, 205, 255);
+constexpr ImU32 kErrorText = IM_COL32(255, 90, 76, 255);
+constexpr ImU32 kErrorBox = IM_COL32(40, 10, 10, 230);
+constexpr ImU32 kNoBoard = IM_COL32(120, 120, 128, 255);
+constexpr const char* kStartTitle = "Start the Machine";
+constexpr const char* kStartBrief = "The Machine as it should work: no fault.";
 
-// A clickable entry as tall as its title and wrapped brief; true when clicked.
-bool Entry(int id, const std::string& title, const std::string& brief) {
-    const float width = ImGui::GetContentRegionAvail().x;
-    const float wrap = width - kBriefIndent;
-    const ImVec2 titleSize = ImGui::CalcTextSize(title.c_str());
-    const float briefHeight =
-        brief.empty() ? 0 : ImGui::CalcTextSize(brief.c_str(), nullptr, false, wrap).y;
-    const float gap = brief.empty() ? 0 : ImGui::GetStyle().ItemInnerSpacing.y;
-    const ImVec2 at = ImGui::GetCursorScreenPos();
-    ImGui::PushID(id);
-    const bool clicked = ImGui::Selectable("##entry", false, ImGuiSelectableFlags_None,
-                                           {0, titleSize.y + gap + briefHeight});
-    ImGui::PopID();
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.AddText(at, ImGui::GetColorU32(ImGuiCol_Text), title.c_str());
-    if (!brief.empty()) {
-        list.AddText(ImGui::GetFont(), ImGui::GetFontSize(),
-                     {at.x + kBriefIndent, at.y + titleSize.y + gap},
-                     ImGui::GetColorU32(ImGuiCol_TextDisabled), brief.c_str(), nullptr, wrap);
+std::unique_ptr<StillData> MakeStill(const std::filesystem::path& netlist) {
+    if (!HasBoard(netlist)) {
+        return nullptr;
     }
-    ImGui::Spacing();
-    return clicked;
+    auto machine = LoadNetlistMachine(netlist);
+    if (!machine) {
+        Print(machine.error());
+        return nullptr;
+    }
+    const LoadedCircuit& design = machine->designCircuit();
+    BoardScene scene(machine->board(), machine->pristineBoard(), design);
+    const bool tv = HasTv(design);
+    const Bounds frame = OutputFrame(scene, tv);
+    auto leds = StillLedTags(scene, design);
+    auto switches = StillSwitchTags(scene, design);
+    return std::make_unique<StillData>(
+        StillData{std::move(scene), std::move(leds), std::move(switches), tv, frame});
+}
+
+// `size` fitted inside `box` keeping the aspect of `aspect` (width / height).
+ImVec2 Fit(ImVec2 box, double aspect) {
+    if (aspect <= 0) {
+        return box;
+    }
+    if (box.x / box.y > aspect) {
+        return {static_cast<float>(box.y * aspect), box.y};
+    }
+    return {box.x, static_cast<float>(box.x / aspect)};
+}
+
+double Aspect(Bounds b) {
+    const auto h = static_cast<double>(b.max.y - b.min.y);
+    return h <= 0 ? 0 : static_cast<double>(b.max.x - b.min.x) / h;
+}
+
+ImU32 WithAlpha(ImU32 colour, float alpha) {
+    const auto a = static_cast<float>((colour >> IM_COL32_A_SHIFT) & 0xFF) * alpha;
+    return (colour & ~IM_COL32_A_MASK) |
+           (static_cast<ImU32>(std::clamp(a, 0.0f, 255.0f)) << IM_COL32_A_SHIFT);
+}
+
+// A post-it's height for its title and brief at the note's width.
+float NoteHeight(const std::string& title, const std::string& brief) {
+    const float wrap = kNoteWidth - 2 * kNotePad;
+    ImFont* font = ImGui::GetFont();
+    const float size = ImGui::GetFontSize();
+    const float titleHeight =
+        font->CalcTextSizeA(size * kNoteTitleScale, FLT_MAX, wrap, title.c_str()).y;
+    const float briefHeight = font->CalcTextSizeA(size, FLT_MAX, wrap, brief.c_str()).y;
+    return kNotePad + (kNoteStrip - 4) + titleHeight + ImGui::GetStyle().ItemSpacing.y +
+           briefHeight + kNotePad;
+}
+
+void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& title,
+                const std::string& brief, bool lifted) {
+    const ImVec2 end{at.x + kNoteWidth, at.y + height};
+    DrawNote(list, at, end, lifted ? kLiftShadow : 0);
+    const float wrap = kNoteWidth - 2 * kNotePad;
+    ImFont* font = ImGui::GetFont();
+    const float size = ImGui::GetFontSize();
+    const ImU32 ink = ImGui::ColorConvertFloat4ToU32(kNoteInk);
+    list.PushClipRect(at, end, true);
+    float y = at.y + kNotePad + (kNoteStrip - 4);
+    list.AddText(font, size * kNoteTitleScale, {at.x + kNotePad, y}, ink, title.c_str(), nullptr,
+                 wrap);
+    y += font->CalcTextSizeA(size * kNoteTitleScale, FLT_MAX, wrap, title.c_str()).y +
+         ImGui::GetStyle().ItemSpacing.y;
+    list.AddText(font, size, {at.x + kNotePad, y}, ink, brief.c_str(), nullptr, wrap);
+    list.PopClipRect();
+}
+
+// A chevron pointing left (`dir` -1) or right (1), its tip at `tip`.
+void Chevron(ImDrawList& list, ImVec2 tip, float dir) {
+    const float half = kChevron / 2;
+    const ImVec2 points[] = {
+        {tip.x - dir * half * 0.6f, tip.y - half}, tip, {tip.x - dir * half * 0.6f, tip.y + half}};
+    list.AddPolyline(points, 3, kFocusGold, ImDrawFlags_None, 3.0f);
 }
 
 }  // namespace
 
-void Launcher::setList(MachineList list) {
-    list_ = std::move(list);
-    select(selected_);
+void StillLoader::start(std::vector<std::filesystem::path> netlists) {
+    if (started_) {
+        return;
+    }
+    started_ = true;
+    thread_ = std::jthread([this, netlists = std::move(netlists)](std::stop_token stop) {
+        for (const std::filesystem::path& netlist : netlists) {
+            if (stop.stop_requested()) {
+                return;
+            }
+            auto still = MakeStill(netlist);
+            const std::scoped_lock lock(mutex_);
+            done_.emplace_back(netlist, std::move(still));
+        }
+    });
 }
 
-void Launcher::select(std::size_t machine) {
-    selected_ = list_.machines.empty() ? 0 : std::min(machine, list_.machines.size() - 1);
-    scroll_ = true;
+std::vector<std::pair<std::filesystem::path, std::unique_ptr<StillData>>> StillLoader::take() {
+    const std::scoped_lock lock(mutex_);
+    return std::exchange(done_, {});
+}
+
+Launcher::~Launcher() { stop(); }
+
+void Launcher::setList(MachineList list) {
+    list_ = std::move(list);
+    std::vector<std::size_t> counts;
+    for (const MachineEntry& machine : list_.machines) {
+        counts.push_back(machine.puzzles.size());
+    }
+    lanes_.setPuzzles(std::move(counts));
+    jump_ = true;
+}
+
+void Launcher::select(const std::filesystem::path& file) {
+    const auto entry = EntryOf(list_, file);
+    if (!entry) {
+        return;
+    }
+    lanes_.selectMachine(entry->machine);
+    if (entry->puzzle) {
+        lanes_.selectPostIt(*entry->puzzle + 1);
+    }
+    jump_ = true;
 }
 
 void Launcher::setError(std::string text) { error_ = std::move(text); }
 
-std::optional<std::filesystem::path> Launcher::draw() {
-    std::optional<std::filesystem::path> chosen;
-    ImGui::BeginChild("machines", {kListWidth, 0}, ImGuiChildFlags_Borders);
-    for (std::size_t i = 0; i < list_.machines.size(); ++i) {
-        ImGui::PushID(static_cast<int>(i));
-        if (ImGui::Selectable(Displayable(list_.machines[i].name).c_str(), i == selected_)) {
-            selected_ = i;
-            error_.clear();
-        }
-        if (i == selected_ && scroll_) {
-            ImGui::SetScrollHereY();
-            scroll_ = false;
-        }
-        ImGui::PopID();
-    }
-    ImGui::EndChild();
-    ImGui::SameLine();
-    ImGui::BeginChild("entries", {0, 0}, ImGuiChildFlags_Borders);
-    if (!error_.empty()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, kError);
-        ImGui::TextWrapped("%s", Displayable(error_).c_str());
-        ImGui::PopStyleColor();
-        ImGui::Spacing();
-    }
+std::filesystem::path Launcher::entryFile() const {
     if (list_.machines.empty()) {
-        ImGui::TextUnformatted("No Machines.");
-    } else {
-        const MachineEntry& machine = list_.machines[selected_];
-        ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kNameScale);
-        ImGui::TextUnformatted(Displayable(machine.name).c_str());
-        ImGui::PopFont();
-        if (!machine.line.empty()) {
-            ImGui::TextWrapped("%s", Displayable(machine.line).c_str());
+        return {};
+    }
+    const MachineEntry& machine = list_.machines[lanes_.machine()];
+    const auto puzzle = lanes_.puzzle();
+    return puzzle ? machine.puzzles[*puzzle].file : machine.netlist;
+}
+
+void Launcher::stop() {
+    live_.view.reset();
+    live_.loaded.reset();
+    live_.file.clear();
+    live_.failed = false;
+    if (live_.loading.valid()) {
+        live_.loading.wait();
+        live_.loading = {};
+    }
+    abandoned_.clear();  // each future's destructor waits for its load
+}
+
+std::optional<RunnerStatus> Launcher::liveStatus() {
+    if (live_.loaded && live_.loaded->session) {
+        return live_.loaded->session->runner().status();
+    }
+    return std::nullopt;
+}
+
+Launcher::Still* Launcher::stillOf(std::size_t machine) {
+    const auto it = stills_.find(list_.machines[machine].netlist);
+    return it != stills_.end() ? &it->second : nullptr;
+}
+
+bool Launcher::liveOn(std::size_t machine) const {
+    return machine == lanes_.machine() && live_.loaded.has_value();
+}
+
+void Launcher::takeStills() {
+    for (auto& [netlist, data] : loader_.take()) {
+        if (!data) {
+            continue;
         }
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        if (Entry(-1, "The working Machine (no fault)", "")) {
-            chosen = machine.netlist;
+        Still still{data->tv, data->frame, BoardView(std::move(data->scene))};
+        still.view.setStill(data->tv ? still.view.scene()->bounds() : data->frame);
+        still.view.setLeds(data->leds);
+        still.view.setSwitches(data->switches);
+        stills_.emplace(netlist, std::move(still));
+    }
+}
+
+void Launcher::updateLive(TvView& tv) {
+    const auto now = std::chrono::steady_clock::now();
+    std::erase_if(abandoned_, [](const std::future<Loaded>& load) {
+        return load.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    });
+    const std::filesystem::path want = entryFile();
+    if (want != live_.file) {
+        live_.view.reset();
+        live_.loaded.reset();  // its runner joined
+        if (live_.loading.valid()) {
+            abandoned_.push_back(std::move(live_.loading));
         }
-        for (std::size_t p = 0; p < machine.puzzles.size(); ++p) {
-            const PuzzleEntry& puzzle = machine.puzzles[p];
-            if (Entry(static_cast<int>(p), Displayable(puzzle.title), Displayable(puzzle.brief))) {
-                chosen = puzzle.file;
+        live_.failed = false;
+        live_.file = want;
+        live_.since = now;
+        tv.clear();
+    }
+    if (live_.file.empty()) {
+        return;
+    }
+    if (!live_.loaded && !live_.failed && !live_.loading.valid() && now - live_.since >= kSettle) {
+        live_.loading = std::async(std::launch::async,
+                                   [file = live_.file] { return Load(file, std::nullopt); });
+    }
+    if (live_.loading.valid() &&
+        live_.loading.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        Loaded loaded = live_.loading.get();
+        if (!loaded.session) {
+            live_.failed = true;
+        } else {
+            live_.loaded.emplace(std::move(loaded));
+            Session& session = *live_.loaded->session;
+            session.powerOn(1);
+            if (const Board* board = session.drawnBoard(); board && session.machine()) {
+                const Machine& machine = *session.machine();
+                live_.view.emplace(
+                    BoardScene(*board, machine.pristineBoard(), machine.designCircuit()));
+                const Still* still = stillOf(lanes_.machine());
+                const BoardScene& scene = *live_.view->scene();
+                const bool hasTv = session.tv() != nullptr;
+                live_.view->setStill(hasTv   ? scene.bounds()
+                                     : still ? still->frame
+                                             : OutputFrame(scene, false));
             }
         }
     }
-    ImGui::EndChild();
+    if (!live_.loaded) {
+        return;
+    }
+    Session& session = *live_.loaded->session;
+    if (TvConsumer* consumer = session.tv(); consumer && consumer->pictures().update()) {
+        tv.show(consumer->pictures().front());
+    }
+    if (live_.view && session.machine()) {
+        const BoardScene& scene = *live_.view->scene();
+        live_.view->setLeds(LedTagsOf(scene, session));
+        live_.view->setSwitches(SwitchTagsOf(scene, session));
+        ShowRepairs(*live_.view, *session.machine());
+    }
+}
+
+std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends) {
+    std::optional<std::filesystem::path> chosen;
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    const ImVec2 origin = ImGui::GetWindowPos();
+    const ImVec2 size = ImGui::GetWindowSize();
+    const float width = size.x;
+    const float topHeight = std::floor(size.y * kTopShare);
+    const float laneBottom = origin.y + topHeight;
+    list.AddRectFilled(origin, {origin.x + width, laneBottom}, kPanelBackground);
+    if (list_.machines.empty()) {
+        list.AddText({origin.x + kNoteLeft, origin.y + kAreaMargin}, kName, "No Machines.");
+        return std::nullopt;
+    }
+
+    // Start the stills' loads once, nearest the selection first.
+    {
+        std::vector<std::filesystem::path> order;
+        const auto at = static_cast<std::ptrdiff_t>(lanes_.machine());
+        const auto count = static_cast<std::ptrdiff_t>(list_.machines.size());
+        for (std::ptrdiff_t step = 0; step < count; ++step) {
+            for (const std::ptrdiff_t i : {at + step, at - step}) {
+                if (i >= 0 && i < count && (step != 0 || i == at)) {
+                    order.push_back(list_.machines[static_cast<std::size_t>(i)].netlist);
+                }
+            }
+        }
+        loader_.start(std::move(order));
+    }
+    takeStills();
+
+    // Keys and the selection.
+    const std::size_t machineBefore = lanes_.machine();
+    const std::size_t postItBefore = lanes_.postIt();
+    const Lane laneBefore = lanes_.lane();
+    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
+        lanes_.left();
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
+        lanes_.right();
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
+        lanes_.down();
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
+        lanes_.up();
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_Enter, false) ||
+        ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false) ||
+        ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+        chosen = entryFile();
+    }
+
+    const float dt = ImGui::GetIO().DeltaTime;
+    if (jump_) {
+        machines_.jump(static_cast<double>(lanes_.machine()));
+    }
+    machines_.target = static_cast<double>(lanes_.machine());
+    machines_.update(dt);
+
+    // The top lane's pictures.
+    const float areaTop = origin.y + kAreaMargin;
+    const ImVec2 area{(static_cast<float>(kPictureTo - kPictureFrom)) * width,
+                      topHeight - 2 * kAreaMargin};
+    const bool clicksOn = !chosen;
+    std::optional<std::size_t> clickedMachine;
+    bool clickedLive = false;
+    for (std::size_t i = 0; i < list_.machines.size(); ++i) {
+        const double d = static_cast<double>(i) - machines_.value;
+        if (std::abs(d) >= 1.6 || area.x <= 0 || area.y <= 0) {
+            continue;
+        }
+        Still* still = stillOf(i);
+        const bool live = liveOn(i);
+        Session* session = live ? &*live_.loaded->session : nullptr;
+        const bool hasTv = still ? still->tv : session && session->tv() != nullptr;
+        const ImVec2 picture = hasTv || !still ? area : Fit(area, Aspect(still->frame));
+        const double share = picture.x / width;
+        const ImVec2 at{origin.x + static_cast<float>(PictureLeft(d, share)) * width,
+                        areaTop + (area.y - picture.y) / 2};
+        BoardView* view = live && live_.view ? &*live_.view : still ? &still->view : nullptr;
+        ImGui::PushID(static_cast<int>(i));
+        if (view != nullptr) {
+            view->setLegendFont(legends);
+            ImVec2 boardSize = picture;
+            if (hasTv) {  // the Board at the area's left, as tall as it, behind the monitor
+                const double aspect = Aspect(view->scene()->bounds());
+                boardSize = {std::min(area.x, static_cast<float>(area.y * aspect)), area.y};
+            }
+            ImGui::SetCursorScreenPos(at);
+            view->draw(boardSize);
+        }
+        // Over the Board: the monitor, the load's failure, "No Board". A child of its own: the
+        // launcher window's drawing would be under the Board's child.
+        const bool failed = i == lanes_.machine() && live_.failed;
+        const bool noBoard = live && !live_.view;
+        if (hasTv || failed || noBoard) {
+            ImGui::SetCursorScreenPos(at);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+            ImGui::BeginChild("over", picture, ImGuiChildFlags_None,
+                              ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground |
+                                  ImGuiWindowFlags_NoScrollbar |
+                                  ImGuiWindowFlags_NoScrollWithMouse);
+            ImGui::PopStyleVar();
+            ImDrawList& over = *ImGui::GetWindowDrawList();
+            if (hasTv) {
+                const float monitorHeight = kMonitorShare * area.y;
+                const float monitorWidth = monitorHeight / kTvAspect;
+                TvControls controls;
+                controls.setOn(live);
+                DrawMonitor(
+                    over, {at.x + picture.x - monitorWidth, areaTop + (area.y - monitorHeight) / 2},
+                    monitorWidth, controls, live ? &tv : nullptr);
+            }
+            if (noBoard && !hasTv) {
+                const char* text = "No Board";
+                const ImVec2 extent = ImGui::CalcTextSize(text);
+                over.AddText({at.x + (picture.x - extent.x) / 2, at.y + (picture.y - extent.y) / 2},
+                             kNoBoard, text);
+            }
+            if (failed) {
+                const std::string text =
+                    "Could not load " + live_.file.filename().string() + ": see the terminal";
+                const ImVec2 extent = ImGui::CalcTextSize(text.c_str());
+                const ImVec2 min{at.x + (picture.x - extent.x) / 2 - 10,
+                                 at.y + (picture.y - extent.y) / 2 - 6};
+                over.AddRectFilled(min, {min.x + extent.x + 20, min.y + extent.y + 12}, kErrorBox,
+                                   6.0f);
+                over.AddText({min.x + 10, min.y + 6}, kErrorText, text.c_str());
+            }
+            ImGui::EndChild();
+        }
+        // The click: a neighbour moves to it, the selected one gives the top lane the keys.
+        if (clicksOn) {
+            ImGui::SetCursorScreenPos(at);
+            if (ImGui::InvisibleButton("##picture", picture)) {
+                if (i == lanes_.machine()) {
+                    clickedLive = true;
+                } else {
+                    clickedMachine = i;
+                }
+            }
+        }
+        // Gold chevrons beside the selected picture while the top lane has the keys.
+        if (i == lanes_.machine() && lanes_.lane() == Lane::Machines && std::abs(d) < 0.5) {
+            const float midY = at.y + picture.y / 2;
+            if (i > 0) {
+                Chevron(list, {at.x - kChevronGap - kChevron * 0.6f, midY}, -1);
+            }
+            if (i + 1 < list_.machines.size()) {
+                Chevron(list, {at.x + picture.x + kChevronGap + kChevron * 0.6f, midY}, 1);
+            }
+        }
+        ImGui::PopID();
+    }
+
+    // The paragraph: the nearest Machine's, fading as the lane scrolls.
+    {
+        const auto nearest = static_cast<std::size_t>(std::clamp(
+            std::lround(machines_.value), 0L, static_cast<long>(list_.machines.size()) - 1));
+        const double d = static_cast<double>(nearest) - machines_.value;
+        const float alpha = std::clamp(1.0f - 2.0f * static_cast<float>(std::abs(d)), 0.0f, 1.0f);
+        const Still* still = stillOf(nearest);
+        const double share =
+            (still && !still->tv) ? Fit(area, Aspect(still->frame)).x / width : area.x / width;
+        const float shift = static_cast<float>(PictureLeft(d, share) - PictureLeft(0, share));
+        const float left =
+            origin.x + (static_cast<float>(kPictureTo) + kParagraphLeft + shift) * width;
+        const float wrap =
+            (static_cast<float>(kHintRight - kPictureTo) - kParagraphLeft - kParagraphRight) *
+            width;
+        if (alpha > 0 && wrap > 0) {
+            const MachineEntry& machine = list_.machines[nearest];
+            const std::string name = Displayable(machine.name);
+            const std::string line = Displayable(machine.line);
+            ImFont* font = ImGui::GetFont();
+            const float fontSize = ImGui::GetFontSize();
+            const float nameHeight =
+                font->CalcTextSizeA(fontSize * kNameScale, FLT_MAX, wrap, name.c_str()).y;
+            const float lineHeight = font->CalcTextSizeA(fontSize, FLT_MAX, wrap, line.c_str()).y;
+            const float gap = line.empty() ? 0 : fontSize;
+            float y = origin.y + (topHeight - nameHeight - gap - lineHeight) / 2;
+            list.AddText(font, fontSize * kNameScale, {left, y}, WithAlpha(kName, alpha),
+                         name.c_str(), nullptr, wrap);
+            y += nameHeight + gap;
+            list.AddText(font, fontSize, {left, y}, WithAlpha(kParagraph, alpha), line.c_str(),
+                         nullptr, wrap);
+        }
+    }
+
+    // The bottom lane: the wood, the post-its.
+    const MachineEntry& machine = list_.machines[lanes_.machine()];
+    const ImVec2 woodEnd{origin.x + width, origin.y + size.y};
+    list.AddRectFilled({origin.x, laneBottom}, woodEnd, kShelfWood);
+    list.AddRectFilled({origin.x, laneBottom}, {woodEnd.x, laneBottom + 2}, kShelfEdge);
+    if (!error_.empty()) {
+        list.AddText({origin.x + kNoteLeft, laneBottom + 3}, kErrorText,
+                     Displayable(error_).c_str());
+    }
+    std::vector<std::string> titles{kStartTitle}, briefs{kStartBrief};
+    for (const PuzzleEntry& puzzle : machine.puzzles) {
+        titles.push_back(Displayable(puzzle.title));
+        briefs.push_back(Displayable(puzzle.brief));
+    }
+    float noteHeight = kNoteMinHeight;
+    for (std::size_t k = 0; k < titles.size(); ++k) {
+        noteHeight = std::max(noteHeight, NoteHeight(titles[k], briefs[k]));
+    }
+    noteHeight = std::min(noteHeight, std::max(kNoteMinHeight, woodEnd.y - laneBottom - 32));
+    const float noteTop = laneBottom + kNoteGap;
+    const float rowLeft = origin.x + kNoteLeft + kNoteWidth + kRowGap;
+    const float visible = woodEnd.x - rowLeft;
+    const float pitch = kNoteWidth + kNoteGap;
+    if (lanes_.machine() != rowMachine_) {  // another Machine's row starts at its first Puzzle
+        rowMachine_ = lanes_.machine();
+        postIts_.jump(0);
+    }
+    if (const auto puzzle = lanes_.puzzle()) {
+        const float at = static_cast<float>(*puzzle) * pitch;
+        double target = postIts_.target;
+        if (at - target < 0) {
+            target = at;
+        } else if (at + kNoteWidth - target > visible - kNoteGap) {
+            target = at + kNoteWidth - (visible - kNoteGap);
+        }
+        postIts_.target = std::max(0.0, target);
+    }
+    if (jump_) {
+        postIts_.jump(postIts_.target);
+    }
+    postIts_.update(dt);
+    jump_ = false;
+
+    const std::size_t selected = lanes_.postIt();
+    std::optional<std::size_t> clickedPostIt;
+    const auto postIt = [&](std::size_t k, float x) {
+        const bool lifted = k == selected;
+        const ImVec2 at{x, noteTop - (lifted ? kLift : 0)};
+        DrawPostIt(list, at, noteHeight, titles[k], briefs[k], lifted);
+        if (lifted && lanes_.lane() == Lane::PostIts) {
+            const float barY = at.y + noteHeight + 6;
+            list.AddRectFilled({at.x, barY}, {at.x + kNoteWidth, barY + 4}, kFocusGold, 2.0f);
+        }
+        if (clicksOn) {
+            ImGui::PushID(static_cast<int>(k));
+            ImGui::SetCursorScreenPos(at);
+            if (ImGui::InvisibleButton("##postit", {kNoteWidth, noteHeight})) {
+                clickedPostIt = k;
+            }
+            ImGui::PopID();
+        }
+    };
+    ImGui::PushID("postits");
+    postIt(0, origin.x + kNoteLeft);
+    const float grooveX = origin.x + kNoteLeft + kNoteWidth + kRowGap / 2;
+    list.AddRectFilled({grooveX - 1, laneBottom + 12}, {grooveX + 1, woodEnd.y - 12}, kTrayShadow);
+    list.PushClipRect({rowLeft - kLiftShadow, laneBottom + 2}, woodEnd, true);
+    ImGui::PushClipRect({rowLeft, laneBottom + 2}, woodEnd, true);
+    for (std::size_t k = 1; k < titles.size(); ++k) {
+        const float x =
+            rowLeft + static_cast<float>(k - 1) * pitch - static_cast<float>(postIts_.value);
+        if (x + kNoteWidth + kLiftShadow < rowLeft || x > woodEnd.x) {
+            continue;
+        }
+        postIt(k, x);
+    }
+    ImGui::PopClipRect();
+    list.PopClipRect();
+    ImGui::PopID();
+
+    // Clicks, applied after the drawing (the frame shows what was there when clicked).
+    if (clickedPostIt) {
+        lanes_.selectPostIt(*clickedPostIt);
+        chosen = entryFile();
+    } else if (clickedMachine) {
+        lanes_.selectMachine(*clickedMachine);
+    } else if (clickedLive) {
+        lanes_.up();
+    }
+    if (lanes_.machine() != machineBefore || lanes_.postIt() != postItBefore ||
+        lanes_.lane() != laneBefore) {
+        error_.clear();
+    }
+    updateLive(tv);
+    // The cursor back inside the window with an item last (SetCursorScreenPos alone past the
+    // content would extend it).
+    ImGui::SetCursorScreenPos(origin);
+    ImGui::Dummy({0, 0});
     return chosen;
 }
 
