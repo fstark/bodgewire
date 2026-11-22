@@ -1,4 +1,5 @@
-# 100 heartbeat (machines/100-heartbeat/docs/HEARTBEAT.md): a 6502 free-running on NOPs. Its data
+# The heartbeat test fixture (until 2026-11-22 the Machine 100 Heartbeat): a 6502 free-running on
+# NOPs, a small computer for the session and Machine tests. Its data
 # bus is held at $EA by resistors, so every byte it reads is a NOP and the address counts up one
 # every two cycles at 1 MHz. U2 and U3 buffer A0-A15 to sixteen LEDs, D16 (A15) on the left, each
 # lit while its line is high. SW1 resets the CPU, which then starts at $EAEA.

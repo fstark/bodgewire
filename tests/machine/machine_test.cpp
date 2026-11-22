@@ -314,8 +314,8 @@ TEST_CASE("machine: probeNet across a crack", "[machine]") {
 }
 
 TEST_CASE("machine: probeNet on an unconnected pin", "[machine]") {
-    // 100 Heartbeat: U1 RW has a pad but no copper and no netlist Net.
-    const auto machine = LoadNetlistMachine(test::NetlistPath("heartbeat"));
+    // The heartbeat fixture: U1 RW has a pad but no copper and no netlist Net.
+    const auto machine = LoadNetlistMachine(test::HeartbeatNetlistPath());
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());

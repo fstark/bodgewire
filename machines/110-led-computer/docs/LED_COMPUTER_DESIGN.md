@@ -107,7 +107,7 @@ net GND      R1.1 R2.1 R3.1 R4.1 R5.1 R6.1 R7.1 R8.1
 
 Unused: `U1` `PHI2`, `SYNC`, `A11`, `A12` (no copper beyond the pin; the probe-on-unrouted-pin issue of P5c applies until P5e), `NC1`–`NC3`; `U5` `Y1_N`–`Y3_N`, `Y5_N`, `Y6_N`. `U2` `OE_N` tied low: the ROM drives the bus whenever `ROM_N` is low; the program never writes in block 7.
 
-Data Nets `DB0`–`DB7`, LED Nets `L0`–`L7` and `LK0`–`LK7`, as 100 Heartbeat does, so `` `D1` `` in a manual means only the LED.
+Data Nets `DB0`–`DB7`, LED Nets `L0`–`L7` and `LK0`–`LK7`, as the heartbeat test fixture does (tests/data/heartbeat, once the Machine 100 Heartbeat), so `` `D1` `` in a manual means only the LED.
 
 ### Timing at 1 MHz (from `delays.hpp`)
 

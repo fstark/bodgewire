@@ -134,8 +134,8 @@ TEST_CASE("session: probe across a mend", "[session]") {
 }
 
 TEST_CASE("session: probe on an unconnected pin", "[session]") {
-    // 100 Heartbeat: U1 RW, no copper; the 6502 only reads (NOPs), so RW stays high.
-    auto machine = LoadNetlistMachine(test::NetlistPath("heartbeat"));
+    // The heartbeat fixture: U1 RW, no copper; the 6502 only reads (NOPs), so RW stays high.
+    auto machine = LoadNetlistMachine(test::HeartbeatNetlistPath());
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -191,7 +191,7 @@ TEST_CASE("session: clips", "[session]") {
 namespace {
 
 Session HeartbeatSession() {
-    auto machine = LoadNetlistMachine(test::NetlistPath("heartbeat"));
+    auto machine = LoadNetlistMachine(test::HeartbeatNetlistPath());
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());
@@ -689,7 +689,7 @@ TEST_CASE("session: stopwatch with every instrument", "[session][slow]") {
 }
 
 TEST_CASE("session: heartbeat with every instrument", "[session][slow]") {
-    auto machine = LoadNetlistMachine(test::NetlistPath("heartbeat"));
+    auto machine = LoadNetlistMachine(test::HeartbeatNetlistPath());
     REQUIRE(machine.has_value());
     auto built = machine->build();
     REQUIRE(built.has_value());

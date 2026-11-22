@@ -44,6 +44,12 @@ inline std::filesystem::path DebugRomPath(std::string_view machine, std::string_
     return DebugRomDir(machine) / std::string(file);
 }
 
+// tests/data/heartbeat/heartbeat.bwn: a 6502 free-running on NOPs, with its Board (board/), a
+// small computer for the tests (until 2026-11-22 the Machine 100 Heartbeat).
+inline std::filesystem::path HeartbeatNetlistPath() {
+    return RootDir() / "tests/data/heartbeat/heartbeat.bwn";
+}
+
 // bench/<file>: the benchmark netlists and their ROMs.
 inline std::filesystem::path BenchPath(std::string_view file) {
     return RootDir() / "bench" / std::string(file);

@@ -139,16 +139,6 @@ const Crack& MIsReturnCrack() {
     return crack;
 }
 
-const Crack& FlatlineCrack() {
-    static const Crack crack = PuzzleCrack("flatline");
-    return crack;
-}
-
-const Crack& FifteenCrack() {
-    static const Crack crack = PuzzleCrack("fifteen");
-    return crack;
-}
-
 const Crack& LightsOutCrack() {
     static const Crack crack = PuzzleCrack("lights_out");
     return crack;

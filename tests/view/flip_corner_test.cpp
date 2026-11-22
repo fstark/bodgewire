@@ -64,5 +64,5 @@ TEST_CASE("flip corner: no pad of any Machine's Board under it", "[view]") {
             }
         }
     }
-    CHECK(boards >= 15);
+    CHECK(boards >= 14);
 }

@@ -58,10 +58,6 @@ const Crack& LookalikesCrack();     // typewriter PHI2_N, U17 pin 1 → U18 pin 
                                     // machines/090-typewriter/puzzles/01-lookalikes.bwp
 const Crack& MIsReturnCrack();      // typewriter CTL, U12 pin 4 → U30 pin 1:
                                     // machines/090-typewriter/puzzles/06-m-is-return.bwp
-const Crack& FlatlineCrack();       // heartbeat PHI0, X1 OUT → U1 pin 37:
-                                    // machines/100-heartbeat/puzzles/01-flatline.bwp
-const Crack& FifteenCrack();        // heartbeat A14, U1 pin 24 → U3 pin 6:
-                                    // machines/100-heartbeat/puzzles/02-fifteen.bwp
 const Crack& LightsOutCrack();      // led_computer LATCH_CLK, U6 pin 13 → U7 pin 11:
                                     // machines/110-led-computer/puzzles/01-lights-out.bwp
 const Crack& R1VccCrack();          // counter VCC, R1.1 → U1.16: R1's rail side cut off
