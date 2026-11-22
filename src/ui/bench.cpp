@@ -139,6 +139,14 @@ void TogglePop(BenchObject object, const char* window) {
 
 bool PoppedOut(BenchObject object) { return popped_[Index(object)]; }
 
+void ResetBench() {
+    popped_ = {};
+    popAtStart_ = {};
+    at_ = {};
+    size_ = {};
+    benchAt_ = {};
+}
+
 void PopOutAtStart(BenchObject object) {
     popped_[Index(object)] = true;
     popAtStart_[Index(object)] = true;

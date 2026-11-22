@@ -145,10 +145,12 @@ GpuRender::~GpuRender() {
     }
 }
 
-void GpuRender::present(TvView& tv) {
+void GpuRender::present(TvView* tv) {
     ImDrawData* data = ImGui::GetDrawData();
     SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(device_);
-    tv.upload(commands);
+    if (tv != nullptr) {
+        tv->upload(commands);
+    }
     SDL_GPUTexture* swapchain = nullptr;
     SDL_WaitAndAcquireGPUSwapchainTexture(commands, main_, &swapchain, nullptr, nullptr);
     if (swapchain != nullptr && data->DisplaySize.x > 0 && data->DisplaySize.y > 0) {

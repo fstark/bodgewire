@@ -49,5 +49,7 @@ void PopOnDoubleClick(BenchObject object);
 void PopOutAtStart(BenchObject object);
 // Before Begin of a window that never leaves the bench (the main one, the brief).
 void OnBench();
+// A fresh bench (P7a): nothing popped out, no place remembered; first in each bench.
+void ResetBench();
 
 }  // namespace bw

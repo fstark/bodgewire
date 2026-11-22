@@ -17,6 +17,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -28,6 +29,7 @@
 #include "board/kicad_board.hpp"
 #include "machine/knob_setting.hpp"
 #include "machine/machine.hpp"
+#include "machine/machine_list.hpp"
 #include "machine/press.hpp"
 #include "machine/typing.hpp"
 #include "netlist/builder.hpp"
@@ -46,6 +48,7 @@
 #include "ui/gpu_render.hpp"
 #include "ui/keyboard_window.hpp"
 #include "ui/knob_window.hpp"
+#include "ui/launcher.hpp"
 #include "ui/loaded.hpp"
 #include "ui/manual_window.hpp"
 #include "ui/matrix_keyboard_window.hpp"
@@ -73,7 +76,7 @@ constexpr int kExitUsage = 2;
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 800;
 constexpr std::string_view kUsage =
-    "usage: bw_ui <file.bwn|file.bwp> [--probe REF.PIN] "
+    "usage: bw_ui [file.bwn|file.bwp] [--machines DIR] [--visit FILE,...] [--probe REF.PIN] "
     "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,"
     "unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
     "[--clip REF.PIN[:0|1|r|f],...] [--group REF.PIN[:E0xx],...] [--sample 100ns] "
@@ -91,7 +94,11 @@ constexpr std::string_view kUsage =
     "[--screenshot OUT.png [--after 1s]]";
 
 struct Options {
-    std::filesystem::path file;
+    // None: the launcher (P7a); a flag but --machines, --screenshot, --after and --visit needs one.
+    std::optional<std::filesystem::path> file;
+    std::optional<std::filesystem::path> machines;     // --machines DIR: the launcher's (P7a)
+    std::vector<std::filesystem::path> visit;          // --visit: opened in turn from the launcher
+    std::optional<std::chrono::nanoseconds> visitFor;  // a visited bench: Back after this long
     std::optional<std::filesystem::path> screenshot;
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
     std::optional<std::string> probe;  // REF.PIN
@@ -225,21 +232,33 @@ std::optional<TimeView> ParseView(std::string_view text) {
 }
 
 std::optional<Options> ParseOptions(int argc, char** argv) {
-    if (argc < 2) {
-        return std::nullopt;
+    Options options;
+    int first = 1;
+    if (argc > 1 && !std::string_view(argv[1]).starts_with("--")) {
+        options.file = argv[1];
+        first = 2;
     }
-    Options options{.file = argv[1]};
     bool after = false;
-    for (int i = 2; i < argc; ++i) {
+    bool benchFlag = false;  // a flag only a bench takes: a usage error without a file (P7a)
+    for (int i = first; i < argc; ++i) {
         const std::string_view arg = argv[i];
-        if (arg == "--debug") {  // the one flag without a value
+        const bool launcherFlag =
+            arg == "--machines" || arg == "--screenshot" || arg == "--after" || arg == "--visit";
+        benchFlag = benchFlag || !launcherFlag;
+        if (arg == "--debug") {  // a flag without a value
             options.debug = true;
             continue;
         }
         if (i + 1 >= argc) {
             return std::nullopt;
         }
-        if (arg == "--roms") {
+        if (arg == "--machines") {
+            options.machines = argv[++i];
+        } else if (arg == "--visit") {
+            for (const std::string& file : SplitCommas(argv[++i])) {
+                options.visit.emplace_back(file);
+            }
+        } else if (arg == "--roms") {
             options.roms = argv[++i];
         } else if (arg == "--screenshot") {
             options.screenshot = argv[++i];
@@ -439,6 +458,10 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
     if (after && !options.screenshot) {
         return std::nullopt;
     }
+    if ((benchFlag && !options.file) || (!options.visit.empty() && options.file) ||
+        (!options.visit.empty() && !options.screenshot)) {
+        return std::nullopt;
+    }
     return options;
 }
 
@@ -609,8 +632,17 @@ std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manu
     return Displayable(text);
 }
 
-int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session& session,
-              const Options& options, ImFont* legends, ImFont* petLegends) {
+// How a bench ended (P7a): the app quits, or the launcher shows again.
+enum class BenchEnd : std::uint8_t { Quit, Back };
+
+struct BenchResult {
+    BenchEnd end;
+    int exitCode;
+};
+
+BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session& session,
+                      const Options& options, ImFont* legends, ImFont* petLegends) {
+    ResetBench();
     TvView view(gpu.device());
     Shelf shelf;
     TvWindow tvWindow;
@@ -744,7 +776,7 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
     }
     manualWindows.setStretch(options.binderHeight);
     // The Contents page's defaults (P6p): none without the file; a bad one is ignored.
-    if (const auto path = MachineDir(options.file) / "roms" / "contents.txt";
+    if (const auto path = MachineDir(*options.file) / "roms" / "contents.txt";
         std::filesystem::exists(path)) {
         std::ifstream in(path);
         const std::string text{std::istreambuf_iterator<char>(in),
@@ -795,6 +827,7 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
     double uiMilliseconds = 0;
     int exitCode = 0;
     long frames = 0;  // drawn, for the frame rate --screenshot prints
+    BenchEnd ending = BenchEnd::Quit;
 
     bool running = true;
     while (running) {
@@ -1300,40 +1333,34 @@ int RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session&
         uiMilliseconds =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - frameStart)
                 .count();
-        gpu.present(view);
+        gpu.present(&view);
         ++frames;
         const auto now = std::chrono::steady_clock::now();
-        if (options.screenshot && now - start >= options.after) {
+        const bool visited = options.visitFor && now - start >= *options.visitFor;
+        if (visited || (options.screenshot && now - start >= options.after)) {
             std::println("bw_ui: t {:.3f} s  {:.2f}\u00d7  ui {:.1f} ms  {:.0f} fps",
                          static_cast<double>(status.simTime) / static_cast<double>(kPicosPerSecond),
                          speedRatio, uiMilliseconds,
                          static_cast<double>(frames) /
                              std::chrono::duration<double>(now - start).count());
-            if (!gpu.screenshot(*options.screenshot)) {
+            if (visited) {  // --visit: no shot, back to the launcher (P7a)
+                ending = BenchEnd::Back;
+            } else if (!gpu.screenshot(*options.screenshot)) {
                 std::println(stderr, "bw_ui: {}", SDL_GetError());
                 exitCode = kExitErrors;
             }
             break;
         }
     }
-    return exitCode;
+    SDL_StopTextInput(window);  // the keyboard capture's, if any: not the launcher's
+    return {ending, exitCode};
 }
 
-}  // namespace
-
-int main(int argc, char** argv) {
-    const auto options = ParseOptions(argc, argv);
-    if (!options) {
-        std::println(stderr, "{}", kUsage);
-        return kExitUsage;
-    }
-    Loaded loaded = Load(options->file, options->roms);
-    if (!loaded.session) {
-        return kExitErrors;
-    }
-    Session& session = *loaded.session;
-    if (options->probe) {
-        const std::string& pin = *options->probe;
+// Today's bench flags applied to a command-line bench's Session, checked before the window
+// opens: an exit code on a usage error.
+std::optional<int> PrepareBench(Session& session, const Options& options) {
+    if (options.probe) {
+        const std::string& pin = *options.probe;
         const std::size_t dot = pin.find('.');
         std::optional<Point> at;
         if (session.machine() && dot != std::string::npos) {
@@ -1346,8 +1373,8 @@ int main(int argc, char** argv) {
         }
         session.touch(ProbeTip{*at, Layer::Front});
     }
-    if (options->contents) {
-        const std::string& reference = options->contents->first;
+    if (options.contents) {
+        const std::string& reference = options.contents->first;
         if (!session.machine() || !session.machine()->contents(reference)) {  // a ROM on a Board
             std::println(stderr, "bw_ui: no memory chip '{}'", reference);
             std::println(stderr, "{}", kUsage);
@@ -1355,10 +1382,10 @@ int main(int argc, char** argv) {
         }
     }
     AnalyzerSettings analyzer;
-    if (options->sample) {
-        analyzer.period = *options->sample;
+    if (options.sample) {
+        analyzer.period = *options.sample;
     }
-    for (const std::string& item : options->clip) {
+    for (const std::string& item : options.clip) {
         const std::size_t colon = item.find(':');
         const std::string pin = item.substr(0, colon);
         const std::size_t dot = pin.find('.');
@@ -1375,10 +1402,10 @@ int main(int argc, char** argv) {
         }
         analyzer.trigger[*channel] = *trigger;
     }
-    if (!options->clip.empty() || !options->group.empty()) {
+    if (!options.clip.empty() || !options.group.empty()) {
         session.setAnalyzer(analyzer);
     }
-    for (const std::string& item : options->group) {
+    for (const std::string& item : options.group) {
         const std::size_t colon = item.find(':');
         const std::string pin = item.substr(0, colon);
         const std::size_t dot = pin.find('.');
@@ -1397,10 +1424,10 @@ int main(int argc, char** argv) {
             return kExitUsage;
         }
     }
-    if (!options->clip.empty() || !options->group.empty()) {
+    if (!options.clip.empty() || !options.group.empty()) {
         session.arm();
     }
-    for (const std::string& item : options->hook) {
+    for (const std::string& item : options.hook) {
         const std::size_t dot = item.find('.');
         if (dot == std::string::npos || !session.hook(item.substr(0, dot), item.substr(dot + 1))) {
             std::println(stderr, "bw_ui: unknown pin '{}'", item);
@@ -1408,24 +1435,24 @@ int main(int argc, char** argv) {
             return kExitUsage;
         }
     }
-    if (options->timebase || options->delay) {
+    if (options.timebase || options.delay) {
         ScopeSettings scope = session.scopeSettings();
-        scope.timebase = options->timebase.value_or(scope.timebase);
-        scope.delay = options->delay.value_or(scope.delay);
+        scope.timebase = options.timebase.value_or(scope.timebase);
+        scope.delay = options.delay.value_or(scope.delay);
         if (scope.delay > kMaxDelayDivisions * scope.timebase) {
             std::println(stderr, "bw_ui: delay over {} divisions", kMaxDelayDivisions);
             return kExitUsage;
         }
         session.setScope(scope);
     }
-    if (options->meter) {
-        const std::size_t dot = options->meter->find('.');
+    if (options.meter) {
+        const std::size_t dot = options.meter->find('.');
         const auto lead =
             dot == std::string::npos
                 ? std::nullopt
-                : session.padLead(options->meter->substr(0, dot), options->meter->substr(dot + 1));
+                : session.padLead(options.meter->substr(0, dot), options.meter->substr(dot + 1));
         if (!lead) {
-            std::println(stderr, "bw_ui: unknown pin '{}'", *options->meter);
+            std::println(stderr, "bw_ui: unknown pin '{}'", *options.meter);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
@@ -1435,7 +1462,7 @@ int main(int argc, char** argv) {
             });
         session.placeLead({lead->at, Layer::Front, lead->label + (chip ? " leg" : "")});
     }
-    for (const std::string& text : options->repair) {
+    for (const std::string& text : options.repair) {
         const auto repair = ParseRepair(text);
         std::optional<std::string> error;
         if (!repair) {
@@ -1450,22 +1477,22 @@ int main(int argc, char** argv) {
             return kExitUsage;
         }
     }
-    if (options->ask && !session.machine()) {
+    if (options.ask && !session.machine()) {
         std::println(stderr, "bw_ui: no Board to repair");
         std::println(stderr, "{}", kUsage);
         return kExitUsage;
     }
-    if (!options->mark.empty() && !session.machine()) {
+    if (!options.mark.empty() && !session.machine()) {
         std::println(stderr, "bw_ui: no Board to mark");
         std::println(stderr, "{}", kUsage);
         return kExitUsage;
     }
-    if (options->tv && session.tv() == nullptr) {
+    if (options.tv && session.tv() == nullptr) {
         std::println(stderr, "bw_ui: this Machine has no TV");
         std::println(stderr, "{}", kUsage);
         return kExitUsage;
     }
-    for (const BenchObject object : options->pop) {
+    for (const BenchObject object : options.pop) {
         const bool has = object == BenchObject::Tv ? session.tv() != nullptr
                          : object == BenchObject::Keyboard
                              ? !session.keyboards().empty() || !session.matrixKeyboards().empty()
@@ -1482,14 +1509,14 @@ int main(int argc, char** argv) {
             return kExitUsage;
         }
     }
-    for (const KnobSetting& knob : options->knob) {
+    for (const KnobSetting& knob : options.knob) {
         if (!session.setKnob(knob.reference, knob.turn)) {
             std::println(stderr, "bw_ui: '{}' is not a paddle controller", knob.reference);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
     }
-    for (const Typing& typing : options->type) {
+    for (const Typing& typing : options.type) {
         if (!std::ranges::contains(session.keyboards(), typing.reference) &&
             !std::ranges::contains(session.matrixKeyboards(), typing.reference)) {
             std::println(stderr, "bw_ui: '{}' is not a keyboard", typing.reference);
@@ -1503,13 +1530,189 @@ int main(int argc, char** argv) {
             return kExitUsage;
         }
     }
+    return std::nullopt;
+}
+
+// ImGui for one screen (P7a), the launcher's or a bench's: made anew for each, so a bench starts
+// fresh (a context remembers every window's place and size by name for its life).
+class ImGuiScreen {
+public:
+    ImGuiScreen(SDL_Window* window, GpuRender& gpu) : gpu_(gpu) {
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.IniFilename = nullptr;
+        // Multi-viewports, docking off (P6j): a popped-out object in its own desktop window, not
+        // tied to the main one (ImGui's default), with no title bar.
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // ConfigViewportsNoDefaultParent: true
+        ImGui_ImplSDL3_InitForSDLGPU(window);
+        KeepFocusFromTooltips();
+        ImGui_ImplSDLGPU3_InitInfo gpuInfo;
+        gpuInfo.Device = gpu.device();
+        gpuInfo.ColorTargetFormat = gpu.format();
+        // The popped-out windows never wait for their display's vsync: one on a slower display (a
+        // 30 Hz monitor) would pace the whole UI at its rate. The main window's vsync paces it.
+        gpuInfo.PresentMode = gpu.unpacedMode();
+        ImGui_ImplSDLGPU3_Init(&gpuInfo);
+        // The UI font first, as NewFrame would pick it lazily (13 px at the framebuffer scale:
+        // vector from 15 px); AddFontDefault() itself, before the first frame, assumes Retina on
+        // macOS.
+        ImFontAtlas& fonts = *ImGui::GetIO().Fonts;
+        if (SDL_GetWindowPixelDensity(window) * 13.0f >= 15.0f) {
+            fonts.AddFontDefaultVector();
+        } else {
+            fonts.AddFontDefaultBitmap();
+        }
+        ImFontConfig legendConfig;
+        legendConfig.FontDataOwnedByAtlas = false;  // static data, never written
+        legends_ =
+            fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kKeycapFont),
+                                       static_cast<int>(kKeycapFontSize), 0.0f, &legendConfig);
+        petLegends_ =
+            fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kPetFont),
+                                       static_cast<int>(kPetFontSize), 0.0f, &legendConfig);
+    }
+    ~ImGuiScreen() {
+        SDL_WaitForGPUIdle(gpu_.device());
+        ImGui_ImplSDL3_Shutdown();  // the popped-out windows destroyed with it
+        ImGui_ImplSDLGPU3_Shutdown();
+        ImGui::DestroyContext();
+    }
+    ImGuiScreen(const ImGuiScreen&) = delete;
+    ImGuiScreen& operator=(const ImGuiScreen&) = delete;
+
+    ImFont* legends() const { return legends_; }
+    ImFont* petLegends() const { return petLegends_; }
+
+private:
+    GpuRender& gpu_;
+    ImFont* legends_ = nullptr;
+    ImFont* petLegends_ = nullptr;
+};
+
+struct LauncherResult {
+    std::optional<std::filesystem::path> file;  // clicked; none: quit
+    int exitCode = 0;
+};
+
+// The launcher's frames (P7a), until an entry is clicked, the window closed, or --screenshot
+// taken --after it shows.
+LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, Launcher& launcher,
+                           const Options& options) {
+    SDL_SetWindowTitle(window, "Bodgewire");
+    const auto start = std::chrono::steady_clock::now();
+    while (true) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            ImGui_ImplSDL3_ProcessEvent(&event);
+            if (event.type == SDL_EVENT_QUIT ||
+                (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
+                 event.window.windowID == SDL_GetWindowID(window))) {
+                return {};
+            }
+        }
+        ImGui_ImplSDLGPU3_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
+        ImGui::NewFrame();
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::Begin("Launcher", nullptr,
+                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        const auto chosen = launcher.draw();
+        ImGui::End();
+        ImGui::Render();
+        gpu.present(nullptr);
+        if (chosen) {
+            return {chosen};
+        }
+        if (options.screenshot && std::chrono::steady_clock::now() - start >= options.after) {
+            if (!gpu.screenshot(*options.screenshot)) {
+                std::println(stderr, "bw_ui: {}", SDL_GetError());
+                return {std::nullopt, kExitErrors};
+            }
+            return {};
+        }
+    }
+}
+
+// Where the launcher reads the Machines (P7a): --machines; else the machines/ holding the
+// file's Machine; else found from the working directory up, then from the executable's.
+std::optional<std::filesystem::path> MachinesDirFor(const Options& options) {
+    if (options.machines) {
+        return options.machines;
+    }
+    if (options.file) {
+        const std::filesystem::path dir = MachineDir(*options.file);
+        std::error_code error;
+        const auto found = FindMachinesDir(dir);
+        if (found && *found == std::filesystem::weakly_canonical(dir.parent_path(), error)) {
+            return found;
+        }
+    }
+    std::error_code error;
+    if (const auto here = std::filesystem::current_path(error); !error) {
+        if (auto found = FindMachinesDir(here)) {
+            return found;
+        }
+    }
+    if (const char* base = SDL_GetBasePath()) {  // needs no SDL_Init
+        return FindMachinesDir(base);
+    }
+    return std::nullopt;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    const auto parsed = ParseOptions(argc, argv);
+    if (!parsed) {
+        std::println(stderr, "{}", kUsage);
+        return kExitUsage;
+    }
+    const Options& options = *parsed;
+    std::optional<Loaded> loaded;  // the bench's; its Session ends before the next Load
+    if (options.file) {
+        loaded.emplace(Load(*options.file, options.roms));
+        if (!loaded->session) {
+            return kExitErrors;
+        }
+        if (const auto code = PrepareBench(*loaded->session, options)) {
+            return *code;
+        }
+    }
+    const std::optional<std::filesystem::path> machinesDir = MachinesDirFor(options);
+    Launcher launcher;
+    if (machinesDir) {
+        MachineList list = ListMachines(*machinesDir);
+        if (options.machines && list.machines.empty()) {
+            std::println(stderr, "bw_ui: no Machines in '{}'", options.machines->string());
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+        launcher.setList(std::move(list));
+    } else if (!options.file) {
+        std::println(stderr, "bw_ui: no machines/ directory found");
+        std::println(stderr, "{}", kUsage);
+        return kExitUsage;
+    }
+    std::deque<std::filesystem::path> visits;
+    for (const std::filesystem::path& file : options.visit) {
+        if (!EntryOf(launcher.list(), file)) {
+            std::println(stderr, "bw_ui: '{}' is not a Machine or Puzzle of '{}'", file.string(),
+                         machinesDir->string());
+            std::println(stderr, "{}", kUsage);
+            return kExitUsage;
+        }
+        visits.push_back(file);
+    }
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         return kExitErrors;
     }
-    const std::string title = "Bodgewire \u2014 " + loaded.title;
-    SDL_Window* window = SDL_CreateWindow(title.c_str(), kWindowWidth, kWindowHeight,
+    SDL_Window* window = SDL_CreateWindow("Bodgewire", kWindowWidth, kWindowHeight,
                                           SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (window == nullptr) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
@@ -1525,44 +1728,72 @@ int main(int argc, char** argv) {
         return kExitErrors;
     }
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    // Multi-viewports, docking off (P6j): a popped-out object in its own desktop window, not tied
-    // to the main one (ImGui's default), with no title bar.
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // ConfigViewportsNoDefaultParent: true
-    ImGui_ImplSDL3_InitForSDLGPU(window);
-    KeepFocusFromTooltips();
-    ImGui_ImplSDLGPU3_InitInfo gpuInfo;
-    gpuInfo.Device = gpu->device();
-    gpuInfo.ColorTargetFormat = gpu->format();
-    // The popped-out windows never wait for their display's vsync: one on a slower display (a
-    // 30 Hz monitor) would pace the whole UI at its rate. The main window's vsync paces it.
-    gpuInfo.PresentMode = gpu->unpacedMode();
-    ImGui_ImplSDLGPU3_Init(&gpuInfo);
-    // The UI font first, as NewFrame would pick it lazily (13 px at the framebuffer scale: vector
-    // from 15 px); AddFontDefault() itself, before the first frame, assumes Retina on macOS.
-    ImFontAtlas& fonts = *ImGui::GetIO().Fonts;
-    if (SDL_GetWindowPixelDensity(window) * 13.0f >= 15.0f) {
-        fonts.AddFontDefaultVector();
-    } else {
-        fonts.AddFontDefaultBitmap();
+    int exitCode = 0;
+    std::optional<Options> benchOptions;  // the bench's flags: the command line's for its file
+    if (loaded) {
+        benchOptions = options;
     }
-    ImFontConfig legendConfig;
-    legendConfig.FontDataOwnedByAtlas = false;  // static data, never written
-    ImFont* legends =
-        fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kKeycapFont),
-                                   static_cast<int>(kKeycapFontSize), 0.0f, &legendConfig);
-    ImFont* petLegends = fonts.AddFontFromMemoryTTF(
-        const_cast<unsigned char*>(kPetFont), static_cast<int>(kPetFontSize), 0.0f, &legendConfig);
+    std::optional<std::filesystem::path> left;  // the last bench's file: its Machine selected
+    while (true) {
+        if (!loaded) {
+            std::filesystem::path file;
+            const bool visiting = !visits.empty();
+            if (visiting) {
+                file = visits.front();
+                visits.pop_front();
+            } else {
+                MachineList list = ListMachines(*machinesDir);
+                Print(list.problems);
+                const auto at = left ? MachineIndexOf(list, *left) : std::nullopt;
+                launcher.setList(std::move(list));
+                if (at) {
+                    launcher.select(*at);
+                }
+                ImGuiScreen screen(window, *gpu);
+                const LauncherResult chosen = RunLauncher(window, *gpu, launcher, options);
+                if (!chosen.file) {
+                    exitCode = chosen.exitCode != 0 ? chosen.exitCode : exitCode;
+                    break;
+                }
+                file = *chosen.file;
+            }
+            loaded.emplace(Load(file, std::nullopt));
+            left = file;
+            if (!loaded->session) {
+                loaded.reset();
+                launcher.setError("Could not load " + file.filename().string() +
+                                  ": see the terminal");
+                if (visiting) {
+                    exitCode = kExitErrors;
+                }
+                continue;
+            }
+            // The working Machine by its listed name ("Counter", not the netlist's "counter").
+            if (const auto entry = EntryOf(launcher.list(), file); entry && !entry->puzzle) {
+                loaded->title = launcher.list().machines[entry->machine].name;
+            }
+            benchOptions = Options{};
+            benchOptions->file = file;
+            benchOptions->machines = options.machines;
+            if (visiting) {
+                benchOptions->visitFor = options.after;
+            }
+        }
+        SDL_SetWindowTitle(window, ("Bodgewire \u2014 " + loaded->title).c_str());
+        BenchResult result{};
+        {
+            ImGuiScreen screen(window, *gpu);
+            result = RunWindow(window, *gpu, *loaded, *loaded->session, *benchOptions,
+                               screen.legends(), screen.petLegends());
+        }
+        left = *benchOptions->file;
+        loaded.reset();
+        exitCode = result.exitCode != 0 ? result.exitCode : exitCode;
+        if (result.end == BenchEnd::Quit || !machinesDir) {
+            break;
+        }
+    }
 
-    const int exitCode = RunWindow(window, *gpu, loaded, session, *options, legends, petLegends);
-
-    SDL_WaitForGPUIdle(gpu->device());
-    ImGui_ImplSDL3_Shutdown();
-    ImGui_ImplSDLGPU3_Shutdown();
-    ImGui::DestroyContext();
     gpu.reset();
     SDL_DestroyWindow(window);
     SDL_Quit();

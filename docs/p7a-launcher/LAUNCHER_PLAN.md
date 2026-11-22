@@ -6,8 +6,8 @@ Spec: [LAUNCHER.md](LAUNCHER.md). Design: [LAUNCHER_DESIGN.md](LAUNCHER_DESIGN.m
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | The list: `machine_list`, its tests | |
-| 2 | The loop and the launcher: ImGui per screen, `ResetBench`, `present(TvView*)`, `RunLauncher`, no file, `--machines`, `--visit` | |
+| 1 | The list: `machine_list`, its tests | `c36d5ce` |
+| 2 | The loop and the launcher: ImGui per screen, `ResetBench`, `present(TvView*)`, `RunLauncher`, no file, `--machines`, `--visit` | this commit |
 | 3 | The way back: the shelf's Leave tray, `QuestionPopup`, the leave question, `--leave` | |
 | 4 | Docs, release check, debug `--visit`, full release suite | |
 
@@ -57,3 +57,5 @@ Design §6.
 
 - Review (2026-11-22), fixed: the leave question opens upwards from the click (downwards it left the main window and became a desktop window macOS shows under it); a visited bench ends by `Options::visitFor`, a command-line `--screenshot` as Quit; the whole `machines/` search before `SDL_Init`; the grayed arrow unreachable from the build tree, checked by reading; `std::filesystem` without throws, `--machines DIR` with no Machine a usage error, `weakly_canonical` comparisons and `EntryOf`; `Item::Leave`'s own cases in the shelf; a failed visit exits `kExitErrors`; `benchFlag` in `ParseOptions`, `--leave` without a value, `argv[1]` only; `--leave` with `--ask` or without a `machines/` a usage error; the other globals named; `std::optional<Loaded>`; `Displayable` and the manual's font sizing in the launcher; the listed name as a launcher bench's title; the `--visit` check's limits stated; "for the run" becomes "for the bench" in GLOSSARY, ADD_INSTRUMENT and comments; temporary directories per case; a Puzzle naming another Machine reported and left out; the selection kept or clamped.
 
+- Phase 1 (2026-11-22): as designed. Checks: release and debug `-R "^machine list: "` (4), full release suite 1481/1481.
+- Phase 2 (2026-11-22): an entry is a plain `Selectable` with its title and brief drawn over it by the draw list (no `AllowOverlap`: nothing else is an item there). `Launcher::list()` gives the loop the list for `--visit`'s check and the working Machine's title. Screenshots viewed: the launcher at start (the Counter, its 3 Puzzles); `--visit` of Odd E (the BW-2001 selected, its 16 Puzzles, the pane scrolling); the Stopwatch's Stuck at zero from the command line as before. Usage errors as designed (`--probe U1.1`, `--run 1x`, `--visit` without `--screenshot`, with a file, of an unknown file, `--machines` of a directory without Machines or missing). Debug `--visit` of Dark LED, the Test Pattern and the Typewriter: exit 0, no ASan report. UBSan reports signed overflows in `flip_corner.cpp:19` and `chip_body.cpp:64` (a Board point at `INT64_MIN`, seemingly the mouse outside the window); a single command-line bench reports the same 3 before this step's code runs anything new: not P7a's, left for the user.

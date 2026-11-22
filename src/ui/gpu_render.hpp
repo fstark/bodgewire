@@ -24,10 +24,10 @@ public:
     // MAILBOX where the main window supports it (no tearing), else IMMEDIATE, else VSYNC.
     SDL_GPUPresentMode unpacedMode() const;
 
-    // After ImGui::Render: the TV's upload, the main window cleared black and drawn, submitted;
-    // then the popped-out windows (UpdatePlatformWindows, RenderPlatformWindowsDefault). Waits
-    // for the windows' vsync.
-    void present(TvView& tv);
+    // After ImGui::Render: the TV's upload (none without one: the launcher), the main window
+    // cleared black and drawn, submitted; then the popped-out windows (UpdatePlatformWindows,
+    // RenderPlatformWindowsDefault). Waits for the windows' vsync.
+    void present(TvView* tv);
     // After present: every visible viewport drawn again offscreen, read back and composed: with
     // only the main one, its framebuffer; else the desktop rectangle around them all at the main
     // viewport's scale on a dark grey backdrop. False with SDL's error.
