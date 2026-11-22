@@ -279,7 +279,7 @@ _Avoid_: Scope (fine in speech, not in docs)
 An Instrument recording many Nets at once, with Triggers and a history from before the Trigger.
 
 **Multimeter**:
-An Instrument reading voltage levels and continuity.
+An Instrument reading voltage levels and continuity. Continuity needs the power off: in that mode the Shelf's power switch is also beside its readout.
 
 **Trigger**:
 A condition, such as an address appearing on a Bus, that marks when an Instrument should capture.

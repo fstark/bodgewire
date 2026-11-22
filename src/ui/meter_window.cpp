@@ -8,6 +8,7 @@
 #include "ui/bench.hpp"
 #include "ui/board_view.hpp"
 #include "ui/instrument_marks.hpp"
+#include "ui/shelf_drawings.hpp"
 
 namespace bw {
 
@@ -44,6 +45,20 @@ bool MeterWindow::draw(bool& open, Session& session) {
         session.setMeterMode(MeterMode::Continuity);
     }
 
+    if (mode == MeterMode::Continuity) {  // the Shelf's power switch, as tall as the readout
+        const float side = ImGui::GetStyle().FontSizeBase * kReadoutScale;
+        const ImVec2 at = ImGui::GetCursorScreenPos();
+        if (ImGui::InvisibleButton("##power", {side, side})) {
+            powerClicked_ = true;
+        }
+        ImGui::SetItemTooltip("%s", session.powered() ? "Power: on; click to power off"
+                                                      : "Power: off; click to power on");
+        ItemLook look;
+        look.lit = session.powered();
+        look.limit = session.currentLimited();
+        DrawItem(*ImGui::GetWindowDrawList(), Item::Power, at, {at.x + side, at.y + side}, look);
+        ImGui::SameLine(0, 12);
+    }
     ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kReadoutScale);
     if (mode == MeterMode::Volts) {
         if (const auto volts = session.volts()) {

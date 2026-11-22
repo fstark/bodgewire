@@ -1235,6 +1235,13 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
             instrument(Owner::Analyzer, analyzerWindow);
             instrument(Owner::Scope, scopeWindow);
             instrument(Owner::Meter, meterWindow);  // the smallest in front at start
+            if (meterWindow.takePowerClick()) {     // its power switch, in Continuity
+                if (session.powered()) {
+                    session.powerOff();
+                } else {
+                    PowerOn(session, run, seed);
+                }
+            }
         }
         // Also without a Board (a netlist-only Session, the bench).
         // One keyboard per Machine, either kind: the shelf's drawing shows or hides it.
