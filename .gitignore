@@ -14,3 +14,5 @@ machines/*/board/**/~*.lck
 machines/*/board/**/_autosave-*
 machines/*/board/**/#auto_saved_files#
 external/
+.claude/worktrees/
+.claude/settings.local.json
