@@ -209,8 +209,12 @@ A Machine with one or more placed Faults, presented to the player to diagnose an
 _Avoid_: Scenario, level, case
 
 **Launcher**:
-The screen `bw_ui` opens with no file (P7a): the Machines on the left, by their User Manual's title, in their directories' order; the selected Machine's first User Manual paragraph and its entries on the right, the working Machine (no fault) first, then its Puzzles (title and Brief) easiest first. A click opens the bench on it; the Shelf's arrow comes back. Every Machine and Puzzle open: no scores, no unlocking.
+The screen `bw_ui` opens with no file (P7a, its look P7b): two lanes. The top one shows the selected Machine live: its Board framed on its outputs (its LEDs and digits, with the Board around them; a small Board whole), or its monitor large with a corner of its Board; its name and its User Manual's first paragraph on the right; the previous and next Machines' Stills at the edges, the lane gliding between them. The bottom one, on the Shelf's wood, holds its post-its: "Start the Machine" (no fault) first and pinned, then its Puzzles (title and Brief) easiest first. The selected post-it runs above from power-on, untouched (no keys, no knobs). Left and right move in a lane, down and up change lane, Enter, Space or a click on a post-it opens the bench on it; the Shelf's arrow comes back. Every Machine and Puzzle open: no scores, no unlocking, no difficulty.
 _Avoid_: Menu, level select
+
+**Still**:
+A Machine's Board drawn unpowered in the Launcher (P7b): its LEDs and digits dark, its monitor off, framed as its live picture is. The previous and next Machines show as Stills at the Launcher's edges. Loaded in the background when the Launcher first shows.
+_Avoid_: Thumbnail, preview
 
 **Brief**:
 The player-facing text of a Puzzle: a title and the Symptom as a customer would report it. It never names the Fault. In `bw_ui` a post-it stuck on the Board near its top-left corner, moving with the Board; dragged elsewhere on it, it stays there for the bench (P6o); its × puts it away into the Shelf.
