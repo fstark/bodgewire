@@ -78,3 +78,4 @@ A Fault can be tested before its Puzzle file exists: `InlinePuzzle("machine led_
 ## Docs
 
 - Add the Puzzle to the Machine's `machines/NNN-name/docs/NAME_DESIGN.md` Puzzle list.
+- The README's Puzzle counts (overall and the Machine's: [README_SPEC.md](../README_SPEC.md) §5 and §8).
