@@ -16,6 +16,8 @@ namespace {
 
 // The browser's turn: the canvas shown, events delivered, until the next animation frame. The
 // frame loops never return to the browser otherwise (ASYNCIFY unwinds and resumes them here).
+// ASYNCIFY cannot unwind through a live try block under wasm exceptions (the link's
+// "not compatible" warning): no try may enclose a frame loop, or the page traps here.
 // clang-format off: JavaScript
 EM_ASYNC_JS(void, WaitAnimationFrame, (), {
     await new Promise((resolve) => requestAnimationFrame(resolve));

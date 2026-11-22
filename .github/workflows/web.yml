@@ -5,7 +5,7 @@ name: web
 
 on:
   push:
-    branches: [web]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
