@@ -44,6 +44,8 @@ public:
     bool canLeave = false;      // a machines/ known: the Leave tray's arrow is live (P7a)
     bool leaveClicked = false;  // set by draw() on a click on it, reset by its caller
     ImVec2 leaveAt{};  // above the Leave arrow, screen px: where its question opens upwards
+    bool resetClicked = false;  // the Reset (every repair undone), as leaveClicked
+    ImVec2 resetAt{};           // above it, as leaveAt
 
 private:
     struct Devices {

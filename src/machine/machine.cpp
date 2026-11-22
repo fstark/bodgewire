@@ -277,6 +277,8 @@ LoadMachine(const Puzzle& puzzle, const std::filesystem::path& dir,
     if (!errors.empty()) {
         return std::unexpected(std::move(errors));
     }
+    machine.loaded_ = {machine.stuck_, machine.cracks_, machine.bridges_,
+                       machine.dry_,   machine.cells_,  machine.switches_};
     machine.rebuildBoard();
     return machine;
 }
@@ -397,6 +399,18 @@ bool Machine::resolder(const PinRef& pin) {
     }
     std::erase_if(dry_, [&](const PinRef& d) { return SamePin(d, *number); });
     return true;
+}
+
+void Machine::undoRepairs() {
+    stuck_ = loaded_.stuck;
+    cracks_ = loaded_.cracks;
+    bridges_ = loaded_.bridges;
+    dry_ = loaded_.dry;
+    cells_ = loaded_.cells;
+    switches_ = loaded_.switches;
+    cuts_.clear();
+    wires_.clear();
+    rebuildBoard();
 }
 
 std::expected<Crack, std::string> Machine::placeCrack(const PinRef& a, const PinRef& b,

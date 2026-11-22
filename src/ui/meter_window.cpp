@@ -36,7 +36,6 @@ bool MeterWindow::draw(bool& open, Session& session) {
     }
     const bool clicked = InstrumentClicked();
     const MeterMode mode = session.meterMode();
-    ImGui::SameLine(0, 16);
     if (ImGui::RadioButton("V", mode == MeterMode::Volts)) {
         session.setMeterMode(MeterMode::Volts);
     }

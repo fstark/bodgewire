@@ -230,6 +230,21 @@ RepairResult Session::repair(const RepairAction& repair) {
     return RepairResult::Done;
 }
 
+RepairResult Session::undoRepairs() {
+    if (!machine_) {
+        return RepairResult::Unknown;
+    }
+    if (powered_) {
+        return RepairResult::Refused;
+    }
+    machine_->undoRepairs();
+    log_.clear();
+    blobs_.clear();
+    dirty_ = true;
+    recomputeContinuity();
+    return RepairResult::Done;
+}
+
 void Session::touch(std::optional<ProbeTip> tip) {
     if (!machine_) {
         return;

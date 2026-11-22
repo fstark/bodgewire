@@ -45,10 +45,11 @@ struct Entry {
 };
 
 // The fixed order, the same on every Machine.
-constexpr std::array<Entry, 15> kItems{{
+constexpr std::array<Entry, 16> kItems{{
     {Item::Leave, "Back to the Machines", Tray::Leave, 1},
     {Item::Power, "Power", Tray::Controls, 1},
     {Item::RunSwitch, "Pause, real time, or as fast as possible", Tray::Controls, 2},
+    {Item::Reset, "Reset: undo every repair; the pencil marks stay", Tray::Controls, 1},
     {Item::Pencil,
      "Grease pencil: mark the Board; click a mark: dot, check, cross, none; shift- or "
      "right-click: clear",
@@ -312,6 +313,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         if (entry.item == Item::Leave) {
             leaveAt = {min.x - kTrayPad, origin.y - kCellGap};
         }
+        if (entry.item == Item::Reset) {
+            resetAt = {min.x - kTrayPad, origin.y - kCellGap};
+        }
         const std::optional<Owner> owner = OwnerOf(entry.item);
         if (entry.item == Item::Machine) {
             const float divider = min.x - machineGap / 2;
@@ -326,6 +330,10 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         case Item::Leave:
             inert = !canLeave;
             why = "No Machines directory";
+            break;
+        case Item::Reset:
+            inert = session.log().empty();
+            why = "No repair to undo";
             break;
         case Item::Power:
             look.lit = powered;
@@ -419,6 +427,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
             switch (entry.item) {
             case Item::Leave:
                 leaveClicked = true;
+                break;
+            case Item::Reset:
+                resetClicked = true;
                 break;
             case Item::Power:
                 if (powered) {

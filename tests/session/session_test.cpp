@@ -497,6 +497,30 @@ TEST_CASE("session: continuity follows a mend", "[session]") {
     CHECK_FALSE(session.continuity().has_value());
 }
 
+TEST_CASE("session: undo every repair", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    const auto qa = session.padLead("U1", "14");
+    const auto far = session.padLead("U13", "6");
+    REQUIRE(qa.has_value());
+    REQUIRE(far.has_value());
+    session.setMeterMode(MeterMode::Continuity);
+    REQUIRE(session.placeLead({qa->at, Layer::Front, qa->label}));
+    REQUIRE(session.placeLead({far->at, Layer::Front, far->label}));
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
+    REQUIRE(session.repair(SwapRepair{"U3"}) == RepairResult::Done);
+    REQUIRE(session.continuity() == true);
+    session.powerOn(1);
+    CHECK(session.undoRepairs() == RepairResult::Refused);
+    CHECK(session.log().size() == 2);
+    session.powerOff();
+    CHECK(session.undoRepairs() == RepairResult::Done);
+    CHECK(session.log().empty());
+    CHECK(session.blobs().empty());
+    CHECK(session.continuity() == false);  // the crack back, the leads kept
+    session.powerOn(1);                    // rebuilt with the crack
+    CHECK(session.powered());
+}
+
 TEST_CASE("session: hooks and leads survive a repair", "[session]") {
     Session session = PuzzleSession("broken_trace");
     const auto far = session.padLead("U13", "6");

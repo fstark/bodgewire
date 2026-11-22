@@ -91,7 +91,7 @@ constexpr std::string_view kUsage =
     "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
     "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
     "[--away tv|keyboard|knob,...] [--run pause|1x|max] [--side front|back] [--ask REPAIR] "
-    "[--leave] "
+    "[--leave] [--reset] "
     "[--binder-height N%] [--brief DX:DY] [--contents REF[:hex|code|glyphs]] "
     "[--debug] "
     "[--screenshot OUT.png [--after 1s]]";
@@ -133,6 +133,7 @@ struct Options {
     bool back = false;                    // --side back: the Board flipped at start (P6o)
     std::optional<RepairAction> ask;      // --ask: the power-cycle popup open at start (P6o)
     bool leave = false;      // --leave: the question going back to the launcher open at start (P7a)
+    bool reset = false;      // --reset: the Reset's question open at start
     float binderHeight = 1;  // --binder-height: the binder's stretch (P6o)
     std::optional<ImVec2> brief;  // --brief: the note's offset on the Board, px (P6o)
     // --contents: the binder out at a memory chip's Contents, at a view (P6p).
@@ -250,8 +251,10 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
         const bool launcherFlag = arg == "--machines" || arg == "--screenshot" ||
                                   arg == "--after" || arg == "--visit" || arg == "--select";
         benchFlag = benchFlag || !launcherFlag;
-        if (arg == "--debug" || arg == "--leave") {  // the flags without a value
-            (arg == "--debug" ? options.debug : options.leave) = true;
+        if (arg == "--debug" || arg == "--leave" || arg == "--reset") {  // without a value
+            (arg == "--debug"   ? options.debug
+             : arg == "--leave" ? options.leave
+                                : options.reset) = true;
             continue;
         }
         if (i + 1 >= argc) {
@@ -467,6 +470,7 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
     }
     if ((benchFlag && !options.file) || (!options.visit.empty() && options.file) ||
         (!options.visit.empty() && !options.screenshot) || (options.leave && options.ask) ||
+        (options.reset && (options.leave || options.ask)) ||
         (options.select && (options.file || !options.visit.empty()))) {
         return std::nullopt;
     }
@@ -769,6 +773,13 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
         "##leave", "Back to the Machines? The repairs and pencil marks on this Board are lost.",
         false);
     bool leaveAtStart = options.leave;
+    // The Reset: every repair undone, asked first; with the power on, power-cycled around it as
+    // a tool's repair is.
+    QuestionPopup resetQuestion("##reset",
+                                "Undo every repair on this Board? The pencil marks stay. With the "
+                                "power on, the Machine restarts.",
+                                false);
+    bool resetAtStart = options.reset;
     bool leaving = false;  // Back at the end of this frame
     const auto start = std::chrono::steady_clock::now();
     SpeedRatio ratio;
@@ -1198,6 +1209,10 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
             }
             shelf.leaveClicked = leaveAtStart = false;
         }
+        if (shelf.resetClicked || resetAtStart) {
+            resetQuestion.open(shelf.resetAt, {0, 1});
+            shelf.resetClicked = resetAtStart = false;
+        }
         ImGui::End();
         // The bench, back to front at start: brief, TV, knob, manuals, instruments, keyboard,
         // Debug.
@@ -1244,6 +1259,13 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
         }
         if (leaveQuestion.draw() == PopupAnswer::Ok) {
             leaving = true;
+        }
+        if (resetQuestion.draw() == PopupAnswer::Ok) {
+            if (session.powered()) {
+                session.powerOff();
+                powerOnNext = true;
+            }
+            session.undoRepairs();
         }
         // A text field takes the keys from the next event on (P6o).
         textField = ImGui::GetIO().WantTextInput;

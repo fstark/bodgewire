@@ -441,6 +441,46 @@ TEST_CASE("machine: bridge joins two pads until removed", "[machine]") {
     CHECK_FALSE(machine->removeBridge({"U1", "7"}, {"U1", "8"}));
 }
 
+TEST_CASE("machine: undoRepairs brings the Puzzle's Faults back", "[machine]") {
+    SECTION("a stuck pin, swapped") {
+        Puzzle puzzle = TestPattern();
+        puzzle.stuck = {{2, "U3", "A", LogicValue::One}};
+        auto machine = LoadMachine(puzzle, Dir(puzzle));
+        REQUIRE(machine.has_value());
+        const auto ownNets = [&] {
+            const auto built = machine->build();
+            REQUIRE(built.has_value());
+            return (*built)->circuit.netCount() - (*built)->nets.size();
+        };
+        const auto withStuck = ownNets();
+        REQUIRE(machine->swap("U3"));
+        CHECK(ownNets() == withStuck - 1);
+        machine->undoRepairs();
+        CHECK(ownNets() == withStuck);
+    }
+    SECTION("a dry Joint and a bridge, a wire added") {
+        Puzzle puzzle = TestPattern();
+        puzzle.joints = {{2, {"U13", "2B"}}};
+        puzzle.bridges = {{3, {"U1", "7"}, {"U1", "8"}}};
+        auto machine = LoadMachine(puzzle, Dir(puzzle));
+        REQUIRE(machine.has_value());
+        const std::size_t wiresBefore = machine->board().bodgeWires.size();
+        REQUIRE(machine->resolder({"U13", "2B"}));
+        REQUIRE(machine->removeBridge({"U1", "7"}, {"U1", "8"}));
+        REQUIRE(machine->addWire({"U1", "14"}, {"U13", "6"}));
+        CHECK(machine->dryJoints().empty());
+        CHECK_FALSE(PadsConnected(*machine, "U1", "7", "U1", "8"));
+
+        machine->undoRepairs();
+        CHECK(machine->dryJoints().size() == 1);
+        CHECK(machine->bridges().size() == 1);
+        CHECK(PadsConnected(*machine, "U1", "7", "U1", "8"));
+        CHECK(machine->wires().empty());
+        CHECK(machine->cuts().empty());
+        CHECK(machine->board().bodgeWires.size() == wiresBefore);
+    }
+}
+
 TEST_CASE("machine: placeCrack", "[machine]") {
     auto machine = LoadNetlistMachine(test::NetlistPath("test_pattern"));
     REQUIRE(machine.has_value());

@@ -15,6 +15,7 @@ enum class Item : std::uint8_t {
     Leave,  // back to the launcher (P7a)
     Power,
     RunSwitch,  // pause, real time, as fast as possible
+    Reset,      // every repair undone, asked first
     Pencil,     // the grease pencil (P6h), the first of the Board's tools
     Probe,
     Puller,

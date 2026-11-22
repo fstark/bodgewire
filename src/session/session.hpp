@@ -102,6 +102,9 @@ public:
     void setSpeed(Speed speed);  // kept across rebuilds
 
     RepairResult repair(const RepairAction& repair);  // logs and blobs every Done
+    // The bench's Reset: every Repair undone, the log and blobs cleared; leads, clips and hooks
+    // kept. Refused while powered; Unknown without a Machine.
+    RepairResult undoRepairs();
     std::span<const std::string> log() const { return log_; }
     std::span<const SolderBlob> blobs() const { return blobs_; }
 

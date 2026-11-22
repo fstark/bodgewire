@@ -56,6 +56,11 @@ public:
         const ImVec2 centre = at(x, y);
         list_.AddText(font, px, {centre.x - extent.x / 2, centre.y - extent.y / 2}, colour(c), s);
     }
+    // An arc of radius r round (x, y), from angle a0 to a1 (radians, y down).
+    void arc(float x, float y, float r, float a0, float a1, ImU32 c, float thick) {
+        list_.PathArcTo(at(x, y), size(r), a0, a1);
+        list_.PathStroke(colour(c), 0, size(thick));
+    }
     void polyline(std::span<const ImVec2> points, ImU32 c, float thick) {
         std::array<ImVec2, 32> screen{};
         const std::size_t n = std::min(points.size(), screen.size());
@@ -328,6 +333,17 @@ void Leave(Pen& p) {
     p.box(26, 22, 47, 34, kArrow, 2);
 }
 
+// An arrow turning back on itself, anticlockwise: undo.
+void Reset(Pen& p) {
+    constexpr ImU32 kArrow = IM_COL32(214, 192, 160, 255);
+    constexpr float kPi = std::numbers::pi_v<float>;
+    p.arc(28, 30, 13, -0.15f * kPi, 1.05f * kPi, kArrow, 5);
+    // The head at the arc's start (its right end), pointing up, the way the arrow turns.
+    const float x = 28 + 13 * std::cos(-0.15f * kPi);
+    const float y = 30 + 13 * std::sin(-0.15f * kPi);
+    p.triangle(x - 9, y + 3, x + 7, y + 3, x - 1, y - 9, kArrow);
+}
+
 void Manual(Pen& p, const ItemLook& look) {
     constexpr ImU32 kCover = IM_COL32(40, 70, 130, 255);
     constexpr ImU32 kSpine = IM_COL32(25, 45, 90, 255);
@@ -392,6 +408,9 @@ void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLoo
         break;
     case Item::RunSwitch:
         RunSlide(p, look);
+        break;
+    case Item::Reset:
+        Reset(p);
         break;
     case Item::Probe:
         Probe(p, look);

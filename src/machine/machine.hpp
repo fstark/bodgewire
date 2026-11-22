@@ -57,6 +57,9 @@ public:
     // Resolders a chip pin's Joint (number or name): removes its dry Joint if any. True also on a
     // good Joint (the tool must not tell); false: unknown, or not a chip signal pin.
     bool resolder(const PinRef& pin);
+    // Every Repair undone (the bench's Reset): the Puzzle's Faults back as loaded, no Cut, no
+    // Bodge Wire.
+    void undoRepairs();
     std::span<const PinRef> dryJoints() const { return dry_; }  // pin numbers
     std::span<const Crack> cracks() const { return cracks_; }   // the Puzzle's Broken Traces
     // A crack on the fault-free Board; errors say "crack A B: …" with the pins as given.
@@ -112,6 +115,17 @@ private:
     std::vector<StuckCell> cells_;   // stuck cells and columns inside memory chips
     std::vector<StuckSwitch> switches_;
     BoardPower power_;  // of board_, see rebuildBoard()
+
+    // The Puzzle's Faults as loaded, for undoRepairs().
+    struct Faults {
+        std::vector<StuckPin> stuck;
+        std::vector<Crack> cracks;
+        std::vector<WireEnds> bridges;
+        std::vector<PinRef> dry;
+        std::vector<StuckCell> cells;
+        std::vector<StuckSwitch> switches;
+    };
+    Faults loaded_;
 };
 
 // A cell or column Fault on `component` (Part `part`, "6530"), checked: the StuckCell, or the
