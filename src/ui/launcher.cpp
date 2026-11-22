@@ -445,9 +445,10 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
         if (clicksOn) {
             ImGui::SetCursorScreenPos(at);
             if (ImGui::InvisibleButton("##picture", picture)) {
-                if (ImGui::GetIO().MouseClickedLastCount[ImGuiMouseButton_Left] >= 2) {
-                    doubleClicked = i;  // its Machine opened, no Puzzle
-                } else if (i == lanes_.machine()) {
+                const bool selected = i == lanes_.machine();
+                if (selected && ImGui::GetIO().MouseClickedLastCount[ImGuiMouseButton_Left] >= 2) {
+                    doubleClicked = i;  // the live one: its Machine opened, no Puzzle
+                } else if (selected) {
                     clickedLive = true;
                 } else {
                     clickedMachine = i;
@@ -538,14 +539,19 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends)
         postIts_.jump(0);
     }
     if (const auto puzzle = lanes_.puzzle()) {
+        // In view, with half of its neighbour on that side when there is one (the row still
+        // shows that it scrolls).
         const float at = static_cast<float>(*puzzle) * pitch;
+        const float before = *puzzle > 0 ? kNoteWidth / 2 + gap : 0;
+        const float after = *puzzle + 1 < puzzles ? gap + kNoteWidth / 2 : gap;
         double target = postIts_.target;
-        if (at - target < 0) {
-            target = at;
-        } else if (at + kNoteWidth - target > visible - gap) {
-            target = at + kNoteWidth - (visible - gap);
+        if (at - before - target < 0) {
+            target = at - before;
+        } else if (at + kNoteWidth + after - target > visible) {
+            target = at + kNoteWidth + after - visible;
         }
-        postIts_.target = std::max(0.0, target);
+        const float end = std::max(0.0f, static_cast<float>(puzzles) * pitch - visible);
+        postIts_.target = std::clamp(target, 0.0, static_cast<double>(end));
     }
     if (jump_) {
         postIts_.jump(postIts_.target);
