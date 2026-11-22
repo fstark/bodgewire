@@ -1756,9 +1756,15 @@ int main(int argc, char** argv) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         return kExitErrors;
     }
-    // The web: the canvas sized by the page's CSS, the whole page (web/shell.html).
-    SDL_Window* window = SDL_CreateWindow("Bodgewire", kWindowWidth, kWindowHeight,
-                                          SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+#ifdef __EMSCRIPTEN__
+    // The whole page, following the browser window's size; OpenGL (WebGL) for SDL_Renderer from
+    // the start: it would recreate the window, and SDL's page juggling fails on the way.
+    constexpr SDL_WindowFlags kWindowFlags = SDL_WINDOW_FILL_DOCUMENT | SDL_WINDOW_OPENGL |
+                                             SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+#else
+    constexpr SDL_WindowFlags kWindowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+#endif
+    SDL_Window* window = SDL_CreateWindow("Bodgewire", kWindowWidth, kWindowHeight, kWindowFlags);
     if (window == nullptr) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         SDL_Quit();
