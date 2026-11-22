@@ -515,6 +515,45 @@ TEST_CASE("leads: contact side on chip pads only", "[view]") {
     CHECK_FALSE(scene.chip(r1));
 }
 
+TEST_CASE("view: a chip's body over the copper under it", "[view]") {
+    const Fixture f = Load("test_pattern");
+    const BoardScene scene = Scene(f);
+    const Board& board = scene.board();
+    // A point on a Trace under a chip's body, far from every pad.
+    std::optional<std::pair<Point, std::size_t>> found;
+    for (const Trace& trace : board.traces) {
+        for (int i = 1; i < 10 && !found; ++i) {
+            const Point p{trace.start.x + (trace.end.x - trace.start.x) * i / 10,
+                          trace.start.y + (trace.end.y - trace.start.y) * i / 10};
+            const auto chip = scene.chipBodyAt(p);
+            if (!chip) {
+                continue;
+            }
+            bool nearPad = false;
+            for (const Pad& pad : board.components[*chip].pads) {
+                nearPad = nearPad || Distance(pad.position, p) < 2'000'000;
+            }
+            if (!nearPad) {
+                found = {p, *chip};
+            }
+        }
+    }
+    REQUIRE(found.has_value());
+    const auto [at, chip] = *found;
+    CHECK(scene.chip(chip));
+    const auto covered = scene.pick(at, Layer::Front, {.bodies = true});
+    REQUIRE(covered.has_value());
+    CHECK(covered->hit == Hit{HitKind::Component, chip, 0});
+    const auto copper = scene.pick(at, Layer::Front, {});  // Option held
+    REQUIRE(copper.has_value());
+    CHECK((copper->hit.kind == HitKind::Trace || copper->hit.kind == HitKind::Via));
+    // A pad still wins on its body's edge.
+    const Pad& pin = board.components[chip].pads[0];
+    CHECK(scene.pick(pin.position, Layer::Front, {.bodies = true})->hit.kind == HitKind::Pad);
+    // Off every chip: no body.
+    CHECK_FALSE(scene.chipBodyAt({scene.bounds().min.x - 1'000'000, scene.bounds().min.y}));
+}
+
 TEST_CASE("view: bodyAt is a courtyard away from the pads", "[view]") {
     const Fixture f = Load("dice");
     const BoardScene scene = Scene(f);

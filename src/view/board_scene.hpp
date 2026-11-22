@@ -36,6 +36,9 @@ bool AcceptsLead(LeadKind kind, HitKind hit);           // Held: Pad, Via, Trace
 struct PickReach {
     std::int64_t pad = 0;     // nm: 12 px at the current zoom
     std::int64_t copper = 0;  // nm: 10 px at the current zoom
+    // A chip's epoxy body covers the vias and Traces under it: inside it (off its pads) the
+    // pick is the chip (the bench's hover, but with Option held).
+    bool bodies = false;
 };
 
 struct Pick {
@@ -72,13 +75,16 @@ public:
     // order.
     std::span<const ScenePad> drivers(NetId net) const;
 
-    // Snapping (S8): pads within reach.pad or half their pitch, then vias, then Traces within
-    // reach.copper of their edge (Active Layer first), then courtyards.
+    // Snapping (S8): pads within reach.pad or half their pitch, then (reach.bodies) a chip's body,
+    // then vias, then Traces within reach.copper of their edge (Active Layer first), then
+    // courtyards.
     std::optional<Pick> pick(Point at, Layer active, PickReach reach) const;
     // Component whose pad covers `at`, else whose courtyard contains it.
     std::optional<std::size_t> componentAt(Point at) const;
     // Component whose courtyard contains `at` while none of its pads covers it: its body.
     std::optional<std::size_t> bodyAt(Point at) const;
+    // The chip whose epoxy body (BodyOf, as drawn: not the oscillator's can) covers `at`.
+    std::optional<std::size_t> chipBodyAt(Point at) const;
     std::string hoverText(const Hit& hit) const;  // "U1 pin 14 QA · H0", "H0", "U5 74LS161"
 
     std::string_view partName(std::size_t component) const;  // "74LS20", "R", "" if unknown

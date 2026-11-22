@@ -1125,7 +1125,9 @@ void BoardView::draw(ImVec2 size) {
 
 PickReach BoardView::reach() const {
     const double nmPerPixel = 1e6 / viewport_.pixelsPerMm();
-    return {std::llround(kPadReachPx * nmPerPixel), std::llround(kCopperReachPx * nmPerPixel)};
+    // A chip's body over the copper under it, but with Option held (the user, 2026-11-22).
+    return {std::llround(kPadReachPx * nmPerPixel), std::llround(kCopperReachPx * nmPerPixel),
+            !ImGui::GetIO().KeyAlt};
 }
 
 std::optional<std::size_t> BoardView::wireAt(Point at) const {
@@ -1258,10 +1260,19 @@ void BoardView::input(ImVec2 origin) {
         } else if (hit.kind == HitKind::Component) {
             hovered_ = hit.component;
         }
-        const std::string text =
+        std::string text =
             onWindow   ? "Read " + scene_->board().components[*onWindow].reference + "'s contents"
             : tooltip_ ? tooltip_(*scene_, hit)
                        : scene_->hoverText(hit);
+        // A chip's body over copper: how to reach it.
+        if (!onWindow && !text.empty() && hit.kind == HitKind::Component) {
+            PickReach copper = reach();
+            copper.bodies = false;
+            const auto under = scene_->pick(at, active_, copper);
+            if (under && (under->hit.kind == HitKind::Trace || under->hit.kind == HitKind::Via)) {
+                text += "\nOption: the copper under it";
+            }
+        }
         // A refusal is drawn where the tooltip would go: it wins while it shows.
         const bool refusing = refusal_ && std::chrono::steady_clock::now() < refusal_->until;
         if (!text.empty() && !refusing) {

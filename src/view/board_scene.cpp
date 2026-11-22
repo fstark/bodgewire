@@ -10,6 +10,7 @@
 
 #include "board/copper.hpp"
 #include "netlist/net_pins.hpp"
+#include "view/chip_body.hpp"
 
 namespace bw {
 
@@ -319,6 +320,11 @@ std::optional<Pick> BoardScene::pick(Point at, Layer active, PickReach reach) co
     if (best) {
         return best;
     }
+    if (reach.bodies) {
+        if (const auto chip = chipBodyAt(at)) {
+            return Pick{{HitKind::Component, *chip, 0}, active, at};
+        }
+    }
     for (std::size_t v = 0; v < board_.vias.size(); ++v) {
         const Via& via = board_.vias[v];
         const double edge =
@@ -377,6 +383,20 @@ std::optional<std::size_t> BoardScene::bodyAt(Point at) const {
         if (Contains(courtyards_[k], at) &&
             std::ranges::none_of(board_.components[k].pads,
                                  [&](const Pad& pad) { return Covers(pad, at); })) {
+            return k;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<std::size_t> BoardScene::chipBodyAt(Point at) const {
+    for (std::size_t k = 0; k < board_.components.size(); ++k) {
+        if (!chip(k) || partName(k) == "OSC") {
+            continue;
+        }
+        const auto body = BodyOf(board_.components[k]);
+        if (body && at.x >= body->box.min.x && at.x <= body->box.max.x && at.y >= body->box.min.y &&
+            at.y <= body->box.max.y) {
             return k;
         }
     }
