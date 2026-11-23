@@ -36,10 +36,11 @@ const char* StateText(const Session& session, bool stopped) {
     if (!session.powered()) {
         return "power off";
     }
-    if (std::ranges::none_of(session.hooks(), [](const auto& h) { return h.has_value(); })) {
+    if (std::ranges::none_of(session.scope().hooks(),
+                             [](const auto& h) { return h.has_value(); })) {
         return "no hooks";
     }
-    switch (session.scopeStatus()) {
+    switch (session.scope().status()) {
     case SweepKind::None:
         return "waiting for trigger";
     case SweepKind::Triggered:
@@ -91,8 +92,8 @@ std::string ScopeWindow::valueAt(std::size_t channel, Time t,
 }
 
 bool ScopeWindow::draw(bool& open, Session& session) {
-    if (session.sweeps().update() && !stopped_) {
-        shown_ = session.sweeps().front();
+    if (session.scope().sweeps().update() && !stopped_) {
+        shown_ = session.scope().sweeps().front();
     }
     if (!open) {
         return false;
@@ -102,7 +103,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         return false;
     }
     const bool clicked = InstrumentClicked();
-    ScopeSettings settings = session.scopeSettings();
+    ScopeSettings settings = session.scope().settings();
     bool changed = false;
     const auto set = [&](const ScopeSettings& next) {
         if (next != settings) {
@@ -228,7 +229,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     // Screen: a band per hooked Channel, sharing the height left by the rows below.
     std::vector<std::size_t> bands;
     for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        if (session.hooks()[c]) {
+        if (session.scope().hooks()[c]) {
             bands.push_back(c);
         }
     }
@@ -324,7 +325,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     // The stored Sweep at the current settings: columns where its samples fall now.
     std::array<std::optional<double>, kScopeChannels> rails;
     for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        rails[c] = session.hooks()[c] ? session.hookRail(c) : std::nullopt;
+        rails[c] = session.scope().hooks()[c] ? session.scope().rail(c) : std::nullopt;
     }
     if (shown_ && (shown_->serial != columnsSerial_ || width != columnsWidth_ ||
                    rails != columnsRail_ || view != columnsView_)) {
@@ -371,7 +372,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
             const float bandBottom = bandTop + bandHeight - 4;
             return bandBottom - static_cast<float>(volts / kFullScale) * (bandHeight - 8);
         };
-        const std::string label = std::to_string(c + 1) + " " + session.hooks()[c]->label;
+        const std::string label = std::to_string(c + 1) + " " + session.scope().hooks()[c]->label;
         list.AddText({top.x + 4, bandTop + 2}, colour, label.c_str());
         if (!session.powered()) {
             const float y = bandY(0.0);
@@ -421,7 +422,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         if (c % 2 == 1) {
             ImGui::SameLine(width / 2 + ImGui::GetStyle().WindowPadding.x);
         }
-        const auto& hook = session.hooks()[c];
+        const auto& hook = session.scope().hooks()[c];
         ImGui::ColorButton("##colour", ImColor(kHookColours[c]),
                            ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker, {12, 12});
         ImGui::SameLine();
@@ -438,7 +439,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         ImGui::SameLine(rowX + 250);
         ImGui::BeginDisabled(!hook);
         if (ImGui::SmallButton("×")) {
-            session.unhook(c);
+            session.scope().unhook(c);
         }
         ImGui::EndDisabled();
         ImGui::PopID();
@@ -446,7 +447,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     StatusLine(cursor, marker_, kGestures);
 
     if (changed) {
-        session.setScope(settings);
+        session.scope().setSettings(settings);
     }
     PopOnDoubleClick(BenchObject::Scope);
     ImGui::End();

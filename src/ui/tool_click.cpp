@@ -101,23 +101,24 @@ std::optional<RepairPlan> ToolClick(Owner owner, const BoardClick& click, Sessio
             break;
         }
         if (isClip) {
-            const auto channel = session.clipAt(part.reference, pin);
-            const auto group = channel ? session.groupOf(*channel) : std::nullopt;
+            const auto channel = session.analyzer().clipAt(part.reference, pin);
+            const auto group = channel ? session.analyzer().groupOf(*channel) : std::nullopt;
             if (channel && click.shift && group) {
-                session.unclipGroup(*group);
+                session.analyzer().unclipGroup(*group);
             } else if (channel) {
-                session.unclip(*channel);
+                session.analyzer().unclip(*channel);
             } else if (click.shift) {
-                if (const auto clipped = session.clipGroup(part.reference, pin); !clipped) {
+                if (const auto clipped = session.analyzer().clipGroup(part.reference, pin);
+                    !clipped) {
                     refuse("Clip: " + clipped.error());
                 }
-            } else if (!session.clip(part.reference, pin)) {
+            } else if (!session.analyzer().clip(part.reference, pin)) {
                 refuse(std::format("Clip: all {} channels used", kChannels));
             }
         } else {
-            if (const auto channel = session.hookAt(part.reference, pin)) {
-                session.unhook(*channel);
-            } else if (!session.hook(part.reference, pin)) {
+            if (const auto channel = session.scope().hookAt(part.reference, pin)) {
+                session.scope().unhook(*channel);
+            } else if (!session.scope().hook(part.reference, pin)) {
                 refuse(std::format("Hook: all {} channels used", kScopeChannels));
             }
         }

@@ -37,46 +37,47 @@ std::expected<void, std::string> ApplyBenchOptions(Session& session, const Bench
         const auto trigger = colon == std::string::npos
                                  ? std::optional(TriggerCondition::Any)
                                  : ParseTrigger(std::string_view(item).substr(colon + 1));
-        const auto channel = pin ? session.clip(pin->reference, pin->pin) : std::nullopt;
+        const auto channel = pin ? session.analyzer().clip(pin->reference, pin->pin) : std::nullopt;
         if (!trigger || !channel) {
             return std::unexpected(std::format("unknown pin '{}'", item));
         }
         analyzer.trigger[*channel] = *trigger;
     }
     if (!options.clip.empty() || !options.group.empty()) {
-        session.setAnalyzer(analyzer);
+        session.analyzer().setSettings(analyzer);
     }
     for (const std::string& item : options.group) {
         const std::size_t colon = item.find(':');
         const auto pin = ParsePinRef(std::string_view(item).substr(0, colon));
         const auto clipped =
-            pin ? std::optional(session.clipGroup(pin->reference, pin->pin)) : std::nullopt;
+            pin ? std::optional(session.analyzer().clipGroup(pin->reference, pin->pin))
+                : std::nullopt;
         const bool ok = clipped && *clipped &&
                         (colon == std::string::npos ||
-                         ((*clipped)->group &&
-                          session.setGroupTrigger(*(*clipped)->group, item.substr(colon + 1))));
+                         ((*clipped)->group && session.analyzer().setGroupTrigger(
+                                                   *(*clipped)->group, item.substr(colon + 1))));
         if (!ok) {
             return std::unexpected(std::format(
                 "bad group '{}'{}", item, clipped && !*clipped ? ": " + clipped->error() : ""));
         }
     }
     if (!options.clip.empty() || !options.group.empty()) {
-        session.arm();
+        session.analyzer().arm();
     }
     for (const std::string& item : options.hook) {
         const auto pin = ParsePinRef(item);
-        if (!pin || !session.hook(pin->reference, pin->pin)) {
+        if (!pin || !session.scope().hook(pin->reference, pin->pin)) {
             return std::unexpected(std::format("unknown pin '{}'", item));
         }
     }
     if (options.timebase || options.delay) {
-        ScopeSettings scope = session.scopeSettings();
+        ScopeSettings scope = session.scope().settings();
         scope.timebase = options.timebase.value_or(scope.timebase);
         scope.delay = options.delay.value_or(scope.delay);
         if (scope.delay > kMaxDelayDivisions * scope.timebase) {
             return std::unexpected(std::format("delay over {} divisions", kMaxDelayDivisions));
         }
-        session.setScope(scope);
+        session.scope().setSettings(scope);
     }
     if (options.meter.size() == 2) {  // red then black, before the power-on: none for these
         session.setMeterMode(MeterMode::Continuity);

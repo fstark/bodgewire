@@ -23,7 +23,10 @@
 #include "runner/runner.hpp"
 #include "runner/scope_consumer.hpp"
 #include "runner/tv_consumer.hpp"
+#include "session/analyzer_setup.hpp"
 #include "session/input_devices.hpp"
+#include "session/leads.hpp"
+#include "session/scope_setup.hpp"
 
 namespace bw {
 
@@ -38,23 +41,6 @@ struct ProbeTip {
 };
 
 enum class RepairResult : std::uint8_t { Done, Refused, Unknown };  // Refused: powered
-
-struct PadLead {                 // a Clip or a Hook
-    std::string reference, pin;  // pin by number: "6"
-    std::string label;           // "U6.6 1Y"
-    Point at;                    // pad, nm
-};
-
-// Analyzer Channels read as one Bus value.
-struct ChannelGroup {
-    std::string name;                   // "U1 A"; hand-made: "group 1"
-    std::vector<std::size_t> channels;  // bit 0 first
-};
-
-struct ClipGroupResult {
-    std::size_t first;                 // a Channel of the clicked pin
-    std::optional<std::size_t> group;  // nullopt: the pin had no stem partner, clipped alone
-};
 
 enum class MeterMode : std::uint8_t { Volts, Continuity };
 
@@ -85,7 +71,7 @@ public:
     Session(Session&&) noexcept;  // safe: the Runner only points into *live_
     ~Session();
 
-    const Machine* machine() const { return machine_ ? &*machine_ : nullptr; }
+    const Machine* machine() const { return machine_.get(); }
     const Board* drawnBoard() const { return drawn_ ? &*drawn_ : nullptr; }  // never repaired
     const LoadedCircuit& circuit() const { return *live_->circuit; }
     Runner& runner() { return *live_->runner; }
@@ -113,48 +99,11 @@ public:
     // A Machine pad by pin number or name; nullopt without a Machine or for an unknown pad.
     std::optional<PadLead> padLead(std::string_view reference, std::string_view pin) const;
 
-    // Lowest free Channel; nullopt without a Machine, unknown pad, or all Channels used.
-    std::optional<std::size_t> clip(std::string_view reference, std::string_view pin);
-    void unclip(std::size_t channel);
-    std::optional<std::size_t> clipAt(std::string_view reference, std::string_view pin) const;
-    std::span<const std::optional<PadLead>, kChannels> clips() const { return clips_; }
-    std::optional<NetId> clipNet(std::size_t channel) const { return analyzer_.nets[channel]; }
-    // The pin's group on its chip: the pins sharing its name stem (StemOf; not power or
-    // no-connect), at least 2, each clipped in bit order to the lowest free Channel, those already
-    // clipped moved into the group. A pin with no partner is clipped alone. Errors (reason text):
-    // no Machine or unknown pin, not enough free Channels.
-    std::expected<ClipGroupResult, std::string> clipGroup(std::string_view reference,
-                                                          std::string_view pin);
-    void unclipGroup(std::size_t group);  // unclips every member
-    // Hand grouping of at least 2 clipped Channels, taken out of their groups; ordered by their
-    // pins' StemOf index when all have one and they differ, else as given (first = most
-    // significant). nullopt: fewer than 2, or a free Channel.
-    std::optional<std::size_t> group(std::vector<std::size_t> channels);
-    void ungroup(std::size_t group);  // members stay clipped with their conditions
-    // Sets each member's condition from a bus pattern (ParseBusPattern); false: refused.
-    bool setGroupTrigger(std::size_t group, std::string_view pattern);
-    std::string groupTrigger(std::size_t group) const;  // FormatBusPattern of the members
-    std::span<const ChannelGroup> groups() const { return groups_; }
-    std::optional<std::size_t> groupOf(std::size_t channel) const;
-
-    void setAnalyzer(const AnalyzerSettings& settings);
-    const AnalyzerSettings& analyzerSettings() const { return analyzer_.settings; }
-    void arm();
-    void disarm();
-    AnalyzerPhase analyzerPhase() const { return live_->analyzer.phase(); }
-    TripleBuffer<Capture>& captures() { return live_->analyzer.captures(); }  // replaced on rebuild
-
-    // As clip(), with the Oscilloscope's 2 Channels.
-    std::optional<std::size_t> hook(std::string_view reference, std::string_view pin);
-    void unhook(std::size_t channel);
-    std::optional<std::size_t> hookAt(std::string_view reference, std::string_view pin) const;
-    std::span<const std::optional<PadLead>, kScopeChannels> hooks() const { return hooks_; }
-    std::optional<double> hookRail(std::size_t channel) const;  // RailVolts of the Hook's Net
-    std::optional<NetId> hookNet(std::size_t channel) const { return scope_.nets[channel]; }
-    void setScope(const ScopeSettings& settings);
-    const ScopeSettings& scopeSettings() const { return scope_.settings; }
-    SweepKind scopeStatus() const { return live_->scope.status(); }
-    TripleBuffer<Sweep>& sweeps() { return live_->scope.sweeps(); }  // replaced on rebuild
+    // The Logic Analyzer's and the Oscilloscope's leads and settings.
+    AnalyzerSetup& analyzer() { return analyzer_; }
+    const AnalyzerSetup& analyzer() const { return analyzer_; }
+    ScopeSetup& scope() { return scope_; }
+    const ScopeSetup& scope() const { return scope_; }
 
     void setMeterMode(MeterMode mode);
     MeterMode meterMode() const { return meterMode_; }
@@ -189,13 +138,13 @@ private:
     };
 
     std::unique_ptr<Live> makeLive(std::unique_ptr<LoadedCircuit> circuit) const;
-    void bindInputs();  // inputs_ onto the current build
+    void bindBuild();  // build_, the inputs and the instruments onto the current build
     void touchLive();
     void configureLive();
     void recomputeContinuity();
-    void leaveGroup(std::size_t channel);  // a group left with one member is erased
 
-    std::optional<Machine> machine_;
+    std::unique_ptr<Machine> machine_;  // on the heap, as build_: they outlive moves
+    std::unique_ptr<SessionBuild> build_ = std::make_unique<SessionBuild>();
     std::optional<Board> drawn_;
     std::unique_ptr<Live> live_;
     bool dirty_ = false;  // a Repair since live_ was built
@@ -204,11 +153,8 @@ private:
     std::optional<ProbeTip> tip_;
     std::vector<std::string> log_;
     std::vector<SolderBlob> blobs_;
-    std::array<std::optional<PadLead>, kChannels> clips_;
-    std::vector<ChannelGroup> groups_;  // disjoint; erasing one renumbers the later ones
-    AnalyzerConfig analyzer_;           // nets filled per build
-    std::array<std::optional<PadLead>, kScopeChannels> hooks_;
-    ScopeConfig scope_;  // nets filled per build
+    AnalyzerSetup analyzer_{*build_};
+    ScopeSetup scope_{*build_};
     MeterMode meterMode_ = MeterMode::Volts;
     std::optional<TestLead> red_, black_;
     bool blackNext_ = false;

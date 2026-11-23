@@ -104,8 +104,8 @@ void ShowRepairs(BoardView& view, const Machine& machine) {
 std::vector<ClipTag> ClipTagsOf(const Session& session) {
     std::vector<ClipTag> tags;
     for (std::size_t c = 0; c < kChannels; ++c) {
-        if (const auto& clip = session.clips()[c]) {
-            const auto group = session.groupOf(c);
+        if (const auto& clip = session.analyzer().clips()[c]) {
+            const auto group = session.analyzer().groupOf(c);
             tags.push_back({clip->at, c, group ? GroupColour(*group) : ChannelColour(c)});
         }
     }
@@ -115,7 +115,7 @@ std::vector<ClipTag> ClipTagsOf(const Session& session) {
 std::vector<HookTag> HookTagsOf(const Session& session) {
     std::vector<HookTag> tags;
     for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        if (const auto& hook = session.hooks()[c]) {
+        if (const auto& hook = session.scope().hooks()[c]) {
             tags.push_back({hook->at, c});
         }
     }

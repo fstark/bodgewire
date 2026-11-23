@@ -125,11 +125,11 @@ void AnalyzerWindow::zoom(Time anchor, int notches) {
 std::vector<AnalyzerWindow::Row> AnalyzerWindow::rows(const Session& session) const {
     // Groups and loose Channels, ordered by their first Channel.
     std::vector<std::pair<std::size_t, Row>> top;
-    for (std::size_t g = 0; g < session.groups().size(); ++g) {
-        top.push_back({std::ranges::min(session.groups()[g].channels), Row{.group = g}});
+    for (std::size_t g = 0; g < session.analyzer().groups().size(); ++g) {
+        top.push_back({std::ranges::min(session.analyzer().groups()[g].channels), Row{.group = g}});
     }
     for (std::size_t c = 0; c < kChannels; ++c) {
-        if (session.clips()[c] && !session.groupOf(c)) {
+        if (session.analyzer().clips()[c] && !session.analyzer().groupOf(c)) {
             top.push_back({c, Row{.channel = c}});
         }
     }
@@ -137,8 +137,8 @@ std::vector<AnalyzerWindow::Row> AnalyzerWindow::rows(const Session& session) co
     std::vector<Row> rows;
     for (const auto& [first, row] : top) {
         rows.push_back(row);
-        if (row.group && expanded_.contains(session.groups()[*row.group].name)) {
-            const auto& channels = session.groups()[*row.group].channels;
+        if (row.group && expanded_.contains(session.analyzer().groups()[*row.group].name)) {
+            const auto& channels = session.analyzer().groups()[*row.group].channels;
             for (auto c = channels.rbegin(); c != channels.rend(); ++c) {
                 rows.push_back(Row{.group = row.group, .channel = *c, .member = true});
             }
@@ -148,8 +148,8 @@ std::vector<AnalyzerWindow::Row> AnalyzerWindow::rows(const Session& session) co
 }
 
 bool AnalyzerWindow::draw(bool& open, Session& session) {
-    if (session.captures().update()) {
-        shown_ = session.captures().front();
+    if (session.analyzer().captures().update()) {
+        shown_ = session.analyzer().captures().front();
         runs_.clear();
         marker_.reset();
         const TimeRange record = RecordOf(*shown_);
@@ -185,20 +185,20 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     const float laneX1 = laneX0 + width;
 
     // Header line 1: tool, arm, sampling.
-    const AnalyzerPhase phase = session.analyzerPhase();
+    const AnalyzerPhase phase = session.analyzer().phase();
     const bool running = phase == AnalyzerPhase::Armed || phase == AnalyzerPhase::Filling;
     if (ImGui::Button(running ? "Stop" : "Arm", {60, 0})) {
         if (running) {
-            session.disarm();
+            session.analyzer().disarm();
         } else {
-            session.arm();
+            session.analyzer().arm();
         }
     }
     ImGui::SameLine(0, 16);
     // A slot as wide as the longest phase, so the settings after it never move.
     const float phaseX = ImGui::GetCursorPosX();
     ImGui::TextUnformatted(PhaseText(phase, session.powered()));
-    AnalyzerSettings settings = session.analyzerSettings();
+    AnalyzerSettings settings = session.analyzer().settings();
     bool changed = false;
     ImGui::SameLine(std::max(phaseX + ImGui::CalcTextSize("armed: waiting for trigger").x + 24,
                              padX + kLabelWidth));
@@ -235,10 +235,11 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     }
 
     // Header line 2: Channels left, the view's controls over the lanes.
-    const auto clipped = static_cast<std::size_t>(
-        std::ranges::count_if(session.clips(), [](const auto& c) { return c.has_value(); }));
+    const auto clipped = static_cast<std::size_t>(std::ranges::count_if(
+        session.analyzer().clips(), [](const auto& c) { return c.has_value(); }));
     ImGui::TextColored(kHintGrey, "%zu of %zu clipped", clipped, kChannels);
-    std::erase_if(selected_, [&](std::size_t c) { return !session.clips()[c].has_value(); });
+    std::erase_if(selected_,
+                  [&](std::size_t c) { return !session.analyzer().clips()[c].has_value(); });
     if (selected_.size() >= 2) {
         ImGui::SameLine(0, 16);
         if (ImGui::Button("Group")) {
@@ -249,7 +250,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
                     picked.push_back(row.channel);
                 }
             }
-            session.group(picked);
+            session.analyzer().group(picked);
             selected_.clear();
         }
     }
@@ -478,7 +479,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
             continue;
         }
         ImGui::PushID(static_cast<int>(i));
-        const ChannelGroup* group = row.group ? &session.groups()[*row.group] : nullptr;
+        const ChannelGroup* group = row.group ? &session.analyzer().groups()[*row.group] : nullptr;
         const std::vector<std::size_t> channels =
             group && !row.member ? group->channels : std::vector{row.channel};
         const ImU32 colour = group ? GroupColour(*row.group) : ChannelColour(row.channel);
@@ -517,7 +518,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
             ImGui::Text("%s[%zu:0]", group->name.c_str(), group->channels.size() - 1);
             readValue(true);
         } else {
-            const auto& clip = session.clips()[row.channel];
+            const auto& clip = session.analyzer().clips()[row.channel];
             const std::string label = clip ? clip->label : "free";
             if (ImGui::Selectable(label.c_str(), selected_.contains(row.channel), 0, {120, 0})) {
                 if (!selected_.erase(row.channel)) {
@@ -538,7 +539,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
                                     12));
             PatternEdit& edit = patterns_[group->name];
             if (editing_ != group->name) {
-                const std::string text = session.groupTrigger(*row.group);
+                const std::string text = session.analyzer().groupTrigger(*row.group);
                 std::ranges::fill(edit.text, '\0');
                 std::ranges::copy(text.substr(0, edit.text.size() - 1), edit.text.begin());
             }
@@ -559,8 +560,8 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
                 edit.refused = false;
             }
             if (ImGui::IsItemDeactivatedAfterEdit()) {
-                edit.refused = !session.setGroupTrigger(*row.group, edit.text.data());
-                settings = session.analyzerSettings();
+                edit.refused = !session.analyzer().setGroupTrigger(*row.group, edit.text.data());
+                settings = session.analyzer().settings();
             }
         } else if (row.member) {
             ImGui::TextColored(
@@ -582,12 +583,12 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         if (ImGui::SmallButton("×")) {
             if (group && !row.member) {
                 if (ImGui::GetIO().KeyShift) {
-                    session.unclipGroup(*row.group);
+                    session.analyzer().unclipGroup(*row.group);
                 } else {
-                    session.ungroup(*row.group);
+                    session.analyzer().ungroup(*row.group);
                 }
             } else {
-                session.unclip(row.channel);
+                session.analyzer().unclip(row.channel);
             }
             ImGui::PopID();
             break;  // rows changed under us
@@ -599,7 +600,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
             const bool bus = channels.size() > 1;
             lane(runs(channels), top, colour, bus, channels.size());
             if (!bus && !row.member) {
-                const auto& clip = session.clips()[row.channel];
+                const auto& clip = session.analyzer().clips()[row.channel];
                 const std::string& was = shown_->labels[row.channel];
                 if (!clip || clip->label != was) {
                     draw.AddText({laneX0 + 4, top + 3}, kFaint,
@@ -671,7 +672,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         ImGui::TextColored(kHintGrey, "%s", "shift-click a pin: its whole bus");
     }
     if (changed) {
-        session.setAnalyzer(settings);
+        session.analyzer().setSettings(settings);
     }
     PopOnDoubleClick(BenchObject::Analyzer);
     ImGui::End();
