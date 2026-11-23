@@ -14,6 +14,7 @@ add_executable(bw_tests
   board/boards_test.cpp
   board/copper_test.cpp
   board/footprint_test.cpp
+  board/geometry_test.cpp
   board/kicad_board_test.cpp
   board/kicad_netlist_test.cpp
   board/kicad_pcb_writer_test.cpp

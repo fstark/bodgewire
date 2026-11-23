@@ -9,6 +9,7 @@
 #include <optional>
 #include <utility>
 
+#include "board/geometry.hpp"
 #include "board/sexpr.hpp"
 #include "text/text.hpp"
 
@@ -173,13 +174,8 @@ private:
         if (component.reference.empty()) {
             error(node, "footprint " + component.footprint + " has no reference");
         }
-        const double radians = component.angle * std::numbers::pi / 180;
-        const double cos = std::cos(radians);
-        const double sin = std::sin(radians);
-        const Point origin = component.position;
-        const auto place = [origin, cos, sin](double x, double y) {
-            return Point{origin.x + std::llround(x * cos + y * sin),
-                         origin.y + std::llround(-x * sin + y * cos)};
+        const auto place = [&component](double x, double y) {
+            return RotatedOffset(component.position, x, y, component.angle);
         };
         // Local boxes: .CrtYd fp_lines, and the pads (some library line outlines cut through one).
         std::optional<std::pair<Point, Point>> lineBox, padBox;

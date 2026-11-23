@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "board/copper.hpp"
+#include "board/geometry.hpp"
 #include "netlist/net_pins.hpp"
 #include "view/chip_body.hpp"
 
@@ -116,23 +117,6 @@ std::optional<std::size_t> PinNumber(std::string_view text) {
     return n;
 }
 
-double Distance(Point a, Point b) {
-    return std::hypot(static_cast<double>(a.x - b.x), static_cast<double>(a.y - b.y));
-}
-
-Point NearestOnSegment(Point a, Point b, Point at) {
-    const double dx = static_cast<double>(b.x - a.x);
-    const double dy = static_cast<double>(b.y - a.y);
-    const double length2 = dx * dx + dy * dy;
-    if (length2 == 0) {
-        return a;
-    }
-    const double t = std::clamp(
-        (static_cast<double>(at.x - a.x) * dx + static_cast<double>(at.y - a.y) * dy) / length2,
-        0.0, 1.0);
-    return {a.x + std::llround(dx * t), a.y + std::llround(dy * t)};
-}
-
 struct EdgeDistance {
     double edge;    // nm from the copper edge, 0 inside
     Point nearest;  // on the centreline
@@ -143,7 +127,7 @@ EdgeDistance TraceEdgeDistance(const Trace& trace, Point at) {
                                                 : std::vector<Point>{trace.start, trace.end};
     EdgeDistance best{DBL_MAX, trace.start};
     for (std::size_t i = 0; i + 1 < points.size(); ++i) {
-        const Point p = NearestOnSegment(points[i], points[i + 1], at);
+        const Point p = NearestOnSegment(at, points[i], points[i + 1]);
         const double edge = std::max(0.0, Distance(p, at) - static_cast<double>(trace.width) / 2);
         if (edge < best.edge) {
             best = {edge, p};

@@ -1,5 +1,6 @@
 #include "ui/board_view.hpp"
 
+#include "board/geometry.hpp"
 #include "ui/bench.hpp"
 #include "ui/board_look.hpp"
 #include "view/chip_body.hpp"
@@ -139,16 +140,6 @@ ImU32 Lerp(ImU32 from, ImU32 to, float t) {
     return result;
 }
 
-double SegmentDistance(Point p, Point a, Point b) {
-    const double abx = static_cast<double>(b.x - a.x);
-    const double aby = static_cast<double>(b.y - a.y);
-    const double apx = static_cast<double>(p.x - a.x);
-    const double apy = static_cast<double>(p.y - a.y);
-    const double length2 = abx * abx + aby * aby;
-    const double t = length2 == 0 ? 0 : std::clamp((apx * abx + apy * aby) / length2, 0.0, 1.0);
-    return std::hypot(apx - abx * t, apy - aby * t);
-}
-
 // Index of the wire nearest `at` within `reach` nm.
 std::optional<std::size_t> NearestWire(std::span<const BodgeWire> wires, Point at, double reach) {
     std::optional<std::size_t> best;
@@ -217,11 +208,7 @@ void DrawTrace(ImDrawList& list, const Mapper& map, const Trace& trace, ImU32 co
 
 // Pad-local offset (x, y) nm, rotated like the pad, → screen.
 ImVec2 PadPoint(const Mapper& map, const Pad& pad, double x, double y) {
-    const double radians = pad.angle * std::numbers::pi / 180;
-    const double cos = std::cos(radians);
-    const double sin = std::sin(radians);
-    return map({pad.position.x + std::llround(x * cos + y * sin),
-                pad.position.y + std::llround(-x * sin + y * cos)});
+    return map(RotatedOffset(pad.position, x, y, pad.angle));
 }
 
 void DrawPad(ImDrawList& list, const Mapper& map, const Pad& pad, ImU32 colour) {
