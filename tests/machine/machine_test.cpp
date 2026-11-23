@@ -176,6 +176,27 @@ TEST_CASE("machine: mend near and far", "[machine]") {
     CHECK_FALSE(machine->mend(H0Crack().layer, H0Crack().at));
 }
 
+TEST_CASE("machine: inject adds a Fault to a loaded Machine", "[machine]") {
+    const Puzzle puzzle = TestPattern();
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
+    REQUIRE(machine.has_value());
+    CHECK(machine->build().value()->nets.contains("H0"));
+    CHECK_FALSE(machine->build().value()->nets.contains("H0~2"));
+    REQUIRE(machine->inject(CrackDecl{0, {"U1", "QA"}, {"U13", "2B"}, 79}).has_value());
+    CHECK(machine->cracks().size() == 1);
+    CHECK(machine->build().value()->nets.contains("H0~2"));  // the board was rebuilt
+    REQUIRE(machine->inject(StuckAtDecl{0, "U3", "QA", LogicValue::Zero}).has_value());
+    CHECK(machine->swap("U3"));
+    machine->undoRepairs();  // both are the Puzzle's now
+    CHECK(machine->cracks().size() == 1);
+    const auto built = machine->build();
+    REQUIRE(built.has_value());
+    CHECK((*built)->circuit.tieOf((*built)->nets.at("V0")).strength == DriveStrength::Strong);
+    CHECK(machine->inject(StuckAtDecl{0, "U99", "QA", LogicValue::Zero}).error() ==
+          "unknown reference 'U99'");
+    CHECK(machine->inject(SwitchDecl{0, "U3", true}).error() == "switch U3: buttons and keys only");
+}
+
 TEST_CASE("machine: apply dispatches each Repair", "[machine]") {
     Puzzle puzzle = TestPattern();
     puzzle.cracks = {{2, {"U1", "QA"}, {"U13", "2B"}, 79}};

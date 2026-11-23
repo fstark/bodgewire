@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 #include "board/board.hpp"
@@ -51,6 +52,9 @@ struct SwitchDecl {
     std::string reference;  // a BUTTON or KEY
     bool closed;            // `closed`: stuck closed; `open`: never closes
 };
+
+// Any one Fault as written (Machine::inject).
+using FaultDecl = std::variant<StuckAtDecl, CrackDecl, BridgeDecl, JointDecl, CellDecl, SwitchDecl>;
 
 struct Puzzle {
     std::string file;

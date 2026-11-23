@@ -35,6 +35,16 @@ struct WireEnds {
     PadJoin wire;  // pad positions
 };
 
+// The Faults a Machine has, checked against its design and its fault-free Board.
+struct FaultSet {
+    std::vector<StuckPin> stuck;
+    std::vector<Crack> cracks;      // Broken Traces
+    std::vector<WireEnds> bridges;  // Solder Bridges: same shape as a Bodge Wire
+    std::vector<PinRef> dry;        // dry Joints, pin numbers
+    std::vector<StuckCell> cells;   // stuck cells and columns inside memory chips
+    std::vector<StuckSwitch> switches;
+};
+
 // dir/<machine>.bwn + dir/board/<machine>.kicad_pcb, `dir` the Machine's directory
 // (machines/NNN-name); all semantic errors.
 std::expected<Machine, std::vector<Diagnostic>>
@@ -64,14 +74,17 @@ public:
     // Every Repair undone (the bench's Reset): the Puzzle's Faults back as loaded, no Cut, no
     // Bodge Wire.
     void undoRepairs();
-    std::span<const PinRef> dryJoints() const { return dry_; }  // pin numbers
-    std::span<const Crack> cracks() const { return cracks_; }   // the Puzzle's Broken Traces
+    // Adds a Fault, checked against the design and the fault-free Board: a Puzzle's from then on
+    // (undoRepairs keeps it). The error is the text a Puzzle line reports.
+    std::expected<void, std::string> inject(const FaultDecl& fault);
+    std::span<const PinRef> dryJoints() const { return faults_.dry; }  // pin numbers
+    std::span<const Crack> cracks() const { return faults_.cracks; }   // the Puzzle's Broken Traces
     // A crack on the fault-free Board; errors say "crack A B: …" with the pins as given.
     std::expected<Crack, std::string> placeCrack(const PinRef& a, const PinRef& b,
                                                  double percent) const;
     std::span<const Crack> cuts() const { return cuts_; }
     std::span<const WireEnds> wires() const { return wires_; }
-    std::span<const WireEnds> bridges() const { return bridges_; }
+    std::span<const WireEnds> bridges() const { return faults_.bridges; }
     LoadResult build() const;                      // electrical Circuit with the current Faults
     const Board& board() const { return board_; }  // with cracks, Cuts and Bodge Wires
     const Board& pristineBoard() const { return pristine_; }  // fault-free Copper, for the view
@@ -96,7 +109,7 @@ private:
     Machine() = default;
     // Island of the current Copper under `at`; nullopt off Copper.
     std::optional<std::uint32_t> islandAt(const Islands& islands, Layer layer, Point at) const;
-    void rebuildBoard();  // board_ = pristine_ + cracks_ + cuts_ + wires_ + bridges_
+    void rebuildBoard();  // board_ = pristine_ + cracks + cuts_ + wires_ + bridges
     std::optional<PinRef> padOf(const PinRef& pin) const;  // pin as a number; nullopt unknown
     // padOf of a chip's signal pin (not Power, not NoConnect); nullopt otherwise.
     std::optional<PinRef> chipSignalPin(const PinRef& pin) const;
@@ -110,26 +123,11 @@ private:
     std::string name_;
     std::unique_ptr<LoadedCircuit> designCircuit_;  // design Nets: pin lookup, check-board
     Board pristine_, board_;                        // see rebuildBoard()
-    std::vector<StuckPin> stuck_;
-    std::vector<Crack> cracks_;
+    FaultSet faults_;                               // now: the Puzzle's, less what Repairs removed
+    FaultSet loaded_;                               // the Puzzle's, for undoRepairs()
     std::vector<Crack> cuts_;
     std::vector<WireEnds> wires_;
-    std::vector<WireEnds> bridges_;  // Solder Bridges: same shape as a Bodge Wire
-    std::vector<PinRef> dry_;        // dry Joints, pin numbers
-    std::vector<StuckCell> cells_;   // stuck cells and columns inside memory chips
-    std::vector<StuckSwitch> switches_;
     BoardPower power_;  // of board_, see rebuildBoard()
-
-    // The Puzzle's Faults as loaded, for undoRepairs().
-    struct Faults {
-        std::vector<StuckPin> stuck;
-        std::vector<Crack> cracks;
-        std::vector<WireEnds> bridges;
-        std::vector<PinRef> dry;
-        std::vector<StuckCell> cells;
-        std::vector<StuckSwitch> switches;
-    };
-    Faults loaded_;
 };
 
 // A cell or column Fault on `component` (Part `part`, "6530"), checked: the StuckCell, or the
