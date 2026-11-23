@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <variant>
 #include <vector>
 
 #include "sim/ids.hpp"
@@ -37,6 +38,27 @@ enum class TvSync : std::uint8_t { Composite, Separate };
 struct SeparateDrives {
     NetId videoN, hdrive, vdrive;
 };
+
+// The Nets of a VIDEO connector: the dot lit while `video` is high, composite sync on `syncN`.
+struct CompositeVideo {
+    NetId video, syncN;
+};
+
+// What a Tv plugs into (FindTvNets, session/session.hpp).
+using TvNets = std::variant<CompositeVideo, SeparateDrives>;
+
+inline TvSync SyncOf(const TvNets& nets) {
+    return std::holds_alternative<SeparateDrives>(nets) ? TvSync::Separate : TvSync::Composite;
+}
+
+// VIDEO, SYNC_N; or VIDEO_N, HDRIVE, VDRIVE.
+inline std::vector<NetId> NetsOf(const TvNets& nets) {
+    if (const auto* drives = std::get_if<SeparateDrives>(&nets)) {
+        return {drives->videoN, drives->hdrive, drives->vdrive};
+    }
+    const auto& composite = std::get<CompositeVideo>(nets);
+    return {composite.video, composite.syncN};
+}
 
 // Monitor on a VIDEO or MONITOR connector (TV.md). Time only moves forward; at t = 0 every input
 // is Z.

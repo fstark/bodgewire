@@ -17,15 +17,8 @@ std::span<const Sample> After(std::span<const Sample> samples, Time after) {
 
 }  // namespace
 
-TvInput::TvInput(Simulator& sim, NetId video, NetId syncN)
-    : sim_(sim), nets_{video, syncN}, tv_(TvSync::Composite) {
-    for (const NetId net : nets_) {
-        sim_.record(net);
-    }
-}
-
-TvInput::TvInput(Simulator& sim, SeparateDrives drives)
-    : sim_(sim), nets_{drives.videoN, drives.hdrive, drives.vdrive}, tv_(TvSync::Separate) {
+TvInput::TvInput(Simulator& sim, const TvNets& nets)
+    : sim_(sim), nets_(NetsOf(nets)), tv_(SyncOf(nets)) {
     for (const NetId net : nets_) {
         sim_.record(net);
     }

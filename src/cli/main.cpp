@@ -36,6 +36,7 @@
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
 #include "netlist/units.hpp"
+#include "session/session.hpp"
 #include "sim/simulator.hpp"
 #include "sim/vcd.hpp"
 #include "text/text.hpp"
@@ -512,14 +513,10 @@ int Run(std::span<char*> args) {
     }
 
     std::ofstream tvFile;
-    std::optional<NetId> tvVideo, tvSyncN, tvVideoN, tvHdrive, tvVdrive;
+    std::optional<TvNets> tvNets;
     if (!options.tv.empty()) {
-        tvVideo = ConnectorNet(loaded, "VIDEO", "VIDEO");
-        tvSyncN = ConnectorNet(loaded, "VIDEO", "SYNC_N");
-        tvVideoN = ConnectorNet(loaded, "MONITOR", "VIDEO_N");
-        tvHdrive = ConnectorNet(loaded, "MONITOR", "HDRIVE");
-        tvVdrive = ConnectorNet(loaded, "MONITOR", "VDRIVE");
-        if (!(tvVideo && tvSyncN) && !(tvVideoN && tvHdrive && tvVdrive)) {
+        tvNets = FindTvNets(loaded);
+        if (!tvNets) {
             std::println(stderr, "bw: netlist has no VIDEO or MONITOR connector");
             return kExitNetlistErrors;
         }
@@ -536,9 +533,7 @@ int Run(std::span<char*> args) {
     }
     std::unique_ptr<TvInput> tv;
     if (tvFile.is_open()) {
-        tv = tvVideo && tvSyncN
-                 ? std::make_unique<TvInput>(sim, *tvVideo, *tvSyncN)
-                 : std::make_unique<TvInput>(sim, SeparateDrives{*tvVideoN, *tvHdrive, *tvVdrive});
+        tv = std::make_unique<TvInput>(sim, *tvNets);
     }
     std::vector<LogicProbe> probes;
     for (const NetId net : probed) {

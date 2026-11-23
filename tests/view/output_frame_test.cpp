@@ -101,3 +101,19 @@ TEST_CASE("output frame: HasTv", "[view]") {
         CHECK_FALSE(HasTv(**design));
     }
 }
+
+TEST_CASE("output frame: FindTvNets tells composite from separate drives", "[view]") {
+    const auto ball = LoadNetlistFile(test::NetlistPath("ball"));
+    REQUIRE(ball.has_value());
+    const auto composite = FindTvNets(**ball);
+    REQUIRE(composite.has_value());
+    CHECK(std::holds_alternative<CompositeVideo>(*composite));
+    CHECK(SyncOf(*composite) == TvSync::Composite);
+    CHECK(NetsOf(*composite).size() == 2);
+    const auto pet = LoadNetlistFile(test::NetlistPath("bw2001"));
+    REQUIRE(pet.has_value());
+    const auto separate = FindTvNets(**pet);
+    REQUIRE(separate.has_value());
+    CHECK(SyncOf(*separate) == TvSync::Separate);
+    CHECK(NetsOf(*separate).size() == 3);
+}

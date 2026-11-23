@@ -60,12 +60,22 @@ std::optional<NetId> ConnectedNet(const LoadedCircuit& loaded, std::string_view 
 
 }  // namespace
 
-bool HasTv(const LoadedCircuit& circuit) {
-    return (ConnectorNet(circuit, "VIDEO", "VIDEO") && ConnectorNet(circuit, "VIDEO", "SYNC_N")) ||
-           (ConnectorNet(circuit, "MONITOR", "VIDEO_N") &&
-            ConnectorNet(circuit, "MONITOR", "HDRIVE") &&
-            ConnectorNet(circuit, "MONITOR", "VDRIVE"));
+std::optional<TvNets> FindTvNets(const LoadedCircuit& circuit) {
+    const auto video = ConnectorNet(circuit, "VIDEO", "VIDEO");
+    const auto syncN = ConnectorNet(circuit, "VIDEO", "SYNC_N");
+    if (video && syncN) {
+        return CompositeVideo{*video, *syncN};
+    }
+    const auto videoN = ConnectorNet(circuit, "MONITOR", "VIDEO_N");
+    const auto hdrive = ConnectorNet(circuit, "MONITOR", "HDRIVE");
+    const auto vdrive = ConnectorNet(circuit, "MONITOR", "VDRIVE");
+    if (videoN && hdrive && vdrive) {
+        return SeparateDrives{*videoN, *hdrive, *vdrive};
+    }
+    return std::nullopt;
 }
+
+bool HasTv(const LoadedCircuit& circuit) { return FindTvNets(circuit).has_value(); }
 
 Session::Session(std::optional<Machine> machine, std::unique_ptr<LoadedCircuit> circuit)
     : machine_(std::move(machine)) {
@@ -81,18 +91,9 @@ Session::~Session() = default;
 std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> circuit) const {
     auto live = std::make_unique<Live>();
     live->circuit = std::move(circuit);
-    // The same test as HasTv's: the two must agree (P7b).
-    const auto video = ConnectorNet(*live->circuit, "VIDEO", "VIDEO");
-    const auto syncN = ConnectorNet(*live->circuit, "VIDEO", "SYNC_N");
     std::vector<Consumer*> consumers;
-    const auto videoN = ConnectorNet(*live->circuit, "MONITOR", "VIDEO_N");
-    const auto hdrive = ConnectorNet(*live->circuit, "MONITOR", "HDRIVE");
-    const auto vdrive = ConnectorNet(*live->circuit, "MONITOR", "VDRIVE");
-    if (video && syncN) {
-        live->tv.emplace(*video, *syncN);
-        consumers.push_back(&*live->tv);
-    } else if (videoN && hdrive && vdrive) {
-        live->tv.emplace(SeparateDrives{*videoN, *hdrive, *vdrive});
+    if (const auto tvNets = FindTvNets(*live->circuit)) {
+        live->tv.emplace(*tvNets);
         consumers.push_back(&*live->tv);
     }
     if (machine_) {

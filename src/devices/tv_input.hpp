@@ -15,8 +15,9 @@ namespace bw {
 // sim.trimRecordings() after updating every consumer.
 class TvInput {
 public:
-    TvInput(Simulator& sim, NetId video, NetId syncN);
-    TvInput(Simulator& sim, SeparateDrives drives);
+    TvInput(Simulator& sim, const TvNets& nets);
+    TvInput(Simulator& sim, NetId video, NetId syncN)
+        : TvInput(sim, CompositeVideo{video, syncN}) {}
     void update();  // feeds the changes recorded since the last update, then up to sim.now()
     const Tv& tv() const { return tv_; }
 

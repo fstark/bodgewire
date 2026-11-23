@@ -68,9 +68,10 @@ struct SwitchKey {
     std::string pc;  // IsPcKey
 };
 
-// A TV hangs on the circuit: a VIDEO connector's VIDEO and SYNC_N, or a MONITOR connector's
-// VIDEO_N, HDRIVE and VDRIVE (Session makes its TvConsumer on the same test). The launcher's
-// framing (P7b).
+// The Nets a TV hangs on: a VIDEO connector's VIDEO and SYNC_N, or a MONITOR connector's
+// VIDEO_N, HDRIVE and VDRIVE, all connected; nullopt for neither. Session, bw run --tv.
+std::optional<TvNets> FindTvNets(const LoadedCircuit& circuit);
+// FindTvNets found some: the launcher's framing (P7b).
 bool HasTv(const LoadedCircuit& circuit);
 
 struct LedLight {

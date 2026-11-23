@@ -20,9 +20,8 @@ struct TvPicture {
 // (composite sync) or a MONITOR's three (separate drives; its video is low for a lit dot).
 class TvConsumer final : public Consumer {
 public:
-    TvConsumer(NetId video, NetId syncN) : nets_{video, syncN}, tv_(TvSync::Composite) {}
-    explicit TvConsumer(SeparateDrives drives)
-        : nets_{drives.videoN, drives.hdrive, drives.vdrive}, tv_(TvSync::Separate) {}
+    explicit TvConsumer(const TvNets& nets) : nets_(NetsOf(nets)), tv_(SyncOf(nets)) {}
+    TvConsumer(NetId video, NetId syncN) : TvConsumer(CompositeVideo{video, syncN}) {}
     TripleBuffer<TvPicture>& pictures() { return pictures_; }  // the UI reads
     const Tv& tv() const { return tv_; }
 
