@@ -180,13 +180,14 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     ResetBench();
     TvView view(gpu.tvTexture());
     Shelf shelf;
+    Focus focus;  // the focus owner, and what is out on the bench
+    focus.out(BenchObject::Debug) = options.bench.debug;
     TvWindow tvWindow;
     tvWindow.setLoupe(options.bench.loupe);
     if (options.bench.tv) {
         tvWindow.controls() = *options.bench.tv;
     }
     KnobWindow knobWindow;
-    bool debugOut = options.bench.debug;
     const Machine* machine = session.machine();
     BoardView boardView(machine ? std::optional<BoardScene>(std::in_place, *session.drawnBoard(),
                                                             machine->pristineBoard(),
@@ -216,7 +217,8 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         boardKeys.keys = session.switchKeys();
     }
     boardView.setLegendFont(legends);
-    shelf.keyboardOut = !capture.reference.empty() || !matrixCapture.reference.empty();
+    focus.out(BenchObject::Keyboard) =
+        !capture.reference.empty() || !matrixCapture.reference.empty();
     shelf.keyboardWindow = !capture.reference.empty()         ? kKeyboardWindowName
                            : !matrixCapture.reference.empty() ? kMatrixKeyboardWindowName
                                                               : nullptr;
@@ -228,9 +230,9 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     }
     RunSwitch run = options.bench.run;  // the shelf's switch (P6o)
     shelf.canLeave = canLeave;
-    shelf.manualOut = options.bench.manual.has_value();
-    shelf.tvOut = session.tv() != nullptr;
-    shelf.knobOut = !session.knobs().empty();
+    focus.out(BenchObject::Manual) = options.bench.manual.has_value();
+    focus.out(BenchObject::Tv) = session.tv() != nullptr;
+    focus.out(BenchObject::Knob) = !session.knobs().empty();
     // Every PC key goes to the Machine (P6o): its keyboard, its Board keys, its knobs, out or put
     // away; but while a text field is edited, a Cmd combination, Tab (the plain look) and ` (the
     // Board flipped). A Machine with both a keyboard and knobs (none yet) would give the knobs only
@@ -249,7 +251,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             knobKeys.clear();
         }
     };
-    shelf.hasBrief = shelf.briefOut = !loaded.brief.empty();
+    shelf.hasBrief = focus.out(BenchObject::Brief) = !loaded.brief.empty();
     boardView.setPlainLook(options.bench.plainLook);
     if (options.bench.zoom) {
         boardView.zoomAtStart(*options.bench.zoom);
@@ -257,7 +259,6 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     if (options.bench.back) {
         boardView.toggleLayer();
     }
-    Focus focus;
     if (!options.bench.clip.empty() || !options.bench.group.empty()) {
         focus.bringOut(Owner::Analyzer);
     }
@@ -275,16 +276,16 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     for (const BenchObject object : options.bench.pop) {  // the Machine has each: checked in main()
         switch (object) {
         case BenchObject::Manual:
-            shelf.manualOut = true;
+            focus.out(BenchObject::Manual) = true;
             break;
         case BenchObject::Tv:
-            shelf.tvOut = true;
+            focus.out(BenchObject::Tv) = true;
             break;
         case BenchObject::Keyboard:
-            shelf.keyboardOut = true;
+            focus.out(BenchObject::Keyboard) = true;
             break;
         case BenchObject::Knob:
-            shelf.knobOut = true;
+            focus.out(BenchObject::Knob) = true;
             break;
         case BenchObject::Analyzer:
             focus.bringOut(Owner::Analyzer);
@@ -302,9 +303,9 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         PopOutAtStart(object);
     }
     for (const BenchObject object : options.bench.away) {
-        (object == BenchObject::Tv         ? shelf.tvOut
-         : object == BenchObject::Keyboard ? shelf.keyboardOut
-                                           : shelf.knobOut) = false;
+        (object == BenchObject::Tv         ? focus.out(BenchObject::Tv)
+         : object == BenchObject::Keyboard ? focus.out(BenchObject::Keyboard)
+                                           : focus.out(BenchObject::Knob)) = false;
     }
     // The Board fitted beside the TV and the knob box when they come out on the bench at start
     // (their default places: the TV top right, the knob box top left), not under them.
@@ -313,12 +314,13 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             return std::ranges::find(options.bench.pop, object) == options.bench.pop.end();
         };
         const float covered = 2 * kBenchMargin;
-        const float left = shelf.knobOut && onBench(BenchObject::Knob)
+        const float left = focus.out(BenchObject::Knob) && onBench(BenchObject::Knob)
                                ? covered + FirstSize(BenchObject::Knob, {}, 1,
                                                      static_cast<int>(session.knobs().size()))
                                                .width
                                : 0;
-        const float right = shelf.tvOut && onBench(BenchObject::Tv) ? covered + kTvFirstWidth : 0;
+        const float right =
+            focus.out(BenchObject::Tv) && onBench(BenchObject::Tv) ? covered + kTvFirstWidth : 0;
         boardView.setCovered(left, right);
     }
     Owner lastOwner = focus.owner();
@@ -339,7 +341,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         const BoardScene& scene = *boardView.scene();
         manualWindows.openContents(scene, *scene.componentIndex(options.bench.contents->first),
                                    options.bench.contents->second);
-        shelf.manualOut = true;
+        focus.out(BenchObject::Manual) = true;
     }
     BriefNote briefNote;
     if (options.bench.brief) {
@@ -526,7 +528,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         // A memory chip's window (P6p): the binder at its contents, whatever the tool.
         if (const auto chip = boardView.takeContentsClick()) {
             manualWindows.openContents(*boardView.scene(), *chip);
-            shelf.manualOut = true;
+            focus.out(BenchObject::Manual) = true;
             BringToFront(kManualWindowName);
         }
         if (const auto click = boardView.takeClick()) {
@@ -612,11 +614,11 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         // The bench, back to front at start: brief, TV, knob, manuals, instruments, keyboard,
         // Debug.
         knobWindow.keys(session, knobKeys, knobsOn);
-        DrawBrief(shelf.briefOut, loaded, boardView.corner(), briefNote);
-        tvWindow.draw(shelf.tvOut, view);
-        knobWindow.draw(shelf.knobOut, session);
-        manualWindows.draw(shelf.manualOut, loaded.manuals.manuals, boardView, DesignOf(session),
-                           session.log(), session.machine());
+        DrawBrief(focus.out(BenchObject::Brief), loaded, boardView.corner(), briefNote);
+        tvWindow.draw(focus.out(BenchObject::Tv), view);
+        knobWindow.draw(focus.out(BenchObject::Knob), session);
+        manualWindows.draw(focus.out(BenchObject::Manual), loaded.manuals.manuals, boardView,
+                           DesignOf(session), session.log(), session.machine());
         if (session.machine()) {
             const auto instrument = [&](Owner owner, auto& window) {
                 bool open = focus.out(owner);
@@ -640,14 +642,14 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         }
         // Also without a Board (a netlist-only Session, the bench).
         // One keyboard per Machine, either kind: the shelf's drawing shows or hides it.
-        bool keyboardOpen = shelf.keyboardOut && !capture.reference.empty();
-        bool matrixOpen = shelf.keyboardOut && !matrixCapture.reference.empty();
+        bool keyboardOpen = focus.out(BenchObject::Keyboard) && !capture.reference.empty();
+        bool matrixOpen = focus.out(BenchObject::Keyboard) && !matrixCapture.reference.empty();
         keyboardWindow.draw(keyboardOpen, session, capture);
         matrixWindow.draw(matrixOpen, session, matrixCapture);
-        if (shelf.keyboardOut && !keyboardOpen && !matrixOpen) {
-            shelf.keyboardOut = false;  // closed by its window
+        if (focus.out(BenchObject::Keyboard) && !keyboardOpen && !matrixOpen) {
+            focus.out(BenchObject::Keyboard) = false;  // closed by its window
         }
-        DrawDebug(debugOut, session, stats, seed);
+        DrawDebug(focus.out(BenchObject::Debug), session, stats, seed);
         switch (popup.draw()) {  // last: above every window
         case PopupAnswer::Ok:
             cycleNext = std::move(pending);

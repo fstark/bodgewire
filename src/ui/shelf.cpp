@@ -100,12 +100,6 @@ const char* WindowOf(Owner instrument) {
                                          : kMeterWindowName;
 }
 
-BenchObject ObjectOf(Owner instrument) {
-    return instrument == Owner::Analyzer ? BenchObject::Analyzer
-           : instrument == Owner::Scope  ? BenchObject::Scope
-                                         : BenchObject::Meter;
-}
-
 // A window's shelf drawing clicked (not an instrument's): away, out and in front; out behind
 // another, in front; in front, away.
 void ToggleWindow(bool& out, const char* window) {
@@ -178,7 +172,7 @@ void Shelf::refused(std::string reason) {
     reasonUntil_ = std::chrono::steady_clock::now() + kReasonTime;
 }
 
-void Shelf::machineClick(bool second) {
+void Shelf::machineClick(Focus& focus, bool second) {
     struct Member {
         bool* out;
         const char* window;
@@ -186,13 +180,14 @@ void Shelf::machineClick(bool second) {
     };
     std::vector<Member> members;
     if (devices_.tv) {
-        members.push_back({&tvOut, kTvWindowName, BenchObject::Tv});
+        members.push_back({&focus.out(BenchObject::Tv), kTvWindowName, BenchObject::Tv});
     }
     if (devices_.keyboard) {
-        members.push_back({&keyboardOut, keyboardWindow, BenchObject::Keyboard});
+        members.push_back(
+            {&focus.out(BenchObject::Keyboard), keyboardWindow, BenchObject::Keyboard});
     }
     if (devices_.knob) {
-        members.push_back({&knobOut, kKnobWindowName, BenchObject::Knob});
+        members.push_back({&focus.out(BenchObject::Knob), kKnobWindowName, BenchObject::Knob});
     }
     std::vector<const char*> group;
     for (const Member& m : members) {
@@ -351,16 +346,20 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
             look.lamps = session.lamps();
             break;
         case Item::Manual:
-            look.lit = manualOut;
+            look.lit = focus.out(BenchObject::Manual);
             break;
         case Item::Machine:
-            look.slot = {devices_.tv, devices_.keyboard, devices_.knob,
-                         tvOut,       keyboardOut,       knobOut};
+            look.slot = {devices_.tv,
+                         devices_.keyboard,
+                         devices_.knob,
+                         focus.out(BenchObject::Tv),
+                         focus.out(BenchObject::Keyboard),
+                         focus.out(BenchObject::Knob)};
             inert = !hasDevice;
             why = "No TV, keyboard or knobs on this Machine";
             break;
         case Item::Brief:
-            look.lit = briefOut;
+            look.lit = focus.out(BenchObject::Brief);
             break;
         default:
             break;
@@ -465,17 +464,18 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
             }
             case Item::Manual:
                 if (second) {
-                    manualOut = true;
+                    focus.out(BenchObject::Manual) = true;
                     TogglePop(BenchObject::Manual, kManualWindowName);
                 } else {
-                    ToggleWindow(manualOut, kManualWindowName);
+                    ToggleWindow(focus.out(BenchObject::Manual), kManualWindowName);
                 }
                 break;
             case Item::Machine:
-                machineClick(second);
+                machineClick(focus, second);
                 break;
             case Item::Brief:
-                ToggleWindow(briefOut, kBriefWindowName);  // glued to the Board: no pop-out
+                ToggleWindow(focus.out(BenchObject::Brief),
+                             kBriefWindowName);  // glued to the Board: no pop-out
                 break;
             default:
                 if (IsInstrument(*owner) && second) {

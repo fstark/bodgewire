@@ -77,3 +77,18 @@ TEST_CASE("focus: the pencil is a tool", "[view]") {
     focus.take(Owner::Probe);
     CHECK(focus.owner() == Owner::Probe);
 }
+
+TEST_CASE("focus: one out-or-away for every bench object", "[view]") {
+    Focus focus;
+    focus.out(BenchObject::Tv) = true;
+    CHECK(focus.out(BenchObject::Tv));
+    CHECK_FALSE(focus.out(BenchObject::Scope));
+    focus.bringOutFocused(Owner::Scope);
+    CHECK(focus.out(BenchObject::Scope));  // the instrument's own, the same store
+    CHECK(focus.out(Owner::Scope));
+    focus.closed(Owner::Scope);
+    CHECK_FALSE(focus.out(BenchObject::Scope));
+    CHECK(focus.owner() == Owner::Probe);
+    CHECK(focus.out(BenchObject::Tv));  // untouched
+    CHECK(ObjectOf(Owner::Meter) == BenchObject::Meter);
+}

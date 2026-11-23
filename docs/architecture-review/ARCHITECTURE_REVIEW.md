@@ -99,6 +99,7 @@ About 40 % of the file is test and screenshot options (usage, `Options`, `ParseO
 **C12. One identity per bench object.** `Owner` (view/focus.hpp), `BenchObject` (view/bench_places.hpp) and `Item` (ui/shelf_drawings.hpp) overlap (`Item` also has the power and run switches), mapped by `OwnerOf`/`WindowOf`/`ObjectOf` (shelf.cpp) and the `--pop` switch in main.cpp. Out/away is stored twice: `Focus::out_` (instruments) and public `Shelf` bools (`tvOut`, `keyboardOut`, `manualOut`, `knobOut`, `briefOut`). Three ways of being a window (`bool draw(bool&, Session&)` + `BeginInstrument`; `void draw` + `PlaceNext`/`KeepAspect`/`CaseClose`; free `DrawBrief`/`DrawDebug`). Window names scattered.
 - Fix: one table in `view` (object → owner, shelf item, window name, kind); out/away beside `Focus`, which keeps only the owner; one window shape.
 - About 300 lines, 8 files; medium risk; extend focus_test and machine_slot_test.
+- Done 2026-11-23, narrowed: the three enums name three things (who acts on a pin click, a window on the bench, a button on the shelf) and overlap only on the instruments, through two small mappings (`ObjectOf` now in `view/focus`, `WindowOf`); merging them would blur that. What was duplicated is out or away: now all in `Focus` (`out(BenchObject)`, a reference a closing window writes), the shelf's five bools and the bench's `debugOut` gone. The three ways of being a window are left as they are (the instruments' `draw` returns a click for the focus; the cases and the brief need none).
 
 **C13. Split `Session`.** 83 methods in groups: lifecycle 10, repairs 4, probe 4, analyzer 19, scope 10, meter 10, LEDs 1, input devices 18. Its real job, keeping what the player set and re-applying it after each rebuild, is spread over `makeLive` (every consumer by hand), `powerOn` (knobs), four release loops in `powerOff`, `touchLive`/`configureLive`.
 - Fix: one object per group (analyzer, scope, meter, probe, input devices), each with `consumers()`, `rebind(loaded, runner)`, `release()`; Session keeps lifecycle and Repairs and hands out the groups (`session.analyzer().clip(…)`). Analyzer first.
@@ -160,7 +161,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | B7–B9 names | done 2026-11-23 |
 | C10 Faults as one type | done 2026-11-23 |
 | C11 split ui/main.cpp | done 2026-11-23 (the Bench class with D23) |
-| C12 bench object identity | todo |
+| C12 bench object identity | done 2026-11-23 (narrowed: out or away in one place) |
 | C13 split Session | todo |
 | C14 shared gestures | todo |
 | C15 BoardView/Shelf logic to view | todo |

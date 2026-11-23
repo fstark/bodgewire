@@ -8,12 +8,14 @@ bool IsInstrument(Owner owner) {
     return owner == Owner::Analyzer || owner == Owner::Scope || owner == Owner::Meter;
 }
 
-std::size_t Focus::slot(Owner instrument) {
+BenchObject ObjectOf(Owner instrument) {
     assert(IsInstrument(instrument));
-    return static_cast<std::size_t>(instrument) - static_cast<std::size_t>(Owner::Analyzer);
+    return instrument == Owner::Analyzer ? BenchObject::Analyzer
+           : instrument == Owner::Scope  ? BenchObject::Scope
+                                         : BenchObject::Meter;
 }
 
-bool Focus::out(Owner instrument) const { return out_[slot(instrument)]; }
+bool Focus::out(Owner instrument) const { return out(ObjectOf(instrument)); }
 
 void Focus::take(Owner tool) {
     assert(!IsInstrument(tool));
@@ -21,7 +23,7 @@ void Focus::take(Owner tool) {
 }
 
 void Focus::bringOutFocused(Owner instrument) {
-    out_[slot(instrument)] = true;
+    out(ObjectOf(instrument)) = true;
     owner_ = instrument;
 }
 
@@ -33,7 +35,7 @@ void Focus::shelfClick(Owner instrument, bool front) {
     }
 }
 
-void Focus::bringOut(Owner instrument) { out_[slot(instrument)] = true; }
+void Focus::bringOut(Owner instrument) { out(ObjectOf(instrument)) = true; }
 
 void Focus::clicked(Owner instrument) {
     if (out(instrument)) {
@@ -42,7 +44,7 @@ void Focus::clicked(Owner instrument) {
 }
 
 void Focus::closed(Owner instrument) {
-    out_[slot(instrument)] = false;
+    out(ObjectOf(instrument)) = false;
     if (owner_ == instrument) {
         owner_ = Owner::Probe;
     }

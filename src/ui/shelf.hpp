@@ -37,8 +37,6 @@ public:
     // A click the focus owner could not act on: the reason in amber for 2 s.
     void refused(std::string reason);
 
-    // Equipment that is not an instrument, and the brief: out or away, from the shelf.
-    bool tvOut = false, keyboardOut = false, manualOut = false, knobOut = false, briefOut = false;
     bool hasBrief = false;                 // a Puzzle: the brief note is on the shelf
     const char* keyboardWindow = nullptr;  // the Machine's keyboard window, by name
     bool wireStarted = false;              // Wire tool: first pin clicked
@@ -54,7 +52,7 @@ private:
     struct Devices {
         bool tv, keyboard, knob;
     };
-    void machineClick(bool second);
+    void machineClick(Focus& focus, bool second);
 
     Devices devices_{};
     bool found_ = false;  // devices_ found (a Machine's devices never change)

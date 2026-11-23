@@ -18,6 +18,7 @@ enum class BenchObject : std::uint8_t {
     Brief,
     Debug
 };
+inline constexpr std::size_t kBenchObjects = 9;
 
 struct Extent {
     float width = 0, height = 0;
