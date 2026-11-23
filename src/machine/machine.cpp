@@ -11,7 +11,6 @@
 #include "board/kicad_board.hpp"
 #include "machine/crack.hpp"
 #include "machine/electrical.hpp"
-#include "netlist/rom_directory.hpp"
 #include "parts/memory_cells.hpp"
 #include "parts/mos6530.hpp"
 #include "parts/rom.hpp"
@@ -94,19 +93,12 @@ LoadMachine(const Puzzle& puzzle, const std::filesystem::path& dir,
     machine.name_ = puzzle.machine;
     const auto netlistPath = dir / (puzzle.machine + ".bwn");
     const auto boardPath = dir / "board" / (puzzle.machine + ".kicad_pcb");
-    const auto text = ReadTextFile(netlistPath);
-    if (!text || !std::filesystem::exists(boardPath)) {
+    if (!std::filesystem::is_regular_file(netlistPath) || !std::filesystem::exists(boardPath)) {
         return fail(puzzle.machineLine, "unknown machine '" + puzzle.machine + "'");
     }
-    auto design = ParseNetlist(*text, netlistPath.filename().string());
+    auto design = ReadNetlistFile(netlistPath, roms);
     if (!design) {
         return std::unexpected(std::move(design.error()));
-    }
-    ResolveContentsPaths(*design, netlistPath.parent_path());
-    if (roms) {
-        if (const auto applied = ApplyRomDirectory(*design, *roms); !applied) {
-            return fail(puzzle.machineLine, applied.error());
-        }
     }
     machine.design_ = std::move(*design);
     auto designCircuit = BuildCircuit(machine.design_);

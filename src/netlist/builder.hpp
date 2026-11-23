@@ -81,7 +81,16 @@ LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck 
                         std::span<const StuckCell> cells = {},
                         std::span<const StuckSwitch> switches = {});  // all errors, by line
 LoadResult LoadNetlist(std::string_view text, std::string file);
-LoadResult LoadNetlistFile(const std::filesystem::path& path);  // diagnostics name the file only
+
+// A .bwn file parsed, its relative contents= paths made relative to its directory
+// (ResolveContentsPaths), then the ROM directory `roms` applied (ApplyRomDirectory). Diagnostics
+// name the file only ("cannot read file", the parser's, the ROM directory's at line 0).
+std::expected<Netlist, std::vector<Diagnostic>>
+ReadNetlistFile(const std::filesystem::path& path,
+                const std::optional<std::filesystem::path>& roms = std::nullopt);
+// ReadNetlistFile, then BuildCircuit.
+LoadResult LoadNetlistFile(const std::filesystem::path& path,
+                           const std::optional<std::filesystem::path>& roms = std::nullopt);
 
 // Makes every relative `contents=` parameter (a ROM's contents file) relative to `directory`, the
 // netlist file's.

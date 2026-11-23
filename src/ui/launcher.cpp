@@ -62,7 +62,7 @@ std::unique_ptr<StillData> MakeStill(const std::filesystem::path& netlist) {
     }
     auto machine = LoadNetlistMachine(netlist);
     if (!machine) {
-        Print(machine.error());
+        PrintDiagnostics(machine.error());
         return nullptr;
     }
     const LoadedCircuit& design = machine->designCircuit();

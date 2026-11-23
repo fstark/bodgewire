@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <string>
 
 namespace bw {
@@ -15,5 +16,7 @@ struct Diagnostic {
 };
 
 std::string Format(const Diagnostic& d);  // "file:12: error: message"
+
+void PrintDiagnostics(std::span<const Diagnostic> diagnostics);  // each Format, on stderr
 
 }  // namespace bw

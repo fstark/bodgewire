@@ -8,6 +8,7 @@
 #include <set>
 #include <utility>
 
+#include "netlist/rom_directory.hpp"
 #include "netlist/units.hpp"
 #include "parts/capacitor.hpp"
 #include "parts/catalogue.hpp"
@@ -597,18 +598,35 @@ LoadResult LoadNetlist(std::string_view text, std::string file) {
     return BuildCircuit(*netlist);
 }
 
-LoadResult LoadNetlistFile(const std::filesystem::path& path) {
+std::expected<Netlist, std::vector<Diagnostic>>
+ReadNetlistFile(const std::filesystem::path& path,
+                const std::optional<std::filesystem::path>& roms) {
     std::string file = path.filename().string();
     const auto text = ReadTextFile(path);
     if (!text) {
         return std::unexpected(
             std::vector<Diagnostic>{{std::move(file), 0, Severity::Error, "cannot read file"}});
     }
-    auto netlist = ParseNetlist(*text, std::move(file));
+    auto netlist = ParseNetlist(*text, file);
+    if (!netlist) {
+        return netlist;
+    }
+    ResolveContentsPaths(*netlist, path.parent_path());
+    if (roms) {
+        if (const auto applied = ApplyRomDirectory(*netlist, *roms); !applied) {
+            return std::unexpected(
+                std::vector<Diagnostic>{{std::move(file), 0, Severity::Error, applied.error()}});
+        }
+    }
+    return netlist;
+}
+
+LoadResult LoadNetlistFile(const std::filesystem::path& path,
+                           const std::optional<std::filesystem::path>& roms) {
+    const auto netlist = ReadNetlistFile(path, roms);
     if (!netlist) {
         return std::unexpected(netlist.error());
     }
-    ResolveContentsPaths(*netlist, path.parent_path());
     return BuildCircuit(*netlist);
 }
 

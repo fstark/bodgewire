@@ -35,7 +35,6 @@
 #include "machine/typing.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
-#include "netlist/rom_directory.hpp"
 #include "netlist/units.hpp"
 #include "sim/simulator.hpp"
 #include "sim/vcd.hpp"
@@ -170,40 +169,16 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
     return std::nullopt;
 }
 
-// Diagnostics printed; nullptr on errors. `roms`: a ROM directory (ApplyRomDirectory).
+// Diagnostics printed; nullptr on errors. `roms`: a ROM directory (ReadNetlistFile).
 std::unique_ptr<LoadedCircuit> Load(const std::string& file,
                                     const std::optional<std::string>& roms = std::nullopt) {
-    LoadResult result = std::unexpected(std::vector<Diagnostic>{});
-    if (!roms) {
-        result = LoadNetlistFile(file);
-    } else {
-        std::ifstream in(file, std::ios::binary);
-        std::stringstream text;
-        text << in.rdbuf();
-        auto netlist = ParseNetlist(text.str(), std::filesystem::path(file).filename().string());
-        if (!in || !netlist) {
-            result = std::unexpected(
-                netlist ? std::vector<Diagnostic>{{file, 0, Severity::Error, "cannot read file"}}
-                        : netlist.error());
-        } else {
-            ResolveContentsPaths(*netlist, std::filesystem::absolute(file).parent_path());
-            if (const auto applied = ApplyRomDirectory(*netlist, *roms); !applied) {
-                result = std::unexpected(
-                    std::vector<Diagnostic>{{netlist->file, 0, Severity::Error, applied.error()}});
-            } else {
-                result = BuildCircuit(*netlist);
-            }
-        }
-    }
+    LoadResult result =
+        LoadNetlistFile(file, roms ? std::optional<std::filesystem::path>(*roms) : std::nullopt);
     if (!result) {
-        for (const Diagnostic& d : result.error()) {
-            std::println(stderr, "{}", Format(d));
-        }
+        PrintDiagnostics(result.error());
         return nullptr;
     }
-    for (const Diagnostic& d : (*result)->warnings) {
-        std::println(stderr, "{}", Format(d));
-    }
+    PrintDiagnostics((*result)->warnings);
     return std::move(*result);
 }
 
@@ -250,9 +225,7 @@ std::unique_ptr<LoadedCircuit> LoadPuzzle(const Options& options,
                                           std::optional<std::string>& usage) {
     auto machine = LoadPuzzleFile(options.file, options.roms);
     if (!machine) {
-        for (const Diagnostic& d : machine.error()) {
-            std::println(stderr, "{}", Format(d));
-        }
+        PrintDiagnostics(machine.error());
         return nullptr;
     }
     for (const std::string& repair : options.repair) {
@@ -262,9 +235,7 @@ std::unique_ptr<LoadedCircuit> LoadPuzzle(const Options& options,
     }
     auto result = machine->build();
     if (!result) {
-        for (const Diagnostic& d : result.error()) {
-            std::println(stderr, "{}", Format(d));
-        }
+        PrintDiagnostics(result.error());
         return nullptr;
     }
     return std::move(*result);
@@ -290,12 +261,6 @@ int ExportKicad(std::span<char*> args) {
     }
     WriteKicadNetlist(out, *loaded, std::filesystem::path(args[2]).filename().string());
     return 0;
-}
-
-void PrintDiagnostics(const std::vector<Diagnostic>& diagnostics) {
-    for (const Diagnostic& d : diagnostics) {
-        std::println(stderr, "{}", Format(d));
-    }
 }
 
 int AsmCommand(std::span<char*> args) {
@@ -450,9 +415,7 @@ int CheckBoardFile(std::span<char*> args) {
     }
     const auto board = ReadKicadBoardFile(args[3]);
     if (!board) {
-        for (const Diagnostic& d : board.error()) {
-            std::println(stderr, "{}", Format(d));
-        }
+        PrintDiagnostics(board.error());
         return kExitNetlistErrors;
     }
     auto problems = BoardNetlistProblems(*loaded);

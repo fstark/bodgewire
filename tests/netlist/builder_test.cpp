@@ -81,6 +81,27 @@ TEST_CASE("builder: contents= is found beside the netlist file", "[netlist]") {
     CHECK(bad.error()[0].message == "U1: 2716: x.rom line 1: unknown token 'zz'");
 }
 
+TEST_CASE("builder: LoadNetlistFile with a ROM directory", "[netlist]") {
+    const auto dir = std::filesystem::temp_directory_path() / "bw_builder_roms";
+    std::filesystem::create_directories(dir / "roms");
+    std::filesystem::create_directories(dir / "set");
+    std::ofstream(dir / "roms" / "x.rom") << "zz\n";  // replaced by the set's: never read
+    std::ofstream(dir / "set" / "U1.rom") << "\"A\"\n";
+    std::ofstream(dir / "x.bwn")
+        << "part U1 2716 contents=roms/x.rom\nnet GND U1.A0 U1.A1 U1.A2 U1.A3 U1.A4 U1.A5\n"
+           "net GND U1.A6 U1.A7 U1.A8 U1.A9 U1.A10 U1.CE_N U1.OE_N\nnet VCC U1.VPP\n";
+    CHECK_FALSE(LoadNetlistFile(dir / "x.bwn").has_value());
+    const auto loaded = LoadNetlistFile(dir / "x.bwn", dir / "set");
+    REQUIRE(loaded.has_value());
+    CHECK((*loaded)->warnings.empty());
+
+    const auto missing = LoadNetlistFile(dir / "x.bwn", dir / "nowhere");
+    REQUIRE_FALSE(missing.has_value());
+    REQUIRE(missing.error().size() == 1);
+    CHECK(Format(missing.error()[0]) ==
+          "x.bwn: error: no ROM directory " + (dir / "nowhere").string());
+}
+
 TEST_CASE("builder: unknown reference", "[netlist]") {
     CHECK(Errors("part U1 74LS00\nnet A U1.1 U9.1\n") == Lines{"2: unknown reference 'U9'"});
 }

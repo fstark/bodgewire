@@ -32,7 +32,6 @@
 #include "netlist/builder.hpp"
 #include "netlist/diagnostic.hpp"
 #include "netlist/parser.hpp"
-#include "netlist/rom_directory.hpp"
 #include "netlist/units.hpp"
 #include "parts/catalogue.hpp"
 #include "session/session.hpp"
@@ -1764,7 +1763,7 @@ int main(int argc, char** argv) {
                 visits.pop_front();
             } else {
                 MachineList list = ListMachines(*machinesDir);
-                Print(list.problems);
+                PrintDiagnostics(list.problems);
                 launcher.setList(std::move(list));
                 if (left) {
                     launcher.select(*left);
