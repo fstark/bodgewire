@@ -36,13 +36,13 @@ bool MeterWindow::draw(bool& open, Session& session) {
         return false;
     }
     const bool clicked = InstrumentClicked();
-    const MeterMode mode = session.meterMode();
+    const MeterMode mode = session.meter().mode();
     if (ImGui::RadioButton("V", mode == MeterMode::Volts)) {
-        session.setMeterMode(MeterMode::Volts);
+        session.meter().setMode(MeterMode::Volts);
     }
     ImGui::SameLine();
     if (ImGui::RadioButton("Continuity", mode == MeterMode::Continuity)) {
-        session.setMeterMode(MeterMode::Continuity);
+        session.meter().setMode(MeterMode::Continuity);
     }
 
     if (mode == MeterMode::Continuity) {  // the Shelf's power switch, as tall as the readout
@@ -61,7 +61,7 @@ bool MeterWindow::draw(bool& open, Session& session) {
     }
     ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kReadoutScale);
     if (mode == MeterMode::Volts) {
-        if (const auto volts = session.volts()) {
+        if (const auto volts = session.meter().volts()) {
             ImGui::Text("%.2f V", *volts);
         } else {
             ImGui::TextColored(kGrey, "- - -");
@@ -69,7 +69,7 @@ bool MeterWindow::draw(bool& open, Session& session) {
     } else if (session.powered()) {
         ImGui::TextColored(kGrey, "- - -");  // the instruction below: beside the switch, the
                                              // large words read as its label
-    } else if (const auto beep = session.continuity()) {
+    } else if (const auto beep = session.meter().continuity()) {
         const float size = ImGui::GetFontSize();
         const ImVec2 at = ImGui::GetCursorScreenPos();
         ImGui::GetWindowDrawList()->AddCircleFilled({at.x + size / 2, at.y + size / 2}, size * 0.4f,
@@ -91,18 +91,18 @@ bool MeterWindow::draw(bool& open, Session& session) {
         ImGui::PopStyleColor();
     }
 
-    ImGui::TextUnformatted(LeadText("red", session.red()).c_str());
-    if (session.red() || session.black()) {
+    ImGui::TextUnformatted(LeadText("red", session.meter().red()).c_str());
+    if (session.meter().red() || session.meter().black()) {
         ImGui::SameLine();
         if (ImGui::SmallButton("\u00d7")) {
-            session.liftLeads();
+            session.meter().liftLeads();
         }
         ImGui::SetItemTooltip("Lift both leads");
     }
     if (mode == MeterMode::Volts) {
         ImGui::TextColored(kGrey, "black: GND (implied)");
     } else {
-        ImGui::TextUnformatted(LeadText("black", session.black()).c_str());
+        ImGui::TextUnformatted(LeadText("black", session.meter().black()).c_str());
     }
     PopOnDoubleClick(BenchObject::Meter);
     ImGui::End();

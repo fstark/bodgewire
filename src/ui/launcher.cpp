@@ -255,7 +255,7 @@ void Launcher::stop() {
 
 std::optional<RunnerStatus> Launcher::liveStatus() {
     if (live_.loaded && live_.loaded->session) {
-        return live_.loaded->session->runner().status();
+        return live_.loaded->session->status();
     }
     return std::nullopt;
 }

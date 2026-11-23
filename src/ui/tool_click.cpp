@@ -17,9 +17,9 @@ std::optional<RepairPlan> ToolClick(Owner owner, const BoardClick& click, Sessio
     switch (owner) {
     case Owner::Probe:
         if (!pick) {
-            session.touch(std::nullopt);  // bare Board: the tip lifted (P6o)
+            session.probe().touch(std::nullopt);  // bare Board: the tip lifted (P6o)
         } else if (pick->hit.kind != HitKind::Component) {
-            session.touch(ProbeTip{pick->contact, pick->layer});
+            session.probe().touch(ProbeTip{pick->contact, pick->layer});
         }
         break;
     case Owner::Puller:
@@ -136,8 +136,8 @@ std::optional<RepairPlan> ToolClick(Owner owner, const BoardClick& click, Sessio
         break;
     case Owner::Meter:
         if (pick && AcceptsLead(LeadKind::Held, pick->hit.kind) &&
-            !session.placeLead({pick->contact, pick->layer,
-                                LeadLabel(*boardView.scene(), pick->hit, pick->layer)})) {
+            !session.meter().placeLead({pick->contact, pick->layer,
+                                        LeadLabel(*boardView.scene(), pick->hit, pick->layer)})) {
             refuse("Meter: power off for continuity");
         }
         break;

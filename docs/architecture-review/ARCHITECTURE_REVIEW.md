@@ -105,6 +105,7 @@ About 40 % of the file is test and screenshot options (usage, `Options`, `ParseO
 - Fix: one object per group (analyzer, scope, meter, probe, input devices), each with `consumers()`, `rebind(loaded, runner)`, `release()`; Session keeps lifecycle and Repairs and hands out the groups (`session.analyzer().clip(…)`). Analyzer first.
 - Run control through Session too: pause, resume and status go through `session.runner()` today (shelf.cpp, main.cpp, launcher.cpp), and `tv()` hands out the `TvConsumer`.
 - About 800 lines moved into 5 file pairs; about 960 call sites renamed in 14 UI files and the tests; low risk to behaviour, high churn.
+- Done 2026-11-23 in three phases: `InputDevices` (`session.inputs()`), `AnalyzerSetup` and `ScopeSetup` (`analyzer()`, `scope()`), `ProbeSetup` and `MeterSetup` (`probe()`, `meter()`), each bound to each build in one `bindBuild()`; `session/leads` holds `PadLead`, `PadLeadOf` and `SessionBuild` (the Machine, the build, powered: on the heap with the Machine, now a `unique_ptr`, so the setups survive a Session's move). Session: 1,069 → 361 lines, 83 → 35 methods (lifecycle, Repairs, LEDs, the groups). Run control through Session (`pause`, `resume`, `status`); `runner()` kept for the tests' stepping. About 500 call sites renamed.
 
 **C14. Input as shared gestures** (prepares [mobile](../mobile/MOBILE.md), whose idea 3 assumes it). Input is read raw from ImGui in about 10 files:
 - the scope and analyzer canvases repeat wheel, pan, click-or-drag and right-click-clears (scope_window.cpp, analyzer_window.cpp);
@@ -162,7 +163,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | C10 Faults as one type | done 2026-11-23 |
 | C11 split ui/main.cpp | done 2026-11-23 (the Bench class with D23) |
 | C12 bench object identity | done 2026-11-23 (narrowed: out or away in one place) |
-| C13 split Session | todo |
+| C13 split Session | done 2026-11-23 |
 | C14 shared gestures | todo |
 | C15 BoardView/Shelf logic to view | todo |
 | C16 catalogue metadata | todo |

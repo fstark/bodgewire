@@ -121,7 +121,7 @@ bool NeedsPowerOff(Owner owner) {
 
 // What the probe's tip touches: "U1 pin 1 CKB · leg", "bare board"; empty when lifted.
 std::string ProbeText(const Session& session, const BoardScene* scene) {
-    const auto tip = session.probeTip();
+    const auto tip = session.probe().tip();
     if (!tip || scene == nullptr) {
         return {};
     }
@@ -344,7 +344,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
             look.speed = pace.shown;
             break;
         case Item::Probe:
-            look.lamps = session.lamps();
+            look.lamps = session.probe().lamps();
             break;
         case Item::Manual:
             look.lit = focus.out(BenchObject::Manual);
@@ -451,14 +451,14 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
                     static_cast<RunSwitch>(std::clamp(static_cast<int>(third), 0, 2));
                 if (chosen == RunSwitch::Pause) {
                     if (powered) {  // with the power off `‖` cannot be chosen
-                        session.runner().pause();
+                        session.pause();
                         run = chosen;
                     }
                     break;
                 }
                 session.setSpeed(chosen == RunSwitch::Max ? Speed::Max : Speed::RealTime);
                 if (powered) {
-                    session.runner().resume();
+                    session.resume();
                 }
                 run = chosen;
                 break;
@@ -504,9 +504,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         amber = true;
     } else if (wireStarted) {
         hint = "Wire: click the second pin";
-    } else if (focus.owner() == Owner::Meter && session.meterMode() == MeterMode::Continuity &&
+    } else if (focus.owner() == Owner::Meter && session.meter().mode() == MeterMode::Continuity &&
                !powered) {
-        hint = session.blackNext() ? "Meter: black lead next" : "Meter: red lead next";
+        hint = session.meter().blackNext() ? "Meter: black lead next" : "Meter: red lead next";
     }
     if (!hint.empty()) {
         const float left = leftEnd + kGroupGap;

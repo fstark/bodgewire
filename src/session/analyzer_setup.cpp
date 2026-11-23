@@ -26,7 +26,8 @@ std::optional<NameStem> BusBitOf(const Component& part, std::size_t pin) {
 
 }  // namespace
 
-std::optional<PadLead> AnalyzerSetup::padLead(std::string_view reference, std::string_view pin) const {
+std::optional<PadLead> AnalyzerSetup::padLead(std::string_view reference,
+                                              std::string_view pin) const {
     return build_->machine ? PadLeadOf(*build_->machine, reference, pin) : std::nullopt;
 }
 

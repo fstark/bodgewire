@@ -469,7 +469,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         if (tv && tv->pictures().update()) {
             view.show(tv->pictures().front());
         }
-        const RunnerStatus status = session.runner().status();
+        const RunnerStatus status = session.status();
         const double speedRatio = ratio.update(status.simTime);
 
         gpu.newFrame();
@@ -569,7 +569,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             marks.clear(*at, boardView.markReach());
         }
         boardView.setMarks(marks.marks());
-        const auto tip = session.probeTip();
+        const auto tip = session.probe().tip();
         boardView.setProbeTip(tip ? std::optional(tip->at) : std::nullopt);
         boardView.setBlobs(session.blobs());
         boardView.setClips(ClipTagsOf(session));

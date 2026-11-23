@@ -19,7 +19,7 @@ std::expected<void, std::string> ApplyBenchOptions(Session& session, const Bench
         if (!at) {
             return std::unexpected(std::format("unknown pin '{}'", *options.probe));
         }
-        session.touch(ProbeTip{*at, Layer::Front});
+        session.probe().touch(ProbeTip{*at, Layer::Front});
     }
     if (options.contents) {
         const std::string& reference = options.contents->first;
@@ -80,7 +80,7 @@ std::expected<void, std::string> ApplyBenchOptions(Session& session, const Bench
         session.scope().setSettings(scope);
     }
     if (options.meter.size() == 2) {  // red then black, before the power-on: none for these
-        session.setMeterMode(MeterMode::Continuity);
+        session.meter().setMode(MeterMode::Continuity);
     }
     for (const std::string& item : options.meter) {
         const auto pin = ParsePinRef(item);
@@ -92,7 +92,7 @@ std::expected<void, std::string> ApplyBenchOptions(Session& session, const Bench
             session.machine()->designCircuit().parts, [&](const LoadedPart& part) {
                 return part.reference == lead->reference && part.info->kind == PartKind::Chip;
             });
-        session.placeLead({lead->at, Layer::Front, lead->label + (chip ? " leg" : "")});
+        session.meter().placeLead({lead->at, Layer::Front, lead->label + (chip ? " leg" : "")});
     }
     for (const std::string& text : options.repair) {
         const auto repair = ParseRepair(text);

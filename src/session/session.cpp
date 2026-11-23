@@ -115,17 +115,6 @@ std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> 
     return live;
 }
 
-void Session::touchLive() {
-    live_->probe.touch(*live_->runner,
-                       tip_ ? machine_->probeNet(*live_->circuit, tip_->layer, tip_->at)
-                            : std::nullopt);
-    const auto meterNet = meterMode_ == MeterMode::Volts && red_
-                              ? machine_->probeNet(*live_->circuit, red_->layer, red_->at)
-                              : std::nullopt;
-    live_->meter.touch(*live_->runner, meterNet);
-    meterRail_ = meterNet ? RailVolts(*live_->circuit, *meterNet) : std::nullopt;
-}
-
 void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
     if (dirty_) {
         analyzer_.beforeRebuild();
@@ -134,7 +123,6 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
         Check(built.has_value(), "session: a repaired Machine does not build");
         live_ = makeLive(std::move(*built));
         bindBuild();
-        touchLive();
         dirty_ = false;
     }
     if (pauseAt) {
@@ -173,7 +161,7 @@ RepairResult Session::repair(const RepairAction& repair) {
     }
     log_.push_back(FormatRepair(repair));
     dirty_ = true;
-    recomputeContinuity();
+    meter_.copperChanged();
     return RepairResult::Done;
 }
 
@@ -188,78 +176,12 @@ RepairResult Session::undoRepairs() {
     log_.clear();
     blobs_.clear();
     dirty_ = true;
-    recomputeContinuity();
+    meter_.copperChanged();
     return RepairResult::Done;
 }
 
-void Session::touch(std::optional<ProbeTip> tip) {
-    if (!machine_) {
-        return;
-    }
-    tip_ = tip;
-    touchLive();
-}
-
-ProbeLamps Session::lamps() const { return powered_ ? live_->probe.lamps() : ProbeLamps{}; }
-
 std::optional<PadLead> Session::padLead(std::string_view reference, std::string_view pin) const {
     return machine_ ? PadLeadOf(*machine_, reference, pin) : std::nullopt;
-}
-
-void Session::setMeterMode(MeterMode mode) {
-    if (!machine_) {
-        return;
-    }
-    meterMode_ = mode;
-    blackNext_ = false;
-    touchLive();
-    recomputeContinuity();
-}
-
-bool Session::placeLead(TestLead lead) {
-    if (!machine_) {
-        return false;
-    }
-    if (meterMode_ == MeterMode::Volts) {
-        red_ = std::move(lead);
-    } else {
-        if (powered_) {
-            return false;
-        }
-        (blackNext_ ? black_ : red_) = std::move(lead);
-        blackNext_ = !blackNext_;
-    }
-    touchLive();
-    recomputeContinuity();
-    return true;
-}
-
-void Session::liftLeads() {
-    if (!machine_) {
-        return;
-    }
-    red_.reset();
-    black_.reset();
-    blackNext_ = false;
-    touchLive();
-    recomputeContinuity();
-}
-
-std::optional<double> Session::volts() const {
-    if (meterMode_ != MeterMode::Volts || !red_) {
-        return std::nullopt;
-    }
-    if (!powered_ || !live_->meter.touched()) {
-        return 0.0;  // power off; bare Copper
-    }
-    if (meterRail_) {
-        return meterRail_;
-    }
-    return live_->meter.reading();
-}
-
-std::optional<bool> Session::continuity() const {
-    return meterMode_ == MeterMode::Continuity && !powered_ ? connected_ : std::nullopt;
 }
 
 std::vector<LedLight> Session::leds() const {
@@ -286,16 +208,11 @@ std::vector<LedLight> Session::leds() const {
     return lights;
 }
 
-void Session::recomputeContinuity() {
-    connected_ =
-        red_ && black_
-            ? std::optional(machine_->connected(red_->layer, red_->at, black_->layer, black_->at))
-            : std::nullopt;
-}
-
 void Session::configureLive() {
     analyzer_.bind(live_->analyzer);
     scope_.bind(live_->scope);
+    probe_.bind(live_->probe);
+    meter_.bind(live_->meter);
 }
 
 }  // namespace bw

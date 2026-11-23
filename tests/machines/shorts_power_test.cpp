@@ -78,14 +78,14 @@ TEST_CASE("shorts power: Dead Rail limits current and reads 0 V", "[machines]") 
     Session session = PuzzleSession("dead_rail.bwp");
     const auto vcc = session.machine()->padPosition("U1", "16");
     REQUIRE(vcc.has_value());
-    REQUIRE(session.placeLead({*vcc, Layer::Back, "U1.16 VCC"}));
+    REQUIRE(session.meter().placeLead({*vcc, Layer::Back, "U1.16 VCC"}));
     CHECK_FALSE(session.currentLimited());
 
     session.setSpeed(Speed::Max);
     session.powerOn(1, 1_ms);
     session.runner().waitIdle();
     CHECK(session.currentLimited());
-    CHECK(session.volts() == 0.0);
+    CHECK(session.meter().volts() == 0.0);
     session.powerOff();
     CHECK_FALSE(session.currentLimited());
 
@@ -93,6 +93,6 @@ TEST_CASE("shorts power: Dead Rail limits current and reads 0 V", "[machines]") 
     session.powerOn(1, 1_ms);
     session.runner().waitIdle();
     CHECK_FALSE(session.currentLimited());
-    CHECK(session.volts() == 5.0);
+    CHECK(session.meter().volts() == 5.0);
     session.powerOff();
 }

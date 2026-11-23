@@ -26,6 +26,8 @@
 #include "session/analyzer_setup.hpp"
 #include "session/input_devices.hpp"
 #include "session/leads.hpp"
+#include "session/meter_setup.hpp"
+#include "session/probe_setup.hpp"
 #include "session/scope_setup.hpp"
 
 namespace bw {
@@ -35,20 +37,7 @@ struct SolderBlob {
     Point at;  // nm
 };
 
-struct ProbeTip {
-    Point at;     // nm
-    Layer layer;  // Active Layer when touched: which Trace a point on two Traces reads
-};
-
 enum class RepairResult : std::uint8_t { Done, Refused, Unknown };  // Refused: powered
-
-enum class MeterMode : std::uint8_t { Volts, Continuity };
-
-struct TestLead {
-    Point at;           // nm
-    Layer layer;        // as ProbeTip
-    std::string label;  // "U1.14 QA", "Trace", "via"
-};
 
 // The Nets a TV hangs on: a VIDEO connector's VIDEO and SYNC_N, or a MONITOR connector's
 // VIDEO_N, HDRIVE and VDRIVE, all connected; nullopt for neither. Session, bw run --tv.
@@ -74,6 +63,8 @@ public:
     const Machine* machine() const { return machine_.get(); }
     const Board* drawnBoard() const { return drawn_ ? &*drawn_ : nullptr; }  // never repaired
     const LoadedCircuit& circuit() const { return *live_->circuit; }
+    // The current build's Runner: tests step it in simulated time (resumeUntil, waitIdle); the
+    // bench goes through powerOn, pause, resume and status.
     Runner& runner() { return *live_->runner; }
     TvConsumer* tv() { return live_->tv ? &*live_->tv : nullptr; }  // replaced on rebuild
 
@@ -82,7 +73,10 @@ public:
     bool powered() const { return powered_; }
     // Powered with a Dead Rail: the bench supply is in current limit.
     bool currentLimited() const { return powered_ && machine_ && machine_->power().deadRail; }
-    void setSpeed(Speed speed);  // kept across rebuilds
+    void setSpeed(Speed speed);                 // kept across rebuilds
+    void pause() { live_->runner->pause(); }    // the run switch at `‖`, powered
+    void resume() { live_->runner->resume(); }  // and back
+    RunnerStatus status() const { return live_->runner->status(); }
 
     RepairResult repair(const RepairAction& repair);  // logs and blobs every Done
     // The bench's Reset: every Repair undone, the log and blobs cleared; leads, clips and hooks
@@ -90,11 +84,6 @@ public:
     RepairResult undoRepairs();
     std::span<const std::string> log() const { return log_; }
     std::span<const SolderBlob> blobs() const { return blobs_; }
-
-    void touch(std::optional<ProbeTip> tip);  // nullopt: lifted
-    std::optional<ProbeTip> probeTip() const { return tip_; }
-    std::optional<NetId> probedNet() const { return live_->probe.touched(); }
-    ProbeLamps lamps() const;  // dark when not powered
 
     // A Machine pad by pin number or name; nullopt without a Machine or for an unknown pad.
     std::optional<PadLead> padLead(std::string_view reference, std::string_view pin) const;
@@ -104,17 +93,11 @@ public:
     const AnalyzerSetup& analyzer() const { return analyzer_; }
     ScopeSetup& scope() { return scope_; }
     const ScopeSetup& scope() const { return scope_; }
-
-    void setMeterMode(MeterMode mode);
-    MeterMode meterMode() const { return meterMode_; }
-    bool placeLead(TestLead lead);  // false: no Machine, or Continuity with the power on
-    void liftLeads();
-    bool blackNext() const { return blackNext_; }  // Continuity: the next click places black
-    const std::optional<TestLead>& red() const { return red_; }
-    const std::optional<TestLead>& black() const { return black_; }
-    std::optional<NetId> meterNet() const { return live_->meter.touched(); }
-    std::optional<double> volts() const;     // Volts mode; nullopt: no red Lead or no reading yet
-    std::optional<bool> continuity() const;  // nullopt: a Lead missing or powered
+    // The Logic Probe's tip and the Multimeter's mode and Test Leads.
+    ProbeSetup& probe() { return probe_; }
+    const ProbeSetup& probe() const { return probe_; }
+    MeterSetup& meter() { return meter_; }
+    const MeterSetup& meter() const { return meter_; }
 
     // Every lamp of every lit Part (LED, digit segments), netlist then lamp order; 0 when not
     // powered or not watched (an unconnected lamp).
@@ -139,9 +122,7 @@ private:
 
     std::unique_ptr<Live> makeLive(std::unique_ptr<LoadedCircuit> circuit) const;
     void bindBuild();  // build_, the inputs and the instruments onto the current build
-    void touchLive();
     void configureLive();
-    void recomputeContinuity();
 
     std::unique_ptr<Machine> machine_;  // on the heap, as build_: they outlive moves
     std::unique_ptr<SessionBuild> build_ = std::make_unique<SessionBuild>();
@@ -150,16 +131,12 @@ private:
     bool dirty_ = false;  // a Repair since live_ was built
     bool powered_ = false;
     Speed speed_ = Speed::RealTime;
-    std::optional<ProbeTip> tip_;
     std::vector<std::string> log_;
     std::vector<SolderBlob> blobs_;
     AnalyzerSetup analyzer_{*build_};
     ScopeSetup scope_{*build_};
-    MeterMode meterMode_ = MeterMode::Volts;
-    std::optional<TestLead> red_, black_;
-    bool blackNext_ = false;
-    std::optional<bool> connected_;    // red_ and black_ on one island of the current Copper
-    std::optional<double> meterRail_;  // RailVolts of the meter's Net
+    ProbeSetup probe_{*build_};
+    MeterSetup meter_{*build_};
     InputDevices inputs_;
 };
 

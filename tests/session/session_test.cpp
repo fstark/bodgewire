@@ -110,10 +110,10 @@ TEST_CASE("session: probe across a mend", "[session]") {
     Session session = PuzzleSession("broken_trace");
     const Point left = Along(*session.machine(), -1'000'000);
     const Point right = Along(*session.machine(), 1'000'000);
-    session.touch(ProbeTip{left, Layer::Front});
-    const auto a = session.probedNet();
-    session.touch(ProbeTip{right, Layer::Front});
-    const auto b = session.probedNet();
+    session.probe().touch(ProbeTip{left, Layer::Front});
+    const auto a = session.probe().net();
+    session.probe().touch(ProbeTip{right, Layer::Front});
+    const auto b = session.probe().net();
     REQUIRE(a.has_value());
     REQUIRE(b.has_value());
     CHECK(*a != *b);
@@ -123,12 +123,12 @@ TEST_CASE("session: probe across a mend", "[session]") {
     session.powerOff();
     REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     session.powerOn(1);
-    REQUIRE(session.probeTip().has_value());
-    CHECK(session.probeTip()->at == right);
-    const auto rightNet = session.probedNet();
-    session.touch(ProbeTip{left, Layer::Front});
+    REQUIRE(session.probe().tip().has_value());
+    CHECK(session.probe().tip()->at == right);
+    const auto rightNet = session.probe().net();
+    session.probe().touch(ProbeTip{left, Layer::Front});
     REQUIRE(rightNet.has_value());
-    CHECK(session.probedNet() == rightNet);
+    CHECK(session.probe().net() == rightNet);
     session.powerOff();
 }
 
@@ -142,12 +142,12 @@ TEST_CASE("session: probe on an unconnected pin", "[session]") {
     session.setSpeed(Speed::Max);
     const auto rw = session.padLead("U1", "RW");
     REQUIRE(rw.has_value());
-    session.touch(ProbeTip{rw->at, Layer::Front});
-    REQUIRE(session.probedNet().has_value());
+    session.probe().touch(ProbeTip{rw->at, Layer::Front});
+    REQUIRE(session.probe().net().has_value());
     session.powerOn(1, 1_ms);
     session.runner().waitIdle();
-    CHECK(session.lamps().high);
-    CHECK_FALSE(session.lamps().low);
+    CHECK(session.probe().lamps().high);
+    CHECK_FALSE(session.probe().lamps().low);
     session.powerOff();
 }
 
@@ -451,30 +451,30 @@ TEST_CASE("session: meter volts", "[session]") {
     const auto vcc = session.padLead("J1", "VCC");
     REQUIRE(clk.has_value());
     REQUIRE(vcc.has_value());
-    CHECK_FALSE(session.volts().has_value());
-    REQUIRE(session.placeLead({clk->at, Layer::Front, clk->label}));
-    CHECK(session.volts() == 0.0);
+    CHECK_FALSE(session.meter().volts().has_value());
+    REQUIRE(session.meter().placeLead({clk->at, Layer::Front, clk->label}));
+    CHECK(session.meter().volts() == 0.0);
     session.powerOn(1);
     RunTo(session, 1_s);
-    REQUIRE(session.volts().has_value());
-    CHECK(std::abs(*session.volts() - 1.85) < 0.01);
-    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+    REQUIRE(session.meter().volts().has_value());
+    CHECK(std::abs(*session.meter().volts() - 1.85) < 0.01);
+    REQUIRE(session.meter().placeLead({vcc->at, Layer::Front, vcc->label}));
     RunTo(session, 1_s + 300_ms);
-    CHECK(session.volts() == 5.0);
+    CHECK(session.meter().volts() == 5.0);
     session.powerOff();
-    CHECK(session.volts() == 0.0);
-    session.liftLeads();
-    CHECK_FALSE(session.volts().has_value());
+    CHECK(session.meter().volts() == 0.0);
+    session.meter().liftLeads();
+    CHECK_FALSE(session.meter().volts().has_value());
 }
 
 TEST_CASE("session: continuity refused with the power on", "[session]") {
     Session session = PuzzleSession("broken_trace");
     const auto qa = session.padLead("U1", "14");
     REQUIRE(qa.has_value());
-    session.setMeterMode(MeterMode::Continuity);
+    session.meter().setMode(MeterMode::Continuity);
     session.powerOn(1);
-    CHECK_FALSE(session.placeLead({qa->at, Layer::Front, qa->label}));
-    CHECK_FALSE(session.continuity().has_value());
+    CHECK_FALSE(session.meter().placeLead({qa->at, Layer::Front, qa->label}));
+    CHECK_FALSE(session.meter().continuity().has_value());
     session.powerOff();
 }
 
@@ -484,17 +484,17 @@ TEST_CASE("session: continuity follows a mend", "[session]") {
     const auto far = session.padLead("U13", "6");
     REQUIRE(qa.has_value());
     REQUIRE(far.has_value());
-    session.setMeterMode(MeterMode::Continuity);
-    CHECK_FALSE(session.blackNext());
-    REQUIRE(session.placeLead({qa->at, Layer::Front, qa->label}));
-    CHECK(session.blackNext());
-    CHECK_FALSE(session.continuity().has_value());
-    REQUIRE(session.placeLead({far->at, Layer::Front, far->label}));
-    CHECK(session.continuity() == false);
+    session.meter().setMode(MeterMode::Continuity);
+    CHECK_FALSE(session.meter().blackNext());
+    REQUIRE(session.meter().placeLead({qa->at, Layer::Front, qa->label}));
+    CHECK(session.meter().blackNext());
+    CHECK_FALSE(session.meter().continuity().has_value());
+    REQUIRE(session.meter().placeLead({far->at, Layer::Front, far->label}));
+    CHECK(session.meter().continuity() == false);
     REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
-    CHECK(session.continuity() == true);
-    session.setMeterMode(MeterMode::Volts);
-    CHECK_FALSE(session.continuity().has_value());
+    CHECK(session.meter().continuity() == true);
+    session.meter().setMode(MeterMode::Volts);
+    CHECK_FALSE(session.meter().continuity().has_value());
 }
 
 TEST_CASE("session: undo every repair", "[session]") {
@@ -503,12 +503,12 @@ TEST_CASE("session: undo every repair", "[session]") {
     const auto far = session.padLead("U13", "6");
     REQUIRE(qa.has_value());
     REQUIRE(far.has_value());
-    session.setMeterMode(MeterMode::Continuity);
-    REQUIRE(session.placeLead({qa->at, Layer::Front, qa->label}));
-    REQUIRE(session.placeLead({far->at, Layer::Front, far->label}));
+    session.meter().setMode(MeterMode::Continuity);
+    REQUIRE(session.meter().placeLead({qa->at, Layer::Front, qa->label}));
+    REQUIRE(session.meter().placeLead({far->at, Layer::Front, far->label}));
     REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
     REQUIRE(session.repair(SwapRepair{"U3"}) == RepairResult::Done);
-    REQUIRE(session.continuity() == true);
+    REQUIRE(session.meter().continuity() == true);
     session.powerOn(1);
     CHECK(session.undoRepairs() == RepairResult::Refused);
     CHECK(session.log().size() == 2);
@@ -516,8 +516,8 @@ TEST_CASE("session: undo every repair", "[session]") {
     CHECK(session.undoRepairs() == RepairResult::Done);
     CHECK(session.log().empty());
     CHECK(session.blobs().empty());
-    CHECK(session.continuity() == false);  // the crack back, the leads kept
-    session.powerOn(1);                    // rebuilt with the crack
+    CHECK(session.meter().continuity() == false);  // the crack back, the leads kept
+    session.powerOn(1);                            // rebuilt with the crack
     CHECK(session.powered());
 }
 
@@ -526,7 +526,7 @@ TEST_CASE("session: hooks and leads survive a repair", "[session]") {
     const auto far = session.padLead("U13", "6");
     REQUIRE(far.has_value());
     REQUIRE(session.scope().hook("U13", "6") == 0);
-    REQUIRE(session.placeLead({far->at, Layer::Front, far->label}));
+    REQUIRE(session.meter().placeLead({far->at, Layer::Front, far->label}));
     session.powerOn(1);
     RunTo(session, 1_ms);
     CHECK(session.scope().net(0) != PinNet(session.circuit(), "U1", "14"));
@@ -536,7 +536,7 @@ TEST_CASE("session: hooks and leads survive a repair", "[session]") {
     const auto qa = PinNet(session.circuit(), "U1", "14");
     CHECK(session.scope().net(0) == PinNet(session.circuit(), "U13", "6"));
     CHECK(session.scope().net(0) == qa);
-    CHECK(session.meterNet() == qa);
+    CHECK(session.meter().net() == qa);
     session.powerOff();
 }
 
@@ -548,8 +548,8 @@ TEST_CASE("session: netlist without a Board", "[session]") {
     CHECK(session.machine() == nullptr);
     CHECK(session.drawnBoard() == nullptr);
     CHECK(session.repair(SwapRepair{"U1"}) == RepairResult::Unknown);
-    session.touch(ProbeTip{{0, 0}, Layer::Front});
-    CHECK_FALSE(session.probeTip().has_value());
+    session.probe().touch(ProbeTip{{0, 0}, Layer::Front});
+    CHECK_FALSE(session.probe().tip().has_value());
     session.powerOn(1, 1_ms);
     session.runner().waitIdle();
     CHECK(session.runner().status().simTime >= 1_ms);
@@ -573,9 +573,9 @@ void LeadsAcrossH0(Session& session) {
     const auto far = session.padLead("U13", "6");
     REQUIRE(qa.has_value());
     REQUIRE(far.has_value());
-    session.setMeterMode(MeterMode::Continuity);
-    REQUIRE(session.placeLead({qa->at, Layer::Front, qa->label}));
-    REQUIRE(session.placeLead({far->at, Layer::Front, far->label}));
+    session.meter().setMode(MeterMode::Continuity);
+    REQUIRE(session.meter().placeLead({qa->at, Layer::Front, qa->label}));
+    REQUIRE(session.meter().placeLead({far->at, Layer::Front, far->label}));
 }
 
 const WireRepair kH0Wire{{"U1", "14"}, {"U13", "6"}};
@@ -602,9 +602,9 @@ TEST_CASE("session: cut and wire only with the power off", "[session]") {
 TEST_CASE("session: continuity through a bodge wire", "[session]") {
     Session session = PuzzleSession("broken_trace");
     LeadsAcrossH0(session);
-    CHECK(session.continuity() == false);
+    CHECK(session.meter().continuity() == false);
     REQUIRE(session.repair(kH0Wire) == RepairResult::Done);
-    CHECK(session.continuity() == true);
+    CHECK(session.meter().continuity() == true);
     CHECK(session.drawnBoard()->padJoins.empty());
 }
 
@@ -612,12 +612,12 @@ TEST_CASE("session: continuity across a cut", "[session]") {
     Session session = TestPatternSession();
     const std::size_t traces = session.drawnBoard()->traces.size();
     LeadsAcrossH0(session);
-    CHECK(session.continuity() == true);
+    CHECK(session.meter().continuity() == true);
     REQUIRE(session.repair(CutRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
-    CHECK(session.continuity() == false);
+    CHECK(session.meter().continuity() == false);
     CHECK(session.drawnBoard()->traces.size() == traces);
     REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
-    CHECK(session.continuity() == true);
+    CHECK(session.meter().continuity() == true);
 }
 
 TEST_CASE("session: counter LED", "[session]") {
@@ -661,8 +661,8 @@ TEST_CASE("session: chaser with every instrument", "[session][slow]") {
     const auto anode = session.padLead("D1", "A");
     REQUIRE(ser.has_value());
     REQUIRE(anode.has_value());
-    session.touch(ProbeTip{ser->at, Layer::Front});
-    REQUIRE(session.placeLead({anode->at, Layer::Front, anode->label}));
+    session.probe().touch(ProbeTip{ser->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({anode->at, Layer::Front, anode->label}));
 
     session.powerOn(1, 1_s);
     session.runner().waitIdle();
@@ -703,8 +703,8 @@ TEST_CASE("session: stopwatch with every instrument", "[session][slow]") {
     const auto segment = session.padLead("DS3", "A");
     REQUIRE(clock.has_value());
     REQUIRE(segment.has_value());
-    session.touch(ProbeTip{clock->at, Layer::Front});
-    REQUIRE(session.placeLead({segment->at, Layer::Front, segment->label}));
+    session.probe().touch(ProbeTip{clock->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({segment->at, Layer::Front, segment->label}));
 
     session.powerOn(1, 1_s);
     session.runner().waitIdle();
@@ -736,8 +736,8 @@ TEST_CASE("session: heartbeat with every instrument", "[session][slow]") {
     const auto anode = session.padLead("D16", "A");
     REQUIRE(rw.has_value());
     REQUIRE(anode.has_value());
-    session.touch(ProbeTip{rw->at, Layer::Front});
-    REQUIRE(session.placeLead({anode->at, Layer::Front, anode->label}));
+    session.probe().touch(ProbeTip{rw->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({anode->at, Layer::Front, anode->label}));
 
     session.powerOn(1, 300_ms);
     session.runner().waitIdle();
@@ -777,8 +777,8 @@ TEST_CASE("session: led computer with every instrument", "[session][slow]") {
     const auto anode = session.padLead("D1", "A");
     REQUIRE(rom.has_value());
     REQUIRE(anode.has_value());
-    session.touch(ProbeTip{rom->at, Layer::Front});
-    REQUIRE(session.placeLead({anode->at, Layer::Front, anode->label}));
+    session.probe().touch(ProbeTip{rom->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({anode->at, Layer::Front, anode->label}));
 
     // Latch writes at about 20.03, 144.8 and 269.6 ms: the light on D3 at 300 ms.
     session.powerOn(1, 300_ms);
@@ -824,8 +824,8 @@ TEST_CASE("session: bw1 with every instrument", "[session][slow]") {
     const auto column = session.padLead("U2", "PA0");
     REQUIRE(row.has_value());
     REQUIRE(column.has_value());
-    session.touch(ProbeTip{row->at, Layer::Front});
-    REQUIRE(session.placeLead({column->at, Layer::Front, column->label}));
+    session.probe().touch(ProbeTip{row->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({column->at, Layer::Front, column->label}));
 
     // The monitor shows 0200 from about 25 ms: DS1 a '0' (G dark), DS2 a '2' (C, F dark), each
     // digit lit about a sixth of the time.
@@ -880,8 +880,8 @@ TEST_CASE("session: bw2001 with every instrument", "[session][slow]") {
     const auto vcc = session.padLead("UB2", "VCC");
     REQUIRE(dot.has_value());
     REQUIRE(vcc.has_value());
-    session.touch(ProbeTip{dot->at, Layer::Front});
-    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+    session.probe().touch(ProbeTip{dot->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({vcc->at, Layer::Front, vcc->label}));
 
     // The TV locks on the power-on picture within about 100 ms.
     session.powerOn(1, 150_ms);
@@ -927,8 +927,8 @@ TEST_CASE("session: bw80 with every instrument", "[session][slow]") {
     const auto vcc = session.padLead("IC9", "VCC");
     REQUIRE(dots.has_value());
     REQUIRE(vcc.has_value());
-    session.touch(ProbeTip{dots->at, Layer::Front});
-    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+    session.probe().touch(ProbeTip{dots->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({vcc->at, Layer::Front, vcc->label}));
 
     // The ROM clears its RAM (about 160 ms), then the K cursor screen; the TV locks on it.
     session.powerOn(1, 450_ms);
@@ -963,8 +963,8 @@ TEST_CASE("session: ball with every instrument", "[session][slow]") {
     const auto vcc = session.padLead("U16", "VCC");
     REQUIRE(ball.has_value());
     REQUIRE(vcc.has_value());
-    session.touch(ProbeTip{ball->at, Layer::Front});
-    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+    session.probe().touch(ProbeTip{ball->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({vcc->at, Layer::Front, vcc->label}));
 
     session.powerOn(1, 1_s);
     session.runner().waitIdle();
@@ -996,8 +996,8 @@ TEST_CASE("session: tennis with every instrument", "[session][slow]") {
     const auto vcc = session.padLead("U48", "VCC");
     REQUIRE(start.has_value());
     REQUIRE(vcc.has_value());
-    session.touch(ProbeTip{start->at, Layer::Front});
-    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+    session.probe().touch(ProbeTip{start->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({vcc->at, Layer::Front, vcc->label}));
 
     CHECK(session.inputs().setKnob("J3", 0.25));
     CHECK(session.inputs().setKnob("J4", 0.75));
@@ -1077,8 +1077,8 @@ TEST_CASE("session: typewriter with every instrument", "[session][slow]") {
     const auto vcc = session.padLead("U23", "VCC");
     REQUIRE(pixels.has_value());
     REQUIRE(vcc.has_value());
-    session.touch(ProbeTip{pixels->at, Layer::Front});
-    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+    session.probe().touch(ProbeTip{pixels->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({vcc->at, Layer::Front, vcc->label}));
 
     session.powerOn(1, 500_ms);
     CHECK(session.inputs().type("J3", U'A'));
@@ -1110,8 +1110,8 @@ TEST_CASE("session: message with every instrument", "[session][slow]") {
     const auto vcc = session.padLead("U15", "VCC");
     REQUIRE(pixels.has_value());
     REQUIRE(vcc.has_value());
-    session.touch(ProbeTip{pixels->at, Layer::Front});
-    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+    session.probe().touch(ProbeTip{pixels->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({vcc->at, Layer::Front, vcc->label}));
 
     session.powerOn(1, 1_s);
     session.runner().waitIdle();
@@ -1143,8 +1143,8 @@ TEST_CASE("session: knob meter with every instrument", "[session][slow]") {
     const auto vcc = session.padLead("J2", "3");
     REQUIRE(pulse.has_value());
     REQUIRE(vcc.has_value());
-    session.touch(ProbeTip{pulse->at, Layer::Front});
-    REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
+    session.probe().touch(ProbeTip{pulse->at, Layer::Front});
+    REQUIRE(session.meter().placeLead({vcc->at, Layer::Front, vcc->label}));
 
     CHECK(session.inputs().setKnob("J2", 0.42));
     session.powerOn(1, 300_ms);
