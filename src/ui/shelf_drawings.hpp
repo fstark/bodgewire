@@ -5,6 +5,7 @@
 #include <imgui.h>
 
 #include "instruments/logic_probe.hpp"
+#include "view/run_switch.hpp"
 
 namespace bw {
 
@@ -29,9 +30,6 @@ enum class Item : std::uint8_t {
     Manual,
     Machine  // the Machine slot (P6o): its TV, keyboard and knob box
 };
-
-// The run switch's three positions (P6o): `‖`, `1×`, `Max`.
-enum class RunSwitch : std::uint8_t { Pause, RealTime, Max };
 
 // What the Machine slot draws: each device the Machine has, lit while its object is out.
 struct SlotLook {

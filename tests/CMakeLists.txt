@@ -184,6 +184,7 @@ add_executable(bw_tests
   sim/time_test.cpp
   sim/vcd_test.cpp
   text/text_test.cpp
+  view/bench_options_test.cpp
   view/bench_places_test.cpp
   view/binder_test.cpp
   view/board_marks_test.cpp

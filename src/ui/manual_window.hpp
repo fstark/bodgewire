@@ -16,8 +16,6 @@ namespace bw {
 
 // The binder's window ID, for the shelf to bring it to the front.
 inline constexpr const char* kManualWindowName = "###manuals";
-// --binder-height's range, of the binder's height for its width (1: its proportions).
-inline constexpr float kMinStretch = 0.7f, kMaxStretch = 2.5f;
 
 // The manuals binder (P6e): a drawn ring binder with four dividers, the User Manual, the Service
 // Manual, the Datasheets (the hovered or selected chip's page, else an index of the Machine's

@@ -1,4 +1,5 @@
 add_library(bw_view STATIC
+  bench_options.cpp
   bench_places.cpp
   contents_defaults.cpp
   binder.cpp
@@ -22,4 +23,4 @@ add_library(bw_view STATIC
   tv_controls.cpp
   viewport.cpp
 )
-target_link_libraries(bw_view PUBLIC bw_asm bw_board bw_devices bw_instruments PRIVATE bw_warnings)
+target_link_libraries(bw_view PUBLIC bw_asm bw_board bw_devices bw_instruments bw_machine PRIVATE bw_warnings)

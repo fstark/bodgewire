@@ -12,6 +12,10 @@ namespace bw {
 // clicked (P6p).
 enum class Divider : std::uint8_t { User, Service, Datasheets, Repairs, Contents };
 
+// The binder's height for its width (1: its proportions), the range a drag or --binder-height
+// may stretch it to.
+inline constexpr float kMinStretch = 0.7f, kMaxStretch = 2.5f;
+
 // Which divider is open and which Part's sheet the index opened.
 class Binder {
 public:

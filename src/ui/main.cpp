@@ -58,6 +58,7 @@
 #include "ui/tv_view.hpp"
 #include "ui/tv_window.hpp"
 #include "ui/window_order.hpp"
+#include "view/bench_options.hpp"
 #include "view/contents_defaults.hpp"
 #include "view/focus.hpp"
 #include "view/memory_contents.hpp"
@@ -74,429 +75,6 @@ constexpr int kExitErrors = 1;
 constexpr int kExitUsage = 2;
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 800;
-constexpr std::string_view kUsage =
-    "usage: bw_ui [file.bwn|file.bwp] [--machines DIR] [--visit FILE,...] [--select FILE] "
-    "[--probe REF.PIN] "
-    "[--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,"
-    "unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
-    "[--clip REF.PIN[:0|1|r|f],...] [--group REF.PIN[:E0xx],...] [--sample 100ns] "
-    "[--view 1us[:+20us]] [--marker +2us] [--cursor +3.7us] "
-    "[--hook REF.PIN,...] [--timebase 1us] [--delay 10us] "
-    "[--meter REF.PIN[,REF.PIN]] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
-    "[--type REF:START:TEXT] [--roms DIR] [--manual user|service|datasheet|repairs] "
-    "[--tv hpos:N%,vpos:N%,bright:N%,contrast:N%,off,underscan] [--loupe X%:Y%] [--zoom X:Y:W] "
-    "[--look "
-    "real|plain] "
-    "[--focus probe|swap|iron|cut|wire|pencil|analyzer|scope|meter] "
-    "[--mark dot|cross|check:X:Y,...] [--pop manual|tv|keyboard|knob|analyzer|scope|meter,...] "
-    "[--away tv|keyboard|knob,...] [--run pause|1x|max] [--side front|back] [--ask REPAIR] "
-    "[--leave] [--reset] "
-    "[--binder-height N%] [--brief DX:DY] [--contents REF[:hex|code|glyphs]] "
-    "[--debug] "
-    "[--screenshot OUT.png [--after 1s]]";
-
-struct Options {
-    // None: the launcher (P7a); a flag but --machines, --screenshot, --after and --visit needs one.
-    std::optional<std::filesystem::path> file;
-    std::optional<std::filesystem::path> machines;     // --machines DIR: the launcher's (P7a)
-    std::vector<std::filesystem::path> visit;          // --visit: opened in turn from the launcher
-    std::optional<std::filesystem::path> select;       // --select: the launcher's entry at start
-    std::optional<std::chrono::nanoseconds> visitFor;  // a visited bench: Back after this long
-    std::optional<std::filesystem::path> screenshot;
-    std::chrono::nanoseconds after{std::chrono::seconds(1)};
-    std::optional<std::string> probe;  // REF.PIN
-    std::vector<std::string> repair;
-    std::vector<std::string> clip;   // REF.PIN[:T]
-    std::vector<std::string> group;  // REF.PIN[:PATTERN]
-    std::optional<Time> sample;      // Analyzer sample period, ps
-    std::optional<TimeView> view;    // Analyzer view at its first Capture
-    std::optional<Time> marker;      // ps from the Trigger, both instrument windows
-    std::optional<Time> cursor;      // a fake hover, ps from the Trigger
-    // REF.PIN: red Test Lead, V mode; two: red and black, Continuity, the power off.
-    std::vector<std::string> meter;
-    std::vector<std::string> hook;  // REF.PIN, at most kScopeChannels
-    std::optional<Time> timebase;   // Oscilloscope ps per division
-    std::optional<Time> delay;      // Oscilloscope Trigger delay, ps
-    std::vector<ButtonPress> press;
-    std::vector<KnobSetting> knob;
-    std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
-    std::vector<Typing> type;
-    std::optional<Divider> manual;        // --manual: the binder out at this divider (P6e)
-    std::optional<TvControls> tv;         // --tv: the monitor's controls at start (P6f)
-    std::optional<ScreenFraction> loupe;  // --loupe: the TV's loupe there (screenshots)
-    std::optional<Bounds> zoom;           // --zoom: the Board framed on this box at start
-    bool plainLook = false;      // --look plain: the specialist's Board, no parts drawn (P6)
-    std::optional<Owner> focus;  // --focus: the owner at start (P6c)
-    bool debug = false;          // --debug: the Debug window out (P6d)
-    std::vector<std::pair<MarkShape, Point>> mark;  // --mark: pencil marks at start (P6h)
-    std::vector<BenchObject> pop;   // --pop: out in their own desktop windows at start (P6j)
-    std::vector<BenchObject> away;  // --away: the Machine slot's objects put away at start (P6o)
-    RunSwitch run = RunSwitch::RealTime;  // --run: the run switch at start (P6o)
-    bool back = false;                    // --side back: the Board flipped at start (P6o)
-    std::optional<RepairAction> ask;      // --ask: the power-cycle popup open at start (P6o)
-    bool leave = false;      // --leave: the question going back to the launcher open at start (P7a)
-    bool reset = false;      // --reset: the Reset's question open at start
-    float binderHeight = 1;  // --binder-height: the binder's stretch (P6o)
-    std::optional<ImVec2> brief;  // --brief: the note's offset on the Board, px (P6o)
-    // --contents: the binder out at a memory chip's Contents, at a view (P6p).
-    std::optional<std::pair<std::string, std::optional<ContentsView>>> contents;
-};
-
-std::optional<BenchObject> ParseBenchObject(std::string_view name) {
-    constexpr std::array<std::pair<std::string_view, BenchObject>, 7> kNames{{
-        {"manual", BenchObject::Manual},
-        {"tv", BenchObject::Tv},
-        {"keyboard", BenchObject::Keyboard},
-        {"knob", BenchObject::Knob},
-        {"analyzer", BenchObject::Analyzer},
-        {"scope", BenchObject::Scope},
-        {"meter", BenchObject::Meter},
-    }};
-    const auto it =
-        std::ranges::find(kNames, name, &std::pair<std::string_view, BenchObject>::first);
-    return it != kNames.end() ? std::optional(it->second) : std::nullopt;
-}
-
-std::optional<Owner> ParseOwner(std::string_view name) {
-    constexpr std::array<std::pair<std::string_view, Owner>, 9> kNames{{
-        {"probe", Owner::Probe},
-        {"swap", Owner::Puller},
-        {"iron", Owner::Iron},
-        {"cut", Owner::Cutters},
-        {"wire", Owner::Wire},
-        {"pencil", Owner::Pencil},
-        {"analyzer", Owner::Analyzer},
-        {"scope", Owner::Scope},
-        {"meter", Owner::Meter},
-    }};
-    const auto it = std::ranges::find(kNames, name, &std::pair<std::string_view, Owner>::first);
-    return it != kNames.end() ? std::optional(it->second) : std::nullopt;
-}
-
-// "check:12.5:30" (Board millimetres, as --repair cut:): a pencil mark's shape and place.
-std::optional<std::pair<MarkShape, Point>> ParseMark(std::string_view text) {
-    constexpr std::array<std::pair<std::string_view, MarkShape>, 3> kShapes{{
-        {"dot", MarkShape::Dot},
-        {"cross", MarkShape::Cross},
-        {"check", MarkShape::Check},
-    }};
-    const std::size_t first = text.find(':');
-    const std::size_t second = first == std::string_view::npos ? first : text.find(':', first + 1);
-    if (second == std::string_view::npos) {
-        return std::nullopt;
-    }
-    const auto shape = std::ranges::find(kShapes, text.substr(0, first),
-                                         &std::pair<std::string_view, MarkShape>::first);
-    const auto x = ParseMillimetres(text.substr(first + 1, second - first - 1));
-    const auto y = ParseMillimetres(text.substr(second + 1));
-    if (shape == kShapes.end() || !x || !y) {
-        return std::nullopt;
-    }
-    return std::pair{shape->second, Point{*x, *y}};
-}
-
-// "192.6:122:12" (Board millimetres, as --mark): a box W wide centred on X, Y, as tall.
-std::optional<Bounds> ParseZoom(std::string_view text) {
-    const std::size_t first = text.find(':');
-    const std::size_t second = first == std::string_view::npos ? first : text.find(':', first + 1);
-    if (second == std::string_view::npos) {
-        return std::nullopt;
-    }
-    const auto x = ParseMillimetres(text.substr(0, first));
-    const auto y = ParseMillimetres(text.substr(first + 1, second - first - 1));
-    const auto width = ParseMillimetres(text.substr(second + 1));
-    if (!x || !y || !width || *width <= 0) {
-        return std::nullopt;
-    }
-    const std::int64_t half = *width / 2;
-    return Bounds{{*x - half, *y - half}, {*x + half, *y + half}};
-}
-
-// "+2us", "-1.5us", "2us", "0": ps.
-std::optional<Time> ParseSignedDuration(std::string_view text) {
-    if (text == "0") {
-        return 0;
-    }
-    const bool negative = text.starts_with('-');
-    if (negative || text.starts_with('+')) {
-        text.remove_prefix(1);
-    }
-    const auto duration = ParseDuration(text);
-    if (!duration) {
-        return std::nullopt;
-    }
-    return negative ? -*duration : *duration;
-}
-
-// "1us" or "1us:+20us": a 1-2-5 time per division, centred on the Trigger or the time given.
-std::optional<TimeView> ParseView(std::string_view text) {
-    const std::size_t colon = text.find(':');
-    const auto perDivision = ParseDuration(text.substr(0, colon));
-    if (!perDivision || StepAtLeast(*perDivision) != *perDivision) {
-        return std::nullopt;
-    }
-    const auto centre = colon == std::string_view::npos
-                            ? std::optional<Time>(0)
-                            : ParseSignedDuration(text.substr(colon + 1));
-    if (!centre) {
-        return std::nullopt;
-    }
-    return CentredOn(*perDivision, *centre);
-}
-
-std::optional<Options> ParseOptions(int argc, char** argv) {
-    Options options;
-    int first = 1;
-    if (argc > 1 && !std::string_view(argv[1]).starts_with("--")) {
-        options.file = argv[1];
-        first = 2;
-    }
-    bool after = false;
-    bool benchFlag = false;  // a flag only a bench takes: a usage error without a file (P7a)
-    for (int i = first; i < argc; ++i) {
-        const std::string_view arg = argv[i];
-        const bool launcherFlag = arg == "--machines" || arg == "--screenshot" ||
-                                  arg == "--after" || arg == "--visit" || arg == "--select";
-        benchFlag = benchFlag || !launcherFlag;
-        if (arg == "--debug" || arg == "--leave" || arg == "--reset") {  // without a value
-            (arg == "--debug"   ? options.debug
-             : arg == "--leave" ? options.leave
-                                : options.reset) = true;
-            continue;
-        }
-        if (i + 1 >= argc) {
-            return std::nullopt;
-        }
-        if (arg == "--machines") {
-            options.machines = argv[++i];
-        } else if (arg == "--visit") {
-            for (const std::string_view file : Split(argv[++i], ',')) {
-                options.visit.emplace_back(file);
-            }
-        } else if (arg == "--select") {
-            options.select = argv[++i];
-        } else if (arg == "--roms") {
-            options.roms = argv[++i];
-        } else if (arg == "--screenshot") {
-            options.screenshot = argv[++i];
-        } else if (arg == "--after") {
-            const auto duration = ParseDuration(argv[++i]);
-            if (!duration) {
-                return std::nullopt;
-            }
-            options.after = std::chrono::nanoseconds(*duration / 1000);
-            after = true;
-        } else if (arg == "--probe") {
-            options.probe = argv[++i];
-        } else if (arg == "--manual") {
-            const std::string_view manual = argv[++i];
-            if (manual == "user") {
-                options.manual = Divider::User;
-            } else if (manual == "service") {
-                options.manual = Divider::Service;
-            } else if (manual == "datasheet") {
-                options.manual = Divider::Datasheets;
-            } else if (manual == "repairs") {
-                options.manual = Divider::Repairs;
-            } else {
-                return std::nullopt;
-            }
-        } else if (arg == "--look") {
-            const std::string_view look = argv[++i];
-            if (look != "real" && look != "plain") {
-                return std::nullopt;
-            }
-            options.plainLook = look == "plain";
-        } else if (arg == "--focus") {
-            options.focus = ParseOwner(argv[++i]);
-            if (!options.focus) {
-                return std::nullopt;
-            }
-        } else if (arg == "--repair") {
-            options.repair = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
-        } else if (arg == "--clip") {
-            options.clip = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
-        } else if (arg == "--group") {
-            options.group = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
-        } else if (arg == "--delay") {
-            const auto delay = ParseDuration(argv[++i]);
-            if (!delay || *delay < 0) {
-                return std::nullopt;
-            }
-            options.delay = *delay;
-        } else if (arg == "--sample") {
-            const auto period = ParseDuration(argv[++i]);
-            if (!period || std::ranges::find(kAnalyzerPeriods, *period) == kAnalyzerPeriods.end()) {
-                return std::nullopt;
-            }
-            options.sample = *period;
-        } else if (arg == "--view") {
-            options.view = ParseView(argv[++i]);
-            if (!options.view) {
-                return std::nullopt;
-            }
-        } else if (arg == "--marker" || arg == "--cursor") {
-            const auto time = ParseSignedDuration(argv[++i]);
-            if (!time) {
-                return std::nullopt;
-            }
-            (arg == "--marker" ? options.marker : options.cursor) = *time;
-        } else if (arg == "--meter") {
-            options.meter = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
-            if (options.meter.size() > 2) {
-                return std::nullopt;
-            }
-        } else if (arg == "--hook") {
-            options.hook = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
-            if (options.hook.size() > kScopeChannels) {
-                return std::nullopt;
-            }
-        } else if (arg == "--timebase") {
-            const auto timebase = ParseDuration(argv[++i]);
-            if (!timebase || !TimebaseIndex(*timebase)) {
-                return std::nullopt;
-            }
-            options.timebase = *timebase;
-        } else if (arg == "--press") {
-            for (const std::string_view text : Split(argv[++i], ',')) {
-                auto press = ParsePress(text);
-                if (!press) {
-                    return std::nullopt;
-                }
-                options.press.push_back(std::move(*press));
-            }
-        } else if (arg == "--zoom") {
-            options.zoom = ParseZoom(argv[++i]);
-            if (!options.zoom) {
-                return std::nullopt;
-            }
-        } else if (arg == "--mark") {
-            for (const std::string_view text : Split(argv[++i], ',')) {
-                const auto mark = ParseMark(text);
-                if (!mark) {
-                    return std::nullopt;
-                }
-                options.mark.push_back(*mark);
-            }
-        } else if (arg == "--pop") {
-            for (const std::string_view text : Split(argv[++i], ',')) {
-                const auto object = ParseBenchObject(text);
-                if (!object) {
-                    return std::nullopt;
-                }
-                options.pop.push_back(*object);
-            }
-        } else if (arg == "--away") {
-            for (const std::string_view text : Split(argv[++i], ',')) {
-                const auto object = ParseBenchObject(text);
-                if (!object || (*object != BenchObject::Tv && *object != BenchObject::Keyboard &&
-                                *object != BenchObject::Knob)) {
-                    return std::nullopt;
-                }
-                options.away.push_back(*object);
-            }
-        } else if (arg == "--contents") {
-            const std::string_view text = argv[++i];
-            const std::size_t colon = text.find(':');
-            std::optional<ContentsView> view;
-            if (colon != std::string_view::npos) {
-                const std::string_view name = text.substr(colon + 1);
-                if (name == "hex") {
-                    view = ContentsView::Hex;
-                } else if (name == "code") {
-                    view = ContentsView::Code;
-                } else if (name == "glyphs") {
-                    view = ContentsView::Glyphs;
-                } else {
-                    return std::nullopt;
-                }
-            }
-            options.contents.emplace(std::string(text.substr(0, colon)), view);
-        } else if (arg == "--binder-height") {
-            const std::string_view text = argv[++i];
-            float percent = 0;
-            const auto [end, error] =
-                std::from_chars(text.data(), text.data() + text.size(), percent);
-            if (error != std::errc{} || std::string_view(end, text.data() + text.size()) != "%" ||
-                percent < kMinStretch * 100 || percent > kMaxStretch * 100) {
-                return std::nullopt;
-            }
-            options.binderHeight = percent / 100;
-        } else if (arg == "--brief") {
-            const std::string_view text = argv[++i];
-            const std::size_t colon = text.find(':');
-            float x = 0, y = 0;
-            const char* last = text.data() + text.size();
-            if (colon == std::string_view::npos ||
-                std::from_chars(text.data(), text.data() + colon, x).ptr != text.data() + colon ||
-                std::from_chars(text.data() + colon + 1, last, y).ptr != last) {
-                return std::nullopt;
-            }
-            options.brief = ImVec2{x, y};
-        } else if (arg == "--ask") {
-            auto repair = ParseRepair(argv[++i]);
-            if (!repair) {
-                return std::nullopt;
-            }
-            options.ask = std::move(*repair);
-        } else if (arg == "--side") {
-            const std::string_view side = argv[++i];
-            if (side != "front" && side != "back") {
-                return std::nullopt;
-            }
-            options.back = side == "back";
-        } else if (arg == "--run") {
-            const std::string_view run = argv[++i];
-            if (run == "pause") {
-                options.run = RunSwitch::Pause;
-            } else if (run == "1x") {
-                options.run = RunSwitch::RealTime;
-            } else if (run == "max") {
-                options.run = RunSwitch::Max;
-            } else {
-                return std::nullopt;
-            }
-        } else if (arg == "--loupe") {
-            options.loupe = ParseLoupe(argv[++i]);
-            if (!options.loupe) {
-                return std::nullopt;
-            }
-        } else if (arg == "--tv") {
-            options.tv = ParseTvSettings(argv[++i]);
-            if (!options.tv) {
-                return std::nullopt;
-            }
-        } else if (arg == "--knob") {
-            for (const std::string_view text : Split(argv[++i], ',')) {
-                auto knob = ParseKnob(text);
-                if (!knob) {
-                    return std::nullopt;
-                }
-                options.knob.push_back(std::move(*knob));
-            }
-        } else if (arg == "--type") {
-            auto typing = ParseTyping(argv[++i]);  // not split at commas: the text may hold them
-            if (!typing) {
-                std::println(stderr, "bw_ui: {}", typing.error());
-                return std::nullopt;
-            }
-            options.type.push_back(std::move(*typing));
-        } else {
-            return std::nullopt;
-        }
-    }
-    if (after && !options.screenshot) {
-        return std::nullopt;
-    }
-    if ((benchFlag && !options.file) || (!options.visit.empty() && options.file) ||
-        (!options.visit.empty() && !options.screenshot) || (options.leave && options.ask) ||
-        (options.reset && (options.leave || options.ask)) ||
-        (options.select && (options.file || !options.visit.empty()))) {
-        return std::nullopt;
-    }
-    return options;
-}
-
 // A tooltip past the main window's edge is a desktop window of its own (multi-viewports, P6j).
 // On macOS ImGui's SDL3 backend activates every window it shows, so a tooltip would take the keys
 // from the window under the mouse; shown without activation it still comes on top (ImGui makes
@@ -609,12 +187,12 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     TvView view(gpu.tvTexture());
     Shelf shelf;
     TvWindow tvWindow;
-    tvWindow.setLoupe(options.loupe);
-    if (options.tv) {
-        tvWindow.controls() = *options.tv;
+    tvWindow.setLoupe(options.bench.loupe);
+    if (options.bench.tv) {
+        tvWindow.controls() = *options.bench.tv;
     }
     KnobWindow knobWindow;
-    bool debugOut = options.debug;
+    bool debugOut = options.bench.debug;
     const Machine* machine = session.machine();
     BoardView boardView(machine ? std::optional<BoardScene>(std::in_place, *session.drawnBoard(),
                                                             machine->pristineBoard(),
@@ -623,13 +201,13 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     std::uint64_t seed = 1;
     std::optional<PinRef> wireStart;  // Wire tool: the first pin
     PencilMarks marks;                // the grease pencil's (P6h)
-    for (const auto& [shape, at] : options.mark) {
+    for (const auto& [shape, at] : options.bench.mark) {
         marks.add({at, shape, boardView.scene()->bodyAt(at)});  // a Board: checked in main()
     }
     Point wireStartAt{};
     std::set<std::string> latched;  // Buttons kept pressed by a right-click
     std::set<std::string> slid;     // SLIDE switches at ON, kept across power off and on
-    std::vector<std::size_t> typedKeys(options.type.size(), 0);  // --type: keys sent so far
+    std::vector<std::size_t> typedKeys(options.bench.type.size(), 0);  // --type: keys sent so far
     bool wasPowered = false;
     KeyboardCapture capture;
     if (const auto keyboards = session.keyboards(); !keyboards.empty()) {
@@ -651,15 +229,15 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     shelf.keyboardWindow = !capture.reference.empty()         ? kKeyboardWindowName
                            : !matrixCapture.reference.empty() ? kMatrixKeyboardWindowName
                                                               : nullptr;
-    if (const BoardScene* scene = boardView.scene(); scene && options.probe) {
-        if (const auto component =
-                scene->componentIndex(options.probe->substr(0, options.probe->find('.')))) {
+    if (const BoardScene* scene = boardView.scene(); scene && options.bench.probe) {
+        if (const auto component = scene->componentIndex(
+                options.bench.probe->substr(0, options.bench.probe->find('.')))) {
             boardView.select(*component);
         }
     }
-    RunSwitch run = options.run;  // the shelf's switch (P6o)
+    RunSwitch run = options.bench.run;  // the shelf's switch (P6o)
     shelf.canLeave = canLeave;
-    shelf.manualOut = options.manual.has_value();
+    shelf.manualOut = options.bench.manual.has_value();
     shelf.tvOut = session.tv() != nullptr;
     shelf.knobOut = !session.knobs().empty();
     // Every PC key goes to the Machine (P6o): its keyboard, its Board keys, its knobs, out or put
@@ -681,29 +259,29 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         }
     };
     shelf.hasBrief = shelf.briefOut = !loaded.brief.empty();
-    boardView.setPlainLook(options.plainLook);
-    if (options.zoom) {
-        boardView.zoomAtStart(*options.zoom);
+    boardView.setPlainLook(options.bench.plainLook);
+    if (options.bench.zoom) {
+        boardView.zoomAtStart(*options.bench.zoom);
     }
-    if (options.back) {
+    if (options.bench.back) {
         boardView.toggleLayer();
     }
     Focus focus;
-    if (!options.clip.empty() || !options.group.empty()) {
+    if (!options.bench.clip.empty() || !options.bench.group.empty()) {
         focus.bringOut(Owner::Analyzer);
     }
-    if (!options.hook.empty()) {
+    if (!options.bench.hook.empty()) {
         focus.bringOut(Owner::Scope);
     }
-    if (!options.meter.empty()) {
+    if (!options.bench.meter.empty()) {
         focus.bringOut(Owner::Meter);
     }
-    if (options.focus && IsInstrument(*options.focus)) {
-        focus.bringOutFocused(*options.focus);
-    } else if (options.focus) {
-        focus.take(*options.focus);
+    if (options.bench.focus && IsInstrument(*options.bench.focus)) {
+        focus.bringOutFocused(*options.bench.focus);
+    } else if (options.bench.focus) {
+        focus.take(*options.bench.focus);
     }
-    for (const BenchObject object : options.pop) {  // the Machine has each: checked in main()
+    for (const BenchObject object : options.bench.pop) {  // the Machine has each: checked in main()
         switch (object) {
         case BenchObject::Manual:
             shelf.manualOut = true;
@@ -732,7 +310,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         }
         PopOutAtStart(object);
     }
-    for (const BenchObject object : options.away) {
+    for (const BenchObject object : options.bench.away) {
         (object == BenchObject::Tv         ? shelf.tvOut
          : object == BenchObject::Keyboard ? shelf.keyboardOut
                                            : shelf.knobOut) = false;
@@ -741,7 +319,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     // (their default places: the TV top right, the knob box top left), not under them.
     {
         const auto onBench = [&](BenchObject object) {
-            return std::ranges::find(options.pop, object) == options.pop.end();
+            return std::ranges::find(options.bench.pop, object) == options.bench.pop.end();
         };
         const float covered = 2 * kBenchMargin;
         const float left = shelf.knobOut && onBench(BenchObject::Knob)
@@ -754,10 +332,10 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     }
     Owner lastOwner = focus.owner();
     ManualWindows manualWindows;
-    if (options.manual) {
-        manualWindows.show(*options.manual);
+    if (options.bench.manual) {
+        manualWindows.show(*options.bench.manual);
     }
-    manualWindows.setStretch(options.binderHeight);
+    manualWindows.setStretch(options.bench.binderHeight);
     // The Contents page's defaults (P6p): none without the file; a bad one is ignored.
     if (const auto text = ReadTextFile(MachineDir(*options.file) / "roms" / "contents.txt")) {
         if (auto defaults = ParseContentsDefaults(*text, "contents.txt")) {
@@ -766,21 +344,21 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             std::println(stderr, "bw_ui: warning: {}", defaults.error());
         }
     }
-    if (options.contents) {  // a memory chip on the Board: checked in main()
+    if (options.bench.contents) {  // a memory chip on the Board: checked in main()
         const BoardScene& scene = *boardView.scene();
-        manualWindows.openContents(scene, *scene.componentIndex(options.contents->first),
-                                   options.contents->second);
+        manualWindows.openContents(scene, *scene.componentIndex(options.bench.contents->first),
+                                   options.bench.contents->second);
         shelf.manualOut = true;
     }
     BriefNote briefNote;
-    if (options.brief) {
-        briefNote.offset = *options.brief;
+    if (options.bench.brief) {
+        briefNote.offset = ImVec2{options.bench.brief->first, options.bench.brief->second};
     }
     AnalyzerWindow analyzerWindow;
     MeterWindow meterWindow;
     ScopeWindow scopeWindow;
-    analyzerWindow.preset(options.view, options.marker, options.cursor);
-    scopeWindow.preset(options.marker, options.cursor);
+    analyzerWindow.preset(options.bench.view, options.bench.marker, options.bench.cursor);
+    scopeWindow.preset(options.bench.marker, options.bench.cursor);
     boardView.setTooltip([&loaded](const BoardScene& scene, const Hit& hit) {
         return Tooltip(scene, hit, loaded.manuals.manuals);
     });
@@ -789,7 +367,8 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     if (run == RunSwitch::Max) {
         session.setSpeed(Speed::Max);
     }
-    const bool continuity = options.meter.size() == 2;  // the power left off: Continuity needs it
+    const bool continuity =
+        options.bench.meter.size() == 2;  // the power left off: Continuity needs it
     if (!continuity && run == RunSwitch::Pause) {
         session.powerOn(seed, kPauseAt);
     } else if (!continuity) {
@@ -804,19 +383,19 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     std::optional<RepairPlan> pending;    // asked, not answered
     std::optional<RepairPlan> cycleNext;  // OK: cycled at the next frame's clicks
     bool powerOnNext = false;
-    bool askAtStart = options.ask.has_value();
+    bool askAtStart = options.bench.ask.has_value();
     // Back to the launcher (P7a): at once, or asked first when the Board holds work.
     QuestionPopup leaveQuestion(
         "##leave", "Back to the Machines? The repairs and pencil marks on this Board are lost.",
         false);
-    bool leaveAtStart = options.leave;
+    bool leaveAtStart = options.bench.leave;
     // The Reset: every repair undone, asked first; with the power on, power-cycled around it as
     // a tool's repair is.
     QuestionPopup resetQuestion("##reset",
                                 "Undo every repair on this Board? The pencil marks stay. With the "
                                 "power on, the Machine restarts.",
                                 false);
-    bool resetAtStart = options.reset;
+    bool resetAtStart = options.bench.reset;
     bool leaving = false;  // Back at the end of this frame
     const auto start = std::chrono::steady_clock::now();
     SpeedRatio ratio;
@@ -944,8 +523,8 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         }
         if (askAtStart) {  // --ask: as if clicked with the power on, at the bench's centre
             askAtStart = false;
-            RepairPlan plan{{*options.ask}, std::nullopt, ""};
-            if (const auto* swap = std::get_if<SwapRepair>(&*options.ask);
+            RepairPlan plan{{*options.bench.ask}, std::nullopt, ""};
+            if (const auto* swap = std::get_if<SwapRepair>(&*options.bench.ask);
                 swap && boardView.scene()) {
                 plan.swapped = boardView.scene()->componentIndex(swap->reference);
             }
@@ -1177,10 +756,11 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                            !latched.erase(reference)) {
                     latched.insert(reference);
                 }
-                const bool scripted = std::ranges::any_of(options.press, [&](const ButtonPress& p) {
-                    return p.reference == reference && p.down <= status.simTime &&
-                           status.simTime < p.up;
-                });
+                const bool scripted =
+                    std::ranges::any_of(options.bench.press, [&](const ButtonPress& p) {
+                        return p.reference == reference && p.down <= status.simTime &&
+                               status.simTime < p.up;
+                    });
                 session.setPressed(reference, latched.contains(reference) ||
                                                   slid.contains(reference) || scripted ||
                                                   (component && boardView.held() == component) ||
@@ -1196,8 +776,8 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             if (!session.powered()) {
                 std::ranges::fill(typedKeys, 0);
             } else if (wasPowered) {
-                for (std::size_t t = 0; t < options.type.size(); ++t) {
-                    const Typing& typing = options.type[t];
+                for (std::size_t t = 0; t < options.bench.type.size(); ++t) {
+                    const Typing& typing = options.bench.type[t];
                     if (typing.reference == matrixCapture.reference) {
                         // The matrix paces its own presses: the text queued whole, once.
                         if (typedKeys[t] == 0 && typing.start <= status.simTime) {
@@ -1355,32 +935,32 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
 // Today's bench flags applied to a command-line bench's Session, checked before the window
 // opens: an exit code on a usage error.
 std::optional<int> PrepareBench(Session& session, const Options& options) {
-    if (options.probe) {
-        const auto pin = ParsePinRef(*options.probe);
+    if (options.bench.probe) {
+        const auto pin = ParsePinRef(*options.bench.probe);
         std::optional<Point> at;
         if (session.machine() && pin) {
             at = session.machine()->padPosition(pin->reference, pin->pin);
         }
         if (!at) {
-            std::println(stderr, "bw_ui: unknown pin '{}'", *options.probe);
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "bw_ui: unknown pin '{}'", *options.bench.probe);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
         session.touch(ProbeTip{*at, Layer::Front});
     }
-    if (options.contents) {
-        const std::string& reference = options.contents->first;
+    if (options.bench.contents) {
+        const std::string& reference = options.bench.contents->first;
         if (!session.machine() || !session.machine()->contents(reference)) {  // a ROM on a Board
             std::println(stderr, "bw_ui: no memory chip '{}'", reference);
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
     }
     AnalyzerSettings analyzer;
-    if (options.sample) {
-        analyzer.period = *options.sample;
+    if (options.bench.sample) {
+        analyzer.period = *options.bench.sample;
     }
-    for (const std::string& item : options.clip) {
+    for (const std::string& item : options.bench.clip) {
         const std::size_t colon = item.find(':');
         const auto pin = ParsePinRef(std::string_view(item).substr(0, colon));
         const auto trigger = colon == std::string::npos
@@ -1389,15 +969,15 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
         const auto channel = pin ? session.clip(pin->reference, pin->pin) : std::nullopt;
         if (!trigger || !channel) {
             std::println(stderr, "bw_ui: unknown pin '{}'", item);
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
         analyzer.trigger[*channel] = *trigger;
     }
-    if (!options.clip.empty() || !options.group.empty()) {
+    if (!options.bench.clip.empty() || !options.bench.group.empty()) {
         session.setAnalyzer(analyzer);
     }
-    for (const std::string& item : options.group) {
+    for (const std::string& item : options.bench.group) {
         const std::size_t colon = item.find(':');
         const auto pin = ParsePinRef(std::string_view(item).substr(0, colon));
         const auto clipped =
@@ -1409,40 +989,40 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
         if (!ok) {
             std::println(stderr, "bw_ui: bad group '{}'{}", item,
                          clipped && !*clipped ? ": " + clipped->error() : "");
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
     }
-    if (!options.clip.empty() || !options.group.empty()) {
+    if (!options.bench.clip.empty() || !options.bench.group.empty()) {
         session.arm();
     }
-    for (const std::string& item : options.hook) {
+    for (const std::string& item : options.bench.hook) {
         const auto pin = ParsePinRef(item);
         if (!pin || !session.hook(pin->reference, pin->pin)) {
             std::println(stderr, "bw_ui: unknown pin '{}'", item);
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
     }
-    if (options.timebase || options.delay) {
+    if (options.bench.timebase || options.bench.delay) {
         ScopeSettings scope = session.scopeSettings();
-        scope.timebase = options.timebase.value_or(scope.timebase);
-        scope.delay = options.delay.value_or(scope.delay);
+        scope.timebase = options.bench.timebase.value_or(scope.timebase);
+        scope.delay = options.bench.delay.value_or(scope.delay);
         if (scope.delay > kMaxDelayDivisions * scope.timebase) {
             std::println(stderr, "bw_ui: delay over {} divisions", kMaxDelayDivisions);
             return kExitUsage;
         }
         session.setScope(scope);
     }
-    if (options.meter.size() == 2) {  // red then black, before the power-on: none for these
+    if (options.bench.meter.size() == 2) {  // red then black, before the power-on: none for these
         session.setMeterMode(MeterMode::Continuity);
     }
-    for (const std::string& item : options.meter) {
+    for (const std::string& item : options.bench.meter) {
         const auto pin = ParsePinRef(item);
         const auto lead = pin ? session.padLead(pin->reference, pin->pin) : std::nullopt;
         if (!lead) {
             std::println(stderr, "bw_ui: unknown pin '{}'", item);
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
         const bool chip = std::ranges::any_of(
@@ -1451,7 +1031,7 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
             });
         session.placeLead({lead->at, Layer::Front, lead->label + (chip ? " leg" : "")});
     }
-    for (const std::string& text : options.repair) {
+    for (const std::string& text : options.bench.repair) {
         const auto repair = ParseRepair(text);
         std::optional<std::string> error;
         if (!repair) {
@@ -1462,26 +1042,26 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
         }
         if (error) {
             std::println(stderr, "bw_ui: {}", *error);
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
     }
-    if (options.ask && !session.machine()) {
+    if (options.bench.ask && !session.machine()) {
         std::println(stderr, "bw_ui: no Board to repair");
-        std::println(stderr, "{}", kUsage);
+        std::println(stderr, "{}", Usage());
         return kExitUsage;
     }
-    if (!options.mark.empty() && !session.machine()) {
+    if (!options.bench.mark.empty() && !session.machine()) {
         std::println(stderr, "bw_ui: no Board to mark");
-        std::println(stderr, "{}", kUsage);
+        std::println(stderr, "{}", Usage());
         return kExitUsage;
     }
-    if (options.tv && session.tv() == nullptr) {
+    if (options.bench.tv && session.tv() == nullptr) {
         std::println(stderr, "bw_ui: this Machine has no TV");
-        std::println(stderr, "{}", kUsage);
+        std::println(stderr, "{}", Usage());
         return kExitUsage;
     }
-    for (const BenchObject object : options.pop) {
+    for (const BenchObject object : options.bench.pop) {
         const bool has = object == BenchObject::Tv ? session.tv() != nullptr
                          : object == BenchObject::Keyboard
                              ? !session.keyboards().empty() || !session.matrixKeyboards().empty()
@@ -1494,28 +1074,28 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
                          : object == BenchObject::Keyboard ? "keyboard"
                          : object == BenchObject::Knob     ? "paddle controller"
                                                            : "Board for the instruments");
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
     }
-    for (const KnobSetting& knob : options.knob) {
+    for (const KnobSetting& knob : options.bench.knob) {
         if (!session.setKnob(knob.reference, knob.turn)) {
             std::println(stderr, "bw_ui: '{}' is not a paddle controller", knob.reference);
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
     }
-    for (const Typing& typing : options.type) {
+    for (const Typing& typing : options.bench.type) {
         if (!std::ranges::contains(session.keyboards(), typing.reference) &&
             !std::ranges::contains(session.matrixKeyboards(), typing.reference)) {
             std::println(stderr, "bw_ui: '{}' is not a keyboard", typing.reference);
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
         if (typing.untypable && std::ranges::contains(session.keyboards(), typing.reference)) {
             std::println(stderr, "bw_ui: cannot type the text on '{}', a keyboard",
                          typing.reference);
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
     }
@@ -1673,9 +1253,13 @@ std::optional<std::filesystem::path> MachinesDirFor(const Options& options) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    const auto parsed = ParseOptions(argc, argv);
+    std::vector<std::string_view> args(argv + 1, argv + argc);
+    const auto parsed = ParseOptions(args);
     if (!parsed) {
-        std::println(stderr, "{}", kUsage);
+        if (!parsed.error().empty()) {
+            std::println(stderr, "bw_ui: {}", parsed.error());
+        }
+        std::println(stderr, "{}", Usage());
         return kExitUsage;
     }
     const Options& options = *parsed;
@@ -1690,9 +1274,9 @@ int main(int argc, char** argv) {
         }
     }
     const std::optional<std::filesystem::path> machinesDir = MachinesDirFor(options);
-    if (options.leave && !machinesDir) {
+    if (options.bench.leave && !machinesDir) {
         std::println(stderr, "bw_ui: --leave: no machines/ to go back to");
-        std::println(stderr, "{}", kUsage);
+        std::println(stderr, "{}", Usage());
         return kExitUsage;
     }
     Launcher launcher;
@@ -1700,13 +1284,13 @@ int main(int argc, char** argv) {
         MachineList list = ListMachines(*machinesDir);
         if (options.machines && list.machines.empty()) {
             std::println(stderr, "bw_ui: no Machines in '{}'", options.machines->string());
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
         launcher.setList(std::move(list));
     } else if (!options.file) {
         std::println(stderr, "bw_ui: no machines/ directory found");
-        std::println(stderr, "{}", kUsage);
+        std::println(stderr, "{}", Usage());
         return kExitUsage;
     }
     std::deque<std::filesystem::path> visits;
@@ -1714,7 +1298,7 @@ int main(int argc, char** argv) {
         if (!EntryOf(launcher.list(), file)) {
             std::println(stderr, "bw_ui: '{}' is not a Machine or Puzzle of '{}'", file.string(),
                          machinesDir->string());
-            std::println(stderr, "{}", kUsage);
+            std::println(stderr, "{}", Usage());
             return kExitUsage;
         }
         visits.push_back(file);
@@ -1722,7 +1306,7 @@ int main(int argc, char** argv) {
     if (options.select && !EntryOf(launcher.list(), *options.select)) {
         std::println(stderr, "bw_ui: '{}' is not a Machine or Puzzle of '{}'",
                      options.select->string(), machinesDir->string());
-        std::println(stderr, "{}", kUsage);
+        std::println(stderr, "{}", Usage());
         return kExitUsage;
     }
 
