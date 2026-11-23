@@ -18,7 +18,7 @@ enum class BenchObject : std::uint8_t {
     Brief,
     Debug
 };
-inline constexpr std::size_t kBenchObjects = 9;
+inline constexpr std::size_t kBenchObjects = static_cast<std::size_t>(BenchObject::Debug) + 1;
 
 struct Extent {
     float width = 0, height = 0;

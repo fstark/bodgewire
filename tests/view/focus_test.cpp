@@ -80,7 +80,7 @@ TEST_CASE("focus: the pencil is a tool", "[view]") {
 
 TEST_CASE("focus: one out-or-away for every bench object", "[view]") {
     Focus focus;
-    focus.out(BenchObject::Tv) = true;
+    focus.outFlag(BenchObject::Tv) = true;
     CHECK(focus.out(BenchObject::Tv));
     CHECK_FALSE(focus.out(BenchObject::Scope));
     focus.bringOutFocused(Owner::Scope);
@@ -91,6 +91,20 @@ TEST_CASE("focus: one out-or-away for every bench object", "[view]") {
     CHECK(focus.owner() == Owner::Probe);
     CHECK(focus.out(BenchObject::Tv));  // untouched
     CHECK(ObjectOf(Owner::Meter) == BenchObject::Meter);
+}
+
+TEST_CASE("focus: an instrument is not put away behind the focus's back", "[view]") {
+    Focus focus;
+    focus.bringOut(BenchObject::Scope);  // --pop: out, the owner unchanged
+    CHECK(focus.out(Owner::Scope));
+    CHECK(focus.owner() == Owner::Probe);
+    focus.bringOutFocused(Owner::Scope);
+    CHECK_THROWS(focus.outFlag(BenchObject::Scope) = false);  // closed() is the way
+    CHECK(focus.out(Owner::Scope));
+    CHECK(focus.owner() == Owner::Scope);
+    focus.outFlag(BenchObject::Debug) = true;
+    focus.outFlag(BenchObject::Debug) = false;
+    CHECK_FALSE(focus.out(BenchObject::Debug));
 }
 
 TEST_CASE("focus: a link to the Board measures or frames", "[view]") {

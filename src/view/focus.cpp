@@ -2,7 +2,18 @@
 
 #include <cassert>
 
+#include "sim/check.hpp"
+
 namespace bw {
+
+namespace {
+
+bool IsInstrument(BenchObject object) {
+    return object == BenchObject::Analyzer || object == BenchObject::Scope ||
+           object == BenchObject::Meter;
+}
+
+}  // namespace
 
 bool IsInstrument(Owner owner) {
     return owner == Owner::Analyzer || owner == Owner::Scope || owner == Owner::Meter;
@@ -33,7 +44,7 @@ void Focus::take(Owner tool) {
 }
 
 void Focus::bringOutFocused(Owner instrument) {
-    out(ObjectOf(instrument)) = true;
+    bringOut(instrument);
     owner_ = instrument;
 }
 
@@ -45,7 +56,9 @@ void Focus::shelfClick(Owner instrument, bool front) {
     }
 }
 
-void Focus::bringOut(Owner instrument) { out(ObjectOf(instrument)) = true; }
+void Focus::bringOut(Owner instrument) { bringOut(ObjectOf(instrument)); }
+
+void Focus::bringOut(BenchObject object) { out_[static_cast<std::size_t>(object)] = true; }
 
 void Focus::clicked(Owner instrument) {
     if (out(instrument)) {
@@ -54,10 +67,15 @@ void Focus::clicked(Owner instrument) {
 }
 
 void Focus::closed(Owner instrument) {
-    out(ObjectOf(instrument)) = false;
+    out_[static_cast<std::size_t>(ObjectOf(instrument))] = false;
     if (owner_ == instrument) {
         owner_ = Owner::Probe;
     }
+}
+
+bool& Focus::outFlag(BenchObject object) {
+    Check(!IsInstrument(object), "focus: an instrument is put away by closed()");
+    return out_[static_cast<std::size_t>(object)];
 }
 
 }  // namespace bw

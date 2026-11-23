@@ -19,13 +19,12 @@ constexpr ImU32 kCloseFaint = IM_COL32(200, 200, 200, 70);
 constexpr ImU32 kCloseBright = IM_COL32(240, 240, 240, 230);
 constexpr ImU32 kCloseDisc = IM_COL32(0, 0, 0, 120);
 
-float aspect_ = 1;  // read by the size callback during the next Begin
-constexpr std::size_t kObjects = static_cast<std::size_t>(BenchObject::Debug) + 1;
-std::array<bool, kObjects> popped_{};                 // in its own desktop window (P6j)
-std::array<bool, kObjects> popAtStart_{};             // --pop: beside from its first place
-std::array<std::optional<ImVec2>, kObjects> at_{};    // PopOut: its next position, once
-std::array<std::optional<ImVec2>, kObjects> size_{};  // popped in: its next size, once
-std::array<Place, kObjects> benchAt_{};  // its offset on the bench before it popped out (P6o)
+float aspect_ = 1;                              // read by the size callback during the next Begin
+std::array<bool, kBenchObjects> popped_{};      // in its own desktop window (P6j)
+std::array<bool, kBenchObjects> popAtStart_{};  // --pop: beside from its first place
+std::array<std::optional<ImVec2>, kBenchObjects> at_{};    // PopOut: its next position, once
+std::array<std::optional<ImVec2>, kBenchObjects> size_{};  // popped in: its next size, once
+std::array<Place, kBenchObjects> benchAt_{};  // its offset on the bench before it popped out (P6o)
 
 std::size_t Index(BenchObject object) { return static_cast<std::size_t>(object); }
 

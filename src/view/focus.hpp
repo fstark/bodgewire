@@ -43,13 +43,15 @@ public:
     // Its shelf drawing clicked: put away when it owns the focus and its window is in front
     // (`front`); else out with the focus (the caller brings the window to the front).
     void shelfClick(Owner instrument, bool front);
-    void bringOut(Owner instrument);  // start-up flags: out, the owner unchanged
-    void clicked(Owner instrument);   // a click in its window: the focus, if out
-    void closed(Owner instrument);    // its window closed: away; the probe takes the focus
-    // Any object's out or away. Not an instrument's to put it away: closed(), for the focus.
-    // A reference: a window that closes itself writes it (`draw(bool& open)`).
-    bool& out(BenchObject object) { return out_[static_cast<std::size_t>(object)]; }
+    void bringOut(Owner instrument);    // start-up flags: out, the owner unchanged
+    void bringOut(BenchObject object);  // the same for any object (--pop)
+    void clicked(Owner instrument);     // a click in its window: the focus, if out
+    void closed(Owner instrument);      // its window closed: away; the probe takes the focus
     bool out(BenchObject object) const { return out_[static_cast<std::size_t>(object)]; }
+    // Out or away for an object that is no instrument (TV, keyboard, knob box, binder, brief,
+    // Debug), written by what shows it and by its window when it closes (`draw(bool& open)`).
+    // Refuses an instrument: that one comes out and goes away above, for the focus.
+    bool& outFlag(BenchObject object);
 
 private:
     Owner owner_ = Owner::Probe;

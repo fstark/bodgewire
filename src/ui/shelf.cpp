@@ -175,20 +175,18 @@ void Shelf::refused(std::string reason) {
 
 void Shelf::machineClick(Focus& focus, bool second) {
     struct Member {
-        bool* out;
         const char* window;
         BenchObject object;
     };
     std::vector<Member> members;
     if (devices_.tv) {
-        members.push_back({&focus.out(BenchObject::Tv), kTvWindowName, BenchObject::Tv});
+        members.push_back({kTvWindowName, BenchObject::Tv});
     }
     if (devices_.keyboard) {
-        members.push_back(
-            {&focus.out(BenchObject::Keyboard), keyboardWindow, BenchObject::Keyboard});
+        members.push_back({keyboardWindow, BenchObject::Keyboard});
     }
     if (devices_.knob) {
-        members.push_back({&focus.out(BenchObject::Knob), kKnobWindowName, BenchObject::Knob});
+        members.push_back({kKnobWindowName, BenchObject::Knob});
     }
     std::vector<const char*> group;
     for (const Member& m : members) {
@@ -196,12 +194,13 @@ void Shelf::machineClick(Focus& focus, bool second) {
     }
     std::vector<SlotObject> objects;
     for (const Member& m : members) {
-        objects.push_back({*m.out, *m.out && InFrontOf(m.window, group), PoppedOut(m.object)});
+        const bool out = focus.out(m.object);
+        objects.push_back({out, out && InFrontOf(m.window, group), PoppedOut(m.object)});
     }
     if (second) {  // the double-click's second: all out, then all popped out or all back in
         const bool out = PopAll(objects);
         for (std::size_t i = 0; i < members.size(); ++i) {
-            *members[i].out = true;
+            focus.bringOut(members[i].object);
             if (objects[i].popped != out) {
                 TogglePop(members[i].object, members[i].window);
             }
@@ -212,9 +211,9 @@ void Shelf::machineClick(Focus& focus, bool second) {
     const SlotClick click = ClickSlot(objects);
     for (const Member& m : members) {
         if (click == SlotClick::PutAway) {
-            *m.out = false;
+            focus.outFlag(m.object) = false;
         } else {
-            *m.out = true;
+            focus.bringOut(m.object);
             BringToFront(m.window);
         }
     }
@@ -449,17 +448,17 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
             }
             case Item::Manual:
                 if (second) {
-                    focus.out(BenchObject::Manual) = true;
+                    focus.bringOut(BenchObject::Manual);
                     TogglePop(BenchObject::Manual, kManualWindowName);
                 } else {
-                    ToggleWindow(focus.out(BenchObject::Manual), kManualWindowName);
+                    ToggleWindow(focus.outFlag(BenchObject::Manual), kManualWindowName);
                 }
                 break;
             case Item::Machine:
                 machineClick(focus, second);
                 break;
             case Item::Brief:
-                ToggleWindow(focus.out(BenchObject::Brief),
+                ToggleWindow(focus.outFlag(BenchObject::Brief),
                              kBriefWindowName);  // glued to the Board: no pop-out
                 break;
             default:
