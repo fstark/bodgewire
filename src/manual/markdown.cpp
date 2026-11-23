@@ -5,21 +5,14 @@
 #include <utility>
 #include <vector>
 
+#include "text/text.hpp"
+
 namespace bw {
 
 namespace {
 
 bool IsBlank(std::string_view line) {
     return line.find_first_not_of(" \t") == std::string_view::npos;
-}
-
-std::string_view Trim(std::string_view text) {
-    const std::size_t start = text.find_first_not_of(" \t");
-    if (start == std::string_view::npos) {
-        return {};
-    }
-    const std::size_t end = text.find_last_not_of(" \t");
-    return text.substr(start, end - start + 1);
 }
 
 void Append(std::vector<Span>& spans, SpanStyle style, std::string_view text) {

@@ -55,4 +55,4 @@ add_library(bw_parts STATIC
   z80_stub.cpp
   zx80_keys.cpp
 )
-target_link_libraries(bw_parts PUBLIC bw_sim PRIVATE bw_warnings)
+target_link_libraries(bw_parts PUBLIC bw_sim bw_text PRIVATE bw_warnings)

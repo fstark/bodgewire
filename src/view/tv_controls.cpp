@@ -4,38 +4,15 @@
 #include <cmath>
 #include <cstddef>
 
+#include "text/text.hpp"
+
 namespace bw {
 
 namespace {
 
-bool IsDigit(char c) { return c >= '0' && c <= '9'; }
-
-// "N%" or "N.N%", 0 to 100, as a turn 0..1 (the shape of --knob's ParseKnob).
-std::optional<double> ParsePercent(std::string_view number) {
-    std::size_t i = 0;
-    double value = 0;
-    for (; i < number.size() && IsDigit(number[i]); ++i) {
-        value = value * 10 + (number[i] - '0');
-    }
-    if (i == 0) {
-        return std::nullopt;
-    }
-    if (i < number.size() && number[i] == '.') {
-        ++i;
-        double scale = 0.1;
-        const std::size_t start = i;
-        for (; i < number.size() && IsDigit(number[i]); ++i) {
-            value += (number[i] - '0') * scale;
-            scale /= 10;
-        }
-        if (i == start) {
-            return std::nullopt;
-        }
-    }
-    if (number.substr(i) != "%" || value > 100) {
-        return std::nullopt;
-    }
-    return value / 100;
+// "N%" or "N.N%", 0 to 100, as a turn 0..1.
+std::optional<double> Turn(std::string_view text) {
+    return ParsePercent(text).transform([](double percent) { return percent / 100; });
 }
 
 std::optional<TvKnob> KnobNamed(std::string_view name) {
@@ -116,8 +93,8 @@ std::optional<ScreenFraction> ParseLoupe(std::string_view text) {
     if (colon == std::string_view::npos) {
         return std::nullopt;
     }
-    const auto x = ParsePercent(text.substr(0, colon));
-    const auto y = ParsePercent(text.substr(colon + 1));
+    const auto x = Turn(text.substr(0, colon));
+    const auto y = Turn(text.substr(colon + 1));
     if (!x || !y) {
         return std::nullopt;
     }
@@ -126,9 +103,7 @@ std::optional<ScreenFraction> ParseLoupe(std::string_view text) {
 
 std::optional<TvControls> ParseTvSettings(std::string_view list, TvControls start) {
     TvControls controls = start;
-    for (std::size_t from = 0;;) {
-        const std::size_t comma = list.find(',', from);
-        const std::string_view item = list.substr(from, comma - from);
+    for (const std::string_view item : Split(list, ',')) {
         if (item == "off") {
             controls.setOn(false);
         } else if (item == "underscan") {
@@ -139,16 +114,12 @@ std::optional<TvControls> ParseTvSettings(std::string_view list, TvControls star
                 return std::nullopt;
             }
             const std::optional<TvKnob> knob = KnobNamed(item.substr(0, colon));
-            const std::optional<double> turn = ParsePercent(item.substr(colon + 1));
+            const std::optional<double> turn = Turn(item.substr(colon + 1));
             if (!knob || !turn) {
                 return std::nullopt;
             }
             controls.set(*knob, *turn);
         }
-        if (comma == std::string_view::npos) {
-            break;
-        }
-        from = comma + 1;
     }
     return controls;
 }

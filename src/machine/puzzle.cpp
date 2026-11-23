@@ -4,29 +4,11 @@
 #include <optional>
 #include <utility>
 
+#include "text/text.hpp"
+
 namespace bw {
 
 namespace {
-
-bool IsSpace(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\v' || c == '\f'; }
-
-std::vector<std::string_view> Tokens(std::string_view line) {
-    std::vector<std::string_view> tokens;
-    std::size_t i = 0;
-    while (i < line.size()) {
-        while (i < line.size() && IsSpace(line[i])) {
-            ++i;
-        }
-        const std::size_t start = i;
-        while (i < line.size() && !IsSpace(line[i])) {
-            ++i;
-        }
-        if (i > start) {
-            tokens.push_back(line.substr(start, i - start));
-        }
-    }
-    return tokens;
-}
 
 bool IsMachineName(std::string_view text) {
     if (text.empty()) {
@@ -46,41 +28,6 @@ std::optional<PinRef> ParsePin(std::string_view token) {
         return std::nullopt;
     }
     return PinRef{std::string(token.substr(0, dot)), std::string(token.substr(dot + 1))};
-}
-
-// "N%", "N.D%" or "N.DD%", at most 100.
-std::optional<double> ParsePercent(std::string_view text) {
-    if (text.size() < 2 || text.back() != '%') {
-        return std::nullopt;
-    }
-    text.remove_suffix(1);
-    const std::size_t dot = text.find('.');
-    const std::string_view whole = text.substr(0, dot);
-    const std::string_view decimals =
-        dot == std::string_view::npos ? std::string_view() : text.substr(dot + 1);
-    if (whole.empty() || whole.size() > 3 || decimals.size() > 2 ||
-        (dot != std::string_view::npos && decimals.empty())) {
-        return std::nullopt;
-    }
-    double value = 0;
-    for (const char c : whole) {
-        if (c < '0' || c > '9') {
-            return std::nullopt;
-        }
-        value = value * 10 + (c - '0');
-    }
-    double scale = 1;
-    for (const char c : decimals) {
-        if (c < '0' || c > '9') {
-            return std::nullopt;
-        }
-        scale /= 10;
-        value += (c - '0') * scale;
-    }
-    if (value > 100) {
-        return std::nullopt;
-    }
-    return value;
 }
 
 // "$1FF" (1-8 hex digits, either case) or "511" (1-9 decimal digits).
@@ -138,7 +85,7 @@ public:
     explicit Parser(std::string file) { puzzle_.file = std::move(file); }
 
     void line(std::uint32_t number, std::string_view text) {
-        if (const std::vector<std::string_view> raw = Tokens(text);
+        if (const std::vector<std::string_view> raw = SplitWords(text);
             !raw.empty() && (raw[0] == "title" || raw[0] == "brief")) {
             const std::size_t start = static_cast<std::size_t>(raw[0].data() - text.data());
             quoted(number, raw[0], text.substr(start + raw[0].size()));
@@ -147,7 +94,7 @@ public:
         if (const std::size_t hash = text.find('#'); hash != std::string_view::npos) {
             text = text.substr(0, hash);
         }
-        const std::vector<std::string_view> tokens = Tokens(text);
+        const std::vector<std::string_view> tokens = SplitWords(text);
         if (tokens.empty()) {
             return;
         }
@@ -246,7 +193,7 @@ private:
             error(line, "expected: fault crack REF.PIN REF.PIN N%");
             return;
         }
-        const auto percent = ParsePercent(tokens[4]);
+        const auto percent = ParsePercent(tokens[4], 2);  // N%, N.D% or N.DD%
         if (!percent) {
             error(line, "bad position '" + std::string(tokens[4]) + "'");
             return;

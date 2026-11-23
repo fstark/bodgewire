@@ -4,27 +4,11 @@
 #include <format>
 #include <vector>
 
+#include "text/text.hpp"
+
 namespace bw {
 
 namespace {
-
-std::vector<std::string_view> Words(std::string_view line) {
-    std::vector<std::string_view> words;
-    std::size_t i = 0;
-    while (i < line.size()) {
-        while (i < line.size() && (line[i] == ' ' || line[i] == '\t')) {
-            ++i;
-        }
-        const std::size_t start = i;
-        while (i < line.size() && line[i] != ' ' && line[i] != '\t') {
-            ++i;
-        }
-        if (i > start) {
-            words.push_back(line.substr(start, i - start));
-        }
-    }
-    return words;
-}
 
 // "$1FF" or "511".
 std::optional<std::uint32_t> Number(std::string_view text) {
@@ -59,7 +43,7 @@ std::expected<ContentsDefaults, std::string> ParseContentsDefaults(std::string_v
         if (!line.empty() && line.back() == '\r') {
             line.remove_suffix(1);
         }
-        const auto words = Words(line);
+        const auto words = SplitWords(line);
         if (words.empty()) {
             continue;
         }

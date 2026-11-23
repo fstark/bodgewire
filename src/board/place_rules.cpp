@@ -4,6 +4,8 @@
 #include <charconv>
 #include <set>
 
+#include "text/text.hpp"
+
 namespace bw {
 
 namespace {
@@ -21,25 +23,6 @@ std::optional<Edge> ParseEdge(std::string_view word) {
 
 bool RunsAcross(Edge edge) { return edge == Edge::Back || edge == Edge::Front; }
 
-std::vector<std::string_view> Words(std::string_view line) {
-    std::vector<std::string_view> words;
-    std::size_t i = 0;
-    while (i < line.size()) {
-        while (i < line.size() && (line[i] == ' ' || line[i] == '\t' || line[i] == '\r')) {
-            ++i;
-        }
-        std::size_t end = i;
-        while (end < line.size() && line[end] != ' ' && line[end] != '\t' && line[end] != '\r') {
-            ++end;
-        }
-        if (end > i) {
-            words.push_back(line.substr(i, end - i));
-        }
-        i = end;
-    }
-    return words;
-}
-
 class Parser {
 public:
     explicit Parser(std::string file) : file_(std::move(file)) {}
@@ -49,7 +32,7 @@ public:
         if (const std::size_t hash = text.find('#'); hash != std::string_view::npos) {
             text = text.substr(0, hash);
         }
-        const std::vector<std::string_view> words = Words(text);
+        const std::vector<std::string_view> words = SplitWords(text);
         if (words.empty()) {
             return;
         }

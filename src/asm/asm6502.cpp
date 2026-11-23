@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "parts/mos6502_core.hpp"
+#include "text/text.hpp"
 
 namespace bw::asm_detail {
 

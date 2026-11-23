@@ -25,7 +25,6 @@ struct AsmValue {
 };
 
 std::string Upper(std::string_view text);
-std::string_view Trim(std::string_view text);
 bool IsIdentStart(char c);
 bool IsIdentChar(char c);
 // The length of a 'c' literal starting at text[i], or 0.

@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
-#include <fstream>
-#include <iterator>
 #include <string>
 #include <utility>
 
@@ -17,6 +15,7 @@
 #include "parts/memory_cells.hpp"
 #include "parts/mos6530.hpp"
 #include "parts/rom.hpp"
+#include "text/text.hpp"
 
 namespace bw {
 
@@ -35,14 +34,6 @@ std::vector<WireEnds>::iterator FindEnds(std::vector<WireEnds>& list, const PinR
     return std::ranges::find_if(list, [&](const WireEnds& w) {
         return (SamePin(w.a, a) && SamePin(w.b, b)) || (SamePin(w.a, b) && SamePin(w.b, a));
     });
-}
-
-std::optional<std::string> ReadFile(const std::filesystem::path& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        return std::nullopt;
-    }
-    return std::string{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
 }  // namespace
@@ -103,7 +94,7 @@ LoadMachine(const Puzzle& puzzle, const std::filesystem::path& dir,
     machine.name_ = puzzle.machine;
     const auto netlistPath = dir / (puzzle.machine + ".bwn");
     const auto boardPath = dir / "board" / (puzzle.machine + ".kicad_pcb");
-    const auto text = ReadFile(netlistPath);
+    const auto text = ReadTextFile(netlistPath);
     if (!text || !std::filesystem::exists(boardPath)) {
         return fail(puzzle.machineLine, "unknown machine '" + puzzle.machine + "'");
     }
@@ -594,7 +585,7 @@ std::filesystem::path MachineDir(const std::filesystem::path& file) {
 
 std::expected<Puzzle, std::vector<Diagnostic>> ReadPuzzleFile(const std::filesystem::path& path) {
     std::string file = path.filename().string();
-    const auto text = ReadFile(path);
+    const auto text = ReadTextFile(path);
     if (!text) {
         return std::unexpected(
             std::vector<Diagnostic>{{std::move(file), 0, Severity::Error, "cannot read file"}});

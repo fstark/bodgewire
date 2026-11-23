@@ -1,14 +1,13 @@
 #include "board/footprint.hpp"
 
 #include <algorithm>
-#include <fstream>
 #include <optional>
-#include <sstream>
 #include <utility>
 
 #include "board/kicad_board.hpp"
 #include "board/kicad_netlist.hpp"
 #include "board/sexpr.hpp"
+#include "text/text.hpp"
 
 namespace bw {
 
@@ -131,14 +130,12 @@ LoadFootprints(const std::filesystem::path& directory, std::span<const std::stri
         }
         const std::string name(id.substr(id.find(':') + 1));
         const std::filesystem::path path = directory / (name + ".kicad_mod");
-        std::ifstream in(path, std::ios::binary);
-        if (!in) {
+        const auto text = ReadTextFile(path);
+        if (!text) {
             errors.push_back({path.string(), 0, Severity::Error, "cannot read footprint"});
             continue;
         }
-        std::ostringstream text;
-        text << in.rdbuf();
-        library.emplace(std::string(package), ReadFootprint(text.str(), id, path.string(), errors));
+        library.emplace(std::string(package), ReadFootprint(*text, id, path.string(), errors));
     }
     if (!errors.empty()) {
         return std::unexpected(std::move(errors));

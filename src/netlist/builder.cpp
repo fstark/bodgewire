@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <fstream>
-#include <iterator>
 #include <map>
 #include <optional>
 #include <set>
@@ -20,6 +18,7 @@
 #include "parts/resistor_network.hpp"
 #include "parts/switch.hpp"
 #include "sim/check.hpp"
+#include "text/text.hpp"
 
 namespace bw {
 
@@ -600,13 +599,12 @@ LoadResult LoadNetlist(std::string_view text, std::string file) {
 
 LoadResult LoadNetlistFile(const std::filesystem::path& path) {
     std::string file = path.filename().string();
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
+    const auto text = ReadTextFile(path);
+    if (!text) {
         return std::unexpected(
             std::vector<Diagnostic>{{std::move(file), 0, Severity::Error, "cannot read file"}});
     }
-    const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
-    auto netlist = ParseNetlist(text, std::move(file));
+    auto netlist = ParseNetlist(*text, std::move(file));
     if (!netlist) {
         return std::unexpected(netlist.error());
     }

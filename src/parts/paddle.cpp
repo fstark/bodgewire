@@ -9,6 +9,7 @@
 #include "parts/connector.hpp"
 #include "sim/check.hpp"
 #include "sim/simulator.hpp"
+#include "text/text.hpp"
 
 namespace bw {
 
@@ -26,8 +27,6 @@ struct DurationUnit {
 constexpr std::array<DurationUnit, 5> kDurationUnits{
     {{"ps", 1}, {"ns", 1e3}, {"us", 1e6}, {"ms", 1e9}, {"s", 1e12}}};
 
-bool IsDigit(char c) { return c >= '0' && c <= '9'; }
-
 }  // namespace
 
 std::expected<Time, std::string> DurationFromText(std::string_view text) {
@@ -35,27 +34,12 @@ std::expected<Time, std::string> DurationFromText(std::string_view text) {
         return std::unexpected("bad duration '" + std::string(text) +
                                "': expected a number then ps, ns, us, ms or s, e.g. 10ms");
     };
-    std::size_t i = 0;
-    double value = 0;
-    for (; i < text.size() && IsDigit(text[i]); ++i) {
-        value = value * 10 + (text[i] - '0');
-    }
-    if (i == 0) {
+    const auto number = ParseDecimal(text);
+    if (!number) {
         return bad();
     }
-    if (i < text.size() && text[i] == '.') {
-        ++i;
-        double scale = 0.1;
-        const std::size_t start = i;
-        for (; i < text.size() && IsDigit(text[i]); ++i) {
-            value += (text[i] - '0') * scale;
-            scale /= 10;
-        }
-        if (i == start) {
-            return bad();
-        }
-    }
-    const std::string_view unit = text.substr(i);
+    const double value = number->value;
+    const std::string_view unit = text.substr(number->length);
     for (const DurationUnit& candidate : kDurationUnits) {
         if (candidate.name != unit) {
             continue;

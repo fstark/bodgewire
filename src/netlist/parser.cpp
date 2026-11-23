@@ -3,33 +3,15 @@
 #include <cstddef>
 #include <utility>
 
+#include "text/text.hpp"
+
 namespace bw {
 
 namespace {
 
-bool IsSpace(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\v' || c == '\f'; }
-bool IsDigit(char c) { return c >= '0' && c <= '9'; }
 bool IsUpper(char c) { return c >= 'A' && c <= 'Z'; }
 bool IsLetter(char c) { return IsUpper(c) || (c >= 'a' && c <= 'z'); }
 bool IsAlnum(char c) { return IsLetter(c) || IsDigit(c); }
-
-std::vector<std::string_view> Tokens(std::string_view line) {
-    std::vector<std::string_view> tokens;
-    std::size_t i = 0;
-    while (i < line.size()) {
-        while (i < line.size() && IsSpace(line[i])) {
-            ++i;
-        }
-        const std::size_t start = i;
-        while (i < line.size() && !IsSpace(line[i])) {
-            ++i;
-        }
-        if (i > start) {
-            tokens.push_back(line.substr(start, i - start));
-        }
-    }
-    return tokens;
-}
 
 // [A-Z]+[0-9]+
 bool IsReference(std::string_view text) {
@@ -78,7 +60,7 @@ public:
         if (const std::size_t hash = text.find('#'); hash != std::string_view::npos) {
             text = text.substr(0, hash);
         }
-        const std::vector<std::string_view> tokens = Tokens(text);
+        const std::vector<std::string_view> tokens = SplitWords(text);
         if (tokens.empty()) {
             return;
         }

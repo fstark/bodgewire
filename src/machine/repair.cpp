@@ -5,6 +5,7 @@
 
 #include "board/kicad_board.hpp"
 #include "machine/crack.hpp"
+#include "text/text.hpp"
 
 namespace bw {
 
@@ -14,19 +15,6 @@ template <class... Ts>
 struct Overloaded : Ts... {
     using Ts::operator()...;
 };
-
-// The ':'-separated fields after the prefix.
-std::vector<std::string_view> Fields(std::string_view text, std::size_t prefixLength) {
-    std::vector<std::string_view> fields;
-    for (std::size_t start = prefixLength;;) {
-        const std::size_t colon = text.find(':', start);
-        fields.push_back(text.substr(start, colon - start));
-        if (colon == std::string_view::npos) {
-            return fields;
-        }
-        start = colon + 1;
-    }
-}
 
 // "F.Cu", "x", "y" in millimetres.
 std::optional<std::pair<Layer, Point>> ParseLayerPoint(const std::vector<std::string_view>& f) {
@@ -74,7 +62,7 @@ std::expected<RepairAction, std::string> ParseRepair(std::string_view text) {
         if (!text.starts_with(prefix)) {
             continue;
         }
-        const auto at = ParseLayerPoint(Fields(text, prefix.size()));
+        const auto at = ParseLayerPoint(Split(text.substr(prefix.size()), ':'));
         if (!at) {
             return bad;
         }
@@ -87,7 +75,7 @@ std::expected<RepairAction, std::string> ParseRepair(std::string_view text) {
         if (!text.starts_with(prefix)) {
             continue;
         }
-        const auto fields = Fields(text, prefix.size());
+        const auto fields = Split(text.substr(prefix.size()), ':');
         if (fields.size() != 2 || fields[0] == fields[1]) {
             return bad;
         }

@@ -1,14 +1,13 @@
 #include "manual/manual.hpp"
 
 #include <algorithm>
-#include <fstream>
-#include <iterator>
 #include <set>
 #include <utility>
 
 #include "parts/mos6530.hpp"
 #include "parts/rom.hpp"
 #include "sim/circuit.hpp"
+#include "text/text.hpp"
 
 namespace bw {
 
@@ -17,7 +16,6 @@ namespace {
 constexpr std::string_view kPinWord = " pin ";
 
 bool IsUpper(char c) { return c >= 'A' && c <= 'Z'; }
-bool IsDigit(char c) { return c >= '0' && c <= '9'; }
 
 // [A-Z]+[0-9]+
 bool LooksLikeReference(std::string_view text) {
@@ -136,15 +134,6 @@ std::optional<RunEnds> RunAt(std::span<const Span> spans, std::size_t i,
     return RunEnds{a->first, a->second, b->second};
 }
 
-std::string Trim(std::string_view text) {
-    const std::size_t start = text.find_first_not_of(" \t");
-    if (start == std::string_view::npos) {
-        return {};
-    }
-    const std::size_t end = text.find_last_not_of(" \t");
-    return std::string(text.substr(start, end - start + 1));
-}
-
 class Problems {
 public:
     explicit Problems(std::string_view file) : file_(file) {}
@@ -249,14 +238,6 @@ void CheckReferences(const Markdown& doc, Problems& problems, const LoadedCircui
             }
         }
     }
-}
-
-std::optional<std::string> ReadFile(const std::filesystem::path& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        return std::nullopt;
-    }
-    return std::string{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
 }  // namespace
@@ -394,10 +375,10 @@ std::optional<Role> ComponentRole(const Markdown& service, std::string_view refe
         const std::string rest = PlainText(std::span(block.spans).subspan(1));
         const std::size_t colon = rest.find(':');
         if (colon == std::string::npos) {
-            return Role{Trim(rest), ""};
+            return Role{std::string(Trim(rest)), ""};
         }
-        return Role{Trim(std::string_view(rest).substr(0, colon)),
-                    Trim(std::string_view(rest).substr(colon + 1))};
+        return Role{std::string(Trim(std::string_view(rest).substr(0, colon))),
+                    std::string(Trim(std::string_view(rest).substr(colon + 1)))};
     }
     return std::nullopt;
 }
@@ -410,7 +391,7 @@ std::vector<std::string> BulletPins(const Block& bullet) {
             if (span.text.find(':') != std::string::npos) {
                 break;
             }
-            const std::string dash = Trim(span.text);
+            const std::string_view dash = Trim(span.text);
             range = !names.empty() && (dash == "\u2013" || dash == "-");
             continue;
         }
@@ -521,7 +502,7 @@ LoadedManuals LoadManuals(const std::filesystem::path& dir, const std::filesyste
         if (!std::filesystem::exists(path)) {
             return std::nullopt;
         }
-        const auto text = ReadFile(path);
+        const auto text = ReadTextFile(path);
         if (!text) {
             loaded.problems.push_back({shown, 0, Severity::Warning, "cannot read file"});
             return std::nullopt;

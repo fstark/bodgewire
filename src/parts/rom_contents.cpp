@@ -4,15 +4,13 @@
 #include <cctype>
 #include <charconv>
 #include <format>
-#include <fstream>
-#include <iterator>
 #include <optional>
+
+#include "text/text.hpp"
 
 namespace bw {
 
 namespace {
-
-bool IsSpace(char c) { return c == ' ' || c == '\t' || c == '\r'; }
 
 std::optional<unsigned> ParseNumber(std::string_view text, int base) {
     unsigned value = 0;
@@ -182,11 +180,11 @@ ParseRomContents(std::string_view text, std::string_view file, std::size_t size,
 
 std::expected<std::vector<std::uint8_t>, std::string>
 ReadRomContents(const std::filesystem::path& path, std::size_t size, int width) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
+    const auto read = ReadTextFile(path);
+    if (!read) {
         return std::unexpected("cannot read '" + path.string() + "'");
     }
-    const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+    const std::string& text = *read;
     const std::string file = path.filename().string();
     std::string extension = path.extension().string();
     std::ranges::transform(extension, extension.begin(),

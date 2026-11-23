@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <print>
+#include <ranges>
 #include <span>
 #include <sstream>
 #include <string>
@@ -38,6 +39,7 @@
 #include "netlist/units.hpp"
 #include "sim/simulator.hpp"
 #include "sim/vcd.hpp"
+#include "text/text.hpp"
 
 using namespace bw;
 using namespace bw::literals;
@@ -82,19 +84,6 @@ int UsageError(std::string_view message) {
     return kExitUsage;
 }
 
-std::vector<std::string> SplitCommas(std::string_view text) {
-    std::vector<std::string> parts;
-    std::size_t start = 0;
-    while (true) {
-        const std::size_t comma = text.find(',', start);
-        parts.emplace_back(text.substr(start, comma - start));
-        if (comma == std::string_view::npos) {
-            return parts;
-        }
-        start = comma + 1;
-    }
-}
-
 bool IsPuzzle(std::string_view file) { return file.ends_with(".bwp"); }
 
 // Error message, or nullopt on success.
@@ -136,15 +125,15 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
                 return "bad seed '" + std::string(value) + "'";
             }
         } else if (arg == "--record") {
-            options.record = SplitCommas(value);
+            options.record = std::ranges::to<std::vector<std::string>>(Split(value, ','));
         } else if (arg == "--tv") {
             options.tv = value;
         } else if (arg == "--repair") {
-            options.repair = SplitCommas(value);
+            options.repair = std::ranges::to<std::vector<std::string>>(Split(value, ','));
         } else if (arg == "--probe") {
-            options.probe = SplitCommas(value);
+            options.probe = std::ranges::to<std::vector<std::string>>(Split(value, ','));
         } else if (arg == "--press") {
-            for (const std::string& text : SplitCommas(value)) {
+            for (const std::string_view text : Split(value, ',')) {
                 auto press = ParsePress(text);
                 if (!press) {
                     return press.error();
@@ -152,7 +141,7 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
                 options.press.push_back(std::move(*press));
             }
         } else if (arg == "--knob") {
-            for (const std::string& text : SplitCommas(value)) {
+            for (const std::string_view text : Split(value, ',')) {
                 auto knob = ParseKnob(text);
                 if (!knob) {
                     return knob.error();
@@ -309,16 +298,6 @@ void PrintDiagnostics(const std::vector<Diagnostic>& diagnostics) {
     }
 }
 
-std::optional<std::string> ReadText(const std::filesystem::path& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        return std::nullopt;
-    }
-    std::ostringstream text;
-    text << in.rdbuf();
-    return text.str();
-}
-
 int AsmCommand(std::span<char*> args) {
     if (args.size() != 5 || std::string_view(args[3]) != "-o") {
         return UsageError("asm needs <file.asm> -o <file.rom|file.bin>");
@@ -402,7 +381,7 @@ int PlaceCommand(std::span<char*> args) {
         return kExitNetlistErrors;
     }
     const std::string rulesFile(files[1]);
-    const auto rulesText = ReadText(rulesFile);
+    const auto rulesText = ReadTextFile(rulesFile);
     if (!rulesText) {
         return UsageError("cannot read " + rulesFile);
     }
@@ -420,7 +399,7 @@ int PlaceCommand(std::span<char*> args) {
         PrintDiagnostics(library.error());
         return kExitNetlistErrors;
     }
-    if (const auto existing = ReadText(out);
+    if (const auto existing = ReadTextFile(out);
         existing && !force &&
         (existing->contains("(segment") || existing->contains("(arc") ||
          existing->contains("(via"))) {

@@ -9,6 +9,8 @@
 #include <string_view>
 #include <vector>
 
+#include "text/text.hpp"
+
 namespace bw::asm_detail {
 
 namespace {

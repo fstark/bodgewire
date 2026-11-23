@@ -1,13 +1,12 @@
 #include "machine/machine_list.hpp"
 
 #include <algorithm>
-#include <fstream>
-#include <iterator>
 #include <system_error>
 #include <utility>
 
 #include "machine/machine.hpp"
 #include "manual/markdown.hpp"
+#include "text/text.hpp"
 
 namespace bw {
 
@@ -49,12 +48,11 @@ bool HoldsMachine(const fs::path& machinesDir) {
 
 // The User Manual's title and first paragraph; empty without the file.
 std::pair<std::string, std::string> NameAndLine(const fs::path& dir) {
-    std::ifstream in(dir / "manuals" / "user.md");
-    if (!in) {
+    const auto text = ReadTextFile(dir / "manuals" / "user.md");
+    if (!text) {
         return {};
     }
-    const std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
-    const Markdown doc = ParseMarkdown(text);
+    const Markdown doc = ParseMarkdown(*text);
     std::string line;
     if (const auto paragraph = std::ranges::find(doc.blocks, BlockKind::Paragraph, &Block::kind);
         paragraph != doc.blocks.end()) {

@@ -26,6 +26,7 @@ if(BW_HAS_C2Y_EXTENSIONS)
   target_compile_options(bw_warnings INTERFACE -Wno-c2y-extensions)
 endif()
 
+add_subdirectory(src/text)
 add_subdirectory(src/sim)
 add_subdirectory(src/devices)
 add_subdirectory(src/runner)

@@ -7,14 +7,12 @@
 #include <deque>
 #include <filesystem>
 #include <format>
-#include <fstream>
-#include <iterator>
 #include <memory>
 #include <optional>
 #include <print>
+#include <ranges>
 #include <set>
 #include <span>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -38,6 +36,7 @@
 #include "netlist/units.hpp"
 #include "parts/catalogue.hpp"
 #include "session/session.hpp"
+#include "text/text.hpp"
 #include "ui/analyzer_window.hpp"
 #include "ui/bench.hpp"
 #include "ui/board_keys.hpp"
@@ -214,18 +213,6 @@ std::optional<Bounds> ParseZoom(std::string_view text) {
     return Bounds{{*x - half, *y - half}, {*x + half, *y + half}};
 }
 
-std::vector<std::string> SplitCommas(std::string_view list) {
-    std::vector<std::string> items;
-    for (std::size_t start = 0;;) {
-        const std::size_t comma = list.find(',', start);
-        items.emplace_back(list.substr(start, comma - start));
-        if (comma == std::string_view::npos) {
-            return items;
-        }
-        start = comma + 1;
-    }
-}
-
 // "+2us", "-1.5us", "2us", "0": ps.
 std::optional<Time> ParseSignedDuration(std::string_view text) {
     if (text == "0") {
@@ -284,7 +271,7 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
         if (arg == "--machines") {
             options.machines = argv[++i];
         } else if (arg == "--visit") {
-            for (const std::string& file : SplitCommas(argv[++i])) {
+            for (const std::string_view file : Split(argv[++i], ',')) {
                 options.visit.emplace_back(file);
             }
         } else if (arg == "--select") {
@@ -327,11 +314,11 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
         } else if (arg == "--repair") {
-            options.repair = SplitCommas(argv[++i]);
+            options.repair = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
         } else if (arg == "--clip") {
-            options.clip = SplitCommas(argv[++i]);
+            options.clip = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
         } else if (arg == "--group") {
-            options.group = SplitCommas(argv[++i]);
+            options.group = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
         } else if (arg == "--delay") {
             const auto delay = ParseDuration(argv[++i]);
             if (!delay || *delay < 0) {
@@ -356,12 +343,12 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             }
             (arg == "--marker" ? options.marker : options.cursor) = *time;
         } else if (arg == "--meter") {
-            options.meter = SplitCommas(argv[++i]);
+            options.meter = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
             if (options.meter.size() > 2) {
                 return std::nullopt;
             }
         } else if (arg == "--hook") {
-            options.hook = SplitCommas(argv[++i]);
+            options.hook = std::ranges::to<std::vector<std::string>>(Split(argv[++i], ','));
             if (options.hook.size() > kScopeChannels) {
                 return std::nullopt;
             }
@@ -372,7 +359,7 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
             }
             options.timebase = *timebase;
         } else if (arg == "--press") {
-            for (const std::string& text : SplitCommas(argv[++i])) {
+            for (const std::string_view text : Split(argv[++i], ',')) {
                 auto press = ParsePress(text);
                 if (!press) {
                     return std::nullopt;
@@ -385,7 +372,7 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
         } else if (arg == "--mark") {
-            for (const std::string& text : SplitCommas(argv[++i])) {
+            for (const std::string_view text : Split(argv[++i], ',')) {
                 const auto mark = ParseMark(text);
                 if (!mark) {
                     return std::nullopt;
@@ -393,7 +380,7 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 options.mark.push_back(*mark);
             }
         } else if (arg == "--pop") {
-            for (const std::string& text : SplitCommas(argv[++i])) {
+            for (const std::string_view text : Split(argv[++i], ',')) {
                 const auto object = ParseBenchObject(text);
                 if (!object) {
                     return std::nullopt;
@@ -401,7 +388,7 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 options.pop.push_back(*object);
             }
         } else if (arg == "--away") {
-            for (const std::string& text : SplitCommas(argv[++i])) {
+            for (const std::string_view text : Split(argv[++i], ',')) {
                 const auto object = ParseBenchObject(text);
                 if (!object || (*object != BenchObject::Tv && *object != BenchObject::Keyboard &&
                                 *object != BenchObject::Knob)) {
@@ -481,7 +468,7 @@ std::optional<Options> ParseOptions(int argc, char** argv) {
                 return std::nullopt;
             }
         } else if (arg == "--knob") {
-            for (const std::string& text : SplitCommas(argv[++i])) {
+            for (const std::string_view text : Split(argv[++i], ',')) {
                 auto knob = ParseKnob(text);
                 if (!knob) {
                     return std::nullopt;
@@ -772,12 +759,8 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
     }
     manualWindows.setStretch(options.binderHeight);
     // The Contents page's defaults (P6p): none without the file; a bad one is ignored.
-    if (const auto path = MachineDir(*options.file) / "roms" / "contents.txt";
-        std::filesystem::exists(path)) {
-        std::ifstream in(path);
-        const std::string text{std::istreambuf_iterator<char>(in),
-                               std::istreambuf_iterator<char>()};
-        if (auto defaults = ParseContentsDefaults(text, "contents.txt")) {
+    if (const auto text = ReadTextFile(MachineDir(*options.file) / "roms" / "contents.txt")) {
+        if (auto defaults = ParseContentsDefaults(*text, "contents.txt")) {
             manualWindows.setContentsDefaults(std::move(*defaults));
         } else {
             std::println(stderr, "bw_ui: warning: {}", defaults.error());

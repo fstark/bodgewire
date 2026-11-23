@@ -7,16 +7,14 @@
 #include <deque>
 #include <filesystem>
 #include <format>
-#include <fstream>
-#include <iterator>
 #include <map>
 #include <optional>
-#include <sstream>
 #include <utility>
 
 #include "asm/asm6502.hpp"
 #include "asm/asmz80.hpp"
 #include "asm/instruction_set.hpp"
+#include "text/text.hpp"
 
 namespace bw {
 
@@ -28,16 +26,6 @@ std::string Upper(std::string_view text) {
         c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
     }
     return out;
-}
-
-std::string_view Trim(std::string_view text) {
-    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front()))) {
-        text.remove_prefix(1);
-    }
-    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back()))) {
-        text.remove_suffix(1);
-    }
-    return text;
 }
 
 bool IsIdentStart(char c) { return std::isalpha(static_cast<unsigned char>(c)) || c == '_'; }
@@ -206,13 +194,11 @@ private:
             }
             const std::string_view name = arg.substr(1, arg.size() - 2);
             const std::filesystem::path path = *dir / std::string(name);
-            std::ifstream in(path, std::ios::binary);
-            if (!in) {
+            auto text = ReadTextFile(path);
+            if (!text) {
                 Fail(where(std::format("cannot read '{}'", name)));
             }
-            std::ostringstream text;
-            text << in.rdbuf();
-            texts_.push_back(text.str());
+            texts_.push_back(std::move(*text));
             names_.push_back(path.filename().string());
             std::filesystem::path inner = path.parent_path();
             load(texts_.back(), names_.back(), inner.empty() ? "." : inner, depth + 1);
@@ -348,12 +334,12 @@ private:
         const std::filesystem::path path = *dir / name;
         auto [it, inserted] = binaries_.try_emplace(path.string());
         if (inserted) {
-            std::ifstream in(path, std::ios::binary);
-            if (!in) {
+            auto bytes = ReadTextFile(path);
+            if (!bytes) {
                 binaries_.erase(it);
                 Fail(std::format("cannot read '{}'", name));
             }
-            it->second.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+            it->second = std::move(*bytes);
         }
         const std::string& bytes = it->second;
         if (static_cast<std::uint64_t>(offset.number) + static_cast<std::uint64_t>(length.number) >
@@ -891,14 +877,12 @@ std::expected<AssembledRom, std::string> Assemble(std::string_view source, std::
 }
 
 std::expected<AssembledRom, std::string> AssembleFile(const std::filesystem::path& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
+    const auto text = ReadTextFile(path);
+    if (!text) {
         return std::unexpected(std::format("cannot read '{}'", path.string()));
     }
-    std::ostringstream text;
-    text << in.rdbuf();
     const std::filesystem::path dir = path.parent_path();
-    return Assemble(text.str(), path.filename().string(), dir.empty() ? "." : dir);
+    return Assemble(*text, path.filename().string(), dir.empty() ? "." : dir);
 }
 
 }  // namespace bw
