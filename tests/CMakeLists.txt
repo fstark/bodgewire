@@ -175,7 +175,7 @@ add_executable(bw_tests
   sim/event_queue_test.cpp
   sim/joined_test.cpp
   sim/logic_test.cpp
-  sim/primitives_test.cpp
+  sim/fixtures_test.cpp
   sim/quiet_test.cpp
   sim/recorder_test.cpp
   sim/rng_test.cpp
@@ -208,7 +208,7 @@ add_executable(bw_tests
   view/viewport_test.cpp
 )
 target_link_libraries(bw_tests PRIVATE bw_asm bw_board bw_devices bw_instruments bw_machine bw_manual
-                                       bw_runner bw_session bw_view bw_warnings
+                                       bw_runner bw_session bw_sim_fixtures bw_view bw_warnings
                                        Catch2::Catch2WithMain)
 target_compile_definitions(bw_tests PRIVATE BW_FOOTPRINT_DIR="${PROJECT_SOURCE_DIR}/footprints"
                                            BW_ROOT_DIR="${PROJECT_SOURCE_DIR}"

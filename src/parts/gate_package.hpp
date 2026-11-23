@@ -7,7 +7,7 @@
 #include <string_view>
 
 #include "sim/component.hpp"
-#include "sim/primitives.hpp"
+#include "sim/gate_function.hpp"
 
 namespace bw {
 

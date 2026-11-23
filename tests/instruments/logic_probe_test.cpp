@@ -6,7 +6,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "sim/circuit.hpp"
-#include "sim/primitives.hpp"
+#include "sim/fixtures.hpp"
 
 using namespace bw;
 using namespace bw::literals;

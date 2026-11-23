@@ -1,2 +1,2 @@
 add_executable(bw_kernel_bench kernel_bench.cpp)
-target_link_libraries(bw_kernel_bench PRIVATE bw_sim bw_warnings)
+target_link_libraries(bw_kernel_bench PRIVATE bw_sim_fixtures bw_warnings)

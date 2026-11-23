@@ -49,7 +49,7 @@ Numbers at the time: `ui` 12,980 lines in 65 files, `parts` 12,199 in 113. Large
 - The builder (`builder.cpp:501-515`) checks the name and fetches `Bw2001Keys()` itself; ask the keyboard Part for its contacts and their two Pins instead (a second bare-contact keyboard, a PET 4032's, would then need no builder change).
 - Low risk.
 
-**A5. Test fixtures out of `sim/primitives.hpp`.** `Gate`, `TriStateBuffer`, `DFlipFlop`, `ClockSource`, `Stimulus` are used only by tests and benches; 25 Parts include the header only for `Delays`. `Delays` gets its own header, the fixtures go to the tests. Also: `Z80STUB` (bench only) in the shipped catalogue. Low risk.
+**A5. Test fixtures out of `sim/primitives.hpp`.** `Gate`, `TriStateBuffer`, `DFlipFlop`, `ClockSource`, `Stimulus` are used only by tests and benches; 25 Parts include the header only for `Delays`. `Delays` gets its own header, the fixtures go to the tests. Also: `Z80STUB` (bench only) in the shipped catalogue. Low risk. Done: `sim/delays.hpp` (`Delays`, `DelayFor`), `sim/gate_function.hpp` (`GateKind`, `GateFunction`), the fixtures in `sim/fixtures.*` as library `bw_sim_fixtures` (tests and bench only); `Z80STUB` kept, since the bench netlists load it through `bw run`.
 
 **A6. Docs that describe what isn't there.**
 - ARCHITECTURE's `m.injectFault(...)` example (no such API until C10) and "overridable per instance" delays (not built until D19): mark as intent.
@@ -154,7 +154,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | A2 `FindTvNets` | done 2026-11-23 |
 | A3 scope/analyzer channel setup | done 2026-11-23 |
 | A4 keyboard Part names, Parts by kind | done 2026-11-23 |
-| A5 test fixtures out of primitives | todo |
+| A5 test fixtures out of primitives | done 2026-11-23 |
 | A6 docs | todo |
 | B7–B9 names | todo |
 | C10 Faults as one type | todo |

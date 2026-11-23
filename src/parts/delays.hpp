@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sim/primitives.hpp"
+#include "sim/delays.hpp"
 
 // TI datasheet typical values, 5 V, 25 °C, CL = 15 pF; picoseconds.
 namespace bw::delays {

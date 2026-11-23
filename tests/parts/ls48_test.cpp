@@ -12,7 +12,7 @@
 #include "parts/delays.hpp"
 #include "parts/ls47.hpp"
 #include "sim/circuit.hpp"
-#include "sim/primitives.hpp"
+#include "sim/fixtures.hpp"
 #include "sim/simulator.hpp"
 
 using namespace bw;
