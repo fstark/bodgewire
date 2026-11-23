@@ -21,8 +21,7 @@ std::unique_ptr<LoadedCircuit> LoadTestPattern() {
 }
 
 void RunTo(Runner& runner, Time time) {
-    runner.pauseAt(time);
-    runner.resume();
+    runner.resumeUntil(time);
     runner.waitIdle();
 }
 

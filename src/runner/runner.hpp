@@ -50,8 +50,12 @@ public:
     void resume();
     void setSpeed(Speed speed);
     void
-    pauseAt(Time time);     // one-shot: pause at the first slice end >= time (queue before powerOn)
-    void watch(NetId net);  // counted: the Net's ring is written while any watch is held
+    pauseAt(Time time);  // one-shot: pause at the first slice end >= time (queue before powerOn)
+    // pauseAt(time) and resume() as one command: run on to the first slice end >= time, then
+    // pause. Sent as two, a run already past `time` could pause between them and the resume
+    // would then run on for good.
+    void resumeUntil(Time time);
+    void watch(NetId net);    // counted: the Net's ring is written while any watch is held
     void unwatch(NetId net);  // undoes one watch(); the slot is freed when none remain
     // Simulator::wake(component, delay) at the next slice boundary, unless Off.
     void wake(ComponentId component, Time delay = 0);
@@ -67,6 +71,7 @@ private:
         Resume,
         SetSpeed,
         PauseAt,
+        ResumeUntil,
         Watch,
         Unwatch,
         Wake

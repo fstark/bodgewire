@@ -66,6 +66,7 @@ void Runner::setSpeed(Speed speed) {
     queue({CommandKind::SetSpeed, static_cast<std::int64_t>(speed)});
 }
 void Runner::pauseAt(Time time) { queue({CommandKind::PauseAt, time}); }
+void Runner::resumeUntil(Time time) { queue({CommandKind::ResumeUntil, time}); }
 void Runner::watch(NetId net) { queue({CommandKind::Watch, 0, net}); }
 void Runner::unwatch(NetId net) { queue({CommandKind::Unwatch, 0, net}); }
 void Runner::wake(ComponentId component, Time delay) {
@@ -183,6 +184,13 @@ void Runner::apply(const Command& command, std::stop_token stop) {
         break;
     case CommandKind::PauseAt:
         pauseAt_ = command.value;
+        break;
+    case CommandKind::ResumeUntil:
+        pauseAt_ = command.value;
+        if (state_.load() == RunState::Paused) {
+            state_.store(RunState::Running);
+            rebase();
+        }
         break;
     case CommandKind::Watch: {
         for (std::size_t slot = 0; slot < kMaxWatched; ++slot) {

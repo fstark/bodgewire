@@ -71,8 +71,7 @@ private:
 };
 
 void RunTo(Runner& runner, Time time) {
-    runner.pauseAt(time);
-    runner.resume();
+    runner.resumeUntil(time);
     runner.waitIdle();
 }
 
@@ -93,6 +92,22 @@ TEST_CASE("runner: frame equals TvInput", "[runner]") {
     CHECK(status.simTime == 60_ms);
     CHECK(status.seed == seed);
     CHECK(Latest(tv) == reference);
+}
+
+TEST_CASE("runner: resumeUntil pauses a running or paused run", "[runner]") {
+    TestPattern pattern = Load();
+    Runner runner(pattern.loaded->circuit, {});
+    runner.setSpeed(Speed::Max);
+    runner.powerOn(1);  // running, no pause queued: may be past 1 ms already
+    runner.resumeUntil(1_ms);
+    runner.waitIdle();  // never returns if the pause were lost
+    CHECK(runner.status().state == RunState::Paused);
+    CHECK(runner.status().simTime >= 1_ms);
+    const Time paused = runner.status().simTime;
+    runner.resumeUntil(paused + 2_ms);
+    runner.waitIdle();
+    CHECK(runner.status().state == RunState::Paused);
+    CHECK(runner.status().simTime == paused + 2_ms);
 }
 
 TEST_CASE("runner: tiny ring gives the same frame", "[runner]") {

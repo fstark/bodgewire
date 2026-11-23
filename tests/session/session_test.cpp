@@ -33,8 +33,7 @@ Session PuzzleSession(const std::string& name) {
 }
 
 void RunTo(Session& session, Time t) {
-    session.runner().pauseAt(t);
-    session.runner().resume();
+    session.runner().resumeUntil(t);
     session.runner().waitIdle();
 }
 
@@ -1201,16 +1200,14 @@ TEST_CASE("session: rolling the dice", "[session]") {
     session.powerOn(1, 10_ms);
     session.runner().waitIdle();
     session.setPressed("SW1", true);
-    session.runner().pauseAt(70_ms);
-    session.runner().resume();
+    session.runner().resumeUntil(70_ms);
     session.runner().waitIdle();
     CHECK(std::abs(brightness("D4") - 0.5f) < 0.02f);      // ODD_N: 1, 3, 5
     CHECK(std::abs(brightness("D3") - 1.0f / 6) < 0.02f);  // SIX_N: 6
     CHECK(std::abs(brightness("D1") - 5.0f / 6) < 0.02f);  // TWO_N: 2-6
 
     session.setPressed("SW1", false);
-    session.runner().pauseAt(130_ms);
-    session.runner().resume();
+    session.runner().resumeUntil(130_ms);
     session.runner().waitIdle();
     for (const LedLight& led : session.leds()) {
         INFO(led.reference);
@@ -1227,8 +1224,7 @@ TEST_CASE("session: dice rolls both odd and even faces", "[session]") {
     Session session(std::move(*machine), std::move(*built));
     session.setSpeed(Speed::Max);
     const auto runTo = [&](Time time) {
-        session.runner().pauseAt(time);
-        session.runner().resume();
+        session.runner().resumeUntil(time);
         session.runner().waitIdle();
     };
     session.powerOn(1, 1_ms);
