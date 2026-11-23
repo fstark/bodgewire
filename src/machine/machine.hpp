@@ -115,6 +115,18 @@ private:
     std::optional<PinRef> chipSignalPin(const PinRef& pin) const;
     // The dry pin whose pad covers `at`, read as its leg: only with F.Cu active.
     std::optional<PinRef> dryLegAt(Layer layer, Point at) const;
+    // inject less the Board's rebuild: LoadMachine rebuilds it once, after the Puzzle's last.
+    std::expected<void, std::string> add(const FaultDecl& fault);
+    // A Fault as written, checked: as its FaultSet list holds it (a Solder Bridge's two pads, a
+    // dry Joint's pin by number), or the error text.
+    std::expected<StuckPin, std::string> resolve(const StuckAtDecl& decl) const;
+    std::expected<Crack, std::string> resolve(const CrackDecl& decl) const;
+    std::expected<WireEnds, std::string> resolve(const BridgeDecl& decl) const;
+    std::expected<PinRef, std::string> resolve(const JointDecl& decl) const;
+    std::expected<StuckCell, std::string> resolve(const CellDecl& decl) const;
+    std::expected<StuckSwitch, std::string> resolve(const SwitchDecl& decl) const;
+    // A pin with a pad on the Board, or "unknown reference 'U99'", "U3 (74LS161) has no pin XX".
+    std::expected<void, std::string> knownPad(const PinRef& pin) const;
     friend std::expected<Machine, std::vector<Diagnostic>>
     LoadMachine(const Puzzle&, const std::filesystem::path&,
                 const std::optional<std::filesystem::path>&);

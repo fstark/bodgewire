@@ -178,13 +178,12 @@ TEST_CASE("electrical: button alone on its signal island stays in", "[machine]")
 
 namespace {
 
-Machine PowerMachine(std::vector<CrackDecl> cracks, std::vector<BridgeDecl> bridges) {
+Machine PowerMachine(std::vector<FaultDecl> faults) {
     Puzzle puzzle;
     puzzle.file = "t.bwp";
     puzzle.machineLine = 1;
     puzzle.machine = "test_pattern";
-    puzzle.cracks = std::move(cracks);
-    puzzle.bridges = std::move(bridges);
+    puzzle.faults = std::move(faults);
     auto machine = LoadMachine(puzzle, test::MachineDir(puzzle.machine));
     REQUIRE(machine.has_value());
     return std::move(*machine);
@@ -196,19 +195,19 @@ const std::vector<std::string> kAllChips{"X1", "U1", "U2",  "U3",  "U4",  "U5", 
 }  // namespace
 
 TEST_CASE("power: fault-free board powers every chip", "[machine]") {
-    const Machine machine = PowerMachine({}, {});
+    const Machine machine = PowerMachine({});
     CHECK(machine.power().unpowered.empty());
     CHECK_FALSE(machine.power().deadRail);
 }
 
 TEST_CASE("power: cracked VCC stub leaves one chip Unpowered", "[machine]") {
-    const Machine machine = PowerMachine({{2, {"U6", "VCC"}, {"U10", "VCC"}, 24}}, {});
+    const Machine machine = PowerMachine({CrackDecl{2, {"U6", "VCC"}, {"U10", "VCC"}, 24}});
     CHECK(machine.power().unpowered == std::vector<std::string>{"U6"});
     CHECK_FALSE(machine.power().deadRail);
 }
 
 TEST_CASE("power: VCC bridged to GND is a Dead Rail", "[machine]") {
-    Machine machine = PowerMachine({}, {{2, {"U1", "7"}, {"U1", "8"}}});
+    Machine machine = PowerMachine({BridgeDecl{2, {"U1", "7"}, {"U1", "8"}}});
     CHECK(machine.power().deadRail);
     CHECK(machine.power().unpowered == kAllChips);
     REQUIRE(machine.removeBridge({"U1", "7"}, {"U1", "8"}));
@@ -217,7 +216,7 @@ TEST_CASE("power: VCC bridged to GND is a Dead Rail", "[machine]") {
 }
 
 TEST_CASE("power: GND pin wired to VCC", "[machine]") {
-    Machine machine = PowerMachine({}, {});
+    Machine machine = PowerMachine({});
     REQUIRE(machine.addWire({"U9", "7"}, {"U9", "14"}));
     CHECK(machine.power().deadRail);
     CHECK(std::ranges::find(machine.power().unpowered, "U9") != machine.power().unpowered.end());

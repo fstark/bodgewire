@@ -2,6 +2,7 @@
 
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -23,6 +24,14 @@ Lines Errors(std::string_view text) {
     return errors;
 }
 
+// The Puzzle's Fault `index` in file order, which is a `Decl`.
+template <class Decl>
+const Decl& FaultAt(const Puzzle& puzzle, std::size_t index) {
+    REQUIRE(index < puzzle.faults.size());
+    REQUIRE(std::holds_alternative<Decl>(puzzle.faults[index]));
+    return std::get<Decl>(puzzle.faults[index]);
+}
+
 }  // namespace
 
 TEST_CASE("puzzle: valid file", "[machine]") {
@@ -39,26 +48,38 @@ TEST_CASE("puzzle: valid file", "[machine]") {
     CHECK(p.file == "t.bwp");
     CHECK(p.machine == "test_pattern");
     CHECK(p.machineLine == 3);
-    REQUIRE(p.stuck.size() == 2);
-    CHECK(p.stuck[0].line == 4);
-    CHECK(p.stuck[0].reference == "U1");
-    CHECK(p.stuck[0].pin == "QC");
-    CHECK(p.stuck[0].value == LogicValue::Zero);
-    CHECK(p.stuck[1].pin == "11");
-    CHECK(p.stuck[1].value == LogicValue::One);
-    CHECK_FALSE(p.stuck[0].input);
-    REQUIRE(p.cracks.size() == 2);
-    CHECK(p.cracks[0].line == 6);
-    CHECK(p.cracks[0].a.reference == "U1");
-    CHECK(p.cracks[0].a.pin == "QA");
-    CHECK(p.cracks[0].b.reference == "U13");
-    CHECK(p.cracks[0].b.pin == "14");
-    CHECK(p.cracks[0].percent == 30);
-    CHECK(p.cracks[1].a.reference == "R6");
-    CHECK(p.cracks[1].a.pin == "2");
-    CHECK(p.cracks[1].b.reference == "D5");
-    CHECK(p.cracks[1].b.pin == "A");
-    CHECK(p.cracks[1].percent == 37.25);
+    REQUIRE(p.faults.size() == 4);  // in file order
+    CHECK(FaultAt<StuckAtDecl>(p, 0).line == 4);
+    CHECK(FaultAt<StuckAtDecl>(p, 0).reference == "U1");
+    CHECK(FaultAt<StuckAtDecl>(p, 0).pin == "QC");
+    CHECK(FaultAt<StuckAtDecl>(p, 0).value == LogicValue::Zero);
+    CHECK(FaultAt<StuckAtDecl>(p, 1).pin == "11");
+    CHECK(FaultAt<StuckAtDecl>(p, 1).value == LogicValue::One);
+    CHECK_FALSE(FaultAt<StuckAtDecl>(p, 0).input);
+    CHECK(FaultAt<CrackDecl>(p, 2).line == 6);
+    CHECK(FaultAt<CrackDecl>(p, 2).a.reference == "U1");
+    CHECK(FaultAt<CrackDecl>(p, 2).a.pin == "QA");
+    CHECK(FaultAt<CrackDecl>(p, 2).b.reference == "U13");
+    CHECK(FaultAt<CrackDecl>(p, 2).b.pin == "14");
+    CHECK(FaultAt<CrackDecl>(p, 2).percent == 30);
+    CHECK(FaultAt<CrackDecl>(p, 3).a.reference == "R6");
+    CHECK(FaultAt<CrackDecl>(p, 3).a.pin == "2");
+    CHECK(FaultAt<CrackDecl>(p, 3).b.reference == "D5");
+    CHECK(FaultAt<CrackDecl>(p, 3).b.pin == "A");
+    CHECK(FaultAt<CrackDecl>(p, 3).percent == 37.25);
+}
+
+TEST_CASE("puzzle: Faults of several kinds in one list, in file order", "[machine]") {
+    const auto result = ParsePuzzle("machine m\nfault joint U15.13\nfault stuck U1.QC 0\n"
+                                    "fault switch SW1 open\nfault joint U15.12\n",
+                                    "t.bwp");
+    REQUIRE(result.has_value());
+    REQUIRE(result->faults.size() == 4);
+    CHECK(FaultAt<JointDecl>(*result, 0).pin.pin == "13");
+    CHECK(FaultAt<StuckAtDecl>(*result, 1).pin == "QC");
+    CHECK_FALSE(FaultAt<SwitchDecl>(*result, 2).closed);
+    CHECK(FaultAt<JointDecl>(*result, 3).pin.pin == "12");
+    CHECK(LineOf(result->faults[2]) == 4);
 }
 
 TEST_CASE("puzzle: errors", "[machine]") {
@@ -97,11 +118,11 @@ TEST_CASE("puzzle: joint", "[machine]") {
     const auto result =
         ParsePuzzle("machine m\nfault joint U15.13\nfault joint U15.2D  # name\n", "t.bwp");
     REQUIRE(result.has_value());
-    REQUIRE(result->joints.size() == 2);
-    CHECK(result->joints[0].line == 2);
-    CHECK(result->joints[0].pin.reference == "U15");
-    CHECK(result->joints[0].pin.pin == "13");
-    CHECK(result->joints[1].pin.pin == "2D");
+    REQUIRE(result->faults.size() == 2);
+    CHECK(FaultAt<JointDecl>(*result, 0).line == 2);
+    CHECK(FaultAt<JointDecl>(*result, 0).pin.reference == "U15");
+    CHECK(FaultAt<JointDecl>(*result, 0).pin.pin == "13");
+    CHECK(FaultAt<JointDecl>(*result, 1).pin.pin == "2D");
     CHECK(Errors("machine m\nfault joint\nfault joint U15\nfault joint U15.13 U15.12\n") ==
           Lines{"2: expected: fault joint REF.PIN", "3: expected: fault joint REF.PIN",
                 "4: expected: fault joint REF.PIN"});
@@ -110,8 +131,8 @@ TEST_CASE("puzzle: joint", "[machine]") {
 TEST_CASE("puzzle: bridge", "[machine]") {
     const auto result = ParsePuzzle("machine m\nfault bridge U1.7 U1.ENP  # same pad\n", "t.bwp");
     REQUIRE(result.has_value());
-    REQUIRE(result->bridges.size() == 1);
-    const BridgeDecl& b = result->bridges[0];
+    REQUIRE(result->faults.size() == 1);
+    const BridgeDecl& b = FaultAt<BridgeDecl>(*result, 0);
     CHECK(b.line == 2);
     CHECK(b.a.reference == "U1");
     CHECK(b.a.pin == "7");
@@ -150,12 +171,12 @@ TEST_CASE("puzzle: switch", "[machine]") {
     const auto result =
         ParsePuzzle("machine m\nfault switch SW1 closed\nfault switch SW12 open\n", "t.bwp");
     REQUIRE(result.has_value());
-    REQUIRE(result->switches.size() == 2);
-    CHECK(result->switches[0].line == 2);
-    CHECK(result->switches[0].reference == "SW1");
-    CHECK(result->switches[0].closed);
-    CHECK(result->switches[1].reference == "SW12");
-    CHECK_FALSE(result->switches[1].closed);
+    REQUIRE(result->faults.size() == 2);
+    CHECK(FaultAt<SwitchDecl>(*result, 0).line == 2);
+    CHECK(FaultAt<SwitchDecl>(*result, 0).reference == "SW1");
+    CHECK(FaultAt<SwitchDecl>(*result, 0).closed);
+    CHECK(FaultAt<SwitchDecl>(*result, 1).reference == "SW12");
+    CHECK_FALSE(FaultAt<SwitchDecl>(*result, 1).closed);
     const std::string expected = "expected: fault switch REF closed|open";
     CHECK(Errors("machine m\nfault switch SW1\nfault switch SW1 shut\n"
                  "fault switch SW1 open now\n") ==
@@ -167,19 +188,19 @@ TEST_CASE("puzzle: cell and column", "[machine]") {
                                     "fault column U15.O1 0  # inside\n",
                                     "t.bwp");
     REQUIRE(result.has_value());
-    REQUIRE(result->cells.size() == 3);
-    const CellDecl& first = result->cells[0];
+    REQUIRE(result->faults.size() == 3);
+    const CellDecl& first = FaultAt<CellDecl>(*result, 0);
     CHECK(first.line == 2);
     CHECK(first.pin.reference == "U3");
     CHECK(first.pin.pin == "IO2");
     CHECK(first.word == 0x1FFu);
     CHECK(first.value == LogicValue::Zero);
-    CHECK(result->cells[1].pin.pin == "11");
-    CHECK(result->cells[1].word == 511u);
-    CHECK(result->cells[1].value == LogicValue::One);
-    CHECK(result->cells[2].pin.reference == "U15");
-    CHECK_FALSE(result->cells[2].word.has_value());
-    CHECK(result->cells[0].memory.empty());
+    CHECK(FaultAt<CellDecl>(*result, 1).pin.pin == "11");
+    CHECK(FaultAt<CellDecl>(*result, 1).word == 511u);
+    CHECK(FaultAt<CellDecl>(*result, 1).value == LogicValue::One);
+    CHECK(FaultAt<CellDecl>(*result, 2).pin.reference == "U15");
+    CHECK_FALSE(FaultAt<CellDecl>(*result, 2).word.has_value());
+    CHECK(FaultAt<CellDecl>(*result, 0).memory.empty());
     const std::string cell = "expected: fault cell REF.PIN [MEMORY] WORD 0|1";
     const std::string column = "expected: fault column REF.PIN [MEMORY] 0|1";
     CHECK(Errors("machine m\nfault cell U3.IO2 $1FF\nfault cell U3 $1FF 0\n"
@@ -196,13 +217,13 @@ TEST_CASE("puzzle: cell and column in a named memory", "[machine]") {
     const auto result =
         ParsePuzzle("machine m\nfault cell U2.D3 ram $3F 0\nfault column U2.D0 rom 1\n", "t.bwp");
     REQUIRE(result.has_value());
-    REQUIRE(result->cells.size() == 2);
-    CHECK(result->cells[0].memory == "ram");
-    CHECK(result->cells[0].word == 0x3Fu);
-    CHECK(result->cells[0].value == LogicValue::Zero);
-    CHECK(result->cells[1].memory == "rom");
-    CHECK_FALSE(result->cells[1].word.has_value());
-    CHECK(result->cells[1].value == LogicValue::One);
+    REQUIRE(result->faults.size() == 2);
+    CHECK(FaultAt<CellDecl>(*result, 0).memory == "ram");
+    CHECK(FaultAt<CellDecl>(*result, 0).word == 0x3Fu);
+    CHECK(FaultAt<CellDecl>(*result, 0).value == LogicValue::Zero);
+    CHECK(FaultAt<CellDecl>(*result, 1).memory == "rom");
+    CHECK_FALSE(FaultAt<CellDecl>(*result, 1).word.has_value());
+    CHECK(FaultAt<CellDecl>(*result, 1).value == LogicValue::One);
     const std::string cell = "expected: fault cell REF.PIN [MEMORY] WORD 0|1";
     const std::string column = "expected: fault column REF.PIN [MEMORY] 0|1";
     CHECK(Errors("machine m\nfault cell U2.D3 Ram $3F 0\nfault cell U2.D3 r4m $3F 0\n"
@@ -215,8 +236,8 @@ TEST_CASE("puzzle: cell and column in a named memory", "[machine]") {
 TEST_CASE("puzzle: a stuck port pin read only", "[machine]") {
     const auto result = ParsePuzzle("machine m\nfault stuck UA5.PB5 0 input\n", "t.bwp");
     REQUIRE(result.has_value());
-    REQUIRE(result->stuck.size() == 1);
-    CHECK(result->stuck[0].pin == "PB5");
-    CHECK(result->stuck[0].value == LogicValue::Zero);
-    CHECK(result->stuck[0].input);
+    REQUIRE(result->faults.size() == 1);
+    CHECK(FaultAt<StuckAtDecl>(*result, 0).pin == "PB5");
+    CHECK(FaultAt<StuckAtDecl>(*result, 0).value == LogicValue::Zero);
+    CHECK(FaultAt<StuckAtDecl>(*result, 0).input);
 }

@@ -78,6 +78,7 @@ Numbers at the time: `ui` 12,980 lines in 65 files, `parts` 12,199 in 113. Large
 - Diagnostics are grouped by kind today: sort them by line so the tests on messages still pass.
 - Opens procedural Faults (a clean Machine reused, Faults injected) and intermittent ones (one place to add activation).
 - About 250 lines moved, 6 files; low–medium risk.
+- Done 2026-11-23, finished 2026-11-24: `FaultSet` for the current and the loaded Faults, `BuildFaults`, `Machine::inject`; then, after a review of the refactors found the variant wrapped around six lists, `Puzzle::faults` as the one list in file order (diagnostics come by line), `LoadMachine` one loop over it, and `inject` a check per kind (`Machine::resolve`) with one place that stores. `LoadNetlistMachine` still passes a Puzzle without Faults (two lines).
 
 **C11. Split `ui/main.cpp`.** `RunWindow` (605–1354) does about ten jobs:
 - builds 14 bench objects and applies about 25 start presets;

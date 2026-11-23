@@ -172,8 +172,9 @@ private:
             error(line, expected);
             return;
         }
-        puzzle_.stuck.push_back({line, std::move(pin->reference), std::move(pin->pin),
-                                 tokens[3] == "1" ? LogicValue::One : LogicValue::Zero, input});
+        puzzle_.faults.push_back(StuckAtDecl{line, std::move(pin->reference), std::move(pin->pin),
+                                             tokens[3] == "1" ? LogicValue::One : LogicValue::Zero,
+                                             input});
     }
 
     void crack(std::uint32_t line, const std::vector<std::string_view>& tokens) {
@@ -188,7 +189,7 @@ private:
             error(line, "bad position '" + std::string(tokens[4]) + "'");
             return;
         }
-        puzzle_.cracks.push_back({line, *a, *b, *percent});
+        puzzle_.faults.push_back(CrackDecl{line, *a, *b, *percent});
     }
 
     void bridge(std::uint32_t line, const std::vector<std::string_view>& tokens) {
@@ -198,7 +199,7 @@ private:
             error(line, "expected: fault bridge REF.PIN REF.PIN");
             return;
         }
-        puzzle_.bridges.push_back({line, *a, *b});
+        puzzle_.faults.push_back(BridgeDecl{line, *a, *b});
     }
 
     void joint(std::uint32_t line, const std::vector<std::string_view>& tokens) {
@@ -207,7 +208,7 @@ private:
             error(line, "expected: fault joint REF.PIN");
             return;
         }
-        puzzle_.joints.push_back({line, *pin});
+        puzzle_.faults.push_back(JointDecl{line, *pin});
     }
 
     // `fault switch REF closed|open`.
@@ -217,7 +218,7 @@ private:
             error(line, "expected: fault switch REF closed|open");
             return;
         }
-        puzzle_.switches.push_back({line, std::string(tokens[2]), tokens[3] == "closed"});
+        puzzle_.faults.push_back(SwitchDecl{line, std::string(tokens[2]), tokens[3] == "closed"});
     }
 
     // `fault cell REF.PIN [MEMORY] WORD 0|1` or `fault column REF.PIN [MEMORY] 0|1`.
@@ -245,9 +246,9 @@ private:
                 return;
             }
         }
-        puzzle_.cells.push_back({line, *pin, word,
-                                 tokens.back() == "1" ? LogicValue::One : LogicValue::Zero,
-                                 named ? std::string(tokens[3]) : std::string()});
+        puzzle_.faults.push_back(CellDecl{line, *pin, word,
+                                          tokens.back() == "1" ? LogicValue::One : LogicValue::Zero,
+                                          named ? std::string(tokens[3]) : std::string()});
     }
 
     Puzzle puzzle_;
@@ -255,6 +256,10 @@ private:
 };
 
 }  // namespace
+
+std::uint32_t LineOf(const FaultDecl& fault) {
+    return std::visit([](const auto& decl) { return decl.line; }, fault);
+}
 
 std::expected<Puzzle, std::vector<Diagnostic>> ParsePuzzle(std::string_view text,
                                                            std::string file) {

@@ -21,7 +21,7 @@ Game design: [GAME_DESIGN.md](GAME_DESIGN.md).
 | Digital simulation | event scheduler, nets, pin drivers, logic resolution |
 | Component models | TTL, RAM, ROM, CPU, PLA, counters, shift registers |
 
-Everything below Game/UI is a headless, reusable library (no ImGui/SDL/graphics). Uses: unit tests, automated fault vetting, a CLI (load machine, run diagnostic program, inject fault, dump waveforms). The sketch below is the intent from the start: today a Machine is loaded with its Faults from a Puzzle (`LoadPuzzleFile`, then `build()` and a `Runner` or `Simulator`), and there is no `injectFault` on a loaded Machine yet ([review C10](architecture-review/ARCHITECTURE_REVIEW.md)).
+Everything below Game/UI is a headless, reusable library (no ImGui/SDL/graphics). Uses: unit tests, automated fault vetting, a CLI (load machine, run diagnostic program, inject fault, dump waveforms). The sketch below is the intent from the start: today a Machine is loaded with its Faults from a Puzzle (`LoadPuzzleFile`, then `build()` and a `Runner` or `Simulator`), and `Machine::inject` adds a Fault to a loaded one ([review C10](architecture-review/ARCHITECTURE_REVIEW.md)).
 
 ```cpp
 Machine m("bw80");

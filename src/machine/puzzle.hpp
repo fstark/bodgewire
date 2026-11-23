@@ -53,8 +53,9 @@ struct SwitchDecl {
     bool closed;            // `closed`: stuck closed; `open`: never closes
 };
 
-// Any one Fault as written (Machine::inject).
+// Any one Fault as written: a Puzzle's `fault` line, or Machine::inject's.
 using FaultDecl = std::variant<StuckAtDecl, CrackDecl, BridgeDecl, JointDecl, CellDecl, SwitchDecl>;
+std::uint32_t LineOf(const FaultDecl& fault);
 
 struct Puzzle {
     std::string file;
@@ -62,12 +63,7 @@ struct Puzzle {
     std::string machine;       // "test_pattern": [a-z0-9_]+, so it is safe in a path
     std::string title, brief;  // "" when absent
     std::uint32_t titleLine = 0, briefLine = 0;
-    std::vector<StuckAtDecl> stuck;
-    std::vector<CrackDecl> cracks;
-    std::vector<BridgeDecl> bridges;
-    std::vector<JointDecl> joints;  // dry Joints
-    std::vector<CellDecl> cells;    // stuck cells and columns, in file order
-    std::vector<SwitchDecl> switches;
+    std::vector<FaultDecl> faults;  // in file order
 };
 
 // All syntax errors, in line order.

@@ -37,6 +37,34 @@ std::vector<WireEnds>::iterator FindEnds(std::vector<WireEnds>& list, const PinR
     });
 }
 
+// The design's Part at `reference`; nullptr unknown.
+const LoadedPart* PartOf(const LoadedCircuit& design, std::string_view reference) {
+    const auto part = std::ranges::find(design.parts, reference, &LoadedPart::reference);
+    return part == design.parts.end() ? nullptr : &*part;
+}
+
+bool IsChip(const LoadedCircuit& design, std::string_view reference) {
+    const LoadedPart* part = PartOf(design, reference);
+    return part != nullptr && part->info->kind == PartKind::Chip;
+}
+
+// A checked Fault into `set`, by its type: a dry Joint once, a switch's Fault in place of its
+// earlier one.
+void Add(FaultSet& set, const StuckPin& stuck) { set.stuck.push_back(stuck); }
+void Add(FaultSet& set, const Crack& crack) { set.cracks.push_back(crack); }
+void Add(FaultSet& set, const WireEnds& bridge) { set.bridges.push_back(bridge); }
+void Add(FaultSet& set, const PinRef& dry) {
+    if (std::ranges::none_of(set.dry, [&](const PinRef& d) { return SamePin(d, dry); })) {
+        set.dry.push_back(dry);
+    }
+}
+void Add(FaultSet& set, const StuckCell& cell) { set.cells.push_back(cell); }
+void Add(FaultSet& set, const StuckSwitch& stuck) {
+    std::erase_if(set.switches,
+                  [&](const StuckSwitch& s) { return s.reference == stuck.reference; });
+    set.switches.push_back(stuck);
+}
+
 }  // namespace
 
 std::expected<StuckCell, std::string> ResolveCell(const CellDecl& decl, const Component& component,
@@ -121,192 +149,151 @@ LoadMachine(const Puzzle& puzzle, const std::filesystem::path& dir,
         return fail(puzzle.machineLine, "board does not match netlist: " + problems.front());
     }
 
-    machine.rebuildBoard();
-    const auto add = [&](std::uint32_t line, const FaultDecl& fault) {
-        if (auto added = machine.inject(fault); !added) {
-            error(line, std::move(added.error()));
+    for (const FaultDecl& fault : puzzle.faults) {
+        if (auto added = machine.add(fault); !added) {
+            error(LineOf(fault), std::move(added.error()));
         }
-    };
-    for (const StuckAtDecl& decl : puzzle.stuck) {
-        add(decl.line, decl);
-    }
-    for (const CrackDecl& decl : puzzle.cracks) {
-        add(decl.line, decl);
-    }
-    for (const BridgeDecl& decl : puzzle.bridges) {
-        add(decl.line, decl);
-    }
-    for (const JointDecl& decl : puzzle.joints) {
-        add(decl.line, decl);
-    }
-    for (const CellDecl& decl : puzzle.cells) {
-        add(decl.line, decl);
-    }
-    for (const SwitchDecl& decl : puzzle.switches) {
-        add(decl.line, decl);
     }
     if (!errors.empty()) {
         return std::unexpected(std::move(errors));
     }
+    machine.rebuildBoard();
     return machine;
 }
 
 std::expected<void, std::string> Machine::inject(const FaultDecl& fault) {
-    using Result = std::expected<void, std::string>;
-    const LoadedCircuit& loaded = *designCircuit_;
-    const auto partOf = [&](std::string_view reference) -> const LoadedPart* {
-        const auto part = std::ranges::find(loaded.parts, reference, &LoadedPart::reference);
-        return part == loaded.parts.end() ? nullptr : &*part;
-    };
-    const auto kindOf = [&](std::string_view reference) {
-        const LoadedPart* part = partOf(reference);
-        return part == nullptr ? PartKind::Resistor : part->info->kind;
-    };
-    // A pin on the Board, or the error.
-    const auto known = [&](const PinRef& pin) -> Result {
-        const LoadedPart* part = partOf(pin.reference);
-        if (part == nullptr) {
-            return std::unexpected("unknown reference '" + pin.reference + "'");
-        }
-        if (!padPosition(pin.reference, pin.pin)) {
-            return std::unexpected(pin.reference + " (" + std::string(part->info->name) +
-                                   ") has no pin " + pin.pin);
-        }
-        return {};
-    };
-    const std::array<FaultSet*, 2> sets{&faults_, &loaded_};
+    auto added = add(fault);
+    if (added) {
+        rebuildBoard();  // a Broken Trace or a Solder Bridge changes the Copper
+    }
+    return added;
+}
+
+std::expected<void, std::string> Machine::add(const FaultDecl& fault) {
     return std::visit(
-        Overloaded{
-            [&](const StuckAtDecl& decl) -> Result {
-                const auto component = loaded.components.find(decl.reference);
-                if (component == loaded.components.end()) {
-                    return std::unexpected("unknown reference '" + decl.reference + "'");
-                }
-                const auto pin = FindPin(*component->second, decl.pin);
-                if (!pin) {
-                    const LoadedPart* part = partOf(decl.reference);
-                    return std::unexpected(decl.reference + " (" +
-                                           (part ? std::string(part->info->name) : "") +
-                                           ") has no pin " + decl.pin);
-                }
-                const PinSpec& spec = component->second->pins()[*pin];
-                const bool chipInput =
-                    kindOf(decl.reference) == PartKind::Chip && spec.kind == PinKind::Input;
-                if (!IsDriver(spec.kind) && !chipInput) {
-                    return std::unexpected(decl.reference + "." + decl.pin + " (" + spec.name +
-                                           ") is not an output or a chip input");
-                }
-                if (decl.input &&
-                    (kindOf(decl.reference) != PartKind::Chip || !IsReader(spec.kind))) {
-                    return std::unexpected(decl.reference + "." + decl.pin + " (" + spec.name +
-                                           "): input needs a pin its chip reads");
-                }
-                for (FaultSet* set : sets) {
-                    set->stuck.push_back({decl.reference, *pin, decl.value, decl.input});
-                }
-                return {};
-            },
-            [&](const CrackDecl& decl) -> Result {
-                if (auto a = known(decl.a); !a) {
-                    return a;
-                }
-                if (auto b = known(decl.b); !b) {
-                    return b;
-                }
-                const auto crack = placeCrack(decl.a, decl.b, decl.percent);
-                if (!crack) {
-                    return std::unexpected(crack.error());
-                }
-                for (FaultSet* set : sets) {
-                    set->cracks.push_back(*crack);
-                }
-                rebuildBoard();
-                return {};
-            },
-            [&](const BridgeDecl& decl) -> Result {
-                const std::string written = "bridge " + decl.a.reference + "." + decl.a.pin + " " +
-                                            decl.b.reference + "." + decl.b.pin;
-                if (auto a = known(decl.a); !a) {
-                    return a;
-                }
-                if (auto b = known(decl.b); !b) {
-                    return b;
-                }
-                const auto padA = padOf(decl.a);
-                const auto padB = padOf(decl.b);
-                if (!padA || !padB || padA->reference != padB->reference ||
-                    padA->pin == padB->pin || kindOf(padA->reference) != PartKind::Chip) {
-                    return std::unexpected(written + ": pins of one chip only");
-                }
-                const Point atA = *padPosition(padA->reference, padA->pin);
-                const Point atB = *padPosition(padB->reference, padB->pin);
-                if (Distance(atA, atB) > kBridgeReach) {
-                    return std::unexpected(written + ": pins are not neighbours");
-                }
-                for (FaultSet* set : sets) {
-                    set->bridges.push_back({*padA, *padB, {atA, atB}});
-                }
-                rebuildBoard();
-                return {};
-            },
-            [&](const JointDecl& decl) -> Result {
-                if (auto known_ = known(decl.pin); !known_) {
-                    return known_;
-                }
-                const auto pin = chipSignalPin(decl.pin);
-                if (!pin) {
-                    return std::unexpected("joint " + decl.pin.reference + "." + decl.pin.pin +
-                                           ": chip signal pins only");
-                }
-                for (FaultSet* set : sets) {
-                    if (std::ranges::none_of(set->dry,
-                                             [&](const PinRef& d) { return SamePin(d, *pin); })) {
-                        set->dry.push_back(*pin);
-                    }
-                }
-                return {};
-            },
-            [&](const CellDecl& decl) -> Result {
-                const std::string pinText = decl.pin.reference + "." + decl.pin.pin;
-                const std::string memory = decl.memory.empty() ? "" : " " + decl.memory;
-                const std::string written =
-                    decl.word ? std::format("cell {}{} ${:X}", pinText, memory, *decl.word)
-                              : "column " + pinText + memory;
-                if (auto known_ = known(decl.pin); !known_) {
-                    return known_;
-                }
-                const auto component = loaded.components.find(decl.pin.reference);
-                if (component == loaded.components.end()) {
-                    return std::unexpected(written + ": RAM and ROM chips only");  // no Component
-                }
-                auto cell =
-                    ResolveCell(decl, *component->second, partOf(decl.pin.reference)->info->name);
-                if (!cell) {
-                    return std::unexpected(written + ": " + cell.error());
-                }
-                for (FaultSet* set : sets) {
-                    set->cells.push_back(*cell);
-                }
-                return {};
-            },
-            [&](const SwitchDecl& decl) -> Result {
-                const LoadedPart* part = partOf(decl.reference);
-                if (part == nullptr) {
-                    return std::unexpected("unknown reference '" + decl.reference + "'");
-                }
-                if (part->info->kind != PartKind::Switch) {
-                    return std::unexpected("switch " + decl.reference + ": buttons and keys only");
-                }
-                for (FaultSet* set : sets) {
-                    std::erase_if(set->switches, [&](const StuckSwitch& s) {
-                        return s.reference == decl.reference;
-                    });
-                    set->switches.push_back({decl.reference, decl.closed});
-                }
-                return {};
-            },
+        [&](const auto& decl) -> std::expected<void, std::string> {
+            auto checked = resolve(decl);
+            if (!checked) {
+                return std::unexpected(std::move(checked.error()));
+            }
+            Add(faults_, *checked);
+            Add(loaded_, *checked);  // the Puzzle's too, whatever was repaired before
+            return {};
         },
         fault);
+}
+
+std::expected<void, std::string> Machine::knownPad(const PinRef& pin) const {
+    const LoadedPart* part = PartOf(*designCircuit_, pin.reference);
+    if (part == nullptr) {
+        return std::unexpected("unknown reference '" + pin.reference + "'");
+    }
+    if (!padPosition(pin.reference, pin.pin)) {
+        return std::unexpected(pin.reference + " (" + std::string(part->info->name) +
+                               ") has no pin " + pin.pin);
+    }
+    return {};
+}
+
+std::expected<StuckPin, std::string> Machine::resolve(const StuckAtDecl& decl) const {
+    const auto component = designCircuit_->components.find(decl.reference);
+    if (component == designCircuit_->components.end()) {
+        return std::unexpected("unknown reference '" + decl.reference + "'");
+    }
+    const auto pin = FindPin(*component->second, decl.pin);
+    if (!pin) {
+        const LoadedPart* part = PartOf(*designCircuit_, decl.reference);
+        return std::unexpected(decl.reference + " (" + (part ? std::string(part->info->name) : "") +
+                               ") has no pin " + decl.pin);
+    }
+    const PinSpec& spec = component->second->pins()[*pin];
+    const bool chip = IsChip(*designCircuit_, decl.reference);
+    if (!IsDriver(spec.kind) && !(chip && spec.kind == PinKind::Input)) {
+        return std::unexpected(decl.reference + "." + decl.pin + " (" + spec.name +
+                               ") is not an output or a chip input");
+    }
+    if (decl.input && (!chip || !IsReader(spec.kind))) {
+        return std::unexpected(decl.reference + "." + decl.pin + " (" + spec.name +
+                               "): input needs a pin its chip reads");
+    }
+    return StuckPin{decl.reference, *pin, decl.value, decl.input};
+}
+
+std::expected<Crack, std::string> Machine::resolve(const CrackDecl& decl) const {
+    if (auto a = knownPad(decl.a); !a) {
+        return std::unexpected(std::move(a.error()));
+    }
+    if (auto b = knownPad(decl.b); !b) {
+        return std::unexpected(std::move(b.error()));
+    }
+    return placeCrack(decl.a, decl.b, decl.percent);
+}
+
+std::expected<WireEnds, std::string> Machine::resolve(const BridgeDecl& decl) const {
+    const std::string written =
+        "bridge " + decl.a.reference + "." + decl.a.pin + " " + decl.b.reference + "." + decl.b.pin;
+    if (auto a = knownPad(decl.a); !a) {
+        return std::unexpected(std::move(a.error()));
+    }
+    if (auto b = knownPad(decl.b); !b) {
+        return std::unexpected(std::move(b.error()));
+    }
+    const auto padA = padOf(decl.a);
+    const auto padB = padOf(decl.b);
+    if (!padA || !padB || padA->reference != padB->reference || padA->pin == padB->pin ||
+        !IsChip(*designCircuit_, padA->reference)) {
+        return std::unexpected(written + ": pins of one chip only");
+    }
+    const Point atA = *padPosition(padA->reference, padA->pin);
+    const Point atB = *padPosition(padB->reference, padB->pin);
+    if (Distance(atA, atB) > kBridgeReach) {
+        return std::unexpected(written + ": pins are not neighbours");
+    }
+    return WireEnds{*padA, *padB, {atA, atB}};
+}
+
+std::expected<PinRef, std::string> Machine::resolve(const JointDecl& decl) const {
+    if (auto known = knownPad(decl.pin); !known) {
+        return std::unexpected(std::move(known.error()));
+    }
+    const auto pin = chipSignalPin(decl.pin);
+    if (!pin) {
+        return std::unexpected("joint " + decl.pin.reference + "." + decl.pin.pin +
+                               ": chip signal pins only");
+    }
+    return *pin;
+}
+
+std::expected<StuckCell, std::string> Machine::resolve(const CellDecl& decl) const {
+    const std::string pinText = decl.pin.reference + "." + decl.pin.pin;
+    const std::string memory = decl.memory.empty() ? "" : " " + decl.memory;
+    const std::string written = decl.word
+                                    ? std::format("cell {}{} ${:X}", pinText, memory, *decl.word)
+                                    : "column " + pinText + memory;
+    if (auto known = knownPad(decl.pin); !known) {
+        return std::unexpected(std::move(known.error()));
+    }
+    const auto component = designCircuit_->components.find(decl.pin.reference);
+    if (component == designCircuit_->components.end()) {
+        return std::unexpected(written + ": RAM and ROM chips only");  // no Component
+    }
+    auto cell = ResolveCell(decl, *component->second,
+                            PartOf(*designCircuit_, decl.pin.reference)->info->name);
+    if (!cell) {
+        return std::unexpected(written + ": " + cell.error());
+    }
+    return *cell;
+}
+
+std::expected<StuckSwitch, std::string> Machine::resolve(const SwitchDecl& decl) const {
+    const LoadedPart* part = PartOf(*designCircuit_, decl.reference);
+    if (part == nullptr) {
+        return std::unexpected("unknown reference '" + decl.reference + "'");
+    }
+    if (part->info->kind != PartKind::Switch) {
+        return std::unexpected("switch " + decl.reference + ": buttons and keys only");
+    }
+    return StuckSwitch{decl.reference, decl.closed};
 }
 
 bool Machine::swap(std::string_view reference) {
@@ -498,9 +485,7 @@ std::optional<PinRef> Machine::chipSignalPin(const PinRef& pin) const {
     if (!number) {
         return std::nullopt;
     }
-    const auto part =
-        std::ranges::find(designCircuit_->parts, number->reference, &LoadedPart::reference);
-    if (part == designCircuit_->parts.end() || part->info->kind != PartKind::Chip) {
+    if (!IsChip(*designCircuit_, number->reference)) {
         return std::nullopt;
     }
     const Component& component = *designCircuit_->components.at(number->reference);

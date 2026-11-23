@@ -71,20 +71,24 @@ TEST_CASE("machine: load errors", "[machine]") {
     CHECK(Errors(unknown) == Lines{"1: unknown machine 'nope'"});
 
     Puzzle puzzle = TestPattern();
-    puzzle.stuck = {{2, "U99", "QA", LogicValue::Zero},
-                    {3, "U3", "XX", LogicValue::Zero},
-                    {4, "J2", "VIDEO", LogicValue::One},
-                    {5, "J1", "1", LogicValue::One}};
-    puzzle.cracks = {{6, {"U99", "1"}, {"U1", "QA"}, 50}};
+    puzzle.faults = {
+        StuckAtDecl{2, "U99", "QA", LogicValue::Zero}, StuckAtDecl{3, "U3", "XX", LogicValue::Zero},
+        StuckAtDecl{4, "J2", "VIDEO", LogicValue::One}, StuckAtDecl{5, "J1", "1", LogicValue::One},
+        CrackDecl{6, {"U99", "1"}, {"U1", "QA"}, 50}};
     CHECK(Errors(puzzle) == Lines{"2: unknown reference 'U99'", "3: U3 (74LS161) has no pin XX",
                                   "4: J2.VIDEO (VIDEO) is not an output or a chip input",
                                   "5: J1.1 (VCC) is not an output or a chip input",
                                   "6: unknown reference 'U99'"});
+
+    Puzzle mixed = TestPattern();  // reported in file order, whatever the kinds
+    mixed.faults = {CrackDecl{2, {"U99", "1"}, {"U1", "QA"}, 50},
+                    StuckAtDecl{3, "U98", "QA", LogicValue::Zero}};
+    CHECK(Errors(mixed) == Lines{"2: unknown reference 'U99'", "3: unknown reference 'U98'"});
 }
 
 TEST_CASE("machine: a chip input can be stuck, and a swap removes it", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.stuck = {{2, "U3", "A", LogicValue::One}};
+    puzzle.faults = {StuckAtDecl{2, "U3", "A", LogicValue::One}};
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     const auto ownNets = [&] {
@@ -99,7 +103,8 @@ TEST_CASE("machine: a chip input can be stuck, and a swap removes it", "[machine
 
 TEST_CASE("machine: joint errors", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.joints = {{2, {"U99", "1"}}, {3, {"U3", "XX"}}, {4, {"J1", "1"}}, {5, {"U3", "16"}}};
+    puzzle.faults = {JointDecl{2, {"U99", "1"}}, JointDecl{3, {"U3", "XX"}},
+                     JointDecl{4, {"J1", "1"}}, JointDecl{5, {"U3", "16"}}};
     CHECK(Errors(puzzle) == Lines{"2: unknown reference 'U99'", "3: U3 (74LS161) has no pin XX",
                                   "4: joint J1.1: chip signal pins only",
                                   "5: joint U3.16: chip signal pins only"});
@@ -107,7 +112,7 @@ TEST_CASE("machine: joint errors", "[machine]") {
 
 TEST_CASE("machine: resolder removes a dry Joint, a swap does not", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.joints = {{2, {"U13", "2B"}}, {3, {"U13", "6"}}};
+    puzzle.faults = {JointDecl{2, {"U13", "2B"}}, JointDecl{3, {"U13", "6"}}};
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     REQUIRE(machine->dryJoints().size() == 1);
@@ -126,9 +131,9 @@ TEST_CASE("machine: resolder removes a dry Joint, a swap does not", "[machine]")
 
 TEST_CASE("machine: crack errors", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.cracks = {{2, {"U1", "QA"}, {"U1", "14"}, 50},
-                     {3, {"U1", "QA"}, {"U5", "A"}, 50},
-                     {4, {"U1", "XX"}, {"U5", "A"}, 50}};
+    puzzle.faults = {CrackDecl{2, {"U1", "QA"}, {"U1", "14"}, 50},
+                     CrackDecl{3, {"U1", "QA"}, {"U5", "A"}, 50},
+                     CrackDecl{4, {"U1", "XX"}, {"U5", "A"}, 50}};
     CHECK(Errors(puzzle) == Lines{"2: crack U1.QA U1.14: two different pads",
                                   "3: crack U1.QA U5.A: pads not joined by Copper",
                                   "4: U1 (74LS161) has no pin XX"});
@@ -147,7 +152,7 @@ TEST_CASE("machine: no faults builds the design", "[machine]") {
 
 TEST_CASE("machine: swap removes only that chip's Stuck-at", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.stuck = {{2, "U3", "QA", LogicValue::Zero}};
+    puzzle.faults = {StuckAtDecl{2, "U3", "QA", LogicValue::Zero}};
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     const auto tieOfV0 = [&] {
@@ -165,7 +170,7 @@ TEST_CASE("machine: swap removes only that chip's Stuck-at", "[machine]") {
 
 TEST_CASE("machine: mend near and far", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.cracks = {{2, {"U1", "QA"}, {"U13", "2B"}, 79}};
+    puzzle.faults = {CrackDecl{2, {"U1", "QA"}, {"U13", "2B"}, 79}};
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     CHECK(machine->build().value()->nets.contains("H0~2"));
@@ -199,7 +204,7 @@ TEST_CASE("machine: inject adds a Fault to a loaded Machine", "[machine]") {
 
 TEST_CASE("machine: apply dispatches each Repair", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.cracks = {{2, {"U1", "QA"}, {"U13", "2B"}, 79}};
+    puzzle.faults = {CrackDecl{2, {"U1", "QA"}, {"U13", "2B"}, 79}};
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     CHECK_FALSE(machine->apply(SwapRepair{"U99"}));
@@ -234,7 +239,7 @@ TEST_CASE("machine: ReadPuzzleFile + LoadMachine", "[machine]") {
     const auto puzzle = ReadPuzzleFile(file);
     REQUIRE(puzzle.has_value());
     CHECK(puzzle->machine == "test_pattern");
-    REQUIRE(puzzle->stuck.size() == 1);
+    REQUIRE(puzzle->faults.size() == 1);
     const auto viaRead = LoadMachine(*puzzle, MachineDir(file));
     const auto direct = LoadPuzzleFile(file);
     REQUIRE(viaRead.has_value());
@@ -449,9 +454,10 @@ TEST_CASE("machine: build with a wire", "[machine]") {
 
 TEST_CASE("machine: bridge errors", "[machine]") {
     Puzzle puzzle = TestPattern();
-    puzzle.bridges = {{2, {"U99", "1"}, {"U1", "8"}}, {3, {"U1", "99"}, {"U1", "8"}},
-                      {4, {"U1", "7"}, {"U2", "8"}},  {5, {"J1", "1"}, {"J1", "2"}},
-                      {6, {"U1", "7"}, {"U1", "9"}},  {7, {"U1", "7"}, {"U1", "ENP"}}};
+    puzzle.faults = {
+        BridgeDecl{2, {"U99", "1"}, {"U1", "8"}}, BridgeDecl{3, {"U1", "99"}, {"U1", "8"}},
+        BridgeDecl{4, {"U1", "7"}, {"U2", "8"}},  BridgeDecl{5, {"J1", "1"}, {"J1", "2"}},
+        BridgeDecl{6, {"U1", "7"}, {"U1", "9"}},  BridgeDecl{7, {"U1", "7"}, {"U1", "ENP"}}};
     CHECK(Errors(puzzle) == Lines{"2: unknown reference 'U99'", "3: U1 (74LS161) has no pin 99",
                                   "4: bridge U1.7 U2.8: pins of one chip only",
                                   "5: bridge J1.1 J1.2: pins of one chip only",
@@ -465,7 +471,7 @@ TEST_CASE("machine: bridge joins two pads until removed", "[machine]") {
     CHECK_FALSE(PadsConnected(*fine, "U1", "7", "U1", "8"));
 
     Puzzle puzzle = TestPattern();
-    puzzle.bridges = {{2, {"U1", "7"}, {"U1", "8"}}};
+    puzzle.faults = {BridgeDecl{2, {"U1", "7"}, {"U1", "8"}}};
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     CHECK(machine->bridges().size() == 1);
@@ -479,7 +485,7 @@ TEST_CASE("machine: bridge joins two pads until removed", "[machine]") {
 TEST_CASE("machine: undoRepairs brings the Puzzle's Faults back", "[machine]") {
     SECTION("a stuck pin, swapped") {
         Puzzle puzzle = TestPattern();
-        puzzle.stuck = {{2, "U3", "A", LogicValue::One}};
+        puzzle.faults = {StuckAtDecl{2, "U3", "A", LogicValue::One}};
         auto machine = LoadMachine(puzzle, Dir(puzzle));
         REQUIRE(machine.has_value());
         const auto ownNets = [&] {
@@ -495,8 +501,7 @@ TEST_CASE("machine: undoRepairs brings the Puzzle's Faults back", "[machine]") {
     }
     SECTION("a dry Joint and a bridge, a wire added") {
         Puzzle puzzle = TestPattern();
-        puzzle.joints = {{2, {"U13", "2B"}}};
-        puzzle.bridges = {{3, {"U1", "7"}, {"U1", "8"}}};
+        puzzle.faults = {JointDecl{2, {"U13", "2B"}}, BridgeDecl{3, {"U1", "7"}, {"U1", "8"}}};
         auto machine = LoadMachine(puzzle, Dir(puzzle));
         REQUIRE(machine.has_value());
         const std::size_t wiresBefore = machine->board().padJoins.size();
@@ -537,14 +542,14 @@ TEST_CASE("machine: placeCrack", "[machine]") {
 
 TEST_CASE("machine: memory fault errors", "[machine]") {
     Puzzle puzzle = LedComputer();
-    puzzle.cells = {{2, {"U99", "1"}, 0, LogicValue::Zero},
-                    {3, {"U3", "XX"}, 0, LogicValue::Zero},
-                    {4, {"U5", "A"}, 0, LogicValue::Zero},
-                    {5, {"R1", "1"}, std::nullopt, LogicValue::Zero},
-                    {6, {"U3", "A0"}, std::nullopt, LogicValue::One},
-                    {7, {"U3", "IO1"}, 0x400, LogicValue::One},
-                    {8, {"U2", "O0"}, 0x800, LogicValue::One},
-                    {9, {"U3", "IO1"}, 0x10, LogicValue::One, "ram"}};
+    puzzle.faults = {CellDecl{2, {"U99", "1"}, 0, LogicValue::Zero},
+                     CellDecl{3, {"U3", "XX"}, 0, LogicValue::Zero},
+                     CellDecl{4, {"U5", "A"}, 0, LogicValue::Zero},
+                     CellDecl{5, {"R1", "1"}, std::nullopt, LogicValue::Zero},
+                     CellDecl{6, {"U3", "A0"}, std::nullopt, LogicValue::One},
+                     CellDecl{7, {"U3", "IO1"}, 0x400, LogicValue::One},
+                     CellDecl{8, {"U2", "O0"}, 0x800, LogicValue::One},
+                     CellDecl{9, {"U3", "IO1"}, 0x10, LogicValue::One, "ram"}};
     CHECK(Errors(puzzle) ==
           Lines{"2: unknown reference 'U99'", "3: U3 (2114) has no pin XX",
                 "4: cell U5.A $0: RAM and ROM chips only", "5: column R1.1: RAM and ROM chips only",
@@ -579,7 +584,8 @@ TEST_CASE("machine: cell Faults in a chip with two memories", "[machine]") {
 
 TEST_CASE("machine: switch fault errors", "[machine]") {
     Puzzle puzzle = LedComputer();
-    puzzle.switches = {{2, "SW9", true}, {3, "U3", false}, {4, "R1", true}};
+    puzzle.faults = {SwitchDecl{2, "SW9", true}, SwitchDecl{3, "U3", false},
+                     SwitchDecl{4, "R1", true}};
     CHECK(Errors(puzzle) == Lines{"2: unknown reference 'SW9'",
                                   "3: switch U3: buttons and keys only",
                                   "4: switch R1: buttons and keys only"});
@@ -587,7 +593,7 @@ TEST_CASE("machine: switch fault errors", "[machine]") {
 
 TEST_CASE("machine: a swap removes a switch Fault", "[machine]") {
     Puzzle puzzle = LedComputer();
-    puzzle.switches = {{2, "SW1", true}};
+    puzzle.faults = {SwitchDecl{2, "SW1", true}};
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     const auto fault = [&] {
@@ -602,8 +608,8 @@ TEST_CASE("machine: a swap removes a switch Fault", "[machine]") {
 
 TEST_CASE("machine: a swap removes the chip's memory Faults", "[machine]") {
     Puzzle puzzle = LedComputer();
-    puzzle.cells = {{2, {"U3", "IO1"}, 0x10, LogicValue::One},
-                    {3, {"U4", "14"}, std::nullopt, LogicValue::One}};  // 14: IO1
+    puzzle.faults = {CellDecl{2, {"U3", "IO1"}, 0x10, LogicValue::One},
+                     CellDecl{3, {"U4", "14"}, std::nullopt, LogicValue::One}};  // 14: IO1
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     // Power-on contents: U3 word $10 bit 0, U4 bit 0 of every word; seeds differ elsewhere.
@@ -636,8 +642,8 @@ TEST_CASE("machine: a swap removes the chip's memory Faults", "[machine]") {
 
 TEST_CASE("machine: contents of a ROM through its stuck cells, clean after a swap", "[machine]") {
     Puzzle puzzle = LedComputer();
-    puzzle.cells = {{2, {"U2", "O0"}, 0x10, LogicValue::One},
-                    {3, {"U2", "O7"}, std::nullopt, LogicValue::Zero}};
+    puzzle.faults = {CellDecl{2, {"U2", "O0"}, 0x10, LogicValue::One},
+                     CellDecl{3, {"U2", "O7"}, std::nullopt, LogicValue::Zero}};
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     const auto& rom = dynamic_cast<const MemoryCells&>(

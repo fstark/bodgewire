@@ -84,6 +84,6 @@ A Fault can be tested before its Puzzle file exists: `InlinePuzzle("machine led_
 
 When no `fault` line can express it (2026-11-23, review C10):
 
-- `src/machine/puzzle.hpp`: its `…Decl` (with `line`), a list in `Puzzle`, the parser's line, and an alternative of `FaultDecl`.
-- `src/machine/machine.hpp`: its checked form in `FaultSet`; its check in `Machine::inject` (the error text a Puzzle line reports; a Fault in the Copper calls `rebuildBoard()`), and the loop in `LoadMachine`.
+- `src/machine/puzzle.hpp`: its `…Decl` (with `line`), an alternative of `FaultDecl`; the parser's line in `puzzle.cpp`. `Puzzle::faults` holds every kind, in file order.
+- `src/machine/machine.hpp`: its checked form in `FaultSet`. In `machine.cpp`: its `Machine::resolve` (the check, with the error text a Puzzle line reports) and its `Add` into a `FaultSet`. `LoadMachine` and `Machine::inject` need no change.
 - Where it acts: in the Copper (`rebuildBoard`, as cracks and bridges), in the electrical netlist (`ElectricalNetlist`, as dry Joints) or in the Components (`BuildFaults`, `src/netlist/builder.hpp`, as stuck pins, cells and switches). A swap or another Repair that removes it erases it from `faults_`.

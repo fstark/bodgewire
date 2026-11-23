@@ -58,7 +58,7 @@ const std::vector<float>& FaultFree() {
 
 TEST_CASE("pin faults: a stuck input keeps its Net, the chip reads the value", "[machines]") {
     Puzzle puzzle = TestPattern();
-    puzzle.stuck = {{2, "U13", "2B", LogicValue::One}};  // H0 into the grid NOR
+    puzzle.faults = {StuckAtDecl{2, "U13", "2B", LogicValue::One}};  // H0 into the grid NOR
     Machine machine = Load(puzzle);
     {
         const auto built = machine.build();
@@ -73,7 +73,7 @@ TEST_CASE("pin faults: a stuck input keeps its Net, the chip reads the value", "
 
 TEST_CASE("pin faults: a dry Joint's leg (F.Cu) and pad (B.Cu)", "[machines]") {
     Puzzle puzzle = TestPattern();
-    puzzle.joints = {{2, {"U13", "2B"}}};  // H0 from U1.QA
+    puzzle.faults = {JointDecl{2, {"U13", "2B"}}};  // H0 from U1.QA
     const Machine machine = Load(puzzle);
     const auto built = machine.build();
     REQUIRE(built.has_value());
@@ -101,7 +101,7 @@ TEST_CASE("pin faults: a dry Joint's leg (F.Cu) and pad (B.Cu)", "[machines]") {
 
 TEST_CASE("pin faults: a dry Joint is fixed by resoldering, not by a swap", "[machines]") {
     Puzzle puzzle = TestPattern();
-    puzzle.joints = {{2, {"U13", "2B"}}};
+    puzzle.faults = {JointDecl{2, {"U13", "2B"}}};
     Machine machine = Load(puzzle);
     CHECK(machine.swap("U13"));
     Session session = MakeSession(std::move(machine));
@@ -112,7 +112,7 @@ TEST_CASE("pin faults: a dry Joint is fixed by resoldering, not by a swap", "[ma
 
 TEST_CASE("pin faults: resolder through the Session", "[machines]") {
     Puzzle puzzle = TestPattern();
-    puzzle.joints = {{2, {"U13", "2B"}}};
+    puzzle.faults = {JointDecl{2, {"U13", "2B"}}};
     Session session = MakeSession(Load(puzzle));
     const ResolderRepair resolder{{"U13", "2B"}};
     session.powerOn(1);

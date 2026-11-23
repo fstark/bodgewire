@@ -69,7 +69,7 @@ TEST_CASE("bodge wire: unbridge through the Session", "[machines]") {
     puzzle.file = "t.bwp";
     puzzle.machineLine = 1;
     puzzle.machine = "test_pattern";
-    puzzle.bridges = {{2, {"U1", "7"}, {"U1", "8"}}};
+    puzzle.faults = {BridgeDecl{2, {"U1", "7"}, {"U1", "8"}}};
     Session session = MakeSession(LoadMachine(puzzle, test::MachineDir(puzzle.machine)));
     const auto pad = [&](const char* pin) {
         const auto at = session.machine()->padPosition("U1", pin);
