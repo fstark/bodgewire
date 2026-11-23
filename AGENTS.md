@@ -39,6 +39,17 @@ Before designing, planning or coding one of these, read its recipe instead of re
 
 Designs and plans cite recipe steps instead of repeating them. When a milestone finds a recipe wrong or incomplete, fix the recipe in the same commit.
 
+## Shared helpers
+
+Before writing a small helper, look here: most of the project's duplicated code (2026-11-23) was a helper rewritten because the existing one wasn't found. A new helper that a second file needs goes in one of these files, or in a new one added to this list.
+
+- Text ([src/text/text.hpp](src/text/text.hpp), below every layer): `ReadTextFile`, `SplitWords`, `Split(text, ',')`, `Trim`, `IsSpace`, `IsDigit`, `ParseDecimal` (`N` or `N.N` before a unit), `ParsePercent`.
+- Units ([src/netlist/units.hpp](src/netlist/units.hpp)): ohms, farads, frequencies; durations in `parts/paddle.hpp` (`DurationFromText`).
+- References and pins ([src/netlist/parser.hpp](src/netlist/parser.hpp)): `ParsePinRef` ("U3.7"), `IsReference`; finding a pin on a Part: `FindPin`, `PinNet` ([src/netlist/builder.hpp](src/netlist/builder.hpp)).
+- Loading a netlist: `ReadNetlistFile` / `LoadNetlistFile(path, roms)` ([src/netlist/builder.hpp](src/netlist/builder.hpp)); printing diagnostics: `PrintDiagnostics` ([src/netlist/diagnostic.hpp](src/netlist/diagnostic.hpp)).
+- Board geometry on Points ([src/board/geometry.hpp](src/board/geometry.hpp)): `Distance`, `NearestT`, `NearestOnSegment`, `SegmentDistance`, `RotatedOffset` (KiCad's rotation).
+- An instrument whose tip touches one Net: derive its Consumer from `SingleNetConsumer<State>` ([src/runner/single_net_consumer.hpp](src/runner/single_net_consumer.hpp)).
+
 ## Docs
 
 - Each Machine in its own directory `machines/NNN-name/` (P6a): netlist, `board/`, `manuals/` (the player's), `docs/` (its development docs), `roms/`, `puzzles/` (`NN-name.bwp`, easiest first). Datasheets, footprints and benchmarks stay shared (`datasheets/`, `footprints/`, `bench/`). Layout and loading rules: [ADD_MACHINE.md](docs/recipes/ADD_MACHINE.md#the-directory).
