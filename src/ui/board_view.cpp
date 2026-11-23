@@ -702,40 +702,10 @@ void BoardView::draw(ImVec2 size) {
     // pins at both ends of them marked, and its own pins on a rail marked when connected (a
     // chip's VCC and GND, a tied input, a pull-up's VCC end) (P6 prototype).
     const std::optional<std::size_t> wired = !lit ? pointedComponent() : std::nullopt;
-    std::vector<NetId> glowing;
-    std::vector<bool> used;    // [pad] of `wired`: on a Net that reaches another pad (rails)
-    std::vector<NetId> rails;  // Nets a power pin is on: VCC and GND, never glowing
-    if (wired) {
-        for (std::size_t k = 0; k < board.components.size(); ++k) {
-            for (std::size_t q = 0; q < board.components[k].pads.size(); ++q) {
-                const auto net = scene_->padNet(k, q);
-                if (net && scene_->powerPin(k, q) && !std::ranges::contains(rails, *net)) {
-                    rails.push_back(*net);
-                }
-            }
-        }
-        const auto& pads = board.components[*wired].pads;
-        used.assign(pads.size(), false);
-        for (std::size_t p = 0; p < pads.size(); ++p) {
-            const auto net = scene_->padNet(*wired, p);
-            if (!net) {
-                continue;
-            }
-            for (std::size_t k = 0; k < board.components.size() && !used[p]; ++k) {
-                for (std::size_t q = 0; q < board.components[k].pads.size(); ++q) {
-                    if ((k != *wired || q != p) && scene_->padNet(k, q) == net) {
-                        used[p] = true;
-                        break;
-                    }
-                }
-            }
-            // A Net that reaches no other pad (a named spare output) is no wiring.
-            if (used[p] && !std::ranges::contains(rails, *net) &&
-                !std::ranges::contains(glowing, *net)) {
-                glowing.push_back(*net);
-            }
-        }
-    }
+    const BoardScene::Wiring wiring = wired ? scene_->wiring(*wired) : BoardScene::Wiring{};
+    const std::vector<NetId>& glowing = wiring.glowing;
+    const std::vector<bool>& used = wiring.used;
+    const std::span<const NetId> rails = scene_->rails();
     const auto drawPads = [&] {
         for (std::size_t k = 0; k < board.components.size(); ++k) {
             const auto& pads = board.components[k].pads;
@@ -1303,54 +1273,14 @@ void BoardView::focus(BoardTarget target) {
     if (!scene_) {
         return;
     }
-    const Board& board = scene_->board();
-    std::optional<Bounds> box;
-    const auto add = [&](Point p) {
-        box = box ? Bounds{{std::min(box->min.x, p.x), std::min(box->min.y, p.y)},
-                           {std::max(box->max.x, p.x), std::max(box->max.y, p.y)}}
-                  : Bounds{p, p};
-    };
-    if (target.net) {  // the Net's copper: pads, traces, vias
-        for (std::size_t k = 0; k < board.components.size(); ++k) {
-            for (std::size_t p = 0; p < board.components[k].pads.size(); ++p) {
-                if (scene_->padNet(k, p) == target.net) {
-                    add(board.components[k].pads[p].position);
-                }
-            }
-        }
-        for (std::size_t t = 0; t < board.traces.size(); ++t) {
-            if (scene_->traceNet(t) == target.net) {
-                add(board.traces[t].start);
-                add(board.traces[t].end);
-            }
-        }
-        for (std::size_t v = 0; v < board.vias.size(); ++v) {
-            if (scene_->viaNet(v) == target.net) {
-                add(board.vias[v].position);
-            }
-        }
-    } else if (target.pad && target.components.size() == 1) {
-        const Point p = board.components[target.components.front()].pads[*target.pad].position;
-        add({p.x - kFocusPadMargin, p.y - kFocusPadMargin});
-        add({p.x + kFocusPadMargin, p.y + kFocusPadMargin});
-    } else {
-        for (const std::size_t k : target.components) {
-            for (const Point p : scene_->courtyard(k)) {
-                add(p);
-            }
-        }
-    }
+    const auto box = scene_->boundsOf(target, kFocusPadMargin);
     if (!box) {
         return;
     }
     // One part: never so small its pads cannot be told apart.
     double minPixelsPerMm = 0;
     if (target.components.size() == 1 && !target.net) {
-        std::int64_t smallest = 0;
-        for (const Pad& pad : board.components[target.components.front()].pads) {
-            const std::int64_t side = std::min(pad.size.x, pad.size.y);
-            smallest = smallest == 0 ? side : std::min(smallest, side);
-        }
+        const std::int64_t smallest = scene_->smallestPad(target.components.front());
         minPixelsPerMm = smallest > 0 ? kFocusPadMinPx / (static_cast<double>(smallest) / 1e6) : 0;
     }
     needFit_ = false;
@@ -1362,27 +1292,28 @@ void BoardView::route(const TargetHits& hits) {
     if (hits.hovered) {
         hoverFromOutside(hits.hovered);
     }
-    if (hits.clicked) {
-        const BoardTarget& target = *hits.clicked;
-        const ImGuiIO& io = ImGui::GetIO();
-        const bool measures = owner_ == Owner::Probe || IsInstrument(owner_);
-        if (scene_ && measures && target.components.size() == 1 && target.pad && !target.net &&
-            !io.KeyCtrl && !io.KeySuper) {
-            if (io.MouseClickedLastCount[ImGuiMouseButton_Left] >= 2) {
-                focus(target);  // a double-click's second: the first one measured; no selection
-                return;
-            }
-            const std::size_t k = target.components.front();
-            const Point at = scene_->board().components[k].pads[*target.pad].position;
-            click_ = BoardClick{at, active_,     Pick{{HitKind::Pad, k, *target.pad}, active_, at},
-                                k,  io.KeyShift, true};
-            flash_ = Flash{target, std::chrono::steady_clock::now() + kFlashTime};
-            return;
-        }
-        if (hits.clicked->components.size() == 1 && !hits.clicked->net) {
-            select(hits.clicked->components.front());  // a run or a Net selects nothing
-        }
-        focus(*hits.clicked);
+    if (!hits.clicked || !scene_) {
+        return;
+    }
+    const BoardTarget& target = *hits.clicked;
+    const ImGuiIO& io = ImGui::GetIO();
+    switch (RouteLink(owner_, target, io.KeyCtrl || io.KeySuper,
+                      io.MouseClickedLastCount[ImGuiMouseButton_Left] >= 2)) {
+    case LinkAction::Measure: {
+        const std::size_t k = target.components.front();
+        const Point at = scene_->board().components[k].pads[*target.pad].position;
+        click_ = BoardClick{at, active_,     Pick{{HitKind::Pad, k, *target.pad}, active_, at},
+                            k,  io.KeyShift, true};
+        flash_ = Flash{target, std::chrono::steady_clock::now() + kFlashTime};
+        break;
+    }
+    case LinkAction::FrameAndSelect:
+        select(target.components.front());
+        focus(target);
+        break;
+    case LinkAction::Frame:  // a run or a Net selects nothing; a double-click's second neither
+        focus(target);
+        break;
     }
 }
 

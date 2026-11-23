@@ -92,3 +92,18 @@ TEST_CASE("focus: one out-or-away for every bench object", "[view]") {
     CHECK(focus.out(BenchObject::Tv));  // untouched
     CHECK(ObjectOf(Owner::Meter) == BenchObject::Meter);
 }
+
+TEST_CASE("focus: a link to the Board measures or frames", "[view]") {
+    const BoardTarget pin{{3}, 7, std::nullopt};
+    const BoardTarget part{{3}, std::nullopt, std::nullopt};
+    const BoardTarget run{{3, 4}, std::nullopt, std::nullopt};
+    const BoardTarget net{{}, std::nullopt, NetId{2}};
+    CHECK(RouteLink(Owner::Probe, pin, false, false) == LinkAction::Measure);
+    CHECK(RouteLink(Owner::Scope, pin, false, false) == LinkAction::Measure);
+    CHECK(RouteLink(Owner::Probe, pin, false, true) == LinkAction::Frame);           // double-click
+    CHECK(RouteLink(Owner::Probe, pin, true, false) == LinkAction::FrameAndSelect);  // Cmd
+    CHECK(RouteLink(Owner::Puller, pin, false, false) == LinkAction::FrameAndSelect);
+    CHECK(RouteLink(Owner::Probe, part, false, false) == LinkAction::FrameAndSelect);
+    CHECK(RouteLink(Owner::Probe, run, false, false) == LinkAction::Frame);
+    CHECK(RouteLink(Owner::Probe, net, false, false) == LinkAction::Frame);
+}

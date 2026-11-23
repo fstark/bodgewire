@@ -387,6 +387,45 @@ TEST_CASE("view: scene accessors", "[view]") {
     CHECK(counterScene.pinName(*r1, 0).empty());
 }
 
+TEST_CASE("board scene: a part's wiring", "[view]") {
+    const Fixture f = Load("test_pattern");
+    const BoardScene scene = Scene(f);
+    const std::size_t u1 = *scene.componentIndex("U1");
+    const BoardScene::Wiring wiring = scene.wiring(u1);
+    REQUIRE(wiring.used.size() == scene.board().components[u1].pads.size());
+    const auto vcc = scene.padNet(u1, *scene.padIndex(u1, "VCC"));
+    const auto qa = scene.padNet(u1, *scene.padIndex(u1, "QA"));
+    REQUIRE(vcc.has_value());
+    REQUIRE(qa.has_value());
+    CHECK(std::ranges::contains(scene.rails(), *vcc));
+    CHECK(wiring.used[*scene.padIndex(u1, "VCC")]);
+    CHECK_FALSE(std::ranges::contains(wiring.glowing, *vcc));  // a rail never glows
+    CHECK(wiring.used[*scene.padIndex(u1, "QA")]);             // H0 reaches U13
+    CHECK(std::ranges::contains(wiring.glowing, *qa));
+}
+
+TEST_CASE("board scene: what a target frames", "[view]") {
+    const Fixture f = Load("test_pattern");
+    const BoardScene scene = Scene(f);
+    const std::size_t u1 = *scene.componentIndex("U1");
+    const std::size_t qa = *scene.padIndex(u1, "QA");
+    const Point at = scene.board().components[u1].pads[qa].position;
+    const auto pad = scene.boundsOf({{u1}, qa, std::nullopt}, 1'000'000);
+    REQUIRE(pad.has_value());
+    CHECK(pad->min == Point{at.x - 1'000'000, at.y - 1'000'000});
+    CHECK(pad->max == Point{at.x + 1'000'000, at.y + 1'000'000});
+    const auto net = scene.boundsOf({{}, std::nullopt, scene.padNet(u1, qa)}, 0);
+    REQUIRE(net.has_value());
+    CHECK(net->min.x <= at.x);
+    CHECK(net->max.x >= at.x);
+    CHECK(net->max.x - net->min.x > 0);  // H0 runs to U13
+    const auto part = scene.boundsOf({{u1}, std::nullopt, std::nullopt}, 0);
+    REQUIRE(part.has_value());
+    CHECK(part->min.x < at.x);
+    CHECK(part->max.x > at.x);
+    CHECK(scene.smallestPad(u1) > 0);
+}
+
 TEST_CASE("board scene: componentAt", "[view]") {
     const Fixture f = Load("test_pattern");
     const BoardScene scene = Scene(f);

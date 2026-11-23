@@ -15,6 +15,16 @@ BenchObject ObjectOf(Owner instrument) {
                                          : BenchObject::Meter;
 }
 
+LinkAction RouteLink(Owner owner, const BoardTarget& target, bool frame, bool secondClick) {
+    const bool measures = owner == Owner::Probe || IsInstrument(owner);
+    const bool pin = target.components.size() == 1 && target.pad && !target.net;
+    if (measures && pin && !frame) {
+        return secondClick ? LinkAction::Frame : LinkAction::Measure;
+    }
+    return target.components.size() == 1 && !target.net ? LinkAction::FrameAndSelect
+                                                        : LinkAction::Frame;
+}
+
 bool Focus::out(Owner instrument) const { return out(ObjectOf(instrument)); }
 
 void Focus::take(Owner tool) {

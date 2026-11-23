@@ -124,6 +124,7 @@ Done 2026-11-23: `ui/gestures`: `TimeCanvas::read` (hover, zoom notches, wheel p
 - `draw` split into copper, devices, overlays, flip corner.
 - `Shelf::draw` (281 lines): tray layout → a tested `ShelfLayout` in view; clicks return actions applied in one place; the meter's power switch repeats the shelf's power logic.
 - About 400 lines moved, low risk.
+- Done 2026-11-23: `BoardScene::wiring` (per-Net pad counts and the rails found once with the scene, not pads × pads each frame) and `boundsOf`/`smallestPad`, `BoardTarget` to `view/board_scene`; `RouteLink` in `view/focus`; `LayOutShelf` in `view/shelf_layout`; each tested. Not done, judged cosmetic: one `BoardOverlay` in place of the per-frame setters, `draw` split into parts, shelf clicks as returned actions.
 
 **C16. The catalogue holds each Part's pins and parameters.** Pin names exist only once a Component is built: `manual.cpp` `PartPinNames` builds a throwaway one with made-up parameters and special cases (6530, OSC, POR, PADDLE); a new Part needing parameters silently gets no pin check. Each factory parses its own parameters (`catalogue.cpp`, about 300 near-identical lines). `DurationFromText` lives in `paddle.hpp`. Fix: a static pin list and declared parameters on `PartInfo`, one parser. About −200 lines, low risk.
 
@@ -167,7 +168,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | C12 bench object identity | done 2026-11-23 (narrowed: out or away in one place) |
 | C13 split Session | done 2026-11-23 |
 | C14 shared gestures | done 2026-11-23 (to try by hand) |
-| C15 BoardView/Shelf logic to view | todo |
+| C15 BoardView/Shelf logic to view | done 2026-11-23 (the rules; not the cosmetic splits) |
 | C16 catalogue metadata | todo |
 | C17 one sample feed | todo |
 | C18 pin references | todo |

@@ -260,6 +260,22 @@ BoardScene::BoardScene(Board drawn, const Board& pristine, const LoadedCircuit& 
             }
         }
     }
+    for (std::size_t k = 0; k < padNets_.size(); ++k) {
+        for (std::size_t q = 0; q < padNets_[k].size(); ++q) {
+            const auto net = padNets_[k][q];
+            if (!net) {
+                continue;
+            }
+            const auto id = static_cast<std::size_t>(std::to_underlying(*net));
+            if (netPads_.size() <= id) {
+                netPads_.resize(id + 1, 0);
+            }
+            ++netPads_[id];
+            if (info_[k].powerPins[q] && !std::ranges::contains(rails_, *net)) {
+                rails_.push_back(*net);
+            }
+        }
+    }
 }
 
 std::span<const ScenePad> BoardScene::drivers(NetId net) const {
@@ -428,6 +444,74 @@ bool BoardScene::chip(std::size_t component) const {
 bool BoardScene::lamp(std::size_t component) const {
     const PartInfo* part = info_[component].part;
     return part != nullptr && !part->lamps.empty();
+}
+
+BoardScene::Wiring BoardScene::wiring(std::size_t component) const {
+    Wiring wiring;
+    const auto& nets = padNets_[component];
+    wiring.used.assign(nets.size(), false);
+    for (std::size_t p = 0; p < nets.size(); ++p) {
+        if (!nets[p]) {
+            continue;
+        }
+        // A Net that reaches no other pad (a named spare output) is no wiring.
+        wiring.used[p] = netPads_[static_cast<std::size_t>(std::to_underlying(*nets[p]))] >= 2;
+        if (wiring.used[p] && !std::ranges::contains(rails_, *nets[p]) &&
+            !std::ranges::contains(wiring.glowing, *nets[p])) {
+            wiring.glowing.push_back(*nets[p]);
+        }
+    }
+    return wiring;
+}
+
+std::optional<Bounds> BoardScene::boundsOf(const BoardTarget& target,
+                                           std::int64_t padMargin) const {
+    std::optional<Bounds> box;
+    const auto add = [&](Point p) {
+        box = box ? Bounds{{std::min(box->min.x, p.x), std::min(box->min.y, p.y)},
+                           {std::max(box->max.x, p.x), std::max(box->max.y, p.y)}}
+                  : Bounds{p, p};
+    };
+    if (target.net) {  // the Net's copper: pads, traces, vias
+        for (std::size_t k = 0; k < board_.components.size(); ++k) {
+            for (std::size_t p = 0; p < board_.components[k].pads.size(); ++p) {
+                if (padNet(k, p) == target.net) {
+                    add(board_.components[k].pads[p].position);
+                }
+            }
+        }
+        for (std::size_t t = 0; t < board_.traces.size(); ++t) {
+            if (traceNet(t) == target.net) {
+                add(board_.traces[t].start);
+                add(board_.traces[t].end);
+            }
+        }
+        for (std::size_t v = 0; v < board_.vias.size(); ++v) {
+            if (viaNet(v) == target.net) {
+                add(board_.vias[v].position);
+            }
+        }
+    } else if (target.pad && target.components.size() == 1) {
+        const Point p = board_.components[target.components.front()].pads[*target.pad].position;
+        add({p.x - padMargin, p.y - padMargin});
+        add({p.x + padMargin, p.y + padMargin});
+    } else {
+        for (const std::size_t k : target.components) {
+            for (const Point p : courtyard(k)) {
+                add(p);
+            }
+        }
+    }
+    return box;
+}
+
+std::int64_t BoardScene::smallestPad(std::size_t component) const {
+    std::int64_t smallest = 0;
+    for (const Pad& pad : board_.components[component].pads) {
+        const std::int64_t side = std::min(pad.size.x, pad.size.y);
+        smallest = smallest == 0 ? side : std::min(smallest, side);
+    }
+    return smallest;
 }
 
 bool BoardScene::powerPin(std::size_t component, std::size_t pad) const {

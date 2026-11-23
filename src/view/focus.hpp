@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "view/bench_places.hpp"
+#include "view/board_scene.hpp"
 
 namespace bw {
 
@@ -22,6 +23,13 @@ enum class Owner : std::uint8_t {
 
 bool IsInstrument(Owner owner);          // Analyzer, Scope, Meter
 BenchObject ObjectOf(Owner instrument);  // its window on the bench
+
+// What a click on a link to the Board (a manual's or the chip panel's pin, part or Net) does
+// (P6i, P6o): under the probe or an instrument a pin is measured, as if clicked on the Board;
+// with Cmd or Ctrl (`frame`), or for anything but a pin, the Board frames it and a single part is
+// selected. A double-click's second click frames what the first measured.
+enum class LinkAction : std::uint8_t { Measure, Frame, FrameAndSelect };
+LinkAction RouteLink(Owner owner, const BoardTarget& target, bool frame, bool secondClick);
 
 // The focus owner, and what is out on the bench: each object's window shown or put away, the
 // instruments' and the others' (TV, keyboard, knob box, binder, brief, Debug). The probe is the

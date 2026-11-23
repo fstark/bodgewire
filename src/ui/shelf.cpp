@@ -17,6 +17,7 @@
 #include "ui/tv_window.hpp"
 #include "ui/window_order.hpp"
 #include "view/machine_slot.hpp"
+#include "view/shelf_layout.hpp"
 
 namespace bw {
 
@@ -260,35 +261,18 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         const float n = cells(entry);
         return kCell * n + kCellGap * (n - 1);
     };
-    const float machineGap = kGroupGap / 2;  // the Machine slot set apart in its tray
-    float right = 0;
+    std::vector<ShelfCell> cellsOf;
     for (const Entry& entry : items) {
-        if (entry.tray == Tray::Machine) {
-            right += widthOf(entry) + (entry.item == Item::Machine ? machineGap : kCellGap);
-        }
+        cellsOf.push_back({static_cast<int>(entry.tray), cells(entry), entry.tray == Tray::Machine,
+                           entry.item == Item::Machine});
     }
-    right -= kCellGap;
-    std::vector<float> xs(items.size());
-    float x = origin.x + kGroupGap / 2;
-    float rightX = origin.x + width - kGroupGap / 2 - right;
-    float leftEnd = x;
-    for (std::size_t i = 0; i < items.size(); ++i) {
-        const Entry& entry = items[i];
-        if (i > 0 && items[i - 1].tray != entry.tray && entry.tray != Tray::Machine) {
-            x += kGroupGap - kCellGap;
-        }
-        if (entry.tray == Tray::Machine) {
-            if (entry.item == Item::Machine) {
-                rightX += machineGap - kCellGap;
-            }
-            xs[i] = rightX;
-            rightX += widthOf(entry) + kCellGap;
-        } else {
-            xs[i] = x;
-            x += widthOf(entry) + kCellGap;
-            leftEnd = x - kCellGap;
-        }
+    ShelfPlaces places = LayOutShelf(cellsOf, width, {kCell, kCellGap, kGroupGap});
+    std::vector<float>& xs = places.x;
+    for (float& itemX : xs) {
+        itemX += origin.x;
     }
+    const float leftEnd = origin.x + places.leftEnd;
+    const float machineGap = kGroupGap / 2;  // the Machine slot set apart in its tray
     const float top = origin.y + (kShelfHeight - kCell) / 2;
     // The trays, under their items.
     for (std::size_t i = 0; i < items.size();) {
@@ -510,7 +494,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
     }
     if (!hint.empty()) {
         const float left = leftEnd + kGroupGap;
-        const float end = origin.x + width - kGroupGap - right;
+        const float end = origin.x + places.rightStart - kGroupGap / 2;
         const ImVec2 size = ImGui::CalcTextSize(hint.c_str());
         list.PushClipRect({left, origin.y}, {end, origin.y + kShelfHeight}, true);
         list.AddText({left, origin.y + (kShelfHeight - size.y) / 2},

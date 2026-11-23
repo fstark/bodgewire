@@ -53,6 +53,14 @@ struct ScenePad {
     bool operator==(const ScenePad&) const = default;
 };
 
+// What a link or a panel points at on the Board: one part (and maybe its pad), a run of parts
+// (a manual's `U1`–`U5`) or a Net (a manual's `C19`, P6i).
+struct BoardTarget {
+    std::vector<std::size_t> components;  // one part, or a run's parts; empty for a Net
+    std::optional<std::size_t> pad;       // with one part
+    std::optional<NetId> net;             // a Net link
+};
+
 // The drawn Board (with cracks) labelled from the design Netlist and the fault-free Copper:
 // nothing here depends on Faults.
 class BoardScene {
@@ -98,6 +106,20 @@ public:
     // A Part with lamps (an LED, a digit): what the launcher frames (P7b).
     bool lamp(std::size_t component) const;
     std::optional<std::size_t> componentIndex(std::string_view reference) const;
+    // What a pointed part is wired to, for drawing it: per pad, whether its Net reaches another
+    // pad; the Nets that do and are not rails (they glow).
+    struct Wiring {
+        std::vector<bool> used;      // [pad]
+        std::vector<NetId> glowing;  // distinct, in pad order
+    };
+    Wiring wiring(std::size_t component) const;
+    // What framing `target` shows: a Net's copper (pads, Traces, vias), a pad and `padMargin`
+    // around it, or the parts' courtyards; nullopt when there is nothing (a Net off the Board).
+    std::optional<Bounds> boundsOf(const BoardTarget& target, std::int64_t padMargin) const;
+    // The narrower side of the part's smallest pad, nm; 0 without pads.
+    std::int64_t smallestPad(std::size_t component) const;
+    // The Nets a power pin is on (VCC, GND...): drawn as rails, never glowing.
+    std::span<const NetId> rails() const { return rails_; }
     // Pad by number, else by pin name.
     std::optional<std::size_t> padIndex(std::size_t component, std::string_view pin) const;
 
@@ -116,6 +138,8 @@ private:
     Bounds bounds_{};
     std::vector<std::vector<Point>> courtyards_;              // [component], fallback filled in
     std::vector<std::vector<std::optional<NetId>>> padNets_;  // [component][pad]
+    std::vector<std::uint32_t> netPads_;                      // [NetId]: pads on it
+    std::vector<NetId> rails_;
     std::vector<std::optional<NetId>> viaNets_, traceNets_;
     std::vector<std::string> netNames_;              // [NetId]
     std::vector<std::vector<ScenePad>> driverPads_;  // [NetId]

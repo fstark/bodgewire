@@ -74,14 +74,6 @@ struct SwitchTag {
     std::string legend;
 };
 
-// What a link or a panel points at on the Board: one part (and maybe its pad), a run of parts
-// (a manual's `U1`–`U5`) or a Net (a manual's `C19`, P6i).
-struct BoardTarget {
-    std::vector<std::size_t> components;  // one part, or a run's parts; empty for a Net
-    std::optional<std::size_t> pad;       // with one part
-    std::optional<NetId> net;             // a Net link
-};
-
 struct TargetHits {  // from a side panel or manual this frame
     std::optional<BoardTarget> hovered, clicked;
 };
