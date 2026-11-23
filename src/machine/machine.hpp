@@ -32,7 +32,7 @@ struct ChipContents {
 // A Bodge Wire with its ends as pin numbers.
 struct WireEnds {
     PinRef a, b;
-    BodgeWire wire;  // pad positions
+    PadJoin wire;  // pad positions
 };
 
 // dir/<machine>.bwn + dir/board/<machine>.kicad_pcb, `dir` the Machine's directory

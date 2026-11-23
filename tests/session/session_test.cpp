@@ -604,7 +604,7 @@ TEST_CASE("session: continuity through a bodge wire", "[session]") {
     CHECK(session.continuity() == false);
     REQUIRE(session.repair(kH0Wire) == RepairResult::Done);
     CHECK(session.continuity() == true);
-    CHECK(session.drawnBoard()->bodgeWires.empty());
+    CHECK(session.drawnBoard()->padJoins.empty());
 }
 
 TEST_CASE("session: continuity across a cut", "[session]") {

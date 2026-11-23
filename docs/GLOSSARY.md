@@ -203,6 +203,9 @@ _Avoid_: Fix, patch
 A gap the player makes across a Trace, splitting it like a Broken Trace; a Repair, undone by mending.
 _Avoid_: Break (that is the Fault)
 
+**Crack**:
+A gap across a straight Trace, at a point on its centre line: a Broken Trace (a Fault, a Puzzle's `crack` line) or a Cut (a Repair). The code's word for the gap itself, whichever made it (`Crack`, `CrackBoard`, `CrackMark`); mending removes either.
+
 **Golden Machine**:
 The fault-free version of a Machine, used as the reference a repaired Machine must behave like.
 _Avoid_: Reference machine (that means the real-world original)

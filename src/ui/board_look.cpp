@@ -579,14 +579,14 @@ constexpr double kCrackReach = 60'000;  // nm beyond the half width: CrackBoard'
 
 // `crack` if it lies on the line from `from` through `end`, just beyond `end`.
 std::optional<Point> CrackBeyond(const Trace& trace, Point from, Point end,
-                                 std::span<const CutMark> cracks) {
+                                 std::span<const CrackMark> cracks) {
     const double dx = static_cast<double>(end.x - from.x);
     const double dy = static_cast<double>(end.y - from.y);
     const double length = std::hypot(dx, dy);
     if (length == 0) {
         return std::nullopt;
     }
-    for (const CutMark& crack : cracks) {
+    for (const CrackMark& crack : cracks) {
         if (crack.layer != trace.layer) {
             continue;
         }
@@ -604,8 +604,8 @@ std::optional<Point> CrackBeyond(const Trace& trace, Point from, Point end,
 
 }  // namespace
 
-std::pair<std::optional<Point>, std::optional<Point>> TraceCracks(const Trace& trace,
-                                                                  std::span<const CutMark> cracks) {
+std::pair<std::optional<Point>, std::optional<Point>>
+TraceCracks(const Trace& trace, std::span<const CrackMark> cracks) {
     if (trace.mid || cracks.empty()) {
         return {};
     }
@@ -639,7 +639,7 @@ void DrawStraightTrace(ImDrawList& list, ImVec2 a, ImVec2 b, float width, ImU32 
 }
 
 void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, Layer active,
-                 std::span<const NetId> glowing, std::span<const CutMark> cracks, bool glowOnly) {
+                 std::span<const NetId> glowing, std::span<const CrackMark> cracks, bool glowOnly) {
     std::vector<ImVec2> outline;
     for (const Point p : scene.outline()) {
         outline.push_back(map(p));

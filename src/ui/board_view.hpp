@@ -155,9 +155,9 @@ public:
     void setLegendFont(ImFont* font) { legendFont_ = font; }   // keycap legends
     std::optional<std::size_t> held() const { return held_; }  // left button down on a body
     std::optional<std::size_t> takeLatchToggle();  // right-clicked body; any click on a slide
-    void setCuts(std::span<const CutMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
+    void setCuts(std::span<const CrackMark> cuts) { cuts_.assign(cuts.begin(), cuts.end()); }
     // The Puzzle's cracks: their Traces drawn with square ends, a hairline apart.
-    void setCracks(std::span<const CutMark> cracks) {
+    void setCracks(std::span<const CrackMark> cracks) {
         cracks_.assign(cracks.begin(), cracks.end());
     }
     // The grease pencil's marks (P6h), drawn whatever the tool or layer.
@@ -166,13 +166,13 @@ public:
     std::int64_t markReach() const;
     // The Board point of a right-click (released without dragging) since the last call.
     std::optional<Point> takeRightClick();
-    void setBodgeWires(std::span<const BodgeWire> wires) {
+    void setBodgeWires(std::span<const PadJoin> wires) {
         bodgeWires_.assign(wires.begin(), wires.end());
     }
     void setWireStart(std::optional<Point> start) { wireStart_ = start; }  // rubber band
     // Index of the nearest wire within reach().copper of `at`; for the Cut tool.
     std::optional<std::size_t> wireAt(Point at) const;
-    void setBridges(std::span<const BodgeWire> bridges) {
+    void setBridges(std::span<const PadJoin> bridges) {
         bridges_.assign(bridges.begin(), bridges.end());
     }
     std::optional<std::size_t> bridgeAt(Point at) const;  // as wireAt()
@@ -218,12 +218,12 @@ private:
     std::vector<SwitchTag> switches_;
     ImFont* legendFont_ = nullptr;
     std::optional<std::size_t> held_, latchToggle_;
-    std::vector<CutMark> cuts_;
-    std::vector<CutMark> cracks_;
+    std::vector<CrackMark> cuts_;
+    std::vector<CrackMark> cracks_;
     std::vector<PencilMark> marks_;
     std::optional<Point> rightClick_;
-    std::vector<BodgeWire> bodgeWires_;
-    std::vector<BodgeWire> bridges_;
+    std::vector<PadJoin> bodgeWires_;
+    std::vector<PadJoin> bridges_;
     std::optional<Point> wireStart_;
     TooltipText tooltip_;
     struct Refusal {

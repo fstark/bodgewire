@@ -290,7 +290,7 @@ CopperGraph BuildCopperGraph(const Board& board) {
             }
         }
     }
-    for (const BodgeWire& wire : board.bodgeWires) {
+    for (const PadJoin& wire : board.padJoins) {
         const auto a = PadItemAt(board, wire.a);
         const auto b = PadItemAt(board, wire.b);
         Check(a && b, "copper: Bodge Wire end off a pad");

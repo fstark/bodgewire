@@ -59,8 +59,9 @@ struct OutlineEdge {
     std::optional<Point> mid;  // set for an arc
 };
 
-// Player-soldered wire between two pads (both Layers: through-hole pads only).
-struct BodgeWire {
+// Two pads joined off the Copper (both Layers: through-hole pads only): a player's Bodge Wire or
+// a Puzzle's Solder Bridge.
+struct PadJoin {
     Point a, b;  // pad centres, nm
 };
 
@@ -69,8 +70,7 @@ struct Board {
     std::vector<Trace> traces;
     std::vector<Via> vias;
     std::vector<OutlineEdge> outline;
-    std::vector<BodgeWire>
-        bodgeWires;  // pad-to-pad joins: Bodge Wires and Solder Bridges; empty on a loaded Board
+    std::vector<PadJoin> padJoins;  // empty on a loaded Board
 };
 
 }  // namespace bw

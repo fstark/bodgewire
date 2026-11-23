@@ -325,7 +325,7 @@ TEST_CASE("electrical: a series resistor stays between its two islands", "[machi
 TEST_CASE("electrical: a series resistor bridged across is left out", "[machine]") {
     const SeriesDesign design = LoadSeries();
     Board board = SeriesBoard();
-    board.bodgeWires.push_back({Mm(10, 20), Mm(0, 30)});  // R1.1 to R1.2: a Solder Bridge
+    board.padJoins.push_back({Mm(10, 20), Mm(0, 30)});  // R1.1 to R1.2: a Solder Bridge
     const Netlist netlist = ElectricalNetlist(design.netlist, *design.circuit, board);
     for (const PartDecl& part : netlist.parts) {
         CHECK(part.reference != "R1");
@@ -346,7 +346,7 @@ TEST_CASE("electrical: a capacitor stays between its two islands", "[machine]") 
 TEST_CASE("electrical: a capacitor bridged across is left out", "[machine]") {
     const SeriesDesign design = LoadSeries("capacitor_bench.bwn");
     Board board = CapacitorBoard();
-    board.bodgeWires.push_back({Mm(10, 20), Mm(0, 30)});  // C1.1 to C1.2: a Solder Bridge
+    board.padJoins.push_back({Mm(10, 20), Mm(0, 30)});  // C1.1 to C1.2: a Solder Bridge
     const Netlist netlist = ElectricalNetlist(design.netlist, *design.circuit, board);
     for (const PartDecl& part : netlist.parts) {
         CHECK(part.reference != "C1");

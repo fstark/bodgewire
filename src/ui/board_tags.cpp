@@ -79,22 +79,22 @@ std::vector<SwitchTag> StillSwitchTags(const BoardScene& scene, const LoadedCirc
 }
 
 void ShowRepairs(BoardView& view, const Machine& machine) {
-    std::vector<CutMark> cuts;
+    std::vector<CrackMark> cuts;
     for (const Crack& cut : machine.cuts()) {
         cuts.push_back({cut.layer, cut.at});
     }
     view.setCuts(cuts);
-    std::vector<CutMark> cracks;
+    std::vector<CrackMark> cracks;
     for (const Crack& crack : machine.cracks()) {
         cracks.push_back({crack.layer, crack.at});
     }
     view.setCracks(cracks);
-    std::vector<BodgeWire> wires;
+    std::vector<PadJoin> wires;
     for (const WireEnds& w : machine.wires()) {
         wires.push_back(w.wire);
     }
     view.setBodgeWires(wires);
-    std::vector<BodgeWire> bridges;
+    std::vector<PadJoin> bridges;
     for (const WireEnds& b : machine.bridges()) {
         bridges.push_back(b.wire);
     }

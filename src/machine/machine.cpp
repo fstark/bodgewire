@@ -431,10 +431,10 @@ void Machine::rebuildBoard() {
     all.insert(all.end(), cuts_.begin(), cuts_.end());
     board_ = CrackBoard(pristine_, all);
     for (const WireEnds& w : wires_) {
-        board_.bodgeWires.push_back(w.wire);
+        board_.padJoins.push_back(w.wire);
     }
     for (const WireEnds& b : bridges_) {
-        board_.bodgeWires.push_back(b.wire);
+        board_.padJoins.push_back(b.wire);
     }
     power_ = FindPower(*designCircuit_, board_, FindIslands(board_));
 }

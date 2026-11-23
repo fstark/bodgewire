@@ -58,7 +58,7 @@ TEST_CASE("copper: trace between pad centres joins them", "[board]") {
 
 TEST_CASE("copper: bodge wire joins two pads", "[board]") {
     Board board = TwoPads();
-    board.bodgeWires = {{Mm(0, 0), Mm(10, 0)}};
+    board.padJoins = {{Mm(0, 0), Mm(10, 0)}};
     CHECK(Joined(board));
     CHECK(FindIslands(board).islandSize == std::vector<std::uint32_t>{2});
 }
@@ -203,7 +203,7 @@ TEST_CASE("copper: graph of two pads and a Trace", "[board]") {
 
 TEST_CASE("copper: a Bodge Wire joins its pads in the graph", "[board]") {
     Board board = TwoPads();
-    board.bodgeWires = {{Mm(0, 0), Mm(10, 0)}};
+    board.padJoins = {{Mm(0, 0), Mm(10, 0)}};
     const CopperGraph graph = BuildCopperGraph(board);
     CHECK(graph.touching[0] == std::vector<std::uint32_t>{1});
     CHECK(graph.touching[1] == std::vector<std::uint32_t>{0});

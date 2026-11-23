@@ -141,7 +141,7 @@ ImU32 Lerp(ImU32 from, ImU32 to, float t) {
 }
 
 // Index of the wire nearest `at` within `reach` nm.
-std::optional<std::size_t> NearestWire(std::span<const BodgeWire> wires, Point at, double reach) {
+std::optional<std::size_t> NearestWire(std::span<const PadJoin> wires, Point at, double reach) {
     std::optional<std::size_t> best;
     for (std::size_t i = 0; i < wires.size(); ++i) {
         const double d = SegmentDistance(at, wires[i].a, wires[i].b);
@@ -187,7 +187,7 @@ void DrawSegment(ImDrawList& list, ImVec2 a, ImVec2 b, float width, ImU32 colour
 }
 
 void DrawTrace(ImDrawList& list, const Mapper& map, const Trace& trace, ImU32 colour,
-               std::span<const CutMark> cracks) {
+               std::span<const CrackMark> cracks) {
     if (map.offPanel(trace.start, trace.end, trace.width) && !trace.mid) {
         return;
     }
@@ -931,7 +931,7 @@ void BoardView::draw(ImVec2 size) {
         drawPads();
     }
     const float bridgeWidth = std::max(1.0f, map.pixels(kBridgeWidth));
-    for (const BodgeWire& bridge : bridges_) {
+    for (const PadJoin& bridge : bridges_) {
         list.AddLine(map(bridge.a), map(bridge.b),
                      WithAlpha(kPadTin, active_ == Layer::Back ? 1.0f : kInactiveAlpha),
                      bridgeWidth);
@@ -941,7 +941,7 @@ void BoardView::draw(ImVec2 size) {
         list.AddCircleFilled(map(blob.at), std::max(kBlobMinPx, map.pixels(kBlobRadius)),
                              WithAlpha(kSolder, alpha));
     }
-    for (const CutMark& cut : cuts_) {
+    for (const CrackMark& cut : cuts_) {
         const ImU32 colour = WithAlpha(kCutMark, cut.layer == active_ ? 1.0f : kInactiveAlpha);
         const ImVec2 c = map(cut.at);
         const float h = std::max(kCutMinPx, map.pixels(kCutHalf));
@@ -1018,7 +1018,7 @@ void BoardView::draw(ImVec2 size) {
     }
     const float wireWidth = std::max(2.0f, map.pixels(kWireWidth));
     const float wireBlob = std::max(kBlobMinPx, map.pixels(kBlobRadius / 2));
-    for (const BodgeWire& wire : bodgeWires_) {
+    for (const PadJoin& wire : bodgeWires_) {
         list.AddLine(map(wire.a), map(wire.b), kWireInsulation, wireWidth);
         list.AddCircleFilled(map(wire.a), wireBlob, kSolder);
         list.AddCircleFilled(map(wire.b), wireBlob, kSolder);

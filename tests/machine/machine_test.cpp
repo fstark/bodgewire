@@ -478,7 +478,7 @@ TEST_CASE("machine: undoRepairs brings the Puzzle's Faults back", "[machine]") {
         puzzle.bridges = {{3, {"U1", "7"}, {"U1", "8"}}};
         auto machine = LoadMachine(puzzle, Dir(puzzle));
         REQUIRE(machine.has_value());
-        const std::size_t wiresBefore = machine->board().bodgeWires.size();
+        const std::size_t wiresBefore = machine->board().padJoins.size();
         REQUIRE(machine->resolder({"U13", "2B"}));
         REQUIRE(machine->removeBridge({"U1", "7"}, {"U1", "8"}));
         REQUIRE(machine->addWire({"U1", "14"}, {"U13", "6"}));
@@ -491,7 +491,7 @@ TEST_CASE("machine: undoRepairs brings the Puzzle's Faults back", "[machine]") {
         CHECK(PadsConnected(*machine, "U1", "7", "U1", "8"));
         CHECK(machine->wires().empty());
         CHECK(machine->cuts().empty());
-        CHECK(machine->board().bodgeWires.size() == wiresBefore);
+        CHECK(machine->board().padJoins.size() == wiresBefore);
     }
 }
 

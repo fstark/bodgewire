@@ -32,16 +32,16 @@ struct LookMap {
     float pixels(std::int64_t nm) const { return static_cast<float>(viewport.toPixels(nm)); }
 };
 
-// A point marked on a layer: a knife cut, a Puzzle's crack.
-struct CutMark {
+// A Crack drawn on a layer: a knife Cut, or a Puzzle's Broken Trace.
+struct CrackMark {
     Layer layer;
     Point at;  // nm
 };
 
 // The cracks at a straight Trace's start and end: a crack's point when it lies on the Trace's
 // line just beyond that end (CrackBoard leaves the half width plus a margin each side of it).
-std::pair<std::optional<Point>, std::optional<Point>> TraceCracks(const Trace& trace,
-                                                                  std::span<const CutMark> cracks);
+std::pair<std::optional<Point>, std::optional<Point>>
+TraceCracks(const Trace& trace, std::span<const CrackMark> cracks);
 // A crack's drawn width: a hairline (the user, 2026-11-18), seen only near full zoom
 // (Viewport::kMaxPixelsPerMm: 1.2 px), not drawn under kCrackMinPx.
 inline constexpr std::int64_t kCrackWidth = 12'000;  // nm
@@ -61,7 +61,7 @@ ImU32 TraceColour(Layer layer);
 // Puzzle's, drawn as hairlines. `glowOnly`: those traces alone, drawn again above the parts so a
 // see-through body does not darken them.
 void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, Layer active,
-                 std::span<const NetId> glowing, std::span<const CutMark> cracks,
+                 std::span<const NetId> glowing, std::span<const CrackMark> cracks,
                  bool glowOnly = false);
 // The parts' bodies and leads: above the pads (no outlines: the user, 2026-11-16). `own`:
 // Components drawn by BoardView itself (lamps, digits, switches), left out here.
