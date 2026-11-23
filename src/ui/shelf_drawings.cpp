@@ -1,10 +1,13 @@
 #include "ui/shelf_drawings.hpp"
 
+#include "view/pace.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <numbers>
 #include <span>
+#include <string>
 
 namespace bw {
 
@@ -111,22 +114,33 @@ void Power(Pen& p, const ItemLook& look) {
 }
 
 // A three-position slide across two cells: a pause sign, 1×, Max printed over its slot, the slider
-// at the chosen third; the pause sign grayed while the power is off (it cannot be chosen).
+// at the chosen third; the pause sign grayed while the power is off (it cannot be chosen). Running
+// at Max, the speed reached in place of "Max"; behind real time, in place of the chosen label too,
+// and the slider red (red print on the wood read poorly, 2026-11-23).
 void RunSlide(Pen& p, const ItemLook& look) {
     constexpr std::array<float, 3> kAt{22, 58, 94};
+    constexpr ImU32 kSlowKnob = IM_COL32(200, 55, 45, 255);
+    constexpr ImU32 kSlowGrip = IM_COL32(110, 25, 20, 255);
     const auto chosen = static_cast<std::size_t>(look.run);
     const ImU32 pauseInk = !look.powered ? kLampDark : chosen == 0 ? kWhite : kGrey;
     p.box(kAt[0] - 5, 8, kAt[0] - 1.5f, 20, pauseInk, 0.5f);
     p.box(kAt[0] + 1.5f, 8, kAt[0] + 5, 20, pauseInk, 0.5f);
-    p.text(kAt[1], 14, 11, chosen == 1 ? kWhite : kGrey, "1×");
-    p.text(kAt[2], 14, 11, chosen == 2 ? kWhite : kGrey, "Max");
+    const bool slow = look.behind && chosen != 0;
+    const bool measured = slow || (look.running && look.run == RunSwitch::Max);
+    const std::string speed = measured ? SpeedText(look.speed) : std::string();
+    const auto label = [&](std::size_t at, const char* name) {
+        p.text(kAt[at], 14, 11, chosen != at ? kGrey : kWhite,
+               chosen == at && measured ? speed.c_str() : name);
+    };
+    label(1, "1×");
+    label(2, "Max");
     p.box(10, 31, 106, 41, kBlack, 5);
     for (const float x : kAt) {
         p.line(x, 43.5f, x, 46, kDarkMetal, 1.2f);
     }
     const float x = kAt[chosen];
-    p.box(x - 9, 28, x + 9, 44, kMetal, 3);
-    p.line(x, 30, x, 42, kDarkMetal, 1.5f);
+    p.box(x - 9, 28, x + 9, 44, slow ? kSlowKnob : kMetal, 3);
+    p.line(x, 30, x, 42, slow ? kSlowGrip : kDarkMetal, 1.5f);
 }
 
 void Probe(Pen& p, const ItemLook& look) {

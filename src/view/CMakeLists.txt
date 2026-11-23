@@ -12,6 +12,7 @@ add_library(bw_view STATIC
   machine_slot.cpp
   memory_contents.cpp
   output_frame.cpp
+  pace.cpp
   keyboard_layout.cpp
   matrix_keyboard_layout.cpp
   pencil_marks.cpp

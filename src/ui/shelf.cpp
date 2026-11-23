@@ -235,6 +235,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         found_ = true;
     }
     const bool hasDevice = devices_.tv || devices_.keyboard || devices_.knob;
+    const Pace pace = pace_.update(running, speedRatio, std::chrono::steady_clock::now());
     // The brief only on a Puzzle: not grayed, left out.
     std::vector<Entry> items;
     for (const Entry& entry : kItems) {
@@ -342,6 +343,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         case Item::RunSwitch:
             look.run = run;
             look.powered = powered;
+            look.running = running;
+            look.behind = pace.behind;
+            look.speed = pace.shown;
             break;
         case Item::Probe:
             look.lamps = session.lamps();
@@ -394,6 +398,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
                                      ? "their own windows, or back"
                                      : "its own window, or back")
                           : std::string("TV, keyboard, knobs");
+            }
+            if (entry.item == Item::RunSwitch && pace.behind) {
+                tip += "\nRed: this computer cannot keep up with real time";
             }
             if (entry.item == Item::Power && look.limit) {
                 tip += "\nBench supply in current limit";

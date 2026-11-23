@@ -45,6 +45,9 @@ struct ItemLook {
     ProbeLamps lamps{};                   // Probe only
     RunSwitch run = RunSwitch::RealTime;  // RunSwitch only
     bool powered = false;                 // RunSwitch only: `‖` printed grayed while off
+    bool running = false;                 // RunSwitch only: at Max, the speed in place of "Max"
+    bool behind = false;                  // RunSwitch only: behind real time, the speed shown
+    double speed = 0;                     // RunSwitch only: simulated over wall time
     bool limit = false;                   // Power only: the bench supply in current limit
     SlotLook slot{};                      // Machine only
 };

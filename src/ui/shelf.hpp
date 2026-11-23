@@ -10,6 +10,7 @@
 #include "ui/board_view.hpp"
 #include "ui/shelf_drawings.hpp"
 #include "view/focus.hpp"
+#include "view/pace.hpp"
 
 namespace bw {
 
@@ -46,6 +47,8 @@ public:
     ImVec2 leaveAt{};  // above the Leave arrow, screen px: where its question opens upwards
     bool resetClicked = false;  // the Reset (every repair undone), as leaveClicked
     ImVec2 resetAt{};           // above it, as leaveAt
+    bool running = false;       // the runner running (not off, not paused)
+    double speedRatio = 0;      // simulated over wall time, shown on the run switch
 
 private:
     struct Devices {
@@ -55,6 +58,7 @@ private:
 
     Devices devices_{};
     bool found_ = false;  // devices_ found (a Machine's devices never change)
+    PaceWatch pace_;
     std::chrono::steady_clock::time_point reasonUntil_{};
     std::string reason_;
 };

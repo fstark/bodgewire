@@ -1251,6 +1251,8 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
                                uiMilliseconds,
                                lock,
                                StateName(status.state)};
+        shelf.running = status.state == RunState::Running;
+        shelf.speedRatio = speedRatio;
         shelf.draw(session, boardView, focus, run, seed);
         if (shelf.leaveClicked || leaveAtStart) {
             // Opening upwards from above the arrow, so it stays inside the main window and
