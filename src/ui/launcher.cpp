@@ -45,8 +45,6 @@ constexpr ImU32 kCardPaper = IM_COL32(244, 242, 235, 255);  // "Start the Machin
 constexpr ImU32 kCardRed = IM_COL32(214, 96, 96, 255);      // its rule under the title
 constexpr ImU32 kCardBlue = IM_COL32(150, 180, 214, 255);   // its lines
 constexpr ImU32 kCardShadow = IM_COL32(0, 0, 0, 110);
-constexpr float kChevron = 18;                            // px tall
-constexpr float kChevronGap = 10;                         // px outside the picture
 constexpr auto kSettle = std::chrono::milliseconds(150);  // the selection at rest: load it
 constexpr ImU32 kName = IM_COL32(235, 235, 235, 255);
 constexpr ImU32 kParagraph = IM_COL32(200, 200, 205, 255);
@@ -168,12 +166,10 @@ void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& ti
     }
 }
 
-// A chevron pointing left (`dir` -1) or right (1), its tip at `tip`.
-void Chevron(ImDrawList& list, ImVec2 tip, float dir) {
-    const float half = kChevron / 2;
-    const ImVec2 points[] = {
-        {tip.x - dir * half * 0.6f, tip.y - half}, tip, {tip.x - dir * half * 0.6f, tip.y + half}};
-    list.AddPolyline(points, 3, kFocusGold, ImDrawFlags_None, 3.0f);
+// The gold bar under the selected picture or post-it while its lane has the keys: one sign of the
+// selection in both lanes (the top lane's chevrons read poorly, 2026-11-23).
+void SelectionBar(ImDrawList& list, ImVec2 at, float width) {
+    list.AddRectFilled({at.x, at.y + 6}, {at.x + width, at.y + 10}, kFocusGold, 2.0f);
 }
 
 }  // namespace
@@ -488,15 +484,8 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
                 }
             }
         }
-        // Gold chevrons beside the selected picture while the top lane has the keys.
         if (i == lanes_.machine() && lanes_.lane() == Lane::Machines && std::abs(d) < 0.5) {
-            const float midY = at.y + picture.y / 2;
-            if (i > 0) {
-                Chevron(list, {at.x - kChevronGap - kChevron * 0.6f, midY}, -1);
-            }
-            if (i + 1 < list_.machines.size()) {
-                Chevron(list, {at.x + picture.x + kChevronGap + kChevron * 0.6f, midY}, 1);
-            }
+            SelectionBar(list, {at.x, at.y + picture.y}, picture.x);
         }
         ImGui::PopID();
     }
@@ -604,8 +593,7 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
         scroll = std::clamp(scroll, 0.0f, overflow);
         DrawPostIt(list, at, noteHeight, titles[k], briefs[k], chosenOne, k == 0, scroll, overflow);
         if (chosenOne && lanes_.lane() == Lane::PostIts) {
-            const float barY = at.y + noteHeight + 6;
-            list.AddRectFilled({at.x, barY}, {at.x + kNoteWidth, barY + 4}, kFocusGold, 2.0f);
+            SelectionBar(list, {at.x, at.y + noteHeight}, kNoteWidth);
         }
         if (clicksOn) {
             ImGui::PushID(static_cast<int>(k));
