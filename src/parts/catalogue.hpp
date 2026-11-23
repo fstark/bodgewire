@@ -55,10 +55,15 @@ struct PartInfo {
     PartKind kind;
     PartFactory create;             // nullptr for resistors (no Component)
     std::span<const Lamp> lamps{};  // empty: the Part does not light
+    // Parameters that build an example of the Part, for its pin names (PartPinNames); empty when
+    // it takes none or needs a file (a ROM's contents).
+    std::span<const PartParam> sample{};
 };
 
 const PartInfo* FindPart(std::string_view name);  // nullptr if unknown
 std::span<const PartInfo> AllParts();
+// The Part's pin names in pin order; empty for a Part without a Component (a resistor).
+std::vector<std::string> PartPinNames(const PartInfo& part);
 
 // Voltage a chip's power Pin expects: "VCC" 5, "GND" and "GND2" 0; nullopt for other names.
 std::optional<double> PowerPinVolts(std::string_view pin);

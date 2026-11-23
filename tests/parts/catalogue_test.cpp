@@ -117,3 +117,14 @@ TEST_CASE("catalogue: every lamp names Pins of its Part", "[parts]") {
         }
     }
 }
+
+TEST_CASE("catalogue: a parameter is known and given once", "[parts]") {
+    Circuit circuit;
+    const PartInfo& osc = *FindPart("OSC");
+    const std::vector<PartParam> twice{{"freq", "1MHz"}, {"freq", "2MHz"}};
+    CHECK(osc.create(circuit, "X1", twice).error() == "OSC: freq= given twice");
+    const std::vector<PartParam> unknown{{"speed", "1MHz"}};
+    CHECK(osc.create(circuit, "X2", unknown).error() == "OSC: unknown parameter 'speed'");
+    CHECK(osc.create(circuit, "X3", osc.sample).has_value());
+    CHECK(PartPinNames(osc).size() == 14);
+}

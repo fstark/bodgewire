@@ -301,42 +301,6 @@ std::vector<Diagnostic> CheckDatasheet(const Markdown& doc, std::string_view fil
     return problems.take();
 }
 
-std::vector<std::string> PartPinNames(const PartInfo& part) {
-    if (!part.create) {
-        return {};
-    }
-    if (const RomSpec* rom = FindRomSpec(part.name)) {  // a ROM needs a contents file to build
-        return {rom->names.begin(), rom->names.end()};
-    }
-    if (part.name == "6530") {  // so does a 6530
-        std::vector<std::string> names;
-        for (const PinSpec& pin : Mos6530::Pins()) {
-            names.push_back(pin.name);
-        }
-        return names;
-    }
-    Circuit circuit;
-    std::vector<PartParam> params;
-    if (part.name == "OSC") {
-        params.push_back({"freq", "1MHz"});
-    }
-    if (part.name == "POR") {
-        params.push_back({"time", "1ms"});
-    }
-    if (part.name == "PADDLE") {
-        params.push_back({"min", "30us"});
-        params.push_back({"max", "9.93ms"});
-    }
-    const auto component = part.create(circuit, "X", params);
-    std::vector<std::string> names;
-    if (component) {
-        for (const PinSpec& spec : (*component)->pins()) {
-            names.push_back(spec.name);
-        }
-    }
-    return names;
-}
-
 std::vector<IndexEntry> DatasheetIndex(const LoadedCircuit& design) {
     std::vector<IndexEntry> index;
     for (const LoadedPart& part : design.parts) {

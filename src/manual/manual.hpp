@@ -43,8 +43,6 @@ std::vector<Diagnostic> CheckServiceManual(const Markdown& doc, std::string_view
 std::vector<Diagnostic> CheckDatasheet(const Markdown& doc, std::string_view file,
                                        const PartInfo& part);
 
-std::vector<std::string> PartPinNames(const PartInfo& part);  // empty without `create` (R)
-
 // The Parts on a Machine, in netlist order of first use, each with its references in netlist
 // order (P6e: the binder's datasheet index).
 struct IndexEntry {

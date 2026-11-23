@@ -12,10 +12,6 @@ namespace bw {
 
 inline constexpr Time kPaddleDelay = 100'000;  // ps: TRIG_N fall to OUT, a 555's typical
 
-// "30us" → ps, rounded to nearest; error text if malformed or < 1 ps. Netlist ParseDuration
-// wraps it (as ParsePeriodFromFrequency wraps PeriodFromFrequency).
-std::expected<Time, std::string> DurationFromText(std::string_view text);
-
 // Paddle controller behind a KK-4 Connector: a pot and a 555 one-shot, logic only. Pins
 // 1 TRIG_N, 2 OUT, 3 VCC, 4 GND (pin index = KiCad pad − 1). OUT is low while idle; a fall on
 // TRIG_N starts a high pulse of shortest + knob × (longest − shortest), or longest − knob ×

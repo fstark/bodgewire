@@ -9,9 +9,6 @@
 
 namespace bw {
 
-// "14.31818MHz" → period in ps, rounded to nearest; error text if malformed or ≤ 0.
-std::expected<Time, std::string> PeriodFromFrequency(std::string_view text);
-
 // Crystal oscillator can, DIP-14 footprint: 7 GND, 8 OUT, 14 VCC, other positions NC<n>.
 class Oscillator final : public Component {
 public:

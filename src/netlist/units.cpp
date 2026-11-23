@@ -4,18 +4,7 @@
 #include <cmath>
 #include <string>
 
-#include "parts/oscillator.hpp"
-#include "parts/paddle.hpp"
-
 namespace bw {
-
-std::expected<Time, std::string> ParsePeriodFromFrequency(std::string_view text) {
-    return PeriodFromFrequency(text);
-}
-
-std::expected<Time, std::string> ParseDuration(std::string_view text) {
-    return DurationFromText(text);
-}
 
 std::expected<std::uint32_t, std::string> ParseOhms(std::string_view text) {
     const auto bad = [&] {

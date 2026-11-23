@@ -40,19 +40,19 @@ std::string CreateError(std::vector<PartParam> params) {
 
 }  // namespace
 
-TEST_CASE("oscillator: PeriodFromFrequency", "[parts]") {
-    CHECK(PeriodFromFrequency("1MHz") == 1'000'000);
-    CHECK(PeriodFromFrequency("14.31818MHz") == 69'841);
-    CHECK(PeriodFromFrequency("50Hz") == 20'000'000'000);
-    CHECK(PeriodFromFrequency("2.5kHz") == 400'000'000);
+TEST_CASE("oscillator: ParseFrequencyPeriod", "[parts]") {
+    CHECK(ParseFrequencyPeriod("1MHz") == 1'000'000);
+    CHECK(ParseFrequencyPeriod("14.31818MHz") == 69'841);
+    CHECK(ParseFrequencyPeriod("50Hz") == 20'000'000'000);
+    CHECK(ParseFrequencyPeriod("2.5kHz") == 400'000'000);
     for (const char* bad : {"", "MHz", "10", "10GHz", "0Hz", "1.MHz", ".5MHz"}) {
         INFO(bad);
-        CHECK_FALSE(PeriodFromFrequency(bad).has_value());
+        CHECK_FALSE(ParseFrequencyPeriod(bad).has_value());
     }
-    CHECK(PeriodFromFrequency("10GHz").error() ==
+    CHECK(ParseFrequencyPeriod("10GHz").error() ==
           "bad frequency '10GHz': expected a number then Hz, kHz or MHz, e.g. 14.31818MHz");
-    CHECK(PeriodFromFrequency("0Hz").error() == "frequency must be > 0");
-    CHECK(PeriodFromFrequency("900000MHz").error() == "frequency too high");
+    CHECK(ParseFrequencyPeriod("0Hz").error() == "frequency must be > 0");
+    CHECK(ParseFrequencyPeriod("900000MHz").error() == "frequency too high");
 }
 
 TEST_CASE("oscillator: period and duty", "[parts]") {

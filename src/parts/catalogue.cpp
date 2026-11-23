@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <format>
+#include <map>
 #include <optional>
 #include <string>
 #include <utility>
@@ -68,6 +69,30 @@ struct PartName {
     char chars[N];
 };
 
+using Params = std::map<std::string, std::string, std::less<>>;
+
+// `params` by name, each one of `known` and given at most once: "OSC: unknown parameter 'x'",
+// "OSC: freq= given twice".
+std::expected<Params, std::string> TakeParams(std::string_view part,
+                                              std::span<const PartParam> params,
+                                              std::span<const std::string_view> known) {
+    Params taken;
+    for (const PartParam& param : params) {
+        if (std::ranges::find(known, param.name) == known.end()) {
+            return std::unexpected(std::string(part) + ": unknown parameter '" + param.name + "'");
+        }
+        if (!taken.emplace(param.name, param.value).second) {
+            return std::unexpected(std::string(part) + ": " + param.name + "= given twice");
+        }
+    }
+    return taken;
+}
+
+const std::string* Param(const Params& params, std::string_view name) {
+    const auto it = params.find(name);
+    return it == params.end() ? nullptr : &it->second;
+}
+
 // 74LS145: the 74145 with its own delays.
 std::expected<Component*, std::string> CreateLs145(Circuit& circuit, std::string reference,
                                                    std::span<const PartParam> params) {
@@ -109,20 +134,14 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
                                                  std::span<const PartParam> params) {
     const std::string name(Name.view());
     const RomSpec& spec = RomSpecOf(name);
-    const PartParam* contents = nullptr;
-    const PartParam* select = nullptr;
-    const PartParam* offset = nullptr;
-    for (const PartParam& param : params) {
-        if (param.name == "contents") {
-            contents = &param;
-        } else if (param.name == "offset") {
-            offset = &param;
-        } else if (param.name == "select" && spec.selectable) {
-            select = &param;
-        } else {
-            return std::unexpected(name + ": unknown parameter '" + param.name + "'");
-        }
+    constexpr std::array<std::string_view, 3> kKnown{"contents", "offset", "select"};
+    const auto taken = TakeParams(name, params, std::span(kKnown).first(spec.selectable ? 3 : 2));
+    if (!taken) {
+        return std::unexpected(taken.error());
     }
+    const std::string* contents = Param(*taken, "contents");
+    const std::string* select = Param(*taken, "select");
+    const std::string* offset = Param(*taken, "offset");
     // select= (2316B, 2332): one letter a chip select, CS1 first; H active high, L active low.
     unsigned activeHigh = 0;
     if (spec.selectable) {
@@ -136,7 +155,7 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
                                    ": L or H each>, e.g. select=" + std::string(count - 1, 'L') +
                                    "H");
         }
-        const std::string& letters = select->value;
+        const std::string& letters = *select;
         bool good = letters.size() == spec.enables.size();
         for (std::size_t i = 0; good && i < letters.size(); ++i) {
             good = letters[i] == 'L' || letters[i] == 'H';
@@ -155,7 +174,7 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
     // offset= (P5p): this chip's slice of a larger .rom text, which is read at the full 64K.
     std::size_t from = 0;
     if (offset != nullptr) {
-        const std::string& text = offset->value;
+        const std::string& text = *offset;
         const bool hex = text.starts_with('$');
         const std::string digits = hex ? text.substr(1) : text;
         const bool good = !digits.empty() && digits.size() <= 5 &&
@@ -171,14 +190,14 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
             return std::unexpected(name + ": offset must be a multiple of " + std::to_string(size) +
                                    " below 65536");
         }
-        std::string extension = std::filesystem::path(contents->value).extension().string();
+        std::string extension = std::filesystem::path(*contents).extension().string();
         std::transform(extension.begin(), extension.end(), extension.begin(),
                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (extension == ".bin") {
             return std::unexpected(name + ": offset= is for .rom text files");
         }
     }
-    auto words = ReadRomContents(contents->value, offset != nullptr ? 65536 : size,
+    auto words = ReadRomContents(*contents, offset != nullptr ? 65536 : size,
                                  static_cast<int>(spec.data.size()));
     if (!words) {
         return std::unexpected(name + ": " + words.error());
@@ -192,28 +211,24 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
 
 std::expected<Component*, std::string> CreateMos6530(Circuit& circuit, std::string reference,
                                                      std::span<const PartParam> params) {
-    const PartParam* mask = nullptr;
-    const PartParam* contents = nullptr;
-    for (const PartParam& param : params) {
-        if (param.name == "mask") {
-            mask = &param;
-        } else if (param.name == "contents") {
-            contents = &param;
-        } else {
-            return std::unexpected("6530: unknown parameter '" + param.name + "'");
-        }
+    constexpr std::array<std::string_view, 2> kKnown{"mask", "contents"};
+    const auto taken = TakeParams("6530", params, kKnown);
+    if (!taken) {
+        return std::unexpected(taken.error());
     }
+    const std::string* mask = Param(*taken, "mask");
+    const std::string* contents = Param(*taken, "contents");
     if (mask == nullptr) {
         return std::unexpected("6530 needs mask=002|003");
     }
-    const Mos6530Mask* found = FindMos6530Mask(mask->value);
+    const Mos6530Mask* found = FindMos6530Mask(*mask);
     if (found == nullptr) {
-        return std::unexpected("6530: unknown mask '" + mask->value + "' (002|003)");
+        return std::unexpected("6530: unknown mask '" + *mask + "' (002|003)");
     }
     if (contents == nullptr) {
         return std::unexpected("6530 needs contents=<file>");
     }
-    auto words = ReadRomContents(contents->value, 1024, 8);
+    auto words = ReadRomContents(*contents, 1024, 8);
     if (!words) {
         return std::unexpected("6530: " + words.error());
     }
@@ -222,17 +237,16 @@ std::expected<Component*, std::string> CreateMos6530(Circuit& circuit, std::stri
 
 std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::string reference,
                                                         std::span<const PartParam> params) {
-    const PartParam* freq = nullptr;
-    for (const PartParam& param : params) {
-        if (param.name != "freq") {
-            return std::unexpected("OSC: unknown parameter '" + param.name + "'");
-        }
-        freq = &param;
+    constexpr std::array<std::string_view, 1> kKnown{"freq"};
+    const auto taken = TakeParams("OSC", params, kKnown);
+    if (!taken) {
+        return std::unexpected(taken.error());
     }
+    const std::string* freq = Param(*taken, "freq");
     if (freq == nullptr) {
         return std::unexpected("OSC needs freq=<frequency>");
     }
-    const auto period = PeriodFromFrequency(freq->value);
+    const auto period = ParseFrequencyPeriod(*freq);
     if (!period) {
         return std::unexpected(period.error());
     }
@@ -241,31 +255,26 @@ std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::s
 
 std::expected<Component*, std::string> CreatePaddle(Circuit& circuit, std::string reference,
                                                     std::span<const PartParam> params) {
-    const PartParam* shortest = nullptr;
-    const PartParam* longest = nullptr;
-    bool reversed = false;
-    for (const PartParam& param : params) {
-        if (param.name == "min") {
-            shortest = &param;
-        } else if (param.name == "max") {
-            longest = &param;
-        } else if (param.name == "reversed") {
-            if (param.value != "yes" && param.value != "no") {
-                return std::unexpected("PADDLE: reversed must be yes or no");
-            }
-            reversed = param.value == "yes";
-        } else {
-            return std::unexpected("PADDLE: unknown parameter '" + param.name + "'");
-        }
+    constexpr std::array<std::string_view, 3> kKnown{"min", "max", "reversed"};
+    const auto taken = TakeParams("PADDLE", params, kKnown);
+    if (!taken) {
+        return std::unexpected(taken.error());
     }
+    const std::string* shortest = Param(*taken, "min");
+    const std::string* longest = Param(*taken, "max");
+    const std::string* reversedText = Param(*taken, "reversed");
+    if (reversedText && *reversedText != "yes" && *reversedText != "no") {
+        return std::unexpected("PADDLE: reversed must be yes or no");
+    }
+    const bool reversed = reversedText && *reversedText == "yes";
     if (shortest == nullptr || longest == nullptr) {
         return std::unexpected("PADDLE needs min=<duration> and max=<duration>");
     }
-    const auto low = DurationFromText(shortest->value);
+    const auto low = ParseDuration(*shortest);
     if (!low) {
         return std::unexpected(low.error());
     }
-    const auto high = DurationFromText(longest->value);
+    const auto high = ParseDuration(*longest);
     if (!high) {
         return std::unexpected(high.error());
     }
@@ -280,17 +289,16 @@ std::expected<Component*, std::string> CreatePaddle(Circuit& circuit, std::strin
 
 std::expected<Component*, std::string> CreatePowerOnReset(Circuit& circuit, std::string reference,
                                                           std::span<const PartParam> params) {
-    const PartParam* time = nullptr;
-    for (const PartParam& param : params) {
-        if (param.name != "time") {
-            return std::unexpected("POR: unknown parameter '" + param.name + "'");
-        }
-        time = &param;
+    constexpr std::array<std::string_view, 1> kKnown{"time"};
+    const auto taken = TakeParams("POR", params, kKnown);
+    if (!taken) {
+        return std::unexpected(taken.error());
     }
+    const std::string* time = Param(*taken, "time");
     if (time == nullptr) {
         return std::unexpected("POR needs time=<duration>");
     }
-    const auto hold = DurationFromText(time->value);
+    const auto hold = ParseDuration(*time);
     if (!hold) {
         return std::unexpected(hold.error());
     }
@@ -303,12 +311,14 @@ std::expected<Component*, std::string> CreatePowerOnReset(Circuit& circuit, std:
 // access=450ns (the 2114, default), 300ns (2114-3) or 200ns (2114-2): the speed grade.
 std::expected<Component*, std::string> CreateRam2114(Circuit& circuit, std::string reference,
                                                      std::span<const PartParam> params) {
+    constexpr std::array<std::string_view, 1> kKnown{"access"};
+    const auto taken = TakeParams("2114", params, kKnown);
+    if (!taken) {
+        return std::unexpected(taken.error());
+    }
     Time access = delays::k2114Address;
-    for (const PartParam& param : params) {
-        if (param.name != "access") {
-            return std::unexpected("2114: unknown parameter '" + param.name + "'");
-        }
-        const auto time = DurationFromText(param.value);
+    if (const std::string* text = Param(*taken, "access")) {
+        const auto time = ParseDuration(*text);
         if (!time || (*time != 450'000 && *time != 300'000 && *time != 200'000)) {
             return std::unexpected(
                 "2114: access= is 450ns, 300ns or 200ns (the 2114, 2114-3, 2114-2)");
@@ -336,12 +346,14 @@ CreateMembraneKeyboard(Circuit& circuit, std::string reference, std::span<const 
 
 std::expected<Component*, std::string> CreateKeyboard(Circuit& circuit, std::string reference,
                                                       std::span<const PartParam> params) {
+    constexpr std::array<std::string_view, 1> kKnown{"strobe"};
+    const auto taken = TakeParams("KEYBOARD", params, kKnown);
+    if (!taken) {
+        return std::unexpected(taken.error());
+    }
     Time strobe = kKeyboardStrobe;
-    for (const PartParam& param : params) {
-        if (param.name != "strobe") {
-            return std::unexpected("KEYBOARD: unknown parameter '" + param.name + "'");
-        }
-        const auto length = DurationFromText(param.value);
+    if (const std::string* text = Param(*taken, "strobe")) {
+        const auto length = ParseDuration(*text);
         if (!length) {
             return std::unexpected(length.error());
         }
@@ -442,6 +454,11 @@ constexpr std::array<Lamp, 8> kDigitCcLamps{{
 using enum PartKind;
 
 // Sorted by name.
+// Examples for PartPinNames.
+const std::array<PartParam, 1> kOscSample{{{"freq", "1MHz"}}};
+const std::array<PartParam, 1> kPorSample{{{"time", "1ms"}}};
+const std::array<PartParam, 2> kPaddleSample{{{"min", "30us"}, {"max", "9.93ms"}}};
+
 constexpr std::array s_parts{
     PartInfo{"2114", "1K x 4 static RAM", "DIP-18", Chip, &CreateRam2114},
     PartInfo{"2316B", "2K x 8 mask ROM, mask-set chip selects", "DIP-24", Chip,
@@ -533,9 +550,15 @@ constexpr std::array s_parts{
              &CreateMembraneKeyboard},
     PartInfo{"MONITOR", "monitor connector, separate drives", "HDR-1x07", Connector,
              &CreateConnector<"MONITOR">},
-    PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator},
-    PartInfo{"PADDLE", "paddle controller connector", "KK-4", Connector, &CreatePaddle},
-    PartInfo{"POR", "power-on reset", "DIP-8", Chip, &CreatePowerOnReset},
+    PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator, {}, kOscSample},
+    PartInfo{"PADDLE",
+             "paddle controller connector",
+             "KK-4",
+             Connector,
+             &CreatePaddle,
+             {},
+             kPaddleSample},
+    PartInfo{"POR", "power-on reset", "DIP-8", Chip, &CreatePowerOnReset, {}, kPorSample},
     PartInfo{"POWER", "5 V power connector", "KK-2", Connector, &CreateConnector<"POWER">},
     PartInfo{"R", "resistor", "axial", Resistor, nullptr},
     PartInfo{"SLIDE", "slide switch", "SLIDE-1", Switch, &CreateSwitch<"SLIDE">},
@@ -559,6 +582,29 @@ const PartInfo* FindPart(std::string_view name) {
 }
 
 std::span<const PartInfo> AllParts() { return s_parts; }
+
+std::vector<std::string> PartPinNames(const PartInfo& part) {
+    if (!part.create) {
+        return {};
+    }
+    if (const RomSpec* rom = FindRomSpec(part.name)) {  // a ROM needs a contents file to build
+        return {rom->names.begin(), rom->names.end()};
+    }
+    std::vector<std::string> names;
+    if (part.name == "6530") {  // so does a 6530
+        for (const PinSpec& pin : Mos6530::Pins()) {
+            names.push_back(pin.name);
+        }
+        return names;
+    }
+    Circuit circuit;
+    if (const auto component = part.create(circuit, "X", part.sample)) {
+        for (const PinSpec& spec : (*component)->pins()) {
+            names.push_back(spec.name);
+        }
+    }
+    return names;
+}
 
 std::optional<double> PowerPinVolts(std::string_view pin) {
     constexpr std::array<std::pair<std::string_view, double>, 3> kVolts{

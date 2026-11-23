@@ -1,7 +1,6 @@
 #include "parts/paddle.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstddef>
 #include <utility>
@@ -9,7 +8,6 @@
 #include "parts/connector.hpp"
 #include "sim/check.hpp"
 #include "sim/simulator.hpp"
-#include "text/text.hpp"
 
 namespace bw {
 
@@ -17,45 +15,7 @@ namespace {
 
 using enum LogicValue;
 
-constexpr double kMaxDuration = 1e18;  // ps; keeps llround in range
-
-struct DurationUnit {
-    std::string_view name;
-    double picos;
-};
-
-constexpr std::array<DurationUnit, 5> kDurationUnits{
-    {{"ps", 1}, {"ns", 1e3}, {"us", 1e6}, {"ms", 1e9}, {"s", 1e12}}};
-
 }  // namespace
-
-std::expected<Time, std::string> DurationFromText(std::string_view text) {
-    const auto bad = [&] {
-        return std::unexpected("bad duration '" + std::string(text) +
-                               "': expected a number then ps, ns, us, ms or s, e.g. 10ms");
-    };
-    const auto number = ParseDecimal(text);
-    if (!number) {
-        return bad();
-    }
-    const double value = number->value;
-    const std::string_view unit = text.substr(number->length);
-    for (const DurationUnit& candidate : kDurationUnits) {
-        if (candidate.name != unit) {
-            continue;
-        }
-        const double picos = value * candidate.picos;
-        if (picos > kMaxDuration) {
-            return std::unexpected("duration too long");
-        }
-        const Time rounded = std::llround(picos);
-        if (rounded < 1) {
-            return std::unexpected("duration must be >= 1 ps");
-        }
-        return rounded;
-    }
-    return bad();
-}
 
 Paddle::Paddle(std::string reference, Time shortest, Time longest, bool reversed)
     : Component(std::move(reference), ConnectorPins("PADDLE")), shortest_(shortest),

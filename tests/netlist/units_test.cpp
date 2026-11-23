@@ -24,8 +24,8 @@ TEST_CASE("units: duration errors", "[netlist]") {
 }
 
 TEST_CASE("units: frequency delegates", "[netlist]") {
-    CHECK(ParsePeriodFromFrequency("1MHz") == 1_us);
-    CHECK_FALSE(ParsePeriodFromFrequency("1GHz").has_value());
+    CHECK(ParseFrequencyPeriod("1MHz") == 1_us);
+    CHECK_FALSE(ParseFrequencyPeriod("1GHz").has_value());
 }
 
 TEST_CASE("units: ohms", "[netlist]") {

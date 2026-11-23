@@ -9,13 +9,13 @@ Reference commits (paddle controller): `8bfbcc6` Part, connector pins, footprint
 | Layer | File | What |
 |---|---|---|
 | Part | `src/parts/<device>.{hpp,cpp}` | a `Component` with the connector's pins in pad order (pin index = pad − 1); signal pins TTL `Input`/`Output`, power pins `Power`. The device's behaviour in `evaluate` (`fell`, `wakeAfter`, `drive` with a delay of at least 1 ps). The player's setting is a `std::atomic` written by the UI thread (`Paddle::setKnob`, clamped); a setting read only at the next event needs no wake, unlike a button press. A setting that is an event (a key) goes into a lock-free single-producer queue in the Part (`Keyboard::type`) followed by a wake; a device with no inputs is evaluated only on wakes, so it tells its own wakes from the Session's by time (`nextAt_`). Dropping queued events from the producer side needs a marker the consumer honours (`dropWaiting`), never a reset of the consumer's index |
-| Parameters | `src/parts/catalogue.cpp` | `CreateXxx(reference, parameters)` refuses unknown or missing names with a message; an optional one has a default (`reversed=yes\|no`, default `no`); durations by `DurationFromText` (`src/parts/paddle.hpp`: `bw_parts` cannot reach `bw_netlist`'s `ParseDuration`) |
+| Parameters | `src/parts/catalogue.cpp` | `CreateXxx(reference, parameters)` refuses unknown or missing names with a message; an optional one has a default (`reversed=yes\|no`, default `no`); durations by `ParseDuration` (`src/sim/time.hpp`) |
 | Catalogue | `src/parts/catalogue.cpp` | `PartInfo` row sorted by name, `PartKind::Connector`, package e.g. `KK-4` |
 | Pins | `src/parts/connector.{hpp,cpp}` | `ConnectorPins("<NAME>")`: names and kinds for the electrical netlist |
 | Power | `connector.cpp` `ConnectorPowersDevice`, `src/machine/electrical.cpp` `FindPower` | a device fed by the Board is Powered like a chip: unpowered, its pins go on private Nets (`BoardPower::unpowered`). `POWER` and `VIDEO` stay unpowered Connectors |
 | Footprint | `src/board/kicad_netlist.cpp` | package → KiCad footprint in `kFootprints` |
 | Finder | `src/netlist/builder.{hpp,cpp}` | `XxxOf(loaded, ref)` (`PaddleOf`), for the Session, CLI and tests |
-| Manual check | `src/manual/manual.cpp` `PartPinNames` | builds each Part without parameters: give a Part that needs them its own |
+| Manual check | `PartPinNames` (`src/parts/catalogue.cpp`) | builds each Part with its row's `sample` parameters: give a Part that needs some a `sample` |
 | Setting | `src/machine/<x>_setting.{hpp,cpp}` | the CLI text form (`ParseKnob("J2:40%")`) |
 | Session | `src/session/input_devices.{hpp,cpp}` (`session.inputs()`) | list (`knobs()`), set, get; kept in a map by reference and reapplied in `bind()` at every build (power-on after a Repair); what is held released in `poweredOff()` |
 | CLI | `src/cli/main.cpp`, `src/ui/main.cpp` | `--knob REF:N%`, applied before power-on; a reference that is not the device is a usage error |
