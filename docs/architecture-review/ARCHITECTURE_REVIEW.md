@@ -139,7 +139,7 @@ Done 2026-11-23: `ui/gestures`: `TimeCanvas::read` (hover, zoom notches, wheel p
 
 ### D. Foundations (kernel, threads, frame loop)
 
-**D19. Delays per Component.** ARCHITECTURE promises delays "overridable per instance (slow or wrong part, timing fault)"; 32 Parts use global `delays::k…`, and `gate_package.cpp`/`rom.cpp` bake them into template parameters. Fix: a delay scale per Component applied in `EvalContext` (`driveChanged`, `wakeAfter`), set by the builder from a Fault. About 40 lines; traces unchanged at scale 1. Parts timing from `lastChange` (ram2114, rom) only scale approximately.
+**D19. Delays per Component.** ARCHITECTURE promises delays "overridable per instance (slow or wrong part, timing fault)"; 32 Parts use global `delays::k…`, and `gate_package.cpp`/`rom.cpp` bake them into template parameters. Fix: a delay scale per Component applied in `EvalContext` (`driveChanged`, `wakeAfter`), set by the builder from a Fault. About 40 lines; traces unchanged at scale 1. Parts timing from `lastChange` (ram2114, rom) only scale approximately. **Tried 2026-11-23 and not kept:** a percent per Component applied in `EvalContext::driveChanged` costs 10–20 instructions per event whatever its form (read per drive, per evaluation, out of line, behind a Simulator-wide flag): the BW-2001 at 503 → 513–523 instructions per event, every Machine 2–5 % slower (noise 1–2 %), for a hook nothing uses yet. For the Timing row instead: a slow Component as a delay element the builder puts on its outputs (no kernel cost), or per-instance `Delays` in the Parts as each is converted.
 
 **D20. One random stream per Component.** One `Rng` per Simulator (`simulator.cpp`), 85 draw sites in Parts: any new draw shifts all later ones, so a flaky Fault stops reproducing after an unrelated change, and two threads would not replay. Fix: seed each Component's stream from (seed, ComponentId). About 30 lines; every seeded outcome changes once (tests pinning values updated).
 
@@ -173,7 +173,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | C16 catalogue metadata | done 2026-11-23 |
 | C17 one sample feed | done 2026-11-23 (narrowed: one merge, one TV input map) |
 | C18 pin references | done 2026-11-23 (narrowed: one resolver, no PinAt type) |
-| D19 delays per Component | todo |
+| D19 delays per Component | tried, not kept (2–5 % slower for an unused hook; see D19) |
 | D20 random stream per Component | todo |
 | D21 inputs through the Runner | todo |
 | D22 network Pins | todo |
