@@ -13,15 +13,13 @@ namespace {
 
 // "F.Cu", "x", "y" in millimetres.
 std::optional<std::pair<Layer, Point>> ParseLayerPoint(const std::vector<std::string_view>& f) {
-    if (f.size() != 3 || (f[0] != "F.Cu" && f[0] != "B.Cu")) {
-        return std::nullopt;
-    }
-    const auto x = ParseMillimetres(f[1]);
-    const auto y = ParseMillimetres(f[2]);
+    const auto layer = f.size() == 3 ? ParseLayer(f[0]) : std::nullopt;
+    const auto x = layer ? ParseMillimetres(f[1]) : std::nullopt;
+    const auto y = layer ? ParseMillimetres(f[2]) : std::nullopt;
     if (!x || !y) {
         return std::nullopt;
     }
-    return std::pair{f[0] == "F.Cu" ? Layer::Front : Layer::Back, Point{*x, *y}};
+    return std::pair{*layer, Point{*x, *y}};
 }
 
 std::string FormatPin(const PinRef& pin) { return pin.reference + "." + pin.pin; }

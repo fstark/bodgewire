@@ -25,7 +25,7 @@ namespace bw {
 
 namespace {
 
-struct PlacedPart {
+struct BuiltPart {
     const PartDecl* decl;
     const PartInfo* info;  // nullptr: unknown part
     Component* component;  // nullptr: resistor, or creation failed
@@ -41,16 +41,16 @@ bool AllDigits(std::string_view text) {
            std::all_of(text.begin(), text.end(), [](char c) { return c >= '0' && c <= '9'; });
 }
 
-bool IsResistor(const PlacedPart& part) {
+bool IsResistor(const BuiltPart& part) {
     return part.info != nullptr && part.info->kind == PartKind::Resistor;
 }
 
-bool IsCapacitor(const PlacedPart& part) {
+bool IsCapacitor(const BuiltPart& part) {
     return part.info != nullptr && part.info->kind == PartKind::Capacitor;
 }
 
 // A passive Part (resistor, capacitor): pins 1 and 2, only value=, no Component of its own.
-bool IsPassive(const PlacedPart& part) { return IsResistor(part) || IsCapacitor(part); }
+bool IsPassive(const BuiltPart& part) { return IsResistor(part) || IsCapacitor(part); }
 
 void SortByLine(std::vector<Diagnostic>& diagnostics) {
     std::stable_sort(diagnostics.begin(), diagnostics.end(),
@@ -89,7 +89,7 @@ public:
         }
         stickCells();
         for (const auto& [pin, net] : pinNet_) {
-            const PlacedPart& part = placed_.find(pin.first)->second;
+            const BuiltPart& part = placed_.find(pin.first)->second;
             if (isUnpowered(pin.first)) {
                 // no Driver, no Load: the chip's Pins get private Nets at finalize()
             } else if (const StuckPin* s = stuckAt(pin.first, pin.second)) {
@@ -122,7 +122,7 @@ public:
             circuit.connect(component, s.pin, own);
         }
         for (const PartDecl& decl : netlist_.parts) {
-            const PlacedPart& part = placed_.find(decl.reference)->second;
+            const BuiltPart& part = placed_.find(decl.reference)->second;
             std::string value = decl.part;
             if (IsPassive(part)) {
                 for (const PartParam& param : decl.params) {
@@ -203,7 +203,7 @@ private:
                                      std::to_string(it->second.decl->line));
                 continue;
             }
-            PlacedPart& part = placed_[decl.reference];
+            BuiltPart& part = placed_[decl.reference];
             part = {&decl, FindPart(decl.part), nullptr};
             if (part.info == nullptr) {
                 error(decl.line, "unknown part '" + decl.part + "'");
@@ -230,7 +230,7 @@ private:
         }
     }
 
-    std::optional<PinIndex> resolvePin(const PlacedPart& part, const PinRef& ref,
+    std::optional<PinIndex> resolvePin(const BuiltPart& part, const PinRef& ref,
                                        std::uint32_t line) {
         if (IsPassive(part)) {
             if (ref.pin == "1" || ref.pin == "2") {
@@ -267,7 +267,7 @@ private:
                     error(decl.line, "unknown reference '" + ref.reference + "'");
                     continue;
                 }
-                const PlacedPart& part = it->second;
+                const BuiltPart& part = it->second;
                 const bool resistor = IsPassive(part);
                 if (!resistor && part.component == nullptr) {
                     continue;  // already reported at its part line
@@ -333,7 +333,7 @@ private:
         std::vector<Series> series;
         std::set<NetId> joined;
         for (const PartDecl& decl : netlist_.parts) {
-            const PlacedPart& part = placed_.find(decl.reference)->second;
+            const BuiltPart& part = placed_.find(decl.reference)->second;
             if (!IsResistor(part)) {
                 continue;
             }
@@ -413,7 +413,7 @@ private:
     // rails, no pull, pulls on both sides): no error, as a repair can put it anywhere.
     void wireCapacitors() {
         for (const PartDecl& decl : netlist_.parts) {
-            const PlacedPart& part = placed_.find(decl.reference)->second;
+            const BuiltPart& part = placed_.find(decl.reference)->second;
             if (!IsCapacitor(part)) {
                 continue;
             }
@@ -472,7 +472,7 @@ private:
         std::vector<Legs> switches;
         std::map<std::string, std::string, std::less<>> pcTaken;  // PC key → reference
         for (const PartDecl& decl : netlist_.parts) {
-            const PlacedPart& part = placed_.find(decl.reference)->second;
+            const BuiltPart& part = placed_.find(decl.reference)->second;
             if (part.info == nullptr || part.info->kind != PartKind::Switch ||
                 part.component == nullptr) {
                 continue;
@@ -501,7 +501,7 @@ private:
         // A key matrix of bare contacts (the BW-2001's, P5q): each key a contact between its
         // row and column Pins' Nets.
         for (const PartDecl& decl : netlist_.parts) {
-            const PlacedPart& part = placed_.find(decl.reference)->second;
+            const BuiltPart& part = placed_.find(decl.reference)->second;
             auto* keyboard = dynamic_cast<MatrixKeyboard*>(part.component);
             if (keyboard == nullptr) {
                 continue;
@@ -571,7 +571,7 @@ private:
     std::span<const StuckCell> cells_;
     std::span<const StuckSwitch> switches_;
     std::unique_ptr<LoadedCircuit> loaded_;
-    std::map<std::string, PlacedPart, std::less<>> placed_;  // by reference
+    std::map<std::string, BuiltPart, std::less<>> placed_;  // by reference
     std::map<std::pair<std::string, PinIndex>, NetOfPin> pinNet_;
     std::set<std::pair<std::string, PinIndex>> notConnected_;
     std::map<NetId, std::uint32_t> pullOhms_;  // signal Net → its smallest pull (wireResistors)

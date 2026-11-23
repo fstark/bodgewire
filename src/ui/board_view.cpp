@@ -701,7 +701,7 @@ void BoardView::draw(ImVec2 size) {
     // The part under the cursor, while no single Net is: its Nets glow but the power rails, the
     // pins at both ends of them marked, and its own pins on a rail marked when connected (a
     // chip's VCC and GND, a tied input, a pull-up's VCC end) (P6 prototype).
-    const std::optional<std::size_t> wired = !lit ? chip() : std::nullopt;
+    const std::optional<std::size_t> wired = !lit ? pointedComponent() : std::nullopt;
     std::vector<NetId> glowing;
     std::vector<bool> used;    // [pad] of `wired`: on a Net that reaches another pad (rails)
     std::vector<NetId> rails;  // Nets a power pin is on: VCC and GND, never glowing
@@ -770,7 +770,7 @@ void BoardView::draw(ImVec2 size) {
         for (const SwitchTag& button : switches_) {
             own[button.component] = true;
         }
-        DrawUseParts(list, look, *scene_, own, chip(), 1.0f);
+        DrawUseParts(list, look, *scene_, own, pointedComponent(), 1.0f);
         // The lit wiring above the parts: a see-through body must not darken it.
         if (!glowing.empty()) {
             DrawUseBase(list, look, *scene_, active_, glowing, cracks_, true);
@@ -1013,7 +1013,7 @@ void BoardView::draw(ImVec2 size) {
     } else {
         flash_.reset();
     }
-    if (const auto component = chip()) {
+    if (const auto component = pointedComponent()) {
         DrawPinNames(list, map, *scene_, *component);
     }
     const float wireWidth = std::max(2.0f, map.pixels(kWireWidth));

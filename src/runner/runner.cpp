@@ -80,9 +80,9 @@ void Runner::waitIdle() {
             const std::scoped_lock lock(mutex_);
             queued = commandsQueued_;
         }
-        const std::uint64_t done = markersDone_.load();
+        const std::uint64_t done = noticesDone_.load();
         if (commandsApplied_.load() == queued && state_.load() != RunState::Running &&
-            done == markersPushed_.load()) {
+            done == noticesPushed_.load()) {
             return;
         }
         std::this_thread::sleep_for(100us);
@@ -139,12 +139,12 @@ void Runner::rebase() {
 void Runner::apply(const Command& command, std::stop_token stop) {
     switch (command.kind) {
     case CommandKind::PowerOn: {
-        for (std::uint64_t done = markersDone_.load(); done != markersPushed_.load();
-             done = markersDone_.load()) {
+        for (std::uint64_t done = noticesDone_.load(); done != noticesPushed_.load();
+             done = noticesDone_.load()) {
             if (stop.stop_requested()) {
                 return;
             }
-            markersDone_.wait(done);
+            noticesDone_.wait(done);
         }
         const auto seed = static_cast<std::uint64_t>(command.value);
         sim_.powerOn(seed);
@@ -154,7 +154,7 @@ void Runner::apply(const Command& command, std::stop_token stop) {
                 watched->pushedUntil = -1;
             }
         }
-        pushMarker({MarkerKind::PowerOn}, stop);
+        pushNotice({NoticeKind::PowerOn}, stop);
         seed_.store(seed);
         simTime_.store(0);
         state_.store(RunState::Running);
@@ -163,7 +163,7 @@ void Runner::apply(const Command& command, std::stop_token stop) {
     }
     case CommandKind::PowerOff:
         if (state_.load() != RunState::Off) {
-            pushMarker({MarkerKind::PowerOff}, stop);
+            pushNotice({NoticeKind::PowerOff}, stop);
             state_.store(RunState::Off);
         }
         break;
@@ -197,7 +197,7 @@ void Runner::apply(const Command& command, std::stop_token stop) {
             auto& watched = watched_[slot];
             if (watched && watched->net == command.net) {
                 ++watched->count;
-                pushMarker({MarkerKind::Rewatch, static_cast<std::uint8_t>(slot), command.net},
+                pushNotice({NoticeKind::Rewatch, static_cast<std::uint8_t>(slot), command.net},
                            stop);
                 return;
             }
@@ -210,14 +210,14 @@ void Runner::apply(const Command& command, std::stop_token stop) {
         slotFree_[slot].store(false);
         sim_.record(command.net);
         watched_[slot] = Watched{command.net, 1, -1};
-        pushMarker({MarkerKind::Watch, static_cast<std::uint8_t>(slot), command.net}, stop);
+        pushNotice({NoticeKind::Watch, static_cast<std::uint8_t>(slot), command.net}, stop);
         break;
     }
     case CommandKind::Unwatch:
         for (std::size_t slot = 0; slot < kMaxWatched; ++slot) {
             auto& watched = watched_[slot];
             if (watched && watched->net == command.net && --watched->count == 0) {
-                pushMarker({MarkerKind::Unwatch, static_cast<std::uint8_t>(slot)}, stop);
+                pushNotice({NoticeKind::Unwatch, static_cast<std::uint8_t>(slot)}, stop);
                 sim_.stopRecording(command.net);
                 watched.reset();
             }
@@ -246,7 +246,7 @@ void Runner::runSlice(std::stop_token stop) {
         }
         watched->pushedUntil = sim_.now();
     }
-    pushMarker({MarkerKind::SliceEnd, 0, NetId{}, sim_.now()}, stop);
+    pushNotice({NoticeKind::SliceEnd, 0, NetId{}, sim_.now()}, stop);
     sim_.trimRecordings();
     simTime_.store(sim_.now());
     runNs_.fetch_add(NsSince(start));
@@ -270,9 +270,9 @@ bool Runner::push(SpscRing<T>& ring, const T& value, std::stop_token stop) {
     return true;
 }
 
-void Runner::pushMarker(const Marker& marker, std::stop_token stop) {
-    if (push(markers_, marker, stop)) {
-        markersPushed_.fetch_add(1);
+void Runner::pushNotice(const Notice& notice, std::stop_token stop) {
+    if (push(notices_, notice, stop)) {
+        noticesPushed_.fetch_add(1);
         kickDevices();
     }
 }
@@ -302,18 +302,18 @@ void Runner::serveDevices(std::stop_token stop) {
             return;
         }
         drainRings();
-        const auto marker = markers_.tryPop();
-        if (!marker) {
+        const auto notice = notices_.tryPop();
+        if (!notice) {
             devicesWake_.wait(seen);
             continue;
         }
         drainRings();
-        dispatcher_.apply(*marker);
-        if (marker->kind == MarkerKind::Unwatch) {
-            slotFree_[marker->slot].store(true);
+        dispatcher_.apply(*notice);
+        if (notice->kind == NoticeKind::Unwatch) {
+            slotFree_[notice->slot].store(true);
         }
-        markersDone_.fetch_add(1);
-        markersDone_.notify_all();
+        noticesDone_.fetch_add(1);
+        noticesDone_.notify_all();
     }
 }
 

@@ -271,6 +271,4 @@ std::expected<Puzzle, std::vector<Diagnostic>> ParsePuzzle(std::string_view text
     return parser.finish();
 }
 
-std::string_view LayerName(Layer layer) { return layer == Layer::Front ? "F.Cu" : "B.Cu"; }
-
 }  // namespace bw

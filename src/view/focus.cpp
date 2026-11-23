@@ -20,7 +20,7 @@ void Focus::take(Owner tool) {
     owner_ = tool;
 }
 
-void Focus::key(Owner instrument) {
+void Focus::bringOutFocused(Owner instrument) {
     out_[slot(instrument)] = true;
     owner_ = instrument;
 }
@@ -29,7 +29,7 @@ void Focus::shelfClick(Owner instrument, bool front) {
     if (owner_ == instrument && out(instrument) && front) {
         closed(instrument);
     } else {
-        key(instrument);
+        bringOutFocused(instrument);
     }
 }
 

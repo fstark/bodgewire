@@ -94,7 +94,7 @@ private:
     void runSlice(std::stop_token stop);
     template <class T>
     bool push(SpscRing<T>& ring, const T& value, std::stop_token stop);  // false if stopping
-    void pushMarker(const Marker& marker, std::stop_token stop);
+    void pushNotice(const Notice& notice, std::stop_token stop);
     void kickDevices();
     void rebase();
     void serveDevices(std::stop_token stop);
@@ -102,7 +102,7 @@ private:
 
     Simulator sim_;
     std::vector<std::unique_ptr<SpscRing<Sample>>> rings_;  // kMaxWatched slots
-    SpscRing<Marker> markers_{1024};
+    SpscRing<Notice> notices_{1024};
     Dispatcher dispatcher_;
 
     // simulation thread
@@ -118,8 +118,8 @@ private:
     std::vector<Command> commands_;     // guarded by mutex_
     std::uint64_t commandsQueued_ = 0;  // guarded by mutex_
     std::atomic<std::uint64_t> commandsApplied_{0};
-    std::atomic<std::uint64_t> markersPushed_{0}, markersDone_{0};
-    std::atomic<std::uint64_t> devicesWake_{0};  // bumped on each marker and full ring
+    std::atomic<std::uint64_t> noticesPushed_{0}, noticesDone_{0};
+    std::atomic<std::uint64_t> devicesWake_{0};  // bumped on each notice and full ring
     std::atomic<RunState> state_{RunState::Off};
     std::atomic<Time> simTime_{0};
     std::atomic<std::uint64_t> seed_{0};

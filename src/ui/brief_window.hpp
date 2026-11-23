@@ -30,6 +30,7 @@ struct BriefNote {
 // Board's on screen: it moves with the Board), as if the owner had slapped it there; dragged
 // elsewhere on it; its × folds it into the shelf. On the bench's top centre when there is no
 // Board. Nothing drawn without a brief.
-void DrawBrief(bool& open, const Loaded& loaded, std::optional<ImVec2> corner, BriefNote& note);
+void DrawBrief(bool& open, const OpenedMachine& loaded, std::optional<ImVec2> corner,
+               BriefNote& note);
 
 }  // namespace bw

@@ -3,12 +3,21 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace bw {
 
 // Lengths in nanometres (KiCad's internal unit); angles in degrees, counter-clockwise on screen.
 enum class Layer : std::uint8_t { Front, Back };  // F.Cu, B.Cu
+
+inline std::string_view LayerName(Layer layer) { return layer == Layer::Front ? "F.Cu" : "B.Cu"; }
+// "F.Cu" or "B.Cu"; nullopt for any other name.
+inline std::optional<Layer> ParseLayer(std::string_view name) {
+    return name == "F.Cu"   ? std::optional(Layer::Front)
+           : name == "B.Cu" ? std::optional(Layer::Back)
+                            : std::nullopt;
+}
 enum class PadShape : std::uint8_t { Circle, Oval, Rectangle, RoundedRectangle };
 
 struct Point {

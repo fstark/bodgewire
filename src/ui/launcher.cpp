@@ -284,7 +284,7 @@ void Launcher::takeStills() {
 
 void Launcher::updateLive(TvView& tv) {
     const auto now = std::chrono::steady_clock::now();
-    std::erase_if(abandoned_, [](const std::future<Loaded>& load) {
+    std::erase_if(abandoned_, [](const std::future<OpenedMachine>& load) {
         return load.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
     });
     const std::filesystem::path want = entryFile();
@@ -308,7 +308,7 @@ void Launcher::updateLive(TvView& tv) {
     }
     if (live_.loading.valid() &&
         live_.loading.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-        Loaded loaded = live_.loading.get();
+        OpenedMachine loaded = live_.loading.get();
         if (!loaded.session) {
             live_.failed = true;
         } else {

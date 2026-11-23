@@ -46,7 +46,8 @@ void DrawNote(ImDrawList& list, ImVec2 at, ImVec2 end, float lift) {
                            {end.x - kCurl, end.y - kCurl}, kCurlUnder);
 }
 
-void DrawBrief(bool& open, const Loaded& loaded, std::optional<ImVec2> corner, BriefNote& note) {
+void DrawBrief(bool& open, const OpenedMachine& loaded, std::optional<ImVec2> corner,
+               BriefNote& note) {
     if (!open || loaded.brief.empty()) {
         return;
     }

@@ -47,7 +47,7 @@ Before writing a small helper, look here: most of the project's duplicated code 
 - Units ([src/netlist/units.hpp](src/netlist/units.hpp)): ohms, farads, frequencies; durations in `parts/paddle.hpp` (`DurationFromText`).
 - References and pins ([src/netlist/parser.hpp](src/netlist/parser.hpp)): `ParsePinRef` ("U3.7"), `IsReference`; finding a pin on a Part: `FindPin`, `PinNet` ([src/netlist/builder.hpp](src/netlist/builder.hpp)).
 - Loading a netlist: `ReadNetlistFile` / `LoadNetlistFile(path, roms)` ([src/netlist/builder.hpp](src/netlist/builder.hpp)); printing diagnostics: `PrintDiagnostics` ([src/netlist/diagnostic.hpp](src/netlist/diagnostic.hpp)).
-- Board geometry on Points ([src/board/geometry.hpp](src/board/geometry.hpp)): `Distance`, `NearestT`, `NearestOnSegment`, `SegmentDistance`, `RotatedOffset` (KiCad's rotation).
+- Board geometry on Points ([src/board/geometry.hpp](src/board/geometry.hpp)): `Distance`, `NearestT`, `NearestOnSegment`, `SegmentDistance`, `RotatedOffset` (KiCad's rotation). Layers: `LayerName`, `ParseLayer` ("F.Cu", [src/board/board.hpp](src/board/board.hpp)); millimetres: `ParseMillimetres` ([src/board/kicad_board.hpp](src/board/kicad_board.hpp)), `FormatMillimetres`, `FormatPoint` ([src/machine/crack.hpp](src/machine/crack.hpp)).
 - An instrument whose tip touches one Net: derive its Consumer from `SingleNetConsumer<State>` ([src/runner/single_net_consumer.hpp](src/runner/single_net_consumer.hpp)).
 
 ## Docs

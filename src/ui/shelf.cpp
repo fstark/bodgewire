@@ -479,7 +479,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
                 break;
             default:
                 if (IsInstrument(*owner) && second) {
-                    focus.key(*owner);  // out with the focus
+                    focus.bringOutFocused(*owner);  // out with the focus
                     BringToFront(WindowOf(*owner));
                     TogglePop(ObjectOf(*owner), WindowOf(*owner));
                 } else if (IsInstrument(*owner)) {

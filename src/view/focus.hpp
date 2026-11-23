@@ -26,8 +26,8 @@ class Focus {
 public:
     Owner owner() const { return owner_; }
     bool out(Owner instrument) const;
-    void take(Owner tool);       // a Board tool, from the shelf
-    void key(Owner instrument);  // out with the focus; never put away (a double-click on it)
+    void take(Owner tool);                   // a Board tool, from the shelf
+    void bringOutFocused(Owner instrument);  // out with the focus; never put away (a double-click)
     // Its shelf drawing clicked: put away when it owns the focus and its window is in front
     // (`front`); else out with the focus (the caller brings the window to the front).
     void shelfClick(Owner instrument, bool front);

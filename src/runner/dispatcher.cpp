@@ -10,41 +10,41 @@ Dispatcher::Dispatcher(std::vector<Consumer*> consumers) : consumers_(std::move(
 
 void Dispatcher::stage(std::uint8_t slot, Sample sample) { staged_[slot].push_back(sample); }
 
-void Dispatcher::apply(const Marker& marker) {
-    switch (marker.kind) {
-    case MarkerKind::Watch:
-        slotNet_[marker.slot] = marker.net;
-        staged_[marker.slot].clear();
-        last_[marker.slot].reset();
-        active_[marker.slot] = true;
+void Dispatcher::apply(const Notice& notice) {
+    switch (notice.kind) {
+    case NoticeKind::Watch:
+        slotNet_[notice.slot] = notice.net;
+        staged_[notice.slot].clear();
+        last_[notice.slot].reset();
+        active_[notice.slot] = true;
         break;
-    case MarkerKind::Rewatch:
-        if (active_[marker.slot] && last_[marker.slot]) {
+    case NoticeKind::Rewatch:
+        if (active_[notice.slot] && last_[notice.slot]) {
             for (Consumer* consumer : consumers_) {
                 const auto nets = consumer->nets();
-                if (std::ranges::find(nets, slotNet_[marker.slot]) != nets.end()) {
-                    consumer->seed(slotNet_[marker.slot], *last_[marker.slot]);
+                if (std::ranges::find(nets, slotNet_[notice.slot]) != nets.end()) {
+                    consumer->seed(slotNet_[notice.slot], *last_[notice.slot]);
                 }
             }
         }
         break;
-    case MarkerKind::Unwatch:
-        active_[marker.slot] = false;
-        staged_[marker.slot].clear();
+    case NoticeKind::Unwatch:
+        active_[notice.slot] = false;
+        staged_[notice.slot].clear();
         break;
-    case MarkerKind::PowerOn:  // nothing stale is staged: the Runner waits for us first
+    case NoticeKind::PowerOn:  // nothing stale is staged: the Runner waits for us first
         last_.fill(std::nullopt);
         for (Consumer* consumer : consumers_) {
             consumer->powerOn();
         }
         break;
-    case MarkerKind::PowerOff:
+    case NoticeKind::PowerOff:
         for (Consumer* consumer : consumers_) {
             consumer->powerOff();
         }
         break;
-    case MarkerKind::SliceEnd:
-        sliceEnd(marker.time);
+    case NoticeKind::SliceEnd:
+        sliceEnd(notice.time);
         break;
     }
 }

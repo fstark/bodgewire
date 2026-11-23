@@ -14,7 +14,7 @@ TEST_CASE("focus: the probe owns it at start, nothing out", "[view]") {
 
 TEST_CASE("focus: a tool taken owns it, the instruments stay out", "[view]") {
     Focus focus;
-    focus.key(Owner::Scope);
+    focus.bringOutFocused(Owner::Scope);
     focus.take(Owner::Iron);
     CHECK(focus.owner() == Owner::Iron);
     CHECK(focus.out(Owner::Scope));
@@ -22,10 +22,10 @@ TEST_CASE("focus: a tool taken owns it, the instruments stay out", "[view]") {
 
 TEST_CASE("focus: an instrument's key brings it out with the focus, never away", "[view]") {
     Focus focus;
-    focus.key(Owner::Analyzer);
+    focus.bringOutFocused(Owner::Analyzer);
     CHECK(focus.owner() == Owner::Analyzer);
     CHECK(focus.out(Owner::Analyzer));
-    focus.key(Owner::Analyzer);
+    focus.bringOutFocused(Owner::Analyzer);
     CHECK(focus.owner() == Owner::Analyzer);
     CHECK(focus.out(Owner::Analyzer));
 }
@@ -60,7 +60,7 @@ TEST_CASE("focus: a click in an out instrument's window gives it the focus", "[v
 TEST_CASE("focus: closing a window puts it away, the probe takes the focus from it", "[view]") {
     Focus focus;
     focus.bringOut(Owner::Analyzer);
-    focus.key(Owner::Scope);
+    focus.bringOutFocused(Owner::Scope);
     focus.closed(Owner::Analyzer);  // not the owner
     CHECK(focus.owner() == Owner::Scope);
     CHECK_FALSE(focus.out(Owner::Analyzer));

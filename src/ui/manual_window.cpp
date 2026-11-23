@@ -273,7 +273,7 @@ void ManualWindows::tabs(bool board) {
 void ManualWindows::datasheets(const Manuals& manuals, BoardView& board,
                                const LoadedCircuit& design) {
     const BoardScene* scene = board.scene();
-    if (const auto chip = scene ? board.chip() : std::nullopt) {
+    if (const auto chip = scene ? board.pointedComponent() : std::nullopt) {
         ImGui::PushID("chip");
         if (ImGui::SmallButton("All datasheets")) {
             board.deselect();

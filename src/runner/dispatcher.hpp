@@ -18,11 +18,11 @@ namespace bw {
 // 32 LED Nets on the LED Machines, with room).
 inline constexpr std::size_t kMaxWatched = 128;
 
-enum class MarkerKind : std::uint8_t { PowerOn, SliceEnd, Watch, Rewatch, Unwatch, PowerOff };
+enum class NoticeKind : std::uint8_t { PowerOn, SliceEnd, Watch, Rewatch, Unwatch, PowerOff };
 
-// Control marker, simulation → devices thread, in order with the Samples.
-struct Marker {
-    MarkerKind kind;
+// Control notice, simulation → devices thread, in order with the Samples.
+struct Notice {
+    NoticeKind kind;
     std::uint8_t slot = 0;  // Watch, Rewatch, Unwatch
     NetId net{};            // Watch
     Time time = 0;          // SliceEnd: slice end
@@ -33,7 +33,7 @@ class Dispatcher {
 public:
     explicit Dispatcher(std::vector<Consumer*> consumers);
     void stage(std::uint8_t slot, Sample sample);  // drained from a ring
-    void apply(const Marker& marker);
+    void apply(const Notice& notice);
     bool isActive(std::uint8_t slot) const { return active_[slot]; }
 
 private:

@@ -156,7 +156,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | A4 keyboard Part names, Parts by kind | done 2026-11-23 |
 | A5 test fixtures out of primitives | done 2026-11-23 |
 | A6 docs | done 2026-11-23 |
-| B7–B9 names | todo |
+| B7–B9 names | done 2026-11-23 |
 | C10 Faults as one type | todo |
 | C11 split ui/main.cpp | todo |
 | C12 bench object identity | todo |

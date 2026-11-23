@@ -21,16 +21,6 @@ constexpr std::int64_t kNanometresPerMillimetre = 1'000'000;
 
 bool IsCopper(std::string_view layer) { return layer.ends_with(".Cu"); }
 
-std::optional<Layer> CopperLayer(std::string_view name) {
-    if (name == "F.Cu") {
-        return Layer::Front;
-    }
-    if (name == "B.Cu") {
-        return Layer::Back;
-    }
-    return std::nullopt;
-}
-
 std::optional<double> ParseDouble(std::string_view text) {
     if (text.empty()) {
         return std::nullopt;
@@ -144,7 +134,7 @@ private:
         if (const SExpr* layers = root_.find("layers")) {
             for (const SExpr& layer : layers->list) {
                 const std::string_view name = layer.atomAt(1);
-                if (layer.isList && IsCopper(name) && !CopperLayer(name)) {
+                if (layer.isList && IsCopper(name) && !ParseLayer(name)) {
                     error(layer, "copper layer " + std::string(name) +
                                      " not supported: only F.Cu and B.Cu");
                 }
@@ -154,7 +144,7 @@ private:
 
     void readFootprint(const SExpr& node) {
         BoardComponent component{.line = node.line, .footprint = std::string(node.atomAt(1))};
-        const auto side = CopperLayer(LayerOf(node));
+        const auto side = ParseLayer(LayerOf(node));
         if (!side) {
             error(node, "footprint " + component.footprint + " not on F.Cu or B.Cu");
             return;
@@ -300,7 +290,7 @@ private:
     }
 
     void readTrace(const SExpr& node) {
-        const auto layer = CopperLayer(LayerOf(node));
+        const auto layer = ParseLayer(LayerOf(node));
         if (!layer) {
             error(node, "track on layer " + std::string(LayerOf(node)) +
                             " not supported: only F.Cu and B.Cu");

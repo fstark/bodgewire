@@ -69,6 +69,4 @@ struct Puzzle {
 // All syntax errors, in line order.
 std::expected<Puzzle, std::vector<Diagnostic>> ParsePuzzle(std::string_view text, std::string file);
 
-std::string_view LayerName(Layer layer);  // "F.Cu", "B.Cu"
-
 }  // namespace bw

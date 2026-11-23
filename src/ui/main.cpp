@@ -602,8 +602,9 @@ struct BenchResult {
     int exitCode;
 };
 
-BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session& session,
-                      const Options& options, ImFont* legends, ImFont* petLegends, bool canLeave) {
+BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& loaded,
+                     Session& session, const Options& options, ImFont* legends, ImFont* petLegends,
+                     bool canLeave) {
     ResetBench();
     TvView view(gpu.tvTexture());
     Shelf shelf;
@@ -698,7 +699,7 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
         focus.bringOut(Owner::Meter);
     }
     if (options.focus && IsInstrument(*options.focus)) {
-        focus.key(*options.focus);
+        focus.bringOutFocused(*options.focus);
     } else if (options.focus) {
         focus.take(*options.focus);
     }
@@ -1678,7 +1679,7 @@ int main(int argc, char** argv) {
         return kExitUsage;
     }
     const Options& options = *parsed;
-    std::optional<Loaded> loaded;  // the bench's; its Session ends before the next Load
+    std::optional<OpenedMachine> loaded;  // the bench's; its Session ends before the next Load
     if (options.file) {
         loaded.emplace(Load(*options.file, options.roms));
         if (!loaded->session) {
@@ -1801,8 +1802,8 @@ int main(int argc, char** argv) {
         BenchResult result{};
         {
             ImGuiScreen screen(window, *gpu);
-            result = RunWindow(window, *gpu, *loaded, *loaded->session, *benchOptions,
-                               screen.legends(), screen.petLegends(), machinesDir.has_value());
+            result = RunBench(window, *gpu, *loaded, *loaded->session, *benchOptions,
+                              screen.legends(), screen.petLegends(), machinesDir.has_value());
         }
         left = *benchOptions->file;
         loaded.reset();

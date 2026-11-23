@@ -38,8 +38,8 @@ private:
     std::vector<NetId> nets_;
 };
 
-Marker Watch(std::uint8_t slot, NetId net) { return {MarkerKind::Watch, slot, net, 0}; }
-Marker SliceEnd(Time time) { return {MarkerKind::SliceEnd, 0, NetId{}, time}; }
+Notice Watch(std::uint8_t slot, NetId net) { return {NoticeKind::Watch, slot, net, 0}; }
+Notice SliceEnd(Time time) { return {NoticeKind::SliceEnd, 0, NetId{}, time}; }
 
 }  // namespace
 
@@ -86,9 +86,9 @@ TEST_CASE("dispatcher: power on keeps Samples of the new run", "[runner]") {
     Dispatcher dispatcher({&consumer});
     dispatcher.apply(Watch(0, NetId{1}));
     dispatcher.stage(0, {0, LogicValue::Zero});
-    dispatcher.apply({MarkerKind::PowerOn});
+    dispatcher.apply({NoticeKind::PowerOn});
     dispatcher.apply(SliceEnd(10));
-    dispatcher.apply({MarkerKind::PowerOff});
+    dispatcher.apply({NoticeKind::PowerOff});
     CHECK(consumer.log == Log{"on", "1 0 0", "adv 10", "off"});
 }
 
@@ -98,7 +98,7 @@ TEST_CASE("dispatcher: unwatch", "[runner]") {
     dispatcher.apply(Watch(0, NetId{1}));
     CHECK(dispatcher.isActive(0));
     dispatcher.stage(0, {3, LogicValue::One});
-    dispatcher.apply({MarkerKind::Unwatch, 0});
+    dispatcher.apply({NoticeKind::Unwatch, 0});
     CHECK_FALSE(dispatcher.isActive(0));
     dispatcher.apply(SliceEnd(10));
     CHECK(consumer.log == Log{"adv 10"});
@@ -131,7 +131,7 @@ TEST_CASE("dispatcher: TV frame equals TvInput", "[runner]") {
         sim.record(nets[slot]);
         dispatcher.apply(Watch(slot, nets[slot]));
     }
-    dispatcher.apply({MarkerKind::PowerOn});
+    dispatcher.apply({NoticeKind::PowerOn});
     Time fedUntil = -1;
     while (sim.now() < 60_ms) {
         sim.runFor(1_ms);

@@ -9,7 +9,8 @@
 
 namespace bw {
 
-Loaded Load(const std::filesystem::path& file, const std::optional<std::filesystem::path>& roms) {
+OpenedMachine Load(const std::filesystem::path& file,
+                   const std::optional<std::filesystem::path>& roms) {
     std::expected<Machine, std::vector<Diagnostic>> machine =
         std::unexpected(std::vector<Diagnostic>{});
     std::string title, brief;

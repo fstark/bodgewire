@@ -127,7 +127,7 @@ public:
     std::optional<BoardClick> takeClick();  // released without dragging
     // A memory chip's window clicked (P6p), whatever the tool: no takeClick() for it.
     std::optional<std::size_t> takeContentsClick();
-    std::optional<std::size_t> chip() const { return hovered_ ? hovered_ : selected_; }
+    std::optional<std::size_t> pointedComponent() const { return hovered_ ? hovered_ : selected_; }
     void select(std::size_t component) { selected_ = component; }
     void deselect() { selected_.reset(); }
     std::optional<std::size_t> selected() const { return selected_; }

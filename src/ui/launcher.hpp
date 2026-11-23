@@ -84,8 +84,8 @@ private:
     struct Live {
         std::filesystem::path file;  // the entry selected
         std::chrono::steady_clock::time_point since;
-        std::future<Loaded> loading;
-        std::optional<Loaded> loaded;  // powered on
+        std::future<OpenedMachine> loading;
+        std::optional<OpenedMachine> loaded;  // powered on
         bool failed = false;
         std::optional<BoardView> view;  // on its Session's Board, when it has one
     };
@@ -106,8 +106,8 @@ private:
     std::string error_;
     std::map<std::filesystem::path, Still> stills_;
     Live live_;
-    std::vector<std::future<Loaded>> abandoned_;  // loads of entries no longer selected
-    StillLoader loader_;                          // last: its thread joined first
+    std::vector<std::future<OpenedMachine>> abandoned_;  // loads of entries no longer selected
+    StillLoader loader_;                                 // last: its thread joined first
 };
 
 }  // namespace bw
