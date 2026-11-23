@@ -156,32 +156,34 @@ void Z80Core::step(std::uint8_t data) {
 
 // --- Cycles -----------------------------------------------------------------------------------
 
-void Z80Core::fetch() { bus_ = Z80Bus{Z80CycleKind::Fetch, pc_, 0, Word(i_, r_), 0, false}; }
+void Z80Core::fetch() { cycle_ = Z80Cycle{Z80CycleKind::Fetch, pc_, 0, Word(i_, r_), 0, false}; }
 
 // While halted the address bus shows the byte after the HALT, PC, fetched again and again and
 // ignored. The ZX80 relies on it: its NOP gate and its glyph load (through IC5's latched character
 // fetch) see HALT_N low, so that byte, the next row's first, is neither forced nor drawn.
-void Z80Core::haltedFetch() { bus_ = Z80Bus{Z80CycleKind::Fetch, pc_, 0, Word(i_, r_), 0, true}; }
-
-void Z80Core::read(std::uint16_t address) { bus_ = Z80Bus{Z80CycleKind::Read, address}; }
-
-void Z80Core::write(std::uint16_t address, std::uint8_t data) {
-    bus_ = Z80Bus{Z80CycleKind::Write, address, data};
+void Z80Core::haltedFetch() {
+    cycle_ = Z80Cycle{Z80CycleKind::Fetch, pc_, 0, Word(i_, r_), 0, true};
 }
 
-void Z80Core::in(std::uint16_t port) { bus_ = Z80Bus{Z80CycleKind::In, port}; }
+void Z80Core::read(std::uint16_t address) { cycle_ = Z80Cycle{Z80CycleKind::Read, address}; }
+
+void Z80Core::write(std::uint16_t address, std::uint8_t data) {
+    cycle_ = Z80Cycle{Z80CycleKind::Write, address, data};
+}
+
+void Z80Core::in(std::uint16_t port) { cycle_ = Z80Cycle{Z80CycleKind::In, port}; }
 
 void Z80Core::out(std::uint16_t port, std::uint8_t data) {
-    bus_ = Z80Bus{Z80CycleKind::Out, port, data};
+    cycle_ = Z80Cycle{Z80CycleKind::Out, port, data};
 }
 
 void Z80Core::internal(int length) {
-    bus_.kind = Z80CycleKind::Internal;  // the address stays
-    bus_.length = static_cast<std::uint8_t>(length);
+    cycle_.kind = Z80CycleKind::Internal;  // the address stays
+    cycle_.length = static_cast<std::uint8_t>(length);
 }
 
 void Z80Core::acknowledge() {
-    bus_ = Z80Bus{Z80CycleKind::Acknowledge, pc_, 0, Word(i_, r_), 0, false};
+    cycle_ = Z80Cycle{Z80CycleKind::Acknowledge, pc_, 0, Word(i_, r_), 0, false};
 }
 
 std::uint16_t Z80Core::pcNext() {

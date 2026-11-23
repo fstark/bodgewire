@@ -46,7 +46,7 @@ constexpr int Z80CycleLength(Z80CycleKind kind, int internalLength) {
     return 0;
 }
 
-struct Z80Bus {
+struct Z80Cycle {
     Z80CycleKind kind = Z80CycleKind::Fetch;
     std::uint16_t address = 0;  // Internal: unchanged from the cycle before
     std::uint8_t data = 0;      // Write, Out
@@ -64,9 +64,9 @@ public:
     void start(const Z80Registers& registers);  // next cycle: a fetch at registers.pc
     void reset();  // the reset values (PC, I, R 0, interrupts off, IM 0, AF SP $FFFF); next: a
                    // fetch at $0000
-    const Z80Bus& bus() const { return bus_; }  // the M-cycle in progress
-    void step(std::uint8_t data);               // ends it; `data` read (ignored but on reads)
-    Z80Registers registers() const;             // between instructions: as Harte's `final`
+    const Z80Cycle& cycle() const { return cycle_; }  // the M-cycle in progress
+    void step(std::uint8_t data);                     // ends it; `data` read (ignored but on reads)
+    Z80Registers registers() const;                   // between instructions: as Harte's `final`
     bool halted() const { return halted_; }
     bool instructionEnded() const { return ended_; }  // the last step ended an instruction
 
@@ -115,7 +115,7 @@ private:
     void blockRepeatFlags();
     void blockIoRepeatFlags(std::uint8_t value, unsigned k);
 
-    Z80Bus bus_;
+    Z80Cycle cycle_;
     int resume_ = 0;
     std::uint8_t data_ = 0;
 

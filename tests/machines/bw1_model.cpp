@@ -88,7 +88,7 @@ void Bw1Model::run(std::uint64_t us) {
 }
 
 void Bw1Model::cycle() {
-    const Mos6502Bus bus = core_.bus();
+    const Mos6502Cycle bus = core_.cycle();
     // KIM Fig. 3.3: ST through the 556, SST joining NMI to NAND(SYNC, K7).
     core_.setNmi(stHeld_ || (sst_ && bus.sync && Block(bus.address) != 7));
     if (bus.read) {

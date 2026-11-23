@@ -96,9 +96,9 @@ public:
     bool hasTtlInput(NetId net) const { return netHasTtlInput_[ToIndex(net)] != 0; }
     // The Net's only Driver if it is a totem-pole Output and the Net is untied, else kNoPin.
     PinId singleDriver(NetId net) const { return netSingleDriver_[ToIndex(net)]; }
-    // An untied Net, no network Pin, two or more Drivers, all Output or Bidirectional (P5z, a
-    // bus): resolved from how many of them drive (not Z), when that is 0 or 1.
-    bool isPlainBus(NetId net) const { return netPlainBus_[ToIndex(net)] != 0; }
+    // An untied Net, no network Pin, two or more Drivers, all Output or Bidirectional (P5z: one
+    // line of a bus): resolved from how many of them drive (not Z), when that is 0 or 1.
+    bool isSharedNet(NetId net) const { return netShared_[ToIndex(net)] != 0; }
     // The Net's network Pins (P5i, P5u): at most one Switched and one Joined; the first found,
     // else kNoPin, and the second, else kNoPin.
     PinId networkPin(NetId net) const { return netNetworkPin_[ToIndex(net)]; }
@@ -119,7 +119,7 @@ private:
     std::vector<Drive> netTie_;  // strongest tie per Net, None if untied
     std::vector<std::uint8_t> netHasTtlInput_;
     std::vector<PinId> netSingleDriver_;
-    std::vector<std::uint8_t> netPlainBus_;
+    std::vector<std::uint8_t> netShared_;
     std::vector<PinId> netNetworkPin_;
     std::vector<PinId> netNetworkPin2_;
     // CSR: drivers (output PinIds) and fan-out (one entry per Component with an input on the Net)

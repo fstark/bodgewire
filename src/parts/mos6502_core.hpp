@@ -41,7 +41,7 @@ Mos6502Instruction Mos6502Decode(std::uint8_t opcode);
 std::size_t Mos6502OperandBytes(Mos6502Operand operand);
 
 // One bus cycle as the CPU drives it.
-struct Mos6502Bus {
+struct Mos6502Cycle {
     std::uint16_t address = 0;
     std::uint8_t data = 0;  // written; meaningless on a read
     bool read = true;       // RW high
@@ -54,8 +54,8 @@ struct Mos6502Bus {
 class Mos6502Core {
 public:
     void start(const Mos6502Registers& registers);  // next cycle: an opcode fetch at registers.pc
-    const Mos6502Bus& bus() const { return bus_; }  // the cycle in progress
-    void step(std::uint8_t data);                   // ends it; `data` read (ignored on a write)
+    const Mos6502Cycle& cycle() const { return cycle_; }  // the cycle in progress
+    void step(std::uint8_t data);  // ends it; `data` read (ignored on a write)
     const Mos6502Registers& registers() const { return r_; }
     bool jammed() const { return jammed_; }
 
@@ -89,7 +89,7 @@ private:
     void compare(std::uint8_t reg, std::uint8_t value);
 
     Mos6502Registers r_;
-    Mos6502Bus bus_;
+    Mos6502Cycle cycle_;
     std::uint8_t opcode_ = 0xEA;
     int t_ = 1;  // cycle within the instruction, 1 = the opcode fetch
     Stage stage_ = Stage::Addressing;

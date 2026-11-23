@@ -189,7 +189,7 @@ bool Z80::lastPhase() const {
 
 // T1's rising edge, or an Internal cycle's first.
 void Z80::startCycle(EvalContext& ctx) {
-    cycle_ = core_.bus();
+    cycle_ = core_.cycle();
     waitAsked_ = false;
     releaseData(ctx, kZ80Data);
     if (refreshing_) {

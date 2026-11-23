@@ -49,7 +49,7 @@ private:
     std::uint8_t readData(EvalContext& ctx);
 
     Z80Core core_;
-    Z80Bus cycle_;
+    Z80Cycle cycle_;
     Phase phase_ = Phase::Next;
     Mode mode_ = Mode::Running;
     int internalLeft_ = 0;

@@ -329,7 +329,7 @@ TEST_CASE("circuit: a plain bus is untied, two or more output or bidirectional d
     circuit.connect(u3, "M", tied);
     circuit.tie(tied, LogicValue::One, DriveStrength::Weak);
     circuit.finalize();
-    CHECK_FALSE(circuit.isPlainBus(one));
-    CHECK(circuit.isPlainBus(bus));
-    CHECK_FALSE(circuit.isPlainBus(tied));
+    CHECK_FALSE(circuit.isSharedNet(one));
+    CHECK(circuit.isSharedNet(bus));
+    CHECK_FALSE(circuit.isSharedNet(tied));
 }

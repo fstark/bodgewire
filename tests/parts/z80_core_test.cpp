@@ -15,7 +15,7 @@ namespace {
 struct System {
     std::array<std::uint8_t, 0x10000> ram{};
     Z80Core core;
-    std::vector<Z80Bus> trace;
+    std::vector<Z80Cycle> trace;
     std::uint8_t port = 0xFF, vector = 0xFF;
     long tStates = 0;
 
@@ -26,7 +26,7 @@ struct System {
         }
     }
     void cycle() {
-        const Z80Bus bus = core.bus();
+        const Z80Cycle bus = core.cycle();
         trace.push_back(bus);
         tStates += Z80CycleLength(bus.kind, bus.length);
         std::uint8_t data = 0xFF;
@@ -152,7 +152,7 @@ TEST_CASE("Z80 core: reset", "[parts]") {
     s.load(0x1000, {0x21, 0x34, 0x12});  // LD HL,nn: reset after its first cycle
     s.cycle();
     s.core.reset();
-    const Z80Bus& bus = s.core.bus();
+    const Z80Cycle& bus = s.core.cycle();
     CHECK(bus.kind == Z80CycleKind::Fetch);
     CHECK(bus.address == 0x0000);
     const Z80Registers r = s.r();
@@ -174,9 +174,9 @@ TEST_CASE("Z80 core: HALT", "[parts]") {
     s.instruction();
     CHECK(s.core.halted());
     for (int i = 0; i < 5; ++i) {
-        CHECK(s.core.bus().kind == Z80CycleKind::Fetch);
-        CHECK(s.core.bus().halted);
-        CHECK(s.core.bus().address == 0x1001);  // the byte after the HALT
+        CHECK(s.core.cycle().kind == Z80CycleKind::Fetch);
+        CHECK(s.core.cycle().halted);
+        CHECK(s.core.cycle().address == 0x1001);  // the byte after the HALT
         CHECK(s.instruction() == 4);
     }
     CHECK(s.r().pc == 0x1001);
@@ -185,7 +185,7 @@ TEST_CASE("Z80 core: HALT", "[parts]") {
     s.core.setInt(true);
     s.instruction();  // the last halted NOP, then the interrupt
     s.core.setInt(false);
-    CHECK(s.core.bus().kind == Z80CycleKind::Acknowledge);
+    CHECK(s.core.cycle().kind == Z80CycleKind::Acknowledge);
     CHECK(s.instruction() == 13);
     CHECK_FALSE(s.core.halted());
     CHECK(s.r().pc == 0x0038);
@@ -198,10 +198,10 @@ TEST_CASE("Z80 core: EI shadow and DI", "[parts]") {
     s.load(0x1000, {0xFB, 0x00, 0x00, 0xF3});  // EI, NOP, NOP, DI
     s.core.setInt(true);
     s.instruction();  // EI: no interrupt after it
-    CHECK(s.core.bus().kind == Z80CycleKind::Fetch);
-    CHECK(s.core.bus().address == 0x1001);
+    CHECK(s.core.cycle().kind == Z80CycleKind::Fetch);
+    CHECK(s.core.cycle().address == 0x1001);
     s.instruction();  // NOP: then taken
-    CHECK(s.core.bus().kind == Z80CycleKind::Acknowledge);
+    CHECK(s.core.cycle().kind == Z80CycleKind::Acknowledge);
     CHECK(s.r().pc == 0x1002);
 
     System masked({.pc = 0x1000, .sp = 0x8000, .im = 1, .iff1 = true, .iff2 = true});
@@ -209,7 +209,7 @@ TEST_CASE("Z80 core: EI shadow and DI", "[parts]") {
     masked.core.setInt(true);
     masked.instruction();
     masked.instruction();
-    CHECK(masked.core.bus().kind == Z80CycleKind::Fetch);
+    CHECK(masked.core.cycle().kind == Z80CycleKind::Fetch);
     CHECK(masked.count(Z80CycleKind::Acknowledge) == 0);
 }
 
@@ -263,7 +263,7 @@ TEST_CASE("Z80 core: interrupt modes", "[parts]") {
         const long start = s.tStates;
         int reads = 0;
         do {
-            const Z80Bus bus = s.core.bus();
+            const Z80Cycle bus = s.core.cycle();
             if (bus.kind == Z80CycleKind::Read) {
                 CHECK(bus.address == 0x1001);
                 s.ram[0x1001] = reads++ == 0 ? 0x34 : 0x12;
@@ -286,8 +286,8 @@ TEST_CASE("Z80 core: NMI", "[parts]") {
         s.core.setInt(true);
         s.core.setNmi(true);
         s.instruction();  // NOP, then the NMI (not the INT)
-        CHECK(s.core.bus().kind == Z80CycleKind::Fetch);
-        CHECK(s.core.bus().address == 0x1001);
+        CHECK(s.core.cycle().kind == Z80CycleKind::Fetch);
+        CHECK(s.core.cycle().address == 0x1001);
         CHECK(s.instruction() == 11);
         CHECK(s.r().pc == 0x0066);
         CHECK_FALSE(s.r().iff1);
@@ -332,10 +332,10 @@ TEST_CASE("Z80 core: no interrupt between a prefix and its opcode", "[parts]") {
     s.core.setInt(true);
     s.cycle();  // the DD fetch
     CHECK_FALSE(s.core.instructionEnded());
-    CHECK(s.core.bus().kind == Z80CycleKind::Fetch);
+    CHECK(s.core.cycle().kind == Z80CycleKind::Fetch);
     s.instruction();
     CHECK(s.r().ix == 0x1234);
-    CHECK(s.core.bus().kind == Z80CycleKind::Acknowledge);
+    CHECK(s.core.cycle().kind == Z80CycleKind::Acknowledge);
 }
 
 TEST_CASE("Z80 core: LDIR interrupted", "[parts]") {
@@ -357,7 +357,7 @@ TEST_CASE("Z80 core: LDIR interrupted", "[parts]") {
     s.core.setInt(true);
     s.instruction();
     s.core.setInt(false);
-    CHECK(s.core.bus().kind == Z80CycleKind::Acknowledge);
+    CHECK(s.core.cycle().kind == Z80CycleKind::Acknowledge);
     s.instruction();
     CHECK(s.ram[0x7FFE] == 0x00);  // the pushed PC is the LDIR's
     CHECK(s.ram[0x7FFF] == 0x10);

@@ -71,7 +71,7 @@ TEST_CASE("6502 core: Dormann functional test", "[parts][slow]") {
     std::uint64_t cycles = 0;
     constexpr std::uint64_t kCap = 200'000'000;
     while (cycles < kCap) {
-        const Mos6502Bus& bus = core.bus();
+        const Mos6502Cycle& bus = core.cycle();
         if (bus.sync) {
             if (bus.address == lastFetch) {
                 break;  // a trap: jmp * or a branch to itself

@@ -40,8 +40,8 @@ bool Changed(const EvalContext& ctx, PinIndex pin) { return ctx.read(pin) != ctx
 }  // namespace
 
 Ttl177::Ttl177(std::string reference) : Component(std::move(reference), Ttl177Pins()) {
-    declareBus("A-D", {"A", "B", "C", "D"});
-    declareBus("QA-QD", {"QA", "QB", "QC", "QD"});
+    declarePinGroup("A-D", {"A", "B", "C", "D"});
+    declarePinGroup("QA-QD", {"QA", "QB", "QC", "QD"});
 }
 
 void Ttl177::powerOn(PowerOnContext& ctx) {

@@ -353,7 +353,7 @@ void Mos6502Core::start(const Mos6502Registers& registers) {
     nmiLatched_ = false;
     pollLast_ = false;
     pollFetch_ = false;
-    bus_ = {r_.pc, 0, true, true};
+    cycle_ = {r_.pc, 0, true, true};
 }
 
 void Mos6502Core::setNmi(bool asserted) {
@@ -365,10 +365,10 @@ void Mos6502Core::setNmi(bool asserted) {
 
 void Mos6502Core::setOverflow() { r_.p |= kV; }
 
-void Mos6502Core::read(std::uint16_t address) { bus_ = {address, 0, true, false}; }
+void Mos6502Core::read(std::uint16_t address) { cycle_ = {address, 0, true, false}; }
 
 void Mos6502Core::write(std::uint16_t address, std::uint8_t data) {
-    bus_ = {address, data, false, false};
+    cycle_ = {address, data, false, false};
 }
 
 void Mos6502Core::step(std::uint8_t data) {
@@ -438,7 +438,7 @@ void Mos6502Core::finish(bool interrupt) {
     t_ = 1;
     stage_ = Stage::Addressing;
     interruptNext_ = interrupt;
-    bus_ = {r_.pc, 0, true, true};
+    cycle_ = {r_.pc, 0, true, true};
 }
 
 void Mos6502Core::addressing(std::uint8_t data) {

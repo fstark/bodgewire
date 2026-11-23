@@ -90,7 +90,7 @@ void Bw2001Model::cycle() {
         crb_ |= kCrbFlag;  // CB1's fall (the firmware sets the negative edge)
     }
     core_.setIrq((crb_ & kCrbFlag) != 0 && (crb_ & kCrbEnable) != 0);
-    const Mos6502Bus bus = core_.bus();
+    const Mos6502Cycle bus = core_.cycle();
     if (!bus.read && (bus.address >> 8) == 0x01) {  // a stack write
         stackMark_ = std::min(stackMark_, static_cast<std::uint8_t>(bus.address & 0xFF));
     }

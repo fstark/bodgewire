@@ -16,16 +16,16 @@ namespace bw {
 
 namespace {
 
-// The bus a Pin belongs to and its bit: a PinBus the Part declares (QA-QD), else the digits in
+// The bus a Pin belongs to and its bit: a PinGroup the Part declares (QA-QD), else the digits in
 // its name (A0-A15, StemOf). Power and unconnected Pins belong to none.
 std::optional<NameStem> BusBitOf(const Component& part, std::size_t pin) {
     const PinSpec& spec = part.pins()[pin];
     if (spec.kind == PinKind::Power || spec.kind == PinKind::NoConnect) {
         return std::nullopt;
     }
-    for (const PinBus& bus : part.buses()) {
-        if (const auto bit = std::ranges::find(bus.pins, pin); bit != bus.pins.end()) {
-            return NameStem{bus.name, static_cast<std::uint32_t>(bit - bus.pins.begin())};
+    for (const PinGroup& group : part.pinGroups()) {
+        if (const auto bit = std::ranges::find(group.pins, pin); bit != group.pins.end()) {
+            return NameStem{group.name, static_cast<std::uint32_t>(bit - group.pins.begin())};
         }
     }
     return StemOf(spec.name);

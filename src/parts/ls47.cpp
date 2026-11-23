@@ -56,7 +56,7 @@ std::uint8_t Ls47Segments(unsigned value, bool lampTestN, bool rippleBlankingInN
 }
 
 Ls47::Ls47(std::string reference) : Component(std::move(reference), Ls47Pins()) {
-    declareBus("A-D", {"A", "B", "C", "D"});
+    declarePinGroup("A-D", {"A", "B", "C", "D"});
 }
 
 SegmentCertainty ReadSegments(EvalContext& ctx) {

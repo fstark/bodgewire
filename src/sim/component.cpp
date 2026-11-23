@@ -20,12 +20,12 @@ PinIndex Component::pinIndex(std::string_view pinName) const {
     return 0;
 }
 
-void Component::declareBus(std::string name, std::initializer_list<std::string_view> pins) {
-    PinBus bus{std::move(name), {}};
+void Component::declarePinGroup(std::string name, std::initializer_list<std::string_view> pins) {
+    PinGroup group{std::move(name), {}};
     for (const std::string_view pin : pins) {
-        bus.pins.push_back(pinIndex(pin));
+        group.pins.push_back(pinIndex(pin));
     }
-    buses_.push_back(std::move(bus));
+    pinGroups_.push_back(std::move(group));
 }
 
 void Component::powerOn(PowerOnContext& /*ctx*/) {}

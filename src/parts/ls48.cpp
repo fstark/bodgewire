@@ -35,7 +35,7 @@ std::vector<PinSpec> Ls48Pins() {
 }  // namespace
 
 Ls48::Ls48(std::string reference) : Component(std::move(reference), Ls48Pins()) {
-    declareBus("A-D", {"A", "B", "C", "D"});
+    declarePinGroup("A-D", {"A", "B", "C", "D"});
 }
 
 void Ls48::evaluate(EvalContext& ctx) {

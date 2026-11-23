@@ -148,7 +148,7 @@ std::optional<std::string> RunMos6502Case(const Mos6502Case& c) {
     core.start(c.initial);
     for (std::size_t i = 0; i < c.cycles.size(); ++i) {
         const auto& want = c.cycles[i];
-        const Mos6502Bus& bus = core.bus();
+        const Mos6502Cycle& bus = core.cycle();
         if (bus.address != want.address || bus.read != want.read ||
             (!bus.read && bus.data != want.value)) {
             return std::format("{}: cycle {}: {:04x} {} {:02x}, expected {:04x} {} {:02x}", c.name,

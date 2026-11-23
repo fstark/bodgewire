@@ -64,7 +64,7 @@ std::string RunCpm(const std::filesystem::path& program, std::uint64_t cap,
     std::string output;
     tStates = 0;
     while (tStates < cap) {
-        const Z80Bus& bus = core.bus();
+        const Z80Cycle& bus = core.cycle();
         std::uint8_t data = 0xFF;
         switch (bus.kind) {
         case Z80CycleKind::Fetch:

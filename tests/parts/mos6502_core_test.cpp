@@ -18,7 +18,7 @@ constexpr std::uint16_t kNmi = 0x3000, kReset = 0x0200, kIrq = 0x4000;
 struct System {
     std::array<std::uint8_t, 0x10000> ram{};
     Mos6502Core core;
-    std::vector<Mos6502Bus> trace;
+    std::vector<Mos6502Cycle> trace;
 
     explicit System(std::uint8_t p, std::uint16_t pc = kReset, std::uint8_t s = 0xFD) {
         ram.fill(0xEA);
@@ -35,7 +35,7 @@ struct System {
         }
     }
     void cycle() {
-        const Mos6502Bus bus = core.bus();
+        const Mos6502Cycle bus = core.cycle();
         trace.push_back(bus);
         if (bus.read) {
             core.step(ram[bus.address]);
@@ -53,7 +53,7 @@ struct System {
     void toFetch() {
         do {
             cycle();
-        } while (!core.bus().sync);
+        } while (!core.cycle().sync);
     }
     int countReads(std::uint16_t address) const {
         int n = 0;
@@ -70,15 +70,15 @@ constexpr std::uint8_t kI = 0x04, kB = 0x10, kV = 0x40;
 
 TEST_CASE("6502 core: NOP takes two cycles", "[parts]") {
     System sys(0x24, 0x1234);
-    CHECK(sys.core.bus().address == 0x1234);
-    CHECK(sys.core.bus().sync);
+    CHECK(sys.core.cycle().address == 0x1234);
+    CHECK(sys.core.cycle().sync);
     sys.cycle();
-    CHECK(sys.core.bus().address == 0x1235);
-    CHECK_FALSE(sys.core.bus().sync);
-    CHECK(sys.core.bus().read);
+    CHECK(sys.core.cycle().address == 0x1235);
+    CHECK_FALSE(sys.core.cycle().sync);
+    CHECK(sys.core.cycle().read);
     sys.cycle();
-    CHECK(sys.core.bus().address == 0x1235);
-    CHECK(sys.core.bus().sync);
+    CHECK(sys.core.cycle().address == 0x1235);
+    CHECK(sys.core.cycle().sync);
 }
 
 TEST_CASE("6502 core: reset", "[parts]") {
@@ -89,9 +89,9 @@ TEST_CASE("6502 core: reset", "[parts]") {
     sys.cycle();
     const std::uint16_t pc = sys.core.registers().pc;
     for (int i = 0; i < 3; ++i) {  // held: reads at PC
-        CHECK(sys.core.bus().address == pc);
-        CHECK(sys.core.bus().read);
-        CHECK_FALSE(sys.core.bus().sync);
+        CHECK(sys.core.cycle().address == pc);
+        CHECK(sys.core.cycle().read);
+        CHECK_FALSE(sys.core.cycle().sync);
         sys.cycle();
     }
     sys.core.setReset(false);
@@ -105,12 +105,12 @@ TEST_CASE("6502 core: reset", "[parts]") {
         0xFFFC,
         0xFFFD};
     for (const std::uint16_t address : expected) {
-        CHECK(sys.core.bus().address == address);
-        CHECK(sys.core.bus().read);
+        CHECK(sys.core.cycle().address == address);
+        CHECK(sys.core.cycle().read);
         sys.cycle();
     }
-    CHECK(sys.core.bus().address == kReset);
-    CHECK(sys.core.bus().sync);
+    CHECK(sys.core.cycle().address == kReset);
+    CHECK(sys.core.cycle().sync);
     CHECK(sys.core.registers().s == static_cast<std::uint8_t>(s - 3));
     CHECK((sys.core.registers().p & kI) != 0);
 }
@@ -121,11 +121,11 @@ TEST_CASE("6502 core: IRQ", "[parts]") {
         sys.load(kReset, {0x58});  // CLI, then NOPs
         sys.core.setIrq(true);
         sys.toFetch();  // CLI done
-        CHECK(sys.core.bus().address == kReset + 1);
+        CHECK(sys.core.cycle().address == kReset + 1);
         sys.toFetch();  // the NOP still runs under the old I
-        CHECK(sys.core.bus().address == kReset + 2);
+        CHECK(sys.core.cycle().address == kReset + 2);
         sys.toFetch();  // the interrupt sequence
-        CHECK(sys.core.bus().address == kIrq);
+        CHECK(sys.core.cycle().address == kIrq);
         CHECK(sys.ram[0x01FD] == 0x02);
         CHECK(sys.ram[0x01FC] == 0x02);  // PC of the instruction not run
         CHECK((sys.ram[0x01FB] & kB) == 0);
@@ -145,9 +145,9 @@ TEST_CASE("6502 core: IRQ", "[parts]") {
         sys.core.setIrq(true);
         sys.cycle();  // NOP T2, the last
         sys.toFetch();
-        CHECK(sys.core.bus().address == kReset + 2);  // the next NOP ran
+        CHECK(sys.core.cycle().address == kReset + 2);  // the next NOP ran
         sys.toFetch();
-        CHECK(sys.core.bus().address == kIrq);
+        CHECK(sys.core.cycle().address == kIrq);
         CHECK(sys.ram[0x01FC] == 0x02);
     }
     SECTION("a taken branch in its page delays it by one instruction") {
@@ -157,11 +157,11 @@ TEST_CASE("6502 core: IRQ", "[parts]") {
         sys.core.setIrq(true);           // seen at the end of T2, the second-to-last cycle
         sys.cycle();                     // T2
         sys.cycle();                     // T3, the last
-        CHECK(sys.core.bus().address == kReset + 2);
+        CHECK(sys.core.cycle().address == kReset + 2);
         sys.toFetch();  // the NOP after the branch runs
-        CHECK(sys.core.bus().address == kReset + 3);
+        CHECK(sys.core.cycle().address == kReset + 3);
         sys.toFetch();
-        CHECK(sys.core.bus().address == kIrq);
+        CHECK(sys.core.cycle().address == kIrq);
     }
 }
 
@@ -184,7 +184,7 @@ TEST_CASE("6502 core: NMI", "[parts]") {
         sys.core.setNmi(true);
         sys.cycle();  // T4 ends: the vector is chosen
         sys.toFetch();
-        CHECK(sys.core.bus().address == kNmi);
+        CHECK(sys.core.cycle().address == kNmi);
         CHECK(sys.countReads(0xFFFE) == 0);
         CHECK((sys.ram[0x01FB] & kB) != 0);  // pushed by a BRK
     }
@@ -211,7 +211,7 @@ TEST_CASE("6502 core: JAM", "[parts]") {
     sys.core.setReset(false);
     sys.toFetch();
     CHECK_FALSE(sys.core.jammed());
-    CHECK(sys.core.bus().address == kReset);
+    CHECK(sys.core.cycle().address == kReset);
 }
 
 TEST_CASE("6502 core: SO sets V", "[parts]") {

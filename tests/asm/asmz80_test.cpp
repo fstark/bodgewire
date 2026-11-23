@@ -275,7 +275,7 @@ std::vector<std::uint16_t> OwnReads(const std::vector<std::uint8_t>& bytes) {
         {.pc = 0x0100, .sp = 0x9000, .ix = 0x8000, .iy = 0x8000, .b = 0x80, .d = 0x80, .h = 0x80});
     std::vector<std::uint16_t> reads;
     for (int cycles = 0; cycles < 64; ++cycles) {
-        const Z80Bus bus = core.bus();
+        const Z80Cycle bus = core.cycle();
         std::uint8_t data = 0xFF;
         if (bus.kind == Z80CycleKind::Fetch || bus.kind == Z80CycleKind::Read) {
             data = ram[bus.address];

@@ -38,7 +38,7 @@ LogicValue Level(bool bit, bool unknown) { return unknown ? X : (bit ? One : Zer
 }  // namespace
 
 Ls93::Ls93(std::string reference) : Component(std::move(reference), Ls93Pins()) {
-    declareBus("QA-QD", {"QA", "QB", "QC", "QD"});
+    declarePinGroup("QA-QD", {"QA", "QB", "QC", "QD"});
 }
 
 void Ls93::powerOn(PowerOnContext& ctx) {

@@ -155,7 +155,7 @@ bool Same(const Z80Registers& x, const Z80Registers& y) {
 }
 
 // The T-states of one M-cycle as Harte's data samples them ("simplified memory access").
-void Expand(const Z80Bus& bus, int data, int& last, std::vector<Z80Case::TState>& out) {
+void Expand(const Z80Cycle& bus, int data, int& last, std::vector<Z80Case::TState>& out) {
     using enum Z80CycleKind;
     const int a = bus.address;
     const auto t = [&out](int address, int value, const char* flags) {
@@ -278,7 +278,7 @@ std::optional<std::string> RunZ80Case(const Z80Case& c) {
     int last = -1;
     std::vector<Z80Case::TState> expanded;
     while (at < c.tStates.size()) {
-        const Z80Bus bus = core.bus();
+        const Z80Cycle bus = core.cycle();
         int data = -1;
         switch (bus.kind) {
         case Z80CycleKind::Fetch:

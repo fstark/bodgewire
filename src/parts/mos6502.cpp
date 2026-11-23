@@ -117,7 +117,7 @@ void Mos6502::phase2(EvalContext& ctx) {
         core_.setOverflow();
     }
     so_ = so;
-    const Mos6502Bus& bus = core_.bus();
+    const Mos6502Cycle& bus = core_.cycle();
     if (!bus.read) {
         for (unsigned bit = 0; bit < kData.size(); ++bit) {
             ctx.drive(kData[bit], Bit(bus.data, bit), kMos6502DataOut);
@@ -133,7 +133,7 @@ void Mos6502::endCycle(EvalContext& ctx) {
     core_.setReset(reset);
     core_.setNmi(!ctx.readBitBefore(kNmiN));
     core_.setIrq(!ctx.readBitBefore(kIrqN));
-    const Mos6502Bus& bus = core_.bus();
+    const Mos6502Cycle& bus = core_.cycle();
     if (bus.read && !reset && !ctx.readBitBefore(kRdy)) {
         return;  // RDY low: the read cycle runs again; ignored on a write (NMOS)
     }
@@ -148,7 +148,7 @@ void Mos6502::endCycle(EvalContext& ctx) {
         }
     }
     core_.step(static_cast<std::uint8_t>(data));
-    const Mos6502Bus& next = core_.bus();
+    const Mos6502Cycle& next = core_.cycle();
     for (unsigned bit = 0; bit < kAddress.size(); ++bit) {
         ctx.drive(kAddress[bit], Bit(next.address, bit), kMos6502Address);
     }

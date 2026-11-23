@@ -29,7 +29,7 @@ struct PinSpec {
 
 // Pins the datasheet names as one value by letters (QA-QD), not digits: the Logic Analyzer's
 // Shift-click groups them (pins named with digits, A0-A15, are grouped by their names).
-struct PinBus {
+struct PinGroup {
     std::string name;            // "QA-QD"
     std::vector<PinIndex> pins;  // bit 0 first
 };
@@ -96,7 +96,7 @@ public:
     ComponentId id() const { return id_; }              // valid once added to a Circuit
     PinId firstPin() const { return firstPin_; }        // global PinId of local Pin 0
     PinIndex pinIndex(std::string_view pinName) const;  // Check()s the name
-    std::span<const PinBus> buses() const { return buses_; }
+    std::span<const PinGroup> pinGroups() const { return pinGroups_; }
 
     // Outputs already hold random 0/1, bidirectional Pins Z; override to seed state / make outputs
     // consistent.
@@ -105,14 +105,14 @@ public:
 
 protected:
     Component(std::string name, std::vector<PinSpec> pins);
-    // Adds a PinBus over these Pins, bit 0 first; Check()s the names.
-    void declareBus(std::string name, std::initializer_list<std::string_view> pins);
+    // Adds a PinGroup over these Pins, bit 0 first; Check()s the names.
+    void declarePinGroup(std::string name, std::initializer_list<std::string_view> pins);
 
 private:
     friend class Circuit;
     std::string name_;
     std::vector<PinSpec> pins_;
-    std::vector<PinBus> buses_;
+    std::vector<PinGroup> pinGroups_;
     ComponentId id_{};
     PinId firstPin_{};
 };

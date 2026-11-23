@@ -153,7 +153,7 @@ Resolution Simulator::resolveNet(NetId net) const {
             return {value, false};  // what Resolver gives for one Strong drive and no tie
         }
     }
-    if (circuit_.isPlainBus(net)) {
+    if (circuit_.isSharedNet(net)) {
         // What Resolver gives with no Drive (floating) or one Strong Drive and no tie.
         const Driving& d = driving_[ToIndex(net)];
         if (d.count == 0) {
