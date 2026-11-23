@@ -69,9 +69,14 @@ The rule this brings: Asyncify cannot unwind through a live `try` block under wa
 - **Speed:** wasm at about 0.42× native (0.31–0.51× across the Machines), before Asyncify's and WebGL's costs. Slow, but it runs.
 - **Output:** `bw_ui.wasm` 3.8 MB, `bw_ui.data` 7.5 MB.
 
+## After the merge
+
+2026-11-23: `GpuRender` owns the TV's texture and uploads `TvView`'s pixels in `present`, each
+build's state in its own `GpuRender::Backend`, the window flags from `GpuRender::windowFlags()`: no
+`#ifdef __EMSCRIPTEN__` left in `src/` (§2's and §3's are gone), only CMake's choice of file.
+
 ## Later
 
-- **`TvView` with no backend in it.** `GpuRender` would own the TV texture and `present` upload `TvView`'s pixels. That ends the `#ifdef`s and the `device()` and `renderer()` getters.
 - **Speed:**
   - JSPI in place of Asyncify, once Safari has it;
   - or the frame loops as `emscripten_set_main_loop` callbacks.

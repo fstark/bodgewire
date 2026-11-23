@@ -12,6 +12,7 @@
 #include <imgui_impl_sdlgpu3.h>
 #include <imgui_internal.h>
 
+#include "devices/tv.hpp"
 #include "ui/tv_view.hpp"
 
 namespace bw {
@@ -20,6 +21,7 @@ namespace {
 
 constexpr SDL_FColor kClear{0, 0, 0, 1};
 constexpr std::uint8_t kBackdrop = 40;  // the composed screenshot's desktop
+constexpr Uint32 kTvBytes = static_cast<Uint32>(kTvColumns) * kTvRows * 4;
 
 // ImGui's draw data recorded into `target` (cleared first) in its own render pass.
 void Draw(ImDrawData* data, SDL_GPUCommandBuffer* commands, SDL_GPUTexture* target) {
@@ -109,38 +111,127 @@ Surface ReadBack(SDL_GPUDevice* device, SDL_GPUTextureFormat format, SDL_PixelFo
     return surface;
 }
 
-}  // namespace
-
-GpuRender::GpuRender(SDL_Window* main) : main_(main) {
-    device_ = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL |
-                                      SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB,
-                                  false, nullptr);
-    if (device_ == nullptr) {
-        return;
-    }
-    if (!SDL_ClaimWindowForGPUDevice(device_, main_)) {
-        SDL_DestroyGPUDevice(device_);
-        device_ = nullptr;
-        return;
-    }
-    SDL_SetGPUSwapchainParameters(device_, main_, SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
-                                  SDL_GPU_PRESENTMODE_VSYNC);
-    format_ = SDL_GetGPUSwapchainTextureFormat(device_, main_);
+// The TV's texture and the buffer its pixels go through, for `device`.
+SDL_GPUTexture* MakeTvTexture(SDL_GPUDevice* device) {
+    SDL_GPUTextureCreateInfo info{};
+    info.type = SDL_GPU_TEXTURETYPE_2D;
+    info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    info.width = kTvColumns;
+    info.height = kTvRows;
+    info.layer_count_or_depth = 1;
+    info.num_levels = 1;
+    return SDL_CreateGPUTexture(device, &info);
 }
 
-bool GpuRender::ready() const { return device_ != nullptr; }
+SDL_GPUTransferBuffer* MakeTvTransfer(SDL_GPUDevice* device) {
+    SDL_GPUTransferBufferCreateInfo info{};
+    info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    info.size = kTvBytes;
+    return SDL_CreateGPUTransferBuffer(device, &info);
+}
+
+// MAILBOX where `window` supports it (no tearing), else IMMEDIATE, else VSYNC.
+SDL_GPUPresentMode UnpacedMode(SDL_GPUDevice* device, SDL_Window* window) {
+    for (const SDL_GPUPresentMode mode :
+         {SDL_GPU_PRESENTMODE_MAILBOX, SDL_GPU_PRESENTMODE_IMMEDIATE}) {
+        if (SDL_WindowSupportsGPUPresentMode(device, window, mode)) {
+            return mode;
+        }
+    }
+    return SDL_GPU_PRESENTMODE_VSYNC;
+}
+
+}  // namespace
+
+struct GpuRender::Backend {
+    SDL_Window* main = nullptr;
+    SDL_GPUDevice* device = nullptr;
+    SDL_GPUTextureFormat format = SDL_GPU_TEXTUREFORMAT_INVALID;  // the main swapchain's
+    SDL_GPUTexture* tv = nullptr;
+    SDL_GPUTransferBuffer* tvTransfer = nullptr;
+
+    // The TV's pixels into its texture, in a copy pass of `commands`; false if the buffer
+    // would not map (tried again next frame).
+    bool uploadTv(SDL_GPUCommandBuffer* commands, const TvView& view) const {
+        void* mapped = SDL_MapGPUTransferBuffer(device, tvTransfer, true);
+        if (mapped == nullptr) {
+            return false;
+        }
+        std::memcpy(mapped, view.pixels().data(), kTvBytes);
+        SDL_UnmapGPUTransferBuffer(device, tvTransfer);
+        SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(commands);
+        SDL_GPUTextureTransferInfo from{};
+        from.transfer_buffer = tvTransfer;
+        SDL_GPUTextureRegion to{};
+        to.texture = tv;
+        to.w = kTvColumns;
+        to.h = kTvRows;
+        to.d = 1;
+        SDL_UploadToGPUTexture(copy, &from, &to, true);
+        SDL_EndGPUCopyPass(copy);
+        return true;
+    }
+};
+
+SDL_WindowFlags GpuRender::windowFlags() {
+    return SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+}
+
+GpuRender::GpuRender(SDL_Window* main) : backend_(std::make_unique<Backend>()) {
+    Backend& b = *backend_;
+    b.main = main;
+    b.device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL |
+                                       SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB,
+                                   false, nullptr);
+    if (b.device == nullptr) {
+        return;
+    }
+    if (!SDL_ClaimWindowForGPUDevice(b.device, b.main)) {
+        SDL_DestroyGPUDevice(b.device);
+        b.device = nullptr;
+        return;
+    }
+    SDL_SetGPUSwapchainParameters(b.device, b.main, SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
+                                  SDL_GPU_PRESENTMODE_VSYNC);
+    b.format = SDL_GetGPUSwapchainTextureFormat(b.device, b.main);
+    b.tv = MakeTvTexture(b.device);
+    b.tvTransfer = MakeTvTransfer(b.device);
+}
+
+GpuRender::~GpuRender() {
+    Backend& b = *backend_;
+    if (b.device == nullptr) {
+        return;
+    }
+    SDL_WaitForGPUIdle(b.device);
+    if (b.tvTransfer != nullptr) {
+        SDL_ReleaseGPUTransferBuffer(b.device, b.tvTransfer);
+    }
+    if (b.tv != nullptr) {
+        SDL_ReleaseGPUTexture(b.device, b.tv);
+    }
+    SDL_ReleaseWindowFromGPUDevice(b.device, b.main);
+    SDL_DestroyGPUDevice(b.device);
+}
+
+bool GpuRender::ready() const {
+    return backend_->device != nullptr && backend_->tv != nullptr &&
+           backend_->tvTransfer != nullptr;
+}
 
 void GpuRender::initImGui() {
+    const Backend& b = *backend_;
     // Multi-viewports, docking off (P6j): a popped-out object in its own desktop window, not
     // tied to the main one (ImGui's default), with no title bar.
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // NoDefaultParent: true
-    ImGui_ImplSDL3_InitForSDLGPU(main_);
+    ImGui_ImplSDL3_InitForSDLGPU(b.main);
     ImGui_ImplSDLGPU3_InitInfo info;
-    info.Device = device_;
-    info.ColorTargetFormat = format_;
+    info.Device = b.device;
+    info.ColorTargetFormat = b.format;
     // The popped-out windows never wait for their display's vsync: one on a slower display (a
     // 30 Hz monitor) would pace the whole UI at its rate. The main window's vsync paces it.
-    info.PresentMode = unpacedMode();
+    info.PresentMode = UnpacedMode(b.device, b.main);
     ImGui_ImplSDLGPU3_Init(&info);
 }
 
@@ -150,37 +241,24 @@ void GpuRender::newFrame() {
 }
 
 void GpuRender::shutdownImGui() {
-    SDL_WaitForGPUIdle(device_);
+    SDL_WaitForGPUIdle(backend_->device);
     ImGui_ImplSDL3_Shutdown();  // the popped-out windows destroyed with it
     ImGui_ImplSDLGPU3_Shutdown();
 }
 
-SDL_GPUPresentMode GpuRender::unpacedMode() const {
-    for (const SDL_GPUPresentMode mode :
-         {SDL_GPU_PRESENTMODE_MAILBOX, SDL_GPU_PRESENTMODE_IMMEDIATE}) {
-        if (SDL_WindowSupportsGPUPresentMode(device_, main_, mode)) {
-            return mode;
-        }
-    }
-    return SDL_GPU_PRESENTMODE_VSYNC;
-}
-
-GpuRender::~GpuRender() {
-    if (device_ != nullptr) {
-        SDL_WaitForGPUIdle(device_);
-        SDL_ReleaseWindowFromGPUDevice(device_, main_);
-        SDL_DestroyGPUDevice(device_);
-    }
+ImTextureID GpuRender::tvTexture() const {
+    return static_cast<ImTextureID>(reinterpret_cast<std::uintptr_t>(backend_->tv));
 }
 
 void GpuRender::present(TvView* tv) {
+    const Backend& b = *backend_;
     ImDrawData* data = ImGui::GetDrawData();
-    SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(device_);
-    if (tv != nullptr) {
-        tv->upload(commands);
+    SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(b.device);
+    if (tv != nullptr && tv->changed() && b.uploadTv(commands, *tv)) {
+        tv->uploaded();
     }
     SDL_GPUTexture* swapchain = nullptr;
-    SDL_WaitAndAcquireGPUSwapchainTexture(commands, main_, &swapchain, nullptr, nullptr);
+    SDL_WaitAndAcquireGPUSwapchainTexture(commands, b.main, &swapchain, nullptr, nullptr);
     if (swapchain != nullptr && data->DisplaySize.x > 0 && data->DisplaySize.y > 0) {
         Draw(data, commands, swapchain);
     }
@@ -192,13 +270,14 @@ void GpuRender::present(TvView* tv) {
 }
 
 bool GpuRender::screenshot(const std::filesystem::path& path) {
+    const Backend& b = *backend_;
     SDL_PixelFormat pixels = SDL_PIXELFORMAT_UNKNOWN;
-    if (format_ == SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM) {
+    if (b.format == SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM) {
         pixels = SDL_PIXELFORMAT_BGRA32;
-    } else if (format_ == SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM) {
+    } else if (b.format == SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM) {
         pixels = SDL_PIXELFORMAT_RGBA32;
     } else {
-        return SDL_SetError("screenshot: swapchain format %d", static_cast<int>(format_));
+        return SDL_SetError("screenshot: swapchain format %d", static_cast<int>(b.format));
     }
     // ImGui::Render set every viewport's draw data; present() has made their windows.
     struct Shot {
@@ -216,20 +295,20 @@ bool GpuRender::screenshot(const std::filesystem::path& path) {
     }
     std::ranges::stable_sort(order, {}, &ImGuiViewportP::LastFocusedStampCount);
     order.insert(order.begin(), static_cast<ImGuiViewportP*>(ImGui::GetMainViewport()));
-    SDL_WaitForGPUIdle(device_);
+    SDL_WaitForGPUIdle(b.device);
     for (ImGuiViewportP* viewport : order) {
         ImDrawData* data = viewport->DrawData;
         if (data == nullptr || !data->Valid || data->DisplaySize.x <= 0 ||
             (viewport->Flags & ImGuiViewportFlags_IsMinimized) != 0) {
             continue;
         }
-        Surface surface = ReadBack(device_, format_, pixels, data);
+        Surface surface = ReadBack(b.device, b.format, pixels, data);
         if (!surface) {
             return false;
         }
         shots.push_back({std::move(surface), viewport->Pos, viewport->Size});
     }
-    SDL_WaitForGPUIdle(device_);
+    SDL_WaitForGPUIdle(b.device);
     if (shots.empty()) {
         return SDL_SetError("screenshot: nothing drawn");
     }

@@ -619,7 +619,7 @@ struct BenchResult {
 BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, Session& session,
                       const Options& options, ImFont* legends, ImFont* petLegends, bool canLeave) {
     ResetBench();
-    TvView view(gpu);
+    TvView view(gpu.tvTexture());
     Shelf shelf;
     TvWindow tvWindow;
     tvWindow.setLoupe(options.loupe);
@@ -1607,7 +1607,7 @@ struct LauncherResult {
 LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen& screen,
                            Launcher& launcher, const Options& options) {
     SDL_SetWindowTitle(window, "Bodgewire");
-    TvView view(gpu);
+    TvView view(gpu.tvTexture());
     SpeedRatio ratio;
     double speedRatio = 0;
     double uiMilliseconds = 0;
@@ -1756,15 +1756,8 @@ int main(int argc, char** argv) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         return kExitErrors;
     }
-#ifdef __EMSCRIPTEN__
-    // The whole page, following the browser window's size; OpenGL (WebGL) for SDL_Renderer from
-    // the start: it would recreate the window, and SDL's page juggling fails on the way.
-    constexpr SDL_WindowFlags kWindowFlags = SDL_WINDOW_FILL_DOCUMENT | SDL_WINDOW_OPENGL |
-                                             SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-#else
-    constexpr SDL_WindowFlags kWindowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-#endif
-    SDL_Window* window = SDL_CreateWindow("Bodgewire", kWindowWidth, kWindowHeight, kWindowFlags);
+    SDL_Window* window =
+        SDL_CreateWindow("Bodgewire", kWindowWidth, kWindowHeight, GpuRender::windowFlags());
     if (window == nullptr) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         SDL_Quit();
