@@ -16,6 +16,11 @@ std::vector<SwitchTag> SwitchTagsOf(const BoardScene& scene, const Session& sess
 // A still Machine's (P7b): every lamp dark, every switch released, from its design Circuit.
 std::vector<LedTag> StillLedTags(const BoardScene& scene, const LoadedCircuit& design);
 std::vector<SwitchTag> StillSwitchTags(const BoardScene& scene, const LoadedCircuit& design);
+// The instruments' leads on the Board: the Analyzer's Clips (coloured by Channel or Channel
+// Group), the Oscilloscope's Hooks, the Multimeter's Test Leads (the black one in Continuity).
+std::vector<ClipTag> ClipTagsOf(const Session& session);
+std::vector<HookTag> HookTagsOf(const Session& session);
+std::vector<LeadTag> LeadTagsOf(const Session& session);
 // The Machine's cuts, cracks, Bodge Wires and Solder Bridges onto `view`.
 void ShowRepairs(BoardView& view, const Machine& machine);
 

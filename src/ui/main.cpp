@@ -38,6 +38,8 @@
 #include "text/text.hpp"
 #include "ui/analyzer_window.hpp"
 #include "ui/bench.hpp"
+#include "ui/bench_input.hpp"
+#include "ui/bench_setup.hpp"
 #include "ui/board_keys.hpp"
 #include "ui/board_tags.hpp"
 #include "ui/board_view.hpp"
@@ -55,6 +57,7 @@
 #include "ui/scope_window.hpp"
 #include "ui/shelf.hpp"
 #include "ui/title.hpp"
+#include "ui/tool_click.hpp"
 #include "ui/tv_view.hpp"
 #include "ui/tv_window.hpp"
 #include "ui/window_order.hpp"
@@ -137,15 +140,6 @@ std::string_view StateName(RunState state) {
     return "";
 }
 
-// What a click with a tool that needs the power off would do (P6o): the repairs to try in order
-// (the first Done wins: the iron resolders a pin, else mends), the puller's component (its pencil
-// marks leave with it), the refusal when none is Done.
-struct RepairPlan {
-    std::vector<RepairAction> tries;
-    std::optional<std::size_t> swapped;
-    std::string unknown;
-};
-
 // Board hover text plus the Part's description, or the pin's Datasheet line.
 std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manuals) {
     std::string text = scene.hoverText(hit);
@@ -199,16 +193,13 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                                                             machine->designCircuit())
                                 : std::nullopt);
     std::uint64_t seed = 1;
-    std::optional<PinRef> wireStart;  // Wire tool: the first pin
-    PencilMarks marks;                // the grease pencil's (P6h)
+    WireDraft wire;     // the Wire tool's first pin
+    PencilMarks marks;  // the grease pencil's (P6h)
     for (const auto& [shape, at] : options.bench.mark) {
         marks.add({at, shape, boardView.scene()->bodyAt(at)});  // a Board: checked in main()
     }
-    Point wireStartAt{};
-    std::set<std::string> latched;  // Buttons kept pressed by a right-click
-    std::set<std::string> slid;     // SLIDE switches at ON, kept across power off and on
-    std::vector<std::size_t> typedKeys(options.bench.type.size(), 0);  // --type: keys sent so far
-    bool wasPowered = false;
+    SwitchHands switchHands;
+    ScriptedTyping scriptedTyping(options.bench.type);
     KeyboardCapture capture;
     if (const auto keyboards = session.keyboards(); !keyboards.empty()) {
         capture.reference = keyboards.front();
@@ -488,7 +479,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
         if (focus.owner() != lastOwner) {
-            wireStart.reset();  // a wire is started with one tool only
+            wire.start.reset();  // a wire is started with one tool only
             lastOwner = focus.owner();
         }
         boardView.setOwner(focus.owner());
@@ -551,139 +542,8 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                     boardView.select(*click->component);
                 }
             }
-            std::optional<RepairPlan> plan;  // a tool that needs the power off (P6o)
-            switch (focus.owner()) {
-            case Owner::Probe:
-                if (!pick) {
-                    session.touch(std::nullopt);  // bare Board: the tip lifted (P6o)
-                } else if (pick->hit.kind != HitKind::Component) {
-                    session.touch(ProbeTip{pick->contact, pick->layer});
-                }
-                break;
-            case Owner::Puller:
-                if (click->component) {
-                    plan = RepairPlan{
-                        {SwapRepair{session.drawnBoard()->components[*click->component].reference}},
-                        click->component,
-                        ""};
-                }
-                break;
-            case Owner::Iron: {
-                // A chip pin is resoldered, else a crack mended (a mend is always Done: Session);
-                // on the Board only, so a click beside it never power-cycles.
-                if (!InsideOutline(boardView.scene()->outline(), click->at)) {
-                    break;
-                }
-                plan = RepairPlan{};
-                if (pick && pick->hit.kind == HitKind::Pad) {
-                    const BoardComponent& part =
-                        session.drawnBoard()->components[pick->hit.component];
-                    plan->tries.push_back(
-                        ResolderRepair{{part.reference, part.pads[pick->hit.index].number}});
-                }
-                plan->tries.push_back(pick && pick->hit.kind == HitKind::Trace
-                                          ? MendRepair{pick->layer, pick->contact}
-                                          : MendRepair{click->active, click->at});
-                break;
-            }
-            case Owner::Cutters: {
-                constexpr std::string_view kCutRefusal = "Cut: click a trace or a wire";
-                if (const auto wire = boardView.wireAt(click->at)) {
-                    const WireEnds& w = machine->wires()[*wire];
-                    plan = RepairPlan{
-                        {UnwireRepair{w.a, w.b}}, std::nullopt, std::string(kCutRefusal)};
-                } else if (const auto bridge = boardView.bridgeAt(click->at)) {
-                    const WireEnds& b = machine->bridges()[*bridge];
-                    plan = RepairPlan{
-                        {UnbridgeRepair{b.a, b.b}}, std::nullopt, std::string(kCutRefusal)};
-                } else if (!pick || pick->hit.kind != HitKind::Trace) {
-                    refuse(std::string(kCutRefusal));
-                } else if (boardView.scene()->board().traces[pick->hit.index].mid) {
-                    refuse("Cut: straight traces only");
-                } else {
-                    plan = RepairPlan{{CutRepair{pick->layer, pick->contact}},
-                                      std::nullopt,
-                                      std::string(kCutRefusal)};
-                }
-                break;
-            }
-            case Owner::Wire: {
-                if (!pick || pick->hit.kind != HitKind::Pad) {
-                    refuse("Wire: solder to pins only");
-                    break;
-                }
-                const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
-                const Pad& pad = part.pads[pick->hit.index];
-                const PinRef end{part.reference, pad.number};
-                if (!wireStart) {  // the first pin, with the power on too
-                    wireStart = end;
-                    wireStartAt = pad.position;
-                    break;
-                }
-                if (wireStart->reference != end.reference || wireStart->pin != end.pin) {
-                    plan = RepairPlan{{WireRepair{*wireStart, end}}, std::nullopt, ""};
-                }
-                wireStart.reset();  // the same pin again: cancelled
-                break;
-            }
-            case Owner::Analyzer:
-            case Owner::Scope: {
-                const bool isClip = focus.owner() == Owner::Analyzer;
-                if (!pick || pick->hit.kind == HitKind::Component) {
-                    break;
-                }
-                if (!AcceptsLead(LeadKind::Attached, pick->hit.kind)) {
-                    refuse(std::format("{}: attaches to pins only", isClip ? "Clip" : "Hook"));
-                    break;
-                }
-                const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
-                const std::string& pin = part.pads[pick->hit.index].number;
-                if (!session.padLead(part.reference, pin)) {  // a resistor's, a capacitor's
-                    refuse(std::format("{}: chip pins only", isClip ? "Clip" : "Hook"));
-                    break;
-                }
-                if (isClip) {
-                    const auto channel = session.clipAt(part.reference, pin);
-                    const auto group = channel ? session.groupOf(*channel) : std::nullopt;
-                    if (channel && click->shift && group) {
-                        session.unclipGroup(*group);
-                    } else if (channel) {
-                        session.unclip(*channel);
-                    } else if (click->shift) {
-                        if (const auto clipped = session.clipGroup(part.reference, pin); !clipped) {
-                            refuse("Clip: " + clipped.error());
-                        }
-                    } else if (!session.clip(part.reference, pin)) {
-                        refuse(std::format("Clip: all {} channels used", kChannels));
-                    }
-                } else {
-                    if (const auto channel = session.hookAt(part.reference, pin)) {
-                        session.unhook(*channel);
-                    } else if (!session.hook(part.reference, pin)) {
-                        refuse(std::format("Hook: all {} channels used", kScopeChannels));
-                    }
-                }
-                break;
-            }
-            case Owner::Pencil:
-                if (!InsideOutline(boardView.scene()->outline(), click->at)) {
-                    break;  // on the Board only (P6o)
-                }
-                if (click->shift) {
-                    marks.clear(click->at, boardView.markReach());
-                } else {
-                    marks.click(click->at, boardView.scene()->bodyAt(click->at),
-                                boardView.markReach());
-                }
-                break;
-            case Owner::Meter:
-                if (pick && AcceptsLead(LeadKind::Held, pick->hit.kind) &&
-                    !session.placeLead({pick->contact, pick->layer,
-                                        LeadLabel(*boardView.scene(), pick->hit, pick->layer)})) {
-                    refuse("Meter: power off for continuity");
-                }
-                break;
-            }
+            const std::optional<RepairPlan> plan =
+                ToolClick(focus.owner(), *click, session, boardView, marks, wire, refuse);
             if (plan) {
                 switch (*StepFor(true, session.powered(), popup.dontAsk())) {
                 case RepairStep::Apply:
@@ -708,101 +568,20 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         const auto tip = session.probeTip();
         boardView.setProbeTip(tip ? std::optional(tip->at) : std::nullopt);
         boardView.setBlobs(session.blobs());
-        std::vector<ClipTag> tags;
-        for (std::size_t c = 0; c < kChannels; ++c) {
-            if (const auto& clip = session.clips()[c]) {
-                const auto group = session.groupOf(c);
-                tags.push_back({clip->at, c, group ? GroupColour(*group) : ChannelColour(c)});
-            }
-        }
-        boardView.setClips(tags);
-        std::vector<HookTag> hookTags;
-        for (std::size_t c = 0; c < kScopeChannels; ++c) {
-            if (const auto& hook = session.hooks()[c]) {
-                hookTags.push_back({hook->at, c});
-            }
-        }
-        boardView.setHooks(hookTags);
-        std::vector<LeadTag> leadTags;
-        if (session.red()) {
-            leadTags.push_back({session.red()->at, true});
-        }
-        if (session.black() && session.meterMode() == MeterMode::Continuity) {
-            leadTags.push_back({session.black()->at, false});
-        }
-        boardView.setLeads(leadTags);
+        boardView.setClips(ClipTagsOf(session));
+        boardView.setHooks(HookTagsOf(session));
+        boardView.setLeads(LeadTagsOf(session));
         if (const BoardScene* scene = boardView.scene()) {
             boardView.setLeds(LedTagsOf(*scene, session));
         }
-        {
-            // Buttons: held or latched on the Board, or scripted by --press (also without a
-            // Board).
-            const BoardScene* scene = boardView.scene();
-            if (!session.powered()) {
-                latched.clear();
-            }
-            const auto toggled = boardView.takeLatchToggle();
-            for (const std::string& reference : session.switches()) {
-                const auto component =
-                    scene ? scene->componentIndex(reference) : std::optional<std::size_t>();
-                const Switch* sw = SwitchOf(session.circuit(), reference);
-                const bool slide = sw != nullptr && sw->kind() == SwitchKind::Slide;
-                if (slide) {
-                    // A slide stays where it is moved, powered or not.
-                    if (component && toggled == component && !slid.erase(reference)) {
-                        slid.insert(reference);
-                    }
-                } else if (component && toggled == component && session.powered() &&
-                           !latched.erase(reference)) {
-                    latched.insert(reference);
-                }
-                const bool scripted =
-                    std::ranges::any_of(options.bench.press, [&](const ButtonPress& p) {
-                        return p.reference == reference && p.down <= status.simTime &&
-                               status.simTime < p.up;
-                    });
-                session.setPressed(reference, latched.contains(reference) ||
-                                                  slid.contains(reference) || scripted ||
-                                                  (component && boardView.held() == component) ||
-                                                  boardKeys.holds(reference));
-            }
-            if (scene) {
-                boardView.setSwitches(SwitchTagsOf(*scene, session));
-            }
-        }
-        {
-            // Keys scripted by --type. Not in the first frame powered: its status.simTime is the
-            // previous run's (the power-on is only queued).
-            if (!session.powered()) {
-                std::ranges::fill(typedKeys, 0);
-            } else if (wasPowered) {
-                for (std::size_t t = 0; t < options.bench.type.size(); ++t) {
-                    const Typing& typing = options.bench.type[t];
-                    if (typing.reference == matrixCapture.reference) {
-                        // The matrix paces its own presses: the text queued whole, once.
-                        if (typedKeys[t] == 0 && typing.start <= status.simTime) {
-                            session.typeText(typing.reference, typing.text);
-                            typedKeys[t] = 1;
-                        }
-                        continue;
-                    }
-                    while (typedKeys[t] < typing.keys.size() &&
-                           typing.at(typedKeys[t]) <= status.simTime) {
-                        const std::uint8_t code = typing.keys[typedKeys[t]++];
-                        if (session.typeCode(typing.reference, code) &&
-                            typing.reference == capture.reference) {
-                            keyboardWindow.flash(code);
-                        }
-                    }
-                }
-            }
-            wasPowered = session.powered();
-        }
+        switchHands.update(session, boardView, options.bench.press, boardKeys, status.simTime);
+        scriptedTyping.update(session, status.simTime, matrixCapture.reference, capture.reference,
+                              keyboardWindow);
         if (machine) {
             ShowRepairs(boardView, *machine);
         }
-        boardView.setWireStart(wireStart ? std::optional(wireStartAt) : std::nullopt);
-        shelf.wireStarted = wireStart.has_value();
+        boardView.setWireStart(wire.start ? std::optional(wire.at) : std::nullopt);
+        shelf.wireStarted = wire.start.has_value();
         const std::string_view lock =
             !tv ? "no video" : (tv->pictures().front().locked ? "locked" : "no lock");
         const DebugStats stats{static_cast<double>(status.simTime) /
@@ -930,176 +709,6 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     }
     SDL_StopTextInput(window);  // the keyboard capture's, if any: not the launcher's
     return {ending, exitCode};
-}
-
-// Today's bench flags applied to a command-line bench's Session, checked before the window
-// opens: an exit code on a usage error.
-std::optional<int> PrepareBench(Session& session, const Options& options) {
-    if (options.bench.probe) {
-        const auto pin = ParsePinRef(*options.bench.probe);
-        std::optional<Point> at;
-        if (session.machine() && pin) {
-            at = session.machine()->padPosition(pin->reference, pin->pin);
-        }
-        if (!at) {
-            std::println(stderr, "bw_ui: unknown pin '{}'", *options.bench.probe);
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-        session.touch(ProbeTip{*at, Layer::Front});
-    }
-    if (options.bench.contents) {
-        const std::string& reference = options.bench.contents->first;
-        if (!session.machine() || !session.machine()->contents(reference)) {  // a ROM on a Board
-            std::println(stderr, "bw_ui: no memory chip '{}'", reference);
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-    }
-    AnalyzerSettings analyzer;
-    if (options.bench.sample) {
-        analyzer.period = *options.bench.sample;
-    }
-    for (const std::string& item : options.bench.clip) {
-        const std::size_t colon = item.find(':');
-        const auto pin = ParsePinRef(std::string_view(item).substr(0, colon));
-        const auto trigger = colon == std::string::npos
-                                 ? std::optional(TriggerCondition::Any)
-                                 : ParseTrigger(std::string_view(item).substr(colon + 1));
-        const auto channel = pin ? session.clip(pin->reference, pin->pin) : std::nullopt;
-        if (!trigger || !channel) {
-            std::println(stderr, "bw_ui: unknown pin '{}'", item);
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-        analyzer.trigger[*channel] = *trigger;
-    }
-    if (!options.bench.clip.empty() || !options.bench.group.empty()) {
-        session.setAnalyzer(analyzer);
-    }
-    for (const std::string& item : options.bench.group) {
-        const std::size_t colon = item.find(':');
-        const auto pin = ParsePinRef(std::string_view(item).substr(0, colon));
-        const auto clipped =
-            pin ? std::optional(session.clipGroup(pin->reference, pin->pin)) : std::nullopt;
-        const bool ok = clipped && *clipped &&
-                        (colon == std::string::npos ||
-                         ((*clipped)->group &&
-                          session.setGroupTrigger(*(*clipped)->group, item.substr(colon + 1))));
-        if (!ok) {
-            std::println(stderr, "bw_ui: bad group '{}'{}", item,
-                         clipped && !*clipped ? ": " + clipped->error() : "");
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-    }
-    if (!options.bench.clip.empty() || !options.bench.group.empty()) {
-        session.arm();
-    }
-    for (const std::string& item : options.bench.hook) {
-        const auto pin = ParsePinRef(item);
-        if (!pin || !session.hook(pin->reference, pin->pin)) {
-            std::println(stderr, "bw_ui: unknown pin '{}'", item);
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-    }
-    if (options.bench.timebase || options.bench.delay) {
-        ScopeSettings scope = session.scopeSettings();
-        scope.timebase = options.bench.timebase.value_or(scope.timebase);
-        scope.delay = options.bench.delay.value_or(scope.delay);
-        if (scope.delay > kMaxDelayDivisions * scope.timebase) {
-            std::println(stderr, "bw_ui: delay over {} divisions", kMaxDelayDivisions);
-            return kExitUsage;
-        }
-        session.setScope(scope);
-    }
-    if (options.bench.meter.size() == 2) {  // red then black, before the power-on: none for these
-        session.setMeterMode(MeterMode::Continuity);
-    }
-    for (const std::string& item : options.bench.meter) {
-        const auto pin = ParsePinRef(item);
-        const auto lead = pin ? session.padLead(pin->reference, pin->pin) : std::nullopt;
-        if (!lead) {
-            std::println(stderr, "bw_ui: unknown pin '{}'", item);
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-        const bool chip = std::ranges::any_of(
-            session.machine()->designCircuit().parts, [&](const LoadedPart& part) {
-                return part.reference == lead->reference && part.info->kind == PartKind::Chip;
-            });
-        session.placeLead({lead->at, Layer::Front, lead->label + (chip ? " leg" : "")});
-    }
-    for (const std::string& text : options.bench.repair) {
-        const auto repair = ParseRepair(text);
-        std::optional<std::string> error;
-        if (!repair) {
-            error = repair.error();
-        } else if (session.repair(*repair) != RepairResult::Done) {
-            error = !session.machine() ? std::string("no Board to repair")
-                                       : "cannot apply '" + text + "'";
-        }
-        if (error) {
-            std::println(stderr, "bw_ui: {}", *error);
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-    }
-    if (options.bench.ask && !session.machine()) {
-        std::println(stderr, "bw_ui: no Board to repair");
-        std::println(stderr, "{}", Usage());
-        return kExitUsage;
-    }
-    if (!options.bench.mark.empty() && !session.machine()) {
-        std::println(stderr, "bw_ui: no Board to mark");
-        std::println(stderr, "{}", Usage());
-        return kExitUsage;
-    }
-    if (options.bench.tv && session.tv() == nullptr) {
-        std::println(stderr, "bw_ui: this Machine has no TV");
-        std::println(stderr, "{}", Usage());
-        return kExitUsage;
-    }
-    for (const BenchObject object : options.bench.pop) {
-        const bool has = object == BenchObject::Tv ? session.tv() != nullptr
-                         : object == BenchObject::Keyboard
-                             ? !session.keyboards().empty() || !session.matrixKeyboards().empty()
-                         : object == BenchObject::Knob   ? !session.knobs().empty()
-                         : object == BenchObject::Manual ? true
-                                                         : session.machine() != nullptr;
-        if (!has) {
-            std::println(stderr, "bw_ui: this Machine has no {}",
-                         object == BenchObject::Tv         ? "TV"
-                         : object == BenchObject::Keyboard ? "keyboard"
-                         : object == BenchObject::Knob     ? "paddle controller"
-                                                           : "Board for the instruments");
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-    }
-    for (const KnobSetting& knob : options.bench.knob) {
-        if (!session.setKnob(knob.reference, knob.turn)) {
-            std::println(stderr, "bw_ui: '{}' is not a paddle controller", knob.reference);
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-    }
-    for (const Typing& typing : options.bench.type) {
-        if (!std::ranges::contains(session.keyboards(), typing.reference) &&
-            !std::ranges::contains(session.matrixKeyboards(), typing.reference)) {
-            std::println(stderr, "bw_ui: '{}' is not a keyboard", typing.reference);
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-        if (typing.untypable && std::ranges::contains(session.keyboards(), typing.reference)) {
-            std::println(stderr, "bw_ui: cannot type the text on '{}', a keyboard",
-                         typing.reference);
-            std::println(stderr, "{}", Usage());
-            return kExitUsage;
-        }
-    }
-    return std::nullopt;
 }
 
 // ImGui for one screen (P7a), the launcher's or a bench's: made anew for each, so a bench starts
@@ -1269,8 +878,10 @@ int main(int argc, char** argv) {
         if (!loaded->session) {
             return kExitErrors;
         }
-        if (const auto code = PrepareBench(*loaded->session, options)) {
-            return *code;
+        if (const auto applied = ApplyBenchOptions(*loaded->session, options.bench); !applied) {
+            std::println(stderr, "bw_ui: {}", applied.error());
+            std::println(stderr, "{}", Usage());
+            return kExitUsage;
         }
     }
     const std::optional<std::filesystem::path> machinesDir = MachinesDirFor(options);

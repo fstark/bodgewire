@@ -94,6 +94,7 @@ About 40 % of the file is test and screenshot options (usage, `Options`, `ParseO
 - `--binder-height` parses "N%" by hand (250 % allowed, so `ParsePercent` needs a range).
 - `roms/contents.txt` is read inside RunWindow and ignores `--roms` (roadmap row "BW-2001 debug ROMs' contents"): read it into `Loaded` from the ROM directory actually used.
 - About 1,300 lines moved; medium risk; check with `tools/readme_shots.py` screenshots.
+- Done 2026-11-23 in two phases: the options in `view/bench_options` (one table, tested); out of `RunBench` into their own files: the flags' checks (`ui/bench_setup`, `ApplyBenchOptions`), the tool clicks (`ui/tool_click`, `ToolClick`, `RepairPlan`, `WireDraft`), the button model and `--type` (`ui/bench_input`), the instruments' tags (`board_tags`). `main.cpp` 1,820 → 1,015 lines, `RunBench` 707 lines / complexity 244 → 501 / 157. Left for D23: a `Bench` class from `RunBench`'s locals, with the one frame loop it needs. The tool clicks stay in `ui` (they act on the Session; `view` does not depend on it).
 
 **C12. One identity per bench object.** `Owner` (view/focus.hpp), `BenchObject` (view/bench_places.hpp) and `Item` (ui/shelf_drawings.hpp) overlap (`Item` also has the power and run switches), mapped by `OwnerOf`/`WindowOf`/`ObjectOf` (shelf.cpp) and the `--pop` switch in main.cpp. Out/away is stored twice: `Focus::out_` (instruments) and public `Shelf` bools (`tvOut`, `keyboardOut`, `manualOut`, `knobOut`, `briefOut`). Three ways of being a window (`bool draw(bool&, Session&)` + `BeginInstrument`; `void draw` + `PlaceNext`/`KeepAspect`/`CaseClose`; free `DrawBrief`/`DrawDebug`). Window names scattered.
 - Fix: one table in `view` (object → owner, shelf item, window name, kind); out/away beside `Focus`, which keeps only the owner; one window shape.
@@ -158,7 +159,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | A6 docs | done 2026-11-23 |
 | B7–B9 names | done 2026-11-23 |
 | C10 Faults as one type | done 2026-11-23 |
-| C11 split ui/main.cpp | todo |
+| C11 split ui/main.cpp | done 2026-11-23 (the Bench class with D23) |
 | C12 bench object identity | todo |
 | C13 split Session | todo |
 | C14 shared gestures | todo |

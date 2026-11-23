@@ -101,4 +101,36 @@ void ShowRepairs(BoardView& view, const Machine& machine) {
     view.setBridges(bridges);
 }
 
+std::vector<ClipTag> ClipTagsOf(const Session& session) {
+    std::vector<ClipTag> tags;
+    for (std::size_t c = 0; c < kChannels; ++c) {
+        if (const auto& clip = session.clips()[c]) {
+            const auto group = session.groupOf(c);
+            tags.push_back({clip->at, c, group ? GroupColour(*group) : ChannelColour(c)});
+        }
+    }
+    return tags;
+}
+
+std::vector<HookTag> HookTagsOf(const Session& session) {
+    std::vector<HookTag> tags;
+    for (std::size_t c = 0; c < kScopeChannels; ++c) {
+        if (const auto& hook = session.hooks()[c]) {
+            tags.push_back({hook->at, c});
+        }
+    }
+    return tags;
+}
+
+std::vector<LeadTag> LeadTagsOf(const Session& session) {
+    std::vector<LeadTag> tags;
+    if (session.red()) {
+        tags.push_back({session.red()->at, true});
+    }
+    if (session.black() && session.meterMode() == MeterMode::Continuity) {
+        tags.push_back({session.black()->at, false});
+    }
+    return tags;
+}
+
 }  // namespace bw
