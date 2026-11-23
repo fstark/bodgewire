@@ -29,13 +29,7 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
         }
         INFO(part.name);
         Circuit circuit;
-        std::vector<PartParam> params;
-        if (part.name == "OSC") {
-            params.push_back({"freq", "1MHz"});
-        }
-        if (part.name == "POR") {
-            params.push_back({"time", "1ms"});
-        }
+        std::vector<PartParam> params(part.sample.begin(), part.sample.end());
         if (part.name == "6530") {
             params.push_back({"mask", "002"});
         }
@@ -88,6 +82,17 @@ TEST_CASE("catalogue: chip pinouts are consistent", "[parts]") {
     }
 }
 
+TEST_CASE("catalogue: sorted by name", "[parts]") {
+    CHECK(std::ranges::is_sorted(AllParts(), {}, &PartInfo::name));
+}
+
+TEST_CASE("catalogue: every Part with a Component lists its pins", "[parts]") {
+    for (const PartInfo& part : AllParts()) {
+        INFO(part.name);  // one that needs parameters has them in `sample`
+        CHECK(PartPinNames(part).empty() == (part.create == nullptr));
+    }
+}
+
 TEST_CASE("catalogue: parameters rejected", "[parts]") {
     Circuit circuit;
     const std::vector<PartParam> params{{"freq", "1MHz"}};
@@ -127,4 +132,7 @@ TEST_CASE("catalogue: a parameter is known and given once", "[parts]") {
     CHECK(osc.create(circuit, "X2", unknown).error() == "OSC: unknown parameter 'speed'");
     CHECK(osc.create(circuit, "X3", osc.sample).has_value());
     CHECK(PartPinNames(osc).size() == 14);
+    const std::vector<PartParam> select{{"select", "L"}};  // the 2716's enables are not mask-set
+    CHECK(FindPart("2716")->create(circuit, "U1", select).error() ==
+          "2716: unknown parameter 'select'");
 }

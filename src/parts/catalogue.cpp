@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <filesystem>
 #include <format>
-#include <map>
 #include <optional>
 #include <string>
 #include <utility>
@@ -69,28 +68,25 @@ struct PartName {
     char chars[N];
 };
 
-using Params = std::map<std::string, std::string, std::less<>>;
-
-// `params` by name, each one of `known` and given at most once: "OSC: unknown parameter 'x'",
-// "OSC: freq= given twice".
-std::expected<Params, std::string> TakeParams(std::string_view part,
-                                              std::span<const PartParam> params,
-                                              std::span<const std::string_view> known) {
-    Params taken;
+// The value in `params` of each of `names`, in their order (nullptr: not given). Each parameter
+// is one of them and given once: else "OSC: unknown parameter 'x'", "OSC: freq= given twice".
+template <std::size_t N>
+std::expected<std::array<const std::string*, N>, std::string>
+TakeParams(std::string_view part, std::span<const PartParam> params,
+           const std::string_view (&names)[N]) {
+    std::array<const std::string*, N> values{};
     for (const PartParam& param : params) {
-        if (std::ranges::find(known, param.name) == known.end()) {
+        const auto name = std::ranges::find(names, param.name);
+        if (name == std::end(names)) {
             return std::unexpected(std::string(part) + ": unknown parameter '" + param.name + "'");
         }
-        if (!taken.emplace(param.name, param.value).second) {
+        const std::string*& value = values[static_cast<std::size_t>(name - std::begin(names))];
+        if (value != nullptr) {
             return std::unexpected(std::string(part) + ": " + param.name + "= given twice");
         }
+        value = &param.value;
     }
-    return taken;
-}
-
-const std::string* Param(const Params& params, std::string_view name) {
-    const auto it = params.find(name);
-    return it == params.end() ? nullptr : &it->second;
+    return values;
 }
 
 // 74LS145: the 74145 with its own delays.
@@ -134,14 +130,14 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
                                                  std::span<const PartParam> params) {
     const std::string name(Name.view());
     const RomSpec& spec = RomSpecOf(name);
-    constexpr std::array<std::string_view, 3> kKnown{"contents", "offset", "select"};
-    const auto taken = TakeParams(name, params, std::span(kKnown).first(spec.selectable ? 3 : 2));
-    if (!taken) {
-        return std::unexpected(taken.error());
+    const auto given = TakeParams(name, params, {"contents", "offset", "select"});
+    if (!given) {
+        return std::unexpected(given.error());
     }
-    const std::string* contents = Param(*taken, "contents");
-    const std::string* select = Param(*taken, "select");
-    const std::string* offset = Param(*taken, "offset");
+    const auto [contents, offset, select] = *given;
+    if (select != nullptr && !spec.selectable) {
+        return std::unexpected(name + ": unknown parameter 'select'");
+    }
     // select= (2316B, 2332): one letter a chip select, CS1 first; H active high, L active low.
     unsigned activeHigh = 0;
     if (spec.selectable) {
@@ -211,13 +207,11 @@ std::expected<Component*, std::string> CreateRom(Circuit& circuit, std::string r
 
 std::expected<Component*, std::string> CreateMos6530(Circuit& circuit, std::string reference,
                                                      std::span<const PartParam> params) {
-    constexpr std::array<std::string_view, 2> kKnown{"mask", "contents"};
-    const auto taken = TakeParams("6530", params, kKnown);
-    if (!taken) {
-        return std::unexpected(taken.error());
+    const auto given = TakeParams("6530", params, {"mask", "contents"});
+    if (!given) {
+        return std::unexpected(given.error());
     }
-    const std::string* mask = Param(*taken, "mask");
-    const std::string* contents = Param(*taken, "contents");
+    const auto [mask, contents] = *given;
     if (mask == nullptr) {
         return std::unexpected("6530 needs mask=002|003");
     }
@@ -237,12 +231,11 @@ std::expected<Component*, std::string> CreateMos6530(Circuit& circuit, std::stri
 
 std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::string reference,
                                                         std::span<const PartParam> params) {
-    constexpr std::array<std::string_view, 1> kKnown{"freq"};
-    const auto taken = TakeParams("OSC", params, kKnown);
-    if (!taken) {
-        return std::unexpected(taken.error());
+    const auto given = TakeParams("OSC", params, {"freq"});
+    if (!given) {
+        return std::unexpected(given.error());
     }
-    const std::string* freq = Param(*taken, "freq");
+    const auto [freq] = *given;
     if (freq == nullptr) {
         return std::unexpected("OSC needs freq=<frequency>");
     }
@@ -255,14 +248,11 @@ std::expected<Component*, std::string> CreateOscillator(Circuit& circuit, std::s
 
 std::expected<Component*, std::string> CreatePaddle(Circuit& circuit, std::string reference,
                                                     std::span<const PartParam> params) {
-    constexpr std::array<std::string_view, 3> kKnown{"min", "max", "reversed"};
-    const auto taken = TakeParams("PADDLE", params, kKnown);
-    if (!taken) {
-        return std::unexpected(taken.error());
+    const auto given = TakeParams("PADDLE", params, {"min", "max", "reversed"});
+    if (!given) {
+        return std::unexpected(given.error());
     }
-    const std::string* shortest = Param(*taken, "min");
-    const std::string* longest = Param(*taken, "max");
-    const std::string* reversedText = Param(*taken, "reversed");
+    const auto [shortest, longest, reversedText] = *given;
     if (reversedText && *reversedText != "yes" && *reversedText != "no") {
         return std::unexpected("PADDLE: reversed must be yes or no");
     }
@@ -289,12 +279,11 @@ std::expected<Component*, std::string> CreatePaddle(Circuit& circuit, std::strin
 
 std::expected<Component*, std::string> CreatePowerOnReset(Circuit& circuit, std::string reference,
                                                           std::span<const PartParam> params) {
-    constexpr std::array<std::string_view, 1> kKnown{"time"};
-    const auto taken = TakeParams("POR", params, kKnown);
-    if (!taken) {
-        return std::unexpected(taken.error());
+    const auto given = TakeParams("POR", params, {"time"});
+    if (!given) {
+        return std::unexpected(given.error());
     }
-    const std::string* time = Param(*taken, "time");
+    const auto [time] = *given;
     if (time == nullptr) {
         return std::unexpected("POR needs time=<duration>");
     }
@@ -311,13 +300,12 @@ std::expected<Component*, std::string> CreatePowerOnReset(Circuit& circuit, std:
 // access=450ns (the 2114, default), 300ns (2114-3) or 200ns (2114-2): the speed grade.
 std::expected<Component*, std::string> CreateRam2114(Circuit& circuit, std::string reference,
                                                      std::span<const PartParam> params) {
-    constexpr std::array<std::string_view, 1> kKnown{"access"};
-    const auto taken = TakeParams("2114", params, kKnown);
-    if (!taken) {
-        return std::unexpected(taken.error());
+    const auto given = TakeParams("2114", params, {"access"});
+    if (!given) {
+        return std::unexpected(given.error());
     }
     Time access = delays::k2114Address;
-    if (const std::string* text = Param(*taken, "access")) {
+    if (const auto [text] = *given; text != nullptr) {
         const auto time = ParseDuration(*text);
         if (!time || (*time != 450'000 && *time != 300'000 && *time != 200'000)) {
             return std::unexpected(
@@ -346,13 +334,12 @@ CreateMembraneKeyboard(Circuit& circuit, std::string reference, std::span<const 
 
 std::expected<Component*, std::string> CreateKeyboard(Circuit& circuit, std::string reference,
                                                       std::span<const PartParam> params) {
-    constexpr std::array<std::string_view, 1> kKnown{"strobe"};
-    const auto taken = TakeParams("KEYBOARD", params, kKnown);
-    if (!taken) {
-        return std::unexpected(taken.error());
+    const auto given = TakeParams("KEYBOARD", params, {"strobe"});
+    if (!given) {
+        return std::unexpected(given.error());
     }
     Time strobe = kKeyboardStrobe;
-    if (const std::string* text = Param(*taken, "strobe")) {
+    if (const auto [text] = *given; text != nullptr) {
         const auto length = ParseDuration(*text);
         if (!length) {
             return std::unexpected(length.error());
@@ -453,12 +440,12 @@ constexpr std::array<Lamp, 8> kDigitCcLamps{{
 
 using enum PartKind;
 
-// Sorted by name.
 // Examples for PartPinNames.
 const std::array<PartParam, 1> kOscSample{{{"freq", "1MHz"}}};
 const std::array<PartParam, 1> kPorSample{{{"time", "1ms"}}};
 const std::array<PartParam, 2> kPaddleSample{{{"min", "30us"}, {"max", "9.93ms"}}};
 
+// Sorted by name.
 constexpr std::array s_parts{
     PartInfo{"2114", "1K x 4 static RAM", "DIP-18", Chip, &CreateRam2114},
     PartInfo{"2316B", "2K x 8 mask ROM, mask-set chip selects", "DIP-24", Chip,
@@ -528,6 +515,10 @@ constexpr std::array s_parts{
     PartInfo{"74LS90", "decade counter", "DIP-14", Chip, &CreateChip<Ls90, "74LS90">},
     PartInfo{"74LS93", "4-bit binary counter", "DIP-14", Chip, &CreateChip<Ls93, "74LS93">},
     PartInfo{"BUTTON", "push button", "TACT-6x3.5", Switch, &CreateSwitch<"BUTTON">},
+    PartInfo{"BW2001KB", "BW-2001 keyboard (10 x 8 key matrix)", "HDR-1x20", Connector,
+             &CreateMatrixKeyboard},
+    PartInfo{"BW80KB", "BW-80 keyboard (8 x 5 membrane matrix)", "HDR-1x13", Connector,
+             &CreateMembraneKeyboard},
     PartInfo{"C", "capacitor", "disc", Capacitor, nullptr},
     PartInfo{"CASSETTE", "cassette port connector", "HDR-1x06", Connector,
              &CreateConnector<"CASSETTE">},
@@ -542,12 +533,8 @@ constexpr std::array s_parts{
     PartInfo{"KEY", "key switch", "MX-1U", Switch, &CreateSwitch<"KEY">},
     PartInfo{"KEYBOARD", "ASCII keyboard connector", "KK-10", Connector, &CreateKeyboard},
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
-    PartInfo{"BW2001KB", "BW-2001 keyboard (10 x 8 key matrix)", "HDR-1x20", Connector,
-             &CreateMatrixKeyboard},
     PartInfo{"MC3446", "quad IEEE-488 bus transceiver", "DIP-16", Chip,
              &CreateChip<Mc3446, "MC3446">},
-    PartInfo{"BW80KB", "BW-80 keyboard (8 x 5 membrane matrix)", "HDR-1x13", Connector,
-             &CreateMembraneKeyboard},
     PartInfo{"MONITOR", "monitor connector, separate drives", "HDR-1x07", Connector,
              &CreateConnector<"MONITOR">},
     PartInfo{"OSC", "crystal oscillator", "DIP-14", Chip, &CreateOscillator, {}, kOscSample},
