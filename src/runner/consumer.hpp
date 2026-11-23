@@ -8,7 +8,8 @@
 
 namespace bw {
 
-// What the devices thread feeds: an output Device now, instruments later. Devices thread only.
+// What the devices thread feeds: an output Device (the TV, the LEDs) or an Instrument. Devices
+// thread only.
 class Consumer {
 public:
     virtual ~Consumer() = default;

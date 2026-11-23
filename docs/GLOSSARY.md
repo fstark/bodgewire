@@ -129,6 +129,15 @@ _Avoid_: Open, undriven
 Two Drivers of equal strength forcing a Net to different values.
 _Avoid_: Bus fight, conflict
 
+**Sample**:
+One change of a watched Net: its time and new Logic Value, as the Runner records it for the devices thread (`src/sim/recorder.hpp`).
+
+**Slice**:
+The stretch of simulated time the Runner runs between two looks at its commands (1 ms): pauses, Repairs' power-off and new watches take effect at a slice's end.
+
+**Consumer**:
+What the devices thread feeds Samples to: an output device (the TV, the LEDs) or an Instrument's engine (`src/runner/consumer.hpp`). Each watches its Nets and is told each Slice's end.
+
 ## Faults and repairs
 
 **Fault**:

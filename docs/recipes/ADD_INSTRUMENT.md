@@ -19,7 +19,7 @@ Reference commits (P3d, multimeter + scope): `ecb3915` placement + volts, `53327
 
 ## Gotchas
 
-- `kMaxWatched` = 96 watched Nets for devices + every instrument together. Rings are allocated, not written: an unused slot costs no memory. The Dispatcher merges Samples with a heap over the slots that hold some; never go back to scanning every slot or every Consumer's `nets()` per Sample (a 32-Clip bus is millions of Samples a second).
+- `kMaxWatched` = 128 watched Nets for devices + every instrument together. Rings are allocated, not written: an unused slot costs no memory. The Dispatcher merges Samples with a heap over the slots that hold some; never go back to scanning every slot or every Consumer's `nets()` per Sample (a 32-Clip bus is millions of Samples a second).
 - A Net watched again gets no new Sample until it changes: implement `Consumer::seed` or it reads X.
 - `configure()` while Off must set the UI-side phase directly (no slices arrive).
 - `Runner::powerOff` is queued: `waitIdle()` before checking; `waitIdle` hangs if Running without `pauseAt`.

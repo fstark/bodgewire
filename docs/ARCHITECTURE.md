@@ -21,7 +21,7 @@ Game design: [GAME_DESIGN.md](GAME_DESIGN.md).
 | Digital simulation | event scheduler, nets, pin drivers, logic resolution |
 | Component models | TTL, RAM, ROM, CPU, PLA, counters, shift registers |
 
-Everything below Game/UI is a headless, reusable library (no ImGui/SDL/graphics). Uses: unit tests, automated fault vetting, a CLI (load machine, run diagnostic program, inject fault, dump waveforms).
+Everything below Game/UI is a headless, reusable library (no ImGui/SDL/graphics). Uses: unit tests, automated fault vetting, a CLI (load machine, run diagnostic program, inject fault, dump waveforms). The sketch below is the intent from the start: today a Machine is loaded with its Faults from a Puzzle (`LoadPuzzleFile`, then `build()` and a `Runner` or `Simulator`), and there is no `injectFault` on a loaded Machine yet ([review C10](architecture-review/ARCHITECTURE_REVIEW.md)).
 
 ```cpp
 Machine m("bw80");
@@ -122,7 +122,7 @@ Dropped (2026-11-01, P3f): no win condition for now; the player decides when the
 Discrete-event with nominal delays. Every change is an event with a real timestamp; all go through one queue. No global clock tick: falling edges, combinational changes between edges, propagation delays and asynchronous clocks must all be expressible. Components may be clock-oriented internally but only exchange pin events.
 
 - Time: `int64` picoseconds (range ≈ 106 days).
-- Delays: every output has a datasheet-typical propagation delay (≥ 1 ps), per part type, overridable per instance (slow or wrong part, timing fault). No zero-delay events, hence no delta cycles and no delta races: signals arrive in the same order as on the real board.
+- Delays: every output has a datasheet-typical propagation delay (≥ 1 ps), per part type, meant to be overridable per instance (slow or wrong part, timing fault; not built: the delays are each Part type's constants, [review D19](architecture-review/ARCHITECTURE_REVIEW.md)). No zero-delay events, hence no delta cycles and no delta races: signals arrive in the same order as on the real board.
 - Inertial delay: a new change scheduled on an output replaces that output's pending change, so a pulse shorter than the delay is swallowed, as in real TTL. The queue needs cheap cancellation (e.g. per-output generation counter, stale events skipped when popped). An evaluation compares its new output value with the *pending* value, not the current one: if they differ, the pending change is cancelled, and a new one is scheduled only if the value differs from the current output (e.g. output 0, pending 1, input goes back → cancel, schedule nothing).
 - Ordering: (timestamp, phase). Never depends on insertion order.
 - Each timestamp: **update** applies all net changes due, then **evaluate** runs every component whose inputs changed. Evaluations schedule changes at `now + delay`, always in the future. Order within a phase is irrelevant: updates don't evaluate, evaluations only read nets and schedule.

@@ -41,7 +41,7 @@ Grep `PartKind::` and decide each branch: `src/netlist/builder.cpp`, `src/netlis
 
 ## Budgets and gotchas
 
-- `kMaxWatched` (`src/runner/dispatcher.hpp`) = 96 watched Nets for devices + instruments together (instruments alone: 32 Clips, 4 Hooks, the probe, the meter = up to 38). Distinct Nets count: an LED costs 2, a common-anode digit its 7–8 segment Nets plus one anode Net (multiplexed digits share their segment Nets: the BW-1's six cost 7 + 6, plus 6 decimal-point pads, each its own Net on a Board-built Circuit), and a shared `GND` once. Lamps on unconnected Pins are not watched. Rings (~1 MB each) are allocated but only touched when used. Check the worst Machine with every instrument attached.
+- `kMaxWatched` (`src/runner/dispatcher.hpp`) = 128 watched Nets for devices + instruments together (instruments alone: 64 Clips, 4 Hooks, the probe, the meter = up to 70). Distinct Nets count: an LED costs 2, a common-anode digit its 7–8 segment Nets plus one anode Net (multiplexed digits share their segment Nets: the BW-1's six cost 7 + 6, plus 6 decimal-point pads, each its own Net on a Board-built Circuit), and a shared `GND` once. Lamps on unconnected Pins are not watched. Rings (~1 MB each) are allocated but only touched when used. Check the worst Machine with every instrument attached.
 - Resistors only go from a rail to a signal (the builder refuses series resistors): one anode resistor per digit, not one per segment.
 - Lamp pins are `Family::Mos` inputs: left unconnected (an unused decimal point) they give no "floats high" warning, which is for TTL inputs only.
 - Release gate: `bw_ui --screenshot` on the Machine with every instrument attached must stay at 1.00× and the UI under ~1 ms.
