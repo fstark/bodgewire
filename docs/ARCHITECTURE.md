@@ -290,6 +290,7 @@ Custom machines mimic real ones; paper-check the model against the real schemati
 | — | Diagnostic ROMs | test ROMs swapped in for the firmware, on the BW-2001 and BW-80 (not the BW-1: its ROM is inside its RIOTs) |
 | — | BW-2001 debug ROMs' contents | todo (the user, 2026-11-22): `machines/130-bw2001/debug-roms/` has no `contents.txt` of its own. The binder's Contents page (P6p) always reads `roms/contents.txt` (`src/ui/main.cpp`), written for the Machine's own ROMs, even under `--roms machines/130-bw2001/debug-roms` |
 | — | Tennis knobs at start | maybe, probably not (the user, 2026-11-18): both knobs start at 0 %, so the paddles sit at the bottom and a fresh game misses every serve until the players turn them (found in P6k) |
+| — | Mobile support | wanted (the user, 2026-11-23): `bw_ui` played with fingers on a tablet (the web build already runs on an iPad), maybe a phone: long press as the second click, two-finger zoom and scroll, a loupe for pins, larger targets, the instruments' dropdowns made knobs; a phone needs its own layout. Draft: [MOBILE.md](mobile/MOBILE.md) |
 | — | Smooth PET key graphics | later (the user, 2026-11-19): the graphics printed on the BW-2001's keys are smooth drawings, not the character ROM's pixels (the ♣ on X looks like an arrow in 8 × 8); draw them as smooth shapes, the thin square kept (none around the suits). From P6l2 |
 
 v0.9: P5 to P7, running on the author's machines.
