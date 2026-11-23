@@ -11,6 +11,7 @@
 
 #include "instruments/logic_analyzer.hpp"
 #include "session/session.hpp"
+#include "ui/gestures.hpp"
 #include "view/time_view.hpp"
 
 namespace bw {
@@ -59,8 +60,7 @@ private:
     std::optional<Time> shownPeriod_;
     TimeView view_;
     std::optional<Time> marker_;  // ps from the Trigger
-    float pressX_ = 0;            // canvas press, to tell a click from a drag
-    bool moved_ = false;
+    TimeCanvas canvas_;
     float wheelRest_ = 0;
     std::optional<TimeView> presetView_;
     std::optional<Time> presetMarker_, presetCursor_;

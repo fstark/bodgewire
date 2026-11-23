@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 #include "ui/bench.hpp"
+#include "ui/gestures.hpp"
 #include "ui/instrument_marks.hpp"
 #include "view/bench_places.hpp"
 
@@ -15,9 +16,7 @@ namespace bw {
 
 namespace {
 
-constexpr double kKeyRate = 1.0;     // turn per second while a knob key is held
-constexpr double kWheelStep = 0.01;  // turn per wheel notch
-constexpr double kDragTurn = 200.0;  // px of vertical drag for a whole turn
+constexpr double kKeyRate = 1.0;  // turn per second while a knob key is held
 constexpr float kSweep = 1.5f * std::numbers::pi_v<float>;   // 270°
 constexpr float kStart = 0.75f * std::numbers::pi_v<float>;  // 0: lower left (screen angles)
 
@@ -141,7 +140,6 @@ void KnobWindow::draw(bool& open, Session& session) {
         return;
     }
     ImDrawList& list = *ImGui::GetWindowDrawList();
-    const ImGuiIO& io = ImGui::GetIO();
     const ImVec2 at = ImGui::GetWindowPos();
     const float s = ImGui::GetWindowWidth() / first.width;  // scale from the first size
     const float boxW = kKnobBox.width * s, boxH = kKnobBox.height * s;
@@ -168,17 +166,12 @@ void KnobWindow::draw(bool& open, Session& session) {
         ImGui::PushID(i);
         ImGui::InvisibleButton("##knob", {2 * r, 2 * r});
         ImGui::PopID();
-        const bool hovered = ImGui::IsItemHovered();
-        if (ImGui::IsItemActive() && io.MouseDelta.y != 0.0f) {
-            session.inputs().setKnob(reference, session.inputs().knob(reference) -
-                                                    io.MouseDelta.y / kDragTurn);
+        const KnobInput input = ReadKnob();
+        const bool hovered = input.hovered;
+        if (input.turnBy != 0) {
+            session.inputs().setKnob(reference, session.inputs().knob(reference) + input.turnBy);
         }
         if (hovered) {
-            ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
-            if (io.MouseWheel != 0.0f) {
-                session.inputs().setKnob(reference, session.inputs().knob(reference) +
-                                                        io.MouseWheel * kWheelStep);
-            }
             const std::size_t upDown = players ? 1 : 0;  // the knob Up and Down turn
             const char* keys = players && i == 0
                                    ? "Turn the knob: drag up or down, mouse wheel, or Q and A"

@@ -332,42 +332,31 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     // Canvas input, once, before anything is drawn: every lane uses the same view.
     ImGui::SetCursorScreenPos({laneX0, origin.y});
     ImGui::InvisibleButton("##canvas", {width, lanesHeight});
-    ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
-    ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelX);
+    const TimeCanvasInput input = canvas_.read(width, kDivisions);
     std::optional<Time> cursor;
     if (shown_) {
         const TimeRange record = RecordOf(*shown_);
-        const ImGuiIO& io = ImGui::GetIO();
-        if (ImGui::IsItemHovered()) {
-            const int notches = WheelNotches(io.MouseWheel, wheelRest_);
-            if (notches != 0) {
-                zoom(timeAt(mouseX), notches);
-            }
-            if (io.MouseWheelH != 0) {
-                view_ =
-                    Pan(view_, -io.MouseWheelH * width / static_cast<float>(kDivisions) / 2, width);
-            }
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                view_ = Fit(record);
-            }
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-                marker_.reset();
-            }
+        if (input.zoom != 0) {
+            zoom(timeAt(*input.hover), input.zoom);
         }
-        if (ImGui::IsItemActivated()) {
-            pressX_ = mouseX;
-            moved_ = false;
+        if (input.pan != 0) {
+            view_ = Pan(view_, input.pan, width);
         }
-        if (ImGui::IsItemActive()) {
-            moved_ = moved_ || std::abs(mouseX - pressX_) > 3;
-            view_ = Pan(view_, io.MouseDelta.x, width);
+        if (input.fit) {
+            view_ = Fit(record);
         }
-        if (ImGui::IsItemDeactivated() && !moved_) {
-            marker_ = timeAt(mouseX);
+        if (input.clearMarker) {
+            marker_.reset();
+        }
+        if (input.dragStep != 0) {
+            view_ = Pan(view_, input.dragStep, width);
+        }
+        if (input.marker) {
+            marker_ = timeAt(*input.marker);
         }
         view_ = Clamp(view_, record);
-        if (ImGui::IsItemHovered()) {
-            cursor = timeAt(mouseX);
+        if (input.hover) {
+            cursor = timeAt(*input.hover);
         } else if (presetCursor_) {
             cursor = presetCursor_;
         }

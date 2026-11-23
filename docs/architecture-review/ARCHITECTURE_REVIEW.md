@@ -114,6 +114,8 @@ About 40 % of the file is test and screenshot options (usage, `Options`, `ParseO
 
 Fix: a time-canvas helper returning intents for both windows, one `DragKnob` widget, one `SecondaryClick()`. Touch then lands in 3 helpers and `BoardView::input`. About 250 lines, low risk.
 
+Done 2026-11-23: `ui/gestures`: `TimeCanvas::read` (hover, zoom notches, wheel pan, fit, clear marker, press, drag, click as marker, release) for both windows, `ReadKnob` (drag up, wheel, double-click) for the TV's controls and the paddle controllers. No `SecondaryClick`: the modifiers mean different things (Shift-click a whole bus, Alt the layer, a right-drag pans, a right-click latches or clears, Cmd frames), so there is no one "second click" to share; mobile will map each. Needs a check by hand (drag, wheel, double-click, right-click on both canvases and the knobs): screenshots cannot drive them.
+
 **C15. `BoardView` and `Shelf` logic into `view`.**
 - The hovered part's wiring is recomputed each frame inside `BoardView::draw` (pads × pads): precompute it in `BoardScene`, tested.
 - `focus()` bounds → `BoardScene::boundsOf`.
@@ -164,7 +166,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | C11 split ui/main.cpp | done 2026-11-23 (the Bench class with D23) |
 | C12 bench object identity | done 2026-11-23 (narrowed: out or away in one place) |
 | C13 split Session | done 2026-11-23 |
-| C14 shared gestures | todo |
+| C14 shared gestures | done 2026-11-23 (to try by hand) |
 | C15 BoardView/Shelf logic to view | todo |
 | C16 catalogue metadata | todo |
 | C17 one sample feed | todo |

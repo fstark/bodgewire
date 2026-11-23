@@ -9,6 +9,7 @@
 
 #include "instruments/oscilloscope.hpp"
 #include "session/session.hpp"
+#include "ui/gestures.hpp"
 #include "view/time_view.hpp"
 
 namespace bw {
@@ -31,11 +32,9 @@ private:
     std::optional<Time> marker_;  // ps from the Trigger
     std::optional<Time> presetCursor_;
     bool stopped_ = false;
-    float wheelRest_ = 0;
+    TimeCanvas canvas_;
     float panRest_ = 0;                     // px of horizontal wheel not yet a delay step
     std::optional<ScopeSettings> pressed_;  // settings when a drag began
-    float pressX_ = 0;
-    bool moved_ = false;
     std::array<char, 16> delayText_{};
     bool delayEditing_ = false, delayRefused_ = false;
     // Column cache, per Channel: lo/hi volts per pixel; rebuilt when serial, width, rails or the

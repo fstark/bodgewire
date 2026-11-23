@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 #include "ui/bench.hpp"
+#include "ui/gestures.hpp"
 #include "ui/instrument_marks.hpp"
 #include "view/bench_places.hpp"
 
@@ -15,9 +16,7 @@ namespace bw {
 
 namespace {
 
-constexpr float kMinWidth = 380;     // labels at least 9 px
-constexpr float kDragTurn = 200;     // px of vertical drag for a whole turn (the paddle's)
-constexpr float kWheelStep = 0.01f;  // turn per wheel notch (the paddle's)
+constexpr float kMinWidth = 380;                             // labels at least 9 px
 constexpr float kSweep = 1.5f * std::numbers::pi_v<float>;   // 270°
 constexpr float kStart = 0.75f * std::numbers::pi_v<float>;  // 0: lower left (screen angles)
 
@@ -276,16 +275,13 @@ void TvWindow::draw(bool& open, TvView& view) {
         ImGui::PushID(static_cast<int>(i));
         ImGui::InvisibleButton("##knob", {2 * hit, 2 * hit});
         ImGui::PopID();
-        if (ImGui::IsItemActive() && io.MouseDelta.y != 0.0f) {
-            controls_.set(knob, controls_.turn(knob) - io.MouseDelta.y / kDragTurn);
+        const KnobInput input = ReadKnob();
+        if (input.turnBy != 0) {
+            controls_.set(knob, controls_.turn(knob) + static_cast<float>(input.turnBy));
         }
-        if (ImGui::IsItemHovered()) {
+        if (input.hovered) {
             hoveredKnob = knob;
-            ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
-            if (io.MouseWheel != 0.0f) {
-                controls_.set(knob, controls_.turn(knob) + io.MouseWheel * kWheelStep);
-            }
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+            if (input.reset) {
                 controls_.reset(knob);
             }
             ImGui::SetTooltip("%s %.0f %%\ndrag up or down, or the mouse wheel; double-click: back "

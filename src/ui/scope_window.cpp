@@ -242,10 +242,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     const ImVec2 top = ImGui::GetCursorScreenPos();
     const float height = bandHeight * static_cast<float>(std::max<std::size_t>(1, bands.size()));
     ImGui::InvisibleButton("##screen", {width, height});
-    ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
-    ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelX);
-    const ImGuiIO& io = ImGui::GetIO();
-    const float mouseX = io.MousePos.x;
+    const TimeCanvasInput input = canvas_.read(width, kDivisions);
     const auto timeAt = [&](float px) {  // ps from the Trigger, at the current settings
         const TimeView view = ScopeView(settings);
         return view.left + static_cast<Time>(std::llround((px - top.x) / width *
@@ -253,44 +250,36 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     };
 
     // Input, once, before drawing: the view is the settings.
-    if (ImGui::IsItemHovered()) {
-        if (const int notches = WheelNotches(io.MouseWheel, wheelRest_); notches != 0) {
-            zoomBy(timeAt(mouseX), notches);
-        }
-        if (io.MouseWheelH != 0) {
-            panRest_ += -io.MouseWheelH * width / static_cast<float>(kDivisions) / 2;
-            const ScopeSettings next =
-                WithView(settings, Pan(ScopeView(settings), panRest_, width));
-            if (next.delay != settings.delay) {
-                set(next);
-                panRest_ = 0;
-            }
-        }
-        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-            ScopeSettings next = settings;
-            next.delay = 0;
+    if (input.zoom != 0) {
+        zoomBy(timeAt(*input.hover), input.zoom);
+    }
+    if (input.pan != 0) {
+        panRest_ += input.pan;
+        const ScopeSettings next = WithView(settings, Pan(ScopeView(settings), panRest_, width));
+        if (next.delay != settings.delay) {
             set(next);
-        }
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-            marker_.reset();
+            panRest_ = 0;
         }
     }
-    if (ImGui::IsItemActivated()) {
+    if (input.fit) {
+        ScopeSettings next = settings;
+        next.delay = 0;
+        set(next);
+    }
+    if (input.clearMarker) {
+        marker_.reset();
+    }
+    if (input.pressed) {
         pressed_ = settings;
-        pressX_ = mouseX;
-        moved_ = false;
     }
-    if (ImGui::IsItemActive() && pressed_) {
-        moved_ = moved_ || std::abs(mouseX - pressX_) > 3;
-        if (moved_) {
-            // From the press, so slow drags are not rounded away frame by frame.
-            set(WithView(*pressed_, Pan(ScopeView(*pressed_), mouseX - pressX_, width)));
-        }
+    if (input.dragFromPress && pressed_) {
+        // From the press, so slow drags are not rounded away frame by frame.
+        set(WithView(*pressed_, Pan(ScopeView(*pressed_), *input.dragFromPress, width)));
     }
-    if (ImGui::IsItemDeactivated()) {
-        if (!moved_) {
-            marker_ = timeAt(mouseX);
-        }
+    if (input.marker) {
+        marker_ = timeAt(*input.marker);
+    }
+    if (input.released) {
         pressed_.reset();
     }
     const TimeView view = ScopeView(settings);
@@ -299,8 +288,8 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         return top.x + static_cast<float>(static_cast<double>(t - view.left) / span * width);
     };
     std::optional<Time> cursor;
-    if (ImGui::IsItemHovered()) {
-        cursor = timeAt(mouseX);
+    if (input.hover) {
+        cursor = timeAt(*input.hover);
     } else if (presetCursor_) {
         cursor = presetCursor_;
     }
