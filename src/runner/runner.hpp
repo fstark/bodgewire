@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -59,6 +60,11 @@ public:
     void unwatch(NetId net);  // undoes one watch(); the slot is freed when none remain
     // Simulator::wake(component, delay) at the next slice boundary, unless Off.
     void wake(ComponentId component, Time delay = 0);
+    // `action` on the simulation thread at the next slice boundary, in order with the other
+    // commands, then `wake` woken `delay` later unless Off: how the UI changes a Part (a switch
+    // pressed, a knob turned, a key held), so only the simulation thread touches Parts.
+    void post(std::function<void()> action, std::optional<ComponentId> wake = std::nullopt,
+              Time delay = 0);
 
     void waitIdle();  // blocks until all commands applied, not Running, devices caught up
     RunnerStatus status() const;
@@ -74,13 +80,16 @@ private:
         ResumeUntil,
         Watch,
         Unwatch,
-        Wake
+        Wake,
+        Post
     };
     struct Command {
         CommandKind kind;
         std::int64_t value = 0;  // seed, Speed or Time
         NetId net{};
         ComponentId component{};
+        std::function<void()> action{};  // Post
+        bool wakes = false;              // Post: wake `component` after `value`
     };
     struct Watched {
         NetId net;

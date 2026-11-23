@@ -23,9 +23,7 @@ Paddle::Paddle(std::string reference, Time shortest, Time longest, bool reversed
     Check(shortest >= 1 && shortest < longest, "paddle: need 1 ps <= shortest < longest");
 }
 
-void Paddle::setKnob(double turn) {
-    knob_.store(std::clamp(turn, 0.0, 1.0), std::memory_order_relaxed);
-}
+void Paddle::setKnob(double turn) { knob_ = std::clamp(turn, 0.0, 1.0); }
 
 Time Paddle::pulseLength() const {
     const Time turn = std::llround(knob() * static_cast<double>(longest_ - shortest_));

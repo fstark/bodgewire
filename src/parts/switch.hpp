@@ -60,10 +60,10 @@ public:
     std::string_view legend() const { return legend_; }  // "" for a BUTTON or a blank key
     std::string_view pcKey() const { return pcKey_; }    // "" none
 
-    // Any thread. Takes effect at this switch's next evaluation: follow with Simulator or Runner
-    // wake(id()).
-    void setPressed(bool pressed) { pressed_.store(pressed, std::memory_order_relaxed); }
-    bool pressed() const { return pressed_.load(std::memory_order_relaxed); }
+    // Simulation thread (Runner::post from the UI). Takes effect at this switch's next
+    // evaluation: follow with a wake(id()).
+    void setPressed(bool pressed) { pressed_ = pressed; }
+    bool pressed() const { return pressed_; }
     void setFault(SwitchFault fault) { fault_ = fault; }  // builder, before power-on
     SwitchFault fault() const { return fault_; }
     bool closed() const { return contact_.closed(); }  // simulation thread: at the last evaluation
@@ -77,7 +77,7 @@ private:
     friend class SwitchNetwork;
     SwitchKind kind_;
     std::string legend_, pcKey_;
-    std::atomic<bool> pressed_{false};
+    bool pressed_ = false;
     SwitchFault fault_ = SwitchFault::None;
     SwitchContact contact_;
 };

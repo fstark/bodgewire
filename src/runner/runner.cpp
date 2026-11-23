@@ -50,7 +50,7 @@ Runner::~Runner() {
 void Runner::queue(Command command) {
     {
         const std::scoped_lock lock(mutex_);
-        commands_.push_back(command);
+        commands_.push_back(std::move(command));
         ++commandsQueued_;
     }
     wake_.notify_one();
@@ -71,6 +71,11 @@ void Runner::watch(NetId net) { queue({CommandKind::Watch, 0, net}); }
 void Runner::unwatch(NetId net) { queue({CommandKind::Unwatch, 0, net}); }
 void Runner::wake(ComponentId component, Time delay) {
     queue({CommandKind::Wake, delay, NetId{}, component});
+}
+
+void Runner::post(std::function<void()> action, std::optional<ComponentId> wake, Time delay) {
+    queue({CommandKind::Post, delay, NetId{}, wake.value_or(ComponentId{}), std::move(action),
+           wake.has_value()});
 }
 
 void Runner::waitIdle() {
@@ -225,6 +230,12 @@ void Runner::apply(const Command& command, std::stop_token stop) {
         break;
     case CommandKind::Wake:
         if (state_.load() != RunState::Off) {
+            sim_.wake(command.component, command.value);
+        }
+        break;
+    case CommandKind::Post:
+        command.action();
+        if (command.wakes && state_.load() != RunState::Off) {
             sim_.wake(command.component, command.value);
         }
         break;

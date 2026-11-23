@@ -23,7 +23,9 @@ struct SwitchKey {
 
 // The Machine's input devices as the player works them (Session::inputs()): its switches
 // (BUTTON, KEY, SLIDE), knobs (PADDLE), KEYBOARD and key matrices. What is held is released at
-// power-off; the knobs' turns are kept across power-off, power-on and rebuilds.
+// power-off; the knobs' turns are kept across power-off, power-on and rebuilds. A switch, a knob
+// or a held key reaches its Part through Runner::post (the simulation thread's); typing goes
+// through each keyboard's own queue, which answers at once whether it took the key.
 class InputDevices {
 public:
     // At each build: `design` lists the devices (a Machine's design Circuit, else the build's),

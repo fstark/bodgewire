@@ -39,13 +39,13 @@ void InputDevices::poweredOn() {
 void InputDevices::poweredOff() {
     for (const std::string& reference : pressed_) {
         if (Switch* sw = SwitchOf(*live_, reference)) {
-            sw->setPressed(false);
+            runner_->post([sw] { sw->setPressed(false); });
         }
     }
     pressed_.clear();
     for (const auto& [reference, key] : matrixHeld_) {
         if (KeyMatrix* matrix = KeyMatrixOf(*live_, reference)) {
-            matrix->setHeld(key, false);
+            runner_->post([matrix, key] { matrix->setHeld(key, false); });
         }
     }
     matrixHeld_.clear();
@@ -97,8 +97,7 @@ void InputDevices::setPressed(std::string_view reference, bool pressed) {
         pressed_.erase(pressed_.find(reference));
     }
     if (Switch* sw = SwitchOf(*live_, reference)) {
-        sw->setPressed(pressed);
-        runner_->wake(sw->id(), PressJitter());
+        runner_->post([sw, pressed] { sw->setPressed(pressed); }, sw->id(), PressJitter());
     }
 }
 
@@ -113,7 +112,7 @@ bool InputDevices::setKnob(std::string_view reference, double turn) {
     turn = std::clamp(turn, 0.0, 1.0);
     knobs_.insert_or_assign(std::string(reference), turn);
     if (Paddle* paddle = PaddleOf(*live_, reference)) {
-        paddle->setKnob(turn);
+        runner_->post([paddle, turn] { paddle->setKnob(turn); });
     }
     return true;
 }
@@ -185,8 +184,8 @@ void InputDevices::setMatrixKeyHeld(std::string_view reference, std::size_t key,
     } else {
         matrixHeld_.erase({std::string(reference), key});
     }
-    matrix->setHeld(key, held);
-    runner_->wake(matrix->component().id(), PressJitter());
+    runner_->post([matrix, key, held] { matrix->setHeld(key, held); }, matrix->component().id(),
+                  PressJitter());
 }
 
 bool InputDevices::matrixKeyHeld(std::string_view reference, std::size_t key) const {

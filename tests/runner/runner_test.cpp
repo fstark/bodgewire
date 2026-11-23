@@ -317,3 +317,17 @@ TEST_CASE("runner: 96 watched Nets", "[runner]") {
         CHECK(many.counts[net] >= 1);
     }
 }
+
+TEST_CASE("runner: post runs on the simulation thread, in order with the commands", "[runner]") {
+    TestPattern pattern = Load();
+    Runner runner(pattern.loaded->circuit, {});
+    std::vector<int> order;  // written by the simulation thread only, read after waitIdle
+    runner.post([&] { order.push_back(1); });
+    runner.pauseAt(1_ms);
+    runner.post([&] { order.push_back(2); });
+    runner.powerOn(1);
+    runner.post([&] { order.push_back(3); });
+    runner.waitIdle();
+    CHECK(order == std::vector{1, 2, 3});
+    CHECK(runner.status().state == RunState::Paused);
+}

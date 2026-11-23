@@ -58,10 +58,8 @@ public:
     std::size_t keyCount() const override { return kBw2001KeyCount; }
     std::size_t shiftKey() const override;  // the left SHIFT: row 8, column 0
     Component& component() override { return *this; }
-    void setHeld(std::size_t key, bool held) override {
-        held_[key].store(held, std::memory_order_relaxed);
-    }
-    bool held(std::size_t key) const override { return held_[key].load(std::memory_order_relaxed); }
+    void setHeld(std::size_t key, bool held) override { held_[key] = held; }
+    bool held(std::size_t key) const override { return held_[key]; }
     // Each character through MatrixKeyFor; false when none was queued.
     bool type(std::u32string_view text) override;
     // One character; false (nothing queued) when `c` has no key or kMatrixWaiting presses wait.
@@ -75,7 +73,7 @@ public:
 
 private:
     std::vector<SwitchContact> contacts_;
-    std::array<std::atomic<bool>, kBw2001KeyCount> held_{};
+    std::array<bool, kBw2001KeyCount> held_{};
     PressQueue queue_{kMatrixHold, kMatrixGap};
 };
 

@@ -36,10 +36,8 @@ public:
     std::size_t keyCount() const override { return kZx80KeyCount; }
     std::size_t shiftKey() const override { return 0; }  // row 0, column 0
     Component& component() override { return *this; }
-    void setHeld(std::size_t key, bool held) override {
-        held_[key].store(held, std::memory_order_relaxed);
-    }
-    bool held(std::size_t key) const override { return held_[key].load(std::memory_order_relaxed); }
+    void setHeld(std::size_t key, bool held) override { held_[key] = held; }
+    bool held(std::size_t key) const override { return held_[key]; }
     // Zx80Presses(text) queued; false when none was.
     bool type(std::u32string_view text) override;
     bool press(MatrixPress press) override {
@@ -52,7 +50,7 @@ public:
     void evaluate(EvalContext& ctx) override;
 
 private:
-    std::array<std::atomic<bool>, kZx80KeyCount> held_{};
+    std::array<bool, kZx80KeyCount> held_{};
     PressQueue queue_{kMembraneHold, kMembraneGap};
 };
 

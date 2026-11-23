@@ -23,9 +23,10 @@ public:
     Paddle(std::string reference, Time shortest, Time longest, bool reversed = false);
     static constexpr PinIndex kTrigN = 0, kOut = 1;
 
-    // Any thread; clamped to 0..1. Read when a pulse starts, so a turn needs no wake.
+    // Simulation thread (Runner::post from the UI); clamped to 0..1. Read when a pulse starts, so a
+    // turn needs no wake.
     void setKnob(double turn);
-    double knob() const { return knob_.load(std::memory_order_relaxed); }
+    double knob() const { return knob_; }
     Time pulseLength() const;  // for the knob now
 
     void powerOn(PowerOnContext& ctx) override;  // idle, OUT low; the knob untouched
@@ -34,7 +35,7 @@ public:
 private:
     Time shortest_, longest_;
     bool reversed_;
-    std::atomic<double> knob_{0.0};
+    double knob_ = 0.0;
     bool busy_ = false;
     Time endsAt_ = 0;  // ps; while busy_: when the pulse ends on the TRIG_N side
 };

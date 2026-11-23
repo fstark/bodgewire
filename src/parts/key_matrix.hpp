@@ -35,7 +35,7 @@ public:
     virtual std::size_t shiftKey() const = 0;  // held with a shifted press
     virtual Component& component() = 0;        // for wakes
 
-    // Any thread; follow with Simulator or Runner wake(component().id()).
+    // Simulation thread (Runner::post from the UI); follow with a wake(component().id()).
     virtual void setHeld(std::size_t key, bool held) = 0;
     virtual bool held(std::size_t key) const = 0;
     // One producer thread: the presses that type `text`, queued in simulation time. False when

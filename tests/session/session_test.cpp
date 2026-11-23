@@ -1172,6 +1172,8 @@ TEST_CASE("session: buttons only press while powered", "[session]") {
     CHECK(session.inputs().pressed("SW1"));
     const Switch* button = SwitchOf(session.circuit(), "SW1");
     REQUIRE(button != nullptr);
+    session.pause();  // the press reaches the Part at the Runner's next slice boundary
+    session.runner().waitIdle();
     CHECK(button->pressed());
     session.inputs().setPressed("SW9", true);  // not a Button: remembered, does nothing
     session.inputs().setPressed("SW9", false);
@@ -1267,6 +1269,7 @@ TEST_CASE("session: knob kept across power", "[session]") {
     CHECK(session.inputs().setKnob("J2", 1.5));
     CHECK(session.inputs().knob("J2") == 1.0);
     CHECK(session.inputs().setKnob("J2", 0.25));  // with the power off
+    session.runner().waitIdle();                   // the Part's change is the Runner's to apply
     CHECK(paddle->knob() == 0.25);
     session.powerOn(1, 1_ms);
     session.runner().waitIdle();
