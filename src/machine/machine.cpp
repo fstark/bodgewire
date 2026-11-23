@@ -375,6 +375,17 @@ bool Machine::removeBridge(const PinRef& a, const PinRef& b) {
     return true;
 }
 
+bool Machine::apply(const RepairAction& repair) {
+    return std::visit(Overloaded{[&](const SwapRepair& r) { return swap(r.reference); },
+                                 [&](const MendRepair& r) { return mend(r.layer, r.at); },
+                                 [&](const CutRepair& r) { return cut(r.layer, r.at); },
+                                 [&](const WireRepair& r) { return addWire(r.a, r.b); },
+                                 [&](const UnwireRepair& r) { return removeWire(r.a, r.b); },
+                                 [&](const UnbridgeRepair& r) { return removeBridge(r.a, r.b); },
+                                 [&](const ResolderRepair& r) { return resolder(r.pin); }},
+                      repair);
+}
+
 bool Machine::resolder(const PinRef& pin) {
     const auto number = chipSignalPin(pin);
     if (!number) {

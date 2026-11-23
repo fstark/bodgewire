@@ -176,6 +176,20 @@ TEST_CASE("machine: mend near and far", "[machine]") {
     CHECK_FALSE(machine->mend(H0Crack().layer, H0Crack().at));
 }
 
+TEST_CASE("machine: apply dispatches each Repair", "[machine]") {
+    Puzzle puzzle = TestPattern();
+    puzzle.cracks = {{2, {"U1", "QA"}, {"U13", "2B"}, 79}};
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
+    REQUIRE(machine.has_value());
+    CHECK_FALSE(machine->apply(SwapRepair{"U99"}));
+    CHECK(machine->apply(SwapRepair{"U3"}));
+    CHECK_FALSE(machine->apply(MendRepair{Layer::Back, H0Crack().at}));
+    CHECK(machine->apply(MendRepair{H0Crack().layer, H0Crack().at}));
+    CHECK_FALSE(machine->build().value()->nets.contains("H0~2"));
+    CHECK_FALSE(machine->apply(UnbridgeRepair{{"U1", "1"}, {"U1", "2"}}));  // no such bridge
+    CHECK_FALSE(machine->apply(UnwireRepair{{"U1", "1"}, {"U1", "2"}}));    // no such wire
+}
+
 TEST_CASE("machine: HasBoard", "[machine]") {
     CHECK(HasBoard(test::NetlistPath("test_pattern")));
     CHECK(HasBoard(test::NetlistPath("counter")));

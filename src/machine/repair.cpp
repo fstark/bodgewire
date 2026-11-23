@@ -11,11 +11,6 @@ namespace bw {
 
 namespace {
 
-template <class... Ts>
-struct Overloaded : Ts... {
-    using Ts::operator()...;
-};
-
 // "F.Cu", "x", "y" in millimetres.
 std::optional<std::pair<Layer, Point>> ParseLayerPoint(const std::vector<std::string_view>& f) {
     if (f.size() != 3 || (f[0] != "F.Cu" && f[0] != "B.Cu")) {

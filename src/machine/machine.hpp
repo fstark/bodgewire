@@ -15,6 +15,7 @@
 #include "machine/crack.hpp"
 #include "machine/electrical.hpp"
 #include "machine/puzzle.hpp"
+#include "machine/repair.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
 
@@ -57,6 +58,9 @@ public:
     // Resolders a chip pin's Joint (number or name): removes its dry Joint if any. True also on a
     // good Joint (the tool must not tell); false: unknown, or not a chip signal pin.
     bool resolder(const PinRef& pin);
+    // Any of the above by its RepairAction. False as they are: nothing to act on (for a mend, no
+    // crack or Cut near; the caller decides whether that counts).
+    bool apply(const RepairAction& repair);
     // Every Repair undone (the bench's Reset): the Puzzle's Faults back as loaded, no Cut, no
     // Bodge Wire.
     void undoRepairs();

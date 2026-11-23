@@ -16,11 +16,6 @@ namespace bw {
 
 namespace {
 
-template <class... Ts>
-struct Overloaded : Ts... {
-    using Ts::operator()...;
-};
-
 // The bus a Pin belongs to and its bit: a PinBus the Part declares (QA-QD), else the digits in
 // its name (A0-A15, StemOf). Power and unconnected Pins belong to none.
 std::optional<NameStem> BusBitOf(const Component& part, std::size_t pin) {
@@ -208,19 +203,11 @@ RepairResult Session::repair(const RepairAction& repair) {
     if (powered_) {
         return RepairResult::Refused;
     }
-    const bool done = std::visit(
-        Overloaded{[&](const SwapRepair& r) { return machine_->swap(r.reference); },
-                   [&](const MendRepair& r) {
-                       machine_->mend(r.layer, r.at);
-                       blobs_.push_back({r.layer, r.at});
-                       return true;
-                   },
-                   [&](const CutRepair& r) { return machine_->cut(r.layer, r.at); },
-                   [&](const WireRepair& r) { return machine_->addWire(r.a, r.b); },
-                   [&](const UnwireRepair& r) { return machine_->removeWire(r.a, r.b); },
-                   [&](const UnbridgeRepair& r) { return machine_->removeBridge(r.a, r.b); },
-                   [&](const ResolderRepair& r) { return machine_->resolder(r.pin); }},
-        repair);
+    // A mend always places its solder: done even with no crack under it (the tool must not tell).
+    const bool done = machine_->apply(repair) || std::holds_alternative<MendRepair>(repair);
+    if (const auto* mend = std::get_if<MendRepair>(&repair)) {
+        blobs_.push_back({mend->layer, mend->at});
+    }
     if (!done) {
         return RepairResult::Unknown;
     }

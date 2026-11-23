@@ -40,6 +40,12 @@ struct ResolderRepair {
     PinRef pin;  // by number or name
 };
 
+// A visitor from lambdas: std::visit(Overloaded{[](const SwapRepair&) {...}, ...}, action).
+template <class... Ts>
+struct Overloaded : Ts... {
+    using Ts::operator()...;
+};
+
 using RepairAction = std::variant<SwapRepair, MendRepair, CutRepair, WireRepair, UnwireRepair,
                                   UnbridgeRepair, ResolderRepair>;
 

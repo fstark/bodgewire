@@ -189,35 +189,17 @@ std::optional<std::string> Repair(Machine& machine, std::string_view repair) {
     if (!parsed) {
         return parsed.error();
     }
+    if (machine.apply(*parsed)) {
+        return std::nullopt;
+    }
+    if (const auto* mend = std::get_if<MendRepair>(&*parsed)) {  // the solder is placed anyway
+        std::println(stderr, "bw: no crack near {}", FormatPoint(mend->layer, mend->at));
+        return std::nullopt;
+    }
     if (const auto* swap = std::get_if<SwapRepair>(&*parsed)) {
-        if (!machine.swap(swap->reference)) {
-            return "unknown reference '" + swap->reference + "'";
-        }
-        return std::nullopt;
+        return "unknown reference '" + swap->reference + "'";
     }
-    if (const auto* mend = std::get_if<MendRepair>(&*parsed)) {
-        if (!machine.mend(mend->layer, mend->at)) {
-            std::println(stderr, "bw: no crack near {}", FormatPoint(mend->layer, mend->at));
-        }
-        return std::nullopt;
-    }
-    bool done = false;
-    if (const auto* cut = std::get_if<CutRepair>(&*parsed)) {
-        done = machine.cut(cut->layer, cut->at);
-    } else if (const auto* wire = std::get_if<WireRepair>(&*parsed)) {
-        done = machine.addWire(wire->a, wire->b);
-    } else if (const auto* unwire = std::get_if<UnwireRepair>(&*parsed)) {
-        done = machine.removeWire(unwire->a, unwire->b);
-    } else if (const auto* resolder = std::get_if<ResolderRepair>(&*parsed)) {
-        done = machine.resolder(resolder->pin);
-    } else {
-        const auto& unbridge = std::get<UnbridgeRepair>(*parsed);
-        done = machine.removeBridge(unbridge.a, unbridge.b);
-    }
-    if (!done) {
-        return "cannot apply '" + std::string(repair) + "'";
-    }
-    return std::nullopt;
+    return "cannot apply '" + std::string(repair) + "'";
 }
 
 // Diagnostics printed; nullptr on errors (`usage` set for a bad --repair).
