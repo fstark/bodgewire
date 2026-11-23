@@ -1,6 +1,6 @@
 # 140 — BW-80 — Machine Design
 
-How the Machine in [BW80.md](BW80.md) is built: netlist, Board, manuals, tests. The new code it needs (`MEMBRANEKB`, `EXPANSION`, the window's ZX80 look, `bw place`'s `at`) is P5x's: [BW80_MACHINE_DESIGN.md](../../../docs/p5x-bw80/BW80_MACHINE_DESIGN.md). The display chain and the netlist it grows from are P5v's: [BW80_VIDEO_DESIGN.md](../../../docs/p5v-bw80-video/BW80_VIDEO_DESIGN.md) §5. Recipe: [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md).
+How the Machine in [BW80.md](BW80.md) is built: netlist, Board, manuals, tests. The new code it needs (`BW80KB`, `EXPANSION`, the window's ZX80 look, `bw place`'s `at`) is P5x's: [BW80_MACHINE_DESIGN.md](../../../docs/p5x-bw80/BW80_MACHINE_DESIGN.md). The display chain and the netlist it grows from are P5v's: [BW80_VIDEO_DESIGN.md](../../../docs/p5v-bw80-video/BW80_VIDEO_DESIGN.md) §5. Recipe: [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md).
 
 Sources: Grant Searle's redrawn issue 2 schematic (searle.x10host.com/zx80/zx80.html, also on archive.org), and the 1982 schematic printed in Syntax Quarterly 1-1 (Winter 1982), PDF pages 34–35 (magazine pages 32–33). That scan, 153 MB, is not committed: keep a copy at `external/zx80/SQ Syntax Quarterly 1-1.pdf` (git-ignored). The two agree on every connection checked; IC5 pin 8 takes IC16 pin 6, not `D6'`.
 
@@ -38,7 +38,7 @@ The display file's echo: `A15` high over the RAM (`$C000` +) is where the ROM ru
 | Change | Why |
 |---|---|
 | header: P5x, [BW80.md](BW80.md); "keys and edge connector" in; the cassette and modulator left out | the Machine |
-| `part J3 MEMBRANEKB` after `J2`; `A8`–`A15` lines gain `J3.A8` … `J3.A15`; `KB0`–`KB4` gain `J3.KB0` … `J3.KB4` | the keyboard (P5x §2) |
+| `part J3 BW80KB` after `J2`; `A8`–`A15` lines gain `J3.A8` … `J3.A15`; `KB0`–`KB4` gain `J3.KB0` … `J3.KB4` | the keyboard (P5x §2) |
 | `part J4 EXPANSION`; `MD0`–`MD7` gain `J4.D0` … `J4.D7`; `RAM_CS_N` gains `J4.RAMCS_N`; `A0`–`A15` gain `J4.A0` … `J4.A15`; `INT_N`, `NMI_N`, `HALT_N`, `MREQ_N`, `IORQ_N`, `RD_N`, `WR_N`, `WAIT_N`, `BUSRQ_N`, `RESET_N`, `M1_N`, `RFSH_N` gain their `J4` pin; `PHI_N` gains `J4.PHI`; `net BUSAK_N IC1.BUSAK_N J4.BUSAK_N` (new: the Z80's pin was unconnected); `VCC` gains `J4.VCC5`, `GND` gains `J4.GND1 J4.GND2` | the edge connector (P5x §3); `A13` was a one-pin Net until now |
 | `INT_N` on `A6` | as P5v: `A6`'s line gains `J4.INT_N` beside `IC1.INT_N` (the ZX80's INT is the `A6` line) |
 
@@ -50,7 +50,7 @@ Nothing else moves: the keyboard's pull-ups, IC10 and `KBD_N` are P5v's. The net
 |---|---|---|
 | `J1` | `POWER` | |
 | `J2` | `VIDEO` | `VIDEO`, `SYNC_N` (the Net `SYNC`), `GND` |
-| `J3` | `MEMBRANEKB` | 1–8 `A8`–`A15`; 9–13 `KB0`–`KB4` |
+| `J3` | `BW80KB` | 1–8 `A8`–`A15`; 9–13 `KB0`–`KB4` |
 | `J4` | `EXPANSION` | upper n at pad 2n − 1, lower n at pad 2n ([P5x §3](../../../docs/p5x-bw80/BW80_MACHINE_DESIGN.md#3-expansion--the-zx80s-edge-connector)): `D0`–`D7` = `MD0`–`MD7`, `RAMCS_N` = `RAM_CS_N`, `PHI` = `PHI_N`, the address and control lines by name; `SLOTA`, `SLOTB`, `NC9V`, `NC23` unconnected |
 
 ## Board

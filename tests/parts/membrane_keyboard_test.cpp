@@ -22,7 +22,7 @@ using enum LogicValue;
 // bits of A8-A15 held low, the others high; a row in `floating` on a Net of its own), the BW-80
 // keyboard on J3.
 std::unique_ptr<LoadedCircuit> Bench(unsigned lowRows, unsigned floating = 0) {
-    std::string text = "part J1 POWER\npart J3 MEMBRANEKB\n";
+    std::string text = "part J1 POWER\npart J3 BW80KB\n";
     for (int c = 0; c < 5; ++c) {
         text += "part R" + std::to_string(c + 13) + " R value=47k\n";
         text += "net KB" + std::to_string(c) + " J3.KB" + std::to_string(c) + " R" +
@@ -57,11 +57,11 @@ std::size_t Key(std::string_view legend) {
 }  // namespace
 
 TEST_CASE("membrane keyboard: catalogue row and pins", "[parts]") {
-    const PartInfo* part = FindPart("MEMBRANEKB");
+    const PartInfo* part = FindPart("BW80KB");
     REQUIRE(part != nullptr);
     CHECK(part->kind == PartKind::Connector);
     CHECK(part->package == "HDR-1x13");
-    CHECK_FALSE(ConnectorPowersDevice("MEMBRANEKB"));
+    CHECK_FALSE(ConnectorPowersDevice("BW80KB"));
     MembraneKeyboard keyboard("J3");
     CHECK(keyboard.kind() == KeyMatrixKind::Bw80);
     CHECK(keyboard.keyCount() == 40);

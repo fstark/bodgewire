@@ -80,6 +80,13 @@ TEST_CASE("switch: catalogue entries", "[parts]") {
     CHECK(slide->package == "SLIDE-1");
 }
 
+TEST_CASE("switch: each Part says its kind", "[parts]") {
+    Circuit circuit;
+    CHECK(Create(circuit, "BUTTON").kind() == SwitchKind::Button);
+    CHECK(Create(circuit, "KEY").kind() == SwitchKind::Key);
+    CHECK(Create(circuit, "SLIDE").kind() == SwitchKind::Slide);
+}
+
 TEST_CASE("switch: SLIDE takes legend= only", "[parts]") {
     Circuit circuit;
     Switch& sst = Create(circuit, "SLIDE", {{"legend", "SST"}});

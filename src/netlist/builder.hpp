@@ -120,9 +120,9 @@ Switch* SwitchOf(const LoadedCircuit& loaded, std::string_view reference);
 // The PADDLE Part `reference` of this build; nullptr if none (unknown or not a PADDLE).
 Paddle* PaddleOf(const LoadedCircuit& loaded, std::string_view reference);
 
-// The MATRIXKB `reference` of this build; nullptr if none.
+// The BW2001KB `reference` of this build; nullptr if none.
 MatrixKeyboard* MatrixKeyboardOf(const LoadedCircuit& loaded, std::string_view reference);
-// The KeyMatrix named `reference` (a MATRIXKB or a MEMBRANEKB), or nullptr (P5x).
+// The KeyMatrix named `reference` (a BW2001KB or a BW80KB), or nullptr (P5x).
 KeyMatrix* KeyMatrixOf(const LoadedCircuit& loaded, std::string_view reference);
 
 // The KEYBOARD Part `reference` of this build; nullptr if none (unknown or not a KEYBOARD).

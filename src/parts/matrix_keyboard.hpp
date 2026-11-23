@@ -37,7 +37,7 @@ inline constexpr std::size_t kBw2001KeyCount = 73;
 // DEL, the kKey… named keys (CLR, INST, CRSR LF, CRSR UP with SHIFT); nullopt for anything else.
 std::optional<MatrixPress> MatrixKeyFor(char32_t c);
 
-// The BW-2001 keyboard behind a MATRIXKB connector (P5q): a 10 x 8 key matrix and nothing else.
+// The BW-2001 keyboard behind a BW2001KB connector (P5q): a 10 x 8 key matrix and nothing else.
 // Pins 1-10 ROW0-ROW9, 11-18 COL0-COL7, 19-20 not connected (pin index = pad - 1). Each key is a
 // SwitchContact between its row and column Pins' Nets, joined by the Board's switch network as a
 // switch's legs. Held from outside (setHeld) or typed in simulation time (type); no Faults.
@@ -46,7 +46,13 @@ public:
     explicit MatrixKeyboard(std::string reference);
     static constexpr PinIndex kRow0 = 0, kColumn0 = 10;
 
-    SwitchContact& contact(std::size_t key) { return contacts_[key]; }  // builder
+    // The builder's: each key a contact between its row Pin and its column Pin, joined by the
+    // Board's switch network.
+    SwitchContact& contact(std::size_t key) { return contacts_[key]; }
+    std::array<PinIndex, 2> contactPins(std::size_t key) const {
+        const MatrixKey& k = Bw2001Keys()[key];
+        return {static_cast<PinIndex>(kRow0 + k.row), static_cast<PinIndex>(kColumn0 + k.column)};
+    }
 
     KeyMatrixKind kind() const override { return KeyMatrixKind::Bw2001; }
     std::size_t keyCount() const override { return kBw2001KeyCount; }

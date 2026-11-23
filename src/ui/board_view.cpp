@@ -890,7 +890,7 @@ void BoardView::draw(ImVec2 size) {
         const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
         const ImVec2 min = map({minX.x, minY.y});
         const ImVec2 max = map({maxX.x, maxY.y});
-        if (button.look == SwitchLook::Slide) {
+        if (button.kind == SwitchKind::Slide) {
             const ImVec2 a{std::min(min.x, max.x), std::min(min.y, max.y)};
             const ImVec2 b{std::max(min.x, max.x), std::max(min.y, max.y)};
             DrawSlide(list, real ? nullptr : legendFont_, a, b, button.legend, button.pressed);
@@ -900,7 +900,7 @@ void BoardView::draw(ImVec2 size) {
             }
             continue;
         }
-        if (button.look == SwitchLook::Key && legendFont_ != nullptr) {
+        if (button.kind == SwitchKind::Key && legendFont_ != nullptr) {
             // The cap covers the courtyard only, so the copper between keys stays in view.
             const ImVec2 a{std::min(min.x, max.x), std::min(min.y, max.y)};
             const ImVec2 b{std::max(min.x, max.x), std::max(min.y, max.y)};
@@ -964,7 +964,7 @@ void BoardView::draw(ImVec2 size) {
         const bool outlined = selected_ == k;  // the selection's box; a hover has none
         const bool keycap =
             legendFont_ != nullptr && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
-                return t.look != SwitchLook::Button && t.component == k;
+                return t.kind != SwitchKind::Button && t.component == k;
             });
         DrawCourtyard(list, map, board.components[k], scene_->courtyard(k), scene_->partName(k),
                       outlined, keycap);
@@ -1220,7 +1220,7 @@ void BoardView::input(ImVec2 origin) {
         cornerPressed_ = onCorner;
         windowPressed_ = onWindow;
         if (held_ && std::ranges::any_of(switches_, [&](const SwitchTag& t) {
-                return t.component == *held_ && t.look == SwitchLook::Slide;
+                return t.component == *held_ && t.kind == SwitchKind::Slide;
             })) {
             latchToggle_ = held_;  // a slide moves at the click and is not held
             held_.reset();

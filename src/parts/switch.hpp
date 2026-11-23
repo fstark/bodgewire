@@ -26,7 +26,7 @@ bool IsPcKey(std::string_view key);
 
 class SwitchNetwork;
 
-// One pair of legs the SwitchNetwork joins while closed: a Switch's, or one key of a MATRIXKB
+// One pair of legs the SwitchNetwork joins while closed: a Switch's, or one key of a BW2001KB
 // (P5q). Its owner sets it from its own evaluate.
 class SwitchContact {
 public:
@@ -43,13 +43,19 @@ private:
     SwitchNetwork* network_ = nullptr;
 };
 
+// BUTTON (a push button), KEY (a keyboard key) or SLIDE (stays where it is moved): the Part a
+// Switch is, for how it is drawn and clicked.
+enum class SwitchKind : std::uint8_t { Button, Key, Slide };
+
 // A push button or key (P5i): two legs ("1", "2", pad numbers) joined while closed; the
 // SwitchNetwork joins their Nets. Its Pins are TTL Outputs that always drive Z, as the P4d
 // button's were, so a build draws the same random bits at power-on. Pin index = KiCad pad − 1.
 class Switch final : public Component {
 public:
     // `pcKey` "" or IsPcKey (letters upper case).
-    Switch(std::string reference, std::string legend, std::string pcKey);
+    Switch(std::string reference, SwitchKind kind, std::string legend, std::string pcKey);
+
+    SwitchKind kind() const { return kind_; }
 
     std::string_view legend() const { return legend_; }  // "" for a BUTTON or a blank key
     std::string_view pcKey() const { return pcKey_; }    // "" none
@@ -69,6 +75,7 @@ public:
 
 private:
     friend class SwitchNetwork;
+    SwitchKind kind_;
     std::string legend_, pcKey_;
     std::atomic<bool> pressed_{false};
     SwitchFault fault_ = SwitchFault::None;

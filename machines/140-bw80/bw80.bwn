@@ -32,7 +32,7 @@
 
 part J1   POWER
 part J2   VIDEO
-part J3   MEMBRANEKB        # the keyboard (a window): rows A8-A15, columns KB0-KB4
+part J3   BW80KB            # the keyboard (a window): rows A8-A15, columns KB0-KB4
 part J4   EXPANSION         # the expansion bus edge connector, nothing plugged in
 part X1   OSC freq=6.5MHz
 part RST1 POR time=1ms      # the ZX80's R21/C10

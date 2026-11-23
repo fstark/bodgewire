@@ -36,10 +36,10 @@ bool IsPcKey(std::string_view key) {
 
 // --- Switch ---
 
-Switch::Switch(std::string reference, std::string legend, std::string pcKey)
+Switch::Switch(std::string reference, SwitchKind kind, std::string legend, std::string pcKey)
     : Component(std::move(reference),
                 {{"1", PinKind::Output, Family::Ttl}, {"2", PinKind::Output, Family::Ttl}}),
-      legend_(std::move(legend)), pcKey_(std::move(pcKey)) {}
+      kind_(kind), legend_(std::move(legend)), pcKey_(std::move(pcKey)) {}
 
 void Switch::powerOn(PowerOnContext& ctx) {
     ctx.setOutput(0, LogicValue::Z);

@@ -2,7 +2,7 @@
 # 47k as on the ZX80, the rows A8-A15 on ties (A9 low: the row of A S D F G; the others high), so
 # a key on row 1 reads on its column. For the Session's typing case and the window's screenshot.
 part J1 POWER
-part J3 MEMBRANEKB
+part J3 BW80KB
 part R13 R value=47k
 part R14 R value=47k
 part R15 R value=47k

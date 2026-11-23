@@ -31,7 +31,7 @@ public:
     MatrixKeyboardWindow(ImFont* legends, ImFont* petLegends)
         : legends_(legends), petLegends_(petLegends) {}
 
-    // Nothing drawn without a MATRIXKB.
+    // Nothing drawn without a BW2001KB.
     void draw(bool& open, Session& session, MatrixCapture& capture);
 
 private:

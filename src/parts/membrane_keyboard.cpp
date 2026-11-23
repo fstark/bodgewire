@@ -8,7 +8,7 @@
 namespace bw {
 
 MembraneKeyboard::MembraneKeyboard(std::string reference)
-    : Component(std::move(reference), ConnectorPins("MEMBRANEKB")) {}
+    : Component(std::move(reference), ConnectorPins("BW80KB")) {}
 
 bool MembraneKeyboard::type(std::u32string_view text) {
     bool any = false;

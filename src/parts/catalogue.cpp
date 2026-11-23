@@ -321,7 +321,7 @@ std::expected<Component*, std::string> CreateRam2114(Circuit& circuit, std::stri
 std::expected<Component*, std::string> CreateMatrixKeyboard(Circuit& circuit, std::string reference,
                                                             std::span<const PartParam> params) {
     if (!params.empty()) {
-        return std::unexpected("MATRIXKB takes no parameters");
+        return std::unexpected("BW2001KB takes no parameters");
     }
     return &circuit.add<MatrixKeyboard>(std::move(reference));
 }
@@ -329,7 +329,7 @@ std::expected<Component*, std::string> CreateMatrixKeyboard(Circuit& circuit, st
 std::expected<Component*, std::string>
 CreateMembraneKeyboard(Circuit& circuit, std::string reference, std::span<const PartParam> params) {
     if (!params.empty()) {
-        return std::unexpected("MEMBRANEKB takes no parameters");
+        return std::unexpected("BW80KB takes no parameters");
     }
     return &circuit.add<MembraneKeyboard>(std::move(reference));
 }
@@ -403,7 +403,8 @@ std::expected<Component*, std::string> CreateSwitch(Circuit& circuit, std::strin
     if (pcKey.size() == 1) {
         pcKey[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(pcKey[0])));
     }
-    return &circuit.add<Switch>(std::move(reference), legend.value_or(""), std::move(pcKey));
+    const SwitchKind kind = key ? SwitchKind::Key : slide ? SwitchKind::Slide : SwitchKind::Button;
+    return &circuit.add<Switch>(std::move(reference), kind, legend.value_or(""), std::move(pcKey));
 }
 
 template <DigitCommon Common>
@@ -524,11 +525,11 @@ constexpr std::array s_parts{
     PartInfo{"KEY", "key switch", "MX-1U", Switch, &CreateSwitch<"KEY">},
     PartInfo{"KEYBOARD", "ASCII keyboard connector", "KK-10", Connector, &CreateKeyboard},
     PartInfo{"LED", "red 5 mm LED", "LED-5mm", Led, &CreateLed, kLedLamps},
-    PartInfo{"MATRIXKB", "BW-2001 keyboard (10 x 8 key matrix)", "HDR-1x20", Connector,
+    PartInfo{"BW2001KB", "BW-2001 keyboard (10 x 8 key matrix)", "HDR-1x20", Connector,
              &CreateMatrixKeyboard},
     PartInfo{"MC3446", "quad IEEE-488 bus transceiver", "DIP-16", Chip,
              &CreateChip<Mc3446, "MC3446">},
-    PartInfo{"MEMBRANEKB", "BW-80 keyboard (8 x 5 membrane matrix)", "HDR-1x13", Connector,
+    PartInfo{"BW80KB", "BW-80 keyboard (8 x 5 membrane matrix)", "HDR-1x13", Connector,
              &CreateMembraneKeyboard},
     PartInfo{"MONITOR", "monitor connector, separate drives", "HDR-1x07", Connector,
              &CreateConnector<"MONITOR">},

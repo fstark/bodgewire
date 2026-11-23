@@ -1,6 +1,6 @@
 # 130 — BW-2001 — Machine Design
 
-How the Machine in [BW2001.md](BW2001.md) is built: netlist, Board, manuals, tests. The new code it needs (the `MONITOR`, `MATRIXKB`, `IEEE488`, `USERPORT`, `CASSETTE` connectors, the `74LS139` and `MC3446`, the port drive strength, the TV's separate drives, the keyboard window, the PET grid in `bw place`, the editor's retrace wait) is P5q's: [BW2001_MACHINE_DESIGN.md](../../../docs/p5q-bw2001/BW2001_MACHINE_DESIGN.md). Recipe: [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md).
+How the Machine in [BW2001.md](BW2001.md) is built: netlist, Board, manuals, tests. The new code it needs (the `MONITOR`, `BW2001KB`, `IEEE488`, `USERPORT`, `CASSETTE` connectors, the `74LS139` and `MC3446`, the port drive strength, the TV's separate drives, the keyboard window, the PET grid in `bw place`, the editor's retrace wait) is P5q's: [BW2001_MACHINE_DESIGN.md](../../../docs/p5q-bw2001/BW2001_MACHINE_DESIGN.md). Recipe: [ADD_MACHINE.md](../../../docs/recipes/ADD_MACHINE.md).
 
 ## Files
 
@@ -40,7 +40,7 @@ As P5p's ([BW2001_FIRMWARE.md](../../../docs/p5p-bw2001-firmware/BW2001_FIRMWARE
 | `?74LS139` `UI9` (pins by number) | `UI9 74LS139` | new Part (P5q) |
 | `?MC3446` `UA7`–`UA9` | `UA7`–`UA9 MC3446` | new Part (P5q) |
 | `J1`, `J2`, `J3`, `J6` by pin number | `J1 IEEE488`, `J2 USERPORT`, `J3 CASSETTE`, `J6 CASSETTE` | passive connectors, the PET's pin labels as pin names (P5q) |
-| `J5` | `J5 MATRIXKB` | the keyboard device (P5q) |
+| `J5` | `J5 BW2001KB` | the keyboard device (P5q) |
 | `J7` | `J7 MONITOR` | separate drives (P5q) |
 | — | `J8 POWER` | the PET's power connector |
 | `J4` memory expansion | left out | decided 2026-11-15: about 50 more Nets to route for nothing to plug in |
@@ -69,7 +69,7 @@ Every 74LS/7417/74177/74100 Part's unused gates tied. References are the PET's: 
 | `J1` | `IEEE488` | 1–4 `DIO1`–`DIO4`, 5 `EOI_N`, 6 `DAV_N`, 7 `NRFD_N`, 8 `NDAC_N`, 9 `IFC_N`, 10 `SRQ_N`, 11 `ATN_N`, 12 `CHASSIS` (`GND`), 13–16 `DIO5`–`DIO8` (the PET's A–D), 17 `REN` (`GND`), 18–24 `GND` (F–N) |
 | `J2` | `USERPORT` | 1 `GND`, 2 `VIDEO` (`TV_VIDEO`), 3 `SRQ_N`, 4 `EOI_N`, 5 `DIAG` (PIA1 `PA7`), 6 `READ1` (`CASS1_READ`), 7 `WRITE` (`CASS_WRITE`), 8 `READ2` (`CASS2_READ`), 9 `HORZ` (`HORZ_DRIVE`), 10 `VERT` (`VERT_DRIVE`), 11, 12 `GND`; 13 `GND` (A), 14 `CA1` (VIA), 15–22 `PA0`–`PA7` (VIA, the PET's C–L), 23 `CB2` (VIA, M), 24 `GND` (N) |
 | `J3`, `J6` | `CASSETTE` | 1 `GND`, 2 `VCC`, 3 `MOTOR`, 4 `READ`, 5 `WRITE`, 6 `SENSE` (the PET's A–F) |
-| `J5` | `MATRIXKB` | 1–10 `ROW0`–`ROW9` (`UG9` `Y0_N`–`Y9_N`), 11–18 `COL0`–`COL7` (PIA1 `PB0`–`PB7`, `KIN0`–`KIN7`), 19, 20 unused |
+| `J5` | `BW2001KB` | 1–10 `ROW0`–`ROW9` (`UG9` `Y0_N`–`Y9_N`), 11–18 `COL0`–`COL7` (PIA1 `PB0`–`PB7`, `KIN0`–`KIN7`), 19, 20 unused |
 | `J7` | `MONITOR` | 1 `VIDEO_N` (`TV_VIDEO`), 2 `GND`, 3 `VDRIVE` (`VERT_DRIVE`), 4 `GND`, 5 `HDRIVE` (`HORZ_DRIVE`), 6 unused, 7 `GND` |
 | `J8` | `POWER` | |
 

@@ -20,7 +20,7 @@ using enum LogicValue;
 // The PET's keyboard side: a 74LS145 scanning row `row` (its BCD on ties), the columns pulled up
 // by 10K, the BW-2001 keyboard on J5.
 std::unique_ptr<LoadedCircuit> Bench(int row) {
-    std::string text = "part J1 POWER\npart U1 74LS145\npart J5 MATRIXKB\n";
+    std::string text = "part J1 POWER\npart U1 74LS145\npart J5 BW2001KB\n";
     for (int c = 0; c < 8; ++c) {
         text += "part R" + std::to_string(c + 1) + " R value=10k\n";
         text += "net COL" + std::to_string(c) + " J5.COL" + std::to_string(c) + " R" +
@@ -55,11 +55,11 @@ std::size_t Key(std::string_view legend) {
 }  // namespace
 
 TEST_CASE("matrix keyboard: catalogue row, pins and keys", "[parts]") {
-    const PartInfo* part = FindPart("MATRIXKB");
+    const PartInfo* part = FindPart("BW2001KB");
     REQUIRE(part != nullptr);
     CHECK(part->kind == PartKind::Connector);
     CHECK(part->package == "HDR-1x20");
-    CHECK_FALSE(ConnectorPowersDevice("MATRIXKB"));
+    CHECK_FALSE(ConnectorPowersDevice("BW2001KB"));
     MatrixKeyboard keyboard("J5");
     const auto pins = keyboard.pins();
     REQUIRE(pins.size() == 20);

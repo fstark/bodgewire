@@ -118,7 +118,7 @@ std::optional<MatrixPress> MatrixKeyFor(char32_t c) {
 }
 
 MatrixKeyboard::MatrixKeyboard(std::string reference)
-    : Component(std::move(reference), ConnectorPins("MATRIXKB")), contacts_(kKeys.size()) {}
+    : Component(std::move(reference), ConnectorPins("BW2001KB")), contacts_(kKeys.size()) {}
 
 std::size_t MatrixKeyboard::shiftKey() const {
     static const std::size_t shift = KeyNamed("SHIFT");  // the left one: row 8, column 0

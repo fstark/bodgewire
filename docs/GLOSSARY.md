@@ -340,7 +340,7 @@ A key read as held when it is not: three held keys at three corners of a rectang
 _Avoid_: Phantom key
 
 **Membrane Keyboard**:
-The BW-80's keyboard (`MEMBRANEKB`): the ZX80's 40 keys in a window, their rows the address lines `A8`–`A15` read during an `IN`, their columns `KB0`–`KB4` pulled low through a diode by a held key. Faultless, as every device behind a Connector; its Faults are on the Board (the pull-ups, the buffer, the copper).
+The BW-80's keyboard (`BW80KB`): the ZX80's 40 keys in a window, their rows the address lines `A8`–`A15` read during an `IN`, their columns `KB0`–`KB4` pulled low through a diode by a held key. Faultless, as every device behind a Connector; its Faults are on the Board (the pull-ups, the buffer, the copper).
 _Avoid_: Touch keyboard
 
 **Keyword Entry**:

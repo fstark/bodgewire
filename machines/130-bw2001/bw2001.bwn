@@ -59,7 +59,7 @@ part DS1  LED                                           # diagnostic LED (series
 part J1   IEEE488                                       # IEEE-488 edge connector (24 pins: 1-12, A-N)
 part J2   USERPORT                                      # parallel user port (24 pins: 1-12, A-N)
 part J3   CASSETTE                                      # cassette #2 (pins A-1 .. F-6 as 1-6)
-part J5   MATRIXKB                                      # keyboard (1-10 rows, A-J columns)
+part J5   BW2001KB                                      # keyboard (1-10 rows, A-J columns)
 part J6   CASSETTE                                      # cassette #1 (pins A1 .. F6 as 1-6)
 part R13  R value=1k                                    # NMI_N pull-up
 part R14  R value=1k                                    # RDY pull-up

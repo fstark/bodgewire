@@ -208,7 +208,7 @@ public:
     // simulation time as type's are. False when nothing was sent.
     bool press(std::string_view reference, MatrixPress press);
 
-    // Every key matrix Part (MATRIXKB, the BW-2001 keyboard, P5q; MEMBRANEKB, the BW-80's, P5x),
+    // Every key matrix Part (BW2001KB, the BW-2001 keyboard, P5q; BW80KB, the BW-80's, P5x),
     // in netlist order.
     std::vector<std::string> matrixKeyboards() const;
     // Which keyboard `reference` is (its look and key map); nullopt for anything else.

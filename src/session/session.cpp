@@ -622,7 +622,7 @@ std::vector<std::string> Session::knobs() const {
     std::vector<std::string> references;
     const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
     for (const LoadedPart& part : circuit.parts) {
-        if (part.info->name == "PADDLE") {
+        if (PaddleOf(circuit, part.reference) != nullptr) {
             references.push_back(part.reference);
         }
     }
@@ -651,7 +651,7 @@ std::vector<std::string> Session::keyboards() const {
     std::vector<std::string> references;
     const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
     for (const LoadedPart& part : circuit.parts) {
-        if (part.info->name == "KEYBOARD") {
+        if (KeyboardOf(circuit, part.reference) != nullptr) {
             references.push_back(part.reference);
         }
     }
@@ -695,7 +695,7 @@ std::vector<std::string> Session::matrixKeyboards() const {
     std::vector<std::string> references;
     const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
     for (const LoadedPart& part : circuit.parts) {
-        if (part.info->name == "MATRIXKB" || part.info->name == "MEMBRANEKB") {
+        if (KeyMatrixOf(circuit, part.reference) != nullptr) {
             references.push_back(part.reference);
         }
     }

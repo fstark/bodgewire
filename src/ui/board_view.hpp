@@ -15,6 +15,7 @@
 #include "instruments/logic_analyzer.hpp"
 #include "instruments/oscilloscope.hpp"
 #include "parts/catalogue.hpp"
+#include "parts/switch.hpp"
 #include "session/session.hpp"
 #include "ui/board_look.hpp"
 #include "view/board_scene.hpp"
@@ -64,14 +65,12 @@ struct LedTag {
     float brightness;  // 0 dark .. 1 fully lit
 };
 
-// How a switch is drawn: a round push button, a keycap with its legend, a slide switch.
-enum class SwitchLook : std::uint8_t { Button, Key, Slide };
-
-// A BUTTON, KEY or SLIDE on the Board (P5i, P5l).
+// A BUTTON, KEY or SLIDE on the Board (P5i, P5l): drawn as a round push button, a keycap with its
+// legend, or a slide switch.
 struct SwitchTag {
     std::size_t component;
     bool pressed;  // a slide: at ON
-    SwitchLook look;
+    SwitchKind kind;
     std::string legend;
 };
 

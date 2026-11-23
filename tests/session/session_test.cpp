@@ -1026,7 +1026,7 @@ unsigned LitSegments(const Session& session, std::string_view digit) {
 
 }  // namespace
 
-TEST_CASE("session: typing on a MEMBRANEKB, the text queued whole", "[session]") {
+TEST_CASE("session: typing on a BW80KB, the text queued whole", "[session]") {
     // A netlist-only Session (no Board), as bw_ui runs a bench.
     auto loaded = LoadNetlistFile(std::filesystem::path(BW_ROOT_DIR) / "tests/data/bw80_keys.bwn");
     REQUIRE(loaded.has_value());

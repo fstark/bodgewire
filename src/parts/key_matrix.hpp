@@ -25,7 +25,7 @@ struct MatrixPress {
 enum class KeyMatrixKind : std::uint8_t { Bw2001, Bw80 };
 
 // A keyboard of keys in a matrix, held from the UI or pressed from a queue in simulation time:
-// the BW-2001's MATRIXKB (P5q), the BW-80's MEMBRANEKB (P5x). Keys are indexed as the Part's
+// the BW-2001's BW2001KB (P5q), the BW-80's BW80KB (P5x). Keys are indexed as the Part's
 // key table lists them. Implemented beside Component.
 class KeyMatrix {
 public:

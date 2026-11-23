@@ -19227,7 +19227,7 @@
 				)
 			)
 		)
-		(property "Value" "MATRIXKB"
+		(property "Value" "BW2001KB"
 			(at 0 50.64 0)
 			(layer "F.Fab")
 			(uuid "ac880ed8-94fc-4de8-bb34-e31a59edbe7b")

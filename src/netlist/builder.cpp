@@ -498,23 +498,21 @@ private:
             notConnected_.insert({decl.reference, !onRail(0) || onRail(1) ? 1u : 0u});
             switches.push_back(legs);
         }
-        // A MATRIXKB's keys (P5q): each a contact between its row and column Pins' Nets.
+        // A key matrix of bare contacts (the BW-2001's, P5q): each key a contact between its
+        // row and column Pins' Nets.
         for (const PartDecl& decl : netlist_.parts) {
             const PlacedPart& part = placed_.find(decl.reference)->second;
-            if (part.info == nullptr || part.info->name != "MATRIXKB" ||
-                part.component == nullptr) {
+            auto* keyboard = dynamic_cast<MatrixKeyboard*>(part.component);
+            if (keyboard == nullptr) {
                 continue;
             }
-            auto& keyboard = static_cast<MatrixKeyboard&>(*part.component);
             const auto netOf = [&](PinIndex pin) -> std::optional<NetId> {
                 const auto it = pinNet_.find({decl.reference, pin});
                 return it == pinNet_.end() ? std::nullopt : std::optional(it->second.net);
             };
-            const auto keys = Bw2001Keys();
-            for (std::size_t k = 0; k < keys.size(); ++k) {
-                switches.push_back({&keyboard.contact(k),
-                                    {netOf(MatrixKeyboard::kRow0 + keys[k].row),
-                                     netOf(MatrixKeyboard::kColumn0 + keys[k].column)}});
+            for (std::size_t k = 0; k < keyboard->keyCount(); ++k) {
+                const auto [row, column] = keyboard->contactPins(k);
+                switches.push_back({&keyboard->contact(k), {netOf(row), netOf(column)}});
             }
         }
         std::vector<NetId> nets;
@@ -697,7 +695,7 @@ Paddle* PaddleOf(const LoadedCircuit& loaded, std::string_view reference) {
 
 MatrixKeyboard* MatrixKeyboardOf(const LoadedCircuit& loaded, std::string_view reference) {
     const auto part = std::ranges::find(loaded.parts, reference, &LoadedPart::reference);
-    if (part == loaded.parts.end() || part->info->name != "MATRIXKB") {
+    if (part == loaded.parts.end() || part->info->name != "BW2001KB") {
         return nullptr;
     }
     const auto component = loaded.components.find(reference);
@@ -710,7 +708,7 @@ KeyMatrix* KeyMatrixOf(const LoadedCircuit& loaded, std::string_view reference) 
         return matrix;
     }
     const auto part = std::ranges::find(loaded.parts, reference, &LoadedPart::reference);
-    if (part == loaded.parts.end() || part->info->name != "MEMBRANEKB") {
+    if (part == loaded.parts.end() || part->info->name != "BW80KB") {
         return nullptr;
     }
     const auto component = loaded.components.find(reference);

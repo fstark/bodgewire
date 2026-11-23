@@ -20,7 +20,7 @@ inline constexpr Time kMembraneHold = 60'000'000'000;  // ps: a typed key held 6
 inline constexpr Time kMembraneGap = 120'000'000'000;  // ps: then released 120 ms (6 frames)
 inline constexpr Time kMembraneDelay = 5'000;          // ps: a diode and a contact
 
-// The BW-80 keyboard behind a MEMBRANEKB connector (P5x): the ZX80's 40-key membrane, its rows
+// The BW-80 keyboard behind a BW80KB connector (P5x): the ZX80's 40-key membrane, its rows
 // the address lines A8-A15 (pads 1-8, read: the ROM pulls one low at a time during an IN) and
 // its columns KB0-KB4 (pads 9-13, pulled up on the Board, 47k), each row reaching the keys
 // through a diode as on the ZX80, so two keys on one column never join two address lines. A

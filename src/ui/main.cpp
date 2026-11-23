@@ -1165,10 +1165,8 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
             for (const std::string& reference : session.switches()) {
                 const auto component =
                     scene ? scene->componentIndex(reference) : std::optional<std::size_t>();
-                const auto part =
-                    std::ranges::find(session.circuit().parts, reference, &LoadedPart::reference);
-                const bool slide =
-                    part != session.circuit().parts.end() && part->info->name == "SLIDE";
+                const Switch* sw = SwitchOf(session.circuit(), reference);
+                const bool slide = sw != nullptr && sw->kind() == SwitchKind::Slide;
                 if (slide) {
                     // A slide stays where it is moved, powered or not.
                     if (component && toggled == component && !slid.erase(reference)) {

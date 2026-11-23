@@ -11207,7 +11207,7 @@
 				)
 			)
 		)
-		(property "Value" "MEMBRANEKB"
+		(property "Value" "BW80KB"
 			(at 0 32.86 0)
 			(layer "F.Fab")
 			(uuid "e9d54a71-7dd4-471f-9032-e68fefb71062")

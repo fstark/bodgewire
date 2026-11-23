@@ -1,4 +1,4 @@
-# MEMBRANEKB — the BW-80 keyboard
+# BW80KB — the BW-80 keyboard
 
 ## Function
 

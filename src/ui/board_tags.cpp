@@ -12,19 +12,18 @@ namespace bw {
 
 namespace {
 
-// A switch's tag: its look by the Part's name, its legend from the design Circuit's Switch.
+// A switch's tag: its kind and legend from the design Circuit's Switch.
 std::optional<SwitchTag> SwitchTagOf(const BoardScene& scene, const LoadedCircuit& design,
                                      const LoadedPart& part, bool pressed) {
     const auto component = scene.componentIndex(part.reference);
     if (!component) {
         return std::nullopt;
     }
-    const std::string_view type = part.info->name;
-    const SwitchLook look = type == "KEY"     ? SwitchLook::Key
-                            : type == "SLIDE" ? SwitchLook::Slide
-                                              : SwitchLook::Button;
     const Switch* sw = SwitchOf(design, part.reference);
-    return SwitchTag{*component, pressed, look, sw ? std::string(sw->legend()) : std::string()};
+    if (sw == nullptr) {
+        return std::nullopt;
+    }
+    return SwitchTag{*component, pressed, sw->kind(), std::string(sw->legend())};
 }
 
 std::vector<SwitchTag> SwitchTags(const BoardScene& scene, const LoadedCircuit& design,

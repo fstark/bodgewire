@@ -87,7 +87,7 @@ std::vector<PinSpec> ConnectorPins(std::string_view part) {
                 ground("GND2"), in("HDRIVE"),   {"NC6", PinKind::NoConnect, Family::Ttl},
                 ground("GND3")};
     }
-    if (part == "MATRIXKB") {
+    if (part == "BW2001KB") {
         std::vector<PinSpec> pins;
         for (int row = 0; row < 10; ++row) {
             pins.push_back({"ROW" + std::to_string(row), PinKind::Input, Family::Mos, false, true});
@@ -100,7 +100,7 @@ std::vector<PinSpec> ConnectorPins(std::string_view part) {
         pins.push_back({"NC20", PinKind::NoConnect, Family::Ttl});
         return pins;
     }
-    if (part == "MEMBRANEKB") {
+    if (part == "BW80KB") {
         // The rows wake the Part: it answers inside an IN. The columns are diodes pulling low.
         std::vector<PinSpec> pins;
         for (int row = 8; row < 16; ++row) {
