@@ -29,15 +29,6 @@ std::optional<std::pair<Layer, Point>> ParseLayerPoint(const std::vector<std::st
     return std::pair{f[0] == "F.Cu" ? Layer::Front : Layer::Back, Point{*x, *y}};
 }
 
-// "U1.14": split at the first '.', both sides non-empty.
-std::optional<PinRef> ParsePinRef(std::string_view text) {
-    const std::size_t dot = text.find('.');
-    if (dot == std::string_view::npos || dot == 0 || dot + 1 == text.size()) {
-        return std::nullopt;
-    }
-    return PinRef{std::string(text.substr(0, dot)), std::string(text.substr(dot + 1))};
-}
-
 std::string FormatPin(const PinRef& pin) { return pin.reference + "." + pin.pin; }
 
 }  // namespace

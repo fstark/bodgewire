@@ -488,10 +488,8 @@ int Run(std::span<char*> args) {
 
     std::vector<NetId> probed;
     for (const std::string& probe : options.probe) {
-        const std::size_t dot = probe.find('.');
-        const auto net = dot == std::string::npos
-                             ? std::nullopt
-                             : PinNet(loaded, probe.substr(0, dot), probe.substr(dot + 1));
+        const auto pin = ParsePinRef(probe);
+        const auto net = pin ? PinNet(loaded, pin->reference, pin->pin) : std::nullopt;
         if (!net) {
             return UsageError("unknown pin '" + probe + "'");
         }

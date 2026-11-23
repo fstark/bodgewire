@@ -17,19 +17,6 @@ constexpr std::string_view kPinWord = " pin ";
 
 bool IsUpper(char c) { return c >= 'A' && c <= 'Z'; }
 
-// [A-Z]+[0-9]+
-bool LooksLikeReference(std::string_view text) {
-    std::size_t i = 0;
-    while (i < text.size() && IsUpper(text[i])) {
-        ++i;
-    }
-    const std::size_t letters = i;
-    while (i < text.size() && IsDigit(text[i])) {
-        ++i;
-    }
-    return letters > 0 && i > letters && i == text.size();
-}
-
 const LoadedPart* FindLoadedPart(const LoadedCircuit& design, std::string_view reference) {
     for (const LoadedPart& part : design.parts) {
         if (part.reference == reference) {
@@ -41,7 +28,7 @@ const LoadedPart* FindLoadedPart(const LoadedCircuit& design, std::string_view r
 
 // "U12" → {"U", 12}; nullopt unless LooksLikeReference.
 std::optional<std::pair<std::string_view, int>> SplitReference(std::string_view text) {
-    if (!LooksLikeReference(text)) {
+    if (!IsReference(text)) {
         return std::nullopt;
     }
     std::size_t letters = 0;
@@ -70,7 +57,7 @@ bool LooksLikePinName(std::string_view text) {
 // `REF.PIN` → {REF, PIN} when REF looks like a reference and PIN like a pin name.
 std::optional<std::pair<std::string_view, std::string_view>> SplitPinName(std::string_view text) {
     const std::size_t dot = text.find('.');
-    if (dot == std::string_view::npos || !LooksLikeReference(text.substr(0, dot)) ||
+    if (dot == std::string_view::npos || !IsReference(text.substr(0, dot)) ||
         !LooksLikePinName(text.substr(dot + 1))) {
         return std::nullopt;
     }
@@ -207,7 +194,7 @@ void CheckSpans(std::span<const Span> spans, std::uint32_t line, Problems& probl
             }
             continue;
         }
-        if (!LooksLikeReference(span.text) || design.nets.contains(span.text)) {
+        if (!IsReference(span.text) || design.nets.contains(span.text)) {
             continue;
         }
         const LoadedPart* part = FindLoadedPart(design, span.text);

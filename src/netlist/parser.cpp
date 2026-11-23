@@ -13,19 +13,6 @@ bool IsUpper(char c) { return c >= 'A' && c <= 'Z'; }
 bool IsLetter(char c) { return IsUpper(c) || (c >= 'a' && c <= 'z'); }
 bool IsAlnum(char c) { return IsLetter(c) || IsDigit(c); }
 
-// [A-Z]+[0-9]+
-bool IsReference(std::string_view text) {
-    std::size_t i = 0;
-    while (i < text.size() && IsUpper(text[i])) {
-        ++i;
-    }
-    const std::size_t letters = i;
-    while (i < text.size() && IsDigit(text[i])) {
-        ++i;
-    }
-    return letters > 0 && i > letters && i == text.size();
-}
-
 // [A-Za-z0-9]+
 bool IsPartName(std::string_view text) {
     if (text.empty()) {
@@ -124,15 +111,13 @@ private:
             error(line, "bad net name '" + decl.name + "'");
         }
         for (std::size_t i = 2; i < tokens.size(); ++i) {
-            const std::string_view token = tokens[i];
-            const std::size_t dot = token.find('.');
-            if (dot == 0 || dot == std::string_view::npos || dot + 1 == token.size() ||
-                token.find('.', dot + 1) != std::string_view::npos) {
-                error(line, "bad pin reference '" + std::string(token) + "': expected <ref>.<pin>");
+            auto pin = ParsePinRef(tokens[i]);
+            if (!pin) {
+                error(line,
+                      "bad pin reference '" + std::string(tokens[i]) + "': expected <ref>.<pin>");
                 continue;
             }
-            decl.pins.push_back(
-                {std::string(token.substr(0, dot)), std::string(token.substr(dot + 1))});
+            decl.pins.push_back(std::move(*pin));
         }
         if (errors_.size() == errorCount) {
             netlist_.nets.push_back(std::move(decl));
@@ -144,6 +129,27 @@ private:
 };
 
 }  // namespace
+
+std::optional<PinRef> ParsePinRef(std::string_view text) {
+    const std::size_t dot = text.find('.');
+    if (dot == 0 || dot == std::string_view::npos || dot + 1 == text.size() ||
+        text.find('.', dot + 1) != std::string_view::npos) {
+        return std::nullopt;
+    }
+    return PinRef{std::string(text.substr(0, dot)), std::string(text.substr(dot + 1))};
+}
+
+bool IsReference(std::string_view text) {
+    std::size_t i = 0;
+    while (i < text.size() && IsUpper(text[i])) {
+        ++i;
+    }
+    const std::size_t letters = i;
+    while (i < text.size() && IsDigit(text[i])) {
+        ++i;
+    }
+    return letters > 0 && i > letters && i == text.size();
+}
 
 std::expected<Netlist, std::vector<Diagnostic>> ParseNetlist(std::string_view text,
                                                              std::string file) {

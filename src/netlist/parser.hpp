@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -23,6 +24,13 @@ struct PinRef {
     std::string reference;
     std::string pin;  // package pin number or datasheet name
 };
+
+// "U3.7" or "U3.1Y": a reference, one dot, a pin; nullopt if either is empty or a second dot
+// follows. The reference is not checked against IsReference.
+std::optional<PinRef> ParsePinRef(std::string_view text);
+
+// [A-Z]+[0-9]+: "U12", "SW1".
+bool IsReference(std::string_view text);
 
 struct NetDecl {
     std::uint32_t line;

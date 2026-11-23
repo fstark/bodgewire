@@ -1358,14 +1358,13 @@ BenchResult RunWindow(SDL_Window* window, GpuRender& gpu, const Loaded& loaded, 
 // opens: an exit code on a usage error.
 std::optional<int> PrepareBench(Session& session, const Options& options) {
     if (options.probe) {
-        const std::string& pin = *options.probe;
-        const std::size_t dot = pin.find('.');
+        const auto pin = ParsePinRef(*options.probe);
         std::optional<Point> at;
-        if (session.machine() && dot != std::string::npos) {
-            at = session.machine()->padPosition(pin.substr(0, dot), pin.substr(dot + 1));
+        if (session.machine() && pin) {
+            at = session.machine()->padPosition(pin->reference, pin->pin);
         }
         if (!at) {
-            std::println(stderr, "bw_ui: unknown pin '{}'", pin);
+            std::println(stderr, "bw_ui: unknown pin '{}'", *options.probe);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }
@@ -1385,14 +1384,11 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
     }
     for (const std::string& item : options.clip) {
         const std::size_t colon = item.find(':');
-        const std::string pin = item.substr(0, colon);
-        const std::size_t dot = pin.find('.');
+        const auto pin = ParsePinRef(std::string_view(item).substr(0, colon));
         const auto trigger = colon == std::string::npos
                                  ? std::optional(TriggerCondition::Any)
                                  : ParseTrigger(std::string_view(item).substr(colon + 1));
-        const auto channel = dot == std::string::npos
-                                 ? std::nullopt
-                                 : session.clip(pin.substr(0, dot), pin.substr(dot + 1));
+        const auto channel = pin ? session.clip(pin->reference, pin->pin) : std::nullopt;
         if (!trigger || !channel) {
             std::println(stderr, "bw_ui: unknown pin '{}'", item);
             std::println(stderr, "{}", kUsage);
@@ -1405,12 +1401,9 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
     }
     for (const std::string& item : options.group) {
         const std::size_t colon = item.find(':');
-        const std::string pin = item.substr(0, colon);
-        const std::size_t dot = pin.find('.');
+        const auto pin = ParsePinRef(std::string_view(item).substr(0, colon));
         const auto clipped =
-            dot == std::string::npos
-                ? std::nullopt
-                : std::optional(session.clipGroup(pin.substr(0, dot), pin.substr(dot + 1)));
+            pin ? std::optional(session.clipGroup(pin->reference, pin->pin)) : std::nullopt;
         const bool ok = clipped && *clipped &&
                         (colon == std::string::npos ||
                          ((*clipped)->group &&
@@ -1426,8 +1419,8 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
         session.arm();
     }
     for (const std::string& item : options.hook) {
-        const std::size_t dot = item.find('.');
-        if (dot == std::string::npos || !session.hook(item.substr(0, dot), item.substr(dot + 1))) {
+        const auto pin = ParsePinRef(item);
+        if (!pin || !session.hook(pin->reference, pin->pin)) {
             std::println(stderr, "bw_ui: unknown pin '{}'", item);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
@@ -1446,13 +1439,11 @@ std::optional<int> PrepareBench(Session& session, const Options& options) {
     if (options.meter.size() == 2) {  // red then black, before the power-on: none for these
         session.setMeterMode(MeterMode::Continuity);
     }
-    for (const std::string& pin : options.meter) {
-        const std::size_t dot = pin.find('.');
-        const auto lead = dot == std::string::npos
-                              ? std::nullopt
-                              : session.padLead(pin.substr(0, dot), pin.substr(dot + 1));
+    for (const std::string& item : options.meter) {
+        const auto pin = ParsePinRef(item);
+        const auto lead = pin ? session.padLead(pin->reference, pin->pin) : std::nullopt;
         if (!lead) {
-            std::println(stderr, "bw_ui: unknown pin '{}'", pin);
+            std::println(stderr, "bw_ui: unknown pin '{}'", item);
             std::println(stderr, "{}", kUsage);
             return kExitUsage;
         }

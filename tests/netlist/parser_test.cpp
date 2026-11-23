@@ -124,3 +124,26 @@ TEST_CASE("parser: reports all errors", "[netlist]") {
     CHECK(errors[1].line == 3);
     CHECK(errors[2].line == 4);
 }
+
+TEST_CASE("parser: ParsePinRef splits REF.PIN at its one dot", "[netlist]") {
+    const auto number = ParsePinRef("U3.7");
+    REQUIRE(number.has_value());
+    CHECK(number->reference == "U3");
+    CHECK(number->pin == "7");
+    const auto name = ParsePinRef("U12.CLR_N");
+    REQUIRE(name.has_value());
+    CHECK(name->reference == "U12");
+    CHECK(name->pin == "CLR_N");
+    for (const char* bad : {"", "U3", ".7", "U3.", "U3.7.1", "."}) {
+        CHECK_FALSE(ParsePinRef(bad).has_value());
+    }
+}
+
+TEST_CASE("parser: IsReference is letters then digits", "[netlist]") {
+    for (const char* good : {"U1", "SW12", "RN3"}) {
+        CHECK(IsReference(good));
+    }
+    for (const char* bad : {"", "U", "12", "u1", "U1A", "U-1", "1U"}) {
+        CHECK_FALSE(IsReference(bad));
+    }
+}

@@ -22,14 +22,6 @@ bool IsMachineName(std::string_view text) {
     return true;
 }
 
-std::optional<PinRef> ParsePin(std::string_view token) {
-    const std::size_t dot = token.find('.');
-    if (dot == std::string_view::npos || dot == 0 || dot + 1 == token.size()) {
-        return std::nullopt;
-    }
-    return PinRef{std::string(token.substr(0, dot)), std::string(token.substr(dot + 1))};
-}
-
 // "$1FF" (1-8 hex digits, either case) or "511" (1-9 decimal digits).
 std::optional<std::uint32_t> ParseWord(std::string_view text) {
     const bool hex = text.starts_with('$');
@@ -175,20 +167,18 @@ private:
             error(line, expected);
             return;
         }
-        const std::size_t dot = tokens[2].find('.');
-        if (dot == std::string_view::npos || dot == 0 || dot + 1 == tokens[2].size() ||
-            (tokens[3] != "0" && tokens[3] != "1")) {
+        auto pin = ParsePinRef(tokens[2]);
+        if (!pin || (tokens[3] != "0" && tokens[3] != "1")) {
             error(line, expected);
             return;
         }
-        puzzle_.stuck.push_back({line, std::string(tokens[2].substr(0, dot)),
-                                 std::string(tokens[2].substr(dot + 1)),
+        puzzle_.stuck.push_back({line, std::move(pin->reference), std::move(pin->pin),
                                  tokens[3] == "1" ? LogicValue::One : LogicValue::Zero, input});
     }
 
     void crack(std::uint32_t line, const std::vector<std::string_view>& tokens) {
-        const auto a = tokens.size() == 5 ? ParsePin(tokens[2]) : std::nullopt;
-        const auto b = tokens.size() == 5 ? ParsePin(tokens[3]) : std::nullopt;
+        const auto a = tokens.size() == 5 ? ParsePinRef(tokens[2]) : std::nullopt;
+        const auto b = tokens.size() == 5 ? ParsePinRef(tokens[3]) : std::nullopt;
         if (!a || !b || !tokens[4].ends_with('%')) {
             error(line, "expected: fault crack REF.PIN REF.PIN N%");
             return;
@@ -202,8 +192,8 @@ private:
     }
 
     void bridge(std::uint32_t line, const std::vector<std::string_view>& tokens) {
-        const auto a = tokens.size() == 4 ? ParsePin(tokens[2]) : std::nullopt;
-        const auto b = tokens.size() == 4 ? ParsePin(tokens[3]) : std::nullopt;
+        const auto a = tokens.size() == 4 ? ParsePinRef(tokens[2]) : std::nullopt;
+        const auto b = tokens.size() == 4 ? ParsePinRef(tokens[3]) : std::nullopt;
         if (!a || !b) {
             error(line, "expected: fault bridge REF.PIN REF.PIN");
             return;
@@ -212,7 +202,7 @@ private:
     }
 
     void joint(std::uint32_t line, const std::vector<std::string_view>& tokens) {
-        const auto pin = tokens.size() == 3 ? ParsePin(tokens[2]) : std::nullopt;
+        const auto pin = tokens.size() == 3 ? ParsePinRef(tokens[2]) : std::nullopt;
         if (!pin) {
             error(line, "expected: fault joint REF.PIN");
             return;
@@ -235,7 +225,7 @@ private:
         const bool column = tokens[1] == "column";
         const std::size_t count = column ? 4 : 5;
         const bool named = tokens.size() == count + 1;
-        const auto pin = tokens.size() == count || named ? ParsePin(tokens[2]) : std::nullopt;
+        const auto pin = tokens.size() == count || named ? ParsePinRef(tokens[2]) : std::nullopt;
         const auto lower = [](std::string_view text) {
             return !text.empty() &&
                    std::ranges::all_of(text, [](char c) { return c >= 'a' && c <= 'z'; });
