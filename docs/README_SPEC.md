@@ -61,7 +61,93 @@ trace, a dead chip output, a solder bridge) and the symptoms come out of the cir
 themselves; nothing is scripted. Two or three sentences. The game design's motto, "Every fault has
 a cause", may appear once.
 
-### 4. Building it
+### 4. What it is
+
+The player's view, a little salesy but true: you are at a repair bench, a broken Machine in front
+of you, a post-it saying what's wrong ("The LED never lights."). You have the Board, the manuals
+(User Manual, Service Manual, datasheets) and real instruments. Find the fault, fix it, power it
+back on. 114 Puzzles on 14 Machines, from a five-chip LED blinker to copies of the Commodore PET
+2001 and the Sinclair ZX80. Count Puzzles and Machines from `machines/*/puzzles/*.bwp` and
+`machines/*/` at each regeneration.
+
+Then the launcher picture (`launcher`): each Machine with its paragraph, and a post-it per Puzzle.
+
+### 5. A repair, step by step
+
+The Counter's first Puzzle, "Dark LED" (`machines/010-counter/puzzles/01-dark-led.bwp`), told as a
+short walk-through, one picture per step:
+
+1. `bench`: the bench as it opens: the Board, the post-it, the shelf of tools at the bottom.
+   Five 74LS161 counters divide a 1 MHz crystal down to about one blink a second; the LED stays
+   dark.
+2. `traces`: hover a chip and its traces light up, with every pin named. U5's pin 11 (QD) is the
+   one that drives the LED.
+3. `continuity`: power off, multimeter in Continuity, red lead on U5 pin 11, black lead on the
+   LED's pad: "open". The chip and the LED are not connected, though a trace runs between them.
+4. `crack`: zoom in on that trace: a hairline crack across the copper, about half way.
+5. `mended`: the soldering iron bridges the crack with a blob of solder; power on, the LED
+   blinks.
+
+Say the crack can be repaired with the soldering iron. Don't spell out a general strategy
+beyond this one case.
+
+### 6. Tools and instruments
+
+The shelf's items, each with one line from its tooltip (`src/ui/shelf.cpp`, `kItems`), in four
+`###` subsections, each with its pictures:
+
+- **Tools**: grease pencil, chip puller, soldering iron, cutters, bodge wire. Then `pencil`: the
+  Dark LED's Board with checks on U1–U4 and a cross on the Trace to the LED, the Puzzle's
+  reasoning half done.
+- **Instruments**: logic probe, logic analyzer, oscilloscope (4 channels), multimeter (volts,
+  continuity). Then, each with a sentence saying what it shows:
+  - `analyzer`: the LED computer's 6502 starting, SYNC, PHI2 and R/W above the address and data
+    buses read as values: the reset vector fetched at FFFC/FFFD (00, F8), then F800's first
+    instructions. (The single signals list above the buses: the clips are applied before the
+    groups.)
+  - `scope`: the Test Pattern Generator's VIDEO (triggered on it, so inside a visible line: a
+    pulse per vertical line of the grid) and SYNC_N below.
+- **The binder**: User and Service Manuals, datasheets, a memory chip's contents, one picture
+  each, all but the datasheet on the BW-2001 with BASIC's banner on the TV:
+  - `binder-manual`: the Service Manual's Components, every reference a link to the Board;
+  - `binder-datasheet`: the Counter's U5, a 74LS161: pinout with each pin's Net, its function;
+  - `binder-code`: UH7 (F800–FFFF) disassembled as 6502 code (not UH4: F000 is BASIC's message
+    text and disassembles into nonsense);
+  - `binder-glyphs`: the character ROM UA2, glyph by glyph.
+- **And the rest**, no pictures: the post-it, the Machine's own devices (TV, keyboard, paddle
+  knobs) in windows that pop out to their own desktop windows, the controls (power, pause / real
+  time / as fast as possible, Reset: undo every repair).
+
+Then one line on the kinds of faults met (from the `fault` lines of the Puzzles): cracked traces,
+stuck chip outputs, solder bridges, bad joints, bad memory cells, dead switches. No fault names
+that would spoil a given Puzzle.
+
+### 7. The Machines
+
+A section per Machine, in directory order: a `###` heading with the Machine's name as its User
+Manual's title, then its description at the top (one or two sentences from the first paragraph
+of its `manuals/user.md`, rephrased, not copied, plus its Puzzle count), then its picture. No
+contact sheet or grid of pictures. The Machines with a TV show it beside the Board; the computers
+show something typed:
+
+| Picture | Machine | Shown |
+|---|---|---|
+| `counter` | Counter | the LED lit |
+| `led-chaser` | LED Chaser | one light along the row |
+| `dice` | Dice | a face after a roll (ROLL pressed) |
+| `stopwatch` | Stopwatch | three digits |
+| `knob-meter` | Knob Meter | the paddle at 42 % |
+| `test-pattern` | Test Pattern Generator | the grid on the TV |
+| `bouncing-ball` | Bouncing Ball | the ball and its box |
+| `tennis` | Paddle Tennis | the court, scores, both paddles' knobs |
+| `message` | Message Display | the poem |
+| `typewriter` | TV Typewriter | CLEAR, then "HELLO, WORLD" typed |
+| `led-computer` | LED computer | the light running |
+| `bw1` | BW-1 (KIM-1-like) | the keypad and its six digits |
+| `bw2001` | BW-2001 (PET 2001 copy) | a BASIC loop printing BODGEWIRE |
+| `bw80` | BW-80 (ZX80 copy) | a two-line program entered, not run: `10 PRINT "BODGEWIRE ";`, `20 GOTO 10` |
+
+### 8. Building it
 
 From a clean machine to the game running, as commands to copy:
 
@@ -96,97 +182,11 @@ From a clean machine to the game running, as commands to copy:
     no KiCad they are left out;
 - honest platform note: developed on macOS; Linux builds and runs (above); Windows untried.
 
-### 5. What it is
-
-The player's view, a little salesy but true: you are at a repair bench, a broken Machine in front
-of you, a post-it saying what's wrong ("The LED never lights."). You have the Board, the manuals
-(User Manual, Service Manual, datasheets) and real instruments. Find the fault, fix it, power it
-back on. 114 Puzzles on 14 Machines, from a five-chip LED blinker to copies of the Commodore PET
-2001 and the Sinclair ZX80. Count Puzzles and Machines from `machines/*/puzzles/*.bwp` and
-`machines/*/` at each regeneration.
-
-Then the launcher picture (`launcher`): each Machine with its paragraph, and a post-it per Puzzle.
-
-### 6. A repair, step by step
-
-The Counter's first Puzzle, "Dark LED" (`machines/010-counter/puzzles/01-dark-led.bwp`), told as a
-short walk-through, one picture per step:
-
-1. `bench`: the bench as it opens: the Board, the post-it, the shelf of tools at the bottom.
-   Five 74LS161 counters divide a 1 MHz crystal down to about one blink a second; the LED stays
-   dark.
-2. `traces`: hover a chip and its traces light up, with every pin named. U5's pin 11 (QD) is the
-   one that drives the LED.
-3. `continuity`: power off, multimeter in Continuity, red lead on U5 pin 11, black lead on the
-   LED's pad: "open". The chip and the LED are not connected, though a trace runs between them.
-4. `crack`: zoom in on that trace: a hairline crack across the copper, about half way.
-5. `mended`: the soldering iron bridges the crack with a blob of solder; power on, the LED
-   blinks.
-
-Say the crack can be repaired with the soldering iron. Don't spell out a general strategy
-beyond this one case.
-
-### 7. Tools and instruments
-
-The shelf's items, each with one line from its tooltip (`src/ui/shelf.cpp`, `kItems`), in four
-`###` subsections, each with its pictures:
-
-- **Tools**: grease pencil, chip puller, soldering iron, cutters, bodge wire. Then `pencil`: the
-  Dark LED's Board with checks on U1–U4 and a cross on the Trace to the LED, the Puzzle's
-  reasoning half done.
-- **Instruments**: logic probe, logic analyzer, oscilloscope (4 channels), multimeter (volts,
-  continuity). Then, each with a sentence saying what it shows:
-  - `analyzer`: the LED computer's 6502 starting, SYNC, PHI2 and R/W above the address and data
-    buses read as values: the reset vector fetched at FFFC/FFFD (00, F8), then F800's first
-    instructions. (The single signals list above the buses: the clips are applied before the
-    groups.)
-  - `scope`: the Test Pattern Generator's VIDEO (triggered on it, so inside a visible line: a
-    pulse per vertical line of the grid) and SYNC_N below.
-- **The binder**: User and Service Manuals, datasheets, a memory chip's contents, one picture
-  each, all but the datasheet on the BW-2001 with BASIC's banner on the TV:
-  - `binder-manual`: the Service Manual's Components, every reference a link to the Board;
-  - `binder-datasheet`: the Counter's U5, a 74LS161: pinout with each pin's Net, its function;
-  - `binder-code`: UH7 (F800–FFFF) disassembled as 6502 code (not UH4: F000 is BASIC's message
-    text and disassembles into nonsense);
-  - `binder-glyphs`: the character ROM UA2, glyph by glyph.
-- **And the rest**, no pictures: the post-it, the Machine's own devices (TV, keyboard, paddle
-  knobs) in windows that pop out to their own desktop windows, the controls (power, pause / real
-  time / as fast as possible, Reset: undo every repair).
-
-Then one line on the kinds of faults met (from the `fault` lines of the Puzzles): cracked traces,
-stuck chip outputs, solder bridges, bad joints, bad memory cells, dead switches. No fault names
-that would spoil a given Puzzle.
-
-### 8. The Machines
-
-A section per Machine, in directory order: a `###` heading with the Machine's name as its User
-Manual's title, then its description at the top (one or two sentences from the first paragraph
-of its `manuals/user.md`, rephrased, not copied, plus its Puzzle count), then its picture. No
-contact sheet or grid of pictures. The Machines with a TV show it beside the Board; the computers
-show something typed:
-
-| Picture | Machine | Shown |
-|---|---|---|
-| `counter` | Counter | the LED lit |
-| `led-chaser` | LED Chaser | one light along the row |
-| `dice` | Dice | a face after a roll (ROLL pressed) |
-| `stopwatch` | Stopwatch | three digits |
-| `knob-meter` | Knob Meter | the paddle at 42 % |
-| `test-pattern` | Test Pattern Generator | the grid on the TV |
-| `bouncing-ball` | Bouncing Ball | the ball and its box |
-| `tennis` | Paddle Tennis | the court, scores, both paddles' knobs |
-| `message` | Message Display | the poem |
-| `typewriter` | TV Typewriter | CLEAR, then "HELLO, WORLD" typed |
-| `led-computer` | LED computer | the light running |
-| `bw1` | BW-1 (KIM-1-like) | the keypad and its six digits |
-| `bw2001` | BW-2001 (PET 2001 copy) | a BASIC loop printing BODGEWIRE |
-| `bw80` | BW-80 (ZX80 copy) | a two-line program entered, not run: `10 PRINT "BODGEWIRE ";`, `20 GOTO 10` |
-
 ## Keeping it current
 
-- A new Machine: a shot in `tools/readme_shots.py`, a row in §8's table, the counts in §5.
-- A new tool or instrument: §7, from the shelf's tooltip, and a picture if it has a window.
-- A change to the Dark LED Puzzle or the Counter's Board: §6's shots (the crack's coordinates in
+- A new Machine: a shot in `tools/readme_shots.py`, a row in §7's table, the counts in §4.
+- A new tool or instrument: §6, from the shelf's tooltip, and a picture if it has a window.
+- A change to the Dark LED Puzzle or the Counter's Board: §5's shots (the crack's coordinates in
   `tools/readme_shots.py` come from the Board: U5 pin 11 and D1 pad 1 in
   `machines/010-counter/board/counter.kicad_pcb`).
 - The screenshot flags the shots use: `--probe`, `--meter A,B` (two pins: Continuity, power
