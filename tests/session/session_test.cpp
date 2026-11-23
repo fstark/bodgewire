@@ -861,7 +861,7 @@ TEST_CASE("session: bw2001 with every instrument", "[session][slow]") {
     Session session(std::move(*machine), std::move(*built));
     session.setSpeed(Speed::Max);
     REQUIRE(session.tv() != nullptr);  // the MONITOR connector, separate drives
-    CHECK(session.matrixKeyboards() == std::vector<std::string>{"J5"});
+    CHECK(session.inputs().matrixKeyboards() == std::vector<std::string>{"J5"});
     REQUIRE(session.leds().size() == 1);  // DS1
 
     // The 6502's address and data buses and its control pins: 32 Clips.
@@ -900,8 +900,8 @@ TEST_CASE("session: bw80 with every instrument", "[session][slow]") {
     Session session(std::move(*machine), std::move(*built));
     session.setSpeed(Speed::Max);
     REQUIRE(session.tv() != nullptr);
-    CHECK(session.matrixKeyboards() == std::vector<std::string>{"J3"});
-    CHECK(session.matrixKind("J3") == KeyMatrixKind::Bw80);
+    CHECK(session.inputs().matrixKeyboards() == std::vector<std::string>{"J3"});
+    CHECK(session.inputs().matrixKind("J3") == KeyMatrixKind::Bw80);
     CHECK(session.leds().empty());
 
     // The Z80's address and data buses and its strobes, the memory side of the data bus (MD0-MD7,
@@ -981,8 +981,8 @@ TEST_CASE("session: tennis with every instrument", "[session][slow]") {
     session.setSpeed(Speed::Max);
     CHECK(session.leds().empty());
     REQUIRE(session.tv() != nullptr);
-    CHECK(session.knobs() == std::vector<std::string>{"J3", "J4"});
-    CHECK(session.switches() == std::vector<std::string>{"SW1"});
+    CHECK(session.inputs().knobs() == std::vector<std::string>{"J3", "J4"});
+    CHECK(session.inputs().switches() == std::vector<std::string>{"SW1"});
 
     for (const char* chip : {"U48", "U49"}) {
         for (const char* pin : {"QA", "QB", "QC", "QD"}) {
@@ -998,8 +998,8 @@ TEST_CASE("session: tennis with every instrument", "[session][slow]") {
     session.touch(ProbeTip{start->at, Layer::Front});
     REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
 
-    CHECK(session.setKnob("J3", 0.25));
-    CHECK(session.setKnob("J4", 0.75));
+    CHECK(session.inputs().setKnob("J3", 0.25));
+    CHECK(session.inputs().setKnob("J4", 0.75));
     session.powerOn(1, 1_s);
     session.runner().waitIdle();
     CHECK(session.tv()->tv().isLocked());
@@ -1032,26 +1032,26 @@ TEST_CASE("session: typing on a BW80KB, the text queued whole", "[session]") {
     REQUIRE(loaded.has_value());
     Session session(std::nullopt, std::move(*loaded));
     session.setSpeed(Speed::Max);
-    CHECK(session.matrixKeyboards() == std::vector<std::string>{"J3"});
-    CHECK(session.matrixKind("J3") == KeyMatrixKind::Bw80);
-    CHECK_FALSE(session.matrixKind("J1").has_value());
-    CHECK_FALSE(session.typeText("J3", U"A"));  // not powered
+    CHECK(session.inputs().matrixKeyboards() == std::vector<std::string>{"J3"});
+    CHECK(session.inputs().matrixKind("J3") == KeyMatrixKind::Bw80);
+    CHECK_FALSE(session.inputs().matrixKind("J1").has_value());
+    CHECK_FALSE(session.inputs().typeText("J3", U"A"));  // not powered
 
     // "LIST" at a line's start is the A key alone (row 1, low on the bench): held 60 ms, so
     // still down when the run pauses at 30 ms.
     session.powerOn(1, 30_ms);
-    CHECK(session.typeText("J3", U"LIST"));
+    CHECK(session.inputs().typeText("J3", U"LIST"));
     session.runner().waitIdle();
     CHECK(session.runner().status().simTime >= 30_ms);
-    CHECK(session.matrixKeyDown("J3", *Zx80KeyAt(1, 0)));
-    CHECK_FALSE(session.matrixKeyDown("J3", *Zx80KeyAt(1, 1)));
+    CHECK(session.inputs().matrixKeyDown("J3", *Zx80KeyAt(1, 0)));
+    CHECK_FALSE(session.inputs().matrixKeyDown("J3", *Zx80KeyAt(1, 1)));
     // A held key through the Session, and all released at power-off.
-    session.setMatrixKeyHeld("J3", *Zx80KeyAt(1, 1), true);
-    CHECK(session.matrixKeyHeld("J3", *Zx80KeyAt(1, 1)));
-    session.setMatrixKeyHeld("J3", 99, true);  // no such key: ignored
-    CHECK_FALSE(session.matrixKeyHeld("J3", 99));
+    session.inputs().setMatrixKeyHeld("J3", *Zx80KeyAt(1, 1), true);
+    CHECK(session.inputs().matrixKeyHeld("J3", *Zx80KeyAt(1, 1)));
+    session.inputs().setMatrixKeyHeld("J3", 99, true);  // no such key: ignored
+    CHECK_FALSE(session.inputs().matrixKeyHeld("J3", 99));
     session.powerOff();
-    CHECK_FALSE(session.matrixKeyHeld("J3", *Zx80KeyAt(1, 1)));
+    CHECK_FALSE(session.inputs().matrixKeyHeld("J3", *Zx80KeyAt(1, 1)));
 }
 
 TEST_CASE("session: typewriter with every instrument", "[session][slow]") {
@@ -1062,7 +1062,7 @@ TEST_CASE("session: typewriter with every instrument", "[session][slow]") {
     Session session(std::move(*machine), std::move(*built));
     session.setSpeed(Speed::Max);
     REQUIRE(session.tv() != nullptr);
-    CHECK(session.keyboards() == std::vector<std::string>{"J3"});
+    CHECK(session.inputs().keyboards() == std::vector<std::string>{"J3"});
 
     for (const char* pin : {"O1", "O2", "O3", "O4", "O5"}) {
         REQUIRE(session.clip("U23", pin).has_value());
@@ -1080,7 +1080,7 @@ TEST_CASE("session: typewriter with every instrument", "[session][slow]") {
     REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
 
     session.powerOn(1, 500_ms);
-    CHECK(session.type("J3", U'A'));
+    CHECK(session.inputs().type("J3", U'A'));
     session.runner().waitIdle();
     CHECK(session.tv()->tv().isLocked());
     CHECK(session.tv()->tv().completedFrames() > 15);
@@ -1127,7 +1127,7 @@ TEST_CASE("session: knob meter with every instrument", "[session][slow]") {
     Session session(std::move(*machine), std::move(*built));
     session.setSpeed(Speed::Max);
     REQUIRE(session.leds().size() == 16);  // DS1 A..G and DP, then DS2
-    CHECK(session.knobs() == std::vector<std::string>{"J2"});
+    CHECK(session.inputs().knobs() == std::vector<std::string>{"J2"});
 
     for (const char* pin : {"A", "B", "C", "D"}) {
         REQUIRE(session.clip("U12", pin).has_value());
@@ -1145,7 +1145,7 @@ TEST_CASE("session: knob meter with every instrument", "[session][slow]") {
     session.touch(ProbeTip{pulse->at, Layer::Front});
     REQUIRE(session.placeLead({vcc->at, Layer::Front, vcc->label}));
 
-    CHECK(session.setKnob("J2", 0.42));
+    CHECK(session.inputs().setKnob("J2", 0.42));
     session.powerOn(1, 300_ms);
     session.runner().waitIdle();
     CHECK(LitSegments(session, "DS1") == Ls47Segments(4, true, true, true));
@@ -1162,21 +1162,21 @@ TEST_CASE("session: buttons only press while powered", "[session]") {
     REQUIRE(loaded.has_value());
     Session session(std::nullopt, std::move(*loaded));
     session.setSpeed(Speed::Max);
-    CHECK(session.switches() == std::vector<std::string>{"SW1"});
-    session.setPressed("SW1", true);
-    CHECK_FALSE(session.pressed("SW1"));
+    CHECK(session.inputs().switches() == std::vector<std::string>{"SW1"});
+    session.inputs().setPressed("SW1", true);
+    CHECK_FALSE(session.inputs().pressed("SW1"));
 
     session.powerOn(1);
-    session.setPressed("SW1", true);
-    CHECK(session.pressed("SW1"));
+    session.inputs().setPressed("SW1", true);
+    CHECK(session.inputs().pressed("SW1"));
     const Switch* button = SwitchOf(session.circuit(), "SW1");
     REQUIRE(button != nullptr);
     CHECK(button->pressed());
-    session.setPressed("SW9", true);  // not a Button: remembered, does nothing
-    session.setPressed("SW9", false);
+    session.inputs().setPressed("SW9", true);  // not a Button: remembered, does nothing
+    session.inputs().setPressed("SW9", false);
     session.powerOff();
     session.runner().waitIdle();
-    CHECK_FALSE(session.pressed("SW1"));
+    CHECK_FALSE(session.inputs().pressed("SW1"));
     CHECK_FALSE(button->pressed());
 }
 
@@ -1199,14 +1199,14 @@ TEST_CASE("session: rolling the dice", "[session]") {
 
     session.powerOn(1, 10_ms);
     session.runner().waitIdle();
-    session.setPressed("SW1", true);
+    session.inputs().setPressed("SW1", true);
     session.runner().resumeUntil(70_ms);
     session.runner().waitIdle();
     CHECK(std::abs(brightness("D4") - 0.5f) < 0.02f);      // ODD_N: 1, 3, 5
     CHECK(std::abs(brightness("D3") - 1.0f / 6) < 0.02f);  // SIX_N: 6
     CHECK(std::abs(brightness("D1") - 5.0f / 6) < 0.02f);  // TWO_N: 2-6
 
-    session.setPressed("SW1", false);
+    session.inputs().setPressed("SW1", false);
     session.runner().resumeUntil(130_ms);
     session.runner().waitIdle();
     for (const LedLight& led : session.leds()) {
@@ -1233,9 +1233,9 @@ TEST_CASE("session: dice rolls both odd and even faces", "[session]") {
     bool even = false;
     Time t = 1_ms;
     for (int roll = 0; roll < 16 && !(odd && even); ++roll) {
-        session.setPressed("SW1", true);
+        session.inputs().setPressed("SW1", true);
         runTo(t += 3_ms);
-        session.setPressed("SW1", false);
+        session.inputs().setPressed("SW1", false);
         runTo(t += 45_ms);  // two closed 20 ms LED windows after the release
         for (const LedLight& led : session.leds()) {
             if (led.reference == "D4") {
@@ -1259,13 +1259,13 @@ TEST_CASE("session: knob kept across power", "[session]") {
     REQUIRE(paddle != nullptr);
     Session session(std::nullopt, std::move(*loaded));
     session.setSpeed(Speed::Max);
-    CHECK(session.knobs() == std::vector<std::string>{"J2"});
-    CHECK_FALSE(session.setKnob("J9", 0.5));
-    CHECK_FALSE(session.setKnob("U1", 0.5));
-    CHECK(session.knob("J2") == 0.0);
-    CHECK(session.setKnob("J2", 1.5));
-    CHECK(session.knob("J2") == 1.0);
-    CHECK(session.setKnob("J2", 0.25));  // with the power off
+    CHECK(session.inputs().knobs() == std::vector<std::string>{"J2"});
+    CHECK_FALSE(session.inputs().setKnob("J9", 0.5));
+    CHECK_FALSE(session.inputs().setKnob("U1", 0.5));
+    CHECK(session.inputs().knob("J2") == 0.0);
+    CHECK(session.inputs().setKnob("J2", 1.5));
+    CHECK(session.inputs().knob("J2") == 1.0);
+    CHECK(session.inputs().setKnob("J2", 0.25));  // with the power off
     CHECK(paddle->knob() == 0.25);
     session.powerOn(1, 1_ms);
     session.runner().waitIdle();
@@ -1273,13 +1273,13 @@ TEST_CASE("session: knob kept across power", "[session]") {
     session.powerOff();
     session.powerOn(2, 1_ms);
     session.runner().waitIdle();
-    CHECK(session.knob("J2") == 0.25);
+    CHECK(session.inputs().knob("J2") == 0.25);
     CHECK(paddle->knob() == 0.25);
 }
 
 TEST_CASE("session: knob kept across a Repair", "[session]") {
     Session session = PuzzleSession("dead_knob");
-    CHECK(session.setKnob("J2", 0.3));
+    CHECK(session.inputs().setKnob("J2", 0.3));
     session.powerOn(1, 1_ms);
     session.runner().waitIdle();
     session.powerOff();
@@ -1290,7 +1290,7 @@ TEST_CASE("session: knob kept across a Repair", "[session]") {
     const Paddle* paddle = PaddleOf(session.circuit(), "J2");
     REQUIRE(paddle != nullptr);
     CHECK(paddle->knob() == 0.3);
-    CHECK(session.knob("J2") == 0.3);
+    CHECK(session.inputs().knob("J2") == 0.3);
     session.powerOff();
 }
 
@@ -1299,16 +1299,16 @@ TEST_CASE("session: typing", "[session]") {
     REQUIRE(loaded.has_value());
     Session session(std::nullopt, std::move(*loaded));
     session.setSpeed(Speed::Max);
-    CHECK(session.keyboards() == std::vector<std::string>{"J1"});
-    CHECK_FALSE(session.type("J1", U'H'));  // not powered
+    CHECK(session.inputs().keyboards() == std::vector<std::string>{"J1"});
+    CHECK_FALSE(session.inputs().type("J1", U'H'));  // not powered
 
     session.powerOn(1, 50_ms);
-    CHECK_FALSE(session.type("J9", U'H'));
-    CHECK_FALSE(session.type("SW1", U'H'));
-    CHECK_FALSE(session.type("J1", U'{'));
-    CHECK(session.type("J1", U'h'));
-    CHECK(session.type("J1", U'I'));
-    CHECK(session.typed("J1") == "HI");
+    CHECK_FALSE(session.inputs().type("J9", U'H'));
+    CHECK_FALSE(session.inputs().type("SW1", U'H'));
+    CHECK_FALSE(session.inputs().type("J1", U'{'));
+    CHECK(session.inputs().type("J1", U'h'));
+    CHECK(session.inputs().type("J1", U'I'));
+    CHECK(session.inputs().typed("J1") == "HI");
     session.runner().waitIdle();
     // U4 starts at a random count: HI is at two consecutive addresses of the 16.
     const auto& low = static_cast<const Ram2114&>(*session.circuit().components.at("U2"));
@@ -1323,13 +1323,13 @@ TEST_CASE("session: typing", "[session]") {
     CHECK(found);
 
     for (int i = 0; i < 20; ++i) {
-        CHECK(session.type("J1", U'A' + i));
+        CHECK(session.inputs().type("J1", U'A' + i));
     }
-    CHECK(session.typed("J1") == "EFGHIJKLMNOPQRST");
+    CHECK(session.inputs().typed("J1") == "EFGHIJKLMNOPQRST");
     session.powerOff();
-    CHECK_FALSE(session.type("J1", U'A'));
+    CHECK_FALSE(session.inputs().type("J1", U'A'));
     session.powerOn(2);
-    CHECK(session.typed("J1").empty());
+    CHECK(session.inputs().typed("J1").empty());
     session.powerOff();
     session.runner().waitIdle();
 }
@@ -1339,20 +1339,20 @@ TEST_CASE("session: typing control codes", "[session]") {
     REQUIRE(loaded.has_value());
     Session session(std::nullopt, std::move(*loaded));
     session.setSpeed(Speed::Max);
-    CHECK_FALSE(session.typeCode("J1", 0x01));  // not powered
+    CHECK_FALSE(session.inputs().typeCode("J1", 0x01));  // not powered
 
     session.powerOn(1, 50_ms);
-    CHECK(session.typeCode("J1", 0x00));
-    CHECK(session.typeCode("J1", 0x01));
-    CHECK(session.typeCode("J1", 0x1B));
-    CHECK(session.typeCode("J1", 0x5F));
-    CHECK_FALSE(session.typeCode("J1", 0x60));
-    CHECK_FALSE(session.typeCode("J1", 0x7F));
-    CHECK_FALSE(session.typeCode("J9", 0x01));
-    CHECK(session.typed("J1") == std::string("\x00\x01\x1B\x5F", 4));
-    CHECK(session.typeCode("J1", 'A'));
-    CHECK(session.typeCode("J1", 0x07));
-    CHECK(session.typeCode("J1", 'B'));
+    CHECK(session.inputs().typeCode("J1", 0x00));
+    CHECK(session.inputs().typeCode("J1", 0x01));
+    CHECK(session.inputs().typeCode("J1", 0x1B));
+    CHECK(session.inputs().typeCode("J1", 0x5F));
+    CHECK_FALSE(session.inputs().typeCode("J1", 0x60));
+    CHECK_FALSE(session.inputs().typeCode("J1", 0x7F));
+    CHECK_FALSE(session.inputs().typeCode("J9", 0x01));
+    CHECK(session.inputs().typed("J1") == std::string("\x00\x01\x1B\x5F", 4));
+    CHECK(session.inputs().typeCode("J1", 'A'));
+    CHECK(session.inputs().typeCode("J1", 0x07));
+    CHECK(session.inputs().typeCode("J1", 'B'));
     session.runner().waitIdle();
     // U4 starts at a random count: A, BEL, B are at three consecutive addresses of the 16.
     const auto& low = static_cast<const Ram2114&>(*session.circuit().components.at("U2"));
@@ -1374,8 +1374,8 @@ TEST_CASE("session: switch keys on the switch bench", "[session]") {
         LoadNetlistFile(std::filesystem::path(BW_ROOT_DIR) / "tests/data/switch_bench.bwn");
     REQUIRE(loaded.has_value());
     Session session(std::nullopt, std::move(*loaded));
-    CHECK(session.switches().size() == 17);
-    const auto keys = session.switchKeys();
+    CHECK(session.inputs().switches().size() == 17);
+    const auto keys = session.inputs().switchKeys();
     REQUIRE(keys.size() == 17);
     CHECK(keys[0].reference == "SW1");
     CHECK(keys[0].pc == "0");
@@ -1386,7 +1386,7 @@ TEST_CASE("session: switch keys on the switch bench", "[session]") {
     // A key held through the Session: the inverter on its column goes high on its row's scans.
     session.setSpeed(Speed::Max);
     session.powerOn(1, 1_ms);
-    session.setPressed("SW1", true);  // key 0: row 0, column 0
+    session.inputs().setPressed("SW1", true);  // key 0: row 0, column 0
     session.runner().waitIdle();
     const Switch* key = SwitchOf(session.circuit(), "SW1");
     REQUIRE(key != nullptr);

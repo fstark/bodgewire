@@ -325,10 +325,12 @@ void MatrixKeyboardWindow::drawCaps(Session& session, const MatrixCapture& captu
         }
         const bool mouse = ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
         const bool held = mouse || latched_[cap.key] || shiftClicked_[cap.key];
-        if (held != session.matrixKeyHeld(capture.reference, cap.key)) {
-            session.setMatrixKeyHeld(capture.reference, cap.key, held);  // ignored when off
+        if (held != session.inputs().matrixKeyHeld(capture.reference, cap.key)) {
+            session.inputs().setMatrixKeyHeld(capture.reference, cap.key,
+                                              held);  // ignored when off
         }
-        draw(cap, a, b, down[cap.key] || held || session.matrixKeyDown(capture.reference, cap.key));
+        draw(cap, a, b,
+             down[cap.key] || held || session.inputs().matrixKeyDown(capture.reference, cap.key));
     }
 }
 

@@ -225,8 +225,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
     const bool hasBoard = board.scene() != nullptr;
     if (!found_) {  // a Machine's devices never change: found once, not per frame
         devices_ = Devices{session.tv() != nullptr,
-                           !session.keyboards().empty() || !session.matrixKeyboards().empty(),
-                           !session.knobs().empty()};
+                           !session.inputs().keyboards().empty() ||
+                               !session.inputs().matrixKeyboards().empty(),
+                           !session.inputs().knobs().empty()};
         found_ = true;
     }
     const bool hasDevice = devices_.tv || devices_.keyboard || devices_.knob;

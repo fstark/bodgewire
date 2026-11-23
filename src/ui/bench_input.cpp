@@ -14,7 +14,7 @@ void SwitchHands::update(Session& session, BoardView& view, std::span<const Butt
         latched_.clear();
     }
     const auto toggled = view.takeLatchToggle();
-    for (const std::string& reference : session.switches()) {
+    for (const std::string& reference : session.inputs().switches()) {
         const auto component =
             scene ? scene->componentIndex(reference) : std::optional<std::size_t>();
         const Switch* sw = SwitchOf(session.circuit(), reference);
@@ -29,9 +29,9 @@ void SwitchHands::update(Session& session, BoardView& view, std::span<const Butt
         const bool scripted = std::ranges::any_of(presses, [&](const ButtonPress& p) {
             return p.reference == reference && p.down <= simTime && simTime < p.up;
         });
-        session.setPressed(reference, latched_.contains(reference) || slid_.contains(reference) ||
-                                          scripted || (component && view.held() == component) ||
-                                          keys.holds(reference));
+        session.inputs().setPressed(
+            reference, latched_.contains(reference) || slid_.contains(reference) || scripted ||
+                           (component && view.held() == component) || keys.holds(reference));
     }
     if (scene) {
         view.setSwitches(SwitchTagsOf(*scene, session));
@@ -49,14 +49,15 @@ void ScriptedTyping::update(Session& session, Time simTime, std::string_view mat
             const Typing& typing = typing_[t];
             if (typing.reference == matrix) {
                 if (sent_[t] == 0 && typing.start <= simTime) {
-                    session.typeText(typing.reference, typing.text);
+                    session.inputs().typeText(typing.reference, typing.text);
                     sent_[t] = 1;
                 }
                 continue;
             }
             while (sent_[t] < typing.keys.size() && typing.at(sent_[t]) <= simTime) {
                 const std::uint8_t code = typing.keys[sent_[t]++];
-                if (session.typeCode(typing.reference, code) && typing.reference == keyboard) {
+                if (session.inputs().typeCode(typing.reference, code) &&
+                    typing.reference == keyboard) {
                     window.flash(code);
                 }
             }

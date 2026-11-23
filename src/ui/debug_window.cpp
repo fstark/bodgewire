@@ -44,9 +44,11 @@ void DrawDebug(bool& open, const Session& session, const DebugStats& stats, std:
                         stats.simSeconds, stats.speedRatio, stats.lock, stats.state,
                         stats.ringWaitShare * 100.0, stats.uiMilliseconds);
         ImGui::TextWrapped("%s", line.c_str());
-        if (const std::vector<std::string> keyboards = session.keyboards(); !keyboards.empty()) {
-            const std::string sent = std::format("Keys sent ({}): {}", keyboards.front(),
-                                                 SentText(session.typed(keyboards.front())));
+        if (const std::vector<std::string> keyboards = session.inputs().keyboards();
+            !keyboards.empty()) {
+            const std::string sent =
+                std::format("Keys sent ({}): {}", keyboards.front(),
+                            SentText(session.inputs().typed(keyboards.front())));
             ImGui::TextWrapped("%s", sent.c_str());
         }
     }

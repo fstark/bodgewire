@@ -33,7 +33,7 @@ std::vector<SwitchTag> SwitchTags(const BoardScene& scene, const LoadedCircuit& 
         if (part.info->kind != PartKind::Switch) {
             continue;
         }
-        const bool pressed = session != nullptr && session->pressed(part.reference);
+        const bool pressed = session != nullptr && session->inputs().pressed(part.reference);
         if (auto tag = SwitchTagOf(scene, design, part, pressed)) {
             tags.push_back(std::move(*tag));
         }

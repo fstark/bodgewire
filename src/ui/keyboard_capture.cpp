@@ -11,7 +11,7 @@ constexpr std::uint8_t kReturn = 0x0D, kBackSpace = 0x08, kEscape = 0x1B;
 }  // namespace
 
 void KeyboardCapture::send(Session& session, SDL_Scancode scancode, std::uint8_t code) {
-    session.typeCode(reference, code);  // refused with the power off: the caps still move
+    session.inputs().typeCode(reference, code);  // refused with the power off: the caps still move
     if (scancode == SDL_SCANCODE_UNKNOWN) {
         return;
     }

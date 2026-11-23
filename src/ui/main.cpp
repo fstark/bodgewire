@@ -202,19 +202,20 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     SwitchHands switchHands;
     ScriptedTyping scriptedTyping(options.bench.type);
     KeyboardCapture capture;
-    if (const auto keyboards = session.keyboards(); !keyboards.empty()) {
+    if (const auto keyboards = session.inputs().keyboards(); !keyboards.empty()) {
         capture.reference = keyboards.front();
     }
     KeyboardWindow keyboardWindow(legends);
     MatrixCapture matrixCapture;  // the BW-2001 keyboard (P5q)
-    if (const auto matrices = session.matrixKeyboards(); !matrices.empty()) {
+    if (const auto matrices = session.inputs().matrixKeyboards(); !matrices.empty()) {
         matrixCapture.reference = matrices.front();
-        matrixCapture.kind = session.matrixKind(matrices.front()).value_or(KeyMatrixKind::Bw2001);
+        matrixCapture.kind =
+            session.inputs().matrixKind(matrices.front()).value_or(KeyMatrixKind::Bw2001);
     }
     MatrixKeyboardWindow matrixWindow(legends, petLegends);
     BoardKeyCapture boardKeys;  // only without a keyboard: that one takes the typing
     if (capture.reference.empty() && matrixCapture.reference.empty()) {
-        boardKeys.keys = session.switchKeys();
+        boardKeys.keys = session.inputs().switchKeys();
     }
     boardView.setLegendFont(legends);
     focus.out(BenchObject::Keyboard) =
@@ -232,13 +233,13 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     shelf.canLeave = canLeave;
     focus.out(BenchObject::Manual) = options.bench.manual.has_value();
     focus.out(BenchObject::Tv) = session.tv() != nullptr;
-    focus.out(BenchObject::Knob) = !session.knobs().empty();
+    focus.out(BenchObject::Knob) = !session.inputs().knobs().empty();
     // Every PC key goes to the Machine (P6o): its keyboard, its Board keys, its knobs, out or put
     // away; but while a text field is edited, a Cmd combination, Tab (the plain look) and ` (the
     // Board flipped). A Machine with both a keyboard and knobs (none yet) would give the knobs only
     // the keys the keyboard has no use for.
     KnobKeys knobKeys;
-    const bool hasKnobs = !session.knobs().empty();
+    const bool hasKnobs = !session.inputs().knobs().empty();
     bool knobsOn = false;
     bool textField = false;  // last frame: a text field had the keyboard
     bool dropText = false;   // the text event of a Tab or ` just taken
@@ -314,11 +315,12 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             return std::ranges::find(options.bench.pop, object) == options.bench.pop.end();
         };
         const float covered = 2 * kBenchMargin;
-        const float left = focus.out(BenchObject::Knob) && onBench(BenchObject::Knob)
-                               ? covered + FirstSize(BenchObject::Knob, {}, 1,
-                                                     static_cast<int>(session.knobs().size()))
-                                               .width
-                               : 0;
+        const float left =
+            focus.out(BenchObject::Knob) && onBench(BenchObject::Knob)
+                ? covered + FirstSize(BenchObject::Knob, {}, 1,
+                                      static_cast<int>(session.inputs().knobs().size()))
+                                .width
+                : 0;
         const float right =
             focus.out(BenchObject::Tv) && onBench(BenchObject::Tv) ? covered + kTvFirstWidth : 0;
         boardView.setCovered(left, right);

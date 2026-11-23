@@ -72,7 +72,7 @@ ImVec2 AtAngle(ImVec2 c, float r, float angle) {
 
 const std::vector<std::string>& KnobWindow::knobs(const Session& session) {
     if (!knobs_) {
-        knobs_ = session.knobs();
+        knobs_ = session.inputs().knobs();
     }
     return *knobs_;
 }
@@ -104,8 +104,8 @@ void KnobWindow::keys(Session& session, const KnobKeys& held, bool on) {
     const auto turn = [&](const std::string& reference, SDL_Scancode up, SDL_Scancode down) {
         const int direction = static_cast<int>(held.down(up)) - static_cast<int>(held.down(down));
         if (direction != 0) {
-            session.setKnob(reference,
-                            session.knob(reference) + direction * kKeyRate * io.DeltaTime);
+            session.inputs().setKnob(reference, session.inputs().knob(reference) +
+                                                    direction * kKeyRate * io.DeltaTime);
         }
     };
     // One knob: Up and Down. Two or more: Q and A turn the first, Up and Down the second.
@@ -170,12 +170,14 @@ void KnobWindow::draw(bool& open, Session& session) {
         ImGui::PopID();
         const bool hovered = ImGui::IsItemHovered();
         if (ImGui::IsItemActive() && io.MouseDelta.y != 0.0f) {
-            session.setKnob(reference, session.knob(reference) - io.MouseDelta.y / kDragTurn);
+            session.inputs().setKnob(reference, session.inputs().knob(reference) -
+                                                    io.MouseDelta.y / kDragTurn);
         }
         if (hovered) {
             ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
             if (io.MouseWheel != 0.0f) {
-                session.setKnob(reference, session.knob(reference) + io.MouseWheel * kWheelStep);
+                session.inputs().setKnob(reference, session.inputs().knob(reference) +
+                                                        io.MouseWheel * kWheelStep);
             }
             const std::size_t upDown = players ? 1 : 0;  // the knob Up and Down turn
             const char* keys = players && i == 0
@@ -184,7 +186,7 @@ void KnobWindow::draw(bool& open, Session& session) {
                                    ? "Turn the knob: drag up or down, mouse wheel, or Up and Down"
                                    : "Turn the knob: drag up or down or mouse wheel";
             ImGui::SetTooltip("%s\n%s %.0f %%", keys, reference.c_str(),
-                              session.knob(reference) * 100.0);
+                              session.inputs().knob(reference) * 100.0);
         }
         // The knob: a ridged rim, a face, the pointer.
         list.AddCircleFilled(c, r, kKnobBody, 48);
@@ -197,7 +199,7 @@ void KnobWindow::draw(bool& open, Session& session) {
         if (hovered) {
             list.AddCircleFilled(c, r, kHover, 48);
         }
-        const float angle = kStart + static_cast<float>(session.knob(reference)) * kSweep;
+        const float angle = kStart + static_cast<float>(session.inputs().knob(reference)) * kSweep;
         list.AddLine(AtAngle(c, r * 0.2f, angle), AtAngle(c, r * 0.95f, angle), kPointer, 3 * s);
         // Its reference under it, then the keys that turn it (the first two knobs only).
         const float size = 15 * s;

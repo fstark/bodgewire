@@ -39,7 +39,7 @@ std::optional<MatrixPress> MatrixCapture::pressFor(char32_t c) const {
 }
 
 void MatrixCapture::send(Session& session, SDL_Scancode scancode, char32_t c) {
-    session.type(reference, c);  // refused with the power off: the caps still move
+    session.inputs().type(reference, c);  // refused with the power off: the caps still move
     if (scancode == SDL_SCANCODE_UNKNOWN) {
         return;
     }
@@ -79,7 +79,7 @@ bool MatrixCapture::handle(const SDL_Event& event, Session& session) {
         dropText_ = false;
         if ((event.key.mod & (SDL_KMOD_GUI | SDL_KMOD_CTRL)) != 0 && event.key.key == SDLK_V) {
             if (char* text = SDL_GetClipboardText()) {
-                session.typeText(reference, DecodeUtf8(text));  // the keyboard's own map
+                session.inputs().typeText(reference, DecodeUtf8(text));  // the keyboard's own map
                 SDL_free(text);
             }
             return true;
@@ -93,7 +93,7 @@ bool MatrixCapture::handle(const SDL_Event& event, Session& session) {
             for (std::size_t k = 0; k < keys.size(); ++k) {
                 if (keys[k].legend.size() == 1 && keys[k].legend[0] == letter) {
                     const MatrixPress press{k, true};
-                    session.press(reference, press);  // refused with the power off
+                    session.inputs().press(reference, press);  // refused with the power off
                     held_[scancode] = press;
                     break;
                 }

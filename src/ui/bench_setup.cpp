@@ -118,8 +118,9 @@ std::expected<void, std::string> ApplyBenchOptions(Session& session, const Bench
     for (const BenchObject object : options.pop) {
         const bool has = object == BenchObject::Tv ? session.tv() != nullptr
                          : object == BenchObject::Keyboard
-                             ? !session.keyboards().empty() || !session.matrixKeyboards().empty()
-                         : object == BenchObject::Knob   ? !session.knobs().empty()
+                             ? !session.inputs().keyboards().empty() ||
+                                   !session.inputs().matrixKeyboards().empty()
+                         : object == BenchObject::Knob   ? !session.inputs().knobs().empty()
                          : object == BenchObject::Manual ? true
                                                          : session.machine() != nullptr;
         if (!has) {
@@ -132,16 +133,17 @@ std::expected<void, std::string> ApplyBenchOptions(Session& session, const Bench
         }
     }
     for (const KnobSetting& knob : options.knob) {
-        if (!session.setKnob(knob.reference, knob.turn)) {
+        if (!session.inputs().setKnob(knob.reference, knob.turn)) {
             return std::unexpected(std::format("'{}' is not a paddle controller", knob.reference));
         }
     }
     for (const Typing& typing : options.type) {
-        if (!std::ranges::contains(session.keyboards(), typing.reference) &&
-            !std::ranges::contains(session.matrixKeyboards(), typing.reference)) {
+        if (!std::ranges::contains(session.inputs().keyboards(), typing.reference) &&
+            !std::ranges::contains(session.inputs().matrixKeyboards(), typing.reference)) {
             return std::unexpected(std::format("'{}' is not a keyboard", typing.reference));
         }
-        if (typing.untypable && std::ranges::contains(session.keyboards(), typing.reference)) {
+        if (typing.untypable &&
+            std::ranges::contains(session.inputs().keyboards(), typing.reference)) {
             return std::unexpected(
                 std::format("cannot type the text on '{}', a keyboard", typing.reference));
         }

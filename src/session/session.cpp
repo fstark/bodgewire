@@ -31,13 +31,6 @@ std::optional<NameStem> BusBitOf(const Component& part, std::size_t pin) {
     return StemOf(spec.name);
 }
 
-// A hand's timing is not tied to the 1 ms slices: without this, every hold lasts whole
-// milliseconds and a 1 MHz counter cycling every 6 µs keeps its parity (the dice only rolls even).
-Time PressJitter() {
-    const auto ns = std::chrono::steady_clock::now().time_since_epoch().count();
-    return static_cast<Time>(ns % 1'000'000) * 1000;  // ps, within 1 ms
-}
-
 // The Net of a Pin the netlist connects; nullopt for an unconnected Pin (PinNet would give its
 // private Net) or an empty name.
 std::optional<NetId> ConnectedNet(const LoadedCircuit& loaded, std::string_view reference,
@@ -83,6 +76,12 @@ Session::Session(std::optional<Machine> machine, std::unique_ptr<LoadedCircuit> 
         drawn_ = machine_->board();
     }
     live_ = makeLive(std::move(circuit));
+    bindInputs();
+}
+
+void Session::bindInputs() {
+    inputs_.bind(machine_ ? machine_->designCircuit() : *live_->circuit, *live_->circuit,
+                 *live_->runner);
 }
 
 Session::Session(Session&&) noexcept = default;
@@ -148,11 +147,7 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
         auto built = machine_->build();
         Check(built.has_value(), "session: a repaired Machine does not build");
         live_ = makeLive(std::move(*built));
-        for (const auto& [reference, turn] : knobs_) {
-            if (Paddle* paddle = PaddleOf(*live_->circuit, reference)) {
-                paddle->setKnob(turn);
-            }
-        }
+        bindInputs();
         touchLive();
         configureLive();
         dirty_ = false;
@@ -162,32 +157,11 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
     }
     live_->runner->powerOn(seed);
     powered_ = true;
-    typed_.clear();
+    inputs_.poweredOn();
 }
 
 void Session::powerOff() {
-    for (const std::string& reference : pressed_) {
-        if (Switch* sw = SwitchOf(*live_->circuit, reference)) {
-            sw->setPressed(false);
-        }
-    }
-    pressed_.clear();
-    for (const auto& [reference, key] : matrixHeld_) {
-        if (KeyMatrix* matrix = KeyMatrixOf(*live_->circuit, reference)) {
-            matrix->setHeld(key, false);
-        }
-    }
-    matrixHeld_.clear();
-    for (const std::string& reference : keyboards()) {
-        if (Keyboard* keyboard = KeyboardOf(*live_->circuit, reference)) {
-            keyboard->dropWaiting();
-        }
-    }
-    for (const std::string& reference : matrixKeyboards()) {
-        if (KeyMatrix* matrix = KeyMatrixOf(*live_->circuit, reference)) {
-            matrix->dropWaiting();
-        }
-    }
+    inputs_.poweredOff();
     live_->runner->powerOff();
     powered_ = false;
 }
@@ -579,185 +553,6 @@ std::vector<LedLight> Session::leds() const {
         }
     }
     return lights;
-}
-
-std::vector<std::string> Session::switches() const {
-    std::vector<std::string> references;
-    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
-    for (const LoadedPart& part : circuit.parts) {
-        if (part.info->kind == PartKind::Switch) {
-            references.push_back(part.reference);
-        }
-    }
-    return references;
-}
-
-std::vector<SwitchKey> Session::switchKeys() const {
-    std::vector<SwitchKey> keys;
-    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
-    for (const std::string& reference : switches()) {
-        if (const Switch* sw = SwitchOf(circuit, reference); sw && !sw->pcKey().empty()) {
-            keys.push_back({reference, std::string(sw->pcKey())});
-        }
-    }
-    return keys;
-}
-
-void Session::setPressed(std::string_view reference, bool pressed) {
-    if (!powered_ || pressed == pressed_.contains(reference)) {
-        return;
-    }
-    if (pressed) {
-        pressed_.emplace(reference);
-    } else {
-        pressed_.erase(pressed_.find(reference));
-    }
-    if (Switch* sw = SwitchOf(*live_->circuit, reference)) {
-        sw->setPressed(pressed);
-        live_->runner->wake(sw->id(), PressJitter());
-    }
-}
-
-std::vector<std::string> Session::knobs() const {
-    std::vector<std::string> references;
-    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
-    for (const LoadedPart& part : circuit.parts) {
-        if (PaddleOf(circuit, part.reference) != nullptr) {
-            references.push_back(part.reference);
-        }
-    }
-    return references;
-}
-
-bool Session::setKnob(std::string_view reference, double turn) {
-    const std::vector<std::string> all = knobs();
-    if (std::ranges::find(all, reference) == all.end()) {
-        return false;
-    }
-    turn = std::clamp(turn, 0.0, 1.0);
-    knobs_.insert_or_assign(std::string(reference), turn);
-    if (Paddle* paddle = PaddleOf(*live_->circuit, reference)) {
-        paddle->setKnob(turn);
-    }
-    return true;
-}
-
-double Session::knob(std::string_view reference) const {
-    const auto it = knobs_.find(reference);
-    return it == knobs_.end() ? 0.0 : it->second;
-}
-
-std::vector<std::string> Session::keyboards() const {
-    std::vector<std::string> references;
-    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
-    for (const LoadedPart& part : circuit.parts) {
-        if (KeyboardOf(circuit, part.reference) != nullptr) {
-            references.push_back(part.reference);
-        }
-    }
-    return references;
-}
-
-bool Session::type(std::string_view reference, char32_t key) {
-    if (KeyMatrixOf(*live_->circuit, reference) != nullptr) {
-        return typeText(reference, std::u32string_view{&key, 1});
-    }
-    const auto code = KeyboardCode(key);
-    return code && typeCode(reference, *code);
-}
-
-bool Session::typeText(std::string_view reference, std::u32string_view text) {
-    if (KeyMatrix* matrix = KeyMatrixOf(*live_->circuit, reference)) {
-        if (!powered_ || !matrix->type(text)) {
-            return false;
-        }
-        live_->runner->wake(matrix->component().id(), PressJitter());
-        return true;
-    }
-    bool any = false;
-    for (const char32_t c : text) {
-        const auto code = KeyboardCode(c);
-        any = (code && typeCode(reference, *code)) || any;
-    }
-    return any;
-}
-
-bool Session::press(std::string_view reference, MatrixPress press) {
-    KeyMatrix* matrix = KeyMatrixOf(*live_->circuit, reference);
-    if (matrix == nullptr || !powered_ || !matrix->press(press)) {
-        return false;
-    }
-    live_->runner->wake(matrix->component().id(), PressJitter());
-    return true;
-}
-
-std::vector<std::string> Session::matrixKeyboards() const {
-    std::vector<std::string> references;
-    const LoadedCircuit& circuit = machine_ ? machine_->designCircuit() : *live_->circuit;
-    for (const LoadedPart& part : circuit.parts) {
-        if (KeyMatrixOf(circuit, part.reference) != nullptr) {
-            references.push_back(part.reference);
-        }
-    }
-    return references;
-}
-
-std::optional<KeyMatrixKind> Session::matrixKind(std::string_view reference) const {
-    const KeyMatrix* matrix = KeyMatrixOf(*live_->circuit, reference);
-    if (matrix == nullptr) {
-        return std::nullopt;
-    }
-    return matrix->kind();
-}
-
-void Session::setMatrixKeyHeld(std::string_view reference, std::size_t key, bool held) {
-    KeyMatrix* matrix = KeyMatrixOf(*live_->circuit, reference);
-    if (!powered_ || matrix == nullptr || key >= matrix->keyCount() ||
-        held == matrixKeyHeld(reference, key)) {
-        return;
-    }
-    if (held) {
-        matrixHeld_.emplace(std::string(reference), key);
-    } else {
-        matrixHeld_.erase({std::string(reference), key});
-    }
-    matrix->setHeld(key, held);
-    live_->runner->wake(matrix->component().id(), PressJitter());
-}
-
-bool Session::matrixKeyHeld(std::string_view reference, std::size_t key) const {
-    return matrixHeld_.contains({std::string(reference), key});
-}
-
-bool Session::matrixKeyDown(std::string_view reference, std::size_t key) const {
-    if (matrixKeyHeld(reference, key)) {
-        return true;
-    }
-    const KeyMatrix* matrix = KeyMatrixOf(*live_->circuit, reference);
-    return powered_ && matrix != nullptr && matrix->scripted(key);
-}
-
-bool Session::typeCode(std::string_view reference, std::uint8_t code) {
-    const std::vector<std::string> all = keyboards();
-    if (!powered_ || code > kKeyboardLastCode || std::ranges::find(all, reference) == all.end()) {
-        return false;
-    }
-    Keyboard* keyboard = KeyboardOf(*live_->circuit, reference);
-    if (keyboard == nullptr || !keyboard->type(code)) {
-        return false;
-    }
-    live_->runner->wake(keyboard->id(), PressJitter());
-    std::string& sent = typed_[std::string(reference)];
-    sent.push_back(static_cast<char>(code));
-    if (sent.size() > kTypedShown) {
-        sent.erase(0, sent.size() - kTypedShown);
-    }
-    return true;
-}
-
-std::string Session::typed(std::string_view reference) const {
-    const auto it = typed_.find(reference);
-    return it == typed_.end() ? std::string() : it->second;
 }
 
 void Session::recomputeContinuity() {

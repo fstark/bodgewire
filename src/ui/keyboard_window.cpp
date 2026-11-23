@@ -140,7 +140,7 @@ void KeyboardWindow::drawCaps(Session& session, const KeyboardCapture& capture) 
             } else if (cap.kind == CapKind::Ctrl) {
                 ctrlLatched_ = !ctrlLatched_;
             } else if (const auto code = CapCode(cap, shiftLatched_, ctrlLatched_)) {
-                session.typeCode(capture.reference, *code);  // refused with the power off
+                session.inputs().typeCode(capture.reference, *code);  // refused with the power off
             }
         }
         if (ImGui::IsItemActive() && cap.kind != CapKind::Shift && cap.kind != CapKind::Ctrl) {
