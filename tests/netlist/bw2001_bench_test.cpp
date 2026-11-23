@@ -1,5 +1,6 @@
 // The P5n bench (tests/data/bw2001_bench.bwn): the PET 2001's bus, running
-// machines/130-bw2001/debug-roms/src/bw2001_bench.asm, and the real BASIC 1 (tests/data/pet_roms.md).
+// machines/130-bw2001/debug-roms/src/bw2001_bench.asm, and the real BASIC 1
+// (tests/data/pet_roms.md).
 
 #include <cstddef>
 #include <cstdint>
@@ -62,7 +63,7 @@ struct Bench {
             }
         }
         ResolveContentsPaths(*netlist, BenchPath().parent_path());
-        auto result = BuildCircuit(*netlist, {}, {}, cells);
+        auto result = BuildCircuit(*netlist, {.cells = cells});
         REQUIRE(result.has_value());
         loaded = std::move(*result);
         CHECK(loaded->warnings.empty());

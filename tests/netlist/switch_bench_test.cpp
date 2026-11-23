@@ -51,7 +51,7 @@ struct Bench {
                    std::uint64_t seed = 1) {
         const auto netlist = ParseNetlist(text, "switch_bench.bwn");
         REQUIRE(netlist.has_value());
-        auto result = BuildCircuit(*netlist, {}, {}, {}, faults);
+        auto result = BuildCircuit(*netlist, {.switches = faults});
         REQUIRE(result.has_value());
         loaded = std::move(*result);
         CHECK(loaded->warnings.empty());

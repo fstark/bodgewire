@@ -74,12 +74,19 @@ struct StuckSwitch {
     bool closed;
 };
 
-// `unpowered`: References of chips (and PADDLE controllers) left out of the Circuit's Nets (outputs
-// Z, inputs ignored).
-LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck = {},
-                        std::span<const std::string> unpowered = {},
-                        std::span<const StuckCell> cells = {},
-                        std::span<const StuckSwitch> switches = {});  // all errors, by line
+// What a build applies besides the netlist: the Faults that live in Components rather than in the
+// Copper, and the chips the Board leaves without power.
+struct BuildFaults {
+    std::span<const StuckPin> stuck;
+    // References of chips (and PADDLE controllers) left out of the Circuit's Nets (outputs Z,
+    // inputs ignored).
+    std::span<const std::string> unpowered;
+    std::span<const StuckCell> cells;
+    std::span<const StuckSwitch> switches;
+};
+
+LoadResult BuildCircuit(const Netlist& netlist,
+                        const BuildFaults& faults = {});  // all errors, by line
 LoadResult LoadNetlist(std::string_view text, std::string file);
 
 // A .bwn file parsed, its relative contents= paths made relative to its directory

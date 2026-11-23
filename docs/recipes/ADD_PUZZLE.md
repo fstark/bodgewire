@@ -79,3 +79,11 @@ A Fault can be tested before its Puzzle file exists: `InlinePuzzle("machine led_
 
 - Add the Puzzle to the Machine's `machines/NNN-name/docs/NAME_DESIGN.md` Puzzle list.
 - The README's Puzzle counts (overall and the Machine's: [README_SPEC.md](../README_SPEC.md) §5 and §8).
+
+## A new kind of Fault
+
+When no `fault` line can express it (2026-11-23, review C10):
+
+- `src/machine/puzzle.hpp`: its `…Decl` (with `line`), a list in `Puzzle`, the parser's line, and an alternative of `FaultDecl`.
+- `src/machine/machine.hpp`: its checked form in `FaultSet`; its check in `Machine::inject` (the error text a Puzzle line reports; a Fault in the Copper calls `rebuildBoard()`), and the loop in `LoadMachine`.
+- Where it acts: in the Copper (`rebuildBoard`, as cracks and bridges), in the electrical netlist (`ElectricalNetlist`, as dry Joints) or in the Components (`BuildFaults`, `src/netlist/builder.hpp`, as stuck pins, cells and switches). A swap or another Repair that removes it erases it from `faults_`.

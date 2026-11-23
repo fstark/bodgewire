@@ -582,10 +582,8 @@ private:
 
 bool IsRail(std::string_view net) { return net == "GND" || net == "VCC"; }
 
-LoadResult BuildCircuit(const Netlist& netlist, std::span<const StuckPin> stuck,
-                        std::span<const std::string> unpowered, std::span<const StuckCell> cells,
-                        std::span<const StuckSwitch> switches) {
-    return Builder(netlist, stuck, unpowered, cells, switches).build();
+LoadResult BuildCircuit(const Netlist& netlist, const BuildFaults& faults) {
+    return Builder(netlist, faults.stuck, faults.unpowered, faults.cells, faults.switches).build();
 }
 
 LoadResult LoadNetlist(std::string_view text, std::string file) {

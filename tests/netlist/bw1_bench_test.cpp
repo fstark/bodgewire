@@ -49,7 +49,7 @@ struct Bench {
         auto netlist = ParseNetlist(text.str(), "bw1_bench.bwn");
         REQUIRE(netlist.has_value());
         ResolveContentsPaths(*netlist, BenchPath().parent_path());
-        auto result = BuildCircuit(*netlist, {}, {}, cells);
+        auto result = BuildCircuit(*netlist, {.cells = cells});
         REQUIRE(result.has_value());
         loaded = std::move(*result);
         CHECK(loaded->warnings.empty());

@@ -532,7 +532,10 @@ std::optional<PinRef> Machine::dryLegAt(Layer layer, Point at) const {
 
 LoadResult Machine::build() const {
     return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_, faults_.dry),
-                        faults_.stuck, power_.unpowered, faults_.cells, faults_.switches);
+                        {.stuck = faults_.stuck,
+                         .unpowered = power_.unpowered,
+                         .cells = faults_.cells,
+                         .switches = faults_.switches});
 }
 
 std::optional<std::uint32_t> Machine::islandAt(const Islands& islands, Layer layer,

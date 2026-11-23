@@ -328,7 +328,7 @@ TEST_CASE("builder: stuck pin ties its net", "[netlist]") {
     const auto netlist = ParseNetlist("part U1 74LS04\nnet A U1.2 U1.3\nnet GND U1.1\n", "t.bwn");
     REQUIRE(netlist.has_value());
     const StuckPin stuck[] = {{"U1", 1, Zero}};
-    const auto result = BuildCircuit(*netlist, stuck);
+    const auto result = BuildCircuit(*netlist, {.stuck = stuck});
     REQUIRE(result.has_value());
     LoadedCircuit& loaded = **result;
     const NetId a = loaded.nets.at("A");
@@ -352,7 +352,7 @@ TEST_CASE("builder: stuck input reads its value, its Net unchanged", "[netlist]"
                                       "t.bwn");
     REQUIRE(netlist.has_value());
     const StuckPin stuck[] = {{"U1", 0, Zero}};  // 1A
-    const auto result = BuildCircuit(*netlist, stuck);
+    const auto result = BuildCircuit(*netlist, {.stuck = stuck});
     REQUIRE(result.has_value());
     LoadedCircuit& loaded = **result;
     const NetId a = loaded.nets.at("A");
@@ -387,7 +387,7 @@ TEST_CASE("builder: stuck bidirectional pin forces its net and is read by its ch
                                         : "net B0 U1.IO1\n");
         const auto netlist = ParseNetlist(text, "t.bwn");
         REQUIRE(netlist.has_value());
-        const auto result = BuildCircuit(*netlist, stuck);
+        const auto result = BuildCircuit(*netlist, {.stuck = stuck});
         REQUIRE(result.has_value());
         LoadedCircuit& loaded = **result;
         CHECK(loaded.warnings.empty());
@@ -413,7 +413,7 @@ TEST_CASE("builder: a stuck pull-up pin holds its chip's own net against the chi
     const StuckPin stuck[] = {{"U1", Mos6530::kPortA[0], One}};
     for (std::uint64_t seed = 1; seed <= 16; ++seed) {
         INFO(seed);
-        const auto result = BuildCircuit(*netlist, stuck);
+        const auto result = BuildCircuit(*netlist, {.stuck = stuck});
         REQUIRE(result.has_value());
         LoadedCircuit& loaded = **result;
         Simulator sim(loaded.circuit);
@@ -466,7 +466,7 @@ TEST_CASE("builder: unpowered chip drives nothing", "[netlist]") {
     REQUIRE(netlist.has_value());
     const std::string unpowered[] = {"U1"};
     const StuckPin stuck[] = {{"U1", 13, One}};  // QA
-    const auto result = BuildCircuit(*netlist, stuck, unpowered);
+    const auto result = BuildCircuit(*netlist, {.stuck = stuck, .unpowered = unpowered});
     REQUIRE(result.has_value());
     LoadedCircuit& loaded = **result;
     const NetId h0 = loaded.nets.at("H0");
@@ -615,7 +615,7 @@ TEST_CASE("builder: switch Faults reach the switch", "[netlist]") {
     const auto netlist = ParseNetlist(std::string(kButtonNetlist), "t.bwn");
     REQUIRE(netlist.has_value());
     const StuckSwitch switches[] = {{"SW1", true}};
-    auto result = BuildCircuit(*netlist, {}, {}, {}, switches);
+    auto result = BuildCircuit(*netlist, {.switches = switches});
     REQUIRE(result.has_value());
     CHECK(SwitchOf(**result, "SW1")->fault() == SwitchFault::StuckClosed);
     Simulator sim((*result)->circuit);
@@ -642,7 +642,7 @@ TEST_CASE("builder: a stuck input on a port pin leaves its net alone", "[netlist
     const auto netlist = ParseNetlist(text, "t.bwn");
     REQUIRE(netlist.has_value());
     const StuckPin stuck[] = {{"U1", Mos6530::kPortA[0], One, true}};
-    const auto result = BuildCircuit(*netlist, stuck);
+    const auto result = BuildCircuit(*netlist, {.stuck = stuck});
     REQUIRE(result.has_value());
     LoadedCircuit& loaded = **result;
     const NetId pa0 = loaded.nets.at("PA0");
@@ -666,7 +666,7 @@ TEST_CASE("builder: stuck cells reach the memory", "[netlist]") {
     REQUIRE(netlist.has_value());
     const StuckCell cells[] = {{"U1", Ram2114::kData[0], 7, One},
                                {"U1", Ram2114::kData[3], std::nullopt, One}};
-    const auto result = BuildCircuit(*netlist, {}, {}, cells);
+    const auto result = BuildCircuit(*netlist, {.cells = cells});
     REQUIRE(result.has_value());
     auto& ram = static_cast<Ram2114&>(*(*result)->components.at("U1"));
     Simulator sim((*result)->circuit);
