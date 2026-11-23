@@ -14,7 +14,7 @@ cmake --build --preset release && python3 -I tools/readme_shots.py          # al
 python3 -I tools/readme_shots.py bench traces                               # some
 ```
 
-View every picture after taking it. The slow Machines (BW-2001 at 0.25×, BW-80 at 0.16×) need
+View every picture after taking it. The slow Machines (BW-2001 at about 0.33×, BW-80 at 0.2×) need
 their `--after` raised on a slower computer.
 
 ## Audience
@@ -141,7 +141,7 @@ show something typed:
 | `typewriter` | TV Typewriter | CLEAR, then "HELLO, WORLD" typed |
 | `led-computer` | LED computer | the light running |
 | `bw1` | BW-1 (KIM-1-like) | the keypad and its six digits |
-| `bw2001` | BW-2001 (PET 2001 copy) | a BASIC loop printing BODGEWIRE |
+| `bw2001` | BW-2001 (PET 2001 copy) | the boot banner, a `FOR` loop typed and run (`10 FOR I=1 TO 8`, `20 PRINT SPC(I*3);"BODGEWIRE"`, `30 NEXT`): a staircase of BODGEWIRE, then `READY.` |
 | `bw80` | BW-80 (ZX80 copy) | a two-line program entered, not run: `10 PRINT "BODGEWIRE ";`, `20 GOTO 10` |
 
 ### 9. Building it
@@ -153,7 +153,7 @@ From a clean machine to the game running, as commands to copy:
   version list for other compilers; on macOS the Xcode command line tools plus
   `brew install cmake ninja`; on Linux, below;
 - a very powerful machine, said plainly before the Mac commands, with the numbers: on the
-  development Mac (an Apple M5 Max) the BW-2001 runs at 0.25× and the BW-80 at 0.16× (the speed
+  development Mac (an Apple M5 Max) the BW-2001 runs at about 0.33× and the BW-80 at 0.2× (the speed
   ratio `bw_ui --screenshot` prints; take it again at each regeneration), the small boards at
   1.00×;
 - SDL3, Dear ImGui and Catch2 are fetched by CMake on the first configure (network needed once);

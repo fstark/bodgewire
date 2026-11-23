@@ -58,11 +58,13 @@ SHOTS = {
          "--type", "J3:1s:HELLO, WORLD"], "2.5s"),
     "led-computer": (["machines/110-led-computer/led_computer.bwn"], "1s"),
     "bw1": (["machines/120-bw1/bw1.bwn"], "2s"),
-    # 0.25x: 1.4 s simulated is 6 s of wall time, then the typing and a screenful.
+    # 0.33x: 1.4 s simulated is about 4 s of wall time, then the typing. A loop that ends, so the
+    # picture holds the boot banner, the program, its staircase and READY.
     "bw2001": (
         ["machines/130-bw2001/bw2001.bwn",
-         "--type", 'J5:1.4s:10 PRINT "BODGEWIRE ";\n20 GOTO 10\nRUN\n'], "25s"),
-    # 0.16x, about 0.18 s simulated a key. A two-line program entered, not run: at the K cursor
+         "--type", 'J5:1.4s:10 FOR I=1 TO 8\n20 PRINT SPC(I*3);"BODGEWIRE"\n30 NEXT\nRUN\n'],
+        "25s"),
+    # 0.2x, about 0.18 s simulated a key. A two-line program entered, not run: at the K cursor
     # O is PRINT and G is GOTO; NEW LINE is \r.
     "bw80": (
         ["machines/140-bw80/bw80.bwn", "--type", 'J3:400ms:10O"BODGEWIRE ";\r20G10\r'], "40s"),

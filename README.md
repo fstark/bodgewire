@@ -234,8 +234,8 @@ You need git, CMake 3.28 or later, Ninja and clang: Apple's on a Mac, clang 23 o
 the only compiler it's built with.
 
 You also need a very powerful machine. Every chip is simulated signal by signal, and the big
-computers are hungry: on an Apple M5 Max, the BW-2001 runs at a quarter of its real speed and the
-BW-80 at a sixth. The small boards keep up in real time.
+computers are hungry: on an Apple M5 Max, the BW-2001 runs at a third of its real speed and the
+BW-80 at a fifth. The small boards keep up in real time.
 
 On a Mac:
 
