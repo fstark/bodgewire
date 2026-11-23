@@ -128,6 +128,36 @@ private:
     std::deque<Point> history_;
 };
 
+// A screen's frame timing (the launcher's, a bench's): the UI's work per frame and the frame
+// rate, for the line --screenshot prints.
+class FrameClock {
+public:
+    void frameStarts() { frameStart_ = Clock::now(); }
+    // After ImGui::Render, before presenting: the frame built, not drawn (the GPU's waits for the
+    // windows' vsync would count otherwise, P6j).
+    void built() {
+        uiMilliseconds_ =
+            std::chrono::duration<double, std::milli>(Clock::now() - frameStart_).count();
+        ++frames_;
+    }
+    double uiMilliseconds() const { return uiMilliseconds_; }
+    std::chrono::steady_clock::duration elapsed() const { return Clock::now() - start_; }
+    // "bw_ui: t 0.993 s  1.00×  ui 0.5 ms  114 fps".
+    void print(Time simTime, double speedRatio) const {
+        std::println("bw_ui: t {:.3f} s  {:.2f}\u00d7  ui {:.1f} ms  {:.0f} fps",
+                     static_cast<double>(simTime) / static_cast<double>(kPicosPerSecond),
+                     speedRatio, uiMilliseconds_,
+                     static_cast<double>(frames_) /
+                         std::chrono::duration<double>(Clock::now() - start_).count());
+    }
+
+private:
+    using Clock = std::chrono::steady_clock;
+    Clock::time_point start_ = Clock::now(), frameStart_ = start_;
+    double uiMilliseconds_ = 0;
+    long frames_ = 0;
+};
+
 std::string_view StateName(RunState state) {
     switch (state) {
     case RunState::Off:
@@ -392,16 +422,14 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                                 false);
     bool resetAtStart = options.bench.reset;
     bool leaving = false;  // Back at the end of this frame
-    const auto start = std::chrono::steady_clock::now();
+    FrameClock clock;
     SpeedRatio ratio;
-    double uiMilliseconds = 0;
     int exitCode = 0;
-    long frames = 0;  // drawn, for the frame rate --screenshot prints
     BenchEnd ending = BenchEnd::Quit;
 
     bool running = true;
     while (running) {
-        const auto frameStart = std::chrono::steady_clock::now();
+        clock.frameStarts();
         SDL_Event event;
         if (powerOnNext) {  // before session.tv(): a repaired Machine's power-on rebuilds it
             PowerOn(session, run, seed);
@@ -592,7 +620,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                                    static_cast<double>(kPicosPerSecond),
                                speedRatio,
                                status.ringWaitShare,
-                               uiMilliseconds,
+                               clock.uiMilliseconds(),
                                lock,
                                StateName(status.state)};
         shelf.running = status.state == RunState::Running;
@@ -683,25 +711,16 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         boardKeys.sync();
 
         ImGui::Render();
-        // The UI's work: the frame built, not drawn (the GPU's waits for the windows' vsync
-        // would count otherwise, P6j).
-        uiMilliseconds =
-            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - frameStart)
-                .count();
+        clock.built();
         gpu.present(&view);
-        ++frames;
         if (leaving) {
             ending = BenchEnd::Back;
             break;
         }
-        const auto now = std::chrono::steady_clock::now();
-        const bool visited = options.visitFor && now - start >= *options.visitFor;
-        if (visited || (options.screenshot && now - start >= options.after)) {
-            std::println("bw_ui: t {:.3f} s  {:.2f}\u00d7  ui {:.1f} ms  {:.0f} fps",
-                         static_cast<double>(status.simTime) / static_cast<double>(kPicosPerSecond),
-                         speedRatio, uiMilliseconds,
-                         static_cast<double>(frames) /
-                             std::chrono::duration<double>(now - start).count());
+        const auto elapsed = clock.elapsed();
+        const bool visited = options.visitFor && elapsed >= *options.visitFor;
+        if (visited || (options.screenshot && elapsed >= options.after)) {
+            clock.print(status.simTime, speedRatio);
             if (visited) {  // --visit: no shot, back to the launcher (P7a)
                 ending = BenchEnd::Back;
             } else if (!gpu.screenshot(*options.screenshot)) {
@@ -777,11 +796,9 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
     TvView view(gpu.tvTexture());
     SpeedRatio ratio;
     double speedRatio = 0;
-    double uiMilliseconds = 0;
-    long frames = 0;
-    const auto start = std::chrono::steady_clock::now();
+    FrameClock clock;
     while (true) {
-        const auto frameStart = std::chrono::steady_clock::now();
+        clock.frameStarts();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
@@ -806,27 +823,18 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
         const auto chosen = launcher.draw(view, screen.legends(), screen.title());
         ImGui::End();
         ImGui::Render();
-        uiMilliseconds =
-            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - frameStart)
-                .count();
+        clock.built();
         const auto status = launcher.liveStatus();
         if (status) {
             speedRatio = ratio.update(status->simTime);
         }
         gpu.present(&view);
-        ++frames;
         if (chosen) {
             return {chosen};
         }
-        const auto now = std::chrono::steady_clock::now();
-        if (options.screenshot && now - start >= options.after) {
+        if (options.screenshot && clock.elapsed() >= options.after) {
             if (status) {
-                std::println("bw_ui: t {:.3f} s  {:.2f}\u00d7  ui {:.1f} ms  {:.0f} fps",
-                             static_cast<double>(status->simTime) /
-                                 static_cast<double>(kPicosPerSecond),
-                             speedRatio, uiMilliseconds,
-                             static_cast<double>(frames) /
-                                 std::chrono::duration<double>(now - start).count());
+                clock.print(status->simTime, speedRatio);
             }
             if (!gpu.screenshot(*options.screenshot)) {
                 std::println(stderr, "bw_ui: {}", SDL_GetError());
