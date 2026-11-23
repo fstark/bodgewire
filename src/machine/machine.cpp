@@ -503,8 +503,8 @@ std::optional<PinRef> Machine::chipSignalPin(const PinRef& pin) const {
     if (part == designCircuit_->parts.end() || part->info->kind != PartKind::Chip) {
         return std::nullopt;
     }
-    const PinKind kind =
-        designCircuit_->components.at(number->reference)->pins()[std::stoul(number->pin) - 1].kind;
+    const Component& component = *designCircuit_->components.at(number->reference);
+    const PinKind kind = component.pins()[*FindPin(component, number->pin)].kind;
     if (kind == PinKind::Power || kind == PinKind::NoConnect) {
         return std::nullopt;
     }

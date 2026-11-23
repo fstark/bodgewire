@@ -97,7 +97,7 @@ std::expected<ClipGroupResult, std::string> AnalyzerSetup::clipGroup(std::string
     }
     const Component& part = *build_->machine->designCircuit().components.find(reference)->second;
     const auto pins = part.pins();
-    const auto stem = BusBitOf(part, static_cast<std::size_t>(std::stoi(lead->pin) - 1));
+    const auto stem = BusBitOf(part, lead->index);
     std::vector<std::pair<std::uint32_t, std::string>> members;  // bit, pin number
     for (std::size_t p = 0; stem && p < pins.size(); ++p) {
         const auto other = BusBitOf(part, p);
@@ -156,8 +156,8 @@ std::optional<std::size_t> AnalyzerSetup::group(std::vector<std::size_t> channel
             return std::nullopt;
         }
         const PadLead& clip = *clips_[channel];
-        const auto stem = BusBitOf(*build_->machine->designCircuit().components.at(clip.reference),
-                                   static_cast<std::size_t>(std::stoi(clip.pin) - 1));
+        const auto stem =
+            BusBitOf(*build_->machine->designCircuit().components.at(clip.reference), clip.index);
         if (stem) {
             stems.emplace_back(stem->index, channel);
         }

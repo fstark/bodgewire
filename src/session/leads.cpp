@@ -25,7 +25,8 @@ std::optional<PadLead> PadLeadOf(const Machine& machine, std::string_view refere
     return PadLead{.reference = std::string(reference),
                    .pin = std::move(number),
                    .label = std::move(label),
-                   .at = *at};
+                   .at = *at,
+                   .index = *index};
 }
 
 }  // namespace bw

@@ -239,20 +239,8 @@ private:
             error(line, ref.reference + " (" + part.decl->part + ") has no pin " + ref.pin);
             return std::nullopt;
         }
-        const auto pins = part.component->pins();
-        if (AllDigits(ref.pin)) {
-            if (ref.pin.size() <= 3) {
-                const std::size_t number = std::stoul(ref.pin);
-                if (number >= 1 && number <= pins.size()) {
-                    return static_cast<PinIndex>(number - 1);
-                }
-            }
-        } else {
-            for (PinIndex i = 0; i < pins.size(); ++i) {
-                if (pins[i].name == ref.pin) {
-                    return i;
-                }
-            }
+        if (const auto index = FindPin(*part.component, ref.pin)) {
+            return index;
         }
         error(line, ref.reference + " (" + part.decl->part + ") has no pin " + ref.pin);
         return std::nullopt;

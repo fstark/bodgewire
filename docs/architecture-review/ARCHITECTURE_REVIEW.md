@@ -135,6 +135,7 @@ Done 2026-11-23: `ui/gestures`: `TimeCanvas::read` (hover, zoom notches, wheel p
 - `Builder::resolvePin` nearly copies `FindPin`; `std::stoul(pin) - 1` in machine.cpp and session.cpp.
 - Fix: `resolvePin` calls `FindPin`; one resolved `PinAt{reference, PinIndex}` after loading, `PinRef` only for text as written.
 - About 100 lines; low–medium risk.
+- Done 2026-11-23, narrowed: `resolvePin` calls `FindPin`; `PadLead` carries its pin's index (set by `PadLeadOf`), so the analyzer's `stoi(pin) - 1` go; `chipSignalPin` uses `FindPin`. The one resolved `PinAt` type is not done: the pin number as text is what the pads, labels and Repairs print, and the conversions left were the only cost.
 
 ### D. Foundations (kernel, threads, frame loop)
 
@@ -171,7 +172,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | C15 BoardView/Shelf logic to view | done 2026-11-23 (the rules; not the cosmetic splits) |
 | C16 catalogue metadata | done 2026-11-23 |
 | C17 one sample feed | done 2026-11-23 (narrowed: one merge, one TV input map) |
-| C18 pin references | todo |
+| C18 pin references | done 2026-11-23 (narrowed: one resolver, no PinAt type) |
 | D19 delays per Component | todo |
 | D20 random stream per Component | todo |
 | D21 inputs through the Runner | todo |
