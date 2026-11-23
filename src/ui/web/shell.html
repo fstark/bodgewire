@@ -15,11 +15,36 @@
     color: #6ff; font: 16px/1.4 system-ui, sans-serif; text-align: center; padding: 16px;
     pointer-events: none;
   }
+  /* On a phone or tablet: a notice over the page at start, the app loading behind it. */
+  #mobile {
+    position: fixed; inset: 0; z-index: 1; display: none; align-items: center;
+    justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.85);
+    font: 16px/1.5 system-ui, sans-serif;
+  }
+  #mobile > div {
+    max-width: 28em; padding: 24px; border: 1px solid #6ff; border-radius: 8px;
+    background: #111; color: #ddd;
+  }
+  #mobile h1 { margin: 0 0 12px; color: #6ff; font-size: 20px; }
+  #mobile p { margin: 0 0 12px; }
+  #mobile button {
+    margin-top: 8px; padding: 10px 20px; border: 0; border-radius: 6px; background: #6ff;
+    color: #000; font: inherit; font-weight: 600;
+  }
 </style>
 </head>
 <body>
 <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
 <div id="status">Loading Bodgewire…</div>
+<div id="mobile" role="dialog" aria-labelledby="mobile-title">
+  <div>
+    <h1 id="mobile-title">Not made for phones and tablets</h1>
+    <p>Bodgewire needs a mouse and a large screen: right clicks, the wheel, hovering over a pin.
+       On a touch screen most of the repair work cannot be done.</p>
+    <p>You are welcome to try it anyway: the Machines run, slowly.</p>
+    <button id="mobile-ok" type="button">Try it anyway</button>
+  </div>
+</div>
 <script>
   const status = document.getElementById('status');
   var Module = {
@@ -37,6 +62,23 @@
     Module.setStatus('Bodgewire needs HTTPS (or localhost) to run its threads.');
   }
   window.addEventListener('error', () => Module.setStatus('Bodgewire stopped: see the console.'));
+
+  // A finger as the main pointer (phones, tablets, an iPad that says it is a Mac), or ?mobile to
+  // see the notice on a desktop. Once per tab: the service worker's reload does not ask again.
+  (() => {
+    const forced = new URLSearchParams(location.search).has('mobile');
+    const touch = matchMedia('(pointer: coarse)').matches || navigator.userAgentData?.mobile;
+    let seen = false;
+    try { seen = sessionStorage.getItem('bw-mobile-seen') === '1'; } catch {}
+    if (!forced && (!touch || seen)) return;
+    const notice = document.getElementById('mobile');
+    notice.style.display = 'flex';
+    document.getElementById('mobile-ok').addEventListener('click', () => {
+      notice.style.display = 'none';
+      try { sessionStorage.setItem('bw-mobile-seen', '1'); } catch {}
+      Module.canvas.focus();
+    });
+  })();
 </script>
 {{{ SCRIPT }}}
 </body>

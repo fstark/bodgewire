@@ -8,6 +8,8 @@ Touch, not the browser, is the problem. The same work serves the web page on an 
 
 The web build runs on an iPad (the user, 2026-11-22): the launcher, the Boards and the TV work, slowly. SDL turns one finger into a left mouse button, so a tap is a click, a drag is a drag and a double tap is a double-click. The canvas has `touch-action: none`, so the browser leaves the gestures to the page.
 
+The web page tells a touch device at start that Bodgewire is not made for it yet, with a "Try it anyway" button (2026-11-23): a finger as the main pointer (`pointer: coarse`, which catches an iPad that says it is a Mac), or `?mobile` in the address to see it on a desktop. Once per tab. When this step is done, the notice goes.
+
 What a finger cannot do is everything else the mouse and keyboard give:
 
 - a right button;
