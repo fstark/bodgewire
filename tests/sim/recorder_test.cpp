@@ -1,5 +1,8 @@
 #include "sim/recorder.hpp"
 
+#include <array>
+#include <utility>
+
 #include <catch2/catch_test_macros.hpp>
 
 using namespace bw;
@@ -101,4 +104,24 @@ TEST_CASE("recorder: stop", "[sim]") {
     recorder.start(NetId{1}, {10, LogicValue::Zero});
     REQUIRE(recorder.samples(NetId{1}).size() == 1);
     CHECK((recorder.samples(NetId{1})[0] == Sample{10, LogicValue::Zero}));
+}
+
+TEST_CASE("recorder: several Nets' Samples in time order", "[sim]") {
+    Recorder recorder;
+    const NetId a{0}, b{1};
+    recorder.start(a, {0, LogicValue::Zero});
+    recorder.start(b, {0, LogicValue::Zero});
+    recorder.add(a, {10, LogicValue::One});
+    recorder.add(a, {30, LogicValue::Zero});
+    recorder.add(b, {10, LogicValue::One});
+    recorder.add(b, {20, LogicValue::Zero});
+    const std::array nets{a, b};
+    const auto merged = recorder.inOrder(nets, 5);
+    REQUIRE(merged.size() == 4);
+    CHECK(merged[0] ==
+          std::pair<std::size_t, Sample>{0, {10, LogicValue::One}});  // a first on a tie
+    CHECK(merged[1] == std::pair<std::size_t, Sample>{1, {10, LogicValue::One}});
+    CHECK(merged[2].second.time == 20);
+    CHECK(merged[3] == std::pair<std::size_t, Sample>{0, {30, LogicValue::Zero}});
+    CHECK(recorder.inOrder(nets, 30).empty());
 }

@@ -291,33 +291,22 @@ LogicAnalyzer::LogicAnalyzer(Simulator& sim, std::array<std::optional<NetId>, kC
 void LogicAnalyzer::arm(const AnalyzerSettings& settings) { state_.arm(settings, {}, sim_.now()); }
 
 void LogicAnalyzer::update() {
-    struct Change {
-        Time time;
-        ChannelMask channels;
-        LogicValue value;
-    };
-    std::vector<Change> changes;
-    std::vector<NetId> done;
-    for (const auto& net : channels_) {
-        if (!net || std::ranges::find(done, *net) != done.end()) {
+    std::vector<NetId> nets;  // distinct
+    std::vector<ChannelMask> masks;
+    for (std::size_t c = 0; c < kChannels; ++c) {
+        if (!channels_[c]) {
             continue;
         }
-        done.push_back(*net);
-        ChannelMask mask = 0;
-        for (std::size_t c = 0; c < kChannels; ++c) {
-            if (channels_[c] == net) {
-                mask |= ChannelMask{1} << c;
-            }
-        }
-        for (const Sample sample : sim_.recorder().samples(*net)) {
-            if (sample.time > fedUntil_) {
-                changes.push_back({sample.time, mask, sample.value});
-            }
+        const auto found = std::ranges::find(nets, *channels_[c]);
+        if (found == nets.end()) {
+            nets.push_back(*channels_[c]);
+            masks.push_back(ChannelMask{1} << c);
+        } else {
+            masks[static_cast<std::size_t>(found - nets.begin())] |= ChannelMask{1} << c;
         }
     }
-    std::ranges::stable_sort(changes, {}, &Change::time);
-    for (const Change& change : changes) {
-        state_.change(change.time, change.channels, change.value);
+    for (const auto& [i, sample] : sim_.recorder().inOrder(nets, fedUntil_)) {
+        state_.change(sample.time, masks[i], sample.value);
     }
     state_.advanceTo(sim_.now());
     fedUntil_ = sim_.now();

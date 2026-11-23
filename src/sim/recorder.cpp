@@ -1,5 +1,7 @@
 #include "sim/recorder.hpp"
 
+#include <algorithm>
+
 #include <cassert>
 #include <utility>
 
@@ -57,6 +59,24 @@ void Recorder::clear() {
     slotOfNet_.clear();
     slots_.clear();
     nets_.clear();
+}
+
+std::vector<std::pair<std::size_t, Sample>> Recorder::inOrder(std::span<const NetId> nets,
+                                                              Time after) const {
+    std::vector<std::pair<std::size_t, Sample>> merged;
+    for (std::size_t i = 0; i < nets.size(); ++i) {
+        // From the back: after a trim only a few remain, and the new ones are at the end.
+        const auto all = samples(nets[i]);
+        std::size_t first = all.size();
+        while (first > 0 && all[first - 1].time > after) {
+            --first;
+        }
+        for (const Sample sample : all.subspan(first)) {
+            merged.emplace_back(i, sample);
+        }
+    }
+    std::ranges::stable_sort(merged, {}, [](const auto& entry) { return entry.second.time; });
+    return merged;
 }
 
 }  // namespace bw

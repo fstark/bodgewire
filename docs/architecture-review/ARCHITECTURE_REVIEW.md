@@ -128,7 +128,7 @@ Done 2026-11-23: `ui/gestures`: `TimeCanvas::read` (hover, zoom notches, wheel p
 
 **C16. The catalogue holds each Part's pins and parameters.** Pin names exist only once a Component is built: `manual.cpp` `PartPinNames` builds a throwaway one with made-up parameters and special cases (6530, OSC, POR, PADDLE); a new Part needing parameters silently gets no pin check. Each factory parses its own parameters (`catalogue.cpp`, about 300 near-identical lines). `DurationFromText` lives in `paddle.hpp`. Fix: a static pin list and declared parameters on `PartInfo`, one parser. About −200 lines, low risk. Done 2026-11-23: `PartInfo::sample` (the parameters that build an example) and `PartPinNames` in the catalogue, the manual's special cases by name gone; `TakeParams` (each parameter known and given once) in the seven factories that take some; `ParseDuration` and `ParseFrequencyPeriod` in `sim/time.hpp`, in place of `DurationFromText` (paddle.hpp), `PeriodFromFrequency` (oscillator.hpp) and their netlist wrappers. A parameter given twice is now refused everywhere (some Parts took the last). Not done: a static pin list on `PartInfo` (the pins come from the Component; `sample` is enough to list them).
 
-**C17. One way to feed signal samples.** The headless instruments (`LogicProbe`, `Multimeter`, `Oscilloscope::update`, `LogicAnalyzer::update`, `TvInput::update`; used only by the CLI and tests) each merge Samples by time their own way, beside the threaded Dispatcher and Consumers the UI uses; the VIDEO_N inversion is written twice (tv_input.cpp, tv_consumer.cpp). Fix: run the Dispatcher on one thread (`FeedInline`), the CLI and tests drive the Consumers, the wrappers go. About −160 lines, about 12 test files; medium risk.
+**C17. One way to feed signal samples.** The headless instruments (`LogicProbe`, `Multimeter`, `Oscilloscope::update`, `LogicAnalyzer::update`, `TvInput::update`; used only by the CLI and tests) each merge Samples by time their own way, beside the threaded Dispatcher and Consumers the UI uses; the VIDEO_N inversion is written twice (tv_input.cpp, tv_consumer.cpp). Fix: run the Dispatcher on one thread (`FeedInline`), the CLI and tests drive the Consumers, the wrappers go. About −160 lines, about 12 test files; medium risk. Done 2026-11-23, narrowed: what was duplicated is in one place, the wrappers stay as the synchronous API that `bw run` and the tests step (16 files use `TvInput`; the instruments' Consumers need a Runner to be configured). `Recorder::inOrder` merges several Nets' Samples by time (it replaces `TvInput`'s k-way pick and the Oscilloscope's and Logic Analyzer's own sorts), and `Tv::feed(input, …)` maps the connector's inputs (the separate drives' inverted video once, for `TvInput` and `TvConsumer`).
 
 **C18. Pin references.**
 - Four shapes: `PinRef` as written (number or name); `PinRef` holding a number string (`dry_`, `WireEnds`, `padOf`); `(reference, PinIndex)` (`StuckPin`, `Connection`, `pinNet_`); `Pad::number`.
@@ -170,7 +170,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | C14 shared gestures | done 2026-11-23 (to try by hand) |
 | C15 BoardView/Shelf logic to view | done 2026-11-23 (the rules; not the cosmetic splits) |
 | C16 catalogue metadata | done 2026-11-23 |
-| C17 one sample feed | todo |
+| C17 one sample feed | done 2026-11-23 (narrowed: one merge, one TV input map) |
 | C18 pin references | todo |
 | D19 delays per Component | todo |
 | D20 random stream per Component | todo |

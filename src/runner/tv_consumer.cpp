@@ -1,5 +1,7 @@
 #include "runner/tv_consumer.hpp"
 
+#include <algorithm>
+
 namespace bw {
 
 void TvConsumer::powerOn() {
@@ -8,23 +10,8 @@ void TvConsumer::powerOn() {
 }
 
 void TvConsumer::sample(NetId net, Sample sample) {
-    if (tv_.sync() == TvSync::Composite) {
-        if (net == nets_[0]) {
-            tv_.setVideo(sample.time, sample.value);
-        } else {
-            tv_.setSyncN(sample.time, sample.value);
-        }
-        return;
-    }
-    if (net == nets_[0]) {
-        // Low is a lit dot; Z stays Z (Not would make it X).
-        tv_.setVideo(sample.time,
-                     sample.value == LogicValue::Z ? LogicValue::Z : Not(sample.value));
-    } else if (net == nets_[1]) {
-        tv_.setHorizontalDrive(sample.time, sample.value);
-    } else {
-        tv_.setVerticalDrive(sample.time, sample.value);
-    }
+    const auto input = std::ranges::find(nets_, net) - nets_.begin();
+    tv_.feed(static_cast<std::size_t>(input), sample.time, sample.value);
 }
 
 void TvConsumer::advanceTo(Time time) {

@@ -154,25 +154,16 @@ Oscilloscope::Oscilloscope(Simulator& sim,
 }
 
 void Oscilloscope::update() {
-    struct Change {
-        Time time;
-        std::size_t channel;
-        Sample sample;
-    };
-    std::vector<Change> changes;
+    std::vector<NetId> nets;
+    std::vector<std::size_t> channelOf;  // per nets entry
     for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        if (!channels_[c]) {
-            continue;
-        }
-        for (const Sample sample : sim_.recorder().samples(*channels_[c])) {
-            if (sample.time > fedUntil_) {
-                changes.push_back({sample.time, c, sample});
-            }
+        if (channels_[c]) {
+            nets.push_back(*channels_[c]);
+            channelOf.push_back(c);
         }
     }
-    std::ranges::stable_sort(changes, {}, &Change::time);
-    for (const Change& change : changes) {
-        state_.change(change.channel, change.sample);
+    for (const auto& [i, sample] : sim_.recorder().inOrder(nets, fedUntil_)) {
+        state_.change(channelOf[i], sample);
     }
     state_.advanceTo(sim_.now());
     fedUntil_ = sim_.now();

@@ -7,6 +7,18 @@
 
 namespace bw {
 
+void Tv::feed(std::size_t input, Time time, LogicValue value) {
+    if (sync_ == TvSync::Composite) {
+        input == 0 ? setVideo(time, value) : setSyncN(time, value);
+    } else if (input == 0) {
+        setVideo(time, value == LogicValue::Z ? LogicValue::Z : Not(value));  // Z stays Z
+    } else if (input == 1) {
+        setHorizontalDrive(time, value);
+    } else {
+        setVerticalDrive(time, value);
+    }
+}
+
 void Tv::setVideo(Time time, LogicValue value) {
     advanceTo(time);
     video_ = value;

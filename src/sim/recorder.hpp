@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "sim/ids.hpp"
@@ -33,6 +34,12 @@ public:
     void trim(NetId net);  // keeps only the last Sample; no-op if not recording
     void stop(NetId net);  // forgets the Net's Samples; no-op if not recording
     void clear();
+
+    // The Samples of `nets` recorded after `after`, in time order (an earlier one in `nets` first
+    // on a tie), each with its index in `nets`: how a caller that steps the Simulator itself feeds
+    // several Nets to one instrument or device (bw run, the tests).
+    std::vector<std::pair<std::size_t, Sample>> inOrder(std::span<const NetId> nets,
+                                                        Time after) const;
 
 private:
     std::vector<std::int32_t> slotOfNet_;  // -1 = not recording

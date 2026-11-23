@@ -78,6 +78,9 @@ public:
     void setHorizontalDrive(Time time, LogicValue value);  // Separate: a line at an accepted rise
     void setVerticalDrive(Time time, LogicValue value);    // Separate: a frame at an accepted fall
     TvSync sync() const { return sync_; }
+    // A change on input `input` of the connector, in NetsOf order: Composite 0 VIDEO, 1 SYNC_N;
+    // Separate 0 VIDEO_N (low is a lit dot), 1 HDRIVE, 2 VDRIVE.
+    void feed(std::size_t input, Time time, LogicValue value);
     void advanceTo(Time time);  // runs deflection and paints up to `time`
     const TvFrame& completedFrame() const { return completed_; }  // black before the first
     const TvFrameStats& completedStats() const { return completedStats_; }
