@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <utility>
 
-#include "runner/runner.hpp"
-
 namespace bw {
 
 namespace {
@@ -32,17 +30,7 @@ void AnalyzerConsumer::configure(Runner& runner, AnalyzerConfig config) {
         sentGeneration_ = generation_.fetch_add(1, std::memory_order_release) + 1;
     }
 
-    for (std::size_t c = 0; c < kChannels; ++c) {
-        if (config.nets[c] != watched_[c] && config.nets[c]) {
-            runner.watch(*config.nets[c]);
-        }
-    }
-    for (std::size_t c = 0; c < kChannels; ++c) {
-        if (config.nets[c] != watched_[c] && watched_[c]) {
-            runner.unwatch(*watched_[c]);
-        }
-    }
-    watched_ = config.nets;
+    Rewatch(runner, sent_.nets, config.nets);
     sent_ = std::move(config);
 }
 
@@ -61,28 +49,13 @@ std::span<const NetId> AnalyzerConsumer::nets() const {
     if (generation_.load(std::memory_order_acquire) != netsGeneration_) {
         adoptNets();
     }
-    return nets_;
+    return channels_.nets();
 }
 
 void AnalyzerConsumer::adoptNets() const {
     const std::scoped_lock lock(mutex_);
     netsGeneration_ = generation_.load(std::memory_order_acquire);
-    nets_.clear();
-    masks_.clear();
-    for (std::size_t c = 0; c < kChannels; ++c) {
-        const auto& net = pending_.nets[c];
-        if (!net) {
-            continue;
-        }
-        const ChannelMask bit = ChannelMask{1} << c;
-        const auto found = std::ranges::find(nets_, *net);
-        if (found == nets_.end()) {
-            nets_.push_back(*net);
-            masks_.push_back(bit);
-        } else {
-            masks_[static_cast<std::size_t>(found - nets_.begin())] |= bit;
-        }
-    }
+    channels_.adopt(pending_.nets);
 }
 
 void AnalyzerConsumer::adopt() {
@@ -112,12 +85,9 @@ void AnalyzerConsumer::sample(NetId net, Sample sample) {
     if (generation_.load(std::memory_order_acquire) != configGeneration_) {
         adopt();
     }
-    const auto found = std::ranges::find(nets_, net);
-    if (found == nets_.end()) {
-        return;
+    if (const ChannelMask mask = channels_.maskOf(net)) {
+        state_.change(sample.time, mask, sample.value);
     }
-    state_.change(sample.time, masks_[static_cast<std::size_t>(found - nets_.begin())],
-                  sample.value);
 }
 
 void AnalyzerConsumer::advanceTo(Time time) {

@@ -1,8 +1,5 @@
 #include "runner/scope_consumer.hpp"
 
-#include <algorithm>
-
-#include "runner/runner.hpp"
 
 namespace bw {
 
@@ -15,16 +12,7 @@ void ScopeConsumer::configure(Runner& runner, ScopeConfig config) {
     if (config != sent_) {
         status_.store(SweepKind::None, std::memory_order_release);
     }
-    for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        if (config.nets[c] != sent_.nets[c] && config.nets[c]) {
-            runner.watch(*config.nets[c]);
-        }
-    }
-    for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        if (config.nets[c] != sent_.nets[c] && sent_.nets[c]) {
-            runner.unwatch(*sent_.nets[c]);
-        }
-    }
+    Rewatch(runner, sent_.nets, config.nets);
     sent_ = config;
 }
 
@@ -32,28 +20,13 @@ std::span<const NetId> ScopeConsumer::nets() const {
     if (generation_.load(std::memory_order_acquire) != netsGeneration_) {
         adoptNets();
     }
-    return nets_;
+    return channels_.nets();
 }
 
 void ScopeConsumer::adoptNets() const {
-    netsGeneration_ = generation_.load(std::memory_order_acquire);
     const std::scoped_lock lock(mutex_);
-    nets_.clear();
-    masks_.clear();
-    for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        const auto& net = pending_.nets[c];
-        if (!net) {
-            continue;
-        }
-        const auto bit = static_cast<std::uint8_t>(1u << c);
-        const auto found = std::ranges::find(nets_, *net);
-        if (found == nets_.end()) {
-            nets_.push_back(*net);
-            masks_.push_back(bit);
-        } else {
-            masks_[static_cast<std::size_t>(found - nets_.begin())] |= bit;
-        }
-    }
+    netsGeneration_ = generation_.load(std::memory_order_acquire);
+    channels_.adopt(pending_.nets);
 }
 
 void ScopeConsumer::adopt() {
@@ -73,11 +46,6 @@ void ScopeConsumer::adopt() {
     }
 }
 
-std::uint8_t ScopeConsumer::maskOf(NetId net) const {
-    const auto found = std::ranges::find(nets_, net);
-    return found == nets_.end() ? 0 : masks_[static_cast<std::size_t>(found - nets_.begin())];
-}
-
 void ScopeConsumer::powerOn() {
     now_ = 0;
     if (generation_.load(std::memory_order_acquire) != configGeneration_) {
@@ -92,7 +60,7 @@ void ScopeConsumer::sample(NetId net, Sample sample) {
     if (generation_.load(std::memory_order_acquire) != configGeneration_) {
         adopt();
     }
-    const std::uint8_t mask = maskOf(net);
+    const std::uint8_t mask = channels_.maskOf(net);
     for (std::size_t c = 0; c < kScopeChannels; ++c) {
         if ((mask >> c & 1) != 0) {
             state_.change(c, sample);
@@ -104,7 +72,7 @@ void ScopeConsumer::seed(NetId net, Sample sample) {
     if (generation_.load(std::memory_order_acquire) != configGeneration_) {
         adopt();
     }
-    const std::uint8_t mask = maskOf(net);
+    const std::uint8_t mask = channels_.maskOf(net);
     for (std::size_t c = 0; c < kScopeChannels; ++c) {
         if ((mask >> c & 1) != 0) {
             state_.seed(c, sample);

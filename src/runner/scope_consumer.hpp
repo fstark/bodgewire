@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "instruments/oscilloscope.hpp"
+#include "runner/channel_nets.hpp"
 #include "runner/consumer.hpp"
 #include "runner/triple_buffer.hpp"
 
@@ -37,9 +38,8 @@ public:
     void powerOff() override;
 
 private:
-    void adoptNets() const;  // devices: pending Nets → nets_, masks_
+    void adoptNets() const;  // devices: pending Nets → channels_
     void adopt();            // devices: pending config → state_, from now_
-    std::uint8_t maskOf(NetId net) const;
 
     // UI thread
     ScopeConfig sent_;
@@ -51,8 +51,7 @@ private:
     TripleBuffer<Sweep> sweeps_;
     // devices thread
     mutable std::uint64_t netsGeneration_ = 0;
-    mutable std::vector<NetId> nets_;
-    mutable std::vector<std::uint8_t> masks_;  // Channels per nets_ entry
+    mutable ChannelNets<std::uint8_t> channels_;
     std::uint64_t configGeneration_ = 0;
     ScopeConfig applied_;
     Time now_ = 0;  // last slice end; 0 after power-on

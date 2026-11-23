@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "instruments/logic_analyzer.hpp"
+#include "runner/channel_nets.hpp"
 #include "runner/consumer.hpp"
 #include "runner/triple_buffer.hpp"
 
@@ -41,12 +42,11 @@ public:
     void powerOff() override;
 
 private:
-    void adoptNets() const;  // devices: pending Nets → nets_, masks_
+    void adoptNets() const;  // devices: pending Nets → channels_
     void adopt();            // devices: pending config → state_, from now_
     void publishPhase();     // devices: state_ phase with configGeneration_
 
     // UI thread
-    std::array<std::optional<NetId>, kChannels> watched_;
     AnalyzerConfig sent_;  // last configure(), for the UI-side phase
     std::uint64_t sentGeneration_ = 0;
     AnalyzerPhase expected_ = AnalyzerPhase::Idle;  // phase() until sentGeneration_ is applied
@@ -58,8 +58,7 @@ private:
     TripleBuffer<Capture> captures_;
     // devices thread
     mutable std::uint64_t netsGeneration_ = 0;
-    mutable std::vector<NetId> nets_;         // distinct
-    mutable std::vector<ChannelMask> masks_;  // Channels per nets_ entry
+    mutable ChannelNets<ChannelMask> channels_;
     std::uint64_t configGeneration_ = 0;
     Time now_ = 0;  // last slice end; 0 after power-on
     AnalyzerConfig applied_;

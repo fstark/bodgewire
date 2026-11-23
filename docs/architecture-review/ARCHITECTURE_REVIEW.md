@@ -152,7 +152,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 |---|---|
 | A1 `Machine::apply` | done 2026-11-23 |
 | A2 `FindTvNets` | done 2026-11-23 |
-| A3 scope/analyzer channel setup | todo |
+| A3 scope/analyzer channel setup | done 2026-11-23 |
 | A4 keyboard Part names, Parts by kind | todo |
 | A5 test fixtures out of primitives | todo |
 | A6 docs | todo |

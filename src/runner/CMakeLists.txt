@@ -1,5 +1,6 @@
 add_library(bw_runner STATIC
   analyzer_consumer.cpp
+  channel_nets.cpp
   dispatcher.cpp
   led_consumer.cpp
   meter_consumer.cpp
