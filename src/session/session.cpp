@@ -58,6 +58,8 @@ Session::Session(std::optional<Machine> machine, std::unique_ptr<LoadedCircuit> 
     build_->machine = machine_.get();
     if (machine_) {
         drawn_ = machine_->board();
+        completed_ = machine_->completed();
+        puzzle_ = !completed_;
     }
     live_ = makeLive(std::move(circuit));
     bindBuild();
@@ -130,6 +132,7 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
     }
     live_->runner->powerOn(seed);
     build_->powered = true;
+    ++powerOns_;
     inputs_.poweredOn();
 }
 
@@ -161,6 +164,7 @@ RepairResult Session::repair(const RepairAction& repair) {
     }
     log_.push_back(FormatRepair(repair));
     dirty_ = true;
+    completed_ = machine_->completed();
     meter_.copperChanged();
     return RepairResult::Done;
 }
@@ -176,6 +180,7 @@ RepairResult Session::undoRepairs() {
     log_.clear();
     blobs_.clear();
     dirty_ = true;
+    completed_ = machine_->completed();
     meter_.copperChanged();
     return RepairResult::Done;
 }

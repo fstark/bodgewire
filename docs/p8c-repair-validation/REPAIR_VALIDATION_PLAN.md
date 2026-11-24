@@ -6,7 +6,7 @@ Spec: [REPAIR_VALIDATION.md](REPAIR_VALIDATION.md). Design: [REPAIR_VALIDATION_D
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 1 | The verdict: `Wiring`, `Machine::completed`, the Session's copy, `NextPuzzle`, their tests; `bw run`'s line | |
+| 1 | The verdict: `Wiring`, `Machine::completed`, the Session's copy, `NextPuzzle`, their tests; `bw run`'s line | PH1 |
 | 2 | Every Puzzle's test checks the verdict; `repair validation:` cases | |
 | 3 | The acknowledgement: `RepairAck`, the post-it's tick, the Thank-you Card, the next Puzzle's bench | |
 | 4 | Docs, README shot, release check with screenshots, debug, web build, full release suite | |
@@ -55,3 +55,4 @@ Fence: full release suite. Commit: `docs: P8c done, Repair Validation in the glo
 ## Implementation notes
 
 - Review (2026-11-24), must-fixes, fixed in the docs before phase 1: `Wiring` keeps the Net names (the builder ties `VCC`/`GND` by name: a rail island cut from `J1` keeps its pins but becomes `VCC~2`, a false "completed" without names); the `led_computer` prefix; `shorts_power_test.cpp` (four Test Pattern Puzzles) in the file list and fences; helpers called with wrong Repairs take the expected verdict; the debug fences narrowed (no `session:` whole, no tennis/ball/BW-1/typewriter). Should-fixes taken: `completed()` reuses `rebuildBoard`'s islands and `golden_` is lazy (`WiringOf` as first written cost about two rebuilds, 110 ms on the BW-2001); the card waits for an open question; the Next path's `main` branch spelt out; the card's Next and Machines left to the user (the path after them is `--visit`'s).
+- Phase 1 (2026-11-24): as designed. Beyond it, `connected`, `probeNet` and `build()` reuse `rebuildBoard`'s `islands_` too (one `FindIslands` less per power-on rebuild and per probe). The verdict on the BW-2001 (Odd E swapped, a wire within one Net): 63 ms the first time (the golden Wiring), then 1.4 ms (release). All 114 Puzzles not completed as loaded at once. `bw run …01-dark-led.bwp --repair` prints `completed` for the mend and for `wire:U5.QD:D1.1`, `not completed` for `wire:U5.QD:D1.2` and `swap:U5`. Checks: release `^(electrical|power|machine|machine list|session|repair validation): ` (113 cases), debug the unit cases and `session: (completed|the working)` (62), the full release suite (1559).

@@ -53,4 +53,8 @@ struct EntryRef {
 // The entry that is `file`, compared as weakly canonical paths: --visit's check.
 std::optional<EntryRef> EntryOf(const MachineList& list, const std::filesystem::path& file);
 
+// The Puzzle after `file` among its Machine's, as listed (P8c's Thank-you Card); nullptr for the
+// Machine's last Puzzle, its working Machine or a file not in the list.
+const PuzzleEntry* NextPuzzle(const MachineList& list, const std::filesystem::path& file);
+
 }  // namespace bw

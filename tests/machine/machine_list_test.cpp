@@ -130,3 +130,14 @@ TEST_CASE("machine list: machine index", "[machine]") {
     CHECK_FALSE(EntryOf(list, test::RootDir() / "tests/data/bw1_bench.bwn"));
     CHECK_FALSE(EntryOf(list, test::RootDir() / "machines/130-bw2001/puzzles/99-none.bwp"));
 }
+
+TEST_CASE("machine list: next puzzle", "[machine]") {
+    const MachineList list = ListMachines(test::RootDir() / "machines");
+    const auto counter = test::MachineDir("counter");
+    const PuzzleEntry* next = NextPuzzle(list, counter / "puzzles/01-dark-led.bwp");
+    REQUIRE(next != nullptr);
+    CHECK(next->file.filename() == "02-frozen-led.bwp");
+    CHECK(NextPuzzle(list, counter / "puzzles/03-too-fast.bwp") == nullptr);
+    CHECK(NextPuzzle(list, counter / "counter.bwn") == nullptr);
+    CHECK(NextPuzzle(list, counter / "puzzles/99-nope.bwp") == nullptr);
+}

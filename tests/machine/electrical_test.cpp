@@ -358,3 +358,44 @@ TEST_CASE("electrical: a capacitor bridged across is left out", "[machine]") {
     CHECK(NetOf(netlist, "C1.1").empty());
     CHECK(BuildCircuit(netlist).has_value());
 }
+
+namespace {
+
+Wiring WiringOfBoard(const Design& design, const Board& board) {
+    const Islands islands = FindIslands(board);
+    return WiringOf(design.netlist, *design.circuit, board, islands,
+                    FindPower(*design.circuit, board, islands));
+}
+
+}  // namespace
+
+TEST_CASE("electrical: wiring of the fault-free Board", "[machine]") {
+    const Design design = LoadDesign("test_pattern");
+    const Wiring wiring = WiringOfBoard(design, design.board);
+    CHECK(wiring == WiringOfBoard(design, design.board));
+    CHECK(wiring.unpowered.empty());
+    CHECK_FALSE(wiring.deadRail);
+    // One entry per design Net with a non-Power Pin, under the design's name.
+    std::set<std::string> names;
+    for (const auto& [name, pins] : wiring.nets) {
+        CHECK_FALSE(pins.empty());
+        CHECK(std::ranges::is_sorted(pins));
+        names.insert(name);
+    }
+    CHECK(names.size() == wiring.nets.size());
+    CHECK(names.contains("H0"));
+    CHECK(std::ranges::none_of(names, [](const std::string& n) { return n.contains('~'); }));
+}
+
+TEST_CASE("electrical: wiring sees a crack", "[machine]") {
+    const Design design = LoadDesign("test_pattern");
+    CHECK(WiringOfBoard(design, CrackBoard(design.board, {&H0Crack(), 1})) !=
+          WiringOfBoard(design, design.board));
+}
+
+TEST_CASE("electrical: wiring sees a pull-up cut from its rail", "[machine]") {
+    const Design design = LoadDesign("counter");
+    const Wiring cut = WiringOfBoard(design, CrackBoard(design.board, {&R1VccCrack(), 1}));
+    CHECK(cut != WiringOfBoard(design, design.board));
+    CHECK(std::ranges::any_of(cut.nets, [](const auto& net) { return net.first == "VCC~2"; }));
+}

@@ -461,7 +461,8 @@ void Machine::rebuildBoard() {
     for (const WireEnds& b : faults_.bridges) {
         board_.padJoins.push_back(b.wire);
     }
-    power_ = FindPower(*designCircuit_, board_, FindIslands(board_));
+    islands_ = FindIslands(board_);
+    power_ = FindPower(*designCircuit_, board_, islands_);
 }
 
 std::optional<PinRef> Machine::padOf(const PinRef& pin) const {
@@ -520,11 +521,27 @@ std::optional<PinRef> Machine::dryLegAt(Layer layer, Point at) const {
 }
 
 LoadResult Machine::build() const {
-    return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_, faults_.dry),
+    return BuildCircuit(ElectricalNetlist(design_, *designCircuit_, board_, islands_, faults_.dry),
                         {.stuck = faults_.stuck,
                          .unpowered = power_.unpowered,
                          .cells = faults_.cells,
                          .switches = faults_.switches});
+}
+
+bool Machine::completed() const {
+    if (!faults_.stuck.empty() || !faults_.cells.empty() || !faults_.switches.empty() ||
+        !faults_.dry.empty()) {
+        return false;
+    }
+    if (faults_.cracks.empty() && faults_.bridges.empty() && cuts_.empty() && wires_.empty()) {
+        return true;  // board_ is the fault-free Copper
+    }
+    if (!golden_) {
+        const Islands islands = FindIslands(pristine_);
+        golden_ = WiringOf(design_, *designCircuit_, pristine_, islands,
+                           FindPower(*designCircuit_, pristine_, islands));
+    }
+    return WiringOf(design_, *designCircuit_, board_, islands_, power_) == *golden_;
 }
 
 std::optional<std::uint32_t> Machine::islandAt(const Islands& islands, Layer layer,
@@ -557,28 +574,26 @@ bool Machine::connected(Layer layerA, Point a, Layer layerB, Point b) const {
     if (legA || legB) {
         return legA && legB && SamePin(*legA, *legB);
     }
-    const Islands islands = FindIslands(board_);
-    const auto first = islandAt(islands, layerA, a);
-    return first && first == islandAt(islands, layerB, b);
+    const auto first = islandAt(islands_, layerA, a);
+    return first && first == islandAt(islands_, layerB, b);
 }
 
 std::optional<NetId> Machine::probeNet(const LoadedCircuit& built, Layer layer, Point at) const {
     if (const auto leg = dryLegAt(layer, at)) {
         return PinNet(built, leg->reference, leg->pin);
     }
-    const Islands islands = FindIslands(board_);
-    const auto island = islandAt(islands, layer, at);
+    const auto island = islandAt(islands_, layer, at);
     if (!island) {
         return std::nullopt;
     }
-    const std::string name = IslandNetNames(*designCircuit_, board_, islands)[*island];
+    const std::string name = IslandNetNames(*designCircuit_, board_, islands_)[*island];
     if (name.empty()) {
         // No netlist Net reaches this island (an unconnected pin): its pad's own Net, as Clips
         // and Hooks read it.
         for (std::size_t c = 0; c < board_.components.size(); ++c) {
             const BoardComponent& component = board_.components[c];
             for (std::size_t p = 0; p < component.pads.size(); ++p) {
-                if (islands.padIsland[c][p] == *island) {
+                if (islands_.padIsland[c][p] == *island) {
                     return PinNet(built, component.reference, component.pads[p].number);
                 }
             }

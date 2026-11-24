@@ -153,4 +153,14 @@ std::optional<EntryRef> EntryOf(const MachineList& list, const fs::path& file) {
     return std::nullopt;
 }
 
+const PuzzleEntry* NextPuzzle(const MachineList& list, const fs::path& file) {
+    const auto entry = EntryOf(list, file);
+    if (!entry || !entry->puzzle) {
+        return nullptr;
+    }
+    const auto& puzzles = list.machines[entry->machine].puzzles;
+    const std::size_t next = *entry->puzzle + 1;
+    return next < puzzles.size() ? &puzzles[next] : nullptr;
+}
+
 }  // namespace bw

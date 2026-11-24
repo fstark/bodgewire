@@ -129,7 +129,11 @@ std::vector<std::string> IslandNetNames(const LoadedCircuit& designCircuit, cons
 
 Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCircuit,
                           const Board& board, std::span<const PinRef> dry) {
-    const Islands islands = FindIslands(board);
+    return ElectricalNetlist(design, designCircuit, board, FindIslands(board), dry);
+}
+
+Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCircuit,
+                          const Board& board, const Islands& islands, std::span<const PinRef> dry) {
     const Namer namer = NameIslands(designCircuit, board, islands);
 
     std::map<std::string, std::vector<PinRef>> pins;
@@ -242,6 +246,22 @@ BoardPower FindPower(const LoadedCircuit& designCircuit, const Board& board,
         }
     }
     return power;
+}
+
+Wiring WiringOf(const Netlist& design, const LoadedCircuit& designCircuit, const Board& board,
+                const Islands& islands, const BoardPower& power) {
+    Wiring wiring{.unpowered = power.unpowered, .deadRail = power.deadRail};
+    for (const NetDecl& net : ElectricalNetlist(design, designCircuit, board, islands).nets) {
+        std::vector<std::string> pins;
+        pins.reserve(net.pins.size());
+        for (const PinRef& pin : net.pins) {
+            pins.push_back(pin.reference + "." + pin.pin);
+        }
+        std::ranges::sort(pins);
+        wiring.nets.emplace_back(net.name, std::move(pins));
+    }
+    std::ranges::sort(wiring.nets);
+    return wiring;
 }
 
 }  // namespace bw

@@ -216,6 +216,9 @@ std::unique_ptr<LoadedCircuit> LoadPuzzle(const Options& options,
             return nullptr;
         }
     }
+    if (!options.repair.empty()) {  // the Puzzle author's check (P8c)
+        std::println(stderr, "bw: Puzzle {}completed", machine->completed() ? "" : "not ");
+    }
     auto result = machine->build();
     if (!result) {
         PrintDiagnostics(result.error());

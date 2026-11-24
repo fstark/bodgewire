@@ -74,6 +74,13 @@ public:
     RunnerStatus status() const { return live_->runner->status(); }
 
     RepairResult repair(const RepairAction& repair);  // logs and blobs every Done
+    // Repair Validation (P8c): the Machine as repaired now builds the Golden Machine's Circuit;
+    // worked out at construction, after each Repair Done and each Reset. False without a Machine.
+    bool completed() const { return completed_; }
+    // Not completed as loaded: a Puzzle (the working Machine, or no Machine, is not).
+    bool puzzle() const { return puzzle_; }
+    // powerOn calls so far: each one a new run for the acknowledgement's count.
+    std::uint64_t powerOns() const { return powerOns_; }
     // The bench's Reset: every Repair undone, the log and blobs cleared; leads, clips and hooks
     // kept. Refused while powered; Unknown without a Machine.
     RepairResult undoRepairs();
@@ -123,6 +130,9 @@ private:
     std::optional<Board> drawn_;
     std::unique_ptr<Live> live_;
     bool dirty_ = false;  // a Repair since live_ was built
+    bool completed_ = false;
+    bool puzzle_ = false;
+    std::uint64_t powerOns_ = 0;
     Speed speed_ = Speed::RealTime;
     std::vector<std::string> log_;
     std::vector<SolderBlob> blobs_;

@@ -85,8 +85,12 @@ public:
     std::span<const Crack> cuts() const { return cuts_; }
     std::span<const WireEnds> wires() const { return wires_; }
     std::span<const WireEnds> bridges() const { return faults_.bridges; }
-    LoadResult build() const;                      // electrical Circuit with the current Faults
-    const Board& board() const { return board_; }  // with cracks, Cuts and Bodge Wires
+    LoadResult build() const;  // electrical Circuit with the current Faults
+    // Repair Validation (P8c): the Machine builds the Golden Machine's Circuit. No stuck pin,
+    // cell, column, switch Fault or dry Joint left, and the current Copper's Wiring is the
+    // fault-free Board's. Cracks, Solder Bridges, Cuts and Bodge Wires count only through it.
+    bool completed() const;
+    const Board& board() const { return board_; }             // with cracks, Cuts and Bodge Wires
     const Board& pristineBoard() const { return pristine_; }  // fault-free Copper, for the view
     const LoadedCircuit& designCircuit() const { return *designCircuit_; }
     const BoardPower& power() const { return power_; }  // of the current Copper
@@ -140,6 +144,9 @@ private:
     std::vector<Crack> cuts_;
     std::vector<WireEnds> wires_;
     BoardPower power_;  // of board_, see rebuildBoard()
+    Islands islands_;   // of board_, see rebuildBoard()
+    // The fault-free Board's Wiring, worked out at the first completed() that needs it.
+    mutable std::optional<Wiring> golden_;
 };
 
 // A cell or column Fault on `component` (Part `part`, "6530"), checked: the StuckCell, or the

@@ -43,6 +43,7 @@ add_executable(bw_tests
   manual/markdown_test.cpp
   machines/board_probe_test.cpp
   machines/board_repair_test.cpp
+  machines/repair_validation_test.cpp
   machines/bus_load_test.cpp
   machines/bw80_puzzles_test.cpp
   machines/bw80_rig.cpp

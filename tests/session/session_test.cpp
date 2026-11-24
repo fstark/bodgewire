@@ -1452,3 +1452,32 @@ TEST_CASE("session: switch keys on the switch bench", "[session]") {
     session.runner().waitIdle();
     CHECK_FALSE(key->pressed());
 }
+
+TEST_CASE("session: completed follows the Repairs", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    CHECK(session.puzzle());
+    CHECK_FALSE(session.completed());
+    CHECK(session.powerOns() == 0);
+    session.powerOn(1);
+    CHECK(session.powerOns() == 1);
+    CHECK(session.repair(WireRepair{{"U1", "14"}, {"U13", "6"}}) == RepairResult::Refused);
+    session.powerOff();
+    REQUIRE(session.repair(WireRepair{{"U1", "14"}, {"U13", "6"}}) == RepairResult::Done);
+    CHECK(session.completed());
+    session.powerOn(1);
+    CHECK(session.powerOns() == 2);
+    session.powerOff();
+    REQUIRE(session.undoRepairs() == RepairResult::Done);
+    CHECK_FALSE(session.completed());
+    CHECK(session.puzzle());
+}
+
+TEST_CASE("session: the working Machine is no Puzzle", "[session]") {
+    auto machine = LoadNetlistMachine(test::NetlistPath("counter"));
+    REQUIRE(machine.has_value());
+    auto built = machine->build();
+    REQUIRE(built.has_value());
+    const Session session(std::move(*machine), std::move(*built));
+    CHECK(session.completed());
+    CHECK_FALSE(session.puzzle());
+}

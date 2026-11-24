@@ -673,3 +673,100 @@ TEST_CASE("machine: contents of a ROM through its stuck cells, clean after a swa
     CHECK_FALSE(machine->contents("U5").has_value());   // a 74LS138
     CHECK_FALSE(machine->contents("U99").has_value());  // none
 }
+
+namespace {
+
+Machine LoadPuzzleNamed(const std::string& name) {
+    auto machine = LoadPuzzleFile(test::PuzzlePath(name));
+    REQUIRE(machine.has_value());
+    return std::move(*machine);
+}
+
+bool MendFirstCrack(Machine& machine) {
+    REQUIRE_FALSE(machine.cracks().empty());
+    const Crack crack = machine.cracks().front();
+    return machine.mend(crack.layer, crack.at);
+}
+
+}  // namespace
+
+TEST_CASE("machine: completed", "[machine]") {
+    SECTION("the working Machine") {
+        const auto machine = LoadNetlistMachine(test::NetlistPath("test_pattern"));
+        REQUIRE(machine.has_value());
+        CHECK(machine->completed());
+    }
+    SECTION("a Broken Trace: mended, or a Bodge Wire across it") {
+        Machine machine = LoadPuzzleNamed("broken_trace");
+        CHECK_FALSE(machine.completed());
+        Machine wired = LoadPuzzleNamed("broken_trace");
+        REQUIRE(MendFirstCrack(machine));
+        CHECK(machine.completed());
+        REQUIRE(wired.addWire({"U1", "14"}, {"U13", "6"}));
+        CHECK(wired.completed());
+    }
+    SECTION("a stuck output: a good chip swapped changes nothing, the faulty one completes it") {
+        Machine machine = LoadPuzzleNamed("stuck_gate");
+        CHECK_FALSE(machine.completed());
+        REQUIRE(machine.swap("U3"));
+        CHECK_FALSE(machine.completed());
+        REQUIRE(machine.swap("U12"));
+        CHECK(machine.completed());
+        REQUIRE(machine.swap("U3"));
+        CHECK(machine.completed());
+    }
+    SECTION("a Cut left open, then mended") {
+        Machine machine = LoadPuzzleNamed("stuck_gate");
+        REQUIRE(machine.swap("U12"));
+        REQUIRE(machine.cut(H0Crack().layer, H0Crack().at));
+        CHECK_FALSE(machine.completed());
+        REQUIRE(machine.mend(H0Crack().layer, H0Crack().at));
+        CHECK(machine.completed());
+    }
+    SECTION("a wire joining two Nets, a wire within one") {
+        Machine machine = LoadPuzzleNamed("stuck_gate");
+        REQUIRE(machine.swap("U12"));
+        REQUIRE(machine.addWire({"U1", "14"}, {"U13", "6"}));  // both on H0
+        CHECK(machine.completed());
+        REQUIRE(machine.addWire({"U1", "14"}, {"U2", "1"}));  // H0 to VCC
+        CHECK_FALSE(machine.completed());
+        REQUIRE(machine.removeWire({"U2", "1"}, {"U1", "14"}));
+        CHECK(machine.completed());
+    }
+    SECTION("Solder Bridges and a cracked VCC stub") {
+        for (const char* name : {"line_bridge", "sync_bridge", "dead_rail"}) {
+            INFO(name);
+            Machine machine = LoadPuzzleNamed(name);
+            CHECK_FALSE(machine.completed());
+            const WireEnds bridge = machine.bridges().front();
+            REQUIRE(machine.removeBridge(bridge.a, bridge.b));
+            CHECK(machine.completed());
+        }
+        Machine machine = LoadPuzzleNamed("unpowered_chip");
+        CHECK_FALSE(machine.completed());
+        REQUIRE(MendFirstCrack(machine));
+        CHECK(machine.completed());
+    }
+    SECTION("the Reset brings the Puzzle back") {
+        Machine machine = LoadPuzzleNamed("broken_trace");
+        REQUIRE(MendFirstCrack(machine));
+        REQUIRE(machine.completed());
+        machine.undoRepairs();
+        CHECK_FALSE(machine.completed());
+    }
+}
+
+TEST_CASE("machine: completed needs every Component and Joint Fault gone", "[machine]") {
+    Puzzle puzzle = LedComputer();
+    puzzle.faults = {JointDecl{2, {"U4", "14"}}, CellDecl{3, {"U3", "IO1"}, 0x10, LogicValue::One},
+                     SwitchDecl{4, "SW1", true}};
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
+    REQUIRE(machine.has_value());
+    CHECK_FALSE(machine->completed());
+    REQUIRE(machine->resolder({"U4", "14"}));
+    CHECK_FALSE(machine->completed());
+    REQUIRE(machine->swap("U3"));
+    CHECK_FALSE(machine->completed());
+    REQUIRE(machine->swap("SW1"));
+    CHECK(machine->completed());
+}

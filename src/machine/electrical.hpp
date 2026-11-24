@@ -2,6 +2,7 @@
 
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "board/board.hpp"
@@ -21,6 +22,10 @@ std::vector<std::string> IslandNetNames(const LoadedCircuit& designCircuit, cons
 // `dry`: chip pins (by number) whose Joint does not connect: on no Net, they float.
 Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCircuit,
                           const Board& board, std::span<const PinRef> dry = {});
+// The same with `board`'s islands already worked out (FindIslands is most of the cost).
+Netlist ElectricalNetlist(const Netlist& design, const LoadedCircuit& designCircuit,
+                          const Board& board, const Islands& islands,
+                          std::span<const PinRef> dry = {});
 
 struct BoardPower {
     std::vector<std::string> unpowered;  // chip and PADDLE References, design order
@@ -31,5 +36,22 @@ struct BoardPower {
 // connectors are always Powered.
 BoardPower FindPower(const LoadedCircuit& designCircuit, const Board& board,
                      const Islands& islands);
+
+// What a Circuit is built from on the Copper's side (P8c): each electrical Net's name and pins,
+// and the chips the Copper leaves Unpowered. Two Boards of one design with equal Wiring build the
+// same Circuit, whatever Copper made it (a mend or a Bodge Wire). Names count: the builder ties
+// the Nets named VCC and GND to the supplies.
+struct Wiring {
+    // Each Net's name and its pins ("U3.7", "R2.1") sorted; the Nets sorted by name.
+    std::vector<std::pair<std::string, std::vector<std::string>>> nets;
+    std::vector<std::string> unpowered;  // BoardPower's, design order
+    bool deadRail = false;
+    bool operator==(const Wiring&) const = default;
+};
+
+// ElectricalNetlist (no dry Joints: they are Faults of their own) of `board`, whose islands are
+// `islands`, and its `power` (FindPower of the same).
+Wiring WiringOf(const Netlist& design, const LoadedCircuit& designCircuit, const Board& board,
+                const Islands& islands, const BoardPower& power);
 
 }  // namespace bw
