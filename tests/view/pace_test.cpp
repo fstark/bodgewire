@@ -139,15 +139,15 @@ TEST_CASE("headroom: its sentence, full speed or a share of the real one's") {
           "On this computer it runs at 99% of the real one's speed.");  // the band not yet back
 }
 
-TEST_CASE("headroom: the number held 5 s, the band followed at once") {
+TEST_CASE("headroom: the number held 2 s, the band followed at once") {
     HeadroomRun run;
     run.run(13.0, 10);
     REQUIRE(run.headroom.shown());
     CHECK(SpeedText(*run.headroom.shown()) == "13×");
-    run.run(20.0, 30);
+    run.run(20.0, 10);
     CHECK(SpeedText(*run.headroom.shown()) == "13×");  // held
-    run.run(20.0, 20);
-    CHECK(SpeedText(*run.headroom.shown()) == "20×");  // the last 5 s's
+    run.run(20.0, 10);
+    CHECK(SpeedText(*run.headroom.shown()) == "20×");  // the last 2 s's
     run.run(0.5, 9);
     CHECK(run.headroom.band() == Playability::Playable);  // the last second's: not yet
     CHECK(SpeedText(*run.headroom.shown()) == "20×");
@@ -155,4 +155,14 @@ TEST_CASE("headroom: the number held 5 s, the band followed at once") {
     CHECK(run.headroom.band() == Playability::Slow);
     REQUIRE(run.headroom.shown());
     CHECK(*run.headroom.shown() < 1.0);  // anew with the band: its sentence agrees with the bar
+}
+
+TEST_CASE("headroom: its number, no more digits than it is worth") {
+    CHECK(HeadroomNumber(0.344) == "0.34×");
+    CHECK(HeadroomNumber(0.999) == "1.0×");
+    CHECK(HeadroomNumber(1.234) == "1.2×");
+    CHECK(HeadroomNumber(3.96) == "4×");
+    CHECK(HeadroomNumber(13.4) == "13×");
+    CHECK(HeadroomText(5.98, Playability::Playable) ==
+          "On this computer it runs at full speed: it could go 6× as fast as the real one.");
 }

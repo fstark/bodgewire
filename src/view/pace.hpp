@@ -36,7 +36,7 @@ enum class Playability : std::uint8_t { Playable, Slow, TooSlow };
 // How fast a Machine could run while the launcher runs it at 1×: simulated time over the wall time
 // its simulation thread spent running (pacing sleeps excluded). Its band, from the last second's,
 // goes down under 0.9× and 0.27×, back up over 1× and 0.3×, so a Machine at a limit does not
-// flicker; the number shown, the last 5 s's, is held 5 s (read, not watched), and taken anew from
+// flicker; the number shown, the last 2 s's, is held 2 s (read, not watched), and taken anew from
 // the last second's when the band changes, so its sentence agrees with the bar.
 class Headroom {
 public:
@@ -63,6 +63,9 @@ private:
 // speed: it could go 13× as fast as the real one." (Playable), "On this computer it runs at 34% of
 // the real one's speed." (else, at most 99%).
 std::string HeadroomText(double ratio, Playability band);
+// The launcher's headroom printed, no more digits than the measure is worth: "0.34×" under 1,
+// "1.2×" under 4, "13×" (the run switch's SpeedText keeps its own).
+std::string HeadroomNumber(double ratio);
 
 // A speed ratio printed: "0.24×", "3.40×", "42×".
 std::string SpeedText(double ratio);

@@ -14,7 +14,7 @@ constexpr auto kBehindAfter = std::chrono::seconds(2);
 constexpr auto kShownFor = std::chrono::milliseconds(500);
 
 constexpr auto kHeadroomWindow = std::chrono::seconds(1);    // the band's measure
-constexpr auto kHeadroomShownFor = std::chrono::seconds(5);  // the number's, and how long it holds
+constexpr auto kHeadroomShownFor = std::chrono::seconds(2);  // the number's, and how long it holds
 constexpr auto kHeadroomFirst = std::chrono::milliseconds(900);  // measured over at least this
 constexpr double kSlowUnder = 0.9;                               // Playable → Slow
 constexpr double kPlayableOver = 1.0;                            // → Playable
@@ -85,7 +85,7 @@ void Headroom::update(Time simTime, std::int64_t runNs, Clock::time_point now) {
     }
     const Playability before = band_;
     band_ = NextBand(band_, *ratio);
-    // The number held 5 s, over the last 5 s; at once when the band changes (its sentence with it).
+    // The number held 2 s, over the last 2 s; at once when the band changes (its sentence with it).
     if (!shownAt_ || now - *shownAt_ >= kHeadroomShownFor || band_ != before) {
         shown_ = band_ != before ? *ratio : ratioOver(kHeadroomShownFor).value_or(*ratio);
         shownAt_ = now;
@@ -94,11 +94,22 @@ void Headroom::update(Time simTime, std::int64_t runNs, Clock::time_point now) {
 
 void Headroom::reset() { *this = {}; }
 
+// No more digits than the measure is worth: "0.34×", "1.2×", "13×".
+std::string HeadroomNumber(double ratio) {
+    if (ratio < 0.995) {
+        return std::format("{:.2f}×", ratio);
+    }
+    if (ratio < 3.95) {
+        return std::format("{:.1f}×", ratio);
+    }
+    return std::format("{:.0f}×", ratio);
+}
+
 std::string HeadroomText(double ratio, Playability band) {
     if (band == Playability::Playable) {
         return std::format("On this computer it runs at full speed: it could go {} as fast as the "
                            "real one.",
-                           SpeedText(ratio));
+                           HeadroomNumber(ratio));
     }
     const long percent = std::clamp(std::lround(ratio * 100), 1L, 99L);
     return std::format("On this computer it runs at {}% of the real one's speed.", percent);
