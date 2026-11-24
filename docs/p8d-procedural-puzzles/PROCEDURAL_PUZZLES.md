@@ -1,8 +1,8 @@
 # P8d — Procedural Puzzles
 
-Roadmap step P8d ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): a "?" post-it at the end of a Machine's Puzzles that makes one up when asked: a random Fault, kept only if it shows. Terminology: [GLOSSARY.md](../GLOSSARY.md).
+Roadmap step P8d ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): a "?" post-it at the end of a Machine's Puzzles that makes one up when asked: a random Fault, kept only if it shows. Design: [PROCEDURAL_PUZZLES_DESIGN.md](PROCEDURAL_PUZZLES_DESIGN.md). Plan: [PROCEDURAL_PUZZLES_PLAN.md](PROCEDURAL_PUZZLES_PLAN.md). Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
-Complete but for Open (below), for the user to read before the design and the plan are written (2026-11-24). The framework and the samples came first; what the player sees was settled with the samples in hand.
+Read by the user before the design and the plan (2026-11-24). The framework and the samples came first; what the player sees was settled with the samples in hand.
 
 ## Why
 
@@ -49,18 +49,21 @@ Asked with the samples in hand (the user, 2026-11-24):
 | The Launcher's live picture | the working Machine; maybe a large "?" over it, if it renders well |
 | The BW-80's typed line | `PRINT 42` and NEW LINE: O, 4, 2, NEW LINE |
 | A knob | takes several positions during the run (the Knob meter, the Tennis) |
+| The BW-2001's typed line | none: skipped (7 s more a try for 2 Faults in 67) |
+| The texts (the waiting lines, the fixed sentence, each "do this") | the drafts below, and "we'll see how it goes" |
 
 Chosen without asking (overturn any):
 
 - The post-it is on every Machine, after its last Puzzle, a gap apart; its "?" stands where the others have their brief.
 - The waiting lines: a first list below, the user's to rewrite. One line stays about a second at least, so it can be read where a Puzzle is made in a tenth of a second (overturn if it annoys). No percentage: the number of tries is not known ahead. Esc stops the making and stays in the Launcher.
 - The Brief's fixed sentence and each Machine's "do this": drafts below, the user's to rewrite.
-- The Thank-you Card's Next on a Random fault is "Another random fault", on the same Machine.
+- The Thank-you Card's Next on a Random fault is "Another random fault", on the same Machine: back through the Launcher, where it is made.
 - Reset brings the same Fault back; leaving the bench forgets it; the post-it opened again makes another. No seed is shown.
 - Giving up is a divider of the binder, "Give up", on a Random fault's bench only. Once shown, the Fault stays shown for the bench; the Machine can still be repaired, and the tick and the card come as for any Puzzle. The line is a `.bwp`'s own (`fault stuck IC17.12 0`): pasted under a `machine` line it is an Authored Puzzle.
-- A Machine's inputs, capture times and "do this" are one file of its own, `machines/NNN-name/puzzles/random.txt`, written with the strings `bw run` takes (`press SW1:300ms:800ms`, `knob J2:42%`, `type J3:350ms:PRINT 42`), a `capture 500ms` a capture and one `do "…"`.
+- A Machine's inputs, capture times and "do this" are one file of its own, its Vetting Script, `machines/NNN-name/puzzles/random.bwr`, written with the strings `bw run` takes (`press SW1:300ms:800ms`, `knob J2:42%`, `type J3:350ms:PRINT 42`), a `capture 500ms` a capture and one `task "…"`. Its path is what names a Random fault wherever a Puzzle's file does: `bw_ui machines/NNN-name/puzzles/random.bwr` opens one from the terminal.
 - One code vets in the game and in `bw`: a command makes a Random fault from the terminal (the author's check, the tests' way in). `tools/fault_sample.py` stays the research's tool.
 - Cells are rare by their weight and the five tries; nothing draws them among the words the Machine reads.
+- A try ends at the first capture that shows: on the BW-80 a lost picture is known at 300 ms, before the line is typed.
 - A candidate the Machine refuses (a power pin, two pins that are not neighbours, a Trace with nothing crackable) is not one of the five: it costs nothing and is drawn again.
 - Inside a kind every physical object is as likely: each chip signal pin, each pair of neighbouring pins, each pad for a crack (then another pad of its Net and a place between them).
 - The power-on seed is 1, `bw_ui`'s: untouched, the Vetting run is the run the player sees.
@@ -93,18 +96,18 @@ A kind with nothing to act on (no memory chip, no switch) drops out, the others 
 
 ### While the Puzzle is made
 
-4. The Launcher stays; a line of text changes about every second, looping through ridiculous ways of breaking a computer. A first list:
-   - "Spilling coffee on the board…"
-   - "Dropping it down the stairs…"
-   - "Letting the cat sleep on it…"
-   - "Leaving it in a damp cellar for ten years…"
-   - "Plugging the power in backwards…"
-   - "Lending it to a nephew…"
-   - "Shaking it to hear what rattles…"
-   - "Poking around with a screwdriver, power on…"
-   - "Checking that it no longer works…"
-5. How long: under a second on eleven Machines, a few seconds on the Typewriter, the BW-2001 and the BW-80 (What the samples show), more than twice that on the web.
-6. Esc stops it; the Launcher is as it was.
+4. The Launcher stays; a line of text changes about every second, looping through ridiculous ways of breaking a computer. A first list (three dots, typed as dots: the UI font has no ellipsis):
+   - "Spilling coffee on the board..."
+   - "Dropping it down the stairs..."
+   - "Letting the cat sleep on it..."
+   - "Leaving it in a damp cellar for ten years..."
+   - "Plugging the power in backwards..."
+   - "Lending it to a nephew..."
+   - "Shaking it to hear what rattles..."
+   - "Poking around with a screwdriver, power on..."
+   - "Checking that it no longer works..."
+5. How long: the Golden Machine is run once first, then the tries. Estimated from the samples: under a second on ten Machines, one to two on the Bouncing ball and the Tennis, about 4 s on the Typewriter, about 10 s on the BW-2001 and 9 s on the BW-80 (the Golden Machine's run is 4 and 5 of them); more than twice that on the web. Measured when the Vetting is built (the plan's phase 4).
+6. Esc stops it; the Launcher is as it was. No other key or click does anything meanwhile.
 
 ### On the bench
 
@@ -132,7 +135,7 @@ A kind with nothing to act on (no memory chip, no switch) drops out, the others 
 
 ## What is new
 
-1. **A Machine's Random fault file** (`machines/NNN-name/puzzles/random.txt`, one a Machine): its inputs with their times, its capture times, its "do this"; read and checked with the Machine.
+1. **A Machine's Vetting Script** (`machines/NNN-name/puzzles/random.bwr`, one a Machine): its inputs with their times, its capture times, its "do this"; read and checked with the Machine.
 2. **A knob set at a time**, in the inputs and in `bw run --knob`: today a knob keeps one position for a run.
 3. **Drawing a Fault**: a kind by weight, then one of the Machine's objects of that kind (a chip signal pin, two neighbouring pins, two pads of a Net and a place between, a memory's column or cell, a switch); the Machine refuses what cannot be (`Machine::inject`).
 4. **Vetting**: the Machine built with the Fault, run headless from power-on with seed 1, the inputs played, the TV's frame or each lamp's brightness captured at the capture times, and compared with the Golden Machine's captures, made once.
@@ -230,24 +233,23 @@ What the samples are not: one seed; a lamp's margin (a quarter of the brightest 
 
 ## Tests
 
-- Unit: the Random fault file (each kind of line, its errors by line); a knob set at a time; drawing (every kind, a kind with nothing to act on dropped, the weights, the same Fault for the same seed); Vetting on the Counter (its Dark LED's crack shows, a stuck unconnected output does not) and on a TV Machine; the loop (a kind that never shows is left after five tries).
+- Unit: the Vetting Script (each kind of line, its errors by line); a knob set at a time; drawing (every kind, a kind with nothing to act on dropped, the weights, the same Fault for the same seed); Vetting on the Counter (its Dark LED's crack shows, a stuck unconnected output does not) and on a TV Machine; the loop (a kind that never shows is left after five tries).
 - Every Machine: its file loads; its Golden Machine's captures are stable (a locked picture at each capture time); for a few seeds a Random fault is made, loads, shows, is not completed as made, and is completed after the Repair its kind calls for (a swap, a mend, the bridge removed, a resolder).
 - `bw`'s command: the same line for the same seed.
 - Screenshots (release, viewed): the Launcher on the post-it, with and without the "?" over the picture; a waiting line; a Random fault's bench with its Brief; the binder's page before and after "Show the fault".
-- Speed: the time to make one on each Machine, native and on the web.
+- Speed: the time to make one on each Machine (`bw random`: the Golden Machine's run and the whole making); on the web the user times the Counter, the BW-2001 and the BW-80.
 - Sanitizers: debug on the unit tests and the small Machines' cases; debug `bw_ui` making one on the Counter.
 - Web build (the Launcher and the bench draw something new; the making runs on a thread).
-- Only the user: the waiting lines and the Briefs' words, a few Random faults played on several Machines, the "?" over the picture.
+- Only the user: the waiting lines and the Briefs' words, a few Random faults played on several Machines (the card's "Another random fault", Esc during a making), the "?" over the picture, the making in a browser.
 - The full release suite.
 
 ## Open
 
-For the user, before the design:
+For the user: the wait on the BW-2001 and the BW-80. The estimate is about 10 s and 9 s (What the player sees, item 5), not the "few seconds" given when "made when the player clicks" was chosen: that left out the Golden Machine's run. Measured in the plan's phase 4, before the Launcher's part is built. If it is too long: the Golden Machine's run kept from one making to the next on the same Machine (the second Random fault waits half as long), or started when the post-it is selected, before the click.
 
-- The BW-2001's typed line: left out here (7 s more a try for 2 Faults in 67), against "a typed line on the computers".
-- The texts: the waiting lines, the fixed sentence, each Machine's "do this".
+To tune in play, with starting values here: the texts; the weights; the thresholds (100 cells of the TV's picture, each off by more than a quarter; a lamp off by a quarter of the brightest); the BW-1's keys (its inputs press 7 of 23: more keys find more switch Faults, for a longer run).
 
-To tune in play, with starting values here: the weights; the thresholds (100 px on a TV, a quarter of the brightest lamp); the BW-1's keys (its inputs press 7 of 23: more keys find more switch Faults, for a longer run).
+The game's draw is not the samples' in three ways, measured again when it is built: every pin is as likely (the tool drew a chip first), the oscillator and the power-on reset are chips that can be faulty, and a slide switch can be.
 
 Known and accepted: a minimum number of pixels throws away the one-dot ROM cell, the kind of the BW-2001's Odd E; the Dice's dark die after the release is not found (a capture there would also take 10 changed faces for Symptoms); the later positions of the knobs and their times are unchecked until a knob can move.
 
