@@ -1,0 +1,4 @@
+# Random faults on the Message display (P8d): how one is vetted, and what its Brief asks.
+# A still page.
+machine message
+capture 300ms

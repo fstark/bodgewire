@@ -1,0 +1,11 @@
+# Random faults on the Tennis (P8d): how one is vetted, and what its Brief asks.
+# A game started, then both paddles moved.
+machine tennis
+task "Press START and turn both knobs."
+knob J3:40%
+knob J4:60%
+press SW1:200ms:300ms
+knob J3:85%:1100ms
+knob J4:15%:1100ms
+capture 1000ms
+capture 1500ms

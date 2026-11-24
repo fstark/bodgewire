@@ -628,7 +628,8 @@ std::optional<Point> Machine::padPosition(std::string_view reference, std::strin
 
 std::filesystem::path MachineDir(const std::filesystem::path& file) {
     const auto path = std::filesystem::absolute(file);
-    return path.extension() == ".bwp" ? path.parent_path().parent_path() : path.parent_path();
+    const bool inPuzzles = path.extension() == ".bwp" || path.extension() == ".bwr";
+    return inPuzzles ? path.parent_path().parent_path() : path.parent_path();
 }
 
 std::expected<Puzzle, std::vector<Diagnostic>> ReadPuzzleFile(const std::filesystem::path& path) {

@@ -57,9 +57,50 @@ TEST_CASE("machine list: a directory", "[machine]") {
     CHECK(b.name == "020-b");
     CHECK(b.line.empty());
     CHECK(b.puzzles.empty());
+    CHECK_FALSE(a.random);  // no puzzles/random.bwr: no Random fault, and no problem
+    CHECK_FALSE(b.random);
     CHECK(list.problems.size() == 3);  // 03-bad, 04-other, 040-d
 
     CHECK(ListMachines(root / "nowhere").machines.empty());
+    fs::remove_all(root);
+}
+
+TEST_CASE("machine list: the Vetting Script", "[machine]") {
+    const fs::path root = fs::temp_directory_path() / "bw_machine_list_random";
+    fs::remove_all(root);
+    WriteFile(root / "010-a/a.bwn", "");
+    WriteFile(root / "010-a/puzzles/01-x.bwp", "machine a\ntitle \"X\"\nbrief \"Ex\"\n");
+    WriteFile(root / "010-a/puzzles/random.bwr", "machine a\ncapture 1ms\n");
+    WriteFile(root / "010-a/puzzles/other.bwr", "nonsense");  // only random.bwr is read
+    WriteFile(root / "020-b/b.bwn", "");
+    WriteFile(root / "020-b/puzzles/random.bwr", "machine b\ncapture soon\n");
+    WriteFile(root / "030-c/c.bwn", "");
+    WriteFile(root / "030-c/puzzles/random.bwr", "machine a\ncapture 1ms\n");
+
+    const MachineList list = ListMachines(root);
+    REQUIRE(list.machines.size() == 3);
+    const MachineEntry& a = list.machines[0];
+    REQUIRE(a.random);
+    CHECK(a.random->filename() == "random.bwr");
+    CHECK(a.puzzles.size() == 1);          // not a Puzzle of the list
+    CHECK_FALSE(list.machines[1].random);  // does not parse
+    CHECK_FALSE(list.machines[2].random);  // names another Machine
+    REQUIRE(list.problems.size() == 2);
+    CHECK(list.problems[0].file == "random.bwr");
+    CHECK(list.problems[0].line == 2);
+    CHECK(list.problems[1].message == "machine 'a' is not this directory's 'c': left out");
+
+    const auto entry = EntryOf(list, root / "010-a/puzzles/random.bwr");
+    REQUIRE(entry);
+    CHECK(entry->machine == 0);
+    CHECK_FALSE(entry->puzzle);
+    CHECK(entry->random);
+    const auto working = EntryOf(list, root / "010-a/a.bwn");
+    REQUIRE(working);
+    CHECK_FALSE(working->random);
+    CHECK_FALSE(EntryOf(list, root / "020-b/puzzles/random.bwr"));  // left out
+    CHECK(MachineIndexOf(list, root / "010-a/puzzles/random.bwr") == 0u);
+    CHECK(NextPuzzle(list, root / "010-a/puzzles/random.bwr") == nullptr);
     fs::remove_all(root);
 }
 
@@ -80,6 +121,7 @@ TEST_CASE("machine list: the repository", "[machine]") {
     for (const MachineEntry& machine : list.machines) {
         INFO(machine.dir.filename().string());
         CHECK_FALSE(machine.line.empty());
+        CHECK(machine.random.has_value());  // every Machine has its Vetting Script (P8d)
         CHECK(machine.line.find('`') == std::string::npos);
         CHECK(machine.line.find("**") == std::string::npos);
         for (const PuzzleEntry& puzzle : machine.puzzles) {

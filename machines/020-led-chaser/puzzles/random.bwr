@@ -1,0 +1,11 @@
+# Random faults on the LED chaser (P8d): how one is vetted, and what its Brief asks.
+# One pass of the light, a step (66 ms) apart.
+machine chaser
+capture 600ms
+capture 666ms
+capture 732ms
+capture 798ms
+capture 864ms
+capture 930ms
+capture 996ms
+capture 1062ms

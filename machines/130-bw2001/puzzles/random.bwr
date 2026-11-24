@@ -1,0 +1,5 @@
+# Random faults on the BW-2001 (P8d): how one is vetted, and what its Brief asks.
+# BASIC's banner and READY: its memory test has read the RAM. No typed line (7 s more
+# a try for 2 Faults in 67, P8d's samples).
+machine bw2001
+capture 1400ms

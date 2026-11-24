@@ -9,5 +9,6 @@ add_library(bw_machine STATIC
   puzzle.cpp
   repair.cpp
   typing.cpp
+  vetting_script.cpp
 )
 target_link_libraries(bw_machine PUBLIC bw_board PRIVATE bw_manual bw_warnings)

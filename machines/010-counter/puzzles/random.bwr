@@ -1,0 +1,7 @@
+# Random faults on the Counter (P8d): how one is vetted, and what its Brief asks.
+# The LED is watched over more than one of its periods (about a second).
+machine counter
+capture 250ms
+capture 500ms
+capture 750ms
+capture 1250ms

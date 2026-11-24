@@ -232,6 +232,9 @@ TEST_CASE("machine: MachineDir", "[machine]") {
     CHECK(MachineDir(test::NetlistPath("counter")) == test::MachineDir("counter"));
     CHECK(MachineDir("/a/b/c.bwp") == "/a");
     CHECK(MachineDir("/a/b/c.bwn") == "/a/b");
+    CHECK(MachineDir("/a/b/random.bwr") == "/a");  // a Vetting Script, in puzzles/ too
+    CHECK(MachineDir(test::MachineDir("counter") / "puzzles/random.bwr") ==
+          test::MachineDir("counter"));
 }
 
 TEST_CASE("machine: ReadPuzzleFile + LoadMachine", "[machine]") {

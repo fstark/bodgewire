@@ -1,0 +1,6 @@
+# Random faults on the Bouncing ball (P8d): how one is vetted, and what its Brief asks.
+# The ball moves: three places.
+machine ball
+capture 600ms
+capture 900ms
+capture 1200ms

@@ -1,0 +1,7 @@
+# Random faults on the BW-80 (P8d): how one is vetted, and what its Brief asks.
+# The K cursor before any key (a lost picture is known there), then 42 and its report.
+machine bw80
+task "Type PRINT 42 and NEW LINE."
+type J3:350ms:PRINT 42\n
+capture 300ms
+capture 1200ms

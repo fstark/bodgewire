@@ -8,8 +8,6 @@
 
 namespace bw {
 
-namespace {
-
 bool IsMachineName(std::string_view text) {
     if (text.empty()) {
         return false;
@@ -21,6 +19,31 @@ bool IsMachineName(std::string_view text) {
     }
     return true;
 }
+
+std::optional<std::string> QuotedValue(std::string_view rest) {
+    std::size_t i = 0;
+    while (i < rest.size() && IsSpace(rest[i])) {
+        ++i;
+    }
+    if (i == rest.size() || rest[i] != '"') {
+        return std::nullopt;
+    }
+    const std::size_t close = rest.find('"', i + 1);
+    if (close == std::string_view::npos) {
+        return std::nullopt;
+    }
+    for (std::size_t j = close + 1; j < rest.size(); ++j) {
+        if (rest[j] == '#') {
+            break;
+        }
+        if (!IsSpace(rest[j])) {
+            return std::nullopt;
+        }
+    }
+    return std::string(rest.substr(i + 1, close - i - 1));
+}
+
+namespace {
 
 // "$1FF" (1-8 hex digits, either case) or "511" (1-9 decimal digits).
 std::optional<std::uint32_t> ParseWord(std::string_view text) {
@@ -46,30 +69,6 @@ std::optional<std::uint32_t> ParseWord(std::string_view text) {
         value = value * (hex ? 16u : 10u) + digit;
     }
     return value;
-}
-
-// `"TEXT"` then only spaces or a # comment; nullopt otherwise.
-std::optional<std::string> QuotedValue(std::string_view rest) {
-    std::size_t i = 0;
-    while (i < rest.size() && IsSpace(rest[i])) {
-        ++i;
-    }
-    if (i == rest.size() || rest[i] != '"') {
-        return std::nullopt;
-    }
-    const std::size_t close = rest.find('"', i + 1);
-    if (close == std::string_view::npos) {
-        return std::nullopt;
-    }
-    for (std::size_t j = close + 1; j < rest.size(); ++j) {
-        if (rest[j] == '#') {
-            break;
-        }
-        if (!IsSpace(rest[j])) {
-            return std::nullopt;
-        }
-    }
-    return std::string(rest.substr(i + 1, close - i - 1));
 }
 
 class Parser {

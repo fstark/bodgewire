@@ -1,0 +1,17 @@
+# Random faults on the BW-1 (P8d): how one is vetted, and what its Brief asks.
+# AD 0 3 0 0 DA A 9 +: the digits at power-on, after the address, the byte and the +.
+machine bw1
+task "Pick an address with AD, change its byte with DA, go on with +."
+press SW17:100ms:150ms
+press SW1:200ms:250ms
+press SW4:300ms:350ms
+press SW1:400ms:450ms
+press SW1:500ms:550ms
+press SW18:600ms:650ms
+press SW11:700ms:750ms
+press SW10:800ms:850ms
+press SW19:900ms:950ms
+capture 80ms
+capture 580ms
+capture 880ms
+capture 1000ms

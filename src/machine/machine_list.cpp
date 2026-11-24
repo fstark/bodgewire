@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "machine/machine.hpp"
+#include "machine/vetting_script.hpp"
 #include "manual/markdown.hpp"
 #include "text/text.hpp"
 
@@ -90,6 +91,21 @@ MachineList ListMachines(const fs::path& machinesDir) {
         machine.line = std::move(line);
         const std::string stem = machine.netlist.stem().string();
         for (const fs::path& file : Entries(dir / "puzzles")) {
+            if (file.filename() == "random.bwr") {
+                const auto script = ReadVettingScriptFile(file);
+                if (!script) {
+                    list.problems.insert(list.problems.end(), script.error().begin(),
+                                         script.error().end());
+                } else if (script->machine != stem) {
+                    list.problems.push_back({file.filename().string(), script->machineLine,
+                                             Severity::Warning,
+                                             "machine '" + script->machine + "' is not this " +
+                                                 "directory's '" + stem + "': left out"});
+                } else {
+                    machine.random = file;
+                }
+                continue;
+            }
             if (file.extension() != ".bwp") {
                 continue;
             }
@@ -143,6 +159,9 @@ std::optional<EntryRef> EntryOf(const MachineList& list, const fs::path& file) {
         const MachineEntry& machine = list.machines[m];
         if (Canonical(machine.netlist) == wanted) {
             return EntryRef{m, std::nullopt};
+        }
+        if (machine.random && Canonical(*machine.random) == wanted) {
+            return EntryRef{m, std::nullopt, true};
         }
         for (std::size_t p = 0; p < machine.puzzles.size(); ++p) {
             if (Canonical(machine.puzzles[p].file) == wanted) {

@@ -1,0 +1,4 @@
+# Random faults on the Test pattern (P8d): how one is vetted, and what its Brief asks.
+# A still picture.
+machine test_pattern
+capture 400ms

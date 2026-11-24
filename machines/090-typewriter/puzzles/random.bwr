@@ -1,0 +1,7 @@
+# Random faults on the Typewriter (P8d): how one is vetted, and what its Brief asks.
+# The page cleared, then twelve keys, 100 ms apart.
+machine typewriter
+task "Press CLEAR and type a few words."
+press SW1:500ms:700ms
+type J3:1s:HELLO, WORLD
+capture 2500ms

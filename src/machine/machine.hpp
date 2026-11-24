@@ -155,7 +155,8 @@ std::expected<StuckCell, std::string> ResolveCell(const CellDecl& decl, const Co
                                                   std::string_view part);
 
 // The Machine's directory (machines/NNN-name: netlist, board/, manuals/, roms/, puzzles/) of a
-// file in it: a Puzzle's directory's parent, a netlist's own directory.
+// file in it: a Puzzle's or a Vetting Script's (.bwp, .bwr) directory's parent, a netlist's own
+// directory.
 std::filesystem::path MachineDir(const std::filesystem::path& file);
 
 // Read + ParsePuzzle.

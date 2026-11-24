@@ -66,6 +66,12 @@ struct Puzzle {
     std::vector<FaultDecl> faults;  // in file order
 };
 
+// A Machine's netlist name as a .bwp and a .bwr write it: [a-z0-9_]+.
+bool IsMachineName(std::string_view text);
+// `"TEXT"` then only spaces or a # comment: TEXT (a Puzzle's title and brief, a Vetting Script's
+// task); nullopt otherwise.
+std::optional<std::string> QuotedValue(std::string_view rest);
+
 // All syntax errors, in line order.
 std::expected<Puzzle, std::vector<Diagnostic>> ParsePuzzle(std::string_view text, std::string file);
 

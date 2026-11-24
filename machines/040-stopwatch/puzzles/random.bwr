@@ -1,0 +1,12 @@
+# Random faults on the Stopwatch (P8d): how one is vetted, and what its Brief asks.
+# STOP and RESET (0.00), START, counting, then STOP: 0.00, 0.2, 0.5, 0.70.
+machine stopwatch
+task "Try START, STOP and RESET."
+press SW2:50ms:100ms
+press SW3:150ms:250ms
+press SW1:300ms:400ms
+press SW2:1000ms:1100ms
+capture 280ms
+capture 600ms
+capture 900ms
+capture 1300ms

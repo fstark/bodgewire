@@ -1,0 +1,12 @@
+# Random faults on the LED computer (P8d): how one is vetted, and what its Brief asks.
+# The light on its way out, then again after a RESET.
+machine led_computer
+task "Watch the light, then press RESET."
+press SW1:1000ms:1100ms
+capture 200ms
+capture 400ms
+capture 600ms
+capture 800ms
+capture 1300ms
+capture 1500ms
+capture 1700ms

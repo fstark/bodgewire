@@ -1,0 +1,10 @@
+# Random faults on the Knob meter (P8d): how one is vetted, and what its Brief asks.
+# Three positions of the knob (42, 86, 05): one draws two digits only.
+machine knob
+task "Turn the knob from end to end."
+knob J2:42%
+knob J2:87%:400ms
+knob J2:5%:800ms
+capture 300ms
+capture 700ms
+capture 1100ms

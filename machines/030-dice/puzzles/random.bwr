@@ -1,0 +1,7 @@
+# Random faults on the Dice (P8d): how one is vetted, and what its Brief asks.
+# Captured while ROLL is held: the face left after the release depends on its instant.
+machine dice
+task "Hold ROLL, then let go."
+press SW1:300ms:800ms
+capture 500ms
+capture 700ms

@@ -7,8 +7,8 @@ Spec: [PROCEDURAL_PUZZLES.md](PROCEDURAL_PUZZLES.md). Design: [PROCEDURAL_PUZZLE
 | Phase | Description | Commit |
 |---|---|---|
 | 0 | The research: the BW-80's sample, `bw run --leds`, every Machine sampled, the spec | `aaf07b1`, `c1f086e`, `7b5197b`, `967390c`, `bd84a32` |
-| 1 | A knob set at a time; the inputs out of `bw run` | this commit |
-| 2 | The Vetting Script and its fourteen files | |
+| 1 | A knob set at a time; the inputs out of `bw run` | `3e936ae` |
+| 2 | The Vetting Script and its fourteen files | this commit |
 | 3 | Drawing a Fault | |
 | 4 | Vetting, making a Puzzle, `bw random` | |
 | 5 | The bench on a Random fault, the "Give up" page | |
@@ -95,6 +95,7 @@ Fence: the full release suite; the web build. Commit: `docs: P8d done, Procedura
   4. The binder's smallest height cannot be reached by a flag, and six tabs need a ROM: the tabs' layout is a tested function (`TabTops`), the screenshot is the Message's with `--contents`.
   5. Phase 6's fence had checks no flag can make (the card clicked, Esc, the browser): they are the user's, and `PuzzleMaker` moved to `src/session` so its stopping is unit tested.
   - Also from it: `RunTo`'s `slice` can stop a run and `Vetting::Make` can be stopped; the watched outputs are decided once on the fault-free build; an exception in a try counts as not showing; the fourteen files written out in D2 with their presses; `QuotedValue` and `IsMachineName` shared; the card's "Another random fault" moved to phase 6, where the Launcher can make one; `--make` under `--screenshot`; the lines' three dots typed as dots; `kPictureQuestion` and `sign` (Mark alone is a Pencil Mark's word).
+- 2026-11-25, phase 2: as designed, but `machine` need not be the first line (as in a `.bwp`: one `machine` line, anywhere). Only the file named `random.bwr` is read; another `.bwr` in `puzzles/` is ignored. `VettingScript` keeps its `machine` and `task` line numbers for the list's problems. The `every Machine's inputs exist` case also checks that no input starts after the last capture time (a release may: the Dice's) and that a `task` is there exactly when the script has inputs. Until phase 5 a `.bwr` given to `bw_ui` is a load error, and `--select` of one selects its Machine's card. Checks: release, the full suite (1590). Debug: `vetting script|machine list|machine: MachineDir|puzzle: `.
 - 2026-11-24, phase 1: as designed. `RunTo` also applies an edge whose time is already past (a caller that starts late), where `bw run`'s loop would have asked the Simulator to run backwards. Checks: release, the full suite (1583); `bw run`'s BW-80 frame, the Dice's lamps and the Typewriter's typed frame the same before and after the move; the Knob meter reads 42 at 300 ms and 86 at 700 ms with `--knob J2:42%,J2:87%:400ms`; `bw_ui --knob J2:42%:400ms` refused. Debug: `knob setting|input edges|run to|run_leds`.
 - 2026-11-24, the user, after the docs: the wait on the slow Machines is not a problem at this stage; nothing is built for it (the spec's Open).
 - 2026-11-24, phase 0: the research, before this plan. `bw run --leds` (`c1f086e`) and `LedInput`, `FindLedNets` are in; `tools/fault_sample.py` holds the samples' method and stays as it is.

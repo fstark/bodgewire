@@ -101,7 +101,7 @@ capture 500ms
 capture 700ms
 ```
 
-Lines, `machine` first, the others in any order:
+Lines, in any order (one `machine` line, as in a `.bwp`):
 
 - `machine NAME`: the netlist's name, as a `.bwp` (`IsMachineName`);
 - `task "…"`: at most one, the Brief's "do this" (§7), read by `QuotedValue` as a `.bwp`'s `brief`;
@@ -151,7 +151,7 @@ std::expected<VettingScript, std::vector<Diagnostic>>
 ReadVettingScriptFile(const std::filesystem::path& path);
 ```
 
-Errors by line: an unknown word, a missing or second `machine`, a second `task`, `ParsePress`'s, `ParseKnob`'s and `ParseTyping`'s texts, "no capture", "captures must come in time order". References are checked on the Machine by `InputEdges` (D4), and for every Machine by a test here.
+Errors by line: an unknown directive, a missing or second `machine`, a second `task`, `ParsePress`'s, `ParseKnob`'s and `ParseTyping`'s texts, "no capture line", "captures must come in time order". Only the file named `random.bwr` is a Machine's script. References are checked on the Machine by `InputEdges` (D4), and for every Machine by a test here.
 
 ### `src/machine/machine.cpp`, `src/machine/machine_list.{hpp,cpp}`
 
