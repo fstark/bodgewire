@@ -81,9 +81,9 @@ struct HeadroomRun {
 
 }  // namespace
 
-TEST_CASE("headroom: simulated time over the time spent running, after a quarter second") {
+TEST_CASE("headroom: simulated time over the time spent running, after most of a second") {
     HeadroomRun run;
-    run.run(13.0, 2);
+    run.run(13.0, 8);
     CHECK_FALSE(run.headroom.shown());
     run.run(13.0, 10);
     REQUIRE(run.headroom.shown());
@@ -137,4 +137,22 @@ TEST_CASE("headroom: its sentence, full speed or a share of the real one's") {
           "On this computer it runs at 34% of the real one's speed.");
     CHECK(HeadroomText(1.01, Playability::Slow) ==
           "On this computer it runs at 99% of the real one's speed.");  // the band not yet back
+}
+
+TEST_CASE("headroom: the number held 5 s, the band followed at once") {
+    HeadroomRun run;
+    run.run(13.0, 10);
+    REQUIRE(run.headroom.shown());
+    CHECK(SpeedText(*run.headroom.shown()) == "13×");
+    run.run(20.0, 30);
+    CHECK(SpeedText(*run.headroom.shown()) == "13×");  // held
+    run.run(20.0, 20);
+    CHECK(SpeedText(*run.headroom.shown()) == "20×");  // the last 5 s's
+    run.run(0.5, 9);
+    CHECK(run.headroom.band() == Playability::Playable);  // the last second's: not yet
+    CHECK(SpeedText(*run.headroom.shown()) == "20×");
+    run.run(0.5, 1);
+    CHECK(run.headroom.band() == Playability::Slow);
+    REQUIRE(run.headroom.shown());
+    CHECK(*run.headroom.shown() < 1.0);  // anew with the band: its sentence agrees with the bar
 }

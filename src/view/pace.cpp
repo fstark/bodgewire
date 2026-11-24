@@ -13,8 +13,9 @@ constexpr double kCaughtUp = 0.95;
 constexpr auto kBehindAfter = std::chrono::seconds(2);
 constexpr auto kShownFor = std::chrono::milliseconds(500);
 
-constexpr auto kHeadroomWindow = std::chrono::seconds(1);
-constexpr auto kHeadroomFirst = std::chrono::milliseconds(250);  // measured over at least this
+constexpr auto kHeadroomWindow = std::chrono::seconds(1);    // the band's measure
+constexpr auto kHeadroomShownFor = std::chrono::seconds(5);  // the number's, and how long it holds
+constexpr auto kHeadroomFirst = std::chrono::milliseconds(900);  // measured over at least this
 constexpr double kSlowUnder = 0.9;                               // Playable → Slow
 constexpr double kPlayableOver = 1.0;                            // → Playable
 constexpr double kTooSlowUnder = 0.27;                           // → TooSlow
@@ -64,19 +65,29 @@ void Headroom::update(Time simTime, std::int64_t runNs, Clock::time_point now) {
         reset();
     }
     history_.push_back({now, simTime, runNs});
-    while (now - history_.front().wall > kHeadroomWindow) {
+    while (now - history_.front().wall > kHeadroomShownFor) {
         history_.pop_front();
     }
-    const Point& first = history_.front();
-    const std::int64_t work = runNs - first.runNs;
-    if (now - first.wall < kHeadroomFirst || work <= 0) {
+    // Simulated time over work since the oldest Point within `window`; none on too short a span.
+    const auto ratioOver = [&](Clock::duration window) -> std::optional<double> {
+        const auto first = std::ranges::find_if(
+            history_, [&](const Point& point) { return now - point.wall <= window; });
+        const std::int64_t work = runNs - first->runNs;
+        if (now - first->wall < kHeadroomFirst || work <= 0) {
+            return std::nullopt;
+        }
+        return static_cast<double>(simTime - first->simTime) /
+               static_cast<double>(kPicosPerSecond) / (static_cast<double>(work) * 1e-9);
+    };
+    const auto ratio = ratioOver(kHeadroomWindow);
+    if (!ratio) {
         return;
     }
-    const double ratio = static_cast<double>(simTime - first.simTime) /
-                         static_cast<double>(kPicosPerSecond) / (static_cast<double>(work) * 1e-9);
-    band_ = NextBand(band_, ratio);
-    if (!shownAt_ || now - *shownAt_ >= kShownFor) {
-        shown_ = ratio;
+    const Playability before = band_;
+    band_ = NextBand(band_, *ratio);
+    // The number held 5 s, over the last 5 s; at once when the band changes (its sentence with it).
+    if (!shownAt_ || now - *shownAt_ >= kHeadroomShownFor || band_ != before) {
+        shown_ = band_ != before ? *ratio : ratioOver(kHeadroomShownFor).value_or(*ratio);
         shownAt_ = now;
     }
 }

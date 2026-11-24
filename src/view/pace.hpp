@@ -34,16 +34,17 @@ private:
 enum class Playability : std::uint8_t { Playable, Slow, TooSlow };
 
 // How fast a Machine could run while the launcher runs it at 1×: simulated time over the wall time
-// its simulation thread spent running (pacing sleeps excluded), the last second's. Its band goes
-// down under 0.9× and 0.27×, back up over 1× and 0.3×, so a Machine at a limit does not flicker;
-// the number shown is held 0.5 s, as the run switch's.
+// its simulation thread spent running (pacing sleeps excluded). Its band, from the last second's,
+// goes down under 0.9× and 0.27×, back up over 1× and 0.3×, so a Machine at a limit does not
+// flicker; the number shown, the last 5 s's, is held 5 s (read, not watched), and taken anew from
+// the last second's when the band changes, so its sentence agrees with the bar.
 class Headroom {
 public:
     using Clock = std::chrono::steady_clock;
     // `runNs`: RunnerStatus::runNs. Either going back (powered on again): measured anew.
     void update(Time simTime, std::int64_t runNs, Clock::time_point now);
     void reset();                                           // another Machine: measured anew
-    std::optional<double> shown() const { return shown_; }  // none until a quarter second's work
+    std::optional<double> shown() const { return shown_; }  // none until most of a second's
     Playability band() const { return band_; }
 
 private:
