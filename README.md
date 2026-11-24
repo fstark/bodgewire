@@ -30,6 +30,8 @@ are chip-for-chip copies of the Commodore PET 2001 and the Sinclair ZX80, runnin
 
 Every Machine shows up in the launcher with a short description, and each of its Puzzles is a
 post-it you can pick. "Start the Machine" gives you the working one, to see how it should behave.
+The last post-it, "Random fault", breaks the Machine somewhere new each time you open it, and
+checks that the fault shows before handing you the bench.
 
 ![The launcher](docs/readme/launcher.png)
 

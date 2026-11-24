@@ -2,7 +2,7 @@
 
 Roadmap step P8d ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): a "?" post-it at the end of a Machine's Puzzles that makes one up when asked: a random Fault, kept only if it shows. Design: [PROCEDURAL_PUZZLES_DESIGN.md](PROCEDURAL_PUZZLES_DESIGN.md). Plan: [PROCEDURAL_PUZZLES_PLAN.md](PROCEDURAL_PUZZLES_PLAN.md). Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
-Read by the user before the design and the plan (2026-11-24). The framework and the samples came first; what the player sees was settled with the samples in hand.
+Done 2026-11-25. Read by the user before the design and the plan (2026-11-24). The framework and the samples came first; what the player sees was settled with the samples in hand. What was measured once built is under Tests.
 
 ## Why
 
@@ -97,7 +97,7 @@ A kind with nothing to act on (no memory chip, no switch) drops out, the others 
 
 ### While the Puzzle is made
 
-4. The Launcher stays; a line of text changes about every second, looping through ridiculous ways of breaking a computer. A first list (three dots, typed as dots: the UI font has no ellipsis):
+4. The Launcher stays, its wood dimmed; on a dark plate in its middle a line of text changes every second, looping through ridiculous ways of breaking a computer, with "Making a random fault. Esc stops." under it. A first list (three dots, typed as dots: the UI font has no ellipsis):
    - "Spilling coffee on the board..."
    - "Dropping it down the stairs..."
    - "Letting the cat sleep on it..."
@@ -107,7 +107,7 @@ A kind with nothing to act on (no memory chip, no switch) drops out, the others 
    - "Shaking it to hear what rattles..."
    - "Poking around with a screwdriver, power on..."
    - "Checking that it no longer works..."
-5. How long: the Golden Machine is run once first, then the tries. Estimated from the samples: under a second on ten Machines, one to two on the Bouncing ball and the Tennis, about 4 s on the Typewriter, about 10 s on the BW-2001 and 9 s on the BW-80 (the Golden Machine's run is 4 and 5 of them); more than twice that on the web. Measured when the Vetting is built (the plan's phase 4).
+5. How long (measured, 20 makings a Machine, Tests): the Golden Machine is run once first, then one to three tries. Under a second on nine Machines, one to two on the Bouncing ball and the Tennis, about 4 s on the Typewriter, 7 to 10 s on the BW-2001 and the BW-80 (the Golden Machine's run is 4 and 5 of them); more than twice that on the web. A line stays a second at least, so no making is shorter.
 6. Esc stops it; the Launcher is as it was. No other key or click does anything meanwhile.
 
 ### On the bench
@@ -131,8 +131,8 @@ A kind with nothing to act on (no memory chip, no switch) drops out, the others 
 
 ### Giving up
 
-10. On this bench the binder has one more divider, "Give up". Its page asks whether the player is sure, with one button, "Show the fault".
-11. Pressed, the page shows the `fault` line. A click on the line copies it.
+10. On this bench the binder has one more divider, "Give up". Its page asks whether the player is sure ("This board has one fault, picked at random. Nobody wrote it down, but this page can tell you what it is. Once shown, it stays shown."), with one button, "Show the fault".
+11. Pressed, the page shows the `fault` line, for the rest of the bench. A click on the line copies it. The board can still be repaired.
 
 ## What is new
 
@@ -234,27 +234,27 @@ What the samples are not: one seed; a lamp's margin (a quarter of the brightest 
 
 ## Tests
 
-- Unit: the Vetting Script (each kind of line, its errors by line); a knob set at a time; drawing (every kind, a kind with nothing to act on dropped, the weights, the same Fault for the same seed); Vetting on the Counter (its Dark LED's crack shows, a stuck unconnected output does not) and on a TV Machine; the loop (a kind that never shows is left after five tries).
-- Every Machine: its file loads; its Golden Machine's captures are stable (a locked picture at each capture time); for a few seeds a Random fault is made, loads, shows, is not completed as made, and is completed after the Repair its kind calls for (a swap, a mend, the bridge removed, a resolder).
-- `bw`'s command: the same line for the same seed.
-- Screenshots (release, viewed): the Launcher on the post-it, with and without the "?" over the picture; a waiting line; a Random fault's bench with its Brief; the binder's page before and after "Show the fault".
-- Speed: the time to make one on each Machine (`bw random`: the Golden Machine's run and the whole making); on the web the user times the Counter, the BW-2001 and the BW-80.
-- Sanitizers: debug on the unit tests and the small Machines' cases; debug `bw_ui` making one on the Counter.
-- Web build (the Launcher and the bench draw something new; the making runs on a thread).
-- Only the user: the waiting lines and the Briefs' words, a few Random faults played on several Machines (the card's "Another random fault", Esc during a making), the "?" over the picture, the making in a browser.
-- The full release suite.
+- Unit: the Vetting Script (`vetting script: …`); a knob set at a time and the inputs (`knob setting: …`, `input edges: …`, `run to: …`); a Fault's line (`puzzle: FormatFault …`, the 114 Authored Puzzles' Faults there and back); `machine: check …`, `machine: clearFaults`; the draw (`fault draw: …`: every kind, a kind with nothing to act on, the shares, the same Fault for the same seed, every signal pin); the Vetting (`vetting: …`: the Counter's Dark LED shows, a stuck unconnected output does not, a lost picture, the margins, stopping); the loop (`procedural puzzle: …`: five of a kind then another, stopped, the same seed); the maker's thread (`puzzle maker: …`); the lanes, the binder's tabs and the flags (`launcher lanes: …`, `binder: …`, `bench options: …`).
+- Every Machine: its script loads and its inputs exist (`vetting script: every Machine's inputs exist`); one ctest a Machine, `procedural puzzle: NNN-name`: a Puzzle made for three seeds (one on the BW-2001 and the BW-80), not completed as made, completed after the Repair its kind calls for. In debug the seven quick Machines, one seed.
+- `bw random` (`bw_random`): the same line for the same seed; the line loads as a Puzzle.
+- Screenshots (release, viewed): the Launcher on the post-it (the Counter, the BW-2001), with and without the "?" over the picture; a waiting line; a Random fault's bench with its Brief (the Counter, the Dice's task, the BW-2001); the binder's page before and after "Show the fault", six tabs on the Message; the card with "Another random fault".
+- Measured (`bw random`, seeds 1 to 20 on every Machine, 2026-11-25): all 280 made, 1.2 to 2.8 tries a Puzzle; a making's median 0.1 to 0.4 s on nine Machines, 0.9 s on the Bouncing ball, 1.9 s on the Tennis, 4.5 s on the Typewriter, 9.6 s on the BW-2001 and 7.3 s on the BW-80 (six at a time; alone 7.6 s and 5.0 s for seed 1). Kinds made over the 280: stuck 114, crack 84, bridge 41, dry Joint 35, column 3, switch 3, cell 0. The plan's notes have the table.
+- Sanitizers: debug on the unit tests and the quick Machines' cases; debug `bw_ui` on the Counter's bench and making.
+- Web build: links, its data holds the fourteen scripts.
+- Only the user: the waiting lines, the Briefs' and the page's words; a few Random faults played on several Machines (the card's "Another random fault", Esc during a making); the "?" over the picture, on or off; the web page (the post-it, a making in a browser, its seconds).
+- The full release suite (1650).
 
 ## Open
 
-The wait on the BW-2001 and the BW-80, about 10 s and 9 s by the estimate (What the player sees, item 5; the "few seconds" first given left out the Golden Machine's run): not a problem at this stage (the user, 2026-11-24: it is not yet known whether the feature works as well as wanted). If it feels too long once played: something to please the player meanwhile, and the Golden Machine's run kept from one making to the next (no help on the first click). Nothing is built for it now.
+Nothing blocks. To tune once played, with the starting values built:
 
-To tune in play, with starting values here: the texts; the weights; the thresholds (100 cells of the TV's picture, each off by more than a quarter; a lamp off by a quarter of the brightest); the BW-1's keys (its inputs press 7 of 23: more keys find more switch Faults, for a longer run).
+- The texts: the waiting lines, the fixed sentence, each Machine's task, the Give up page's.
+- The weights (35, 32, 12, 10, 6, 3, 2); the thresholds (100 cells of the TV's picture, each off by more than a quarter; a lamp off by a quarter of the brightest); the BW-1's keys (its inputs press 7 of 23: more keys find more switch Faults, for a longer run).
+- The "?" over the live picture: on; both pictures are with the user.
 
-The game's draw is not the samples' in three ways, measured again when it is built: every pin is as likely (the tool drew a chip first), the oscillator and the power-on reset are chips that can be faulty, and a slide switch can be.
+The wait on the BW-2001 and the BW-80 (7 to 10 s): not a problem at this stage (the user, 2026-11-24: it is not yet known whether the feature works as well as wanted). If it feels too long once played: something to please the player meanwhile, and the Golden Machine's run kept from one making to the next (no help on the first click). Nothing is built for it.
 
-Known and accepted: a minimum number of pixels throws away the one-dot ROM cell, the kind of the BW-2001's Odd E; the Dice's dark die after the release is not found (a capture there would also take 10 changed faces for Symptoms); the later positions of the knobs and their times are unchecked until a knob can move.
-
-The glossary's Vetting ("…or is trivial") and Procedural Puzzle entries are rewritten with the step.
+Known and accepted: a minimum number of cells throws away the one-dot ROM cell, the kind of the BW-2001's Odd E; the Dice's dark die after the release is not found (a capture time there would also take 10 changed faces for Symptoms); a single stuck cell was never made in 280 makings (3 % and five tries: as rare as wanted, maybe rarer); the same seed draws the same kinds on two Machines with the same kinds (a seed a making in the game: it does not show).
 
 ## Later
 

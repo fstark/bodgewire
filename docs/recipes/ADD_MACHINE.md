@@ -9,7 +9,7 @@ Reference commits (chaser, 020): `a9b1f20` netlist + manuals + fault-free test, 
 1. **Docs**: `machines/NNN-name/docs/NAME.md` (what it does, circuit, Puzzles) and `NAME_DESIGN.md` (netlist, Board notes, Puzzles with exact faults, manuals). No code design needed unless new Parts.
 2. **Netlist + manuals + fault-free test** (headless, one commit).
 3. **Board**: the agent places it with `bw place`, the user routes it in KiCad, the agent wires the tests (one commit).
-4. **Puzzles** (needs the Board for cracks).
+4. **Puzzles** (needs the Board for cracks), and the Machine's Vetting Script (`puzzles/random.bwr`: its Random faults, §5).
 5. **Session test + release check**, then the docs rows.
 
 ## The directory
@@ -29,6 +29,7 @@ machines/
       schematic/            a real board's transcription (the BW-2001)
     roms/                   only Machines with ROMs: *.asm, *.inc, *.rom, *.bin, contents.txt
     puzzles/NN-name.bwp     easiest first (ADD_PUZZLE.md)
+    puzzles/random.bwr      its Vetting Script: how a Random fault is vetted, what its Brief asks (P8d, §5)
 ```
 
 Shared: `datasheets/` (one per catalogue Part), `footprints/` (vendored KiCad footprints), `bench/` (kernel benchmarks, not Machines), `tests/data/` (test netlists, test-only ROMs, fixtures). No shared ROMs: a ROM two Machines use is copied into each.
@@ -100,6 +101,13 @@ Shared: `datasheets/` (one per catalogue Part), `footprints/` (vendored KiCad fo
 
 - `tests/session/session_test.cpp`: a `[session]` case running the Machine through `Session` (cf. `session: chaser with every instrument`); this checks the `kMaxWatched` budget.
 - Release: `cmake --build --preset release && build/release/src/ui/bw_ui machines/NNN-name/puzzles/<NN-one>.bwp --screenshot /tmp/<m>.png --after 1s`, attach every instrument (`--probe`, `--clip`, `--hook`, `--meter`), and check the ratio stays 1.00× and the UI time stays under ~1 ms (about 1.5 ms on the 58-chip 070 Board). View the PNG. A Machine without Puzzles runs from its netlist (`bw_ui machines/NNN-name/<m>.bwn`, the Board is found by itself). `--press` held for less than a UI frame at the very start is missed: press after 300 ms. `--after` is wall time: a Machine at 0.25× needs four times the simulated time it should reach (`--type J3:1s:…` and a screenshot of the answer: `--after 13s`).
+- The Vetting Script, `puzzles/random.bwr` (P8d): without it the Machine has no "Random fault" post-it. One line a thing, `#` comments (not on a `task` or `type` line):
+  - `machine <m>`;
+  - the inputs a player would give to see the Machine work, as `bw run` takes them: `press SW1:300ms:800ms`, `knob J2:42%` then `knob J2:87%:400ms` (a knob at one position shows a Fault less: the Knob meter at 42 % draws two digits only), `type J3:350ms:PRINT 42\n` (short: a key is 100 ms and more of simulated time);
+  - `capture TIME`, one or more: several where the outputs change (a blinking LED needs one while lit and one while dark; a knob one a position), each on a stable picture of the fault-free Machine (`bw run … --time T --tv x.bmp` says `tv_locked true`; a capture while a key is still read may have none), the first before the inputs when a dead Machine can be told there (the BW-80: a try ends at the first capture time that shows);
+  - `task "…"`: what the Brief asks of the player, in the player's words and vague ("Turn the knob from end to end."); none on a Machine with no input.
+  - Try it: `build/release/src/cli/bw random machines/NNN-name/puzzles/random.bwr --seed 1` for a few seeds: the `fault` line, the tries (two or three is usual), `golden_s` (the fault-free run, paid at every making) and the making's seconds.
+  - Tests that find it by themselves: `machine list: the repository`, `vetting script: every Machine's inputs exist`, and its own ctest `procedural puzzle: NNN-name` (a Puzzle made for three seeds, not completed, completed after its Repair). A Machine whose try is about a tenth of a second in release is added to the debug list in `tests/session/procedural_puzzle_test.cpp`.
 - Docs: roadmap row in `docs/ARCHITECTURE.md` (done + date + one-line summary), user check pending until the user plays it.
 
 ## Gotchas
