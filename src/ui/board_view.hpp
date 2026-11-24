@@ -85,6 +85,8 @@ struct BoardClick {
     std::optional<std::size_t> component;  // the pick's Component, else componentAt(at)
     bool shift = false;                    // Shift held at the release
     bool fromPage = false;  // a pin link in a manual or the chip panel: the selection stays
+    // The Wire tool dragged from this pad (`pick`: where it was released); else a plain click.
+    std::optional<Pick> from = {};
 };
 
 using TooltipText = std::function<std::string(const BoardScene&, const Hit&)>;
@@ -116,7 +118,9 @@ public:
     // parts drawn as the real ones, out of the way where the player works.
     void setPlainLook(bool on) { plainLook_ = on; }
     bool plainLook() const { return plainLook_; }
-    std::optional<BoardClick> takeClick();  // released without dragging
+    // Released without dragging; or, the Wire tool pressed on a pad, released after a drag
+    // (`from`: that pad, the Board not panned).
+    std::optional<BoardClick> takeClick();
     // A memory chip's window clicked (P6p), whatever the tool: no takeClick() for it.
     std::optional<std::size_t> takeContentsClick();
     std::optional<std::size_t> pointedComponent() const { return hovered_ ? hovered_ : selected_; }
@@ -200,6 +204,7 @@ private:
     std::optional<std::size_t> windowPressed_;  // ... on a memory chip's window (P6p)
     std::optional<std::size_t> contentsClick_;
     bool dragging_ = false;
+    std::optional<Pick> wirePress_;  // the Wire tool pressed on this pad: a drag draws a wire
     std::optional<BoardClick> click_;
     std::optional<Point> tip_;
     std::vector<SolderBlob> blobs_;

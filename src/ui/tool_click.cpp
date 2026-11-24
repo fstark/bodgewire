@@ -67,12 +67,27 @@ std::optional<RepairPlan> ToolClick(Owner owner, const BoardClick& click, Sessio
     }
     case Owner::Wire: {
         if (!pick || pick->hit.kind != HitKind::Pad) {
+            if (click.from) {
+                wire.start.reset();  // a dragged wire dropped
+            }
             refuse("Wire: solder to pins only");
             break;
         }
-        const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
-        const Pad& pad = part.pads[pick->hit.index];
-        const PinRef end{part.reference, pad.number};
+        const auto pinOf = [&](const Pick& at) {
+            const BoardComponent& part = session.drawnBoard()->components[at.hit.component];
+            return PinRef{part.reference, part.pads[at.hit.index].number};
+        };
+        const PinRef end = pinOf(*pick);
+        if (click.from) {  // dragged from one pin to another: a click-started wire dropped
+            wire.start.reset();
+            if (const PinRef start = pinOf(*click.from);
+                start.reference != end.reference || start.pin != end.pin) {
+                plan = RepairPlan{{WireRepair{start, end}}, std::nullopt, ""};
+            }
+            break;
+        }
+        const Pad& pad =
+            session.drawnBoard()->components[pick->hit.component].pads[pick->hit.index];
         if (!wire.start) {  // the first pin, with the power on too
             wire.start = end;
             wire.at = pad.position;

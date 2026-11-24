@@ -993,9 +993,12 @@ void BoardView::draw(ImVec2 size) {
         list.AddCircleFilled(map(wire.a), wireBlob, kSolder);
         list.AddCircleFilled(map(wire.b), wireBlob, kSolder);
     }
-    if (wireStart_ && ImGui::IsWindowHovered()) {
-        list.AddLine(map(*wireStart_), ImGui::GetIO().MousePos, kWireInsulation, wireWidth);
-        list.AddCircleFilled(map(*wireStart_), wireBlob, kSolder);
+    // The wire in hand: dragged from a pad, else started by a click.
+    const std::optional<Point> band =
+        wirePress_ && dragging_ ? std::optional(wirePress_->contact) : wireStart_;
+    if (band && (ImGui::IsWindowHovered() || dragging_)) {
+        list.AddLine(map(*band), ImGui::GetIO().MousePos, kWireInsulation, wireWidth);
+        list.AddCircleFilled(map(*band), wireBlob, kSolder);
     }
     for (const PencilMark& mark : marks_) {
         const auto seed = (static_cast<std::uint64_t>(mark.at.x) * 0x9E3779B97F4A7C15ull) ^
@@ -1110,9 +1113,11 @@ void BoardView::input(ImVec2 origin) {
     if (pressed_) {
         if (!dragging_ && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
             dragging_ = true;
-            const ImVec2 total = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
-            viewport_.pan({total.x, total.y});
-        } else if (dragging_) {
+            if (!wirePress_) {
+                const ImVec2 total = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+                viewport_.pan({total.x, total.y});
+            }
+        } else if (dragging_ && !wirePress_) {
             viewport_.pan({io.MouseDelta.x, io.MouseDelta.y});
         }
     }
@@ -1142,7 +1147,7 @@ void BoardView::input(ImVec2 origin) {
             if (onWindow == windowPressed_) {
                 contentsClick_ = windowPressed_;
             }
-        } else if (!dragging_) {
+        } else if (!dragging_ || wirePress_) {
             std::optional<std::size_t> component;
             if (picked &&
                 (picked->hit.kind == HitKind::Pad || picked->hit.kind == HitKind::Component)) {
@@ -1150,9 +1155,16 @@ void BoardView::input(ImVec2 origin) {
             } else {
                 component = scene_->componentAt(at);
             }
-            click_ = BoardClick{at, active_, picked, component, io.KeyShift};
+            click_ = BoardClick{at,
+                                active_,
+                                picked,
+                                component,
+                                io.KeyShift,
+                                false,
+                                dragging_ ? wirePress_ : std::nullopt};
         }
         pressed_ = false;
+        wirePress_.reset();
         cornerPressed_ = false;
         windowPressed_.reset();
         dragging_ = false;
@@ -1199,6 +1211,10 @@ void BoardView::input(ImVec2 origin) {
             pressed_ = !held_;
         }
         dragging_ = false;
+        const bool onPad = picked && picked->hit.kind == HitKind::Pad;
+        wirePress_ = pressed_ && owner_ == Owner::Wire && onPad && !onCorner && !onWindow
+                         ? picked
+                         : std::nullopt;
     }
     // Not under the pencil: two quick clicks change a mark from dot to cross.
     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked && !onCorner && !onWindow &&
