@@ -1,9 +1,11 @@
 #include "machine/puzzle.hpp"
 
 #include <algorithm>
+#include <format>
 #include <optional>
 #include <utility>
 
+#include "machine/repair.hpp"
 #include "text/text.hpp"
 
 namespace bw {
@@ -258,6 +260,55 @@ private:
 
 std::uint32_t LineOf(const FaultDecl& fault) {
     return std::visit([](const auto& decl) { return decl.line; }, fault);
+}
+
+namespace {
+
+std::string PinText(const PinRef& pin) { return pin.reference + "." + pin.pin; }
+
+char BitText(LogicValue value) { return value == LogicValue::One ? '1' : '0'; }
+
+// "51", "51.5", "51.25": two decimals at most, as ParsePercent reads.
+std::string PercentText(double percent) {
+    std::string text = std::format("{:.2f}", percent);
+    while (text.back() == '0') {
+        text.pop_back();
+    }
+    if (text.back() == '.') {
+        text.pop_back();
+    }
+    return text;
+}
+
+}  // namespace
+
+std::string FormatFault(const FaultDecl& fault) {
+    return std::visit(
+        Overloaded{
+            [](const StuckAtDecl& f) {
+                return std::format("fault stuck {}.{} {}{}", f.reference, f.pin, BitText(f.value),
+                                   f.input ? " input" : "");
+            },
+            [](const CrackDecl& f) {
+                return std::format("fault crack {} {} {}%", PinText(f.a), PinText(f.b),
+                                   PercentText(f.percent));
+            },
+            [](const BridgeDecl& f) {
+                return std::format("fault bridge {} {}", PinText(f.a), PinText(f.b));
+            },
+            [](const JointDecl& f) { return std::format("fault joint {}", PinText(f.pin)); },
+            [](const CellDecl& f) {
+                const std::string memory = f.memory.empty() ? "" : " " + f.memory;
+                return f.word ? std::format("fault cell {}{} ${:X} {}", PinText(f.pin), memory,
+                                            *f.word, BitText(f.value))
+                              : std::format("fault column {}{} {}", PinText(f.pin), memory,
+                                            BitText(f.value));
+            },
+            [](const SwitchDecl& f) {
+                return std::format("fault switch {} {}", f.reference, f.closed ? "closed" : "open");
+            },
+        },
+        fault);
 }
 
 std::expected<Puzzle, std::vector<Diagnostic>> ParsePuzzle(std::string_view text,

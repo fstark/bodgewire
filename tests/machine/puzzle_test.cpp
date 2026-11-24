@@ -7,6 +7,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../paths.hpp"
+#include "machine/machine.hpp"
+#include "machine/machine_list.hpp"
+
 using namespace bw;
 
 namespace {
@@ -240,4 +244,52 @@ TEST_CASE("puzzle: a stuck port pin read only", "[machine]") {
     CHECK(FaultAt<StuckAtDecl>(*result, 0).pin == "PB5");
     CHECK(FaultAt<StuckAtDecl>(*result, 0).value == LogicValue::Zero);
     CHECK(FaultAt<StuckAtDecl>(*result, 0).input);
+}
+
+TEST_CASE("puzzle: FormatFault of each kind", "[machine]") {
+    using enum LogicValue;
+    CHECK(FormatFault(StuckAtDecl{3, "U5", "QD", Zero}) == "fault stuck U5.QD 0");
+    CHECK(FormatFault(StuckAtDecl{0, "UA5", "PB5", One, true}) == "fault stuck UA5.PB5 1 input");
+    CHECK(FormatFault(CrackDecl{0, {"R6", "2"}, {"D5", "2"}, 51}) == "fault crack R6.2 D5.2 51%");
+    CHECK(FormatFault(CrackDecl{0, {"U1", "QA"}, {"U13", "2B"}, 7.5}) ==
+          "fault crack U1.QA U13.2B 7.5%");
+    CHECK(FormatFault(CrackDecl{0, {"U1", "1"}, {"U2", "1"}, 33.33}) ==
+          "fault crack U1.1 U2.1 33.33%");
+    CHECK(FormatFault(CrackDecl{0, {"U1", "1"}, {"U2", "1"}, 0}) == "fault crack U1.1 U2.1 0%");
+    CHECK(FormatFault(CrackDecl{0, {"U1", "1"}, {"U2", "1"}, 100}) == "fault crack U1.1 U2.1 100%");
+    CHECK(FormatFault(BridgeDecl{0, {"U5", "3"}, {"U5", "4"}}) == "fault bridge U5.3 U5.4");
+    CHECK(FormatFault(JointDecl{0, {"U15", "13"}}) == "fault joint U15.13");
+    CHECK(FormatFault(CellDecl{0, {"U3", "IO2"}, 0x1FF, Zero}) == "fault cell U3.IO2 $1FF 0");
+    CHECK(FormatFault(CellDecl{0, {"U2", "D3"}, 0x3F, One, "ram"}) == "fault cell U2.D3 ram $3F 1");
+    CHECK(FormatFault(CellDecl{0, {"U15", "O1"}, std::nullopt, Zero}) == "fault column U15.O1 0");
+    CHECK(FormatFault(CellDecl{0, {"U2", "D0"}, std::nullopt, One, "rom"}) ==
+          "fault column U2.D0 rom 1");
+    CHECK(FormatFault(SwitchDecl{0, "SW1", true}) == "fault switch SW1 closed");
+    CHECK(FormatFault(SwitchDecl{0, "SW1", false}) == "fault switch SW1 open");
+}
+
+TEST_CASE("puzzle: every Puzzle's faults format back", "[machine]") {
+    // Each Authored Puzzle's Fault, written by FormatFault and read by ParsePuzzle, is the same
+    // Fault: the same kind, written the same again.
+    const MachineList list = ListMachines(test::RootDir() / "machines");
+    std::size_t faults = 0;
+    for (const MachineEntry& machine : list.machines) {
+        for (const PuzzleEntry& entry : machine.puzzles) {
+            INFO(entry.file.filename().string());
+            const auto puzzle = ReadPuzzleFile(entry.file);
+            REQUIRE(puzzle.has_value());
+            for (const FaultDecl& fault : puzzle->faults) {
+                const std::string line = FormatFault(fault);
+                INFO(line);
+                const auto again =
+                    ParsePuzzle("machine " + puzzle->machine + "\n" + line + "\n", "again.bwp");
+                REQUIRE(again.has_value());
+                REQUIRE(again->faults.size() == 1);
+                CHECK(again->faults[0].index() == fault.index());
+                CHECK(FormatFault(again->faults[0]) == line);
+                ++faults;
+            }
+        }
+    }
+    CHECK(faults == 114);
 }

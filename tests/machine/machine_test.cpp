@@ -773,3 +773,48 @@ TEST_CASE("machine: completed needs every Component and Joint Fault gone", "[mac
     REQUIRE(machine->swap("SW1"));
     CHECK(machine->completed());
 }
+
+TEST_CASE("machine: check takes nothing", "[machine]") {
+    auto machine = LoadNetlistMachine(test::NetlistPath("counter"));
+    REQUIRE(machine.has_value());
+    const FaultDecl stuck = StuckAtDecl{0, "U5", "QD", LogicValue::Zero};
+    CHECK(machine->check(stuck).has_value());
+    CHECK(machine->check(CrackDecl{0, {"U5", "QD"}, {"D1", "1"}, 51}).has_value());
+    CHECK(machine->check(JointDecl{0, {"U5", "QD"}}).has_value());
+    CHECK(machine->completed());  // nothing was taken
+    // The errors are inject's.
+    CHECK(machine->check(StuckAtDecl{0, "U99", "QA", LogicValue::Zero}).error() ==
+          "unknown reference 'U99'");
+    CHECK(machine->check(JointDecl{0, {"U5", "VCC"}}).error() ==
+          "joint U5.VCC: chip signal pins only");
+    CHECK(machine->check(BridgeDecl{0, {"U5", "8"}, {"U5", "9"}}).error() ==
+          "bridge U5.8 U5.9: pins are not neighbours");
+    CHECK(machine->check(SwitchDecl{0, "U5", true}).error() == "switch U5: buttons and keys only");
+    REQUIRE(machine->inject(stuck).has_value());
+    CHECK_FALSE(machine->completed());
+}
+
+TEST_CASE("machine: clearFaults", "[machine]") {
+    auto machine = LoadPuzzleFile(test::PuzzlePath("dark_led"));
+    REQUIRE(machine.has_value());
+    REQUIRE(machine->inject(StuckAtDecl{0, "U3", "RCO", LogicValue::Zero}).has_value());
+    REQUIRE(machine->inject(JointDecl{0, {"U2", "ENT"}}).has_value());
+    REQUIRE(machine->addWire({"U1", "QA"}, {"U2", "QA"}));
+    REQUIRE(machine->cracks().size() == 1);
+    CHECK_FALSE(machine->completed());
+
+    machine->clearFaults();
+    CHECK(machine->completed());
+    CHECK(machine->cracks().empty());
+    CHECK(machine->dryJoints().empty());
+    CHECK(machine->wires().empty());
+    CHECK(machine->cuts().empty());
+    machine->undoRepairs();  // nothing to bring back: the Puzzle's Faults are gone too
+    CHECK(machine->completed());
+    CHECK(machine->cracks().empty());
+    // A Fault taken after it is the Machine's only one.
+    REQUIRE(machine->inject(StuckAtDecl{0, "U5", "QD", LogicValue::One}).has_value());
+    CHECK_FALSE(machine->completed());
+    REQUIRE(machine->swap("U5"));
+    CHECK(machine->completed());
+}

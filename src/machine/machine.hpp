@@ -77,6 +77,11 @@ public:
     // Adds a Fault, checked against the design and the fault-free Board: a Puzzle's from then on
     // (undoRepairs keeps it). The error is the text a Puzzle line reports.
     std::expected<void, std::string> inject(const FaultDecl& fault);
+    // Whether inject would take this Fault, the Machine left as it is; the error is inject's.
+    std::expected<void, std::string> check(const FaultDecl& fault) const;
+    // Every Fault and every Repair gone: the fault-free Machine again, for undoRepairs too (the
+    // Vetting's next candidate, P8d).
+    void clearFaults();
     std::span<const PinRef> dryJoints() const { return faults_.dry; }  // pin numbers
     std::span<const Crack> cracks() const { return faults_.cracks; }   // the Puzzle's Broken Traces
     // A crack on the fault-free Board; errors say "crack A B: …" with the pins as given.

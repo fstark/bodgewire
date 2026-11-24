@@ -169,6 +169,26 @@ std::expected<void, std::string> Machine::inject(const FaultDecl& fault) {
     return added;
 }
 
+std::expected<void, std::string> Machine::check(const FaultDecl& fault) const {
+    return std::visit(
+        [&](const auto& decl) -> std::expected<void, std::string> {
+            auto checked = resolve(decl);
+            if (!checked) {
+                return std::unexpected(std::move(checked.error()));
+            }
+            return {};
+        },
+        fault);
+}
+
+void Machine::clearFaults() {
+    faults_ = {};
+    loaded_ = {};
+    cuts_.clear();
+    wires_.clear();
+    rebuildBoard();
+}
+
 std::expected<void, std::string> Machine::add(const FaultDecl& fault) {
     return std::visit(
         [&](const auto& decl) -> std::expected<void, std::string> {

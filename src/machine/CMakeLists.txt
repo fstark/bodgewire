@@ -1,6 +1,7 @@
 add_library(bw_machine STATIC
   crack.cpp
   electrical.cpp
+  fault_draw.cpp
   input_edges.cpp
   knob_setting.cpp
   machine.cpp

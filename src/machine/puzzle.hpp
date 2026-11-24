@@ -56,6 +56,9 @@ struct SwitchDecl {
 // Any one Fault as written: a Puzzle's `fault` line, or Machine::inject's.
 using FaultDecl = std::variant<StuckAtDecl, CrackDecl, BridgeDecl, JointDecl, CellDecl, SwitchDecl>;
 std::uint32_t LineOf(const FaultDecl& fault);
+// The Fault's `fault …` line, as ParsePuzzle reads it back: "fault stuck U5.QD 0", "fault crack
+// R6.2 D5.2 51%" (two decimals at most), "fault cell U2.D3 ram $3F 0". Pins as the Fault has them.
+std::string FormatFault(const FaultDecl& fault);
 
 struct Puzzle {
     std::string file;
