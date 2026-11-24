@@ -56,8 +56,11 @@ constexpr ImU32 kErrorBox = IM_COL32(40, 10, 10, 230);
 constexpr ImU32 kNoBoard = IM_COL32(120, 120, 128, 255);
 constexpr ImU32 kSlowBar = IM_COL32(255, 128, 24, 255);    // the Machine's bar: under 1×
 constexpr ImU32 kTooSlowBar = IM_COL32(230, 45, 40, 255);  // under 0.3×
-constexpr ImU32 kSpeedInk = IM_COL32(190, 170, 150, 255);  // the headroom, on the wood
-constexpr float kSpeedBelow = 3;                           // px: from it to the window's bottom
+constexpr ImU32 kSpeedInk = IM_COL32(140, 140, 148, 255);  // the headroom, under the paragraph
+// The headroom's sentence at its longest: its room kept under every paragraph, so the text does
+// not move when the measure comes.
+constexpr const char* kSpeedRoom =
+    "On this computer it runs at full speed: it could go 88× as fast as the real one.";
 constexpr const char* kStartTitle = "Start the Machine";
 constexpr const char* kStartBrief = "The Machine as it should work: no fault.";
 
@@ -571,12 +574,22 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
                 font->CalcTextSizeA(fontSize * kNameScale, FLT_MAX, wrap, name.c_str()).y;
             const float lineHeight = font->CalcTextSizeA(fontSize, FLT_MAX, wrap, line.c_str()).y;
             const float gap = line.empty() ? 0 : fontSize;
-            float y = areaTop + (area.y - nameHeight - gap - lineHeight) / 2;
+            // Under it, lighter, how fast the live run goes here: the selected Machine's only.
+            const float speedHeight = font->CalcTextSizeA(fontSize, FLT_MAX, wrap, kSpeedRoom).y;
+            float y =
+                areaTop + (area.y - nameHeight - gap - lineHeight - fontSize - speedHeight) / 2;
             list.AddText(font, fontSize * kNameScale, {left, y}, WithAlpha(kName, alpha),
                          name.c_str(), nullptr, wrap);
             y += nameHeight + gap;
             list.AddText(font, fontSize, {left, y}, WithAlpha(kParagraph, alpha), line.c_str(),
                          nullptr, wrap);
+            y += lineHeight + fontSize;
+            if (const auto shown = headroom_.shown();
+                shown && nearest == lanes_.machine() && live_.loaded) {
+                const std::string speed = HeadroomText(*shown, headroom_.band());
+                list.AddText(font, fontSize, {left, y}, WithAlpha(kSpeedInk, alpha), speed.c_str(),
+                             nullptr, wrap);
+            }
         }
     }
 
@@ -677,14 +690,6 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
     ImGui::PopClipRect();
     list.PopClipRect();
     ImGui::PopID();
-
-    // The live run's headroom in the wood's corner, under the post-its: how fast it could run.
-    if (const auto shown = headroom_.shown(); shown && live_.loaded) {
-        const std::string text = SpeedText(*shown);
-        const ImVec2 extent = ImGui::CalcTextSize(text.c_str());
-        list.AddText({woodEnd.x - kNoteLeft - extent.x, woodEnd.y - kSpeedBelow - extent.y},
-                     kSpeedInk, text.c_str());
-    }
 
     // Clicks, applied after the drawing (the frame shows what was there when clicked). A post-it
     // not selected is selected (it starts running above); the selected one opens.

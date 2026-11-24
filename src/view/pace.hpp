@@ -58,6 +58,11 @@ private:
     Playability band_ = Playability::Playable;
 };
 
+// The headroom in a sentence under the launcher's paragraph: "On this computer it runs at full
+// speed: it could go 13× as fast as the real one." (Playable), "On this computer it runs at 34% of
+// the real one's speed." (else, at most 99%).
+std::string HeadroomText(double ratio, Playability band);
+
 // A speed ratio printed: "0.24×", "3.40×", "42×".
 std::string SpeedText(double ratio);
 

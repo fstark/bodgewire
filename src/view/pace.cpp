@@ -1,5 +1,7 @@
 #include "view/pace.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <format>
 
 namespace bw {
@@ -80,6 +82,16 @@ void Headroom::update(Time simTime, std::int64_t runNs, Clock::time_point now) {
 }
 
 void Headroom::reset() { *this = {}; }
+
+std::string HeadroomText(double ratio, Playability band) {
+    if (band == Playability::Playable) {
+        return std::format("On this computer it runs at full speed: it could go {} as fast as the "
+                           "real one.",
+                           SpeedText(ratio));
+    }
+    const long percent = std::clamp(std::lround(ratio * 100), 1L, 99L);
+    return std::format("On this computer it runs at {}% of the real one's speed.", percent);
+}
 
 std::string SpeedText(double ratio) {
     return ratio < 10 ? std::format("{:.2f}×", ratio) : std::format("{:.0f}×", ratio);

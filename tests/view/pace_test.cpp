@@ -129,3 +129,12 @@ TEST_CASE("headroom: powered on again, measured anew") {
     CHECK_FALSE(run.headroom.shown());
     CHECK(run.headroom.band() == Playability::Playable);
 }
+
+TEST_CASE("headroom: its sentence, full speed or a share of the real one's") {
+    CHECK(HeadroomText(13.2, Playability::Playable) ==
+          "On this computer it runs at full speed: it could go 13× as fast as the real one.");
+    CHECK(HeadroomText(0.344, Playability::TooSlow) ==
+          "On this computer it runs at 34% of the real one's speed.");
+    CHECK(HeadroomText(1.01, Playability::Slow) ==
+          "On this computer it runs at 99% of the real one's speed.");  // the band not yet back
+}

@@ -54,9 +54,9 @@ private:
 
 // The launcher (P7a, its look P7b): two lanes. The top one shows the selected Machine live (its
 // Board framed on its outputs, or its monitor with the Board's corner), its name and its User
-// Manual's first paragraph, the previous and next Machines' stills at the edges. The bottom one,
-// the shelf's wood, shows its post-its: "Start the Machine", then its Puzzles, and in its corner
-// how fast the live run could go (its headroom, 2026-11-24), which also colours the Machine's bar.
+// Manual's first paragraph and, lighter, how fast it runs on this computer (its headroom,
+// 2026-11-24, which also colours its bar), the previous and next Machines' stills at the edges. The
+// bottom one, the shelf's wood, shows its post-its: "Start the Machine", then its Puzzles.
 // Arrow keys move in and between the lanes, as do clicks on the chevrons; Enter, Space or a click
 // on a post-it opens it.
 class Launcher {
@@ -109,7 +109,7 @@ private:
     std::string error_;
     std::map<std::filesystem::path, Still> stills_;
     Live live_;
-    Headroom headroom_;  // the live run's: the Machine's bar colour, the number on the wood
+    Headroom headroom_;  // the live run's: the Machine's bar colour, its sentence
     std::vector<std::future<OpenedMachine>> abandoned_;  // loads of entries no longer selected
     StillLoader loader_;                                 // last: its thread joined first
 };
