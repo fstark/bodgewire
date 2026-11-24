@@ -193,6 +193,11 @@ const std::array kFlags{
              o.select = v;
              return {};
          }},
+    Flag{"--make", "", true,
+         [](Options& o, std::string_view) -> Result {
+             o.make = true;
+             return {};
+         }},
     Flag{"--seed", "N", true,
          [](Options& o, std::string_view v) -> Result {
              std::uint64_t seed = 0;
@@ -482,7 +487,10 @@ std::expected<Options, std::string> ParseOptions(std::span<const std::string_vie
         return file.extension() == ".bwr";
     };
     const bool randomBench = options.file && script(*options.file);
-    if ((options.seed && !randomBench && std::ranges::none_of(options.visit, script)) ||
+    const bool randomSelected = options.select && script(*options.select);
+    if ((options.make && !randomSelected) ||
+        (options.seed && !randomBench && !options.make &&
+         std::ranges::none_of(options.visit, script)) ||
         ((bench.showFault || bench.manual == Divider::GiveUp) && !randomBench)) {
         return std::unexpected(std::string());
     }

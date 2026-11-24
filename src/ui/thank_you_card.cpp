@@ -33,7 +33,8 @@ void DrawCard(ImDrawList& list, ImVec2 at, ImVec2 end, float rule, float line, f
 
 }  // namespace
 
-CardAnswer ThankYouCard::draw(const std::string& title, const std::string* next, bool canLeave) {
+CardAnswer ThankYouCard::draw(const std::string& title, const std::string* nextLabel,
+                              bool canLeave) {
     if (opening_) {
         ImGui::OpenPopup(kId);
         opening_ = false;
@@ -89,9 +90,9 @@ CardAnswer ThankYouCard::draw(const std::string& title, const std::string* next,
     if (ImGui::Button("Back to the Board")) {
         answer = CardAnswer::Board;
     }
-    if (next != nullptr) {
+    if (nextLabel != nullptr) {
         ImGui::SameLine();
-        if (ImGui::Button(("Next: " + *next).c_str())) {
+        if (ImGui::Button(nextLabel->c_str())) {
             answer = CardAnswer::Next;
         }
     }

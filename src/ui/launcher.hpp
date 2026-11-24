@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <future>
 #include <map>
@@ -17,6 +18,7 @@
 
 #include "machine/machine_list.hpp"
 #include "runner/runner.hpp"
+#include "session/puzzle_maker.hpp"
 #include "ui/board_view.hpp"
 #include "ui/loaded.hpp"
 #include "ui/tv_view.hpp"
@@ -52,13 +54,22 @@ private:
     std::jthread thread_;  // last: stopped and joined first
 };
 
+// What the launcher opens: an entry's file (a .bwn, a .bwp), or a Machine's Vetting Script (a
+// .bwr) with the Random fault made for it (P8d).
+struct LauncherChoice {
+    std::filesystem::path file;
+    std::optional<FaultDecl> fault = {};
+};
+
 // The launcher (P7a, its look P7b): two lanes. The top one shows the selected Machine live (its
 // Board framed on its outputs, or its monitor with the Board's corner), its name and its User
 // Manual's first paragraph and, lighter, how fast it runs on this computer (its headroom,
 // 2026-11-24, which also colours its bar), the previous and next Machines' stills at the edges. The
-// bottom one, the shelf's wood, shows its post-its: "Start the Machine", then its Puzzles.
-// Arrow keys move in and between the lanes, as do clicks on the chevrons; Enter, Space or a click
-// on a post-it opens it.
+// bottom one, the shelf's wood, shows its post-its: "Start the Machine", then its Puzzles, then,
+// a gap apart, "Random fault" with its "?" (P8d). Arrow keys move in and between the lanes, as do
+// clicks on the chevrons; Enter, Space or a click on a post-it opens it. "Random fault" first
+// makes its Puzzle, on a thread of its own: meanwhile lines about breaking computers loop over
+// the wood, and only Esc does anything (it stops the making).
 class Launcher {
 public:
     Launcher() = default;
@@ -67,13 +78,19 @@ public:
     Launcher& operator=(const Launcher&) = delete;
 
     void setList(MachineList list);  // read anew each time it shows; the selection clamped
-    // An entry (a netlist or a Puzzle of the list): its Machine and post-it; else kept.
+    // An entry (a netlist, a Puzzle or a Vetting Script of the list): its Machine and post-it;
+    // else kept.
     void select(const std::filesystem::path& file);
+    // The selected "Random fault" starts making its Puzzle (the card's "Another random fault",
+    // --make); `seed`: the Fault's, else a new one each time. Nothing on any other post-it.
+    void make(std::optional<std::uint64_t> seed = std::nullopt);
+    // --screenshot: no bench is ever opened; a making's lines stay up once its Fault is made.
+    void holdChoices() { hold_ = true; }
     void setError(std::string text);  // "Could not load …: see the terminal", in red
     const MachineList& list() const { return list_; }
     // Each frame, inside a window filling the main one with no padding: keys, clicks, the loads,
-    // the live run, both lanes. The entry to open (a .bwn or a .bwp).
-    std::optional<std::filesystem::path> draw(TvView& tv, ImFont* legends, ImFont* titleFont);
+    // the live run, both lanes, a making. The entry to open.
+    std::optional<LauncherChoice> draw(TvView& tv, ImFont* legends, ImFont* titleFont);
     // The live run stopped and every load waited for: before a bench loads, and on quitting.
     void stop();
     std::optional<RunnerStatus> liveStatus();
@@ -94,6 +111,10 @@ private:
     };
 
     std::filesystem::path entryFile() const;
+    // The entry that runs above: the selected one's file; the working Machine for "Random fault"
+    // (no Fault exists until it is opened).
+    std::filesystem::path liveFile() const;
+    std::optional<LauncherChoice> updateMaking();  // the choice once the Fault is made
     void updateLive(TvView& tv);
     void takeStills();
     Still* stillOf(std::size_t machine);
@@ -111,7 +132,14 @@ private:
     Live live_;
     Headroom headroom_;  // the live run's: the Machine's bar colour, its sentence
     std::vector<std::future<OpenedMachine>> abandoned_;  // loads of entries no longer selected
-    StillLoader loader_;                                 // last: its thread joined first
+    PuzzleMaker maker_;                                  // a Random fault's making (P8d)
+    bool making_ = false;  // from make() to the choice returned, Esc or an error
+    std::filesystem::path makingFile_;
+    std::chrono::steady_clock::time_point makingSince_;
+    std::size_t firstLine_ = 0;      // of the waiting lines: a new start each making
+    std::optional<FaultDecl> made_;  // made, waiting for its line to be read
+    bool hold_ = false;
+    StillLoader loader_;  // last: its thread joined first
 };
 
 }  // namespace bw

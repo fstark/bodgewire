@@ -113,3 +113,23 @@ TEST_CASE("bench options: --manual giveup", "[view]") {
     CHECK(Parse({"m.bwp", "--manual", "giveup"}).error().empty());
     CHECK(Parse({"m.bwp", "--manual", "repairs"})->bench.manual == Divider::Repairs);
 }
+
+TEST_CASE("bench options: --make", "[view]") {
+    // The Launcher's making started at once, for the screenshot of a waiting line (P8d).
+    const auto make = Parse(
+        {"--select", "m/puzzles/random.bwr", "--make", "--screenshot", "a.png", "--after", "0.5s"});
+    REQUIRE(make.has_value());
+    CHECK(make->make);
+    CHECK_FALSE(make->seed.has_value());
+    const auto seeded = Parse({"--select", "m/puzzles/random.bwr", "--make", "--seed", "4"});
+    REQUIRE(seeded.has_value());
+    CHECK(seeded->seed == 4u);
+    CHECK_FALSE(Parse({})->make);
+}
+
+TEST_CASE("bench options: --make without --select", "[view]") {
+    CHECK(Parse({"--make"}).error().empty());
+    CHECK(Parse({"--select", "m/puzzles/01-x.bwp", "--make"}).error().empty());  // not a .bwr
+    CHECK(Parse({"m/puzzles/random.bwr", "--make"}).error().empty());            // a bench
+    CHECK(Parse({"--select", "m/puzzles/random.bwr", "--seed", "4"}).error().empty());
+}

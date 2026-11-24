@@ -13,10 +13,11 @@ enum class CardAnswer : std::uint8_t { None, Board, Next, Machines };
 class ThankYouCard {
 public:
     void open() { opening_ = true; }  // from the next draw
-    // Each frame, last (above every window). `title`: the Puzzle's; `next`: the next Puzzle's
-    // title, nullptr for none (no Next button); `canLeave`: Back to the Machines offered. The
-    // answer on the frame a button is clicked.
-    CardAnswer draw(const std::string& title, const std::string* next, bool canLeave);
+    // Each frame, last (above every window). `title`: the Puzzle's; `nextLabel`: the Next
+    // button's words ("Next: Frozen LED", or "Another random fault", P8d), nullptr for no such
+    // button; `canLeave`: Back to the Machines offered. The answer on the frame a button is
+    // clicked.
+    CardAnswer draw(const std::string& title, const std::string* nextLabel, bool canLeave);
 
 private:
     bool opening_ = false;

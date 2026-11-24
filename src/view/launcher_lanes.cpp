@@ -6,13 +6,18 @@
 
 namespace bw {
 
-void LauncherLanes::setPuzzles(std::vector<std::size_t> counts) {
+void LauncherLanes::setPuzzles(std::vector<std::size_t> counts, std::vector<bool> random) {
     puzzles_ = std::move(counts);
+    random_ = std::move(random);
     machine_ = puzzles_.empty() ? 0 : std::min(machine_, puzzles_.size() - 1);
     postIt_ = std::min(postIt_, postIts() - 1);
 }
 
-std::size_t LauncherLanes::postIts() const { return puzzles_.empty() ? 1 : puzzles_[machine_] + 1; }
+bool LauncherLanes::hasRandom() const { return machine_ < random_.size() && random_[machine_]; }
+
+std::size_t LauncherLanes::postIts() const {
+    return puzzles_.empty() ? 1 : puzzles_[machine_] + 1 + (hasRandom() ? 1 : 0);
+}
 
 void LauncherLanes::left() {
     if (lane_ == Lane::Machines) {
@@ -55,8 +60,10 @@ void LauncherLanes::selectPostIt(std::size_t postIt) {
 }
 
 std::optional<std::size_t> LauncherLanes::puzzle() const {
-    return postIt_ == 0 ? std::nullopt : std::optional(postIt_ - 1);
+    return postIt_ == 0 || random() ? std::nullopt : std::optional(postIt_ - 1);
 }
+
+bool LauncherLanes::random() const { return hasRandom() && postIt_ + 1 == postIts(); }
 
 void Glide::jump(double to) { value = target = to; }
 

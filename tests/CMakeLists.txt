@@ -175,6 +175,7 @@ add_executable(bw_tests
   runner/triple_buffer_test.cpp
   runner/tv_consumer_test.cpp
   session/procedural_puzzle_test.cpp
+  session/puzzle_maker_test.cpp
   session/session_test.cpp
   session/vetting_test.cpp
   sim/check_test.cpp

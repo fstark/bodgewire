@@ -81,8 +81,11 @@ struct Options {
     std::optional<std::filesystem::path> screenshot;
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
     std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
-    // --seed N: the Random fault made for a .bwr given as the file or visited; 1 without it.
+    // --seed N: the Random fault made for a .bwr given as the file or visited (1 without it),
+    // or by --make (a new one each time without it).
     std::optional<std::uint64_t> seed;
+    // --make, with --select of a .bwr: the Launcher starts making its Random fault at once.
+    bool make = false;
     BenchOptions bench;  // the file's bench; a visited one starts plain
 };
 

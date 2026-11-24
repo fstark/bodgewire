@@ -10,11 +10,13 @@ namespace bw {
 enum class Lane : std::uint8_t { Machines, PostIts };
 
 // The launcher's selection (P7b): a Machine, and in it a post-it (0: "Start the Machine", p + 1:
-// Puzzle p). The top lane always has post-it 0.
+// Puzzle p, then one more, "Random fault", on a Machine that has one, P8d). The top lane always
+// has post-it 0.
 class LauncherLanes {
 public:
-    // Each Machine's Puzzle count, in list order. The selection is clamped (a list read anew).
-    void setPuzzles(std::vector<std::size_t> counts);
+    // Each Machine's Puzzle count, in list order, and whether it has a Random fault post-it after
+    // them (`random` empty: none has). The selection is clamped (a list read anew).
+    void setPuzzles(std::vector<std::size_t> counts, std::vector<bool> random = {});
     void left();   // the previous Machine (post-it 0) or post-it; the ends stop
     void right();  // the next one
     void down();   // to the post-its, the post-it kept
@@ -26,12 +28,17 @@ public:
     Lane lane() const { return lane_; }
     std::size_t machine() const { return machine_; }
     std::size_t postIt() const { return postIt_; }
-    std::optional<std::size_t> puzzle() const;  // postIt() - 1; nullopt for "Start the Machine"
+    // postIt() - 1; nullopt for "Start the Machine" and for "Random fault".
+    std::optional<std::size_t> puzzle() const;
+    bool random() const;  // the selected post-it is "Random fault", the Machine's last
 
 private:
-    std::size_t postIts() const;  // of the selected Machine: its Puzzles and "Start the Machine"
+    // Of the selected Machine: "Start the Machine", its Puzzles, its "Random fault".
+    std::size_t postIts() const;
+    bool hasRandom() const;  // the selected Machine
 
     std::vector<std::size_t> puzzles_;
+    std::vector<bool> random_;
     Lane lane_ = Lane::Machines;
     std::size_t machine_ = 0, postIt_ = 0;
 };

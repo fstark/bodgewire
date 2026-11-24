@@ -11,8 +11,8 @@ Spec: [PROCEDURAL_PUZZLES.md](PROCEDURAL_PUZZLES.md). Design: [PROCEDURAL_PUZZLE
 | 2 | The Vetting Script and its fourteen files | `2029e8d` |
 | 3 | Drawing a Fault | `f65927b` |
 | 4 | Vetting, making a Puzzle, `bw random` | `1317e49` |
-| 5 | The bench on a Random fault, the "Give up" page | this commit |
-| 6 | The Launcher's post-it and the making | |
+| 5 | The bench on a Random fault, the "Give up" page | `7a3c502` |
+| 6 | The Launcher's post-it and the making | this commit |
 | 7 | Docs, the release check | |
 
 Every phase adds its sources to its `CMakeLists.txt` (`src/machine`, `src/session`, `src/ui`, `tests`), by hand: never `clang-format` there.
@@ -73,9 +73,9 @@ Fence: release, the full suite; screenshots viewed: the Counter's bench and its 
 4. `ThankYouCard::draw`'s label; `main.cpp`: the choice to `Load`, the card's "Another random fault" back through the Launcher's making, no bench opened under `--screenshot`; `--make` (D7).
 5. Tests of D7.
 
-Fence: release, the full suite; screenshots viewed: the post-it selected (with `kPictureQuestion` on and off: both kept for the user), a line while making (`--make --after 0.5s`), the Counter's card with "Another random fault"; the Launcher's UI ms no higher than before. Debug: `-R "launcher lanes|puzzle maker|bench options"`, and debug `bw_ui --select machines/010-counter/puzzles/random.bwr --make --screenshot … --after 0.5s`. Web build; the page loaded in Chrome through Playwright, the post-it in the Launcher. Commit: `ui: the Launcher's Random fault post-it, a Puzzle made while lines loop (P8d phase 6)`.
+Fence: release, the full suite; screenshots viewed: the post-it selected (with `kPictureQuestion` on and off: both kept for the user), a line while making (`--make --after 0.5s`), the Counter's card with "Another random fault"; the Launcher's UI ms no higher than before. Debug: `-R "launcher lanes|puzzle maker|bench options"`, and debug `bw_ui --select machines/010-counter/puzzles/random.bwr --make --screenshot … --after 0.5s`. Web build. Commit: `ui: the Launcher's Random fault post-it, a Puzzle made while lines loop (P8d phase 6)`.
 
-No flag clicks the card or presses Esc: "Another random fault" played, Esc during a making, and a Random fault made in the browser are the user's checks, listed in the report at the end. No fence waits for them.
+No flag clicks the card or presses Esc, and no browser is driven from here: "Another random fault" played, Esc during a making, and the web page (the post-it, a Random fault made) are the user's checks, listed in the report at the end. No fence waits for them.
 
 ## Phase 7 — Docs, the release check
 
@@ -95,6 +95,16 @@ Fence: the full release suite; the web build. Commit: `docs: P8d done, Procedura
   4. The binder's smallest height cannot be reached by a flag, and six tabs need a ROM: the tabs' layout is a tested function (`TabTops`), the screenshot is the Message's with `--contents`.
   5. Phase 6's fence had checks no flag can make (the card clicked, Esc, the browser): they are the user's, and `PuzzleMaker` moved to `src/session` so its stopping is unit tested.
   - Also from it: `RunTo`'s `slice` can stop a run and `Vetting::Make` can be stopped; the watched outputs are decided once on the fault-free build; an exception in a try counts as not showing; the fourteen files written out in D2 with their presses; `QuotedValue` and `IsMachineName` shared; the card's "Another random fault" moved to phase 6, where the Launcher can make one; `--make` under `--screenshot`; the lines' three dots typed as dots; `kPictureQuestion` and `sign` (Mark alone is a Pencil Mark's word).
+- 2026-11-25, phase 6: as designed, but:
+  - `PuzzleMaker` keeps a stopped making until its thread has ended (it is asked to stop, never waited for); the destructor joins them all. A new `start` never blocks on the one before.
+  - The waiting line is on a dark plate in the middle of the dimmed wood, at 1.6 times the text's size, with "Making a random fault. Esc stops." under it: over the bare dimming the post-its' text showed through.
+  - `Launcher::holdChoices()` is `--screenshot`'s rule: no choice is returned and a made Fault's line stays up. `Launcher::make(seed)` takes `--seed` with `--make`.
+  - `ParseOptions`: `--make` needs `--select` of a `.bwr`; `--seed` is taken with it.
+  - `kPictureQuestion` is on (a "?" at 18 % white over the live picture, 80 % of its height).
+
+  Checks: release, the full suite (1650); screenshots viewed: the post-it selected on the Counter and on the BW-2001 (its row scrolled to the end, the working Machine live), each with `kPictureQuestion` on and off (the four kept for the user), a line while making (`--make --seed 1 --after 0.5s`), the Counter's card with "Another random fault", `--visit` of the Counter's `random.bwr` (the bench opened on a made Fault, then the Launcher back on its post-it); the Launcher's UI 0.1 to 0.4 ms, as before. Debug: `launcher lanes|puzzle maker|bench options`, and `bw_ui --select … --make` (no report but `flip_corner`'s). Web build: links, its data holds the fourteen `random.bwr`.
+
+  Not done: the page loaded in Chrome through Playwright. Its browsers are cached on this Mac but its package is not installed, and installing one is the user's call: the web check is the user's, with the others.
 - 2026-11-25, phase 5: as designed, but:
   - `MakeProceduralPuzzleFor(script, seed, roms, stop)` (`src/session/procedural_puzzle`) is the whole making for a file (read, the Machine loaded, vetted, made): `main()` calls it for a `.bwr` from the terminal or visited, phase 6's `PuzzleMaker` will on its thread.
   - `--seed`, `--show-fault` and `--manual giveup` are refused by `ParseOptions`, not `ApplyBenchOptions` (which sees the Session, not the file): a usage error as the other bad combinations. `--seed` needs a `.bwr` as the file or among `--visit`'s.

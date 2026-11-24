@@ -378,7 +378,7 @@ public:
 };
 ```
 
-Its `std::jthread` reads the file, loads the Machine (`LoadNetlistMachine`), makes the `Vetting` and the Puzzle, its `stop_token` passed down; an exception out of the load is caught there and is the error. The destructor stops and joins: at most a millisecond of simulated time, or a Machine's load.
+Its `std::jthread` runs `MakeProceduralPuzzleFor` (the file read, the Machine loaded, the `Vetting` and the Puzzle made), its `stop_token` passed down; an exception out of the load is caught there and is the error. A stopped making is kept until its thread has ended, never waited for; the destructor stops and joins them all: at most a millisecond of simulated time, or a Machine's load.
 
 ### `src/ui/launcher.{hpp,cpp}`
 
@@ -387,7 +387,7 @@ Its `std::jthread` reads the file, loads the Machine (`LoadNetlistMachine`), mak
 - The live picture's file (`Live::file`) is the Machine's netlist there, so it is the working Machine, the same run as the card's (§2).
 - The post-it: `DrawPostIt` gains a `sign` drawn in place of the brief, "?" at about four times the title's size, centred; its title "Random fault". It sits after the last Puzzle, `kRandomGap` further than the row's own gap. The row's gap and scroll count Puzzles today (`titles.size() - 1`, `lanes_.puzzle()`): they count the row's post-its instead.
 - The "?" over the live picture (§2): drawn on the picture's rectangle at a low alpha while the post-it is selected, behind a constant (`kPictureQuestion`) until the user has seen both screenshots.
-- Opening it (§3): `maker_.start(file, seed)`, the seed `std::random_device`'s, or `--seed`'s with `--make`. While `maker_.making()`: keys and clicks do nothing but Esc; a band under the lanes shows the line, changed every `kLineSeconds` (1 s), in the list's order from a random start. Esc calls `maker_.stop()` (§6).
+- Opening it (§3): `maker_.start(file, seed)`, the seed `std::random_device`'s, or `--seed`'s with `--make`. While making: keys and clicks do nothing but Esc; the wood is dimmed and a dark plate in its middle shows the line, changed every `kLineTime` (1 s), in the list's order from a random start, with "Making a random fault. Esc stops." under it. Esc calls `maker_.stop()` (§6).
 - The lines end in three dots, typed as dots: the UI font has no ellipsis (`Displayable` maps dashes and arrows only).
 - The choice is returned when the Fault is there and `kLineSeconds` have passed since the start (a line is always read). An error (no Fault shows, a bad file) shows in the band until a key.
 - `Launcher::make()` starts it for the selected post-it: `main()` calls it for the card's "Another random fault", and for `--make`.
@@ -435,5 +435,5 @@ The wait, estimated from the samples (the Golden Machine's run, then about one t
   - `bw_ui --select machines/010-counter/puzzles/random.bwr`: the post-it, the working Counter live, with `kPictureQuestion` on and off;
   - the same with `--make --after 0.5s`: a line.
 - Speed: `bw random`'s seconds on every Machine (D8); the Launcher's UI ms with the post-it.
-- Web build after phases 5 and 6; the page loaded in Chrome through Playwright as P8b did, the post-it in the Launcher.
-- Only the user, reported at the end, no fence waits for them: the lines, the Briefs' words, the "?" over the picture; a few Random faults played, with the card's "Another random fault" and Esc during a making; on the web, a Random fault made on the Counter, the BW-2001 and the BW-80, timed.
+- Web build after phases 5 and 6 (it links, its data holds the scripts).
+- Only the user, reported at the end, no fence waits for them: the lines, the Briefs' words, the "?" over the picture; a few Random faults played, with the card's "Another random fault" and Esc during a making; on the web, the page loaded (the post-it in the Launcher) and a Random fault made on the Counter, the BW-2001 and the BW-80, timed.

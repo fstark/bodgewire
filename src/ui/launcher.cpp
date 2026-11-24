@@ -1,8 +1,10 @@
 #include "ui/launcher.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cfloat>
 #include <cmath>
+#include <random>
 #include <string_view>
 #include <utility>
 
@@ -59,6 +61,30 @@ constexpr const char* kSpeedRoom =
     "On this computer it runs at full speed: it could go 88× as fast as the real one.";
 constexpr const char* kStartTitle = "Start the Machine";
 constexpr const char* kStartBrief = "The Machine as it should work: no fault.";
+// "Random fault" (P8d): the Machine's last post-it, a gap apart from its Puzzles, a "?" where the
+// others have their brief.
+constexpr float kRandomGap = 28;  // px more than the row's own gap
+constexpr const char* kRandomSign = "?";
+constexpr float kSignScale = 4.5f;  // of the title's size
+// A large "?" over the live picture while it is selected: for the user to judge on a screenshot
+// with it on and off.
+constexpr bool kPictureQuestion = true;
+constexpr ImU32 kPictureQuestionInk = IM_COL32(255, 255, 255, 46);
+// While its Puzzle is made: ways of breaking a computer, one a second, looping. Three dots typed
+// as dots (the UI font has no ellipsis). The user's to rewrite.
+constexpr auto kLineTime = std::chrono::milliseconds(1000);
+constexpr std::array kMakingLines{
+    "Spilling coffee on the board...",     "Dropping it down the stairs...",
+    "Letting the cat sleep on it...",      "Leaving it in a damp cellar for ten years...",
+    "Plugging the power in backwards...",  "Lending it to a nephew...",
+    "Shaking it to hear what rattles...",  "Poking around with a screwdriver, power on...",
+    "Checking that it no longer works...",
+};
+constexpr float kLineScale = 1.6f;
+constexpr ImU32 kMakingDim = IM_COL32(0, 0, 0, 150);
+constexpr ImU32 kMakingPlate = IM_COL32(18, 18, 22, 240);  // behind the line
+constexpr float kMakingPad = 22;
+constexpr ImU32 kMakingHint = IM_COL32(170, 170, 178, 255);
 
 std::unique_ptr<StillData> MakeStill(const std::filesystem::path& netlist) {
     if (!HasBoard(netlist)) {
@@ -124,9 +150,10 @@ float NoteHeight(const std::string& title, const std::string& brief) {
 // title, blue lines under the text). The selected one casts a deeper shadow.
 // `scroll`: px of its text scrolled up, out of `overflow` (the text past the note's height): a
 // small ink arrow at the bottom while more is below, at the top once scrolled.
+// `sign`: drawn large in place of the brief ("Random fault"'s "?", P8d).
 void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& title,
                 const std::string& brief, bool selected, bool card, float scroll = 0,
-                float overflow = 0) {
+                float overflow = 0, const char* sign = nullptr) {
     const ImVec2 end{at.x + kNoteWidth, at.y + height};
     if (card) {
         const float shadow = selected ? kLiftShadow : 2;
@@ -158,7 +185,16 @@ void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& ti
     list.AddText(font, size * kNoteTitleScale, {at.x + kNotePad, y}, ink, title.c_str(), nullptr,
                  wrap);
     y += titleHeight + spacing;
-    list.AddText(font, size, {at.x + kNotePad, y}, ink, brief.c_str(), nullptr, wrap);
+    if (sign != nullptr) {  // centred in what is left of the note
+        const float signSize = size * kNoteTitleScale * kSignScale;
+        const ImVec2 extent = font->CalcTextSizeA(signSize, FLT_MAX, 0, sign);
+        list.AddText(
+            font, signSize,
+            {at.x + (kNoteWidth - extent.x) / 2, y + (end.y - kNotePad - y - extent.y) / 2},
+            WithAlpha(ink, 0.8f), sign);
+    } else {
+        list.AddText(font, size, {at.x + kNotePad, y}, ink, brief.c_str(), nullptr, wrap);
+    }
     list.PopClipRect();
     const float midX = at.x + kNoteWidth / 2;
     const ImU32 arrow = WithAlpha(ink, 0.55f);
@@ -228,10 +264,12 @@ Launcher::~Launcher() { stop(); }
 void Launcher::setList(MachineList list) {
     list_ = std::move(list);
     std::vector<std::size_t> counts;
+    std::vector<bool> random;
     for (const MachineEntry& machine : list_.machines) {
         counts.push_back(machine.puzzles.size());
+        random.push_back(machine.random.has_value());
     }
-    lanes_.setPuzzles(std::move(counts));
+    lanes_.setPuzzles(std::move(counts), std::move(random));
     jump_ = true;
 }
 
@@ -243,6 +281,8 @@ void Launcher::select(const std::filesystem::path& file) {
     lanes_.selectMachine(entry->machine);
     if (entry->puzzle) {
         lanes_.selectPostIt(*entry->puzzle + 1);
+    } else if (entry->random) {  // after the Machine's Puzzles
+        lanes_.selectPostIt(list_.machines[entry->machine].puzzles.size() + 1);
     }
     jump_ = true;
 }
@@ -254,11 +294,72 @@ std::filesystem::path Launcher::entryFile() const {
         return {};
     }
     const MachineEntry& machine = list_.machines[lanes_.machine()];
+    if (lanes_.random()) {
+        return *machine.random;
+    }
     const auto puzzle = lanes_.puzzle();
     return puzzle ? machine.puzzles[*puzzle].file : machine.netlist;
 }
 
+std::filesystem::path Launcher::liveFile() const {
+    if (list_.machines.empty()) {
+        return {};
+    }
+    return lanes_.random() ? list_.machines[lanes_.machine()].netlist : entryFile();
+}
+
+void Launcher::make(std::optional<std::uint64_t> seed) {
+    if (list_.machines.empty() || !lanes_.random()) {
+        return;
+    }
+    std::random_device device;
+    const auto fresh = [&] { return (static_cast<std::uint64_t>(device()) << 32) | device(); };
+    makingFile_ = entryFile();
+    maker_.start(makingFile_, seed ? *seed : fresh());
+    making_ = true;
+    made_.reset();
+    makingSince_ = std::chrono::steady_clock::now();
+    firstLine_ = device() % kMakingLines.size();
+    error_.clear();
+}
+
+std::optional<LauncherChoice> Launcher::updateMaking() {
+    if (!making_) {
+        return std::nullopt;
+    }
+    if (!hold_ && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        maker_.stop();
+        making_ = false;
+        made_.reset();
+        return std::nullopt;
+    }
+    if (!made_) {
+        if (auto result = maker_.take()) {
+            if (*result) {
+                made_ = std::move(**result);
+            } else {
+                error_ = "No random fault: " + result->error();
+                making_ = false;
+            }
+        } else if (!maker_.making()) {
+            making_ = false;  // stopped from outside: nothing made
+        }
+    }
+    // A line is always read: the choice a second after the start at the earliest.
+    if (making_ && made_ && !hold_ &&
+        std::chrono::steady_clock::now() - makingSince_ >= kLineTime) {
+        LauncherChoice choice{makingFile_, std::move(made_)};
+        made_.reset();
+        making_ = false;
+        return choice;
+    }
+    return std::nullopt;
+}
+
 void Launcher::stop() {
+    maker_.stop();
+    making_ = false;
+    made_.reset();
     live_.view.reset();
     live_.loaded.reset();
     live_.file.clear();
@@ -304,7 +405,7 @@ void Launcher::updateLive(TvView& tv) {
     std::erase_if(abandoned_, [](const std::future<OpenedMachine>& load) {
         return load.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
     });
-    const std::filesystem::path want = entryFile();
+    const std::filesystem::path want = liveFile();
     if (want != live_.file) {
         live_.view.reset();
         live_.loaded.reset();  // its runner joined
@@ -364,8 +465,7 @@ void Launcher::updateLive(TvView& tv) {
     }
 }
 
-std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
-                                                    ImFont* titleFont) {
+std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont* titleFont) {
     std::optional<std::filesystem::path> chosen;
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const ImVec2 origin = ImGui::GetWindowPos();
@@ -403,22 +503,26 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
     const std::size_t machineBefore = lanes_.machine();
     const std::size_t postItBefore = lanes_.postIt();
     const Lane laneBefore = lanes_.lane();
-    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
-        lanes_.left();
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
-        lanes_.right();
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
-        lanes_.down();
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
-        lanes_.up();
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_Enter, false) ||
-        ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false) ||
-        ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
-        chosen = entryFile();
+    // A Random fault being made (P8d): Esc alone does anything; its choice once made.
+    std::optional<LauncherChoice> made = updateMaking();
+    if (!making_ && !made) {
+        if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
+            lanes_.left();
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
+            lanes_.right();
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
+            lanes_.down();
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
+            lanes_.up();
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Enter, false) ||
+            ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false) ||
+            ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+            chosen = entryFile();
+        }
     }
 
     const float dt = ImGui::GetIO().DeltaTime;
@@ -432,7 +536,7 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
     const float areaTop = origin.y + kTitleBand;
     const ImVec2 area{(static_cast<float>(kPictureTo - kPictureFrom)) * width,
                       topHeight - kTitleBand - kAreaMargin};
-    const bool clicksOn = !chosen;
+    const bool clicksOn = !chosen && !making_ && !made;
     std::optional<std::size_t> clickedMachine;
     bool clickedLive = false;
     std::optional<std::size_t> doubleClicked;
@@ -465,7 +569,9 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
         // launcher window's drawing would be under the Board's child.
         const bool failed = i == lanes_.machine() && live_.failed;
         const bool noBoard = live && !live_.view;
-        if (hasTv || failed || noBoard) {
+        // "Random fault" selected: the working Machine, a large "?" over it.
+        const bool question = kPictureQuestion && i == lanes_.machine() && lanes_.random();
+        if (hasTv || failed || noBoard || question) {
             ImGui::SetCursorScreenPos(at);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
             ImGui::BeginChild("over", picture, ImGuiChildFlags_None,
@@ -482,6 +588,14 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
                 DrawMonitor(
                     over, {at.x + picture.x - monitorWidth, areaTop + (area.y - monitorHeight) / 2},
                     monitorWidth, controls, live ? &tv : nullptr);
+            }
+            if (question) {
+                ImFont* font = ImGui::GetFont();
+                const float signSize = picture.y * 0.8f;
+                const ImVec2 extent = font->CalcTextSizeA(signSize, FLT_MAX, 0, kRandomSign);
+                over.AddText(font, signSize,
+                             {at.x + (picture.x - extent.x) / 2, at.y + (picture.y - extent.y) / 2},
+                             kPictureQuestionInk, kRandomSign);
             }
             if (noBoard && !hasTv) {
                 const char* text = "No Board";
@@ -603,14 +717,22 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
         titles.push_back(Displayable(puzzle.title));
         briefs.push_back(Displayable(puzzle.brief));
     }
+    // "Random fault" (P8d): the row's last post-it, kRandomGap further than the others.
+    std::optional<std::size_t> randomAt;
+    if (machine.random) {
+        randomAt = titles.size();
+        titles.emplace_back(kRandomFaultTitle);
+        briefs.emplace_back();
+    }
+    const float apart = randomAt ? kRandomGap : 0;
     const float noteTop = laneBottom + kNoteGap;
     const float rowLeft = origin.x + kNoteLeft + kNoteWidth + kRowGap;
     const float visible = woodEnd.x - rowLeft;
-    // More Puzzles than fit: the gap widened so the last one in view is cut about in half at the
+    // More post-its than fit: the gap widened so the last one in view is cut about in half at the
     // window's edge, showing that the row scrolls.
     float gap = kNoteGap;
-    const std::size_t puzzles = titles.size() - 1;
-    if (static_cast<float>(puzzles) * (kNoteWidth + kNoteGap) - kNoteGap > visible) {
+    const std::size_t puzzles = titles.size() - 1;  // the row's post-its, "Random fault" too
+    if (static_cast<float>(puzzles) * (kNoteWidth + kNoteGap) - kNoteGap + apart > visible) {
         const float whole =
             std::max(1.0f, std::floor((visible - kNoteWidth / 2) / (kNoteWidth + kNoteGap)));
         gap = std::clamp((visible - kNoteWidth / 2) / whole - kNoteWidth, kNoteGap, 4 * kNoteGap);
@@ -621,19 +743,24 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
         postIts_.jump(0);
         noteScroll_.clear();
     }
-    if (const auto puzzle = lanes_.puzzle()) {
+    // Where the row's post-it `k` (1: the first Puzzle) starts, before the scroll.
+    const auto rowX = [&](std::size_t k) {
+        return static_cast<float>(k - 1) * pitch + (k == randomAt ? apart : 0);
+    };
+    if (lanes_.postIt() > 0) {
         // In view, with half of its neighbour on that side when there is one (the row still
         // shows that it scrolls).
-        const float at = static_cast<float>(*puzzle) * pitch;
-        const float before = *puzzle > 0 ? kNoteWidth / 2 + gap : 0;
-        const float after = *puzzle + 1 < puzzles ? gap + kNoteWidth / 2 : gap;
+        const std::size_t inRow = lanes_.postIt() - 1;
+        const float at = rowX(lanes_.postIt());
+        const float before = inRow > 0 ? kNoteWidth / 2 + gap + (lanes_.random() ? apart : 0) : 0;
+        const float after = inRow + 1 < puzzles ? gap + kNoteWidth / 2 : gap;
         double target = postIts_.target;
         if (at - before - target < 0) {
             target = at - before;
         } else if (at + kNoteWidth + after - target > visible) {
             target = at + kNoteWidth + after - visible;
         }
-        const float end = std::max(0.0f, static_cast<float>(puzzles) * pitch - visible);
+        const float end = std::max(0.0f, static_cast<float>(puzzles) * pitch + apart - visible);
         postIts_.target = std::clamp(target, 0.0, static_cast<double>(end));
     }
     if (jump_) {
@@ -656,7 +783,8 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
             scroll -= ImGui::GetIO().MouseWheel * ImGui::GetFontSize() * 2;
         }
         scroll = std::clamp(scroll, 0.0f, overflow);
-        DrawPostIt(list, at, noteHeight, titles[k], briefs[k], chosenOne, k == 0, scroll, overflow);
+        DrawPostIt(list, at, noteHeight, titles[k], briefs[k], chosenOne, k == 0, scroll, overflow,
+                   k == randomAt ? kRandomSign : nullptr);
         if (chosenOne && lanes_.lane() == Lane::PostIts) {
             SelectionBar(list, {at.x, at.y + noteHeight}, kNoteWidth);
         }
@@ -676,8 +804,7 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
     list.PushClipRect({rowLeft - kLiftShadow, laneBottom + 2}, woodEnd, true);
     ImGui::PushClipRect({rowLeft, laneBottom + 2}, woodEnd, true);
     for (std::size_t k = 1; k < titles.size(); ++k) {
-        const float x =
-            rowLeft + static_cast<float>(k - 1) * pitch - static_cast<float>(postIts_.value);
+        const float x = rowLeft + rowX(k) - static_cast<float>(postIts_.value);
         if (x + kNoteWidth + kLiftShadow < rowLeft || x > woodEnd.x) {
             continue;
         }
@@ -706,12 +833,46 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
         lanes_.lane() != laneBefore) {
         error_.clear();
     }
+    // "Random fault" opened: its Puzzle is made first (the choice comes from updateMaking).
+    if (chosen && lanes_.random()) {
+        chosen.reset();
+        make();
+    }
+    if (making_) {
+        // The wood dimmed, a line a second over it, looping from a start of its own.
+        list.AddRectFilled({origin.x, laneBottom + 2}, woodEnd, kMakingDim);
+        const auto waited = std::chrono::steady_clock::now() - makingSince_;
+        const std::size_t line =
+            (firstLine_ + static_cast<std::size_t>(waited / kLineTime)) % kMakingLines.size();
+        ImFont* font = ImGui::GetFont();
+        const float fontSize = ImGui::GetFontSize();
+        const ImVec2 extent =
+            font->CalcTextSizeA(fontSize * kLineScale, FLT_MAX, 0, kMakingLines[line]);
+        const char* hint = "Making a random fault. Esc stops.";
+        const ImVec2 hintExtent = ImGui::CalcTextSize(hint);
+        // A dark plate behind the two lines: the post-its' text is still under the dimming.
+        const float middle = (laneBottom + woodEnd.y) / 2;
+        const float half = std::max(extent.x, hintExtent.x) / 2 + kMakingPad;
+        const float centre = origin.x + width / 2;
+        list.AddRectFilled({centre - half, middle - extent.y - kMakingPad},
+                           {centre + half, middle + fontSize * 0.6f + hintExtent.y + kMakingPad},
+                           kMakingPlate, 8.0f);
+        list.AddText(font, fontSize * kLineScale, {centre - extent.x / 2, middle - extent.y}, kName,
+                     kMakingLines[line]);
+        list.AddText({centre - hintExtent.x / 2, middle + fontSize * 0.6f}, kMakingHint, hint);
+    }
     updateLive(tv);
     // The cursor back inside the window with an item last (SetCursorScreenPos alone past the
     // content would extend it).
     ImGui::SetCursorScreenPos(origin);
     ImGui::Dummy({0, 0});
-    return chosen;
+    if (made) {
+        return made;
+    }
+    if (chosen) {
+        return LauncherChoice{std::move(*chosen)};
+    }
+    return std::nullopt;
 }
 
 }  // namespace bw

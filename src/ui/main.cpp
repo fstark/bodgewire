@@ -270,6 +270,15 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     // Repair Validation (P8c): the tick on the post-it, the Thank-you Card once.
     const PuzzleEntry* nextPuzzle =
         list && options.file ? NextPuzzle(*list, *options.file) : nullptr;
+    // The card's Next: the Machine's next Puzzle; on a Random fault, another one (P8d), made by
+    // the Launcher (so only with one to go back to).
+    const bool randomFault = !loaded.fault.empty() && options.file.has_value();
+    std::optional<std::string> nextLabel;
+    if (nextPuzzle != nullptr) {
+        nextLabel = "Next: " + nextPuzzle->title;
+    } else if (randomFault && list != nullptr) {
+        nextLabel = "Another random fault";
+    }
     RepairAck ack(session.puzzle());
     ThankYouCard card;
     bool cardDue = false;                            // waits for any open question to be answered
@@ -702,9 +711,9 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             card.open();
             cardDue = false;
         }
-        switch (card.draw(loaded.title, nextPuzzle ? &nextPuzzle->title : nullptr, canLeave)) {
+        switch (card.draw(loaded.title, nextLabel ? &*nextLabel : nullptr, canLeave)) {
         case CardAnswer::Next:
-            following = nextPuzzle->file;
+            following = nextPuzzle != nullptr ? nextPuzzle->file : *options.file;
             break;
         case CardAnswer::Machines:
             leaving = true;  // no leave question: the repairs were the point
@@ -800,7 +809,7 @@ private:
 };
 
 struct LauncherResult {
-    std::optional<std::filesystem::path> file;  // clicked; none: quit
+    std::optional<LauncherChoice> choice;  // clicked (a Random fault: made); none: quit
     int exitCode = 0;
 };
 
@@ -813,6 +822,12 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
     SpeedRatio ratio;
     double speedRatio = 0;
     FrameClock clock;
+    if (options.screenshot) {
+        launcher.holdChoices();  // the shot is the Launcher's: no bench opens before it
+    }
+    if (options.make) {
+        launcher.make(options.seed);  // --make: the selected Random fault's making, at once
+    }
     while (true) {
         clock.frameStarts();
         SDL_Event event;
@@ -836,7 +851,7 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus |
                          ImGuiWindowFlags_NoScrollWithMouse);
         ImGui::PopStyleVar();
-        const auto chosen = launcher.draw(view, screen.legends(), screen.title());
+        auto chosen = launcher.draw(view, screen.legends(), screen.title());
         ImGui::End();
         ImGui::Render();
         clock.built();
@@ -845,8 +860,8 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
             speedRatio = ratio.update(status->simTime);
         }
         gpu.present(&view);
-        if (chosen) {
-            return {chosen};
+        if (chosen && !options.screenshot) {
+            return {std::move(chosen)};
         }
         if (options.screenshot && clock.elapsed() >= options.after) {
             if (status) {
@@ -1001,8 +1016,15 @@ int main(int argc, char** argv) {
     while (true) {
         if (!loaded) {
             std::filesystem::path file;
-            const bool following = next.has_value();
-            const bool visiting = !following && !visits.empty();
+            std::optional<FaultDecl> fault;
+            // The card's "Another random fault" (P8d): back through the Launcher, which makes it.
+            const bool another = next.has_value() && IsVettingScript(*next);
+            const bool following = next.has_value() && !another;
+            const bool visiting = !following && !another && !visits.empty();
+            if (another) {
+                left = *next;
+                next.reset();
+            }
             if (following) {
                 file = *next;
                 next.reset();
@@ -1016,18 +1038,21 @@ int main(int argc, char** argv) {
                 if (left) {
                     launcher.select(*left);
                 }
+                if (another) {
+                    launcher.make();
+                }
                 ImGuiScreen screen(window, *gpu);
-                const LauncherResult chosen = RunLauncher(window, *gpu, screen, launcher, options);
+                LauncherResult chosen = RunLauncher(window, *gpu, screen, launcher, options);
                 launcher.stop();  // the live run's Session ends before the bench's Load
-                if (!chosen.file) {
+                if (!chosen.choice) {
                     exitCode = chosen.exitCode != 0 ? chosen.exitCode : exitCode;
                     break;
                 }
-                file = *chosen.file;
+                file = std::move(chosen.choice->file);
+                fault = std::move(chosen.choice->fault);
             }
             // A Vetting Script with no Fault made for it (a visit): one made here.
-            std::optional<FaultDecl> fault;
-            if (IsVettingScript(file)) {
+            if (IsVettingScript(file) && !fault) {
                 fault = MakeFault(file, options.seed.value_or(1), std::nullopt);
             }
             loaded.emplace(Load(file, std::nullopt, fault ? &*fault : nullptr));
