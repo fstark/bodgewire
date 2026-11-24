@@ -10,8 +10,8 @@ Spec: [PROCEDURAL_PUZZLES.md](PROCEDURAL_PUZZLES.md). Design: [PROCEDURAL_PUZZLE
 | 1 | A knob set at a time; the inputs out of `bw run` | `3e936ae` |
 | 2 | The Vetting Script and its fourteen files | `2029e8d` |
 | 3 | Drawing a Fault | `f65927b` |
-| 4 | Vetting, making a Puzzle, `bw random` | this commit |
-| 5 | The bench on a Random fault, the "Give up" page | |
+| 4 | Vetting, making a Puzzle, `bw random` | `1317e49` |
+| 5 | The bench on a Random fault, the "Give up" page | this commit |
 | 6 | The Launcher's post-it and the making | |
 | 7 | Docs, the release check | |
 
@@ -95,6 +95,16 @@ Fence: the full release suite; the web build. Commit: `docs: P8d done, Procedura
   4. The binder's smallest height cannot be reached by a flag, and six tabs need a ROM: the tabs' layout is a tested function (`TabTops`), the screenshot is the Message's with `--contents`.
   5. Phase 6's fence had checks no flag can make (the card clicked, Esc, the browser): they are the user's, and `PuzzleMaker` moved to `src/session` so its stopping is unit tested.
   - Also from it: `RunTo`'s `slice` can stop a run and `Vetting::Make` can be stopped; the watched outputs are decided once on the fault-free build; an exception in a try counts as not showing; the fourteen files written out in D2 with their presses; `QuotedValue` and `IsMachineName` shared; the card's "Another random fault" moved to phase 6, where the Launcher can make one; `--make` under `--screenshot`; the lines' three dots typed as dots; `kPictureQuestion` and `sign` (Mark alone is a Pencil Mark's word).
+- 2026-11-25, phase 5: as designed, but:
+  - `MakeProceduralPuzzleFor(script, seed, roms, stop)` (`src/session/procedural_puzzle`) is the whole making for a file (read, the Machine loaded, vetted, made): `main()` calls it for a `.bwr` from the terminal or visited, phase 6's `PuzzleMaker` will on its thread.
+  - `--seed`, `--show-fault` and `--manual giveup` are refused by `ParseOptions`, not `ApplyBenchOptions` (which sees the Session, not the file): a usage error as the other bad combinations. `--seed` needs a `.bwr` as the file or among `--visit`'s.
+  - `TabTops(count, top, bottom, tabHeight, step)`: the bottom the last tab must end above, not the binder's height.
+  - The texts are constants in `src/ui/loaded.hpp` (`kRandomFaultTitle`, `kRandomFaultBrief`); the page says "This board has one fault, picked at random. Nobody wrote it down, but this page can tell you what it is. Once shown, it stays shown.", then "The fault on this board:", the line, "A click on the line copies it." ("Copied."), "The board can still be repaired.": the user's to rewrite with the others.
+  - The usage starts `bw_ui [file.bwn|file.bwp|random.bwr]`.
+
+  Checks: release, the full suite (1640); screenshots viewed: the Counter's bench and its Brief, the Dice's with "Hold ROLL, then let go.", the page before and after `--show-fault`, the Message's binder at `--binder-height 70%` with its six tabs (`--contents U14`), the Counter's with `--repair unbridge:U1.6:U1.7` at 4 s (the card, the tick, no Next yet), the BW-2001's bench (seed 1: a dead screen). Debug: `bench options|binder|procedural puzzle: (made|a bad)`, and `bw_ui` on the Counter's `random.bwr` with the page shown. Web build: links.
+
+  Found, not this step's: debug `bw_ui` reports a signed overflow at `src/view/flip_corner.cpp:19` (`OnFlipCorner`, P6o) on every bench, an Authored Puzzle's too. Left as it is, reported to the user.
 - 2026-11-25, phase 4: as designed. `Vetting::Make` also refuses a Machine with no TV and no lamp; `Shows` takes two `Shown`s of different sizes for a difference. No file needed correcting: every golden has its picture at each capture time, the knobs' later positions included. Checks: release, the full suite (1631; the fourteen `procedural puzzle: NNN-name` ctests 0.3 s to 9.4 s each, 36 s summed, in parallel). Debug: `vetting:|procedural puzzle: (five|the first|stopped|the same|it shows|010|020|030|040|045|050|080)|bw_random` (43 s).
 
   D8, `bw random` on every Machine, seeds 1 to 20, six at a time (2026-11-25): all 280 made.

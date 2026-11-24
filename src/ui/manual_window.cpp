@@ -42,12 +42,13 @@ struct Tab {
     const char* label;
     ImU32 colour;
 };
-constexpr std::array<Tab, 5> kTabs{{
+constexpr std::array<Tab, 6> kTabs{{
     {Divider::User, "User\nManual", IM_COL32(240, 225, 140, 255)},
     {Divider::Service, "Service\nManual", IM_COL32(170, 215, 160, 255)},
     {Divider::Datasheets, "Datasheets", IM_COL32(165, 195, 235, 255)},
     {Divider::Repairs, "Repairs", IM_COL32(235, 175, 190, 255)},
     {Divider::Contents, "Contents", IM_COL32(200, 185, 235, 255)},  // P6p: once opened
+    {Divider::GiveUp, "Give up", IM_COL32(225, 222, 212, 255)},     // P8d: a Random fault's
 }};
 
 const char* PageId(Divider divider) {
@@ -62,6 +63,8 @@ const char* PageId(Divider divider) {
         return "page repairs";
     case Divider::Contents:
         return "page contents";
+    case Divider::GiveUp:
+        return "page give up";
     }
     return "page";
 }
@@ -138,7 +141,7 @@ void ManualWindows::openContents(const BoardScene& scene, std::size_t component,
 
 void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
                          const LoadedCircuit& design, std::span<const std::string> log,
-                         const Machine* machine) {
+                         const Machine* machine, const std::string* fault) {
     binder_.frame(open, board.selected());
     if (!open) {
         return;
@@ -173,7 +176,10 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     if (binder_.divider() == Divider::Repairs && !scene) {
         binder_.turn(Divider::User);  // no Board, no repairs (--manual repairs on a netlist)
     }
-    tabs(scene != nullptr);
+    if (binder_.divider() == Divider::GiveUp && fault == nullptr) {
+        binder_.turn(Divider::User);  // not a Random fault's bench
+    }
+    tabs(scene != nullptr, fault != nullptr);
     const Divider divider = binder_.divider();
     const ImVec2 page{at.x + kSpine + 24, at.y + kCoverEdge + 10};
     const ImVec2 size{w - kSpine - kTabStrip - 32, h - 2 * kCoverEdge - 20};
@@ -208,6 +214,11 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
                 ImGui::PopID();
             }
             break;
+        case Divider::GiveUp:
+            if (fault != nullptr) {
+                giveUp(*fault);
+            }
+            break;
         case Divider::Repairs:
             Title("Repairs");
             if (log.empty()) {
@@ -229,21 +240,64 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     ImGui::End();
 }
 
-void ManualWindows::tabs(bool board) {
+// The Give up page (P8d): a question, then the Fault's line, copied by a click.
+void ManualWindows::giveUp(const std::string& fault) {
+    Title("Give up?");
+    ImGui::Spacing();
+    ImGui::PushTextWrapPos(0);
+    if (!faultShown_) {
+        ImGui::TextUnformatted("This board has one fault, picked at random. Nobody wrote it down, "
+                               "but this page can tell you what it is.");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Once shown, it stays shown.");
+        ImGui::PopTextWrapPos();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        if (ImGui::Button("Show the fault")) {
+            faultShown_ = true;
+        }
+        return;
+    }
+    ImGui::TextUnformatted("The fault on this board:");
+    ImGui::Spacing();
+    if (ImGui::Selectable(fault.c_str(), false)) {
+        ImGui::SetClipboardText(fault.c_str());
+        faultCopied_ = true;
+    }
+    ImGui::Spacing();
+    ImGui::TextDisabled("%s", faultCopied_ ? "Copied." : "A click on the line copies it.");
+    ImGui::Spacing();
+    ImGui::TextUnformatted("The board can still be repaired.");
+    ImGui::PopTextWrapPos();
+}
+
+void ManualWindows::tabs(bool board, bool giveUp) {
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const ImVec2 at = ImGui::GetWindowPos();
     const float w = ImGui::GetWindowWidth();
     const float pageRight = at.x + w - kTabStrip;
     const float right = at.x + w - kCoverEdge - 2;
-    ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kTabLabelScale);
+    // The tabs that show, top to bottom: no gap for a hidden one, closer in a short binder.
+    std::array<std::size_t, kTabs.size()> shown{};
+    std::size_t count = 0;
     for (std::size_t i = 0; i < kTabs.size(); ++i) {
-        const Tab& tab = kTabs[i];
-        const bool open = binder_.divider() == tab.divider;
-        if (tab.divider == Divider::Contents && !binder_.contents()) {
+        if (kTabs[i].divider == Divider::Contents && !binder_.contents()) {
             continue;  // no memory chip's window clicked yet
         }
+        if (kTabs[i].divider == Divider::GiveUp && !giveUp) {
+            continue;  // not a Random fault's bench
+        }
+        shown[count++] = i;
+    }
+    const std::vector<float> tops =
+        TabTops(count, kTabTop, ImGui::GetWindowHeight() - kCoverEdge - 2, kTabHeight, kTabStep);
+    ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kTabLabelScale);
+    for (std::size_t place = 0; place < count; ++place) {
+        const std::size_t i = shown[place];
+        const Tab& tab = kTabs[i];
+        const bool open = binder_.divider() == tab.divider;
         const bool enabled = tab.divider != Divider::Repairs || board;
-        const float top = at.y + kTabTop + kTabStep * static_cast<float>(i);
+        const float top = at.y + tops[place];
         const ImVec2 min{open ? pageRight - 2 : pageRight + kTabSetBack, top};
         const ImVec2 max{right, top + kTabHeight};
         ImGui::SetCursorScreenPos({pageRight, top});

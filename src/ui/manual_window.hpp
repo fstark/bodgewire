@@ -19,13 +19,17 @@ inline constexpr const char* kManualWindowName = "###manuals";
 
 // The manuals binder (P6e): a drawn ring binder with four dividers, the User Manual, the Service
 // Manual, the Datasheets (the hovered or selected chip's page, else an index of the Machine's
-// Parts) and the Repairs log; a fifth, Contents, once a memory chip's window was clicked (P6p).
+// Parts) and the Repairs log; a fifth, Contents, once a memory chip's window was clicked (P6p);
+// a sixth, Give up, on a Random fault's bench (P8d): its page shows the Fault once asked.
 // Out at the User Manual; a chip selected while it is out turns it to that chip's page.
 class ManualWindows {
 public:
     // `machine`: the Contents page's words; null without a Machine (no Board, no Contents).
+    // `fault`: a Random fault's `fault …` line, for the Give up page; null on any other bench.
     void draw(bool& open, const Manuals& manuals, BoardView& board, const LoadedCircuit& design,
-              std::span<const std::string> log, const Machine* machine);
+              std::span<const std::string> log, const Machine* machine,
+              const std::string* fault = nullptr);
+    void showFault() { faultShown_ = true; }  // --show-fault: the Give up page as after its button
     void show(Divider divider) { binder_.show(divider); }  // --manual: the divider it comes out at
     // --binder-height: its first height for its width, 1 its proportions (P6o: resized freely).
     void setStretch(float stretch) { stretch_ = stretch; }
@@ -38,7 +42,8 @@ public:
     }
 
 private:
-    void tabs(bool board);
+    void tabs(bool board, bool giveUp);
+    void giveUp(const std::string& fault);
     void datasheets(const Manuals& manuals, BoardView& board, const LoadedCircuit& design);
     TargetHits index(const Manuals& manuals, const BoardScene* scene);
 
@@ -49,6 +54,8 @@ private:
     std::vector<IndexEntry> index_;
     bool indexed_ = false;
     float stretch_ = 1;
+    bool faultShown_ = false;   // the Give up page's button pressed: for the bench
+    bool faultCopied_ = false;  // its line clicked
 };
 
 }  // namespace bw

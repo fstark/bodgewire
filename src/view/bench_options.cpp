@@ -54,11 +54,12 @@ constexpr std::array<std::pair<std::string_view, MarkShape>, 3> kShapes{{
     {"check", MarkShape::Check},
 }};
 
-constexpr std::array<std::pair<std::string_view, Divider>, 4> kDividers{{
+constexpr std::array<std::pair<std::string_view, Divider>, 5> kDividers{{
     {"user", Divider::User},
     {"service", Divider::Service},
     {"datasheet", Divider::Datasheets},
     {"repairs", Divider::Repairs},
+    {"giveup", Divider::GiveUp},  // a Random fault's bench only (P8d)
 }};
 
 constexpr std::array<std::pair<std::string_view, RunSwitch>, 3> kRuns{{
@@ -192,6 +193,16 @@ const std::array kFlags{
              o.select = v;
              return {};
          }},
+    Flag{"--seed", "N", true,
+         [](Options& o, std::string_view v) -> Result {
+             std::uint64_t seed = 0;
+             const auto [end, ec] = std::from_chars(v.data(), v.data() + v.size(), seed);
+             if (ec != std::errc{} || end != v.data() + v.size()) {
+                 return Bad();
+             }
+             o.seed = seed;
+             return {};
+         }},
     Flag{"--probe", "REF.PIN", false,
          [](Options& o, std::string_view v) -> Result {
              o.bench.probe = v;
@@ -279,7 +290,7 @@ const std::array kFlags{
              o.roms = v;
              return {};
          }},
-    Flag{"--manual", "user|service|datasheet|repairs", false,
+    Flag{"--manual", "user|service|datasheet|repairs|giveup", false,
          [](Options& o, std::string_view v) {
              return Set(o.bench.manual, Named<Divider>(kDividers, v));
          }},
@@ -391,6 +402,11 @@ const std::array kFlags{
              o.bench.contents.emplace(std::string(v.substr(0, colon)), view);
              return {};
          }},
+    Flag{"--show-fault", "", false,
+         [](Options& o, std::string_view) -> Result {
+             o.bench.showFault = true;
+             return {};
+         }},
     Flag{"--debug", "", false,
          [](Options& o, std::string_view) -> Result {
              o.bench.debug = true;
@@ -415,7 +431,7 @@ const std::array kFlags{
 }  // namespace
 
 std::string Usage() {
-    std::string usage = "usage: bw_ui [file.bwn|file.bwp]";
+    std::string usage = "usage: bw_ui [file.bwn|file.bwp|random.bwr]";
     for (const Flag& flag : kFlags) {
         usage += " [" + std::string(flag.name);
         if (!flag.value.empty()) {
@@ -458,6 +474,16 @@ std::expected<Options, std::string> ParseOptions(std::span<const std::string_vie
         (!options.visit.empty() && !options.screenshot) || (bench.leave && bench.ask) ||
         (bench.reset && (bench.leave || bench.ask)) ||
         (options.select && (options.file || !options.visit.empty()))) {
+        return std::unexpected(std::string());
+    }
+    // A Random fault's (P8d): its seed needs a Vetting Script to make one for, its Give up page
+    // a bench on one.
+    const auto script = [](const std::filesystem::path& file) {
+        return file.extension() == ".bwr";
+    };
+    const bool randomBench = options.file && script(*options.file);
+    if ((options.seed && !randomBench && std::ranges::none_of(options.visit, script)) ||
+        ((bench.showFault || bench.manual == Divider::GiveUp) && !randomBench)) {
         return std::unexpected(std::string());
     }
     return options;

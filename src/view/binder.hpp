@@ -5,12 +5,18 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace bw {
 
 // The manuals binder's dividers, front to back (P6e); Contents once a memory chip's window was
-// clicked (P6p).
-enum class Divider : std::uint8_t { User, Service, Datasheets, Repairs, Contents };
+// clicked (P6p); GiveUp on a Random fault's bench only (P8d).
+enum class Divider : std::uint8_t { User, Service, Datasheets, Repairs, Contents, GiveUp };
+
+// The top of each of `count` tabs down the binder's edge, the first at `top`: `step` apart, closer
+// when the last, `tabHeight` tall, would end past `bottom` (overlapping in a binder too short for
+// them all). Only the tabs that show are counted: a hidden one leaves no gap.
+std::vector<float> TabTops(std::size_t count, float top, float bottom, float tabHeight, float step);
 
 // The binder's height for its width (1: its proportions), the range a drag or --binder-height
 // may stretch it to.

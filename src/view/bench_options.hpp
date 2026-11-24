@@ -66,11 +66,13 @@ struct BenchOptions {
     std::optional<std::pair<float, float>> brief;  // --brief: the note's offset on the Board, px
     // --contents: the binder out at a memory chip's Contents, at a view (P6p).
     std::optional<std::pair<std::string, std::optional<ContentsView>>> contents;
+    bool showFault = false;  // --show-fault: the binder's Give up page, its Fault shown (P8d)
 };
 
 // bw_ui's command line.
 struct Options {
-    // None: the launcher (P7a); a bench flag needs one.
+    // None: the launcher (P7a); a bench flag needs one. A Machine's Vetting Script
+    // (puzzles/random.bwr): a Random fault's bench, the Fault made at start (P8d).
     std::optional<std::filesystem::path> file;
     std::optional<std::filesystem::path> machines;     // --machines DIR: the launcher's (P7a)
     std::vector<std::filesystem::path> visit;          // --visit: opened in turn from the launcher
@@ -79,10 +81,12 @@ struct Options {
     std::optional<std::filesystem::path> screenshot;
     std::chrono::nanoseconds after{std::chrono::seconds(1)};
     std::optional<std::filesystem::path> roms;  // --roms DIR: ROM files named by reference
-    BenchOptions bench;                         // the file's bench; a visited one starts plain
+    // --seed N: the Random fault made for a .bwr given as the file or visited; 1 without it.
+    std::optional<std::uint64_t> seed;
+    BenchOptions bench;  // the file's bench; a visited one starts plain
 };
 
-// "usage: bw_ui [file.bwn|file.bwp] [--machines DIR] ...", from the flags' table.
+// "usage: bw_ui [file.bwn|file.bwp|random.bwr] [--machines DIR] ...", from the flags' table.
 std::string Usage();
 
 // `args` without the program's name. The error: a message to print before the usage, or "".

@@ -334,7 +334,7 @@ On a `.bwr`: `ReadVettingScriptFile`, `LoadNetlistMachine` of the Machine's netl
 
 ### `src/ui/main.cpp`
 
-- A `.bwr` that reaches `Load` with no Fault made (`bw_ui FILE.bwr`, `--visit FILE.bwr`) has one made first, on the spot, the window not yet drawn: `Vetting::Make`, `MakeProceduralPuzzle`, `Rng(options.seed.value_or(1))`. An error is the load's error.
+- A `.bwr` that reaches `Load` with no Fault made (`bw_ui FILE.bwr`, `--visit FILE.bwr`) has one made first, on the spot, the window not yet drawn: `MakeProceduralPuzzleFor(file, options.seed.value_or(1), roms)` (`src/session/procedural_puzzle`: the file read, its Machine loaded, `Vetting::Make`, `MakeProceduralPuzzle`). An error is the load's error.
 - The title of an entry is overwritten today when `EntryOf` finds no Puzzle (the working Machine's name): not for `EntryRef::random`.
 - `RunBench` reads `MachineDir(*options.file)` for `roms/contents.txt`: right for a `.bwr` with D2's `MachineDir`.
 - Reset is `Machine::undoRepairs`, which keeps an injected Fault: nothing to do.
@@ -343,7 +343,7 @@ On a `.bwr`: `ReadVettingScriptFile`, `LoadNetlistMachine` of the Machine's netl
 ### `src/view/binder.{hpp,cpp}`, `src/ui/manual_window.{hpp,cpp}`
 
 - `enum class Divider { User, Service, Datasheets, Repairs, Contents, GiveUp };` `kTabs` gains `{Divider::GiveUp, "Give up", …}`; `PageId` and the page's `switch`, the two over `Divider`, gain their case.
-- `std::vector<float> TabTops(std::size_t count, float height, float top, float tabHeight, float step);` in `binder.hpp`: the top of each of `count` visible tabs in a binder `height` tall, `step` apart from `top`, closer (overlapping at the worst) when the last would pass the bottom. `ManualWindows::tabs` places the visible tabs by it, where it used `kTabs`' index: no gap for a hidden Contents, and six tabs fit the smallest binder (292 px, reached by a drag: six need 324).
+- `std::vector<float> TabTops(std::size_t count, float top, float bottom, float tabHeight, float step);` in `binder.hpp`: the top of each of `count` visible tabs, `step` apart from `top`, closer (overlapping at the worst) when the last would end past `bottom`. `ManualWindows::tabs` places the visible tabs by it, where it used `kTabs`' index: no gap for a hidden Contents, and six tabs fit the smallest binder (292 px, reached by a drag: six need 324).
 - `ManualWindows::draw(…, const std::string* fault)`: the `fault` line on a Random fault's bench, else `nullptr`; the tab shows only then. Its one caller is `RunBench`.
 - The page: "Give up?", one sentence, the button "Show the fault"; pressed (`faultShown_`, kept for the bench), the line as a selectable row: a click calls `ImGui::SetClipboardText` and says "copied" beside it.
 - `Binder` needs no state: the tab is there or not by `fault`.
@@ -351,7 +351,7 @@ On a `.bwr`: `ReadVettingScriptFile`, `LoadNetlistMachine` of the Machine's netl
 ### `src/view/bench_options.{hpp,cpp}`, `src/ui/bench_setup.cpp`
 
 - `Options::seed` (`std::optional<std::uint64_t>`, `--seed N`): the seed of a `.bwr`'s Fault. `ParseOptions` refuses it unless the file is a `.bwr` or `--make` is given (D7).
-- `BenchOptions::showFault` (`--show-fault`: the page as after its button); `giveup` in `kDividers` for `--manual`. `ApplyBenchOptions` refuses both off a Random fault's bench ("--show-fault: a Random fault's bench only").
+- `BenchOptions::showFault` (`--show-fault`: the page as after its button); `giveup` in `kDividers` for `--manual`. `ParseOptions` refuses both when the file is not a `.bwr` (it knows the file; `ApplyBenchOptions` does not).
 - `tests/view/bench_options_test.cpp` pins the usage's start and end: it follows.
 
 ### Tests (`tests/view/binder_test.cpp`, `tests/view/bench_options_test.cpp`; screenshots in Checks)

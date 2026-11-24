@@ -66,8 +66,50 @@ TEST_CASE("bench options: usage errors", "[view]") {
 
 TEST_CASE("bench options: the usage lists every flag", "[view]") {
     const std::string usage = Usage();
-    CHECK(usage.starts_with("usage: bw_ui [file.bwn|file.bwp] [--machines DIR]"));
+    CHECK(usage.starts_with("usage: bw_ui [file.bwn|file.bwp|random.bwr] [--machines DIR]"));
+    CHECK(usage.contains("[--seed N]"));
+    CHECK(usage.contains("[--manual user|service|datasheet|repairs|giveup]"));
+    CHECK(usage.contains("[--show-fault]"));
     CHECK(usage.contains("[--probe REF.PIN]"));
     CHECK(usage.contains("[--debug]"));
     CHECK(usage.ends_with("[--screenshot OUT.png] [--after 1s]"));
+}
+
+TEST_CASE("bench options: --seed", "[view]") {
+    // The seed of the Random fault made for a Vetting Script (P8d): the file, or a visited one.
+    const auto bench = Parse({"machines/010-counter/puzzles/random.bwr", "--seed", "7"});
+    REQUIRE(bench.has_value());
+    CHECK(bench->seed == 7u);
+    CHECK_FALSE(Parse({"machines/010-counter/puzzles/random.bwr"})->seed.has_value());
+    const auto visit =
+        Parse({"--visit", "a.bwp,m/puzzles/random.bwr", "--seed", "3", "--screenshot", "a.png"});
+    REQUIRE(visit.has_value());
+    CHECK(visit->seed == 3u);
+}
+
+TEST_CASE("bench options: --seed without a .bwr", "[view]") {
+    CHECK(Parse({"m.bwp", "--seed", "7"}).error().empty());
+    CHECK(Parse({"m.bwn", "--seed", "7"}).error().empty());
+    CHECK(Parse({"--seed", "7"}).error().empty());
+    CHECK(Parse({"--visit", "a.bwp", "--seed", "3", "--screenshot", "a.png"}).error().empty());
+    CHECK(Parse({"random.bwr", "--seed", "seven"}).error().empty());
+    CHECK(Parse({"random.bwr", "--seed", "-1"}).error().empty());
+    CHECK(Parse({"random.bwr", "--seed"}).error().empty());
+}
+
+TEST_CASE("bench options: --show-fault", "[view]") {
+    const auto bench = Parse({"random.bwr", "--manual", "giveup", "--show-fault"});
+    REQUIRE(bench.has_value());
+    CHECK(bench->bench.showFault);
+    CHECK(bench->bench.manual == Divider::GiveUp);
+    CHECK_FALSE(Parse({"random.bwr"})->bench.showFault);
+    // Only a Random fault's bench has the page.
+    CHECK(Parse({"m.bwp", "--show-fault"}).error().empty());
+    CHECK(Parse({"m.bwn", "--show-fault"}).error().empty());
+}
+
+TEST_CASE("bench options: --manual giveup", "[view]") {
+    CHECK(Parse({"random.bwr", "--manual", "giveup"})->bench.manual == Divider::GiveUp);
+    CHECK(Parse({"m.bwp", "--manual", "giveup"}).error().empty());
+    CHECK(Parse({"m.bwp", "--manual", "repairs"})->bench.manual == Divider::Repairs);
 }

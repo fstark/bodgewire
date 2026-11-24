@@ -1,6 +1,21 @@
 #include "view/binder.hpp"
 
+#include <algorithm>
+
 namespace bw {
+
+std::vector<float> TabTops(std::size_t count, float top, float bottom, float tabHeight,
+                           float step) {
+    if (count > 1) {
+        const float room = bottom - top - tabHeight;  // for the tops after the first
+        step = std::clamp(room / static_cast<float>(count - 1), 0.0f, step);
+    }
+    std::vector<float> tops(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        tops[i] = top + step * static_cast<float>(i);
+    }
+    return tops;
+}
 
 void Binder::frame(bool out, std::optional<std::size_t> selected) {
     if (out && !out_) {

@@ -34,6 +34,7 @@
 #include "netlist/parser.hpp"
 #include "netlist/units.hpp"
 #include "parts/catalogue.hpp"
+#include "session/procedural_puzzle.hpp"
 #include "session/session.hpp"
 #include "text/text.hpp"
 #include "ui/analyzer_window.hpp"
@@ -347,6 +348,9 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         manualWindows.show(*options.bench.manual);
     }
     manualWindows.setStretch(options.bench.binderHeight);
+    if (options.bench.showFault) {
+        manualWindows.showFault();
+    }
     // The Contents page's defaults (P6p): none without the file; a bad one is ignored.
     if (const auto text = ReadTextFile(MachineDir(*options.file) / "roms" / "contents.txt")) {
         if (auto defaults = ParseContentsDefaults(*text, "contents.txt")) {
@@ -639,7 +643,8 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         tvWindow.draw(focus.outFlag(BenchObject::Tv), view);
         knobWindow.draw(focus.outFlag(BenchObject::Knob), session);
         manualWindows.draw(focus.outFlag(BenchObject::Manual), loaded.manuals.manuals, boardView,
-                           DesignOf(session), session.log(), session.machine());
+                           DesignOf(session), session.log(), session.machine(),
+                           loaded.fault.empty() ? nullptr : &loaded.fault);
         if (session.machine()) {
             const auto instrument = [&](Owner owner, auto& window) {
                 bool open = focus.out(owner);
@@ -856,6 +861,20 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
     }
 }
 
+// A Random fault for the Vetting Script `file` (P8d), made on the spot for a bench opened without
+// the Launcher's making (the terminal, --visit): the window waits. The error printed; nullopt.
+std::optional<FaultDecl> MakeFault(const std::filesystem::path& file, std::uint64_t seed,
+                                   const std::optional<std::filesystem::path>& roms) {
+    const auto made = MakeProceduralPuzzleFor(file, seed, roms);
+    if (!made) {
+        std::println(stderr, "bw_ui: {}: {}", file.filename().string(), made.error());
+        return std::nullopt;
+    }
+    return (*made)->fault;
+}
+
+bool IsVettingScript(const std::filesystem::path& file) { return file.extension() == ".bwr"; }
+
 // Where the launcher reads the Machines (P7a): --machines; else the machines/ holding the
 // file's Machine; else found from the working directory up, then from the executable's.
 std::optional<std::filesystem::path> MachinesDirFor(const Options& options) {
@@ -897,7 +916,14 @@ int main(int argc, char** argv) {
     const Options& options = *parsed;
     std::optional<OpenedMachine> loaded;  // the bench's; its Session ends before the next Load
     if (options.file) {
-        loaded.emplace(Load(*options.file, options.roms));
+        std::optional<FaultDecl> fault;
+        if (IsVettingScript(*options.file)) {
+            fault = MakeFault(*options.file, options.seed.value_or(1), options.roms);
+            if (!fault) {
+                return kExitErrors;
+            }
+        }
+        loaded.emplace(Load(*options.file, options.roms, fault ? &*fault : nullptr));
         if (!loaded->session) {
             return kExitErrors;
         }
@@ -999,7 +1025,12 @@ int main(int argc, char** argv) {
                 }
                 file = *chosen.file;
             }
-            loaded.emplace(Load(file, std::nullopt));
+            // A Vetting Script with no Fault made for it (a visit): one made here.
+            std::optional<FaultDecl> fault;
+            if (IsVettingScript(file)) {
+                fault = MakeFault(file, options.seed.value_or(1), std::nullopt);
+            }
+            loaded.emplace(Load(file, std::nullopt, fault ? &*fault : nullptr));
             left = file;
             if (!loaded->session) {
                 loaded.reset();
@@ -1011,7 +1042,8 @@ int main(int argc, char** argv) {
                 continue;
             }
             // The working Machine by its listed name ("Counter", not the netlist's "counter").
-            if (const auto entry = EntryOf(launcher.list(), file); entry && !entry->puzzle) {
+            if (const auto entry = EntryOf(launcher.list(), file);
+                entry && !entry->puzzle && !entry->random) {
                 loaded->title = launcher.list().machines[entry->machine].name;
             }
             benchOptions = Options{};

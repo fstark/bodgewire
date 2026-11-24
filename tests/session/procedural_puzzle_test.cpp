@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -156,6 +157,37 @@ TEST_CASE("procedural puzzle: it shows and is not completed", "[session]") {
     REQUIRE(same.has_value());
     REQUIRE(same->has_value());
     CHECK(FormatFault((*same)->fault) == FormatFault(fault));
+}
+
+TEST_CASE("procedural puzzle: made for a file", "[session]") {
+    // The whole making from a Machine's Vetting Script: what bw_ui does for a .bwr.
+    const std::filesystem::path script = test::MachineDir("counter") / "puzzles/random.bwr";
+    const auto made = MakeProceduralPuzzleFor(script, 3);
+    REQUIRE(made.has_value());
+    REQUIRE(made->has_value());
+    const auto again = MakeProceduralPuzzleFor(script, 3);
+    REQUIRE(again.has_value());
+    REQUIRE(again->has_value());
+    CHECK(FormatFault((*again)->fault) == FormatFault((*made)->fault));
+    Machine machine = FaultFree(test::NetlistPath("counter"));
+    REQUIRE(machine.inject((*made)->fault).has_value());
+    CHECK_FALSE(machine.completed());
+
+    std::stop_source source;
+    source.request_stop();
+    const auto stopped = MakeProceduralPuzzleFor(script, 3, std::nullopt, source.get_token());
+    REQUIRE(stopped.has_value());
+    CHECK_FALSE(stopped->has_value());
+}
+
+TEST_CASE("procedural puzzle: a bad file is its error", "[session]") {
+    const auto none = MakeProceduralPuzzleFor(test::RootDir() / "machines/none/random.bwr", 1);
+    REQUIRE_FALSE(none.has_value());
+    CHECK(none.error() == "random.bwr: error: cannot read file");
+    // A Puzzle is no Vetting Script.
+    const auto puzzle = MakeProceduralPuzzleFor(test::PuzzlePath("dark_led"), 1);
+    REQUIRE_FALSE(puzzle.has_value());
+    CHECK(puzzle.error() == "01-dark-led.bwp: error: no capture line");
 }
 
 // Hidden (not listed, so not discovered as one test): tests/CMakeLists.txt adds one ctest a

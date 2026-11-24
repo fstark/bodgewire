@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <expected>
+#include <filesystem>
 #include <functional>
 #include <optional>
 #include <stop_token>
@@ -34,5 +36,13 @@ MakeProceduralPuzzle(const Machine& machine, const ShowsFn& shows, Rng& rng);
 // The same on a Vetting's Machine, vetted by it.
 std::expected<std::optional<MadePuzzle>, std::string>
 MakeProceduralPuzzle(Vetting& vetting, Rng& rng, std::stop_token stop = {});
+
+// The whole making for a Machine's Vetting Script (puzzles/random.bwr): the file read, its
+// Machine loaded (`roms` as LoadNetlistMachine's), the Vetting made, a Puzzle made with
+// Rng(seed). nullopt: stopped. Error: one line for the player or the terminal.
+std::expected<std::optional<MadePuzzle>, std::string>
+MakeProceduralPuzzleFor(const std::filesystem::path& script, std::uint64_t seed,
+                        const std::optional<std::filesystem::path>& roms = std::nullopt,
+                        std::stop_token stop = {});
 
 }  // namespace bw
