@@ -1,8 +1,12 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
+#include <deque>
 #include <optional>
 #include <string>
+
+#include "sim/time.hpp"
 
 namespace bw {
 
@@ -24,6 +28,34 @@ private:
     Pace pace_;
     std::optional<Clock::time_point> under_;  // since when under the bar
     std::optional<Clock::time_point> shownAt_;
+};
+
+// How well a Machine keeps up, from its headroom: the launcher's bar colour (2026-11-24).
+enum class Playability : std::uint8_t { Playable, Slow, TooSlow };
+
+// How fast a Machine could run while the launcher runs it at 1×: simulated time over the wall time
+// its simulation thread spent running (pacing sleeps excluded), the last second's. Its band goes
+// down under 0.9× and 0.27×, back up over 1× and 0.3×, so a Machine at a limit does not flicker;
+// the number shown is held 0.5 s, as the run switch's.
+class Headroom {
+public:
+    using Clock = std::chrono::steady_clock;
+    // `runNs`: RunnerStatus::runNs. Either going back (powered on again): measured anew.
+    void update(Time simTime, std::int64_t runNs, Clock::time_point now);
+    void reset();                                           // another Machine: measured anew
+    std::optional<double> shown() const { return shown_; }  // none until a quarter second's work
+    Playability band() const { return band_; }
+
+private:
+    struct Point {
+        Clock::time_point wall;
+        Time simTime;
+        std::int64_t runNs;
+    };
+    std::deque<Point> history_;
+    std::optional<double> shown_;
+    std::optional<Clock::time_point> shownAt_;
+    Playability band_ = Playability::Playable;
 };
 
 // A speed ratio printed: "0.24×", "3.40×", "42×".

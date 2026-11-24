@@ -59,3 +59,73 @@ TEST_CASE("pace: a speed printed") {
     CHECK(SpeedText(3.4) == "3.40×");
     CHECK(SpeedText(42.3) == "42×");
 }
+
+namespace {
+
+// `ratio`× for `seconds`, the headroom updated every 100 ms from `t`: simulated time, run ns.
+struct HeadroomRun {
+    Headroom headroom;
+    PaceWatch::Clock::time_point t = t0;
+    Time sim = 0;
+    std::int64_t runNs = 0;
+
+    void run(double ratio, int tenths) {
+        for (int k = 0; k < tenths; ++k) {
+            t += 100ms;
+            runNs += 10'000'000;  // 10 ms of work per 100 ms
+            sim += static_cast<Time>(ratio * 10e-3 * static_cast<double>(kPicosPerSecond));
+            headroom.update(sim, runNs, t);
+        }
+    }
+};
+
+}  // namespace
+
+TEST_CASE("headroom: simulated time over the time spent running, after a quarter second") {
+    HeadroomRun run;
+    run.run(13.0, 2);
+    CHECK_FALSE(run.headroom.shown());
+    run.run(13.0, 10);
+    REQUIRE(run.headroom.shown());
+    CHECK(*run.headroom.shown() > 12.9);
+    CHECK(*run.headroom.shown() < 13.1);
+    CHECK(run.headroom.band() == Playability::Playable);
+    CHECK(SpeedText(*run.headroom.shown()) == "13×");
+}
+
+TEST_CASE("headroom: orange under 0.9, gold again only over 1") {
+    HeadroomRun run;
+    run.run(0.95, 20);
+    CHECK(run.headroom.band() == Playability::Playable);
+    run.run(0.85, 20);
+    CHECK(run.headroom.band() == Playability::Slow);
+    run.run(0.98, 20);
+    CHECK(run.headroom.band() == Playability::Slow);  // at the limit: no flicker
+    run.run(1.05, 20);
+    CHECK(run.headroom.band() == Playability::Playable);
+}
+
+TEST_CASE("headroom: red under 0.27, orange again only over 0.3") {
+    HeadroomRun run;
+    run.run(0.28, 20);
+    CHECK(run.headroom.band() == Playability::Slow);
+    run.run(0.2, 20);
+    CHECK(run.headroom.band() == Playability::TooSlow);
+    run.run(0.29, 20);
+    CHECK(run.headroom.band() == Playability::TooSlow);
+    run.run(0.5, 20);
+    CHECK(run.headroom.band() == Playability::Slow);
+    run.run(0.1, 20);
+    run.run(2.0, 20);
+    CHECK(run.headroom.band() == Playability::Playable);
+}
+
+TEST_CASE("headroom: powered on again, measured anew") {
+    HeadroomRun run;
+    run.run(0.1, 20);
+    CHECK(run.headroom.band() == Playability::TooSlow);
+    run.sim = 0;
+    run.headroom.update(0, run.runNs, run.t);
+    CHECK_FALSE(run.headroom.shown());
+    CHECK(run.headroom.band() == Playability::Playable);
+}

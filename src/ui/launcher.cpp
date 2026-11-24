@@ -17,6 +17,7 @@
 #include "ui/tv_window.hpp"
 #include "view/bench_places.hpp"
 #include "view/output_frame.hpp"
+#include "view/pace.hpp"
 #include "view/tv_controls.hpp"
 
 namespace bw {
@@ -53,6 +54,10 @@ constexpr ImU32 kParagraph = IM_COL32(200, 200, 205, 255);
 constexpr ImU32 kErrorText = IM_COL32(255, 90, 76, 255);
 constexpr ImU32 kErrorBox = IM_COL32(40, 10, 10, 230);
 constexpr ImU32 kNoBoard = IM_COL32(120, 120, 128, 255);
+constexpr ImU32 kSlowBar = IM_COL32(255, 128, 24, 255);    // the Machine's bar: under 1×
+constexpr ImU32 kTooSlowBar = IM_COL32(230, 45, 40, 255);  // under 0.3×
+constexpr ImU32 kSpeedInk = IM_COL32(190, 170, 150, 255);  // the headroom, on the wood
+constexpr float kSpeedBelow = 3;                           // px: from it to the window's bottom
 constexpr const char* kStartTitle = "Start the Machine";
 constexpr const char* kStartBrief = "The Machine as it should work: no fault.";
 
@@ -178,8 +183,21 @@ void Chevron(ImDrawList& list, ImVec2 tip, float dir) {
 
 // The gold bar under the selected picture or post-it while its lane has the keys: one sign of the
 // selection in both lanes (2026-11-23); the top lane keeps its chevrons, the keys that move it.
-void SelectionBar(ImDrawList& list, ImVec2 at, float width) {
-    list.AddRectFilled({at.x, at.y + 6}, {at.x + width, at.y + 10}, kFocusGold, 2.0f);
+// Under the Machine it tells how well it keeps up (2026-11-24): gold, orange, red.
+void SelectionBar(ImDrawList& list, ImVec2 at, float width, ImU32 colour = kFocusGold) {
+    list.AddRectFilled({at.x, at.y + 6}, {at.x + width, at.y + 10}, colour, 2.0f);
+}
+
+ImU32 BarColour(Playability band) {
+    switch (band) {
+    case Playability::Playable:
+        return kFocusGold;
+    case Playability::Slow:
+        return kSlowBar;
+    case Playability::TooSlow:
+        return kTooSlowBar;
+    }
+    return kFocusGold;
 }
 
 }  // namespace
@@ -297,6 +315,7 @@ void Launcher::updateLive(TvView& tv) {
         live_.failed = false;
         live_.file = want;
         live_.since = now;
+        headroom_.reset();
         tv.clear();
     }
     if (live_.file.empty()) {
@@ -332,6 +351,9 @@ void Launcher::updateLive(TvView& tv) {
         return;
     }
     Session& session = *live_.loaded->session;
+    if (const RunnerStatus status = session.status(); status.state == RunState::Running) {
+        headroom_.update(status.simTime, status.runNs, now);
+    }
     if (TvConsumer* consumer = session.tv(); consumer && consumer->pictures().update()) {
         tv.show(consumer->pictures().front());
     }
@@ -494,16 +516,31 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
                 }
             }
         }
-        // The gold bar under the selected picture, chevrons beside it toward the neighbours,
-        // while the top lane has the keys.
+        // The bar under the selected picture (its colour how well the live run keeps up),
+        // chevrons beside it toward the neighbours (a click moves there), while the top lane has
+        // the keys.
         if (i == lanes_.machine() && lanes_.lane() == Lane::Machines && std::abs(d) < 0.5) {
-            SelectionBar(list, {at.x, at.y + picture.y}, picture.x);
+            const ImU32 bar = live && headroom_.shown() ? BarColour(headroom_.band()) : kFocusGold;
+            SelectionBar(list, {at.x, at.y + picture.y}, picture.x, bar);
             const float midY = at.y + picture.y / 2;
+            const auto chevron = [&](float tipX, float dir, std::size_t to) {
+                const ImVec2 tip{tipX, midY};
+                Chevron(list, tip, dir);
+                if (clicksOn) {
+                    const float centre = tip.x - dir * kChevron * 0.3f;
+                    ImGui::SetCursorScreenPos({centre - kChevron * 0.8f, midY - kChevron * 0.8f});
+                    ImGui::PushID(dir < 0 ? "previous" : "next");
+                    if (ImGui::InvisibleButton("##chevron", {kChevron * 1.6f, kChevron * 1.6f})) {
+                        clickedMachine = to;
+                    }
+                    ImGui::PopID();
+                }
+            };
             if (i > 0) {
-                Chevron(list, {at.x - kChevronGap - kChevron * 0.6f, midY}, -1);
+                chevron(at.x - kChevronGap - kChevron * 0.6f, -1, i - 1);
             }
             if (i + 1 < list_.machines.size()) {
-                Chevron(list, {at.x + picture.x + kChevronGap + kChevron * 0.6f, midY}, 1);
+                chevron(at.x + picture.x + kChevronGap + kChevron * 0.6f, 1, i + 1);
             }
         }
         ImGui::PopID();
@@ -640,6 +677,14 @@ std::optional<std::filesystem::path> Launcher::draw(TvView& tv, ImFont* legends,
     ImGui::PopClipRect();
     list.PopClipRect();
     ImGui::PopID();
+
+    // The live run's headroom in the wood's corner, under the post-its: how fast it could run.
+    if (const auto shown = headroom_.shown(); shown && live_.loaded) {
+        const std::string text = SpeedText(*shown);
+        const ImVec2 extent = ImGui::CalcTextSize(text.c_str());
+        list.AddText({woodEnd.x - kNoteLeft - extent.x, woodEnd.y - kSpeedBelow - extent.y},
+                     kSpeedInk, text.c_str());
+    }
 
     // Clicks, applied after the drawing (the frame shows what was there when clicked). A post-it
     // not selected is selected (it starts running above); the selected one opens.

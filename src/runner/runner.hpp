@@ -30,6 +30,7 @@ struct RunnerStatus {
     Time simTime;
     std::uint64_t seed;
     double ringWaitShare;  // ring waits / (runUntil + ring pushes); pacing sleeps excluded
+    std::int64_t runNs;    // wall ns spent in runUntil and ring pushes since start (no pacing)
 };
 
 // Live run: a simulation thread feeding Consumers on a devices thread through one SpscRing per

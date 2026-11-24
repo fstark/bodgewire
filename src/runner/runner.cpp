@@ -95,9 +95,10 @@ void Runner::waitIdle() {
 }
 
 RunnerStatus Runner::status() const {
-    const auto run = std::max<std::int64_t>(1, runNs_.load());
+    const std::int64_t runNs = runNs_.load();
+    const auto run = std::max<std::int64_t>(1, runNs);
     return {state_.load(), simTime_.load(), seed_.load(),
-            static_cast<double>(waitedNs_.load()) / static_cast<double>(run)};
+            static_cast<double>(waitedNs_.load()) / static_cast<double>(run), runNs};
 }
 
 // --- simulation thread ---
