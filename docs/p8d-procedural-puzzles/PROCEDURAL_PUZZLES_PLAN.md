@@ -13,7 +13,7 @@ Spec: [PROCEDURAL_PUZZLES.md](PROCEDURAL_PUZZLES.md). Design: [PROCEDURAL_PUZZLE
 | 4 | Vetting, making a Puzzle, `bw random` | `1317e49` |
 | 5 | The bench on a Random fault, the "Give up" page | `7a3c502` |
 | 6 | The Launcher's post-it and the making | `7dac4f6` |
-| 7 | Docs, the release check | this commit |
+| 7 | Docs, the release check | `f186012` |
 
 ## Implementation notes
 
