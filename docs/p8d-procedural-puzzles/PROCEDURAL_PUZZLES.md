@@ -44,8 +44,8 @@ Chosen without asking (overturn any):
 - Inside a kind every physical object is as likely: each chip signal pin, each pair of neighbouring pins, each pad for a crack (then another pad of its Net and a place between them).
 - The power-on seed is 1, `bw_ui`'s: untouched, the Vetting run is the run the player sees.
 - "Compared" counts what differs (pixels, lamps) against a threshold; a hash only says same or different, and the sample below has differences of 2 pixels.
-- A capture is a picture of what the player sees: the TV's frame, and each lamp's brightness (`LedGlow`: the share of the last 20 ms it was lit, a digit's eight lamps each on its own). A LED blinking too fast for the eye is then a dimmer lamp, as the player sees it. A lamp's margin is relative to the Golden Machine's brightness: a multiplexed segment sits near 1/6, not 1.
-- Several capture times per Machine, not one: an instant cannot tell a blinking LED from one frozen while lit. Still one run a try.
+- A capture is a picture of what the player sees: the TV's frame, and each lamp's brightness (`LedGlow`: the share of the last 20 ms it was lit, a digit's eight lamps each on its own). A LED blinking too fast for the eye is then a dimmer lamp, as the player sees it. A lamp's margin is relative to the brightest fault-free lamp: a multiplexed segment sits near 1/6, not 1 (the samples: a lamp differs when off by more than a quarter of it).
+- Several capture times per Machine, not one: an instant cannot tell a blinking LED from one frozen while lit (on the Counter one capture finds 15 to 55 of the 58 Faults that four find). Still one run a try.
 - The capture times fall where the Golden Machine's picture is stable: 1.5 s into the typed line below, the fault-free BW-80 itself has no locked picture (it is busy with a key).
 
 Starting weights (the Authored Puzzles' mix, the cell moved down):
@@ -62,7 +62,7 @@ Starting weights (the Authored Puzzles' mix, the cell moved down):
 
 A kind with nothing to act on (no memory chip, no switch) drops out, the others rescaled. One table for every Machine until one needs its own.
 
-## What the sample shows (BW-80)
+## What the first sample shows (BW-80)
 
 `python3 -I tools/fault_sample.py machines/140-bw80 OUT` (2026-11-24): 366 candidates, their kind drawn first, 346 the Machine accepts. Each is run headless for 300 ms, untouched, seed 1; its last TV frame (512 × 320) is compared with the fault-free one.
 
@@ -92,43 +92,70 @@ The 290 pin and copper Faults (the first four rows):
 
 What the sample is not: one Machine; the last frame only; chips drawn first, then one of their pins (so a 40-pin chip's pins are each less likely than a gate's); cracks half way between two random pads of a random Net; 100 px an arbitrary line.
 
-## The other Machines
+## What the samples show (every Machine)
 
-Reasoned from the netlists and the code, not sampled yet. `bw run --leds` prints each lamp's brightness at the end of a run (`led D1 0.50`, a digit's `led DS1.a 1.00` to `led DS1.dp`); `tools/fault_sample.py` still compares TV frames only. First readings, the Counter at 600 ms: `led D1 1.00` fault-free, `0.00` on Dark LED, `0.28` on LED too fast (a flicker is a dimmer lamp).
+2026-11-24, the same tool, about 180 candidates a Machine (`--counts stuck=60,joint=30,bridge=30,crack=40,column=8,cell=16,switch=6`), each Machine with the inputs and capture times below: its definition, as proposed. A Machine without a TV is compared lamp by lamp (`bw run --leds`). "Dead" is a lost picture on a TV, every lamp dark at every capture otherwise.
 
-| Machine | The player sees | Inputs | Captures |
-|---|---|---|---|
-| 010 Counter | 1 LED | none | several, over more than a second |
-| 020 LED chaser | 8 LEDs | none | several, over one pass of the light |
-| 030 Dice | 7 LEDs | the button held, then released | while held |
-| 040 Stopwatch | 3 digits | its buttons | while counting, and after the stop |
-| 045 Knob meter | 2 digits | the knob at a position | one |
-| 050 Test pattern | TV | none | one |
-| 060 Bouncing ball | TV | none | several: the ball moves |
-| 070 Tennis | TV | knobs, button | several |
-| 080 Message | TV | none | one |
-| 090 Typewriter | TV | a typed line | one |
-| 110 LED computer | 8 LEDs | its button | several |
-| 120 BW-1 | 6 digits | keys | one, after the keys |
-| 130 BW-2001 | TV | a typed line | one or two: its cursor blinks |
-| 140 BW-80 | TV | a typed line | one |
+| Machine | Inputs | Captures |
+|---|---|---|
+| 010 Counter | none | 250 ms, 500 ms, 750 ms, 1.25 s |
+| 020 LED chaser | none | eight, 66 ms apart, from 600 ms |
+| 030 Dice | ROLL held from 300 ms to 800 ms | 500 ms, 700 ms |
+| 040 Stopwatch | STOP at 50 ms, RESET at 150 ms, START at 300 ms, STOP at 1 s | 280 ms, 600 ms, 900 ms, 1.3 s |
+| 045 Knob meter | the knob at 42 % | 300 ms |
+| 050 Test pattern | none | 400 ms |
+| 060 Bouncing ball | none | 600 ms, 900 ms, 1.2 s |
+| 070 Tennis | the knobs at 40 % and 60 %, START at 200 ms | 1 s |
+| 080 Message | none | 300 ms |
+| 090 Typewriter | CLEAR at 500 ms, `HELLO, WORLD` typed from 1 s | 2.5 s |
+| 110 LED computer | RESET at 1 s | 200, 400, 600, 800 ms, 1.3, 1.5, 1.7 s |
+| 120 BW-1 | AD 0 3 0 0 DA A 9 +, a key every 100 ms from 100 ms | 80 ms, 580 ms, 880 ms, 1 s |
+| 130 BW-2001 | none | 1.4 s |
+| 140 BW-80 | none, then a typed line | 300 ms, then 2.5 s |
 
-- `tools/readme_shots.py` already holds an input line that works for each Machine that needs one (`--press`, `--knob`, `--type`).
-- **The Dice**: the face left after the release depends on the instant of the release, so any Fault that shifts the counting changes it, and another face is no Symptom. While the button is held, the seven brightnesses show the mix of faces it runs through.
-- **The Counter** is the low-yield case: of its 140 stuck Faults (5 chips, 14 signal pins, 0 or 1), 96 change nothing (only 5 of its 25 outputs lead anywhere, the `A`–`D` inputs are never loaded), 36 freeze the LED, 8 make it flicker or glow. Counted from the netlist, not run. It simulates fast.
+The pin and copper Faults (stuck pin, dry Joint, bridge, crack):
+
+| Machine | Loaded | Show | Of which dead | A try |
+|---|---|---|---|---|
+| 010 Counter | 147 | 58 (39 %) | 42 | 0.1 s |
+| 020 LED chaser | 140 | 85 (61 %) | 12 | 0.1 s |
+| 030 Dice | 149 | 55 (37 %) | 16 | 0.1 s |
+| 040 Stopwatch | 138 | 89 (64 %) | 3 | 0.1 s |
+| 045 Knob meter | 132 | 74 (56 %) | 3 | under 0.1 s |
+| 050 Test pattern | 147 | 100 (68 %) | 53 | 0.1 s |
+| 060 Bouncing ball | 149 | 99 (66 %) | 26 | 0.5 s |
+| 070 Tennis | 142 | 82 (58 %) | 12 | 0.5 s |
+| 080 Message | 142 | 110 (77 %) | 61 | 0.1 s |
+| 090 Typewriter | 135 | 101 (75 %) | 20 | 1.8 s |
+| 110 LED computer | 148 | 103 (70 %) | 42 | 0.3 s |
+| 120 BW-1 | 146 | 109 (75 %) | 60 | 0.4 s |
+| 130 BW-2001 | 154 | 87 (56 %) | 13 | 3.8 s |
+| 140 BW-80 | 290 | 169 (58 %); typed 236 (81 %) | 152 | 1.4 s; typed 11 s |
+
+- **Every Machine gives Puzzles, quickly**: 37 % to 81 % of random pin and copper Faults show, and a try is under a second everywhere but on the Typewriter, the BW-2001 and the BW-80.
+- **Several captures matter where the outputs change slowly.** The Counter: 58 Faults show over its four captures, 15 at 250 ms alone (its LED is dark then, as with most of its Faults), 55 at 500 ms alone. The Stopwatch: 89 over four, 50 to 81 for one. The LED chaser: 85 over eight, about 70 for any one. The LED computer 103 (91 to 97), the BW-1 109 (92 to 103), the Bouncing ball 99 (89 to 92). On the Tennis and the Knob meter one capture finds them all (they were sampled with three and two).
+- **A dead Machine is the BW-80's speciality**: its CPU makes the picture, and 152 of its 290 Faults lose it. The BW-2001's video runs by itself: 13 of 154 lose the picture, 74 leave a picture that is wrong.
+- **The BW-2001 needs no typed line**: of the 67 candidates that showed nothing or little at 1.4 s, `10 REM HELLO` typed and entered (the frame at 4 s, 10.8 s a try) makes 2 show. Its idle screen holds a banner already, and BASIC's memory test has read the RAM.
+- **The Dice**: 55 show while ROLL is held. 16 more differ only after the release (sampled at 1 s too): 10 leave another valid face, which is no Symptom; 4 leave the die dark, a Symptom the held captures miss; 2 a dimmer face.
+- **The Counter**, the low-yield Machine: 37 of its 51 stuck pins change nothing (only 5 of its 25 outputs lead anywhere, the `A`–`D` inputs are never loaded).
+- **Columns show** (47 of 56 over the six Machines with a memory). **Cells do not**: 1 of 16 on the Message, none on the Typewriter and the LED computer, 2 on the BW-1, 2 of 40 on the BW-80. The exception is the BW-2001, 6 of 16 (3 more under 100 px): its memory test stops at a stuck cell and the banner's count of bytes changes, and a cell of the screen memory is a wrong character.
+- **A switch Fault shows where the inputs press that switch**: all of them on the Dice, the Stopwatch, the Typewriter and the LED computer; 5 of 12 on the BW-1, whose inputs press 7 of its 23 keys.
+
+What the samples are not: one seed; a lamp's margin (a quarter of the brightest fault-free lamp) and the TV's 100 px are arbitrary lines; the inputs are a first guess; chips are drawn first, then one of their pins (a 40-pin chip's pins are each less likely than a gate's); cracks are half way between two random pads of a random Net.
 
 ## Open
 
 To settle before the design:
 
-- The lamp Machines' numbers: `tools/fault_sample.py` taught to compare `bw run --leds` lines, at several times.
-- Each Machine's inputs, run time and capture times, and the file that holds them.
+- The file that holds each Machine's inputs and capture times (proposed above).
+- The computers' typed line: left out on the BW-2001 (7 s more a try for 2 Faults in 67); on the BW-80 a short one ending with NEW LINE is still to choose and time (the sample's line was longer and not entered; a key is 0.15 s of simulated time there, 0.6 s of wait).
 - The weights, and the thresholds (pixels; lamps).
 - The post-it's look and words; the generated Brief and its "do X"; what the Launcher's live picture shows for "?".
-- Where the wait goes and what the player sees meanwhile: on the BW-80 a try is 1.4 s untouched and 11 s typed. A capture before the first input would let most tries end there.
+- Where the wait goes and what the player sees meanwhile: 3.8 s a try on the BW-2001, 1.4 s untouched and 11 s typed on the BW-80, more than twice that on the web. A capture before the first input would let most tries end there.
 - Giving up: is the Fault shown? Is a made-up Puzzle's `fault` line kept somewhere, so a good one can become an Authored Puzzle?
 - Cells: rare by the five tries alone (about one draw in eight succeeds on the BW-80), or drawn among the words the Machine reads.
 - A minimum number of pixels throws away the one-dot ROM cell, the kind of the BW-2001's Odd E.
+- The Dice's dark die after the release: found only by a capture there, which also takes 10 changed faces for Symptoms.
 - The glossary's Vetting ("…or is trivial") and Procedural Puzzle entries.
 
 ## Later
