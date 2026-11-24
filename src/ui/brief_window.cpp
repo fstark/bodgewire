@@ -47,7 +47,7 @@ void DrawNote(ImDrawList& list, ImVec2 at, ImVec2 end, float lift) {
 }
 
 void DrawBrief(bool& open, const OpenedMachine& loaded, std::optional<ImVec2> corner,
-               BriefNote& note) {
+               BriefNote& note, bool ticked) {
     if (!open || loaded.brief.empty()) {
         return;
     }
@@ -102,6 +102,21 @@ void DrawBrief(bool& open, const OpenedMachine& loaded, std::optional<ImVec2> co
     ImGui::TextUnformatted(loaded.brief.c_str());
     ImGui::PopTextWrapPos();
     ImGui::PopStyleColor();
+    if (ticked) {  // the owner's tick and thanks, in ballpoint (P8c)
+        ImGui::Spacing();
+        const float line = ImGui::GetTextLineHeight();
+        const ImVec2 pen = ImGui::GetCursorScreenPos();
+        ImDrawList& list = *ImGui::GetWindowDrawList();
+        list.AddLine({pen.x + 1, pen.y + line * 0.55f}, {pen.x + line * 0.35f, pen.y + line * 0.9f},
+                     kBallpoint, 2.0f);
+        list.AddLine({pen.x + line * 0.35f, pen.y + line * 0.9f}, {pen.x + line, pen.y + 1},
+                     kBallpoint, 2.0f);
+        ImGui::Dummy({line + 4, line});
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, kBallpoint);
+        ImGui::TextUnformatted("Works again, thank you!");
+        ImGui::PopStyleColor();
+    }
     if (CaseClose(1)) {
         open = false;
     }

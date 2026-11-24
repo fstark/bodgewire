@@ -56,6 +56,7 @@
 #include "ui/question_popup.hpp"
 #include "ui/scope_window.hpp"
 #include "ui/shelf.hpp"
+#include "ui/thank_you_card.hpp"
 #include "ui/title.hpp"
 #include "ui/tool_click.hpp"
 #include "ui/tv_view.hpp"
@@ -67,6 +68,7 @@
 #include "view/memory_contents.hpp"
 #include "view/pencil_marks.hpp"
 #include "view/power_cycle.hpp"
+#include "view/repair_ack.hpp"
 #include "view/time_view.hpp"
 #include "view/tv_controls.hpp"
 
@@ -196,17 +198,19 @@ std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manu
     return Displayable(text);
 }
 
-// How a bench ended (P7a): the app quits, or the launcher shows again.
-enum class BenchEnd : std::uint8_t { Quit, Back };
+// How a bench ended (P7a): the app quits, the launcher shows again, or (P8c) the Thank-you Card
+// opens the Machine's next Puzzle.
+enum class BenchEnd : std::uint8_t { Quit, Back, Next };
 
 struct BenchResult {
     BenchEnd end;
     int exitCode;
+    std::optional<std::filesystem::path> next = {};  // with Next: its file
 };
 
 BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& loaded,
                      Session& session, const Options& options, ImFont* legends, ImFont* petLegends,
-                     bool canLeave) {
+                     const MachineList* list) {  // nullptr: no machines/ to go back to
     ResetBench();
     TvView view(gpu.tvTexture());
     Shelf shelf;
@@ -260,7 +264,16 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         }
     }
     RunSwitch run = options.bench.run;  // the shelf's switch (P6o)
+    const bool canLeave = list != nullptr;
     shelf.canLeave = canLeave;
+    // Repair Validation (P8c): the tick on the post-it, the Thank-you Card once.
+    const PuzzleEntry* nextPuzzle =
+        list && options.file ? NextPuzzle(*list, *options.file) : nullptr;
+    RepairAck ack(session.puzzle());
+    ThankYouCard card;
+    bool cardDue = false;                            // waits for any open question to be answered
+    std::optional<std::filesystem::path> following;  // the card's Next
+    const auto benchStart = std::chrono::steady_clock::now();
     focus.outFlag(BenchObject::Manual) = options.bench.manual.has_value();
     focus.outFlag(BenchObject::Tv) = session.tv() != nullptr;
     focus.outFlag(BenchObject::Knob) = !session.inputs().knobs().empty();
@@ -408,6 +421,10 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             PowerOn(session, run, seed);
             powerOnNext = false;
         }
+        ack.update(
+            session.completed(), session.powered(), session.powerOns(),
+            std::chrono::duration<double>(std::chrono::steady_clock::now() - benchStart).count());
+        cardDue = ack.takeCard() || cardDue;
         applyKeys();
         while (SDL_PollEvent(&event)) {
             const bool keyDown = event.type == SDL_EVENT_KEY_DOWN;
@@ -617,7 +634,8 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         // The bench, back to front at start: brief, TV, knob, manuals, instruments, keyboard,
         // Debug.
         knobWindow.keys(session, knobKeys, knobsOn);
-        DrawBrief(focus.outFlag(BenchObject::Brief), loaded, boardView.corner(), briefNote);
+        DrawBrief(focus.outFlag(BenchObject::Brief), loaded, boardView.corner(), briefNote,
+                  ack.ticked());
         tvWindow.draw(focus.outFlag(BenchObject::Tv), view);
         knobWindow.draw(focus.outFlag(BenchObject::Knob), session);
         manualWindows.draw(focus.outFlag(BenchObject::Manual), loaded.manuals.manuals, boardView,
@@ -674,6 +692,22 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             }
             session.undoRepairs();
         }
+        // Opening a popup closes any other: the card waits for an open question's answer.
+        if (cardDue && !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId)) {
+            card.open();
+            cardDue = false;
+        }
+        switch (card.draw(loaded.title, nextPuzzle ? &nextPuzzle->title : nullptr, canLeave)) {
+        case CardAnswer::Next:
+            following = nextPuzzle->file;
+            break;
+        case CardAnswer::Machines:
+            leaving = true;  // no leave question: the repairs were the point
+            break;
+        case CardAnswer::Board:
+        case CardAnswer::None:
+            break;
+        }
         // A text field takes the keys from the next event on (P6o).
         textField = ImGui::GetIO().WantTextInput;
         applyKeys();
@@ -690,6 +724,10 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             ending = BenchEnd::Back;
             break;
         }
+        if (following) {
+            ending = BenchEnd::Next;
+            break;
+        }
         const auto elapsed = clock.elapsed();
         const bool visited = options.visitFor && elapsed >= *options.visitFor;
         if (visited || (options.screenshot && elapsed >= options.after)) {
@@ -704,7 +742,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         }
     }
     SDL_StopTextInput(window);  // the keyboard capture's, if any: not the launcher's
-    return {ending, exitCode};
+    return {ending, exitCode, following};
 }
 
 // ImGui for one screen (P7a), the launcher's or a bench's: made anew for each, so a bench starts
@@ -933,11 +971,16 @@ int main(int argc, char** argv) {
     }
     // The last bench's file: its entry selected; at start --select's (P7b).
     std::optional<std::filesystem::path> left = options.select;
+    std::optional<std::filesystem::path> next;  // the Thank-you Card's Next (P8c)
     while (true) {
         if (!loaded) {
             std::filesystem::path file;
-            const bool visiting = !visits.empty();
-            if (visiting) {
+            const bool following = next.has_value();
+            const bool visiting = !following && !visits.empty();
+            if (following) {
+                file = *next;
+                next.reset();
+            } else if (visiting) {
                 file = visits.front();
                 visits.pop_front();
             } else {
@@ -982,12 +1025,16 @@ int main(int argc, char** argv) {
         BenchResult result{};
         {
             ImGuiScreen screen(window, *gpu);
-            result = RunBench(window, *gpu, *loaded, *loaded->session, *benchOptions,
-                              screen.legends(), screen.petLegends(), machinesDir.has_value());
+            result =
+                RunBench(window, *gpu, *loaded, *loaded->session, *benchOptions, screen.legends(),
+                         screen.petLegends(), machinesDir ? &launcher.list() : nullptr);
         }
         left = *benchOptions->file;
         loaded.reset();
         exitCode = result.exitCode != 0 ? result.exitCode : exitCode;
+        if (result.end == BenchEnd::Next) {
+            next = result.next;
+        }
         if (result.end == BenchEnd::Quit || !machinesDir) {
             break;
         }
