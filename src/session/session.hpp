@@ -39,6 +39,9 @@ enum class RepairResult : std::uint8_t { Done, Refused, Unknown };  // Refused: 
 std::optional<TvNets> FindTvNets(const LoadedCircuit& circuit);
 // FindTvNets found some: the launcher's framing (P7b).
 bool HasTv(const LoadedCircuit& circuit);
+// Every lamp (an LED, a digit's segment) of the circuit's Parts with an anode and a cathode
+// connected, netlist then lamp order. Session, bw run --leds.
+std::vector<LedNets> FindLedNets(const LoadedCircuit& circuit);
 
 struct LedLight {
     std::string reference;  // "D1", "DS1"

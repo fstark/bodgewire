@@ -53,6 +53,24 @@ std::optional<TvNets> FindTvNets(const LoadedCircuit& circuit) {
 
 bool HasTv(const LoadedCircuit& circuit) { return FindTvNets(circuit).has_value(); }
 
+std::vector<LedNets> FindLedNets(const LoadedCircuit& circuit) {
+    std::vector<LedNets> nets;
+    for (const LoadedPart& part : circuit.parts) {
+        for (std::size_t i = 0; i < part.info->lamps.size(); ++i) {
+            const Lamp& lamp = part.info->lamps[i];
+            const std::array anodes{ConnectedNet(circuit, part.reference, lamp.anodes[0]),
+                                    ConnectedNet(circuit, part.reference, lamp.anodes[1])};
+            const std::array cathodes{ConnectedNet(circuit, part.reference, lamp.cathodes[0]),
+                                      ConnectedNet(circuit, part.reference, lamp.cathodes[1])};
+            // An unconnected lamp: never lit.
+            if ((anodes[0] || anodes[1]) && (cathodes[0] || cathodes[1])) {
+                nets.push_back({part.reference, i, anodes, cathodes});
+            }
+        }
+    }
+    return nets;
+}
+
 Session::Session(std::optional<Machine> machine, std::unique_ptr<LoadedCircuit> circuit)
     : machine_(machine ? std::make_unique<Machine>(std::move(*machine)) : nullptr) {
     build_->machine = machine_.get();
@@ -91,22 +109,7 @@ std::unique_ptr<Session::Live> Session::makeLive(std::unique_ptr<LoadedCircuit> 
         consumers.push_back(&live->analyzer);
         consumers.push_back(&live->meter);
         consumers.push_back(&live->scope);
-        std::vector<LedNets> nets;
-        for (const LoadedPart& part : live->circuit->parts) {
-            for (std::size_t i = 0; i < part.info->lamps.size(); ++i) {
-                const Lamp& lamp = part.info->lamps[i];
-                const std::array anodes{
-                    ConnectedNet(*live->circuit, part.reference, lamp.anodes[0]),
-                    ConnectedNet(*live->circuit, part.reference, lamp.anodes[1])};
-                const std::array cathodes{
-                    ConnectedNet(*live->circuit, part.reference, lamp.cathodes[0]),
-                    ConnectedNet(*live->circuit, part.reference, lamp.cathodes[1])};
-                // An unconnected lamp: never lit.
-                if ((anodes[0] || anodes[1]) && (cathodes[0] || cathodes[1])) {
-                    nets.push_back({part.reference, i, anodes, cathodes});
-                }
-            }
-        }
+        std::vector<LedNets> nets = FindLedNets(*live->circuit);
         if (!nets.empty()) {
             live->leds.emplace(std::move(nets));
             consumers.push_back(&*live->leds);

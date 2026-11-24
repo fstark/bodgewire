@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <chrono>
 #include <cstdint>
@@ -36,6 +37,7 @@
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
 #include "netlist/units.hpp"
+#include "runner/led_input.hpp"
 #include "session/session.hpp"
 #include "sim/simulator.hpp"
 #include "sim/vcd.hpp"
@@ -52,7 +54,7 @@ constexpr int kExitUsage = 2;
 constexpr std::string_view kUsage =
     "usage: bw run <file.bwn|file.bwp> [--time 1ms] [--seed 1] "
     "[--record NET,NET... | --record-all] [--vcd FILE] "
-    "[--tv FILE.bmp] [--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,"
+    "[--tv FILE.bmp] [--leds] [--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,"
     "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
     "[--probe REF.PIN,...] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
     "[--type REF:START:TEXT] [--roms DIR]\n"
@@ -70,6 +72,7 @@ struct Options {
     bool recordAll = false;
     std::string vcd;
     std::string tv;
+    bool leds = false;  // --leds: each lamp's brightness at the end, a line a lamp
     std::vector<std::string> repair;
     std::vector<std::string> probe;
     std::vector<ButtonPress> press;
@@ -86,6 +89,15 @@ int UsageError(std::string_view message) {
 
 bool IsPuzzle(std::string_view file) { return file.ends_with(".bwp"); }
 
+// A lamp as --leds prints it: "D1" for an LED, "DS1.a" to "DS1.g" and "DS1.dp" for a digit's.
+std::string LampName(const LoadedCircuit& loaded, const LedNets& led) {
+    constexpr std::array<std::string_view, 9> kSuffix{"",   ".a", ".b", ".c", ".d",
+                                                      ".e", ".f", ".g", ".dp"};  // by LampShape
+    const auto part = std::ranges::find(loaded.parts, led.reference, &LoadedPart::reference);
+    const LampShape shape = part->info->lamps[led.lamp].shape;
+    return led.reference + std::string(kSuffix[static_cast<std::size_t>(shape)]);
+}
+
 // Error message, or nullopt on success.
 std::optional<std::string> ParseOptions(std::span<char*> args, Options& options) {
     for (std::size_t i = 2; i < args.size(); ++i) {
@@ -99,6 +111,10 @@ std::optional<std::string> ParseOptions(std::span<char*> args, Options& options)
         }
         if (arg == "--record-all") {
             options.recordAll = true;
+            continue;
+        }
+        if (arg == "--leds") {
+            options.leds = true;
             continue;
         }
         if (arg != "--time" && arg != "--seed" && arg != "--record" && arg != "--vcd" &&
@@ -529,6 +545,15 @@ int Run(std::span<char*> args) {
         }
     }
 
+    std::vector<LedNets> ledNets;
+    if (options.leds) {
+        ledNets = FindLedNets(loaded);
+        if (ledNets.empty()) {
+            std::println(stderr, "bw: netlist has no LED or digit");
+            return kExitNetlistErrors;
+        }
+    }
+
     Simulator sim(loaded.circuit);
     sim.powerOn(options.seed);
     for (const NetId net : recorded) {
@@ -538,12 +563,16 @@ int Run(std::span<char*> args) {
     if (tvFile.is_open()) {
         tv = std::make_unique<TvInput>(sim, *tvNets);
     }
+    std::unique_ptr<LedInput> leds;
+    if (options.leds) {
+        leds = std::make_unique<LedInput>(sim, std::move(ledNets));
+    }
     std::vector<LogicProbe> probes;
     for (const NetId net : probed) {
         probes.emplace_back(sim, net);
     }
     const auto start = std::chrono::steady_clock::now();
-    if (tv || !probes.empty() || !edges.empty()) {
+    if (tv || leds || !probes.empty() || !edges.empty()) {
         const Time end = sim.now() + options.time;
         std::size_t next = 0;
         while (sim.now() < end) {
@@ -558,6 +587,9 @@ int Run(std::span<char*> args) {
             }
             if (tv) {
                 tv->update();
+            }
+            if (leds) {
+                leds->update();
             }
             for (LogicProbe& probe : probes) {
                 probe.update();
@@ -589,6 +621,11 @@ int Run(std::span<char*> args) {
     }
     for (std::size_t i = 0; i < probes.size(); ++i) {
         std::println("probe {} {}", options.probe[i], FormatLamps(probes[i].lamps()));
+    }
+    if (leds) {  // as the eye sees each lamp at the end: 0.00 dark to 1.00 fully lit
+        for (std::size_t i = 0; i < leds->leds().size(); ++i) {
+            std::println("led {} {:.2f}", LampName(loaded, leds->leds()[i]), leds->brightness(i));
+        }
     }
     return 0;
 }

@@ -163,6 +163,7 @@ add_executable(bw_tests
   runner/channel_nets_test.cpp
   runner/dispatcher_test.cpp
   runner/led_consumer_test.cpp
+  runner/led_input_test.cpp
   runner/meter_consumer_test.cpp
   runner/probe_consumer_test.cpp
   runner/runner_test.cpp
@@ -247,6 +248,11 @@ foreach(program ${programs})
                    -DOUT=${CMAKE_CURRENT_BINARY_DIR}/asm_${name}.rom
                    -P ${CMAKE_CURRENT_SOURCE_DIR}/asm_cli.cmake)
 endforeach()
+
+# bw run --leds: its lines on an LED and on digits, its refusal without lamps.
+add_test(NAME run_leds
+         COMMAND ${CMAKE_COMMAND} -DBW=$<TARGET_FILE:bw> -DMACHINES=${PROJECT_SOURCE_DIR}/machines
+                 -P ${CMAKE_CURRENT_SOURCE_DIR}/run_leds.cmake)
 
 # The Tiny BASIC conformance sessions on the reference interpreter (P5o).
 find_package(Python3 3.9 COMPONENTS Interpreter)

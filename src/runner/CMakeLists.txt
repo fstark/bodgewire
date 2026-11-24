@@ -3,6 +3,7 @@ add_library(bw_runner STATIC
   channel_nets.cpp
   dispatcher.cpp
   led_consumer.cpp
+  led_input.cpp
   meter_consumer.cpp
   probe_consumer.cpp
   runner.cpp

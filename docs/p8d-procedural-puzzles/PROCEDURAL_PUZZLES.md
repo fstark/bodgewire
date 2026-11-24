@@ -36,7 +36,7 @@ The user, 2026-11-24:
 - **On the computers the input is a short typed line ending with NEW LINE** (it runs the tokenizer too). Not a BASIC program typed and run: that only tests the ROM and the RAM, and their Faults show sooner.
 - **The typed line is told to the player**: the generated Brief says "do X".
 - **The Dice** is captured while ROLL is held; it matters little.
-- **The LED Machines** are looked at once `bw run` prints the lamps.
+- **The LED Machines** are looked at once `bw run` prints the lamps (`--leds`, 2026-11-24).
 
 Chosen without asking (overturn any):
 
@@ -94,7 +94,7 @@ What the sample is not: one Machine; the last frame only; chips drawn first, the
 
 ## The other Machines
 
-Reasoned from the netlists and the code, not measured: `bw run` has no lamp output yet.
+Reasoned from the netlists and the code, not sampled yet. `bw run --leds` prints each lamp's brightness at the end of a run (`led D1 0.50`, a digit's `led DS1.a 1.00` to `led DS1.dp`); `tools/fault_sample.py` still compares TV frames only. First readings, the Counter at 600 ms: `led D1 1.00` fault-free, `0.00` on Dark LED, `0.28` on LED too fast (a flicker is a dimmer lamp).
 
 | Machine | The player sees | Inputs | Captures |
 |---|---|---|---|
@@ -121,7 +121,7 @@ Reasoned from the netlists and the code, not measured: `bw run` has no lamp outp
 
 To settle before the design:
 
-- The lamp Machines' numbers, once `bw run --leds` exists.
+- The lamp Machines' numbers: `tools/fault_sample.py` taught to compare `bw run --leds` lines, at several times.
 - Each Machine's inputs, run time and capture times, and the file that holds them.
 - The weights, and the thresholds (pixels; lamps).
 - The post-it's look and words; the generated Brief and its "do X"; what the Launcher's live picture shows for "?".

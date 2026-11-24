@@ -692,6 +692,30 @@ TEST_CASE("session: counter LED", "[session]") {
     CHECK(session.leds()[0].brightness == 0);
 }
 
+TEST_CASE("session: FindLedNets", "[session]") {
+    // An LED is one lamp; a digit eight, less those the netlist leaves unconnected.
+    const auto counter = LoadNetlistFile(test::NetlistPath("counter"));
+    REQUIRE(counter.has_value());
+    const std::vector<LedNets> one = FindLedNets(**counter);
+    REQUIRE(one.size() == 1);
+    CHECK(one[0].reference == "D1");
+    CHECK(one[0].lamp == 0);
+    CHECK(one[0].anodes[0].has_value());
+    CHECK(one[0].cathodes[0].has_value());
+
+    const auto stopwatch = LoadNetlistFile(test::NetlistPath("stopwatch"));
+    REQUIRE(stopwatch.has_value());
+    const std::vector<LedNets> digits = FindLedNets(**stopwatch);
+    CHECK(digits.size() == 22);  // DS2's and DS3's decimal points are unconnected
+    CHECK(std::ranges::count(digits, "DS1", &LedNets::reference) == 8);
+    CHECK(std::ranges::count(digits, "DS2", &LedNets::reference) == 7);
+    CHECK(std::ranges::count(digits, "DS3", &LedNets::reference) == 7);
+
+    const auto pattern = LoadNetlistFile(test::NetlistPath("test_pattern"));
+    REQUIRE(pattern.has_value());
+    CHECK(FindLedNets(**pattern).empty());
+}
+
 TEST_CASE("session: chaser with every instrument", "[session][slow]") {
     auto machine = LoadNetlistMachine(test::NetlistPath("chaser"));
     REQUIRE(machine.has_value());
