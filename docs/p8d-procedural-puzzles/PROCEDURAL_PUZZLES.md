@@ -2,7 +2,7 @@
 
 Roadmap step P8d ([ARCHITECTURE.md](../ARCHITECTURE.md#roadmap)): a "?" post-it at the end of a Machine's Puzzles that makes one up when asked: a random Fault, kept only if it shows. Terminology: [GLOSSARY.md](../GLOSSARY.md).
 
-**A draft** (2026-11-24): the framework the user settled and the research so far. It is completed (Open, below) before the design and the plan are written.
+Complete but for Open (below), for the user to read before the design and the plan are written (2026-11-24). The framework and the samples came first; what the player sees was settled with the samples in hand.
 
 ## Why
 
@@ -38,8 +38,29 @@ The user, 2026-11-24:
 - **The Dice** is captured while ROLL is held; it matters little.
 - **The LED Machines** are looked at once `bw run` prints the lamps (`--leds`, 2026-11-24).
 
+Asked with the samples in hand (the user, 2026-11-24):
+
+| Question | Decision |
+|---|---|
+| The post-it | its title is "Random fault", with a "?" |
+| The Brief on the bench | one fixed sentence plus a "do this", fixed per Machine, and vague: not the inputs with their times |
+| The wait | the Puzzle is made when the player clicks. Meanwhile a progress bar or, better, lines about breaking a computer in ridiculous ways (water spilt on it, the board thrown around), looping, as an assistant's "thinking" lines do |
+| Giving up | yes, somewhere: maybe a new entry in the manuals, a page that asks "are you sure?" before it shows the `fault` line; a click on the line copies it |
+| The Launcher's live picture | the working Machine; maybe a large "?" over it, if it renders well |
+| The BW-80's typed line | `PRINT 42` and NEW LINE: O, 4, 2, NEW LINE |
+| A knob | takes several positions during the run (the Knob meter, the Tennis) |
+
 Chosen without asking (overturn any):
 
+- The post-it is on every Machine, after its last Puzzle, a gap apart; its "?" stands where the others have their brief.
+- The waiting lines: a first list below, the user's to rewrite. One line stays about a second at least, so it can be read where a Puzzle is made in a tenth of a second (overturn if it annoys). No percentage: the number of tries is not known ahead. Esc stops the making and stays in the Launcher.
+- The Brief's fixed sentence and each Machine's "do this": drafts below, the user's to rewrite.
+- The Thank-you Card's Next on a Random fault is "Another random fault", on the same Machine.
+- Reset brings the same Fault back; leaving the bench forgets it; the post-it opened again makes another. No seed is shown.
+- Giving up is a divider of the binder, "Give up", on a Random fault's bench only. Once shown, the Fault stays shown for the bench; the Machine can still be repaired, and the tick and the card come as for any Puzzle. The line is a `.bwp`'s own (`fault stuck IC17.12 0`): pasted under a `machine` line it is an Authored Puzzle.
+- A Machine's inputs, capture times and "do this" are one file of its own, `machines/NNN-name/puzzles/random.txt`, written with the strings `bw run` takes (`press SW1:300ms:800ms`, `knob J2:42%`, `type J3:350ms:PRINT 42`), a `capture 500ms` a capture and one `do "…"`.
+- One code vets in the game and in `bw`: a command makes a Random fault from the terminal (the author's check, the tests' way in). `tools/fault_sample.py` stays the research's tool.
+- Cells are rare by their weight and the five tries; nothing draws them among the words the Machine reads.
 - A candidate the Machine refuses (a power pin, two pins that are not neighbours, a Trace with nothing crackable) is not one of the five: it costs nothing and is drawn again.
 - Inside a kind every physical object is as likely: each chip signal pin, each pair of neighbouring pins, each pad for a crack (then another pad of its Net and a place between them).
 - The power-on seed is 1, `bw_ui`'s: untouched, the Vetting run is the run the player sees.
@@ -61,6 +82,66 @@ Starting weights (the Authored Puzzles' mix, the cell moved down):
 | switch | 2 % | 2 % |
 
 A kind with nothing to act on (no memory chip, no switch) drops out, the others rescaled. One table for every Machine until one needs its own.
+
+## What the player sees
+
+### The post-it
+
+1. In the Launcher every Machine has one more post-it after its Puzzles, a gap apart from them: the title "Random fault" and a big "?".
+2. Selected, it shows the working Machine live, as "Start the Machine" does. A large "?" over that picture is tried, and kept if it reads well.
+3. Opened as any post-it (Enter, Space, a click), it makes a Puzzle, then opens the bench on it.
+
+### While the Puzzle is made
+
+4. The Launcher stays; a line of text changes about every second, looping through ridiculous ways of breaking a computer. A first list:
+   - "Spilling coffee on the board…"
+   - "Dropping it down the stairs…"
+   - "Letting the cat sleep on it…"
+   - "Leaving it in a damp cellar for ten years…"
+   - "Plugging the power in backwards…"
+   - "Lending it to a nephew…"
+   - "Shaking it to hear what rattles…"
+   - "Poking around with a screwdriver, power on…"
+   - "Checking that it no longer works…"
+5. How long: under a second on eleven Machines, a few seconds on the Typewriter, the BW-2001 and the BW-80 (What the samples show), more than twice that on the web.
+6. Esc stops it; the Launcher is as it was.
+
+### On the bench
+
+7. The Brief's post-it: "Random fault", the fixed sentence "It worked, and now it does not. Nobody knows what happened to it.", then the Machine's "do this" when it has one:
+
+   | Machine | Do this |
+   |---|---|
+   | Counter, LED chaser, Test pattern, Bouncing ball, Message, BW-2001 | none |
+   | Dice | "Hold ROLL, then let go." |
+   | Stopwatch | "Try START, STOP and RESET." |
+   | Knob meter | "Turn the knob from end to end." |
+   | Tennis | "Press START and turn both knobs." |
+   | Typewriter | "Press CLEAR and type a few words." |
+   | LED computer | "Watch the light, then press RESET." |
+   | BW-1 | "Pick an address with AD, change its byte with DA, go on with +." |
+   | BW-80 | "Type PRINT 42 and NEW LINE." |
+
+8. All else is as on an Authored Puzzle: the tools, the Reset (the same Fault back), the tick and the Thank-you Card once it is completed (P8c). The card's Next is "Another random fault".
+9. Leaving forgets the Puzzle. The Launcher comes back with the "Random fault" post-it selected.
+
+### Giving up
+
+10. On this bench the binder has one more divider, "Give up". Its page asks whether the player is sure, with one button, "Show the fault".
+11. Pressed, the page shows the `fault` line. A click on the line copies it.
+
+## What is new
+
+1. **A Machine's Random fault file** (`machines/NNN-name/puzzles/random.txt`, one a Machine): its inputs with their times, its capture times, its "do this"; read and checked with the Machine.
+2. **A knob set at a time**, in the inputs and in `bw run --knob`: today a knob keeps one position for a run.
+3. **Drawing a Fault**: a kind by weight, then one of the Machine's objects of that kind (a chip signal pin, two neighbouring pins, two pads of a Net and a place between, a memory's column or cell, a switch); the Machine refuses what cannot be (`Machine::inject`).
+4. **Vetting**: the Machine built with the Fault, run headless from power-on with seed 1, the inputs played, the TV's frame or each lamp's brightness captured at the capture times, and compared with the Golden Machine's captures, made once.
+5. **Making a Puzzle**: the framework's loop, off the UI thread, stopped on Esc.
+6. **The Launcher's post-it**, its waiting lines, and the bench opened on a Puzzle that has no file.
+7. **The bench**: the Brief from the Machine's file, the binder's "Give up" divider, the card's "Another random fault".
+8. **`bw`'s command** that makes one, with a seed: the `fault` line and the tries it took.
+
+Untouched: the kernel, Parts, the builder, the `.bwp` format, the Authored Puzzles and their tests, Repair Validation's rule.
 
 ## What the first sample shows (BW-80)
 
@@ -88,6 +169,7 @@ The 290 pin and copper Faults (the first four rows):
 - **A typed line fixes most of that.** The 160 candidates under 100 px were run again with `10 REM ABCDEFGHI…` typed from 350 ms and the frame taken at 2.5 s (`--from OUT --time 2500ms --inputs '--type "J3:350ms:10 REM ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"'`; the line is still being typed then, `10 REM ABCDEFGHI` on screen). 44 of the 57 become clear, and 23 of the 64 that showed nothing.
 - **The 41 that never show are mostly right to be dropped**: 14 stuck pins, 6 dry Joints, 10 bridges, 11 cracks, 7 of these on lines to the expansion connector, where nothing is plugged.
 - **Columns always show** (16 of 16, each a lost picture). **Cells almost never**: of 40, one shows untouched (`cell IC3.IO3 $25 0`, a RAM cell: a grid of dots, no sync), one with the typed line (`cell IC2.O0 $FBF 1`, a ROM cell: one more dot under the `R`, 2 pixels, the BW-2001's Odd E again), 38 never.
+- **`PRINT 42` and NEW LINE**, the line chosen: four keys, the frame settled from 1.1 s and taken at 1.2 s, 5.1 s a try. 59 of the 121 show clearly with it, against 67 for the longer line at 11 s: 228 of the 290 in all (79 %). No cell shows with it.
 - **Time**: 1.4 s a try untouched (300 ms at 0.21×), about 11 s with the typed line (2.5 s; a key takes about 0.15 s of simulated time). The web build runs at about 0.4× of that speed.
 
 What the sample is not: one Machine; the last frame only; chips drawn first, then one of their pins (so a 40-pin chip's pins are each less likely than a gate's); cracks half way between two random pads of a random Net; 100 px an arbitrary line.
@@ -111,7 +193,7 @@ What the sample is not: one Machine; the last frame only; chips drawn first, the
 | 110 LED computer | RESET at 1 s | 200, 400, 600, 800 ms, 1.3, 1.5, 1.7 s |
 | 120 BW-1 | AD 0 3 0 0 DA A 9 +, a key every 100 ms from 100 ms | 80 ms, 580 ms, 880 ms, 1 s |
 | 130 BW-2001 | none | 1.4 s |
-| 140 BW-80 | none, then a typed line | 300 ms, then 2.5 s |
+| 140 BW-80 | none, then `PRINT 42` and NEW LINE typed from 350 ms | 300 ms, then 1.2 s |
 
 The Knob meter's and the Tennis's knobs were sampled at their first position only (a knob cannot move during a `bw run` yet); the later positions and their times are to check once one can.
 
@@ -132,7 +214,7 @@ The pin and copper Faults (stuck pin, dry Joint, bridge, crack):
 | 110 LED computer | 148 | 103 (70 %) | 42 | 0.3 s |
 | 120 BW-1 | 146 | 109 (75 %) | 60 | 0.4 s |
 | 130 BW-2001 | 154 | 87 (56 %) | 13 | 3.8 s |
-| 140 BW-80 | 290 | 169 (58 %); typed 236 (81 %) | 152 | 1.4 s; typed 11 s |
+| 140 BW-80 | 290 | 169 (58 %); typed 228 (79 %) | 152; typed 161 | 1.4 s; typed 5.1 s |
 
 - **Every Machine gives Puzzles, quickly**: 37 % to 81 % of random pin and copper Faults show, and a try is under a second everywhere but on the Typewriter, the BW-2001 and the BW-80.
 - **Several captures matter where the outputs change slowly.** The Counter: 58 Faults show over its four captures, 15 at 250 ms alone (its LED is dark then, as with most of its Faults), 55 at 500 ms alone. The Stopwatch: 89 over four, 50 to 81 for one. The LED chaser: 85 over eight, about 70 for any one. The LED computer 103 (91 to 97), the BW-1 109 (92 to 103), the Bouncing ball 99 (89 to 92). On the Tennis and the Knob meter one capture finds them all (they were sampled with three and two).
@@ -146,22 +228,30 @@ The pin and copper Faults (stuck pin, dry Joint, bridge, crack):
 
 What the samples are not: one seed; a lamp's margin (a quarter of the brightest fault-free lamp) and the TV's 100 px are arbitrary lines; the inputs are a first guess; chips are drawn first, then one of their pins (a 40-pin chip's pins are each less likely than a gate's); cracks are half way between two random pads of a random Net.
 
+## Tests
+
+- Unit: the Random fault file (each kind of line, its errors by line); a knob set at a time; drawing (every kind, a kind with nothing to act on dropped, the weights, the same Fault for the same seed); Vetting on the Counter (its Dark LED's crack shows, a stuck unconnected output does not) and on a TV Machine; the loop (a kind that never shows is left after five tries).
+- Every Machine: its file loads; its Golden Machine's captures are stable (a locked picture at each capture time); for a few seeds a Random fault is made, loads, shows, is not completed as made, and is completed after the Repair its kind calls for (a swap, a mend, the bridge removed, a resolder).
+- `bw`'s command: the same line for the same seed.
+- Screenshots (release, viewed): the Launcher on the post-it, with and without the "?" over the picture; a waiting line; a Random fault's bench with its Brief; the binder's page before and after "Show the fault".
+- Speed: the time to make one on each Machine, native and on the web.
+- Sanitizers: debug on the unit tests and the small Machines' cases; debug `bw_ui` making one on the Counter.
+- Web build (the Launcher and the bench draw something new; the making runs on a thread).
+- Only the user: the waiting lines and the Briefs' words, a few Random faults played on several Machines, the "?" over the picture.
+- The full release suite.
+
 ## Open
 
-To settle before the design:
+For the user, before the design:
 
-- The file that holds each Machine's inputs and capture times (proposed above).
-- A knob moved during a run: today `bw run --knob J2:42%` sets it for the whole run. The inputs need a time on a knob's setting, in `bw run` and in the game's own Vetting.
-- The BW-1's keys: its inputs press 7 of 23; more keys find more switch Faults, for a longer run.
-- The computers' typed line: left out on the BW-2001 (7 s more a try for 2 Faults in 67); on the BW-80 a short one ending with NEW LINE is still to choose and time (the sample's line was longer and not entered; a key is 0.15 s of simulated time there, 0.6 s of wait).
-- The weights, and the thresholds (pixels; lamps).
-- The post-it's look and words; the generated Brief and its "do X"; what the Launcher's live picture shows for "?".
-- Where the wait goes and what the player sees meanwhile: 3.8 s a try on the BW-2001, 1.4 s untouched and 11 s typed on the BW-80, more than twice that on the web. A capture before the first input would let most tries end there.
-- Giving up: is the Fault shown? Is a made-up Puzzle's `fault` line kept somewhere, so a good one can become an Authored Puzzle?
-- Cells: rare by the five tries alone (about one draw in eight succeeds on the BW-80), or drawn among the words the Machine reads.
-- A minimum number of pixels throws away the one-dot ROM cell, the kind of the BW-2001's Odd E.
-- The Dice's dark die after the release: found only by a capture there, which also takes 10 changed faces for Symptoms.
-- The glossary's Vetting ("…or is trivial") and Procedural Puzzle entries.
+- The BW-2001's typed line: left out here (7 s more a try for 2 Faults in 67), against "a typed line on the computers".
+- The texts: the waiting lines, the fixed sentence, each Machine's "do this".
+
+To tune in play, with starting values here: the weights; the thresholds (100 px on a TV, a quarter of the brightest lamp); the BW-1's keys (its inputs press 7 of 23: more keys find more switch Faults, for a longer run).
+
+Known and accepted: a minimum number of pixels throws away the one-dot ROM cell, the kind of the BW-2001's Odd E; the Dice's dark die after the release is not found (a capture there would also take 10 changed faces for Symptoms); the later positions of the knobs and their times are unchecked until a knob can move.
+
+The glossary's Vetting ("…or is trivial") and Procedural Puzzle entries are rewritten with the step.
 
 ## Later
 
