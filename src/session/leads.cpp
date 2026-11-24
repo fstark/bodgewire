@@ -9,7 +9,17 @@ std::optional<PadLead> PadLeadOf(const Machine& machine, std::string_view refere
     const auto& components = machine.designCircuit().components;
     const auto component = components.find(reference);
     if (component == components.end()) {
-        return std::nullopt;
+        const auto index = PassivePin(pin);
+        const auto at = index ? machine.padPosition(reference, pin) : std::nullopt;
+        if (!at) {
+            return std::nullopt;
+        }
+        return PadLead{.reference = std::string(reference),
+                       .pin = std::string(pin),
+                       .label = std::format("{}.{}", reference, pin),
+                       .at = *at,
+                       .index = *index,
+                       .chip = false};
     }
     const auto index = FindPin(*component->second, pin);
     if (!index) {

@@ -233,8 +233,8 @@ private:
     std::optional<PinIndex> resolvePin(const BuiltPart& part, const PinRef& ref,
                                        std::uint32_t line) {
         if (IsPassive(part)) {
-            if (ref.pin == "1" || ref.pin == "2") {
-                return static_cast<PinIndex>(ref.pin[0] - '1');
+            if (const auto index = PassivePin(ref.pin)) {
+                return index;
             }
             error(line, ref.reference + " (" + part.decl->part + ") has no pin " + ref.pin);
             return std::nullopt;
@@ -643,13 +643,18 @@ std::optional<PinIndex> FindPin(const Component& component, std::string_view pin
     return std::nullopt;
 }
 
+std::optional<PinIndex> PassivePin(std::string_view pin) {
+    if (pin == "1" || pin == "2") {
+        return static_cast<PinIndex>(pin[0] - '1');
+    }
+    return std::nullopt;
+}
+
 std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view reference,
                             std::string_view pin) {
     const auto component = loaded.components.find(reference);
-    if (component == loaded.components.end()) {
-        return std::nullopt;
-    }
-    const auto index = FindPin(*component->second, pin);
+    const auto index =
+        component != loaded.components.end() ? FindPin(*component->second, pin) : PassivePin(pin);
     if (!index) {
         return std::nullopt;
     }
@@ -657,6 +662,9 @@ std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view refere
         if (c.reference == reference && c.pin == *index) {
             return loaded.nets.at(c.net);
         }
+    }
+    if (component == loaded.components.end()) {
+        return std::nullopt;  // a passive Part's pins are always listed
     }
     return loaded.circuit.netOf(PinId{ToIndex(component->second->firstPin()) + *index});
 }

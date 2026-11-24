@@ -106,8 +106,12 @@ void ResolveContentsPaths(Netlist& netlist, const std::filesystem::path& directo
 // Pin by package number ("3") or datasheet name ("1Y"); nullopt if none.
 std::optional<PinIndex> FindPin(const Component& component, std::string_view pin);
 
+// A passive Part's pin (a resistor's, a capacitor's: no Component): "1" or "2" → 0 or 1.
+std::optional<PinIndex> PassivePin(std::string_view pin);
+
 // Net at a Pin's pad: the Net it is listed on (also for a stuck Pin), else its own Net.
-// `pin` is a name or a number; nullopt if the reference or pin is unknown.
+// `pin` is a name or a number (a passive Part's: its number); nullopt if the reference or pin
+// is unknown.
 std::optional<NetId> PinNet(const LoadedCircuit& loaded, std::string_view reference,
                             std::string_view pin);
 

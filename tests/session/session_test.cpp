@@ -458,6 +458,46 @@ TEST_CASE("session: hooks", "[session]") {
     CHECK(session.scope().rail(0) == 0.0);
 }
 
+TEST_CASE("session: clips and hooks on a resistor's pad and a capacitor's", "[session]") {
+    // A passive Part has no Component: its pads by number, on the Net the Board gives them.
+    Session session = PuzzleSession("gap");
+    const auto netUnder = [&](std::string_view reference, std::string_view pin) {
+        const auto lead = session.padLead(reference, pin);
+        REQUIRE(lead.has_value());
+        session.probe().touch(ProbeTip{lead->at, Layer::Front});
+        return session.probe().net();
+    };
+    REQUIRE(session.analyzer().clip("R6", "2") == 0);
+    REQUIRE(session.analyzer().clip("D5", "2") == 1);
+    CHECK(session.analyzer().clips()[0]->label == "R6.2");
+    CHECK(session.analyzer().clipAt("R6", "2") == 0);
+    REQUIRE(session.analyzer().net(0).has_value());
+    CHECK(session.analyzer().net(0) == netUnder("R6", "2"));
+    CHECK(session.analyzer().net(1) == netUnder("D5", "2"));
+    CHECK(session.analyzer().net(0) != session.analyzer().net(1));  // either side of the crack
+    const auto alone = session.analyzer().clipGroup("R6", "2");     // no bus: clipped alone
+    REQUIRE(alone.has_value());
+    CHECK(alone->first == 0);
+    CHECK_FALSE(alone->group.has_value());
+    CHECK(session.analyzer().group({0, 1}).has_value());
+    CHECK_FALSE(session.analyzer().clip("R6", "3").has_value());
+
+    REQUIRE(session.scope().hook("R6", "1") == 0);
+    CHECK(session.scope().hooks()[0]->label == "R6.1");
+    CHECK(session.scope().rail(0) == 5.0);  // the pull-up's VCC end
+
+    auto bw80 = LoadNetlistMachine(test::NetlistPath("bw80"));
+    REQUIRE(bw80.has_value());
+    auto built = bw80->build();
+    REQUIRE(built.has_value());
+    Session video(std::move(*bw80), std::move(*built));
+    REQUIRE(video.analyzer().clip("C9", "1") == 0);  // on DOT2, as IC18's 2CLK
+    REQUIRE(video.analyzer().clip("IC18", "2CLK") == 1);
+    REQUIRE(video.analyzer().net(0).has_value());
+    CHECK(video.analyzer().net(0) == video.analyzer().net(1));
+    CHECK(video.scope().hook("C9", "2") == 0);
+}
+
 TEST_CASE("session: meter volts", "[session]") {
     Session session = PuzzleSession("broken_trace");
     const auto clk = session.padLead("U1", "2");

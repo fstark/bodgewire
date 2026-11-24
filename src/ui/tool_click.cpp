@@ -96,8 +96,8 @@ std::optional<RepairPlan> ToolClick(Owner owner, const BoardClick& click, Sessio
         }
         const BoardComponent& part = session.drawnBoard()->components[pick->hit.component];
         const std::string& pin = part.pads[pick->hit.index].number;
-        if (!session.padLead(part.reference, pin)) {  // a resistor's, a capacitor's
-            refuse(std::format("{}: chip pins only", isClip ? "Clip" : "Hook"));
+        if (!session.padLead(part.reference, pin)) {  // any pin: a chip's, a resistor's…
+            refuse(std::format("{}: attaches to pins only", isClip ? "Clip" : "Hook"));
             break;
         }
         if (isClip) {

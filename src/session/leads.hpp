@@ -25,12 +25,14 @@ struct SessionBuild {
 
 struct PadLead {                 // a Clip or a Hook
     std::string reference, pin;  // pin by number: "6"
-    std::string label;           // "U6.6 1Y"
+    std::string label;           // "U6.6 1Y"; a resistor's, a capacitor's: "R6.2"
     Point at;                    // pad, nm
-    PinIndex index = 0;          // the pin's, on its Component (pin number − 1)
+    PinIndex index = 0;          // pin number − 1
+    bool chip = true;            // false: a passive Part's (no Component, no pin name)
 };
 
-// A Machine pad by pin number or name; nullopt for an unknown pad.
+// A Machine pad by pin number or name (a resistor's, a capacitor's: by number); nullopt for an
+// unknown pad.
 std::optional<PadLead> PadLeadOf(const Machine& machine, std::string_view reference,
                                  std::string_view pin);
 

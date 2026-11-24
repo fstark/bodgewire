@@ -467,7 +467,11 @@ void Machine::rebuildBoard() {
 std::optional<PinRef> Machine::padOf(const PinRef& pin) const {
     const auto chip = designCircuit_->components.find(pin.reference);
     if (chip == designCircuit_->components.end()) {
-        return std::nullopt;
+        // A Part without a Component (a resistor, folded by the builder): its pads by number.
+        if (!padPosition(pin.reference, pin.pin)) {
+            return std::nullopt;
+        }
+        return pin;
     }
     const auto index = FindPin(*chip->second, pin.pin);
     if (!index) {

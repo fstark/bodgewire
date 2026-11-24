@@ -95,14 +95,18 @@ std::expected<ClipGroupResult, std::string> AnalyzerSetup::clipGroup(std::string
     if (!lead) {
         return std::unexpected("no such pin");
     }
-    const Component& part = *build_->machine->designCircuit().components.find(reference)->second;
-    const auto pins = part.pins();
-    const auto stem = BusBitOf(part, lead->index);
+    std::optional<NameStem> stem;  // a resistor's, a capacitor's pad: none, clipped alone
     std::vector<std::pair<std::uint32_t, std::string>> members;  // bit, pin number
-    for (std::size_t p = 0; stem && p < pins.size(); ++p) {
-        const auto other = BusBitOf(part, p);
-        if (other && other->stem == stem->stem) {
-            members.emplace_back(other->index, std::to_string(p + 1));
+    if (lead->chip) {
+        const Component& part =
+            *build_->machine->designCircuit().components.find(reference)->second;
+        stem = BusBitOf(part, lead->index);
+        const auto pins = part.pins();
+        for (std::size_t p = 0; stem && p < pins.size(); ++p) {
+            const auto other = BusBitOf(part, p);
+            if (other && other->stem == stem->stem) {
+                members.emplace_back(other->index, std::to_string(p + 1));
+            }
         }
     }
     if (members.size() < 2) {
@@ -157,7 +161,9 @@ std::optional<std::size_t> AnalyzerSetup::group(std::vector<std::size_t> channel
         }
         const PadLead& clip = *clips_[channel];
         const auto stem =
-            BusBitOf(*build_->machine->designCircuit().components.at(clip.reference), clip.index);
+            clip.chip ? BusBitOf(*build_->machine->designCircuit().components.at(clip.reference),
+                                 clip.index)
+                      : std::nullopt;
         if (stem) {
             stems.emplace_back(stem->index, channel);
         }

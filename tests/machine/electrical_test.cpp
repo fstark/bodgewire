@@ -132,15 +132,20 @@ TEST_CASE("electrical: island names match the electrical netlist", "[machine]") 
     CHECK(checked > 100);
 }
 
-TEST_CASE("electrical: pull-up cut from VCC is left out", "[machine]") {
+TEST_CASE("electrical: pull-up cut from VCC dangles on a dead island", "[machine]") {
     const Design design = LoadDesign("counter");
     const Netlist netlist = ElectricalNetlist(design.netlist, *design.circuit,
                                               CrackBoard(design.board, {&R1VccCrack(), 1}));
-    for (const PartDecl& part : netlist.parts) {
-        CHECK(part.reference != "R1");
-    }
-    CHECK(NetOf(netlist, "R1.1").empty());
-    CHECK(BuildCircuit(netlist).has_value());
+    CHECK(
+        std::ranges::any_of(netlist.parts, [](const PartDecl& p) { return p.reference == "R1"; }));
+    CHECK(NetOf(netlist, "R1.1") == "VCC~2");  // its rail side: only R1 reaches it
+    CHECK(NetOf(netlist, "R1.2") == "RESET_N");
+    const auto built = BuildCircuit(netlist);
+    REQUIRE(built.has_value());
+    Simulator sim((*built)->circuit);
+    sim.powerOn(1);
+    sim.runUntil(1'000'000);
+    CHECK(sim.isFloating((*built)->nets.at("RESET_N")));  // no pull-up left
 }
 
 TEST_CASE("electrical: button cut from GND joins its signal to a dead island", "[machine]") {

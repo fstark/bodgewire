@@ -177,6 +177,22 @@ TEST_CASE("chaser: gap", "[machines][slow]") {
     }
 }
 
+TEST_CASE("chaser: gap bridged by a wire from the resistor", "[machines]") {
+    Machine machine = LoadPuzzle("gap");  // a resistor has no Component: its pads by number
+    for (const Sample& s : Record(machine, 1_ms, {"R6.2"}).at("R6.2")) {
+        CHECK_FALSE(s.floating);  // the crack's other side: pulled up through R6
+        CHECK(s.value == One);
+    }
+    REQUIRE(machine.addWire({"R6", "2"}, {"D5", "A"}));
+    for (const Sample& s : Record(machine, 1_ms, {"D5.A"}).at("D5.A")) {
+        CHECK_FALSE(s.floating);
+    }
+    REQUIRE(machine.removeWire({"D5", "2"}, {"R6", "2"}));
+    for (const Sample& s : Record(machine, 1_ms, {"D5.A"}).at("D5.A")) {
+        CHECK(s.floating);
+    }
+}
+
 TEST_CASE("chaser: stuck_light", "[machines][slow]") {
     Machine machine = LoadPuzzle("stuck_light");
     for (const std::string& entry : Stages(Record(machine, 18 * kStep, ChaserNames()))) {

@@ -88,7 +88,8 @@ bool IsPassive(const LoadedCircuit& designCircuit, const std::string& reference)
     return kind == PartKind::Resistor || kind == PartKind::Capacitor;
 }
 
-// Names islands: POWER pads first, then non-resistor, non-power Pins in connection order.
+// Names islands: POWER pads first, then non-passive, non-power Pins in connection order, then
+// passives' pins.
 Namer NameIslands(const LoadedCircuit& designCircuit, const Board& board, const Islands& islands) {
     Namer namer(board, islands);
     for (const LoadedPart& part : designCircuit.parts) {
@@ -103,6 +104,13 @@ Namer NameIslands(const LoadedCircuit& designCircuit, const Board& board, const 
             continue;
         }
         namer.name(namer.island(c.reference, c.pin), c.net);
+    }
+    // Then islands only passives reach (a pull-up cut off from its chip): named after, so the
+    // names above are unchanged, and the passive kept on them (a probe there reads its pull).
+    for (const Connection& c : designCircuit.connections) {
+        if (IsPassive(designCircuit, c.reference)) {
+            namer.name(namer.island(c.reference, c.pin), c.net);
+        }
     }
     return namer;
 }
