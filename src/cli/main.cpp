@@ -35,11 +35,14 @@
 #include "machine/press.hpp"
 #include "machine/repair.hpp"
 #include "machine/typing.hpp"
+#include "machine/vetting_script.hpp"
 #include "netlist/builder.hpp"
 #include "netlist/parser.hpp"
 #include "netlist/units.hpp"
 #include "runner/led_input.hpp"
+#include "session/procedural_puzzle.hpp"
 #include "session/session.hpp"
+#include "session/vetting.hpp"
 #include "sim/simulator.hpp"
 #include "sim/vcd.hpp"
 #include "text/text.hpp"
@@ -59,6 +62,7 @@ constexpr std::string_view kUsage =
     "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
     "[--probe REF.PIN,...] [--press REF:DOWN:UP,...] [--knob REF:N%[:TIME],...] "
     "[--type REF:START:TEXT] [--roms DIR]\n"
+    "       bw random <machines/NNN-name/puzzles/random.bwr> [--seed 1]\n"
     "       bw export-kicad <file.bwn> -o <file.net>\n"
     "       bw check-board <file.bwn> <file.kicad_pcb>\n"
     "       bw place <file.bwn> <file.place> -o <file.kicad_pcb> [--seed 1] [--tries 4] "
@@ -582,6 +586,60 @@ int Run(std::span<char*> args) {
     return 0;
 }
 
+// bw random FILE.bwr [--seed N]: a Procedural Puzzle made on the file's Machine (P8d): its
+// `fault` line, the Faults vetted, the Golden Machine's run and the whole making in seconds.
+int RandomCommand(std::span<char*> args) {
+    std::string file;
+    std::uint64_t seed = 1;
+    for (std::size_t i = 2; i < args.size(); ++i) {
+        const std::string_view arg = args[i];
+        if (arg == "--seed" && i + 1 < args.size()) {
+            const std::string_view value = args[++i];
+            const auto [end, ec] = std::from_chars(value.data(), value.data() + value.size(), seed);
+            if (ec != std::errc{} || end != value.data() + value.size()) {
+                return UsageError("bad seed '" + std::string(value) + "'");
+            }
+        } else if (!arg.starts_with("--") && file.empty()) {
+            file = arg;
+        } else {
+            return UsageError("expected: random <file.bwr> [--seed 1]");
+        }
+    }
+    if (file.empty()) {
+        return UsageError("expected: random <file.bwr> [--seed 1]");
+    }
+    auto script = ReadVettingScriptFile(file);
+    if (!script) {
+        PrintDiagnostics(script.error());
+        return kExitNetlistErrors;
+    }
+    auto machine = LoadNetlistMachine(MachineDir(file) / (script->machine + ".bwn"));
+    if (!machine) {
+        PrintDiagnostics(machine.error());
+        return kExitNetlistErrors;
+    }
+    const auto seconds = [start = std::chrono::steady_clock::now()] {
+        return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+    };
+    auto vetting = Vetting::Make(std::move(*machine), std::move(*script));
+    if (!vetting) {
+        std::println(stderr, "bw: {}", vetting.error());
+        return kExitNetlistErrors;
+    }
+    const double golden = seconds();
+    Rng rng(seed);
+    const auto made = MakeProceduralPuzzle(**vetting, rng);
+    if (!made) {
+        std::println(stderr, "bw: {}", made.error());
+        return kExitNetlistErrors;
+    }
+    std::println("{}", FormatFault((*made)->fault));
+    std::println("tries {}", (*made)->tries);
+    std::println("golden_s {:.2f}", golden);
+    std::println("seconds {:.2f}", seconds());
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -602,5 +660,8 @@ int main(int argc, char** argv) {
     if (command == "asm") {
         return AsmCommand(args);
     }
-    return UsageError("expected 'run', 'export-kicad', 'check-board', 'place' or 'asm'");
+    if (command == "random") {
+        return RandomCommand(args);
+    }
+    return UsageError("expected 'run', 'random', 'export-kicad', 'check-board', 'place' or 'asm'");
 }

@@ -255,7 +255,8 @@ RunScript(LoadedCircuit& loaded, const VettingScript& script, const Watched& wat
 class Vetting {
 public:
     // `machine` fault-free; runs it once. nullopt: stopped. Error: the script's (an unknown
-    // switch), or a Golden Machine with no picture at a capture time.
+    // switch), a Machine with no TV and no lamp, or a Golden Machine with no picture at a
+    // capture time.
     static std::expected<std::optional<Vetting>, std::string>
     Make(Machine machine, VettingScript script, std::stop_token stop);
     const Machine& machine() const { return machine_; }

@@ -174,7 +174,9 @@ add_executable(bw_tests
   runner/spsc_ring_test.cpp
   runner/triple_buffer_test.cpp
   runner/tv_consumer_test.cpp
+  session/procedural_puzzle_test.cpp
   session/session_test.cpp
+  session/vetting_test.cpp
   sim/check_test.cpp
   sim/circuit_test.cpp
   sim/event_queue_test.cpp
@@ -251,6 +253,25 @@ foreach(program ${programs})
                    -DOUT=${CMAKE_CURRENT_BINARY_DIR}/asm_${name}.rom
                    -P ${CMAKE_CURRENT_SOURCE_DIR}/asm_cli.cmake)
 endforeach()
+
+# A Procedural Puzzle made on each Machine with a Vetting Script (P8d), one ctest a Machine so
+# they run in parallel (a hidden Catch case, one section a Machine:
+# tests/session/procedural_puzzle_test.cpp). The slow Machines skip themselves in debug (exit 4).
+file(GLOB scripts CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/machines/*/puzzles/random.bwr)
+foreach(script ${scripts})
+  get_filename_component(puzzles ${script} DIRECTORY)
+  get_filename_component(dir ${puzzles} DIRECTORY)
+  get_filename_component(name ${dir} NAME)
+  add_test(NAME "procedural puzzle: ${name}"
+           COMMAND bw_tests "procedural puzzle: a Machine" -c "${name}")
+  set_tests_properties("procedural puzzle: ${name}" PROPERTIES SKIP_RETURN_CODE 4)
+endforeach()
+
+# bw random: the same Fault for the same seed, a line bw run loads as a Puzzle.
+add_test(NAME bw_random
+         COMMAND ${CMAKE_COMMAND} -DBW=$<TARGET_FILE:bw> -DMACHINES=${PROJECT_SOURCE_DIR}/machines
+                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/bw_random
+                 -P ${CMAKE_CURRENT_SOURCE_DIR}/bw_random.cmake)
 
 # bw run --leds: its lines on an LED and on digits, its refusal without lamps.
 add_test(NAME run_leds
