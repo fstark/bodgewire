@@ -259,7 +259,7 @@ Running a candidate Fault headlessly to reject it if it shows no Symptom or is t
 _Avoid_: Validation (that is for Repairs)
 
 **Repair Validation**:
-Checking a Repair by running the player's Machine against the Golden Machine and comparing their outputs. Dropped for now (P3f): the player decides when a Machine is fixed.
+The game checking by itself that a Puzzle is completed: the player's Machine builds the same Circuit as the Golden Machine. No Fault is left in a Component or a Joint, and the Copper gives the Golden Machine's Nets, whichever Repairs made them: a Bodge Wire across a Broken Trace counts as a mend. No outputs are compared, and no Puzzle has a rule of its own. It is never wrong when it says "completed"; a redesign that works it does not see, so there the player still decides. Decided 2026-11-24, to build in P8c (ARCHITECTURE.md, Repair validation); until then the player decides when a Machine is fixed (P3f).
 
 ## Instruments and views
 
