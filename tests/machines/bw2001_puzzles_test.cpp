@@ -125,6 +125,7 @@ TEST_CASE("bw2001: odd_e", "[machines][slow]") {
     SKIP("about 1 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("odd_e");
+    CHECK_FALSE(machine.completed());
     {
         Running m = Run(machine);
         CHECK(Bw2001ScreenRows(m) == kPetBanner);  // the video RAM is right
@@ -145,6 +146,7 @@ TEST_CASE("bw2001: odd_e", "[machines][slow]") {
         CHECK(es == 5);  // COMMODORE, BYTES FREE, READY.
     }
     REQUIRE(machine.swap("UA2"));
+    CHECK(machine.completed());
     Running m = Run(machine);
     CHECK(Bw2001TvRows(Frame(m)) == kPetBanner);
 }
@@ -154,6 +156,7 @@ TEST_CASE("bw2001: striped_screen", "[machines][slow]") {
     SKIP("about 1 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("striped_screen");
+    CHECK_FALSE(machine.completed());
     {
         Running m = Run(machine);
         CHECK(Bw2001ScreenRows(m) == kPetBanner);
@@ -172,6 +175,7 @@ TEST_CASE("bw2001: striped_screen", "[machines][slow]") {
         }
     }
     REQUIRE(machine.mend(StripedScreenCrack().layer, StripedScreenCrack().at));
+    CHECK(machine.completed());
     Running m = Run(machine);
     CHECK(Bw2001TvRows(Frame(m)) == kPetBanner);
 }
@@ -181,6 +185,7 @@ TEST_CASE("bw2001: rolling_text", "[machines][slow]") {
     SKIP("about 1.5 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("rolling_text");
+    CHECK_FALSE(machine.completed());
     {
         Running m = Run(machine);
         CHECK(Bw2001ScreenRows(m) == kPetBanner);
@@ -190,6 +195,7 @@ TEST_CASE("bw2001: rolling_text", "[machines][slow]") {
         }
     }
     REQUIRE(machine.mend(RollingTextCrack().layer, RollingTextCrack().at));
+    CHECK(machine.completed());
     Running m = Run(machine);
     CHECK(m.tv->tv().isLocked());
     CHECK(Bw2001TvRows(Frame(m)) == kPetBanner);
@@ -200,6 +206,7 @@ TEST_CASE("bw2001: stutter", "[machines][slow]") {
     SKIP("about 1 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("stutter");
+    CHECK_FALSE(machine.completed());
     {
         Running m = Run(machine);
         const auto rows = Bw2001TvRows(Frame(m));
@@ -211,6 +218,7 @@ TEST_CASE("bw2001: stutter", "[machines][slow]") {
         }
     }
     REQUIRE(machine.swap("UD2"));
+    CHECK(machine.completed());
     Running m = Run(machine);
     CHECK(Bw2001TvRows(Frame(m)) == kPetBanner);
 }
@@ -220,6 +228,7 @@ TEST_CASE("bw2001: negative_screen", "[machines][slow]") {
     SKIP("about 1 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("negative_screen");
+    CHECK_FALSE(machine.completed());
     const std::array<std::uint8_t, 8> lit{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     const std::array<std::uint8_t, 8> dark{};
     const int blank = 10 * kBw2001Columns;  // a cell of an empty row
@@ -231,6 +240,7 @@ TEST_CASE("bw2001: negative_screen", "[machines][slow]") {
         CHECK(Bw2001CellDots(frame, 4) == Bw2001Glyph(0x83));  // C, reversed
     }
     REQUIRE(machine.swap("UC1"));
+    CHECK(machine.completed());
     Running m = Run(machine);
     const TvFrame& frame = Frame(m);
     CHECK(Bw2001TvRows(frame) == kPetBanner);
@@ -242,6 +252,7 @@ TEST_CASE("bw2001: short_memory", "[machines][slow]") {
     SKIP("about 2 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("short_memory");
+    CHECK_FALSE(machine.completed());
     {
         Running m(1, Bw2001Built(machine));
         auto banner = kPetBanner;
@@ -250,6 +261,7 @@ TEST_CASE("bw2001: short_memory", "[machines][slow]") {
         CHECK(m.ram(0x0C00) % 2 == 1);  // the bit at the first word of UI5
     }
     REQUIRE(machine.swap("UI5"));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
 }
@@ -259,6 +271,7 @@ TEST_CASE("bw2001: missing_keys", "[machines][slow]") {
     SKIP("about 2 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("missing_keys");
+    CHECK_FALSE(machine.completed());
     {
         Running m(1, Bw2001Built(machine));
         REQUIRE(Banner(m));
@@ -266,6 +279,7 @@ TEST_CASE("bw2001: missing_keys", "[machines][slow]") {
         CHECK(Row(m, 5) == "ERTYDF");
     }
     REQUIRE(machine.mend(MissingKeysCrack().layer, MissingKeysCrack().at));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     REQUIRE(Banner(m));
     Bw2001Type(m, "QWERTYASDF");
@@ -278,6 +292,7 @@ TEST_CASE("bw2001: frozen_cursor", "[machines][slow]") {
 #endif
     constexpr std::size_t kCursor = 5 * kBw2001Columns;  // under READY
     Machine machine = LoadPuzzle("frozen_cursor");
+    CHECK_FALSE(machine.completed());
     {
         Running m(1, Bw2001Built(machine));
         REQUIRE(Banner(m));
@@ -292,6 +307,7 @@ TEST_CASE("bw2001: frozen_cursor", "[machines][slow]") {
         CHECK(Bw2001ScreenRows(m) == kPetBanner);
     }
     REQUIRE(machine.swap("UG8"));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     REQUIRE(Banner(m));
     bool blinked = false;
@@ -310,6 +326,7 @@ TEST_CASE("bw2001: random_screen", "[machines][slow]") {
     SKIP("about 6 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("random_screen");
+    CHECK_FALSE(machine.completed());
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
         INFO("seed " << seed);
         Running m(seed, Bw2001Built(machine));
@@ -321,6 +338,7 @@ TEST_CASE("bw2001: random_screen", "[machines][slow]") {
         CHECK(m.sim->value(*PinNet(*m.loaded, "UF3", "RES_N")) == LogicValue::Zero);
     }
     REQUIRE(machine.swap("UDE9"));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
 }
@@ -330,6 +348,7 @@ TEST_CASE("bw2001: snow", "[machines][slow]") {
     SKIP("about 8 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("snow");
+    CHECK_FALSE(machine.completed());
     const auto loop = [](Running& m) {
         REQUIRE(Banner(m));
         const int before = m.snow->accesses;  // from the banner (the power-on address)
@@ -350,6 +369,7 @@ TEST_CASE("bw2001: snow", "[machines][slow]") {
         CHECK(m.sim->value(*PinNet(*m.loaded, "UA5", "PB5")) != LogicValue::X);
     }
     REQUIRE(machine.swap("UA5"));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine), true);
     CHECK(loop(m) < 20);
 }
@@ -359,10 +379,12 @@ TEST_CASE("bw2001: bad_zero_page", "[machines][slow]") {
     SKIP("about 6 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("bad_zero_page");
+    CHECK_FALSE(machine.completed());
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
         CheckNeverStarts(machine, seed);
     }
     REQUIRE(machine.swap("UI8"));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
 }
@@ -372,12 +394,15 @@ TEST_CASE("bw2001: wrong_chip", "[machines][slow]") {
     SKIP("about 8 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("wrong_chip");
+    CHECK_FALSE(machine.completed());
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
         CheckNeverStarts(machine, seed);
     }
     REQUIRE(machine.swap("UI8"));  // Bad zero page's chip: no better
+    CHECK_FALSE(machine.completed());
     CheckNeverStarts(machine, 1);
     REQUIRE(machine.resolder({"UH8", "2A4"}));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
 }
@@ -387,6 +412,7 @@ TEST_CASE("bw2001: ghost_letter", "[machines][slow]") {
     SKIP("about 3 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("ghost_letter");
+    CHECK_FALSE(machine.completed());
     {
         Running m(1, Bw2001Built(machine));
         auto banner = kPetBanner;
@@ -395,6 +421,7 @@ TEST_CASE("bw2001: ghost_letter", "[machines][slow]") {
         CHECK(Bw2001TvRows(Frame(m)) == banner);
     }
     REQUIRE(machine.swap("UC3"));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
 }
@@ -404,6 +431,7 @@ TEST_CASE("bw2001: garbled_text", "[machines][slow]") {
     SKIP("about 3 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("garbled_text");
+    CHECK_FALSE(machine.completed());
     {
         Running m(1, Bw2001Built(machine));
         m.runUntil(1000_ms);
@@ -416,6 +444,7 @@ TEST_CASE("bw2001: garbled_text", "[machines][slow]") {
         }
     }
     REQUIRE(machine.swap("UC3"));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
 }
@@ -425,6 +454,7 @@ TEST_CASE("bw2001: no_clock", "[machines][slow]") {
     SKIP("about 1 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("no_clock");
+    CHECK_FALSE(machine.completed());
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
         INFO("seed " << seed);
         Running m(seed, Bw2001Built(machine));
@@ -447,6 +477,7 @@ TEST_CASE("bw2001: no_clock", "[machines][slow]") {
         CHECK(std::ranges::all_of(frame.cells, [](float c) { return c == 0.0f; }));
     }
     REQUIRE(machine.mend(NoClockCrack().layer, NoClockCrack().at));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
 }
@@ -456,6 +487,7 @@ TEST_CASE("bw2001: joined_bits", "[machines][slow]") {
     SKIP("about 6 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("joined_bits");
+    CHECK_FALSE(machine.completed());
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
         INFO("seed " << seed);
         Running m(seed, Bw2001Built(machine));
@@ -467,6 +499,7 @@ TEST_CASE("bw2001: joined_bits", "[machines][slow]") {
         CHECK(m.sim->value(*PinNet(*m.loaded, "UF3", "RES_N")) == LogicValue::One);
     }
     REQUIRE(machine.removeBridge({"UF3", "D0"}, {"UF3", "D1"}));
+    CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));
 }

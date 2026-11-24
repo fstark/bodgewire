@@ -189,6 +189,7 @@ TEST_CASE("stopwatch: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("stopwatch: stuck_at_zero", "[machines]") {
     Machine machine = LoadPuzzle("stuck_at_zero");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         Watch watch(*loaded, 1);
@@ -199,6 +200,7 @@ TEST_CASE("stopwatch: stuck_at_zero", "[machines]") {
         CHECK(watch.sim().value(*PinNet(*loaded, "U12", "2Y")) == One);
     }
     REQUIRE(machine.swap("U12"));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     Watch watch(*loaded, 1);
     Clear(watch);
@@ -209,6 +211,7 @@ TEST_CASE("stopwatch: stuck_at_zero", "[machines]") {
 
 TEST_CASE("stopwatch: nineteen", "[machines]") {
     Machine machine = LoadPuzzle("nineteen");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const NetId ckb = *PinNet(*loaded, "U6", "CKB");
@@ -228,6 +231,7 @@ TEST_CASE("stopwatch: nineteen", "[machines]") {
         }
     }
     REQUIRE(machine.mend(NineteenCrack().layer, NineteenCrack().at));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     Watch watch(*loaded, 1);
     Clear(watch);
@@ -238,17 +242,20 @@ TEST_CASE("stopwatch: nineteen", "[machines]") {
 
 TEST_CASE("stopwatch: eights", "[machines]") {
     Machine machine = LoadPuzzle("eights");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         CHECK(AfterReset(*loaded, 1) == "0.80");
     }
     REQUIRE(machine.swap("U9"));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     CHECK(AfterReset(*loaded, 1) == "0.00");
 }
 
 TEST_CASE("stopwatch: broken_bar", "[machines]") {
     Machine machine = LoadPuzzle("broken_bar");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const NetId e = *PinNet(*loaded, "DS1", "E");
@@ -262,6 +269,7 @@ TEST_CASE("stopwatch: broken_bar", "[machines]") {
         }
     }
     REQUIRE(machine.mend(BrokenBarCrack().layer, BrokenBarCrack().at));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     CHECK(AfterReset(*loaded, 1) == "0.00");
 }
@@ -283,6 +291,7 @@ std::string StopAtFifty(LoadedCircuit& loaded, std::uint64_t seed) {
 
 TEST_CASE("stopwatch: non_stop", "[machines]") {
     Machine machine = LoadPuzzle("non_stop");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const NetId gate = *PinNet(*loaded, "U12", "1B");
@@ -294,12 +303,14 @@ TEST_CASE("stopwatch: non_stop", "[machines]") {
         }
     }
     REQUIRE(machine.mend(NonStopCrack().layer, NonStopCrack().at));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     CHECK(StopAtFifty(*loaded, 1) == "0.04");
 }
 
 TEST_CASE("stopwatch: dark_seconds", "[machines]") {
     Machine machine = LoadPuzzle("dark_seconds");
+    CHECK_FALSE(machine.completed());
     CHECK(machine.power().unpowered == std::vector<std::string>{"U5"});
     {
         auto loaded = Build(machine);
@@ -309,6 +320,7 @@ TEST_CASE("stopwatch: dark_seconds", "[machines]") {
         }
     }
     REQUIRE(machine.mend(DarkSecondsCrack().layer, DarkSecondsCrack().at));
+    CHECK(machine.completed());
     CHECK(machine.power().unpowered.empty());
     auto loaded = Build(machine);
     CHECK(StartStop(*loaded, 1) == "0.12");
@@ -334,6 +346,7 @@ std::pair<unsigned, char> PowerOnSeconds(LoadedCircuit& loaded, std::uint64_t se
 
 TEST_CASE("stopwatch: missing_eight", "[machines]") {
     Machine machine = LoadPuzzle("missing_eight");
+    CHECK_FALSE(machine.completed());
     std::uint64_t seed = 0;
     {
         auto loaded = Build(machine);
@@ -349,12 +362,14 @@ TEST_CASE("stopwatch: missing_eight", "[machines]") {
         REQUIRE(seed != 0);
     }
     REQUIRE(machine.resolder({"U8", "6"}));
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const auto [count, digit] = PowerOnSeconds(*loaded, seed);
         CHECK(digit == static_cast<char>('0' + count - 8));
     }
     REQUIRE(machine.swap("U8"));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const auto [count, digit] = PowerOnSeconds(*loaded, seed);
     CHECK(digit == static_cast<char>('0' + count));

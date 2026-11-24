@@ -46,10 +46,12 @@ const std::vector<float>& FaultFree() {
 void CheckRepairs(const char* puzzle, const char* repair) {
     INFO(puzzle << " " << repair);
     Session session = PuzzleSession(puzzle);
+    CHECK_FALSE(session.completed());
     CHECK(Frame(session) != FaultFree());
     const auto parsed = ParseRepair(repair);
     REQUIRE(parsed.has_value());
     REQUIRE(session.repair(*parsed) == RepairResult::Done);
+    CHECK(session.completed());
     CHECK(Frame(session) == FaultFree());
 }
 
@@ -65,12 +67,14 @@ TEST_CASE("shorts power: each Puzzle is fixed by its Repair", "[machines]") {
 TEST_CASE("shorts power: swapping the chip does not fix a bridge", "[machines]") {
     Session session = PuzzleSession("line_bridge.bwp");
     REQUIRE(session.repair(SwapRepair{"U9"}) == RepairResult::Done);
+    CHECK_FALSE(session.completed());
     CHECK(Frame(session) != FaultFree());
 }
 
 TEST_CASE("shorts power: a wire to VCC powers the chip", "[machines]") {
     Session session = PuzzleSession("unpowered_chip.bwp");
     REQUIRE(session.repair(WireRepair{{"U6", "14"}, {"U14", "14"}}) == RepairResult::Done);
+    CHECK(session.completed());  // a wire to VCC in place of the mend: the same Nets
     CHECK(Frame(session) == FaultFree());
 }
 

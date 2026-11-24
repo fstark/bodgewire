@@ -99,6 +99,7 @@ TEST_CASE("faults: dead counter output", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2);
     const auto good = FaultFree(seed);
     Machine machine = LoadPuzzle("dead_counter");
+    CHECK_FALSE(machine.completed());
     auto loaded = machine.build();
     REQUIRE(loaded.has_value());
     const Seen seen = Watch(**loaded, seed, {"U3.QA"});
@@ -107,8 +108,10 @@ TEST_CASE("faults: dead counter output", "[machines]") {
 
     Machine wrong = LoadPuzzle("dead_counter");
     REQUIRE(wrong.swap("U4"));
+    CHECK_FALSE(wrong.completed());
     CHECK(Frame(wrong, seed) != good);
     REQUIRE(machine.swap("U3"));
+    CHECK(machine.completed());
     CHECK(Frame(machine, seed) == good);
 }
 
@@ -116,6 +119,7 @@ TEST_CASE("faults: stuck gate output", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2);
     const auto good = FaultFree(seed);
     Machine machine = LoadPuzzle("stuck_gate");
+    CHECK_FALSE(machine.completed());
     auto loaded = machine.build();
     REQUIRE(loaded.has_value());
     const Seen seen = Watch(**loaded, seed, {"U12.4Y"});
@@ -124,8 +128,10 @@ TEST_CASE("faults: stuck gate output", "[machines]") {
 
     Machine wrong = LoadPuzzle("stuck_gate");
     REQUIRE(wrong.swap("U13"));
+    CHECK_FALSE(wrong.completed());
     CHECK(Frame(wrong, seed) != good);
     REQUIRE(machine.swap("U12"));
+    CHECK(machine.completed());
     CHECK(Frame(machine, seed) == good);
 }
 
@@ -133,6 +139,7 @@ TEST_CASE("faults: broken trace", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2);
     const auto good = FaultFree(seed);
     Machine machine = LoadPuzzle("broken_trace");
+    CHECK_FALSE(machine.completed());
     auto loaded = machine.build();
     REQUIRE(loaded.has_value());
     const Seen seen = Watch(**loaded, seed, {"U13.2B", "U1.QA"});
@@ -143,8 +150,10 @@ TEST_CASE("faults: broken trace", "[machines]") {
 
     Machine wrong = LoadPuzzle("broken_trace");
     CHECK_FALSE(wrong.mend(Layer::Front, {H0Crack().at.x + 5'000'000, H0Crack().at.y}));
+    CHECK_FALSE(wrong.completed());
     CHECK(Frame(wrong, seed) != good);
     REQUIRE(machine.mend(H0Crack().layer, H0Crack().at));
+    CHECK(machine.completed());
     CHECK(Frame(machine, seed) == good);
 }
 
@@ -152,6 +161,7 @@ TEST_CASE("faults: zips", "[machines]") {
     const std::uint64_t seed = GENERATE(1, 2);
     const auto good = FaultFree(seed);
     Machine machine = LoadPuzzle("zips");
+    CHECK_FALSE(machine.completed());
     auto loaded = machine.build();
     REQUIRE(loaded.has_value());
     const NetId enable = *PinNet(**loaded, "U3", "ENT");
@@ -164,5 +174,6 @@ TEST_CASE("faults: zips", "[machines]") {
     CHECK(seen.lamps[1].ends_with("PULSE"));
 
     REQUIRE(machine.mend(ZipsCrack().layer, ZipsCrack().at));
+    CHECK(machine.completed());
     CHECK(Frame(machine, seed) == good);
 }

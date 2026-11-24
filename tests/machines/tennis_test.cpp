@@ -1003,6 +1003,7 @@ TEST_CASE("tennis: Puzzles have a title and a brief", "[machines]") {
 TEST_CASE("tennis: mirror_paddle", "[machines]") {
     // Left knob at its left stop (top 224), right knob at its right stop (top 16).
     Machine machine = LoadPuzzle("mirror_paddle");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const Run run = Play(*loaded, 0.0, 1.0, 550_ms, 800_ms);
@@ -1012,6 +1013,7 @@ TEST_CASE("tennis: mirror_paddle", "[machines]") {
         }) == 0);
     }
     REQUIRE(machine.swap("U31"));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Run run = Play(*loaded, 0.0, 1.0, 550_ms, 800_ms);
     CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.right, 16, 16); }) >= 5);
@@ -1020,6 +1022,7 @@ TEST_CASE("tennis: mirror_paddle", "[machines]") {
 TEST_CASE("tennis: shy_paddles", "[machines]") {
     // Left paddle lines 120–135, right 128–143: they share lines 128–135.
     Machine machine = LoadPuzzle("shy_paddles");
+    CHECK_FALSE(machine.completed());
     const double right = KnobForTop(128);
     {
         auto loaded = Build(machine);
@@ -1031,6 +1034,7 @@ TEST_CASE("tennis: shy_paddles", "[machines]") {
         CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.left, 120, 16); }) == 0);
     }
     REQUIRE(machine.removeBridge({"U31", "10"}, {"U31", "11"}));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Run run = Play(*loaded, 0.5, right, 550_ms, 800_ms);
     CHECK(run.count([](const Shot& s) {
@@ -1040,6 +1044,7 @@ TEST_CASE("tennis: shy_paddles", "[machines]") {
 
 TEST_CASE("tennis: paddle_fence", "[machines]") {
     Machine machine = LoadPuzzle("paddle_fence");
+    CHECK_FALSE(machine.completed());
     // Copies of the left paddle (lines 120–135) at dots 14, 22 and 30.
     const auto fence = [](const Shot& s) {
         if (!s.picture.walls) {
@@ -1062,6 +1067,7 @@ TEST_CASE("tennis: paddle_fence", "[machines]") {
         CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.left, 120, 16); }) >= 5);
     }
     REQUIRE(machine.resolder({"U33", "4"}));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Run run = Play(*loaded, 0.5, 0.0, 550_ms, 800_ms);
     CHECK(run.count(fence) == 0);
@@ -1071,6 +1077,7 @@ TEST_CASE("tennis: paddle_fence", "[machines]") {
 TEST_CASE("tennis: long_paddle", "[machines]") {
     // Left knob at its right stop: the paddle's top on line 16.
     Machine machine = LoadPuzzle("long_paddle");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const Run run = Play(*loaded, 1.0, 0.0, 550_ms, 800_ms, {"U32.1Y", "U28.CKA"});
@@ -1080,6 +1087,7 @@ TEST_CASE("tennis: long_paddle", "[machines]") {
         CHECK(run.lamps[1] == "-");
     }
     REQUIRE(machine.mend(LongPaddleCrack().layer, LongPaddleCrack().at));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Run run = Play(*loaded, 1.0, 0.0, 550_ms, 800_ms);
     CHECK(run.count([](const Shot& s) { return PaddleIs(s.picture.left, 16, 16); }) >= 5);
@@ -1088,6 +1096,7 @@ TEST_CASE("tennis: long_paddle", "[machines]") {
 TEST_CASE("tennis: invisible_ball", "[machines][slow]") {
     // The paddles at opposite corners: the unseen ball is missed again and again.
     Machine machine = LoadPuzzle("invisible_ball");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const Run run = Play(*loaded, 0.0, 1.0, 550_ms, 8'000_ms, {"U43.3B", "U38.3B"});
@@ -1103,6 +1112,7 @@ TEST_CASE("tennis: invisible_ball", "[machines][slow]") {
         CHECK(run.lamps[1] == "-");
     }
     REQUIRE(machine.mend(InvisibleBallCrack().layer, InvisibleBallCrack().at));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Run run = Play(*loaded, 0.0, 1.0, 550_ms, 1'500_ms);
     CHECK(run.count([](const Shot& s) { return s.picture.ball.has_value(); }) >= 10);
@@ -1111,6 +1121,7 @@ TEST_CASE("tennis: invisible_ball", "[machines][slow]") {
 TEST_CASE("tennis: double_scores", "[machines]") {
     // Both paddles low, away from the digits.
     Machine machine = LoadPuzzle("double_scores");
+    CHECK_FALSE(machine.completed());
     const auto copied = [](const Shot& s) {
         const int z = s.picture.lineZeroRow;
         const int left = ReadDigit(s.frame, z, 8), right = ReadDigit(s.frame, z, 88);
@@ -1137,6 +1148,7 @@ TEST_CASE("tennis: double_scores", "[machines]") {
         CHECK(run.count(dark) == 0);
     }
     REQUIRE(machine.swap("U10"));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Run run = Play(*loaded, 0.0, 0.0, 550_ms, 800_ms);
     CHECK(run.count(copied) == 0);
@@ -1145,6 +1157,7 @@ TEST_CASE("tennis: double_scores", "[machines]") {
 
 TEST_CASE("tennis: folded_digits", "[machines]") {
     Machine machine = LoadPuzzle("folded_digits");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const Run run = Play(*loaded, 0.0, 0.0, 550_ms, 800_ms);
@@ -1159,6 +1172,7 @@ TEST_CASE("tennis: folded_digits", "[machines]") {
         }) == 0);
     }
     REQUIRE(machine.swap("U54"));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Run run = Play(*loaded, 0.0, 0.0, 550_ms, 800_ms);
     CHECK(run.count([](const Shot& s) {
@@ -1168,6 +1182,7 @@ TEST_CASE("tennis: folded_digits", "[machines]") {
 
 TEST_CASE("tennis: rolling_picture", "[machines]") {
     Machine machine = LoadPuzzle("rolling_picture");
+    CHECK_FALSE(machine.completed());
     const Point pin2 = *machine.padPosition("U10", "2");
     {
         auto loaded = Build(machine);
@@ -1183,6 +1198,7 @@ TEST_CASE("tennis: rolling_picture", "[machines]") {
         CHECK(run.lamps[2] == "-");
     }
     REQUIRE(machine.resolder({"U10", "2"}));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Run run = Play(*loaded, 0.5, 0.5, 550_ms, 1'200_ms);
     CHECK(run.count([](const Shot& s) { return !s.locked || !s.picture.walls; }) == 0);
@@ -1190,6 +1206,7 @@ TEST_CASE("tennis: rolling_picture", "[machines]") {
 
 TEST_CASE("tennis: short_frames", "[machines]") {
     Machine machine = LoadPuzzle("short_frames");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         CHECK(*PinNet(*loaded, "U7", "D") != *PinNet(*loaded, "U3", "QC"));  // the leg
@@ -1211,6 +1228,7 @@ TEST_CASE("tennis: short_frames", "[machines]") {
         }
     }
     REQUIRE(machine.resolder({"U7", "4"}));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Run run = Play(*loaded, 0.5, 0.5, 550_ms, 1'200_ms);
     CHECK(run.count([](const Shot& s) { return !s.locked || !s.picture.walls; }) == 0);

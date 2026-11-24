@@ -272,13 +272,16 @@ TEST_CASE("message: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("message: half_letters", "[machines][slow]") {
     Machine machine = LoadPuzzle("half_letters");
+    CHECK_FALSE(machine.completed());
     CheckFaultyPage(machine, {.glyphLines = 3});
     REQUIRE(machine.swap("U13"));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
 TEST_CASE("message: echo", "[machines][slow]") {
     Machine machine = LoadPuzzle("echo");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         CHECK(*PinNet(*loaded, "U12", "1B") == *PinNet(*loaded, "U8", "QA"));  // V8 unchanged
@@ -305,22 +308,26 @@ TEST_CASE("message: echo", "[machines][slow]") {
         CHECK_FALSE(LitBounds(frame, offset->top + static_cast<int>(page.size())).has_value());
     }
     REQUIRE(machine.swap("U12"));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
 TEST_CASE("message: gibberish", "[machines][slow]") {
     Machine machine = LoadPuzzle("gibberish");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         CHECK(*PinNet(*loaded, "U15", "A9") != *PinNet(*loaded, "U14", "O5"));
     }
     CheckFaultyPage(machine, {.codeOr = 0x20});
     REQUIRE(machine.mend(GibberishCrack().layer, GibberishCrack().at));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
 TEST_CASE("message: stammer", "[machines][slow]") {
     Machine machine = LoadPuzzle("stammer");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const Point pin8 = *machine.padPosition("U14", "8");
@@ -329,11 +336,13 @@ TEST_CASE("message: stammer", "[machines][slow]") {
     }
     CheckFaultyPage(machine, {.columnOr = 1});
     REQUIRE(machine.resolder({"U14", "8"}));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
 TEST_CASE("message: thin_letters", "[machines][slow]") {
     Machine machine = LoadPuzzle("thin_letters");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         CHECK(*PinNet(*loaded, "U16", "D") == *PinNet(*loaded, "U16", "C"));  // F1 on GND
@@ -341,19 +350,23 @@ TEST_CASE("message: thin_letters", "[machines][slow]") {
     }
     CheckFaultyPage(machine, {.dotsMask = 0x1E});
     REQUIRE(machine.swap("U15"));  // the tempting wrong repair
+    CHECK_FALSE(machine.completed());
     CheckFaultyPage(machine, {.dotsMask = 0x1E});
     REQUIRE(machine.removeBridge({"U16", "13"}, {"U16", "14"}));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
 TEST_CASE("message: block_letters", "[machines][slow]") {
     Machine machine = LoadPuzzle("block_letters");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         CHECK(*PinNet(*loaded, "U16", "CLK") != *PinNet(*loaded, "U5", "3Y"));
     }
     CheckFaultyPage(machine, {.blocks = true});
     REQUIRE(machine.mend(BlockLettersCrack().layer, BlockLettersCrack().at));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 

@@ -440,6 +440,7 @@ TEST_CASE("ball: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("ball: solid_net", "[machines]") {
     Machine machine = LoadPuzzle("solid_net");
+    CHECK_FALSE(machine.completed());
     std::vector<std::string> lamps;
     const Point pin13 = *machine.padPosition("U15", "13");
     {
@@ -454,11 +455,13 @@ TEST_CASE("ball: solid_net", "[machines]") {
         CHECK(Pulses(lamps[1]));
     }
     REQUIRE(machine.swap("U15"));
+    CHECK_FALSE(machine.completed());
     {
         auto swapped = Build(machine);  // a swap keeps the Joint
         CHECK(*PinNet(*swapped, "U15", "2D") != *PinNet(*swapped, "U3", "QC"));
     }
     REQUIRE(machine.resolder({"U15", "13"}));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     CHECK(NetRows(*loaded, lamps, {}) == 112);
     CHECK(NetWidth(*loaded, lamps, {}) == 2 * kDot);
@@ -486,6 +489,7 @@ int TallestBall(LoadedCircuit& loaded, std::vector<std::string>& lamps,
 
 TEST_CASE("ball: stripe", "[machines]") {
     Machine machine = LoadPuzzle("stripe");
+    CHECK_FALSE(machine.completed());
     std::vector<std::string> lamps;
     {
         auto loaded = Build(machine);
@@ -495,12 +499,14 @@ TEST_CASE("ball: stripe", "[machines]") {
         CHECK(Pulses(lamps[1]));
     }
     REQUIRE(machine.swap("U23"));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     CHECK(TallestBall(*loaded, lamps, {}) == kBall);
 }
 
 TEST_CASE("ball: jumping_ball", "[machines]") {
     Machine machine = LoadPuzzle("jumping_ball");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         REQUIRE(*PinNet(*loaded, "U20", "LOAD_N") != *PinNet(*loaded, "U24", "2Y"));
@@ -530,6 +536,7 @@ TEST_CASE("ball: jumping_ball", "[machines]") {
         CHECK(lamps[2] == "-");
     }
     REQUIRE(machine.mend(JumpingBallCrack().layer, JumpingBallCrack().at));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const Track track = Follow(*loaded, 1, 400_ms, 700_ms);
     const auto steps = track.steps();
@@ -572,7 +579,9 @@ TEST_CASE("ball: wraparound", "[machines][slow]") {
 
 TEST_CASE("ball: wraparound, U26 swapped", "[machines][slow]") {
     Machine machine = LoadPuzzle("wraparound");
+    CHECK_FALSE(machine.completed());
     REQUIRE(machine.swap("U26"));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     const auto steps = Follow(*loaded, 1, 100_ms, 2'000_ms).steps();
     CHECK(std::ranges::any_of(steps, [](const Track::Step& step) { return step.dx < 0; }));
@@ -611,7 +620,9 @@ TEST_CASE("ball: net_bounce", "[machines][slow]") {
 
 TEST_CASE("ball: net_bounce, bridge cut", "[machines][slow]") {
     Machine machine = LoadPuzzle("net_bounce");
+    CHECK_FALSE(machine.completed());
     REQUIRE(machine.removeBridge({"U16", "4"}, {"U16", "5"}));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     CHECK(RightOfNetAfterLeft(*loaded) > 0);
 }

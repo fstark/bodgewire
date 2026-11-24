@@ -480,6 +480,7 @@ TEST_CASE("typewriter: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("typewriter: lookalikes", "[machines][slow]") {
     Machine machine = LoadPuzzle("lookalikes");
+    CHECK_FALSE(machine.completed());
     {
         Typewriter t = Typing(machine, "HELLO\r");
         CHECK(*PinNet(*t.loaded, "U18", "PHI2") != *PinNet(*t.loaded, "U17", "PHI2"));
@@ -488,13 +489,16 @@ TEST_CASE("typewriter: lookalikes", "[machines][slow]") {
         CheckShown(t, faded);
     }
     REQUIRE(machine.swap("U18"));  // the tempting wrong repair: the new chip fades too
+    CHECK_FALSE(machine.completed());
     CHECK(Typing(machine, "HELLO\r").codes() == Changed(Typed("HELLO"), 0x04));
     REQUIRE(machine.mend(LookalikesCrack().layer, LookalikesCrack().at));
+    CHECK(machine.completed());
     CHECK(Typing(machine, "HELLO\r").codes() == Typed("HELLO"));
 }
 
 TEST_CASE("typewriter: wallpaper", "[machines][slow]") {
     Machine machine = LoadPuzzle("wallpaper");
+    CHECK_FALSE(machine.completed());
     {
         Typewriter t(1, Build(machine));
         t.clear();
@@ -508,11 +512,13 @@ TEST_CASE("typewriter: wallpaper", "[machines][slow]") {
         CHECK(t.cursor() == Cell{1, 0});
     }
     REQUIRE(machine.swap("U29"));
+    CHECK(machine.completed());
     CHECK(Typing(machine, "A").codes() == Typed("A"));
 }
 
 TEST_CASE("typewriter: copies", "[machines][slow]") {
     Machine machine = LoadPuzzle("copies");
+    CHECK_FALSE(machine.completed());
     {
         Typewriter t = Typing(machine, "HI\r");
         CHECK(t.codes() == Typed("HI"));  // the page is right
@@ -521,12 +527,14 @@ TEST_CASE("typewriter: copies", "[machines][slow]") {
         CheckShown(t, shown);  // the buffer's row, 16 times
     }
     REQUIRE(machine.swap("U22"));
+    CHECK(machine.completed());
     Typewriter t = Typing(machine, "HI\r");
     CheckShown(t, Typed("HI"));
 }
 
 TEST_CASE("typewriter: every_other_line", "[machines][slow]") {
     Machine machine = LoadPuzzle("every_other_line");
+    CHECK_FALSE(machine.completed());
     {
         Typewriter t = Typing(machine, "AB\rCD\rE");
         const Point pin5 = *machine.padPosition("U36", "5");
@@ -540,6 +548,7 @@ TEST_CASE("typewriter: every_other_line", "[machines][slow]") {
         CHECK(t.cursor() == Cell{1, 2});  // the counter is right: row 2 types on row 3
     }
     REQUIRE(machine.resolder({"U36", "5"}));
+    CHECK(machine.completed());
     Codes expected = Typed("AB");
     expected[kColumns] = 'C' & 0x3F;
     expected[kColumns + 1] = 'D' & 0x3F;
@@ -549,6 +558,7 @@ TEST_CASE("typewriter: every_other_line", "[machines][slow]") {
 
 TEST_CASE("typewriter: zeros", "[machines][slow]") {
     Machine machine = LoadPuzzle("zeros");
+    CHECK_FALSE(machine.completed());
     {
         Typewriter t = Typing(machine, "HELLO\r");
         CHECK(*PinNet(*t.loaded, "U20", "OUT") == *PinNet(*t.loaded, "U20", "READ"));  // P4 on VCC
@@ -556,17 +566,20 @@ TEST_CASE("typewriter: zeros", "[machines][slow]") {
         CheckShown(t, Changed(Typed("HELLO"), 0, 0x10));  // XU\\_ on a page of zeros
     }
     REQUIRE(machine.swap("U20"));  // the tempting wrong repair
+    CHECK_FALSE(machine.completed());
     {
         Typewriter t = Typing(machine, "HELLO\r");
         CheckShown(t, Changed(Typed("HELLO"), 0, 0x10));
     }
     REQUIRE(machine.removeBridge({"U20", "2"}, {"U20", "3"}));
+    CHECK(machine.completed());
     Typewriter t = Typing(machine, "HELLO\r");
     CheckShown(t, Typed("HELLO"));
 }
 
 TEST_CASE("typewriter: m_is_return", "[machines][slow]") {
     Machine machine = LoadPuzzle("m_is_return");
+    CHECK_FALSE(machine.completed());
     {
         Typewriter t = Typing(machine, "AM-B");
         CHECK(*PinNet(*t.loaded, "U30", "A") != *PinNet(*t.loaded, "U12", "2Y"));
@@ -577,6 +590,7 @@ TEST_CASE("typewriter: m_is_return", "[machines][slow]") {
         CHECK(t.cursor() == Cell{1, 2});
     }
     REQUIRE(machine.mend(MIsReturnCrack().layer, MIsReturnCrack().at));
+    CHECK(machine.completed());
     Typewriter t = Typing(machine, "AM-B");
     CHECK(t.codes() == Typed("AM-B"));
     CHECK(t.cursor() == Cell{4, 0});

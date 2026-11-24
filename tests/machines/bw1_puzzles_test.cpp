@@ -84,6 +84,7 @@ TEST_CASE("bw1: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("bw1: odd_seven", "[machines][slow]") {
     Machine machine = LoadPuzzle("odd_seven");
+    CHECK_FALSE(machine.completed());
     {
         Bw1 bw1 = Monitor(machine, 1);
         bw1.type("AD 0277");
@@ -94,6 +95,7 @@ TEST_CASE("bw1: odd_seven", "[machines][slow]") {
         CHECK(lit[3] == (kSeven | kSegD));
     }
     REQUIRE(machine.swap("U2"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     bw1.type("AD 0277");
     CheckShows(bw1.display(), "0277");
@@ -101,6 +103,7 @@ TEST_CASE("bw1: odd_seven", "[machines][slow]") {
 
 TEST_CASE("bw1: missing_bar", "[machines]") {
     Machine machine = LoadPuzzle("missing_bar");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -112,12 +115,14 @@ TEST_CASE("bw1: missing_bar", "[machines]") {
         }
     }
     REQUIRE(machine.swap("U17"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: half_segment", "[machines]") {
     Machine machine = LoadPuzzle("half_segment");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -130,12 +135,14 @@ TEST_CASE("bw1: half_segment", "[machines]") {
         CHECK((lit[5] & kSegA) == 0);
     }
     REQUIRE(machine.mend(HalfSegmentCrack().layer, HalfSegmentCrack().at));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: bright_mess", "[machines]") {
     Machine machine = LoadPuzzle("bright_mess");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -146,12 +153,14 @@ TEST_CASE("bw1: bright_mess", "[machines]") {
         CHECK(lit[3] == kZero);
     }
     REQUIRE(machine.swap("U24"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: dead_da", "[machines][slow]") {
     Machine machine = LoadPuzzle("dead_da");
+    CHECK_FALSE(machine.completed());
     {
         Bw1 bw1 = Monitor(machine, 1);
         bw1.type("456 DA 77");  // DA ignored: the 7s shift into the address
@@ -161,6 +170,7 @@ TEST_CASE("bw1: dead_da", "[machines][slow]") {
         CHECK((bw1.segments()[3] & kSegD) != 0);  // the B: U17 still drives SEG_D from PA3
     }
     REQUIRE(machine.mend(DeadDaCrack().layer, DeadDaCrack().at));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     bw1.type("AD 0300 DA A3");
     CHECK(bw1.display() == "0300A3");
@@ -168,6 +178,7 @@ TEST_CASE("bw1: dead_da", "[machines][slow]") {
 
 TEST_CASE("bw1: dead_row", "[machines][slow]") {
     Machine machine = LoadPuzzle("dead_row");
+    CHECK_FALSE(machine.completed());
     {
         Bw1 bw1 = Monitor(machine, 1);
         bw1.type("456 EF");  // E and F ignored
@@ -176,6 +187,7 @@ TEST_CASE("bw1: dead_row", "[machines][slow]") {
         CHECK(bw1.display().substr(0, 4) == "6771");
     }
     REQUIRE(machine.mend(DeadRowCrack().layer, DeadRowCrack().at));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     bw1.type("AD 0300 DA EF");
     CHECK(bw1.display() == "0300EF");
@@ -183,6 +195,7 @@ TEST_CASE("bw1: dead_row", "[machines][slow]") {
 
 TEST_CASE("bw1: deaf_keypad", "[machines][slow]") {
     Machine machine = LoadPuzzle("deaf_keypad");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -197,6 +210,7 @@ TEST_CASE("bw1: deaf_keypad", "[machines][slow]") {
         CHECK(bw1.display() == "PA5512");  // + held, no hand on the keypad
     }
     REQUIRE(machine.swap("SW19"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     bw1.type("AD 0300 DA A9");
     CHECK(bw1.display() == "0300A9");
@@ -204,6 +218,7 @@ TEST_CASE("bw1: deaf_keypad", "[machines][slow]") {
 
 TEST_CASE("bw1: bad_byte", "[machines][slow]") {
     Machine machine = LoadPuzzle("bad_byte");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -212,6 +227,7 @@ TEST_CASE("bw1: bad_byte", "[machines][slow]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "130080");
     REQUIRE(machine.swap("U5"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     bw1.type("AD 0300 DA 00");
     CHECK(bw1.display() == "030000");
@@ -219,6 +235,7 @@ TEST_CASE("bw1: bad_byte", "[machines][slow]") {
 
 TEST_CASE("bw1: dead_machine", "[machines]") {
     Machine machine = LoadPuzzle("dead_machine");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -230,12 +247,14 @@ TEST_CASE("bw1: dead_machine", "[machines]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "110008");
     REQUIRE(machine.swap("U9"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: wrong_suspect", "[machines][slow]") {
     Machine machine = LoadPuzzle("wrong_suspect");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -248,14 +267,17 @@ TEST_CASE("bw1: wrong_suspect", "[machines][slow]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "100008");
     REQUIRE(machine.swap("U9"));  // the suspect is innocent
+    CHECK_FALSE(machine.completed());
     CHECK(SelfTest(machine, 150_ms) == "100008");
     REQUIRE(machine.mend(WrongSuspectCrack().layer, WrongSuspectCrack().at));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: half_byte", "[machines][slow]") {
     Machine machine = LoadPuzzle("half_byte");
+    CHECK_FALSE(machine.completed());
     {
         Bw1 bw1 = Monitor(machine, 1);
         CHECK(*PinNet(bw1.loaded(), "U13", "1OE_N") != *PinNet(bw1.loaded(), "U15", "2Y"));
@@ -271,12 +293,14 @@ TEST_CASE("bw1: half_byte", "[machines][slow]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "11000E");
     REQUIRE(machine.mend(HalfByteCrack().layer, HalfByteCrack().at));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: aliased_page", "[machines][slow]") {
     Machine machine = LoadPuzzle("aliased_page");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -286,12 +310,14 @@ TEST_CASE("bw1: aliased_page", "[machines][slow]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "100020");
     REQUIRE(machine.swap("U7"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: self_test_fails", "[machines][slow]") {
     Machine machine = LoadPuzzle("self_test_fails");
+    CHECK_FALSE(machine.completed());
     {
         Bw1 bw1 = Monitor(machine, 1);
         bw1.type("AD 0300 DA A9");
@@ -299,11 +325,13 @@ TEST_CASE("bw1: self_test_fails", "[machines][slow]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "379504");  // test 3, $1795, bit 2
     REQUIRE(machine.swap("U3"));
+    CHECK(machine.completed());
     CHECK(SelfTest(machine, 300_ms) == "888888");  // tests 1-5 passed
 }
 
 TEST_CASE("bw1: no_stop", "[machines][slow]") {
     Machine machine = LoadPuzzle("no_stop");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -319,6 +347,7 @@ TEST_CASE("bw1: no_stop", "[machines][slow]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "27FA01");
     REQUIRE(machine.swap("U2"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     bw1.type("DA 4C + 00 + 02 AD 0200 GO");
     bw1.run(50_ms);
@@ -328,6 +357,7 @@ TEST_CASE("bw1: no_stop", "[machines][slow]") {
 
 TEST_CASE("bw1: rom_test_fails", "[machines][slow]") {
     Machine machine = LoadPuzzle("rom_test_fails");
+    CHECK_FALSE(machine.completed());
     {
         Bw1 bw1 = Monitor(machine, 1);
         bw1.type("AD 0300 DA A9");
@@ -335,11 +365,13 @@ TEST_CASE("bw1: rom_test_fails", "[machines][slow]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "5800FF");  // test 5: U3's ROM sums to FF
     REQUIRE(machine.swap("U3"));
+    CHECK(machine.completed());
     CHECK(SelfTest(machine, 300_ms) == "888888");
 }
 
 TEST_CASE("bw1: wrong_block", "[machines][slow]") {
     Machine machine = LoadPuzzle("wrong_block");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -352,12 +384,14 @@ TEST_CASE("bw1: wrong_block", "[machines][slow]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "      ");
     REQUIRE(machine.swap("U4"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: held_reset", "[machines]") {
     Machine machine = LoadPuzzle("held_reset");
+    CHECK_FALSE(machine.completed());
     {
         Bw1 bw1 = Monitor(machine, 1);
         CHECK(bw1.display() == "      ");
@@ -367,12 +401,14 @@ TEST_CASE("bw1: held_reset", "[machines]") {
     }
     CHECK(SelfTest(machine, 150_ms) == "      ");
     REQUIRE(machine.swap("SW23"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }
 
 TEST_CASE("bw1: sst_kills", "[machines][slow]") {
     Machine machine = LoadPuzzle("sst_kills");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -392,6 +428,7 @@ TEST_CASE("bw1: sst_kills", "[machines][slow]") {
         CHECK(bw1.display() == "1C0085");  // stopped in the monitor's SAVE
     }
     REQUIRE(machine.swap("U15"));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     bw1.type("DA A9 + 11 + A9 + 22 AD 0200");  // LDA #$11, LDA #$22
     bw1.setSst(true);
@@ -401,6 +438,7 @@ TEST_CASE("bw1: sst_kills", "[machines][slow]") {
 
 TEST_CASE("bw1: two_bits", "[machines][slow]") {
     Machine machine = LoadPuzzle("two_bits");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Bw1 bw1 = Monitor(machine, seed);
@@ -413,6 +451,7 @@ TEST_CASE("bw1: two_bits", "[machines][slow]") {
     }
     CHECK(SelfTest(machine, 150_ms).substr(0, 4) != "1   ");
     REQUIRE(machine.removeBridge({"U1", "31"}, {"U1", "30"}));
+    CHECK(machine.completed());
     Bw1 bw1 = Monitor(machine, 1);
     CheckShows(bw1.display(), "0200");
 }

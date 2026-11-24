@@ -229,11 +229,13 @@ TEST_CASE("bw80: q_everywhere", "[machines][slow]") {
     // The HALT ending each row loads its glyph, $36 (Q), then the byte the halted Z80 fetches
     // after it repeats to the row's end: mostly the next row's HALT, Q again.
     Machine machine = LoadPuzzle("q_everywhere");
+    CHECK_FALSE(machine.completed());
     {
         const Typed t = TypeAndLook(machine);
         CheckPicture(t, HaltFillPage(*t.loaded));
     }
     REQUIRE(machine.swap("IC16"));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -242,11 +244,13 @@ TEST_CASE("bw80: doubled_lines", "[machines][slow]") {
     SKIP("about 6 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("doubled_lines");
+    CHECK_FALSE(machine.completed());
     {
         const Typed t = TypeAndLook(machine);
         CheckPicture(t, PageOf(*t.loaded, Bw80GlyphsRows(Bw80Glyphs(), {0, 0, 2, 2, 4, 4, 6, 6})));
     }
     REQUIRE(machine.swap("IC21"));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -255,12 +259,14 @@ TEST_CASE("bw80: bottom_halves", "[machines][slow]") {
     SKIP("about 6 s simulated: runs in the release build");
 #endif
     Machine machine = LoadPuzzle("bottom_halves");
+    CHECK_FALSE(machine.completed());
     {
         const Typed t = TypeAndLook(machine);
         CHECK(*PinNet(*t.loaded, "IC8", "4A") != *PinNet(*t.loaded, "IC21", "QD"));
         CheckPicture(t, PageOf(*t.loaded, Bw80GlyphsRows(Bw80Glyphs(), {4, 5, 6, 7, 4, 5, 6, 7})));
     }
     REQUIRE(machine.mend(BottomHalvesCrack().layer, BottomHalvesCrack().at));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -271,6 +277,7 @@ TEST_CASE("bw80: wrong_letters", "[machines][slow]") {
     // CH1 and CH2 bridged: where they differ both read low (TTL contention), so the glyph is
     // the code's with bits 1 and 2 cleared unless both are set.
     Machine machine = LoadPuzzle("wrong_letters");
+    CHECK_FALSE(machine.completed());
     {
         const Typed t = TypeAndLook(machine);
         CHECK(Bw80DisplayRows(*t.loaded)[0].find("PRINT \"HELLO 0123\"") != std::string::npos);
@@ -280,6 +287,7 @@ TEST_CASE("bw80: wrong_letters", "[machines][slow]") {
         CheckPicture(t, PageOf(*t.loaded, Bw80GlyphsMapped(Bw80Glyphs(), bridged)));
     }
     REQUIRE(machine.removeBridge({"IC5", "15"}, {"IC5", "16"}));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -289,6 +297,7 @@ TEST_CASE("bw80: quotes_for_spaces", "[machines][slow]") {
 #endif
     // CH0's dry Joint: IC8 reads it high, so every even code is drawn as the next one.
     Machine machine = LoadPuzzle("quotes_for_spaces");
+    CHECK_FALSE(machine.completed());
     {
         const Typed t = TypeAndLook(machine);
         CHECK(*PinNet(*t.loaded, "IC5", "3Q") != *PinNet(*t.loaded, "IC8", "1A"));
@@ -297,6 +306,7 @@ TEST_CASE("bw80: quotes_for_spaces", "[machines][slow]") {
                      })));
     }
     REQUIRE(machine.resolder({"IC5", "6"}));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -306,6 +316,7 @@ TEST_CASE("bw80: plain_cursor", "[machines][slow]") {
 #endif
     // The inverse latch stuck: the cursor's $B0 drawn as a plain K.
     Machine machine = LoadPuzzle("plain_cursor");
+    CHECK_FALSE(machine.completed());
     {
         const auto loaded = Bw80Built(machine);
         const Bw80Frames f = Bw80LockedFrames(*loaded, 1, 3, 1000_ms);
@@ -316,6 +327,7 @@ TEST_CASE("bw80: plain_cursor", "[machines][slow]") {
         CHECK_FALSE(FindPage(f.frames[2], PageOf(*loaded, Bw80Glyphs())).has_value());
     }
     REQUIRE(machine.swap("IC12"));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -326,6 +338,7 @@ TEST_CASE("bw80: blank_page", "[machines][slow]") {
     // The shift register never shifts: no dots, only the inverse latch's black square at the
     // cursor; the display file holds the listing all the same.
     Machine machine = LoadPuzzle("blank_page");
+    CHECK_FALSE(machine.completed());
     {
         const Typed t = TypeAndLook(machine);
         CHECK(Bw80DisplayRows(*t.loaded)[0].find("PRINT \"HELLO 0123\"") != std::string::npos);
@@ -334,6 +347,7 @@ TEST_CASE("bw80: blank_page", "[machines][slow]") {
         CHECK(InkCount(t.frame) > 0);
     }
     REQUIRE(machine.swap("IC9"));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -344,6 +358,7 @@ TEST_CASE("bw80: eight_keys", "[machines][slow]") {
     // KB2 cut at the buffer: its input floats high, the column never reads pressed (3 among
     // them); R15 and the connector keep the rest of the Net.
     Machine machine = LoadPuzzle("eight_keys");
+    CHECK_FALSE(machine.completed());
     {
         const auto loaded = Bw80Built(machine);
         CHECK(*PinNet(*loaded, "J3", "KB2") != *PinNet(*loaded, "IC10", "A5"));
@@ -357,6 +372,7 @@ TEST_CASE("bw80: eight_keys", "[machines][slow]") {
         CHECK(rows[kBw80Rows - 1] == "0/-2");
     }
     REQUIRE(machine.mend(EightKeysCrack().layer, EightKeysCrack().at));
+    CHECK(machine.completed());
     CHECK(TypedRows(machine, U"PRINT 12345\n")[0] == "12345");
 }
 
@@ -366,6 +382,7 @@ TEST_CASE("bw80: same_eight_keys", "[machines][slow]") {
 #endif
     // The same column dead, but inside the buffer: the Net is whole and there is nothing to mend.
     Machine machine = LoadPuzzle("same_eight_keys");
+    CHECK_FALSE(machine.completed());
     {
         const auto loaded = Bw80Built(machine);
         CHECK(machine.cracks().empty());
@@ -375,6 +392,7 @@ TEST_CASE("bw80: same_eight_keys", "[machines][slow]") {
         CHECK(rows[kBw80Rows - 1] == "0/-2");
     }
     REQUIRE(machine.swap("IC10"));
+    CHECK(machine.completed());
     CHECK(TypedRows(machine, U"PRINT 12345\n")[0] == "12345");
 }
 
@@ -385,6 +403,7 @@ TEST_CASE("bw80: no_print", "[machines][slow]") {
     // The keyboard's row A13 cut off at the connector: the O key (PRINT) does nothing, so NEW
     // LINE leaves 2+2 in the edit line with the syntax error marker; the CPU keeps its A13.
     Machine machine = LoadPuzzle("no_print");
+    CHECK_FALSE(machine.completed());
     {
         const auto loaded = Bw80Built(machine);
         CHECK(*PinNet(*loaded, "J3", "A13") != *PinNet(*loaded, "IC1", "A13"));
@@ -394,6 +413,7 @@ TEST_CASE("bw80: no_print", "[machines][slow]") {
         CHECK(rows[kBw80Rows - 1] == "2+s2l");  // the error marker and the L cursor
     }
     REQUIRE(machine.mend(NoPrintCrack().layer, NoPrintCrack().at));
+    CHECK(machine.completed());
     const auto rows = TypedRows(machine, U"PRINT 2+2\n");
     CHECK(rows[0] == "4");
     CHECK(rows[kBw80Rows - 1] == "0/-2");
@@ -406,6 +426,7 @@ TEST_CASE("bw80: rolling_screen", "[machines][slow]") {
     // KBD_N cut just before the vertical sync latch: never reset, no vertical pulse; the
     // keyboard buffer keeps its enable.
     Machine machine = LoadPuzzle("rolling_screen");
+    CHECK_FALSE(machine.completed());
     {
         const auto loaded = Bw80Built(machine);
         CHECK(*PinNet(*loaded, "IC10", "G1_N") == *PinNet(*loaded, "IC17", "4Y"));
@@ -414,6 +435,7 @@ TEST_CASE("bw80: rolling_screen", "[machines][slow]") {
         CheckUnlocked(*loaded, run);
     }
     REQUIRE(machine.mend(RollingScreenCrack().layer, RollingScreenCrack().at));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -423,12 +445,14 @@ TEST_CASE("bw80: torn_picture", "[machines][slow]") {
 #endif
     // The sync latch's output stuck: no horizontal pulse is ever armed.
     Machine machine = LoadPuzzle("torn_picture");
+    CHECK_FALSE(machine.completed());
     {
         const auto loaded = Bw80Built(machine);
         Bw80Run run(*loaded, 1);
         CheckUnlocked(*loaded, run);
     }
     REQUIRE(machine.swap("IC18"));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -440,6 +464,7 @@ TEST_CASE("bw80: still_starting", "[machines][slow]") {
     // the screen stays blank and unlocked (the fault-free K screen locks by 450 ms): the ROM's
     // own code never loads a glyph, so only the TV's unblanked sync shows.
     Machine machine = LoadPuzzle("still_starting");
+    CHECK_FALSE(machine.completed());
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
         INFO("seed " << seed);
         const auto loaded = Bw80Built(machine);
@@ -456,6 +481,7 @@ TEST_CASE("bw80: still_starting", "[machines][slow]") {
         CHECK(set == 0);
     }
     REQUIRE(machine.swap("IC3"));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -465,6 +491,7 @@ TEST_CASE("bw80: vertical_stripes", "[machines][slow]") {
 #endif
     // ROM_CS1 cut: the select moves at the multiplexer and sits high at the ROM.
     Machine machine = LoadPuzzle("vertical_stripes");
+    CHECK_FALSE(machine.completed());
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
         INFO("seed " << seed);
         const auto loaded = Bw80Built(machine);
@@ -476,6 +503,7 @@ TEST_CASE("bw80: vertical_stripes", "[machines][slow]") {
         CHECK(run.sim.value(NetAt(*loaded, "IC2", "CS1")) == LogicValue::One);
     }
     REQUIRE(machine.mend(VerticalStripesCrack().layer, VerticalStripesCrack().at));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }
 
@@ -486,6 +514,7 @@ TEST_CASE("bw80: white_screen", "[machines][slow]") {
     // A NOP gate stuck low: D3 held low on the CPU's side while the clock runs (the memory
     // side, MD3, may sit still too once the CPU is stuck: seed 1).
     Machine machine = LoadPuzzle("white_screen");
+    CHECK_FALSE(machine.completed());
     for (std::uint64_t seed = 1; seed <= 3; ++seed) {
         INFO("seed " << seed);
         const auto loaded = Bw80Built(machine);
@@ -498,5 +527,6 @@ TEST_CASE("bw80: white_screen", "[machines][slow]") {
         CHECK(run.sim.value(NetAt(*loaded, "IC1", "D3")) == LogicValue::Zero);
     }
     REQUIRE(machine.swap("IC14"));
+    CHECK(machine.completed());
     CheckKScreen(machine);
 }

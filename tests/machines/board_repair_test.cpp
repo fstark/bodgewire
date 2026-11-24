@@ -46,33 +46,37 @@ const std::vector<float>& FaultFree() {
     return frame;
 }
 
-// The Puzzle repaired by `repair` after a first powered run, so the rebuild path is tested.
-std::vector<float> Repaired(const std::string& puzzle, const RepairAction& repair) {
+// The Puzzle repaired by `repair` after a first powered run, so the rebuild path is tested;
+// `completed`: the verdict `repair` must leave (P8c).
+std::vector<float> Repaired(const std::string& puzzle, const RepairAction& repair, bool completed) {
     Session session = PuzzleSession(puzzle);
+    CHECK(session.puzzle());
+    CHECK_FALSE(session.completed());
     session.setSpeed(Speed::Max);
     session.powerOn(1, 10_ms);
     session.runner().waitIdle();
     session.powerOff();
     REQUIRE(session.repair(repair) == RepairResult::Done);
+    CHECK(session.completed() == completed);
     return Frame(session, 1);
 }
 
 }  // namespace
 
 TEST_CASE("board repair: dead counter", "[machines]") {
-    CHECK(Repaired("dead_counter", SwapRepair{"U3"}) == FaultFree());
-    CHECK(Repaired("dead_counter", SwapRepair{"U4"}) != FaultFree());
+    CHECK(Repaired("dead_counter", SwapRepair{"U3"}, true) == FaultFree());
+    CHECK(Repaired("dead_counter", SwapRepair{"U4"}, false) != FaultFree());
 }
 
 TEST_CASE("board repair: stuck gate", "[machines]") {
-    CHECK(Repaired("stuck_gate", SwapRepair{"U12"}) == FaultFree());
-    CHECK(Repaired("stuck_gate", SwapRepair{"U13"}) != FaultFree());
+    CHECK(Repaired("stuck_gate", SwapRepair{"U12"}, true) == FaultFree());
+    CHECK(Repaired("stuck_gate", SwapRepair{"U13"}, false) != FaultFree());
 }
 
 TEST_CASE("board repair: broken trace", "[machines]") {
-    CHECK(Repaired("broken_trace", MendRepair{H0Crack().layer, H0Crack().at}) == FaultFree());
+    CHECK(Repaired("broken_trace", MendRepair{H0Crack().layer, H0Crack().at}, true) == FaultFree());
     const Point away{H0Crack().at.x + 5'000'000, H0Crack().at.y};
-    CHECK(Repaired("broken_trace", MendRepair{Layer::Front, away}) != FaultFree());
+    CHECK(Repaired("broken_trace", MendRepair{Layer::Front, away}, false) != FaultFree());
 }
 
 TEST_CASE("board repair: rebuild time", "[.perf]") {

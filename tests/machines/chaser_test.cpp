@@ -163,6 +163,7 @@ TEST_CASE("chaser: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("chaser: gap", "[machines][slow]") {
     Machine machine = LoadPuzzle("gap");
+    CHECK_FALSE(machine.completed());
     const Recorded recorded = Record(machine, 18 * kStep, ChaserNames({"D5.A"}));
     for (const Sample& s : recorded.at("D5.A")) {
         CHECK(s.floating);
@@ -171,6 +172,7 @@ TEST_CASE("chaser: gap", "[machines][slow]") {
     CHECK(std::ranges::count_if(stages, [](const std::string& e) { return e[4] == '0'; }) == 1);
 
     REQUIRE(machine.mend(LedA5Crack().layer, LedA5Crack().at));
+    CHECK(machine.completed());
     const Recorded mended = Record(machine, 1_ms, {"D5.A"});
     for (const Sample& s : mended.at("D5.A")) {
         CHECK_FALSE(s.floating);
@@ -179,11 +181,13 @@ TEST_CASE("chaser: gap", "[machines][slow]") {
 
 TEST_CASE("chaser: gap bridged by a wire from the resistor", "[machines]") {
     Machine machine = LoadPuzzle("gap");  // a resistor has no Component: its pads by number
+    CHECK_FALSE(machine.completed());
     for (const Sample& s : Record(machine, 1_ms, {"R6.2"}).at("R6.2")) {
         CHECK_FALSE(s.floating);  // the crack's other side: pulled up through R6
         CHECK(s.value == One);
     }
     REQUIRE(machine.addWire({"R6", "2"}, {"D5", "A"}));
+    CHECK(machine.completed());
     for (const Sample& s : Record(machine, 1_ms, {"D5.A"}).at("D5.A")) {
         CHECK_FALSE(s.floating);
     }
@@ -195,16 +199,19 @@ TEST_CASE("chaser: gap bridged by a wire from the resistor", "[machines]") {
 
 TEST_CASE("chaser: stuck_light", "[machines][slow]") {
     Machine machine = LoadPuzzle("stuck_light");
+    CHECK_FALSE(machine.completed());
     for (const std::string& entry : Stages(Record(machine, 18 * kStep, ChaserNames()))) {
         CHECK(entry == "11101111");
     }
 
     REQUIRE(machine.swap("U5"));
+    CHECK(machine.completed());
     CheckRunning(Stages(Record(machine, 18 * kStep, ChaserNames())));
 }
 
 TEST_CASE("chaser: dark_chaser", "[machines][slow]") {
     Machine machine = LoadPuzzle("dark_chaser");
+    CHECK_FALSE(machine.completed());
     const Recorded recorded = Record(machine, 18 * kStep, ChaserNames({"U5.A"}));
     for (const Sample& s : recorded.at("U5.A")) {
         CHECK(s.floating);
@@ -215,11 +222,13 @@ TEST_CASE("chaser: dark_chaser", "[machines][slow]") {
     }
 
     REQUIRE(machine.mend(SerCrack().layer, SerCrack().at));
+    CHECK(machine.completed());
     CheckRunning(Stages(Record(machine, 18 * kStep, ChaserNames())));
 }
 
 TEST_CASE("chaser: twins", "[machines][slow]") {
     Machine machine = LoadPuzzle("twins");
+    CHECK_FALSE(machine.completed());
     const std::vector<std::string> stages = Stages(Record(machine, 18 * kStep, ChaserNames()));
     std::vector<std::size_t> low;
     for (std::size_t i = 0; i < stages.size(); ++i) {
@@ -233,5 +242,6 @@ TEST_CASE("chaser: twins", "[machines][slow]") {
     CHECK(((low[0] + 1) % 8 == low[1] || (low[1] + 1) % 8 == low[0]));
 
     REQUIRE(machine.removeBridge({"U5", "3"}, {"U5", "4"}));
+    CHECK(machine.completed());
     CheckRunning(Stages(Record(machine, 18 * kStep, ChaserNames())));
 }

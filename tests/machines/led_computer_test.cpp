@@ -284,6 +284,7 @@ TEST_CASE("led_computer: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("led_computer: lights_out", "[machines][slow]") {
     Machine machine = LoadPuzzle("lights_out");
+    CHECK_FALSE(machine.completed());
     {
         Run run(1, Build(machine));
         const NetId strobe = PartNet(*run.loaded, "U6", "4Y");
@@ -299,11 +300,13 @@ TEST_CASE("led_computer: lights_out", "[machines][slow]") {
         CheckShows(run, 0x00);
     }
     REQUIRE(machine.mend(LightsOutCrack().layer, LightsOutCrack().at));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
 TEST_CASE("led_computer: sleeper", "[machines][slow]") {
     Machine machine = LoadPuzzle("sleeper");
+    CHECK_FALSE(machine.completed());
     {
         Run run(1, Build(machine));
         Switch* button = SwitchOf(*run.loaded, "SW1");
@@ -320,11 +323,13 @@ TEST_CASE("led_computer: sleeper", "[machines][slow]") {
         CheckShows(run, 0x00);
     }
     REQUIRE(machine.swap("U8"));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
 TEST_CASE("led_computer: full_house", "[machines][slow]") {
     Machine machine = LoadPuzzle("full_house");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Run run(seed, Build(machine));
@@ -334,17 +339,20 @@ TEST_CASE("led_computer: full_house", "[machines][slow]") {
         CheckShows(run, 0xFF);
     }
     REQUIRE(machine.swap("U5"));  // the tempting wrong repair: the bridge stays
+    CHECK_FALSE(machine.completed());
     {
         Run run(1, Build(machine));
         run.sim->runUntil(kPowerOnReset + 2 * kStep + 1_ms);
         CheckShows(run, 0xFF);
     }
     REQUIRE(machine.removeBridge({"U5", "15"}, {"U5", "16"}));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
 TEST_CASE("led_computer: three_lights", "[machines][slow]") {
     Machine machine = LoadPuzzle("three_lights");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Run run(seed, Build(machine));
@@ -353,12 +361,14 @@ TEST_CASE("led_computer: three_lights", "[machines][slow]") {
         CheckShows(run, 0x13);  // JSR's return address low byte, the last write before the delay
     }
     REQUIRE(machine.swap("U6"));  // the tempting wrong repair: the bridge stays
+    CHECK_FALSE(machine.completed());
     {
         Run run(1, Build(machine));
         run.sim->runUntil(kPowerOnReset + 2 * kStep + 1_ms);
         CheckShows(run, 0x13);
     }
     REQUIRE(machine.removeBridge({"U6", "8"}, {"U6", "9"}));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
@@ -367,6 +377,7 @@ TEST_CASE("led_computer: first_light", "[machines][slow]") {
     // nothing answers; the bus reads $FF, which the 6502 runs up to $E000, the ROM's mirror of
     // $F800, and the program starts again: D1 lights again and again.
     Machine machine = LoadPuzzle("first_light");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         Run run(seed, Build(machine));
@@ -378,6 +389,7 @@ TEST_CASE("led_computer: first_light", "[machines][slow]") {
         }
     }
     REQUIRE(machine.swap("U4"));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
@@ -386,6 +398,7 @@ TEST_CASE("led_computer: lightless", "[machines][slow]") {
     // the light; JSR's two return bytes share word $1FE, so RTS goes to erased ROM ($FF), which
     // runs on to $F800 and starts the program again.
     Machine machine = LoadPuzzle("lightless");
+    CHECK_FALSE(machine.completed());
     for (const std::uint64_t seed : {1, 2, 3}) {
         INFO("seed " << seed);
         // Each restart adds a few ms to the step: run a step longer.
@@ -393,6 +406,7 @@ TEST_CASE("led_computer: lightless", "[machines][slow]") {
               std::vector<int>{0x00, 0x00, 0x00});
     }
     REQUIRE(machine.swap("U3"));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }
 
@@ -400,6 +414,7 @@ TEST_CASE("led_computer: blackout", "[machines][slow]") {
     // The CPU runs the open bus and the RAM's random contents: seed 1 never writes the LEDs,
     // seed 8 writes them once (at about 146 ms) and freezes there. No light ever runs.
     Machine machine = LoadPuzzle("blackout");
+    CHECK_FALSE(machine.completed());
     for (const auto& [seed, lights] : {std::pair<std::uint64_t, int>{1, 0x00}, {8, 0x46}}) {
         INFO("seed " << seed);
         Run run(seed, Build(machine));
@@ -411,5 +426,6 @@ TEST_CASE("led_computer: blackout", "[machines][slow]") {
         }
     }
     REQUIRE(machine.swap("U2"));
+    CHECK(machine.completed());
     CheckRepaired(machine);
 }

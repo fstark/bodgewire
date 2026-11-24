@@ -141,6 +141,7 @@ TEST_CASE("counter: frozen_led", "[machines]") {
         names.push_back("C" + std::to_string(bit));
     }
     Machine machine = LoadPuzzle("frozen_led");
+    CHECK_FALSE(machine.completed());
     const Recorded recorded = Record(machine, 10_ms, names);
     for (const Sample& s : recorded.at("CARRY3")) {
         CHECK(s.value == Zero);
@@ -151,11 +152,13 @@ TEST_CASE("counter: frozen_led", "[machines]") {
     }
 
     REQUIRE(machine.swap("U3"));
+    CHECK(machine.completed());
     CHECK_FALSE(Rises(Record(machine, 10_ms, {"CARRY3"}).at("CARRY3")).empty());
 }
 
 TEST_CASE("counter: too_fast", "[machines]") {
     Machine machine = LoadPuzzle("too_fast");
+    CHECK_FALSE(machine.completed());
     CHECK(Changes(Record(machine, 70_ms, {"C19"}).at("C19")) > 0);
     const Recorded led = Record(machine, 140_ms, {"D1.A", "D1.K"});
     const std::vector<float> windows = Glow(led.at("D1.A"), led.at("D1.K"), 140_ms);
@@ -163,6 +166,7 @@ TEST_CASE("counter: too_fast", "[machines]") {
     CHECK(std::ranges::any_of(windows, [&](float w) { return w != windows[0]; }));
 
     REQUIRE(machine.swap("U1"));
+    CHECK(machine.completed());
     const std::vector<Time> rises = Rises(Record(machine, 100_us, {"CARRY1"}).at("CARRY1"));
     REQUIRE(rises.size() >= 5);
     for (std::size_t i = 1; i < rises.size(); ++i) {
@@ -173,6 +177,7 @@ TEST_CASE("counter: too_fast", "[machines]") {
 
 TEST_CASE("counter: dark_led", "[machines]") {
     Machine machine = LoadPuzzle("dark_led");
+    CHECK_FALSE(machine.completed());
     const Recorded led = Record(machine, 40_ms, {"D1.A", "D1.K"});
     for (const Sample& s : led.at("D1.K")) {
         CHECK(s.floating);
@@ -180,6 +185,7 @@ TEST_CASE("counter: dark_led", "[machines]") {
     CHECK(Glow(led.at("D1.A"), led.at("D1.K"), 40_ms) == std::vector<float>{0, 0});
 
     REQUIRE(machine.mend(C19Crack().layer, C19Crack().at));
+    CHECK(machine.completed());
     auto loaded = machine.build();
     REQUIRE(loaded.has_value());
     CHECK(PinNet(**loaded, "D1", "K") == PinNet(**loaded, "U5", "QD"));

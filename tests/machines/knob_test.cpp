@@ -239,6 +239,7 @@ TEST_CASE("knob: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("knob: dead_knob", "[machines][slow]") {
     Machine machine = LoadPuzzle("dead_knob");
+    CHECK_FALSE(machine.completed());
     CHECK(machine.power().unpowered == std::vector<std::string>{"J2"});
     {
         auto loaded = Build(machine);
@@ -255,6 +256,7 @@ TEST_CASE("knob: dead_knob", "[machines][slow]") {
         }
     }
     REQUIRE(machine.mend(DeadKnobCrack().layer, DeadKnobCrack().at));
+    CHECK(machine.completed());
     CHECK(machine.power().unpowered.empty());
     auto loaded = Build(machine);
     Meter meter(*loaded, 1, 0.2);
@@ -280,6 +282,7 @@ int Number(const std::string& display) {
 
 TEST_CASE("knob: runaway", "[machines][slow]") {
     Machine machine = LoadPuzzle("runaway");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         for (const std::uint64_t seed : {1, 2, 3}) {
@@ -292,6 +295,7 @@ TEST_CASE("knob: runaway", "[machines][slow]") {
         }
     }
     REQUIRE(machine.swap("U5"));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     Meter meter(*loaded, 1, 0.3);
     meter.runUntil(250_ms);
@@ -302,6 +306,7 @@ TEST_CASE("knob: runaway", "[machines][slow]") {
 
 TEST_CASE("knob: single_figures", "[machines]") {
     Machine machine = LoadPuzzle("single_figures");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         const NetId cka = *PinNet(*loaded, "U7", "CKA");
@@ -313,12 +318,14 @@ TEST_CASE("knob: single_figures", "[machines]") {
         CHECK(meter.sim().isFloating(cka));
     }
     REQUIRE(machine.mend(SingleFiguresCrack().layer, SingleFiguresCrack().at));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     CHECK(ReadingAt(*loaded, 0.47) == "47");
 }
 
 TEST_CASE("knob: odd_tens", "[machines]") {
     Machine machine = LoadPuzzle("odd_tens");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         CHECK(PinNet(*loaded, "U11", "A") != loaded->nets.at("L4"));  // the leg is off its pad
@@ -326,6 +333,7 @@ TEST_CASE("knob: odd_tens", "[machines]") {
         CHECK(ReadingAt(*loaded, 0.25) == "35");
     }
     REQUIRE(machine.resolder({"U11", "7"}));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     CHECK(ReadingAt(*loaded, 0.0) == "00");
     CHECK(ReadingAt(*loaded, 0.25) == "25");
@@ -333,6 +341,7 @@ TEST_CASE("knob: odd_tens", "[machines]") {
 
 TEST_CASE("knob: four_to_seven", "[machines]") {
     Machine machine = LoadPuzzle("four_to_seven");
+    CHECK_FALSE(machine.completed());
     {
         auto loaded = Build(machine);
         CHECK(*PinNet(*loaded, "U12", "C") == *PinNet(*loaded, "U12", "LT_N"));
@@ -343,6 +352,7 @@ TEST_CASE("knob: four_to_seven", "[machines]") {
         CHECK(Segments(*loaded, meter.sim(), "DS2") == Ls47Segments(13, true, true, true));
     }
     REQUIRE(machine.removeBridge({"U12", "2"}, {"U12", "3"}));
+    CHECK(machine.completed());
     auto loaded = Build(machine);
     CHECK(ReadingAt(*loaded, 0.0) == "00");
     CHECK(ReadingAt(*loaded, 0.09) == "09");

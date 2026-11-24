@@ -150,6 +150,7 @@ TEST_CASE("dice: Puzzles have a title and a brief", "[machines]") {
 
 TEST_CASE("dice: dead_button", "[machines]") {
     Machine machine = LoadPuzzle("dead_button");
+    CHECK_FALSE(machine.completed());
     {
         auto built = machine.build();
         REQUIRE(built.has_value());
@@ -175,11 +176,13 @@ TEST_CASE("dice: dead_button", "[machines]") {
         CHECK(Read(loaded, sim).count == before.count);
     }
     REQUIRE(machine.mend(BtnNCrack().layer, BtnNCrack().at));
+    CHECK(machine.completed());
     CheckSixFaces(machine);
 }
 
 TEST_CASE("dice: loaded_dice", "[machines]") {
     Machine machine = LoadPuzzle("loaded_dice");
+    CHECK_FALSE(machine.completed());
     std::set<std::string> shown;
     for (const Face& face : Rolls(machine, 6)) {
         INFO("count " << face.count << " leds " << face.leds);
@@ -189,11 +192,13 @@ TEST_CASE("dice: loaded_dice", "[machines]") {
     CHECK(shown == std::set<std::string>{"0101010", "1110111"});  // a 3 and a 6
 
     REQUIRE(machine.mend(N2Crack().layer, N2Crack().at));
+    CHECK(machine.completed());
     CheckSixFaces(machine);
 }
 
 TEST_CASE("dice: seven", "[machines]") {
     Machine machine = LoadPuzzle("seven");
+    CHECK_FALSE(machine.completed());
     std::set<int> counts;
     for (const Face& face : Rolls(machine, 8)) {
         INFO("count " << face.count << " leds " << face.leds);
@@ -205,11 +210,13 @@ TEST_CASE("dice: seven", "[machines]") {
     CHECK(counts.contains(7));
 
     REQUIRE(machine.swap("U3"));
+    CHECK(machine.completed());
     CheckSixFaces(machine);
 }
 
 TEST_CASE("dice: odd_dice", "[machines]") {
     Machine machine = LoadPuzzle("odd_dice");
+    CHECK_FALSE(machine.completed());
     for (const Face& face : Rolls(machine, 6)) {
         INFO("count " << face.count << " leds " << face.leds);
         CHECK(face.count % 2 == 1);
@@ -217,6 +224,7 @@ TEST_CASE("dice: odd_dice", "[machines]") {
     }
 
     REQUIRE(machine.swap("U1"));
+    CHECK(machine.completed());
     CheckSixFaces(machine);
 }
 
