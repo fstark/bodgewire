@@ -63,6 +63,12 @@ back on, and the LED blinks.
 
 ![The crack mended, the LED lit](docs/readme/mended.png)
 
+Three seconds later the owner's card says thank you, with the next Puzzle one click away, and
+the post-it gets a tick. The game checks the repair itself: the Board must now build the same
+circuit as the fault-free one, whichever way you fixed it.
+
+![The owner's thank-you card over the running Board](docs/readme/repaired.png)
+
 That one is easy. Later Puzzles hide the fault behind a TV picture that rolls, a keyboard that
 types the wrong letters, or a BASIC that won't start.
 

@@ -207,7 +207,7 @@ _Avoid_: Break (that is the Fault)
 A gap across a straight Trace, at a point on its centre line: a Broken Trace (a Fault, a Puzzle's `crack` line) or a Cut (a Repair). The code's word for the gap itself, whichever made it (`Crack`, `CrackBoard`, `CrackMark`); mending removes either.
 
 **Golden Machine**:
-The fault-free version of a Machine, used as the reference a repaired Machine must behave like.
+The fault-free version of a Machine, used as the reference a repaired Machine must behave like: a completed Puzzle builds its Circuit (Repair Validation).
 _Avoid_: Reference machine (that means the real-world original)
 
 **Reference Machine**:
@@ -229,7 +229,7 @@ A Machine's Board drawn unpowered in the Launcher (P7b): its LEDs and digits dar
 _Avoid_: Thumbnail, preview
 
 **Brief**:
-The player-facing text of a Puzzle: a title and the Symptom as a customer would report it. It never names the Fault. In `bw_ui` a post-it stuck on the Board near its top-left corner, moving with the Board; dragged elsewhere on it, it stays there for the bench (P6o); its × puts it away into the Shelf.
+The player-facing text of a Puzzle: a title and the Symptom as a customer would report it. It never names the Fault. In `bw_ui` a post-it stuck on the Board near its top-left corner, moving with the Board; dragged elsewhere on it, it stays there for the bench (P6o); its × puts it away into the Shelf. Once the Puzzle is completed (Repair Validation), a blue tick and "Works again, thank you!" under the text.
 _Avoid_: Description, hint
 
 **User Manual**:
@@ -248,6 +248,10 @@ _Avoid_: Spec sheet
 What a ROM chip holds (P6p), the binder's fifth divider, shown once a memory chip's window (the 2716's quartz window, a mask ROM's die seen while x-rayed) is clicked, whatever the tool. Three views: Hex, with a text column in a character set (ASCII, PETSCII, the ZX80's); Code, a disassembly in a CPU's code (6502, Z80) at the address the CPU sees the chip; Glyphs, the words drawn as a character set. Each starts from the Machine's defaults (`roms/contents.txt`: its CPU and character set, each chip's address and where its glyphs start) and keeps the player's settings for the bench. It shows the cells as the chip holds them now, a stuck cell included, a swap clearing it at once; a pin Fault does not show there.
 _Avoid_: dump, memory view
 
+**Thank-you Card**:
+The owner's white index card that opens in the middle of the bench, once per bench, 3 s after a power-on of a completed Puzzle (P8c): "Repaired!", the Puzzle's title, and three buttons: Back to the Board, Next (the Machine's next Puzzle, when there is one) and Back to the Machines. The Machine keeps running behind it.
+_Avoid_: win screen, popup
+
 **Procedural Puzzle**:
 A Puzzle whose Faults are randomly generated and then vetted.
 
@@ -259,7 +263,7 @@ Running a candidate Fault headlessly to reject it if it shows no Symptom or is t
 _Avoid_: Validation (that is for Repairs)
 
 **Repair Validation**:
-The game checking by itself that a Puzzle is completed: the player's Machine builds the same Circuit as the Golden Machine. No Fault is left in a Component or a Joint, and the Copper gives the Golden Machine's Nets, whichever Repairs made them: a Bodge Wire across a Broken Trace counts as a mend. No outputs are compared, and no Puzzle has a rule of its own. It is never wrong when it says "completed"; a redesign that works it does not see, so there the player still decides. Decided 2026-11-24, to build in P8c (ARCHITECTURE.md, Repair validation); until then the player decides when a Machine is fixed (P3f).
+The game checking by itself that a Puzzle is completed: the player's Machine builds the same Circuit as the Golden Machine. No Fault is left in a Component or a Joint, and the Copper gives the Golden Machine's Nets, whichever Repairs made them: a Bodge Wire across a Broken Trace counts as a mend. No outputs are compared, and no Puzzle has a rule of its own. It is never wrong when it says "completed"; a redesign that works it does not see, so there the player still decides. Decided and built 2026-11-24 (P8c, ARCHITECTURE.md, Repair validation; `Machine::completed()`): 3 s after a power-on of a completed Machine, the post-it gets the owner's tick (it goes when a later Repair breaks the Machine again) and, once per bench, the Thank-you Card opens. Before P8c the player decided when a Machine was fixed (P3f).
 
 ## Instruments and views
 

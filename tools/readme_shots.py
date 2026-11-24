@@ -26,6 +26,8 @@ SHOTS = {
     "continuity": ([DARK_LED, "--meter", "U5.11,D1.1"], "1s"),
     "crack": ([DARK_LED, "--zoom", "192.6:122:6", "--focus", "iron"], "1s"),
     "mended": ([DARK_LED, "--repair", "mend:F.Cu:192.6:121.96"], "0.7s"),
+    # 3 s after the power-on: the Thank-you Card and the post-it's tick (P8c).
+    "repaired": ([DARK_LED, "--repair", "mend:F.Cu:192.6:121.96"], "4s"),
     # The tools (README §7). Pencil marks: checks on U1-U4's bodies, a cross on U5-D1's Trace.
     "pencil": (
         [DARK_LED, "--focus", "pencil", "--mark",

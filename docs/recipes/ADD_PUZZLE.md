@@ -68,8 +68,8 @@ A Fault can be tested before its Puzzle file exists: `InlinePuzzle("machine led_
 
 - Add the name to `<machine>: Puzzles have a title and a brief`.
 - One `TEST_CASE("<machine>: <name>", "[machines]")` (add `[slow]` if it simulates more than ~1 s):
-  1. `LoadPuzzle("<name>")`, record, check the symptom (and the floating/stuck Net directly);
-  2. repair (`machine.swap("U5")`, `machine.mend(XCrack().layer, XCrack().at)`, `machine.removeBridge({"U5","3"},{"U5","4"})`, `machine.resolder({"U15","13"})`), check the fault-free behaviour is back.
+  1. `LoadPuzzle("<name>")`, `CHECK_FALSE(machine.completed())` (Repair Validation, P8c), record, check the symptom (and the floating/stuck Net directly);
+  2. repair (`machine.swap("U5")`, `machine.mend(XCrack().layer, XCrack().at)`, `machine.removeBridge({"U5","3"},{"U5","4"})`, `machine.resolder({"U15","13"})`), `CHECK(machine.completed())`, check the fault-free behaviour is back. A tempting wrong Repair tried first is checked `CHECK_FALSE(machine.completed())`. A Puzzle that is completed as loaded (a crack on a Trace with a second path) is a bug: `repair validation: no Puzzle completed as loaded` catches it.
 - On a damaged Board the Nets are named from the Copper, not the netlist: check a fault by comparing pin Nets (`*PinNet(*loaded, "U12", "C") == *PinNet(*loaded, "U12", "LT_N")`), not `loaded->nets.at("L2")`.
 - A crack Puzzle: add a cached `const Crack& XCrack()` (`static const Crack crack = PuzzleCrack("<name>");`) to `tests/machine/test_points.{hpp,cpp}`, with a comment naming the Net, pads and Puzzle file.
 
@@ -87,3 +87,4 @@ When no `fault` line can express it (2026-11-23, review C10):
 - `src/machine/puzzle.hpp`: its `…Decl` (with `line`), an alternative of `FaultDecl`; the parser's line in `puzzle.cpp`. `Puzzle::faults` holds every kind, in file order.
 - `src/machine/machine.hpp`: its checked form in `FaultSet`. In `machine.cpp`: its `Machine::resolve` (the check, with the error text a Puzzle line reports) and its `Add` into a `FaultSet`. `LoadMachine` and `Machine::inject` need no change.
 - Where it acts: in the Copper (`rebuildBoard`, as cracks and bridges), in the electrical netlist (`ElectricalNetlist`, as dry Joints) or in the Components (`BuildFaults`, `src/netlist/builder.hpp`, as stuck pins, cells and switches). A swap or another Repair that removes it erases it from `faults_`.
+- `Machine::completed()` (P8c): a Fault in a Component or a Joint is added to its list of what must be gone; one in the Copper is judged by the `Wiring` it leaves, with no change.

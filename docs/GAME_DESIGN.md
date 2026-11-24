@@ -18,7 +18,7 @@ Technical design: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Loop
 
-Faulty machine + symptom → run, observe, measure, study the board and the manuals → deduce the faulty object → repair → machine works.
+Faulty machine + symptom → run, observe, measure, study the board and the manuals → deduce the faulty object → repair → machine works → the game acknowledges it (Repair Validation, P8c).
 
 ## Tools
 

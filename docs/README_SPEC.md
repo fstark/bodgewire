@@ -84,6 +84,9 @@ short walk-through, one picture per step:
 4. `crack`: zoom in on that trace: a hairline crack across the copper, about half way.
 5. `mended`: the soldering iron bridges the crack with a blob of solder; power on, the LED
    blinks.
+6. `repaired`: three seconds later the owner's card says thank you, with the next Puzzle one
+   click away; the post-it gets a tick. The game checks the repair itself: the Board must build
+   the same circuit as the fault-free one.
 
 Say the crack can be repaired with the soldering iron. Don't spell out a general strategy
 beyond this one case.
