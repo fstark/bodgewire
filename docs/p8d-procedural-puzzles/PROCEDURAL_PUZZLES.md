@@ -51,6 +51,7 @@ Asked with the samples in hand (the user, 2026-11-24):
 | A knob | takes several positions during the run (the Knob meter, the Tennis) |
 | The BW-2001's typed line | none: skipped (7 s more a try for 2 Faults in 67) |
 | The texts (the waiting lines, the fixed sentence, each "do this") | the drafts below, and "we'll see how it goes" |
+| The wait on the slow Machines (about 10 s on the BW-2001 and the BW-80) | not a problem at this stage; nothing built for it now |
 
 Chosen without asking (overturn any):
 
@@ -245,7 +246,7 @@ What the samples are not: one seed; a lamp's margin (a quarter of the brightest 
 
 ## Open
 
-For the user: the wait on the BW-2001 and the BW-80. The estimate is about 10 s and 9 s (What the player sees, item 5), not the "few seconds" given when "made when the player clicks" was chosen: that left out the Golden Machine's run. Measured in the plan's phase 4, before the Launcher's part is built. If it is too long: the Golden Machine's run kept from one making to the next on the same Machine (the second Random fault waits half as long), or started when the post-it is selected, before the click.
+The wait on the BW-2001 and the BW-80, about 10 s and 9 s by the estimate (What the player sees, item 5; the "few seconds" first given left out the Golden Machine's run): not a problem at this stage (the user, 2026-11-24: it is not yet known whether the feature works as well as wanted). If it feels too long once played: something to please the player meanwhile, and the Golden Machine's run kept from one making to the next (no help on the first click). Nothing is built for it now.
 
 To tune in play, with starting values here: the texts; the weights; the thresholds (100 cells of the TV's picture, each off by more than a quarter; a lamp off by a quarter of the brightest); the BW-1's keys (its inputs press 7 of 23: more keys find more switch Faults, for a longer run).
 

@@ -29,6 +29,7 @@
 #include "devices/tv_input.hpp"
 #include "instruments/logic_probe.hpp"
 #include "machine/crack.hpp"
+#include "machine/input_edges.hpp"
 #include "machine/knob_setting.hpp"
 #include "machine/machine.hpp"
 #include "machine/press.hpp"
@@ -56,7 +57,7 @@ constexpr std::string_view kUsage =
     "[--record NET,NET... | --record-all] [--vcd FILE] "
     "[--tv FILE.bmp] [--leds] [--repair swap:REF,mend:LAYER:X:Y,cut:LAYER:X:Y,"
     "wire:REF.PIN:REF.PIN,unwire:REF.PIN:REF.PIN,unbridge:REF.PIN:REF.PIN,resolder:REF.PIN] "
-    "[--probe REF.PIN,...] [--press REF:DOWN:UP,...] [--knob REF:N%,...] "
+    "[--probe REF.PIN,...] [--press REF:DOWN:UP,...] [--knob REF:N%[:TIME],...] "
     "[--type REF:START:TEXT] [--roms DIR]\n"
     "       bw export-kicad <file.bwn> -o <file.net>\n"
     "       bw check-board <file.bwn> <file.kicad_pcb>\n"
@@ -461,50 +462,10 @@ int Run(std::span<char*> args) {
         probed.push_back(*net);
     }
 
-    // Button presses and typed keys, applied at their simulated times.
-    struct InputEdge {
-        Time at;
-        ComponentId wake;
-        std::function<void()> apply;
-    };
-    std::vector<InputEdge> edges;
-    for (const ButtonPress& press : options.press) {
-        Switch* sw = SwitchOf(loaded, press.reference);
-        if (sw == nullptr) {
-            return UsageError("'" + press.reference + "' is not a switch");
-        }
-        edges.push_back({press.down, sw->id(), [sw] { sw->setPressed(true); }});
-        edges.push_back({press.up, sw->id(), [sw] { sw->setPressed(false); }});
-    }
-    for (const Typing& typing : options.type) {
-        if (KeyMatrix* matrix = KeyMatrixOf(loaded, typing.reference)) {
-            // The matrix paces its own presses (held, then released): all queued at the start.
-            edges.push_back({typing.start, matrix->component().id(),
-                             [matrix, text = typing.text] { (void)matrix->type(text); }});
-            continue;
-        }
-        Keyboard* keyboard = KeyboardOf(loaded, typing.reference);
-        if (keyboard == nullptr) {
-            return UsageError("'" + typing.reference + "' is not a keyboard");
-        }
-        if (typing.untypable) {
-            return UsageError("cannot type the text on '" + typing.reference + "', a keyboard");
-        }
-        for (std::size_t i = 0; i < typing.keys.size(); ++i) {
-            // 100 ms apart, a key waits only behind a strobe= near 100 ms: the refusal of a
-            // full queue is ignored.
-            edges.push_back({typing.at(i), keyboard->id(),
-                             [keyboard, code = typing.keys[i]] { (void)keyboard->type(code); }});
-        }
-    }
-    std::ranges::stable_sort(edges, {}, &InputEdge::at);
-
-    for (const KnobSetting& knob : options.knob) {
-        Paddle* paddle = PaddleOf(loaded, knob.reference);
-        if (paddle == nullptr) {
-            return UsageError("'" + knob.reference + "' is not a paddle controller");
-        }
-        paddle->setKnob(knob.turn);
+    // Button presses, typed keys and timed knobs, applied at their simulated times.
+    const auto edges = InputEdges(loaded, options.press, options.knob, options.type);
+    if (!edges) {
+        return UsageError(edges.error());
     }
 
     std::vector<NetId> recorded;
@@ -572,19 +533,9 @@ int Run(std::span<char*> args) {
         probes.emplace_back(sim, net);
     }
     const auto start = std::chrono::steady_clock::now();
-    if (tv || leds || !probes.empty() || !edges.empty()) {
-        const Time end = sim.now() + options.time;
+    if (tv || leds || !probes.empty() || !edges->empty()) {
         std::size_t next = 0;
-        while (sim.now() < end) {
-            Time stop = std::min(end, sim.now() + 1_ms);
-            if (next < edges.size()) {
-                stop = std::min(stop, edges[next].at);
-            }
-            sim.runUntil(stop);
-            for (; next < edges.size() && edges[next].at == sim.now(); ++next) {
-                edges[next].apply();
-                sim.wake(edges[next].wake);
-            }
+        RunTo(sim, *edges, next, sim.now() + options.time, [&] {
             if (tv) {
                 tv->update();
             }
@@ -597,7 +548,8 @@ int Run(std::span<char*> args) {
             if (!vcd.is_open()) {
                 sim.trimRecordings();
             }
-        }
+            return true;
+        });
     } else {
         sim.runFor(options.time);
     }

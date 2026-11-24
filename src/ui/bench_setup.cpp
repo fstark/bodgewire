@@ -134,6 +134,9 @@ std::expected<void, std::string> ApplyBenchOptions(Session& session, const Bench
         }
     }
     for (const KnobSetting& knob : options.knob) {
+        if (knob.at != 0) {  // bw run's and a Vetting Script's: the bench follows frames
+            return std::unexpected("--knob: a time is for bw run");
+        }
         if (!session.inputs().setKnob(knob.reference, knob.turn)) {
             return std::unexpected(std::format("'{}' is not a paddle controller", knob.reference));
         }

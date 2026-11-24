@@ -31,6 +31,7 @@ add_executable(bw_tests
   instruments/oscilloscope_test.cpp
   machine/crack_test.cpp
   machine/electrical_test.cpp
+  machine/input_edges_test.cpp
   machine/knob_setting_test.cpp
   machine/machine_list_test.cpp
   machine/machine_test.cpp

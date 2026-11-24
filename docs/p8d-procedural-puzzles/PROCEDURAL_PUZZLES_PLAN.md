@@ -7,7 +7,7 @@ Spec: [PROCEDURAL_PUZZLES.md](PROCEDURAL_PUZZLES.md). Design: [PROCEDURAL_PUZZLE
 | Phase | Description | Commit |
 |---|---|---|
 | 0 | The research: the BW-80's sample, `bw run --leds`, every Machine sampled, the spec | `aaf07b1`, `c1f086e`, `7b5197b`, `967390c`, `bd84a32` |
-| 1 | A knob set at a time; the inputs out of `bw run` | |
+| 1 | A knob set at a time; the inputs out of `bw run` | this commit |
 | 2 | The Vetting Script and its fourteen files | |
 | 3 | Drawing a Fault | |
 | 4 | Vetting, making a Puzzle, `bw random` | |
@@ -52,7 +52,7 @@ Fence: release, the full suite. Debug: `-R "puzzle: |machine: (check|clearFaults
 2. `src/session/procedural_puzzle.{hpp,cpp}` (D5).
 3. `bw random`, `tests/bw_random.cmake`, and in `tests/CMakeLists.txt` the `foreach` that adds one `procedural puzzle: NNN-name` ctest a Machine (D5).
 4. Tests of D4 and D5.
-5. D8: `bw random` on every Machine, seeds 1 to 20: the tries, the kinds, the golden's and the making's seconds into this plan's notes, beside the samples' numbers; a file that needs it corrected (the knobs' later positions). The wait on the BW-2001 and the BW-80 against D8's estimate, and whether `PuzzleMaker` is to keep its `Vetting`, written there for phase 6.
+5. D8: `bw random` on every Machine, seeds 1 to 20: the tries, the kinds, the golden's and the making's seconds into this plan's notes, beside the samples' numbers; a file that needs it corrected (the knobs' later positions). The wait on the BW-2001 and the BW-80 against D8's estimate.
 
 Fence: release, the full suite; the fourteen `procedural puzzle: NNN-name` ctests' times noted (about 50 s summed, 12 s at most for one). Debug: `-R "vetting:|procedural puzzle: (five|the first|stopped|the same|it shows|010|020|030|040|045|050|080)|bw_random"` (the other Machines' ctests skip themselves in debug). Commit: `session: Vetting, a Procedural Puzzle made, bw random (P8d phase 4)`.
 
@@ -68,7 +68,7 @@ Fence: release, the full suite; screenshots viewed: the Counter's bench and its 
 ## Phase 6 — The Launcher's post-it and the making
 
 1. `LauncherLanes` (D7).
-2. `src/session/puzzle_maker.{hpp,cpp}`, keeping its `Vetting` or not as phase 4's notes say (D7, D8).
+2. `src/session/puzzle_maker.{hpp,cpp}` (D7).
 3. The Launcher: the post-it and its "?", its place in the row and the row's scroll, `select` on a `.bwr`, the live picture, the making and its lines, Esc, `LauncherChoice`, `make()` (D7).
 4. `ThankYouCard::draw`'s label; `main.cpp`: the choice to `Load`, the card's "Another random fault" back through the Launcher's making, no bench opened under `--screenshot`; `--make` (D7).
 5. Tests of D7.
@@ -95,4 +95,6 @@ Fence: the full release suite; the web build. Commit: `docs: P8d done, Procedura
   4. The binder's smallest height cannot be reached by a flag, and six tabs need a ROM: the tabs' layout is a tested function (`TabTops`), the screenshot is the Message's with `--contents`.
   5. Phase 6's fence had checks no flag can make (the card clicked, Esc, the browser): they are the user's, and `PuzzleMaker` moved to `src/session` so its stopping is unit tested.
   - Also from it: `RunTo`'s `slice` can stop a run and `Vetting::Make` can be stopped; the watched outputs are decided once on the fault-free build; an exception in a try counts as not showing; the fourteen files written out in D2 with their presses; `QuotedValue` and `IsMachineName` shared; the card's "Another random fault" moved to phase 6, where the Launcher can make one; `--make` under `--screenshot`; the lines' three dots typed as dots; `kPictureQuestion` and `sign` (Mark alone is a Pencil Mark's word).
+- 2026-11-24, phase 1: as designed. `RunTo` also applies an edge whose time is already past (a caller that starts late), where `bw run`'s loop would have asked the Simulator to run backwards. Checks: release, the full suite (1583); `bw run`'s BW-80 frame, the Dice's lamps and the Typewriter's typed frame the same before and after the move; the Knob meter reads 42 at 300 ms and 86 at 700 ms with `--knob J2:42%,J2:87%:400ms`; `bw_ui --knob J2:42%:400ms` refused. Debug: `knob setting|input edges|run to|run_leds`.
+- 2026-11-24, the user, after the docs: the wait on the slow Machines is not a problem at this stage; nothing is built for it (the spec's Open).
 - 2026-11-24, phase 0: the research, before this plan. `bw run --leds` (`c1f086e`) and `LedInput`, `FindLedNets` are in; `tools/fault_sample.py` holds the samples' method and stays as it is.

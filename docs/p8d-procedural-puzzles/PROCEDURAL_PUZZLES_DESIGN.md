@@ -410,7 +410,7 @@ Its `std::jthread` reads the file, loads the Machine (`LoadNetlistMachine`), mak
 
 `bw random` on each Machine for seeds 1 to 20: the tries, the kinds made, the golden's seconds and the whole making's go into the plan's notes, beside the samples' numbers (the draws and the cell margin differ from the tool's, D3 and D4). A Machine whose golden has no picture at a capture time, or that makes none in `kKindPicks`, has its file corrected there; the knobs' later positions on the Knob meter and the Tennis are new.
 
-The wait, estimated from the samples (the Golden Machine's run, then about one try in two or three shows): under a second on ten Machines, one to two on the Bouncing ball and the Tennis, about 4 s on the Typewriter, about 10 s on the BW-2001 and 9 s on the BW-80, of which the golden is 4 and 5. If the measured golden weighs that much, `PuzzleMaker` keeps its `Vetting` for the next making of the same file ("Another random fault"): noted in the plan, not built before the numbers.
+The wait, estimated from the samples (the Golden Machine's run, then about one try in two or three shows): under a second on ten Machines, one to two on the Bouncing ball and the Tennis, about 4 s on the Typewriter, about 10 s on the BW-2001 and 9 s on the BW-80, of which the golden is 4 and 5. The user, 2026-11-24: not a problem at this stage, nothing is built for it (later, if it feels long: something to please the player, and `PuzzleMaker` keeping its `Vetting` for the next making of the same file).
 
 ## 9. Docs
 
