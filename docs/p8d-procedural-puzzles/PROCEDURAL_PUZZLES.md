@@ -102,16 +102,18 @@ What the sample is not: one Machine; the last frame only; chips drawn first, the
 | 020 LED chaser | none | eight, 66 ms apart, from 600 ms |
 | 030 Dice | ROLL held from 300 ms to 800 ms | 500 ms, 700 ms |
 | 040 Stopwatch | STOP at 50 ms, RESET at 150 ms, START at 300 ms, STOP at 1 s | 280 ms, 600 ms, 900 ms, 1.3 s |
-| 045 Knob meter | the knob at 42 % | 300 ms |
+| 045 Knob meter | the knob at 42 %, at 87 % from 400 ms, at 5 % from 800 ms | 300 ms, 700 ms, 1.1 s |
 | 050 Test pattern | none | 400 ms |
 | 060 Bouncing ball | none | 600 ms, 900 ms, 1.2 s |
-| 070 Tennis | the knobs at 40 % and 60 %, START at 200 ms | 1 s |
+| 070 Tennis | the knobs at 40 % and 60 %, START at 200 ms, the knobs at 85 % and 15 % from 1.1 s | 1 s, 1.5 s |
 | 080 Message | none | 300 ms |
 | 090 Typewriter | CLEAR at 500 ms, `HELLO, WORLD` typed from 1 s | 2.5 s |
 | 110 LED computer | RESET at 1 s | 200, 400, 600, 800 ms, 1.3, 1.5, 1.7 s |
 | 120 BW-1 | AD 0 3 0 0 DA A 9 +, a key every 100 ms from 100 ms | 80 ms, 580 ms, 880 ms, 1 s |
 | 130 BW-2001 | none | 1.4 s |
 | 140 BW-80 | none, then a typed line | 300 ms, then 2.5 s |
+
+The Knob meter's and the Tennis's knobs were sampled at their first position only (a knob cannot move during a `bw run` yet); the later positions and their times are to check once one can.
 
 The pin and copper Faults (stuck pin, dry Joint, bridge, crack):
 
@@ -121,10 +123,10 @@ The pin and copper Faults (stuck pin, dry Joint, bridge, crack):
 | 020 LED chaser | 140 | 85 (61 %) | 12 | 0.1 s |
 | 030 Dice | 149 | 55 (37 %) | 16 | 0.1 s |
 | 040 Stopwatch | 138 | 89 (64 %) | 3 | 0.1 s |
-| 045 Knob meter | 132 | 74 (56 %) | 3 | under 0.1 s |
+| 045 Knob meter | 132 | 74 (56 %); other positions 89 (67 %) | 3 | under 0.1 s |
 | 050 Test pattern | 147 | 100 (68 %) | 53 | 0.1 s |
 | 060 Bouncing ball | 149 | 99 (66 %) | 26 | 0.5 s |
-| 070 Tennis | 142 | 82 (58 %) | 12 | 0.5 s |
+| 070 Tennis | 142 | 82 (58 %); other positions 91 (64 %) | 12 | 0.5 s |
 | 080 Message | 142 | 110 (77 %) | 61 | 0.1 s |
 | 090 Typewriter | 135 | 101 (75 %) | 20 | 1.8 s |
 | 110 LED computer | 148 | 103 (70 %) | 42 | 0.3 s |
@@ -139,6 +141,7 @@ The pin and copper Faults (stuck pin, dry Joint, bridge, crack):
 - **The Dice**: 55 show while ROLL is held. 16 more differ only after the release (sampled at 1 s too): 10 leave another valid face, which is no Symptom; 4 leave the die dark, a Symptom the held captures miss; 2 a dimmer face.
 - **The Counter**, the low-yield Machine: 37 of its 51 stuck pins change nothing (only 5 of its 25 outputs lead anywhere, the `A`–`D` inputs are never loaded).
 - **Columns show** (47 of 56 over the six Machines with a memory). **Cells do not**: 1 of 16 on the Message, none on the Typewriter and the LED computer, 2 on the BW-1, 2 of 40 on the BW-80. The exception is the BW-2001, 6 of 16 (3 more under 100 px): its memory test stops at a stuck cell and the banner's count of bytes changes, and a cell of the screen memory is a wrong character.
+- **A knob has to move.** At 42 % the Knob meter only ever draws a 4 and a 2. Its 58 Faults that showed nothing there were run again with the knob at 87 %, at 5 % and at 60 % (each for the whole run): 10 show at each, 15 at one of the three, 13 at 87 % or 5 %. The Tennis's 60 that showed little or nothing, with its knobs at 85 % and 15 %: 9 show clearly.
 - **A switch Fault shows where the inputs press that switch**: all of them on the Dice, the Stopwatch, the Typewriter and the LED computer; 5 of 12 on the BW-1, whose inputs press 7 of its 23 keys.
 
 What the samples are not: one seed; a lamp's margin (a quarter of the brightest fault-free lamp) and the TV's 100 px are arbitrary lines; the inputs are a first guess; chips are drawn first, then one of their pins (a 40-pin chip's pins are each less likely than a gate's); cracks are half way between two random pads of a random Net.
@@ -148,6 +151,8 @@ What the samples are not: one seed; a lamp's margin (a quarter of the brightest 
 To settle before the design:
 
 - The file that holds each Machine's inputs and capture times (proposed above).
+- A knob moved during a run: today `bw run --knob J2:42%` sets it for the whole run. The inputs need a time on a knob's setting, in `bw run` and in the game's own Vetting.
+- The BW-1's keys: its inputs press 7 of 23; more keys find more switch Faults, for a longer run.
 - The computers' typed line: left out on the BW-2001 (7 s more a try for 2 Faults in 67); on the BW-80 a short one ending with NEW LINE is still to choose and time (the sample's line was longer and not entered; a key is 0.15 s of simulated time there, 0.6 s of wait).
 - The weights, and the thresholds (pixels; lamps).
 - The post-it's look and words; the generated Brief and its "do X"; what the Launcher's live picture shows for "?".
