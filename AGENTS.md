@@ -48,7 +48,10 @@ Before writing a small helper, look here: most of the project's duplicated code 
 - References and pins ([src/netlist/parser.hpp](src/netlist/parser.hpp)): `ParsePinRef` ("U3.7"), `IsReference`; finding a pin on a Part: `FindPin`, `PinNet` ([src/netlist/builder.hpp](src/netlist/builder.hpp)).
 - Loading a netlist: `ReadNetlistFile` / `LoadNetlistFile(path, roms)` ([src/netlist/builder.hpp](src/netlist/builder.hpp)); printing diagnostics: `PrintDiagnostics` ([src/netlist/diagnostic.hpp](src/netlist/diagnostic.hpp)).
 - Board geometry on Points ([src/board/geometry.hpp](src/board/geometry.hpp)): `Distance`, `NearestT`, `NearestOnSegment`, `SegmentDistance`, `RotatedOffset` (KiCad's rotation). Layers: `LayerName`, `ParseLayer` ("F.Cu", [src/board/board.hpp](src/board/board.hpp)); millimetres: `ParseMillimetres` ([src/board/kicad_board.hpp](src/board/kicad_board.hpp)), `FormatMillimetres`, `FormatPoint` ([src/machine/crack.hpp](src/machine/crack.hpp)).
-- An instrument whose tip touches one Net: derive its Consumer from `SingleNetConsumer<State>` ([src/runner/single_net_consumer.hpp](src/runner/single_net_consumer.hpp)).
+- An instrument whose tip touches one Net: derive its Consumer from `SingleNetConsumer<State>` ([src/runner/single_net_consumer.hpp](src/runner/single_net_consumer.hpp)). One with Channels: `Rewatch` and `ChannelNets<Mask>` ([src/runner/channel_nets.hpp](src/runner/channel_nets.hpp)).
+- Several Nets' recorded Samples in time order: `Recorder::inOrder` ([src/sim/recorder.hpp](src/sim/recorder.hpp)). A TV's Nets on a circuit: `FindTvNets` ([src/session/session.hpp](src/session/session.hpp)).
+- Mouse gestures in a window ([src/ui/gestures.hpp](src/ui/gestures.hpp)): `TimeCanvas::read` (a canvas over time: zoom, pan, drag, marker), `ReadKnob` (a round knob).
+- A visitor from lambdas for `std::visit`: `Overloaded` ([src/machine/repair.hpp](src/machine/repair.hpp)).
 
 ## Docs
 

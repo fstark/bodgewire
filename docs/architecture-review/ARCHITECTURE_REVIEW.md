@@ -166,7 +166,7 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | A5 test fixtures out of primitives | done 2026-11-23 |
 | A6 docs | done 2026-11-23 |
 | B7–B9 names | done 2026-11-23 |
-| C10 Faults as one type | done 2026-11-23 |
+| C10 Faults as one type | done 2026-11-23, finished 2026-11-24 (one list in `Puzzle`) |
 | C11 split ui/main.cpp | done 2026-11-23 (the Bench class with D23) |
 | C12 bench object identity | done 2026-11-23 (narrowed: out or away in one place) |
 | C13 split Session | done 2026-11-23 |
@@ -180,3 +180,29 @@ A and B first (cheap; each commit runs the full release suite; later work reads 
 | D21 inputs through the Runner | done 2026-11-23 (switches, knobs, held keys; the typing queues stay) |
 | D22 network Pins | examined, not done (no need yet; hot path) |
 | D23 one frame loop | started (FrameClock); the loop itself with P7c |
+
+## Review of the refactors (2026-11-24)
+
+The 24 code commits read again once they had landed: four fresh reviewers on a group each and one reading of the last five, moved code compared with what it replaced, each finding checked in the code. The full release suite passed before and after. No commit broke anything; these missed their mark and were fixed, one commit each:
+
+| What was wrong | From | Fixed by |
+|---|---|---|
+| C10 half done: the `FaultDecl` variant wrapped around the Puzzle's six lists, unwrapped in one 150-line visitor that wrote two FaultSets in each case | b9ea6e4 | `Puzzle::faults` in file order, one loop in `LoadMachine`, `Machine::resolve` per kind, one place that stores |
+| `Focus::out(BenchObject)` a writable reference for the instruments too: one could be put away with the focus left on it; `kBenchObjects` a literal | 7911a6d | `outFlag` refuses an instrument, `bringOut(BenchObject)`; the count from the enum |
+| C16: each factory wrote its parameter names twice; a Part needing parameters without a `sample` still silently listed no pins; the message's −63 lines were +26 | edc863a | `TakeParams` takes the names once; a test over every Part |
+| The catalogue out of order after the keyboards' renames | 8cb1879 | the two rows moved; the order tested |
+| A3's drift (the generation outside the lock in the scope) named and left | 57183b5 | bumped and read under the lock |
+| C13: `InputDevices` with its own way to reach the Session and a third powered flag; the groups' lifecycle public | 5b04207–5abaa6d | `SessionBuild` for all five, the hooks private; a test for the Capture a moved Hook no longer restarts |
+| Recipes and AGENTS.md's shared helpers describing the code before C11, C12, C14 and A3 | several | ADD_INSTRUMENT, ADD_CONNECTOR_DEVICE, ADD_BOARD_DEVICE, ADD_PUZZLE, AGENTS.md |
+
+Found and left, each small:
+
+- `tests/view/bench_options_test.cpp`: the usage-error cases call `.error()` without first requiring an error.
+- `src/ui/shelf.cpp` keeps a `widthOf` and a `machineGap` that repeat `view/shelf_layout`.
+- Renames applied to the type and not to what holds it: `OpenedMachine` in `ui/loaded.{hpp,cpp}` and variables named `loaded`; `BuiltPart` in `placed_`; `const Mos6502Cycle& bus` in `parts/mos6502.cpp`.
+- The builder finds the BW-2001 keyboard by `dynamic_cast` in `wireSwitches` and by name in `MatrixKeyboardOf`.
+- `bw` links all of `bw_session` for `FindTvNets`.
+- `board/copper.cpp` reports "Bodge Wire end off a pad" for a `PadJoin` that may be a Solder Bridge.
+- Includes no longer used in `ui/main.cpp`; `view/focus.hpp` includes `board_scene.hpp` for one reference parameter; `ui/matrix_capture.hpp` still says `Session::type`.
+- `--brief ":5"` and `"5:"` are refused since C11 (they read as 0).
+- C14's gestures are still to try by hand.
