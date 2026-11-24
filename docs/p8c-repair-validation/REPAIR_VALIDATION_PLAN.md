@@ -9,7 +9,7 @@ Spec: [REPAIR_VALIDATION.md](REPAIR_VALIDATION.md). Design: [REPAIR_VALIDATION_D
 | 1 | The verdict: `Wiring`, `Machine::completed`, the Session's copy, `NextPuzzle`, their tests; `bw run`'s line | `2852c84` |
 | 2 | Every Puzzle's test checks the verdict; `repair validation:` cases | `bc5734a` |
 | 3 | The acknowledgement: `RepairAck`, the post-it's tick, the Thank-you Card, the next Puzzle's bench | `77660fe` |
-| 4 | Docs, README shot, release check with screenshots, debug, web build, full release suite | PH4 |
+| 4 | Docs, README shot, release check with screenshots, debug, web build, full release suite | `27eafae` |
 
 ## Implementation notes
 
