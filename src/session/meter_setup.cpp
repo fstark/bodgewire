@@ -20,7 +20,7 @@ void MeterSetup::follow() {
     rail_ = net ? RailVolts(*build_->circuit, *net) : std::nullopt;
 }
 
-void MeterSetup::copperChanged() {
+void MeterSetup::findContinuity() {
     connected_ = red_ && black_ ? std::optional(build_->machine->connected(
                                       red_->layer, red_->at, black_->layer, black_->at))
                                 : std::nullopt;
@@ -33,7 +33,7 @@ void MeterSetup::setMode(MeterMode mode) {
     mode_ = mode;
     blackNext_ = false;
     follow();
-    copperChanged();
+    findContinuity();
 }
 
 bool MeterSetup::placeLead(TestLead lead) {
@@ -50,7 +50,7 @@ bool MeterSetup::placeLead(TestLead lead) {
         blackNext_ = !blackNext_;
     }
     follow();
-    copperChanged();
+    findContinuity();
     return true;
 }
 
@@ -62,7 +62,7 @@ void MeterSetup::liftLeads() {
     black_.reset();
     blackNext_ = false;
     follow();
-    copperChanged();
+    findContinuity();
 }
 
 std::optional<double> MeterSetup::volts() const {

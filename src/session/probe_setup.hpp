@@ -20,15 +20,15 @@ class ProbeSetup {
 public:
     explicit ProbeSetup(const SessionBuild& build) : build_(&build) {}
 
-    void bind(ProbeConsumer& consumer);  // a new build: the Net under the tip watched
-
     void touch(std::optional<ProbeTip> tip);  // nullopt: lifted
     std::optional<ProbeTip> tip() const { return tip_; }
     std::optional<NetId> net() const { return consumer_->touched(); }
     ProbeLamps lamps() const;  // dark when not powered
 
 private:
-    void follow();  // the consumer onto the Net under tip_
+    friend class Session;                // its builds
+    void bind(ProbeConsumer& consumer);  // a new build: the Net under the tip watched
+    void follow();                       // the consumer onto the Net under tip_
 
     const SessionBuild* build_;
     ProbeConsumer* consumer_ = nullptr;

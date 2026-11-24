@@ -20,53 +20,46 @@ Time PressJitter() {
 
 }  // namespace
 
-void InputDevices::bind(const LoadedCircuit& design, LoadedCircuit& live, Runner& runner) {
-    design_ = &design;
-    live_ = &live;
-    runner_ = &runner;
+void InputDevices::bind() {
     for (const auto& [reference, turn] : knobs_) {
-        if (Paddle* paddle = PaddleOf(live, reference)) {
-            paddle->setKnob(turn);
+        if (Paddle* paddle = PaddleOf(*build_->circuit, reference)) {
+            build_->runner->post([paddle, turn] { paddle->setKnob(turn); });
         }
     }
 }
 
-void InputDevices::poweredOn() {
-    powered_ = true;
-    typed_.clear();
-}
+void InputDevices::poweredOn() { typed_.clear(); }
 
 void InputDevices::poweredOff() {
     for (const std::string& reference : pressed_) {
-        if (Switch* sw = SwitchOf(*live_, reference)) {
-            runner_->post([sw] { sw->setPressed(false); });
+        if (Switch* sw = SwitchOf(*build_->circuit, reference)) {
+            build_->runner->post([sw] { sw->setPressed(false); });
         }
     }
     pressed_.clear();
     for (const auto& [reference, key] : matrixHeld_) {
-        if (KeyMatrix* matrix = KeyMatrixOf(*live_, reference)) {
-            runner_->post([matrix, key] { matrix->setHeld(key, false); });
+        if (KeyMatrix* matrix = KeyMatrixOf(*build_->circuit, reference)) {
+            build_->runner->post([matrix, key] { matrix->setHeld(key, false); });
         }
     }
     matrixHeld_.clear();
     for (const std::string& reference : keyboards()) {
-        if (Keyboard* keyboard = KeyboardOf(*live_, reference)) {
+        if (Keyboard* keyboard = KeyboardOf(*build_->circuit, reference)) {
             keyboard->dropWaiting();
         }
     }
     for (const std::string& reference : matrixKeyboards()) {
-        if (KeyMatrix* matrix = KeyMatrixOf(*live_, reference)) {
+        if (KeyMatrix* matrix = KeyMatrixOf(*build_->circuit, reference)) {
             matrix->dropWaiting();
         }
     }
-    powered_ = false;
 }
 
 template <class Of>
 std::vector<std::string> InputDevices::referencesOf(Of of) const {
     std::vector<std::string> references;
-    for (const LoadedPart& part : design_->parts) {
-        if (of(*design_, part.reference) != nullptr) {
+    for (const LoadedPart& part : build_->design().parts) {
+        if (of(build_->design(), part.reference) != nullptr) {
             references.push_back(part.reference);
         }
     }
@@ -80,7 +73,7 @@ std::vector<std::string> InputDevices::switches() const {
 std::vector<SwitchKey> InputDevices::switchKeys() const {
     std::vector<SwitchKey> keys;
     for (const std::string& reference : switches()) {
-        if (const Switch* sw = SwitchOf(*design_, reference); sw && !sw->pcKey().empty()) {
+        if (const Switch* sw = SwitchOf(build_->design(), reference); sw && !sw->pcKey().empty()) {
             keys.push_back({reference, std::string(sw->pcKey())});
         }
     }
@@ -88,7 +81,7 @@ std::vector<SwitchKey> InputDevices::switchKeys() const {
 }
 
 void InputDevices::setPressed(std::string_view reference, bool pressed) {
-    if (!powered_ || pressed == pressed_.contains(reference)) {
+    if (!build_->powered || pressed == pressed_.contains(reference)) {
         return;
     }
     if (pressed) {
@@ -96,8 +89,8 @@ void InputDevices::setPressed(std::string_view reference, bool pressed) {
     } else {
         pressed_.erase(pressed_.find(reference));
     }
-    if (Switch* sw = SwitchOf(*live_, reference)) {
-        runner_->post([sw, pressed] { sw->setPressed(pressed); }, sw->id(), PressJitter());
+    if (Switch* sw = SwitchOf(*build_->circuit, reference)) {
+        build_->runner->post([sw, pressed] { sw->setPressed(pressed); }, sw->id(), PressJitter());
     }
 }
 
@@ -106,13 +99,13 @@ std::vector<std::string> InputDevices::knobs() const {
 }
 
 bool InputDevices::setKnob(std::string_view reference, double turn) {
-    if (PaddleOf(*design_, reference) == nullptr) {
+    if (PaddleOf(build_->design(), reference) == nullptr) {
         return false;
     }
     turn = std::clamp(turn, 0.0, 1.0);
     knobs_.insert_or_assign(std::string(reference), turn);
-    if (Paddle* paddle = PaddleOf(*live_, reference)) {
-        runner_->post([paddle, turn] { paddle->setKnob(turn); });
+    if (Paddle* paddle = PaddleOf(*build_->circuit, reference)) {
+        build_->runner->post([paddle, turn] { paddle->setKnob(turn); });
     }
     return true;
 }
@@ -128,7 +121,7 @@ std::vector<std::string> InputDevices::keyboards() const {
 }
 
 bool InputDevices::type(std::string_view reference, char32_t key) {
-    if (KeyMatrixOf(*live_, reference) != nullptr) {
+    if (KeyMatrixOf(*build_->circuit, reference) != nullptr) {
         return typeText(reference, std::u32string_view{&key, 1});
     }
     const auto code = KeyboardCode(key);
@@ -136,11 +129,11 @@ bool InputDevices::type(std::string_view reference, char32_t key) {
 }
 
 bool InputDevices::typeText(std::string_view reference, std::u32string_view text) {
-    if (KeyMatrix* matrix = KeyMatrixOf(*live_, reference)) {
-        if (!powered_ || !matrix->type(text)) {
+    if (KeyMatrix* matrix = KeyMatrixOf(*build_->circuit, reference)) {
+        if (!build_->powered || !matrix->type(text)) {
             return false;
         }
-        runner_->wake(matrix->component().id(), PressJitter());
+        build_->runner->wake(matrix->component().id(), PressJitter());
         return true;
     }
     bool any = false;
@@ -152,11 +145,11 @@ bool InputDevices::typeText(std::string_view reference, std::u32string_view text
 }
 
 bool InputDevices::press(std::string_view reference, MatrixPress press) {
-    KeyMatrix* matrix = KeyMatrixOf(*live_, reference);
-    if (matrix == nullptr || !powered_ || !matrix->press(press)) {
+    KeyMatrix* matrix = KeyMatrixOf(*build_->circuit, reference);
+    if (matrix == nullptr || !build_->powered || !matrix->press(press)) {
         return false;
     }
-    runner_->wake(matrix->component().id(), PressJitter());
+    build_->runner->wake(matrix->component().id(), PressJitter());
     return true;
 }
 
@@ -166,7 +159,7 @@ std::vector<std::string> InputDevices::matrixKeyboards() const {
 }
 
 std::optional<KeyMatrixKind> InputDevices::matrixKind(std::string_view reference) const {
-    const KeyMatrix* matrix = KeyMatrixOf(*live_, reference);
+    const KeyMatrix* matrix = KeyMatrixOf(*build_->circuit, reference);
     if (matrix == nullptr) {
         return std::nullopt;
     }
@@ -174,8 +167,8 @@ std::optional<KeyMatrixKind> InputDevices::matrixKind(std::string_view reference
 }
 
 void InputDevices::setMatrixKeyHeld(std::string_view reference, std::size_t key, bool held) {
-    KeyMatrix* matrix = KeyMatrixOf(*live_, reference);
-    if (!powered_ || matrix == nullptr || key >= matrix->keyCount() ||
+    KeyMatrix* matrix = KeyMatrixOf(*build_->circuit, reference);
+    if (!build_->powered || matrix == nullptr || key >= matrix->keyCount() ||
         held == matrixKeyHeld(reference, key)) {
         return;
     }
@@ -184,8 +177,8 @@ void InputDevices::setMatrixKeyHeld(std::string_view reference, std::size_t key,
     } else {
         matrixHeld_.erase({std::string(reference), key});
     }
-    runner_->post([matrix, key, held] { matrix->setHeld(key, held); }, matrix->component().id(),
-                  PressJitter());
+    build_->runner->post([matrix, key, held] { matrix->setHeld(key, held); },
+                         matrix->component().id(), PressJitter());
 }
 
 bool InputDevices::matrixKeyHeld(std::string_view reference, std::size_t key) const {
@@ -196,19 +189,20 @@ bool InputDevices::matrixKeyDown(std::string_view reference, std::size_t key) co
     if (matrixKeyHeld(reference, key)) {
         return true;
     }
-    const KeyMatrix* matrix = KeyMatrixOf(*live_, reference);
-    return powered_ && matrix != nullptr && matrix->scripted(key);
+    const KeyMatrix* matrix = KeyMatrixOf(*build_->circuit, reference);
+    return build_->powered && matrix != nullptr && matrix->scripted(key);
 }
 
 bool InputDevices::typeCode(std::string_view reference, std::uint8_t code) {
-    if (!powered_ || code > kKeyboardLastCode || KeyboardOf(*design_, reference) == nullptr) {
+    if (!build_->powered || code > kKeyboardLastCode ||
+        KeyboardOf(build_->design(), reference) == nullptr) {
         return false;
     }
-    Keyboard* keyboard = KeyboardOf(*live_, reference);
+    Keyboard* keyboard = KeyboardOf(*build_->circuit, reference);
     if (keyboard == nullptr || !keyboard->type(code)) {
         return false;
     }
-    runner_->wake(keyboard->id(), PressJitter());
+    build_->runner->wake(keyboard->id(), PressJitter());
     std::string& sent = typed_[std::string(reference)];
     sent.push_back(static_cast<char>(code));
     if (sent.size() > kTypedShown) {

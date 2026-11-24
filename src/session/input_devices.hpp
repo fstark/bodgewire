@@ -10,9 +10,8 @@
 #include <utility>
 #include <vector>
 
-#include "netlist/builder.hpp"
 #include "parts/key_matrix.hpp"
-#include "runner/runner.hpp"
+#include "session/leads.hpp"
 
 namespace bw {
 
@@ -28,11 +27,7 @@ struct SwitchKey {
 // through each keyboard's own queue, which answers at once whether it took the key.
 class InputDevices {
 public:
-    // At each build: `design` lists the devices (a Machine's design Circuit, else the build's),
-    // `live` and `runner` run them. The knobs' turns are applied to the new build.
-    void bind(const LoadedCircuit& design, LoadedCircuit& live, Runner& runner);
-    void poweredOn();   // the codes typed forgotten
-    void poweredOff();  // every switch and key released, the keys waiting to be typed dropped
+    explicit InputDevices(const SessionBuild& build) : build_(&build) {}
 
     // Every switch (BUTTON, KEY, SLIDE) of the circuit, in netlist order.
     std::vector<std::string> switches() const;
@@ -83,14 +78,15 @@ public:
     static constexpr std::size_t kTypedShown = 16;
 
 private:
+    friend class Session;  // its builds and its power
+    void bind();           // a new build: the knobs' turns applied to it
+    void poweredOn();      // the codes typed forgotten
+    void poweredOff();     // every switch and key released, the keys waiting to be typed dropped
     // Every Part of the design for which `of` finds its device, in netlist order.
     template <class Of>
     std::vector<std::string> referencesOf(Of of) const;
 
-    const LoadedCircuit* design_ = nullptr;
-    LoadedCircuit* live_ = nullptr;
-    Runner* runner_ = nullptr;
-    bool powered_ = false;
+    const SessionBuild* build_;
     std::set<std::string, std::less<>> pressed_;                // Buttons held down
     std::set<std::pair<std::string, std::size_t>> matrixHeld_;  // key matrix keys held
     std::map<std::string, double, std::less<>> knobs_;          // PADDLE turns, 0..1

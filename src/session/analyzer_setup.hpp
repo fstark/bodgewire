@@ -33,9 +33,6 @@ class AnalyzerSetup {
 public:
     explicit AnalyzerSetup(const SessionBuild& build) : build_(&build) {}
 
-    void bind(AnalyzerConsumer& consumer);  // a new build: its consumer, configured
-    void beforeRebuild();  // a finished Capture is not re-armed by the next consumer
-
     // Lowest free Channel; nullopt without a Machine, unknown pad, or all Channels used.
     std::optional<std::size_t> clip(std::string_view reference, std::string_view pin);
     void unclip(std::size_t channel);
@@ -68,6 +65,9 @@ public:
     TripleBuffer<Capture>& captures() { return consumer_->captures(); }  // replaced on rebuild
 
 private:
+    friend class Session;                   // its builds
+    void bind(AnalyzerConsumer& consumer);  // a new build: its consumer, configured
+    void beforeRebuild();  // a finished Capture is not re-armed by the next consumer
     std::optional<PadLead> padLead(std::string_view reference, std::string_view pin) const;
     void configure();                      // config_ with this build's Nets, to the consumer
     void leaveGroup(std::size_t channel);  // a group left with one member is erased

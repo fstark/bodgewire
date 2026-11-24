@@ -11,16 +11,16 @@
 
 namespace bw {
 
-class Runner;
-
-// What an instrument's setup reads of its Session: the Machine and the current build, and whether
-// it is powered. Owned by the Session on the heap (it outlives the Session's moves), updated at
-// each build and power change.
+// What the instruments' setups and the input devices read of their Session: the Machine and the
+// current build, and whether it is powered. Owned by the Session on the heap (it outlives the
+// Session's moves), updated at each build and power change.
 struct SessionBuild {
     const Machine* machine = nullptr;  // nullptr: a bare netlist, no instruments
     const LoadedCircuit* circuit = nullptr;
     Runner* runner = nullptr;
     bool powered = false;
+    // What lists the devices: the Machine's design Circuit, else (a bare netlist) the build's.
+    const LoadedCircuit& design() const { return machine ? machine->designCircuit() : *circuit; }
 };
 
 struct PadLead {                 // a Clip or a Hook

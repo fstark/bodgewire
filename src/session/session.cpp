@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
-#include <format>
 #include <iterator>
 #include <optional>
 #include <string>
@@ -68,9 +66,11 @@ Session::Session(std::optional<Machine> machine, std::unique_ptr<LoadedCircuit> 
 void Session::bindBuild() {
     build_->circuit = live_->circuit.get();
     build_->runner = live_->runner.get();
-    inputs_.bind(machine_ ? machine_->designCircuit() : *live_->circuit, *live_->circuit,
-                 *live_->runner);
-    configureLive();
+    inputs_.bind();
+    analyzer_.bind(live_->analyzer);
+    scope_.bind(live_->scope);
+    probe_.bind(live_->probe);
+    meter_.bind(live_->meter);
 }
 
 Session::Session(Session&&) noexcept = default;
@@ -129,14 +129,14 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
         live_->runner->pauseAt(*pauseAt);
     }
     live_->runner->powerOn(seed);
-    powered_ = build_->powered = true;
+    build_->powered = true;
     inputs_.poweredOn();
 }
 
 void Session::powerOff() {
     inputs_.poweredOff();
     live_->runner->powerOff();
-    powered_ = build_->powered = false;
+    build_->powered = false;
 }
 
 void Session::setSpeed(Speed speed) {
@@ -148,7 +148,7 @@ RepairResult Session::repair(const RepairAction& repair) {
     if (!machine_) {
         return RepairResult::Unknown;
     }
-    if (powered_) {
+    if (powered()) {
         return RepairResult::Refused;
     }
     // A mend always places its solder: done even with no crack under it (the tool must not tell).
@@ -169,7 +169,7 @@ RepairResult Session::undoRepairs() {
     if (!machine_) {
         return RepairResult::Unknown;
     }
-    if (powered_) {
+    if (powered()) {
         return RepairResult::Refused;
     }
     machine_->undoRepairs();
@@ -192,7 +192,7 @@ std::vector<LedLight> Session::leds() const {
     for (const LoadedPart& part : machine_->designCircuit().parts) {
         for (std::size_t i = 0; i < part.info->lamps.size(); ++i) {
             float brightness = 0;
-            if (powered_ && live_->leds) {
+            if (powered() && live_->leds) {
                 const auto leds = live_->leds->leds();
                 const auto it = std::ranges::find_if(leds, [&](const LedNets& led) {
                     return led.reference == part.reference && led.lamp == i;
@@ -206,13 +206,6 @@ std::vector<LedLight> Session::leds() const {
         }
     }
     return lights;
-}
-
-void Session::configureLive() {
-    analyzer_.bind(live_->analyzer);
-    scope_.bind(live_->scope);
-    probe_.bind(live_->probe);
-    meter_.bind(live_->meter);
 }
 
 }  // namespace bw

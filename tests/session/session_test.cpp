@@ -427,6 +427,19 @@ TEST_CASE("session: a capture is not re-armed by a repair", "[session]") {
     session.powerOff();
 }
 
+TEST_CASE("session: hooking the scope leaves a running Capture alone", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    REQUIRE(session.analyzer().clip("U1", "14") == 0);
+    session.analyzer().arm();  // 10 MHz, any Trigger: filling from power-on, for 6.55 ms
+    session.powerOn(1);
+    RunTo(session, 3_ms);
+    REQUIRE(session.analyzer().phase() == AnalyzerPhase::Filling);
+    REQUIRE(session.scope().hook("U1", "2") == 0);
+    RunTo(session, 8_ms);  // started again at 3 ms, it would fill until 9.55 ms
+    CHECK(session.analyzer().phase() == AnalyzerPhase::Captured);
+    session.powerOff();
+}
+
 TEST_CASE("session: hooks", "[session]") {
     Session session = PuzzleSession("broken_trace");
     CHECK(session.scope().hook("U1", "2") == 0);
@@ -1269,7 +1282,7 @@ TEST_CASE("session: knob kept across power", "[session]") {
     CHECK(session.inputs().setKnob("J2", 1.5));
     CHECK(session.inputs().knob("J2") == 1.0);
     CHECK(session.inputs().setKnob("J2", 0.25));  // with the power off
-    session.runner().waitIdle();                   // the Part's change is the Runner's to apply
+    session.runner().waitIdle();                  // the Part's change is the Runner's to apply
     CHECK(paddle->knob() == 0.25);
     session.powerOn(1, 1_ms);
     session.runner().waitIdle();

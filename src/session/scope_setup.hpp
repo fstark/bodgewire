@@ -18,8 +18,6 @@ class ScopeSetup {
 public:
     explicit ScopeSetup(const SessionBuild& build) : build_(&build) {}
 
-    void bind(ScopeConsumer& consumer);  // a new build: its consumer, configured
-
     // As AnalyzerSetup::clip(), with the Oscilloscope's Channels.
     std::optional<std::size_t> hook(std::string_view reference, std::string_view pin);
     void unhook(std::size_t channel);
@@ -33,7 +31,9 @@ public:
     TripleBuffer<Sweep>& sweeps() { return consumer_->sweeps(); }  // replaced on rebuild
 
 private:
-    void configure();  // config_ with this build's Nets, to the consumer
+    friend class Session;                // its builds
+    void bind(ScopeConsumer& consumer);  // a new build: its consumer, configured
+    void configure();                    // config_ with this build's Nets, to the consumer
 
     const SessionBuild* build_;
     ScopeConsumer* consumer_ = nullptr;

@@ -1,12 +1,8 @@
 #pragma once
 
-#include <array>
 #include <cstdint>
-#include <expected>
-#include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -15,7 +11,6 @@
 #include "machine/machine.hpp"
 #include "machine/repair.hpp"
 #include "parts/catalogue.hpp"
-#include "parts/key_matrix.hpp"
 #include "runner/analyzer_consumer.hpp"
 #include "runner/led_consumer.hpp"
 #include "runner/meter_consumer.hpp"
@@ -70,9 +65,9 @@ public:
 
     void powerOn(std::uint64_t seed, std::optional<Time> pauseAt = std::nullopt);
     void powerOff();
-    bool powered() const { return powered_; }
+    bool powered() const { return build_->powered; }
     // Powered with a Dead Rail: the bench supply is in current limit.
-    bool currentLimited() const { return powered_ && machine_ && machine_->power().deadRail; }
+    bool currentLimited() const { return powered() && machine_ && machine_->power().deadRail; }
     void setSpeed(Speed speed);                 // kept across rebuilds
     void pause() { live_->runner->pause(); }    // the run switch at `‖`, powered
     void resume() { live_->runner->resume(); }  // and back
@@ -122,14 +117,12 @@ private:
 
     std::unique_ptr<Live> makeLive(std::unique_ptr<LoadedCircuit> circuit) const;
     void bindBuild();  // build_, the inputs and the instruments onto the current build
-    void configureLive();
 
     std::unique_ptr<Machine> machine_;  // on the heap, as build_: they outlive moves
     std::unique_ptr<SessionBuild> build_ = std::make_unique<SessionBuild>();
     std::optional<Board> drawn_;
     std::unique_ptr<Live> live_;
     bool dirty_ = false;  // a Repair since live_ was built
-    bool powered_ = false;
     Speed speed_ = Speed::RealTime;
     std::vector<std::string> log_;
     std::vector<SolderBlob> blobs_;
@@ -137,7 +130,7 @@ private:
     ScopeSetup scope_{*build_};
     ProbeSetup probe_{*build_};
     MeterSetup meter_{*build_};
-    InputDevices inputs_;
+    InputDevices inputs_{*build_};
 };
 
 }  // namespace bw

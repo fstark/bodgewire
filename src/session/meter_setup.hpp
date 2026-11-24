@@ -25,9 +25,6 @@ class MeterSetup {
 public:
     explicit MeterSetup(const SessionBuild& build) : build_(&build) {}
 
-    void bind(MeterConsumer& consumer);  // a new build: the red Lead's Net watched
-    void copperChanged();                // a Repair: continuity found again
-
     void setMode(MeterMode mode);
     MeterMode mode() const { return mode_; }
     bool placeLead(TestLead lead);  // false: no Machine, or Continuity with the power on
@@ -40,7 +37,11 @@ public:
     std::optional<bool> continuity() const;  // nullopt: a Lead missing or powered
 
 private:
-    void follow();  // the consumer onto the red Lead's Net, in Volts
+    friend class Session;                       // its builds and its Repairs
+    void bind(MeterConsumer& consumer);         // a new build: the red Lead's Net watched
+    void copperChanged() { findContinuity(); }  // a Repair
+    void follow();                              // the consumer onto the red Lead's Net, in Volts
+    void findContinuity();  // connected_ for the Leads as they are, in the current Copper
 
     const SessionBuild* build_;
     MeterConsumer* consumer_ = nullptr;
