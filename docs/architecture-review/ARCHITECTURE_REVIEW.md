@@ -41,7 +41,7 @@ Numbers at the time: `ui` 12,980 lines in 65 files, `parts` 12,199 in 113. Large
 
 **A2. One `FindTvNets`.** The VIDEO/MONITOR connector lookup exists three times: `session.cpp` (`HasTv` and `makeLive`, whose comment says "the two must agree") and `cli/main.cpp`. About 30 lines, low risk.
 
-**A3. One channel setup for scope and analyzer.** `runner/scope_consumer.cpp` and `runner/analyzer_consumer.cpp` each have `pending_`, the mutex, `generation_`, `adoptNets` with masks, `maskOf` and the watch/unwatch diff; the copies drifted (`netsGeneration_` set before the lock in one, inside it in the other). One `ChannelNets<N, Mask>` helper. About −70 lines, low risk; check under the debug sanitizers.
+**A3. One channel setup for scope and analyzer.** `runner/scope_consumer.cpp` and `runner/analyzer_consumer.cpp` each have `pending_`, the mutex, `generation_`, `adoptNets` with masks, `maskOf` and the watch/unwatch diff; the copies drifted (`netsGeneration_` set before the lock in one, inside it in the other). One `ChannelNets<N, Mask>` helper. About −70 lines, low risk; check under the debug sanitizers. Done 2026-11-23, narrowed: `Rewatch` and `ChannelNets<Mask>` (`runner/channel_nets`) hold the watch diff and the Net table; each Consumer keeps its own `pending_`, mutex and generation (the analyzer's also carries its phase handshake), so 13 lines more, not 70 fewer. The drift itself went 2026-11-24: the scope bumps and reads its generation under the lock, as the analyzer does.
 
 **A4. Keyboard Parts named after their Machines; Parts found by kind.**
 - `MATRIXKB` → `BW2001KB`, `MEMBRANEKB` → `BW80KB` (catalogue, netlists, manuals, tests; about 40 files). `KEYBOARD` (the ASCII keyboard, reused) keeps its name.

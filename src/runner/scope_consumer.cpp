@@ -1,14 +1,13 @@
 #include "runner/scope_consumer.hpp"
 
-
 namespace bw {
 
 void ScopeConsumer::configure(Runner& runner, ScopeConfig config) {
     {
         const std::scoped_lock lock(mutex_);
         pending_ = config;
+        generation_.fetch_add(1, std::memory_order_release);
     }
-    generation_.fetch_add(1, std::memory_order_release);
     if (config != sent_) {
         status_.store(SweepKind::None, std::memory_order_release);
     }
@@ -30,10 +29,10 @@ void ScopeConsumer::adoptNets() const {
 }
 
 void ScopeConsumer::adopt() {
-    configGeneration_ = generation_.load(std::memory_order_acquire);
     const ScopeConfig previous = applied_;
     {
         const std::scoped_lock lock(mutex_);
+        configGeneration_ = generation_.load(std::memory_order_acquire);
         applied_ = pending_;
     }
     for (std::size_t c = 0; c < kScopeChannels; ++c) {

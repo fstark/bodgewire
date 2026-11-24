@@ -45,8 +45,8 @@ private:
     ScopeConfig sent_;
     // shared
     mutable std::mutex mutex_;
-    ScopeConfig pending_;  // guarded by mutex_
-    std::atomic<std::uint64_t> generation_{0};
+    ScopeConfig pending_;                       // guarded by mutex_
+    std::atomic<std::uint64_t> generation_{0};  // bumped with pending_, under mutex_
     std::atomic<SweepKind> status_{SweepKind::None};
     TripleBuffer<Sweep> sweeps_;
     // devices thread
