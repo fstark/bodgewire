@@ -39,6 +39,9 @@ struct PickReach {
     // A chip's epoxy body covers the vias and Traces under it: inside it (off its pads) the
     // pick is the chip (the bench's hover, but with Option held).
     bool bodies = false;
+    // A pad wins only under the cursor; off it, a Trace or via within `copper` before the pad
+    // within half its pitch (the cutters, the iron: the copper between two pins).
+    bool copperFirst = false;
 };
 
 struct Pick {

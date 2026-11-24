@@ -1091,11 +1091,13 @@ PickReach BoardView::reach() const {
     const double nmPerPixel = 1e6 / viewport_.pixelsPerMm();
     // A chip's body over the copper under it, its whole wiring shown at once (the user,
     // 2026-11-22), but with Option held, or with a tool that works on copper in hand: the
-    // cutters and the iron reach the Trace under it, the hover showing what the click will cut
-    // or mend (2026-11-24).
+    // cutters and the iron reach the Trace under it and between two pins, the hover showing
+    // what the click will cut or mend (2026-11-24).
     const bool copperTool = owner_ == Owner::Cutters || owner_ == Owner::Iron;
-    return {std::llround(kPadReachPx * nmPerPixel), std::llround(kCopperReachPx * nmPerPixel),
-            !ImGui::GetIO().KeyAlt && !copperTool};
+    return {.pad = std::llround(kPadReachPx * nmPerPixel),
+            .copper = std::llround(kCopperReachPx * nmPerPixel),
+            .bodies = !ImGui::GetIO().KeyAlt && !copperTool,
+            .copperFirst = copperTool};
 }
 
 std::optional<std::size_t> BoardView::wireAt(Point at) const {

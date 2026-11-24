@@ -317,9 +317,11 @@ std::optional<Pick> BoardScene::pick(Point at, Layer active, PickReach reach) co
             }
         }
     }
-    if (best) {
+    if (best && (!reach.copperFirst || bestDistance == 0)) {
         return best;
     }
+    const std::optional<Pick> nearPad = std::exchange(best, std::nullopt);  // copperFirst's
+    bestDistance = DBL_MAX;
     if (reach.bodies) {
         if (const auto chip = chipBodyAt(at)) {
             return Pick{{HitKind::Component, *chip, 0}, active, at};
@@ -353,6 +355,9 @@ std::optional<Pick> BoardScene::pick(Point at, Layer active, PickReach reach) co
         if (best) {
             return best;
         }
+    }
+    if (nearPad) {
+        return nearPad;
     }
     for (std::size_t k = 0; k < courtyards_.size(); ++k) {
         if (Contains(courtyards_[k], at)) {

@@ -593,6 +593,55 @@ TEST_CASE("view: a chip's body over the copper under it", "[view]") {
     CHECK_FALSE(scene.chipBodyAt({scene.bounds().min.x - 1'000'000, scene.bounds().min.y}));
 }
 
+TEST_CASE("view: copper first, for the cutters and the iron, between two pins", "[view]") {
+    const Fixture f = Load("test_pattern");
+    const BoardScene scene = Scene(f);
+    const Board& board = scene.board();
+    const PickReach pins{.copper = 100'000};  // the probe's: a pad within half its pitch
+    const PickReach copper{.copper = 100'000, .copperFirst = true};
+    // A point on a Trace, off every pad, that a pad's half pitch still reaches.
+    std::optional<Point> between;
+    for (std::size_t t = 0; t < board.traces.size() && !between; ++t) {
+        const Trace& trace = board.traces[t];
+        for (int i = 1; i < 20 && !between; ++i) {
+            const Point p{trace.start.x + (trace.end.x - trace.start.x) * i / 20,
+                          trace.start.y + (trace.end.y - trace.start.y) * i / 20};
+            const bool onPad = std::ranges::any_of(board.components, [&](const auto& k) {
+                return std::ranges::any_of(k.pads, [&](const Pad& pad) { return Covers(pad, p); });
+            });
+            const auto usual = scene.pick(p, trace.layer, pins);
+            if (!onPad && usual && usual->hit.kind == HitKind::Pad) {
+                between = p;
+            }
+        }
+    }
+    REQUIRE(between.has_value());
+    const auto cut = scene.pick(*between, Layer::Front, copper);
+    REQUIRE(cut.has_value());
+    CHECK(cut->hit.kind == HitKind::Trace);
+    // On its copper a pad still wins; off all copper, its half pitch still reaches it.
+    const Pad& pin = board.components[0].pads[0];
+    CHECK(scene.pick(pin.position, Layer::Front, copper)->hit.kind == HitKind::Pad);
+    std::size_t kept = 0;  // points off a pad, picked as that pad still
+    for (const BoardComponent& component : board.components) {
+        for (const Pad& pad : component.pads) {
+            const Point near{pad.position.x + 900'000, pad.position.y};
+            const auto usual = scene.pick(near, Layer::Front, pins);
+            if (Covers(pad, near) || !usual || usual->hit.kind != HitKind::Pad) {
+                continue;
+            }
+            const auto first = scene.pick(near, Layer::Front, copper);
+            REQUIRE(first.has_value());
+            if (first->hit == usual->hit) {
+                ++kept;
+            } else {
+                CHECK((first->hit.kind == HitKind::Trace || first->hit.kind == HitKind::Via));
+            }
+        }
+    }
+    CHECK(kept > 0);
+}
+
 TEST_CASE("view: bodyAt is a courtyard away from the pads", "[view]") {
     const Fixture f = Load("dice");
     const BoardScene scene = Scene(f);
