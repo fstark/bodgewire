@@ -1,6 +1,9 @@
 # The web build (`web` preset: bw_ui through Emscripten) published on GitHub Pages: the page,
 # its wasm, the packed Machines and the service worker that cross-origin isolates it.
 # Pages must be set to deploy from GitHub Actions (Settings → Pages → Source).
+# While a `touch` branch exists (P8f) its build is published too, under /touch/. A push of `touch`
+# starts nothing (the Pages environment deploys from main only): run this workflow by hand after
+# it, `gh workflow run web.yml --ref main`.
 name: web
 
 on:
@@ -25,6 +28,16 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      # The touch branch (P8f), while there is one: its page beside this one, under /touch/, to
+      # try on a tablet before the branch is merged. Run by hand (from main) after pushing it.
+      - name: The touch branch
+        id: touch
+        run: |
+          if git ls-remote --exit-code --heads origin touch > /dev/null; then
+            git fetch --depth 1 origin touch
+            git worktree add "$RUNNER_TEMP/touch" FETCH_HEAD
+            echo "there=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Emscripten SDK
         run: |
           git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
@@ -36,12 +49,26 @@ jobs:
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           cmake --preset web
           cmake --build --preset web
+      - name: Build the touch branch
+        if: steps.touch.outputs.there == 'true'
+        working-directory: ${{ runner.temp }}/touch
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          cmake --preset web -DFETCHCONTENT_SOURCE_DIR_SDL3="$GITHUB_WORKSPACE/build/web/_deps/sdl3-src" \
+                -DFETCHCONTENT_SOURCE_DIR_IMGUI="$GITHUB_WORKSPACE/build/web/_deps/imgui-src"
+          cmake --build --preset web
       - name: Site
         run: |
-          mkdir site
-          cp build/web/src/ui/bw_ui.html site/index.html
-          cp build/web/src/ui/bw_ui.js build/web/src/ui/bw_ui.wasm build/web/src/ui/bw_ui.data \
-             build/web/src/ui/coi-serviceworker.js site/
+          page() {  # a build's page into a folder of the site; its manifest when it has one
+            mkdir -p "$2"
+            cp "$1/bw_ui.html" "$2/index.html"
+            cp "$1/bw_ui.js" "$1/bw_ui.wasm" "$1/bw_ui.data" "$1/coi-serviceworker.js" "$2/"
+            if [ -f "$1/manifest.json" ]; then cp "$1/manifest.json" "$2/"; fi
+          }
+          page build/web/src/ui site
+          if [ -d "$RUNNER_TEMP/touch/build/web/src/ui" ]; then
+            page "$RUNNER_TEMP/touch/build/web/src/ui" site/touch
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
