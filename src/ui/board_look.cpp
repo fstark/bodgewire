@@ -29,15 +29,16 @@ constexpr float kSmallestCodePx = 5.0f;   // a capacitor's code
 
 // The Board's colours (P6, the user's pick of three): a dark mask; the copper under it, the front
 // green and the back (seen through the board) teal, the active layer bright and on top, the
-// other dim; the Nets of the chip the player works on in dim gold on both layers (every
+// other dim; the Nets of the chip the player works on in dim gold, darker on the side turned
+// away (2026-11-25: one gold on both sides hid which trace ran where), as the copper (every
 // selection is gold: bright for the one Net under the cursor, dim for a chip's wiring).
 struct Palette {
-    ImU32 mask, frontActive, frontDim, backActive, backDim, frontGlow, backGlow, edge;
+    ImU32 mask, frontActive, frontDim, backActive, backDim, glow, glowBehind, edge;
 };
-constexpr Palette kColours{IM_COL32(6, 52, 28, 255),    IM_COL32(90, 190, 70, 255),
-                           IM_COL32(24, 84, 40, 255),   IM_COL32(40, 160, 190, 255),
-                           IM_COL32(20, 88, 92, 255),   IM_COL32(190, 140, 20, 255),
-                           IM_COL32(190, 140, 20, 255), IM_COL32(0, 24, 10, 255)};
+constexpr Palette kColours{IM_COL32(6, 52, 28, 255),   IM_COL32(90, 190, 70, 255),
+                           IM_COL32(24, 84, 40, 255),  IM_COL32(40, 160, 190, 255),
+                           IM_COL32(20, 88, 92, 255),  IM_COL32(190, 140, 20, 255),
+                           IM_COL32(110, 80, 12, 255), IM_COL32(0, 24, 10, 255)};
 constexpr const Palette& Colours() { return kColours; }
 
 constexpr ImU32 kTin = IM_COL32(205, 205, 195, 255);
@@ -690,7 +691,7 @@ void DrawUseBase(ImDrawList& list, const LookMap& map, const BoardScene& scene, 
         return bright ? Colours().backActive : Colours().backDim;
     };
     const auto glowColour = [&](Layer layer) {
-        return layer == Layer::Front ? Colours().frontGlow : Colours().backGlow;
+        return layer == active ? Colours().glow : Colours().glowBehind;
     };
     draw(other, colour(other), glowColour(other));
     draw(active, colour(active), glowColour(active));

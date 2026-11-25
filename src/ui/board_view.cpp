@@ -47,6 +47,8 @@ constexpr ImU32 kGndGlow = IM_COL32(70, 150, 215, 255);
 // The selected part's box: white, apart from the gold wiring beside it.
 constexpr ImU32 kSelection = IM_COL32(245, 245, 240, 255);
 constexpr ImU32 kChipGold = IM_COL32(190, 140, 20, 255);  // a hovered chip's wiring (plain look)
+// A selection's traces on the side turned away: darker, as its copper (2026-11-25).
+constexpr float kBehindShare = 0.58f;    // of the colour's brightness
 constexpr float kPlainDimShare = 0.35f;  // other traces while a chip's wiring shows
 constexpr ImU32 kDriverMark = IM_COL32(255, 255, 255, 255);
 constexpr float kDriverMarkGap = 5.0f;  // px outside the pad, outside the hover ring
@@ -647,9 +649,13 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
         return bright ? kHighlight : kPadGlow;
     };
     const ImU32 litGold = railColour(lit, true);
+    const Layer inactive = active_ == Layer::Front ? Layer::Back : Layer::Front;
+    const auto behind = [&](ImU32 colour, Layer layer) {
+        return layer == active_ ? colour : Lerp(IM_COL32(0, 0, 0, 255), colour, kBehindShare);
+    };
     const auto drawTraces = [&](Layer layer, float alpha, float litAlpha, bool litOnly) {
         const ImU32 colour = WithAlpha(layer == Layer::Front ? kFrontCopper : kBackCopper, alpha);
-        const ImU32 litColour = WithAlpha(litGold, litAlpha);
+        const ImU32 litColour = WithAlpha(behind(litGold, layer), litAlpha);
         for (std::size_t t = 0; t < board.traces.size(); ++t) {
             const Trace& trace = board.traces[t];
             if (trace.layer == layer) {
@@ -660,7 +666,6 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
             }
         }
     };
-    const Layer inactive = active_ == Layer::Front ? Layer::Back : Layer::Front;
     // The part under the cursor, while no single Net is: its Nets glow but the power rails, the
     // pins at both ends of them marked, and its own pins on a rail marked when connected (a
     // chip's VCC and GND, a tied input, a pull-up's VCC end) (P6 prototype).
@@ -708,12 +713,12 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
         if (!glowing.empty()) {
             DrawUseBase(list, look, *scene_, active_, glowing, cracks_, true);
         }
-        drawTraces(inactive, kInactiveAlpha, 1.0f, true);  // bright gold on both layers
+        drawTraces(inactive, kInactiveAlpha, 1.0f, true);  // gold, darker on the far side
         drawTraces(active_, 1.0f, 1.0f, true);
     } else {
         // The plain look: the same selections as the real one (P6), drawn on bare copper. The
         // other traces first (dimmed while a chip's wiring shows), then that wiring in dim gold,
-        // then the Net under the cursor in bright gold, both on both layers.
+        // then the Net under the cursor in bright gold, both darker on the far side.
         list.AddConcavePolyFilled(outline.data(), static_cast<int>(outline.size()), kBoardGreen);
         const float dim = glowing.empty() ? 1.0f : kPlainDimShare;
         for (const Layer layer : {inactive, active_}) {
@@ -728,10 +733,12 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
                 }
             }
         }
-        for (std::size_t t = 0; t < board.traces.size(); ++t) {
-            const auto net = scene_->traceNet(t);
-            if (net && std::ranges::contains(glowing, *net)) {
-                DrawTrace(list, map, board.traces[t], kChipGold, cracks_);
+        for (const Layer layer : {inactive, active_}) {
+            for (std::size_t t = 0; t < board.traces.size(); ++t) {
+                const auto net = scene_->traceNet(t);
+                if (board.traces[t].layer == layer && net && std::ranges::contains(glowing, *net)) {
+                    DrawTrace(list, map, board.traces[t], behind(kChipGold, layer), cracks_);
+                }
             }
         }
         drawTraces(inactive, kInactiveAlpha, 1.0f, true);
