@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <span>
 #include <vector>
@@ -55,8 +56,31 @@ public:
     bool empty() const { return head_ == tail_; }
     Time nextTime() const { return runs_[head_].time; }  // earliest pending time; kNever if empty
     // Removes every event of nextTime() and gives them sorted by (target, stamp); valid until the
-    // next push or take.
-    std::span<const EventKey> takeNext();
+    // next push or take. Inline for the usual take, one run (most of them one event); several runs
+    // of one time are gathered out of line.
+    std::span<const EventKey> takeNext() {
+        assert(!empty());
+        if (openTime_ >= 0) {
+            runs_[open_].end = static_cast<std::uint32_t>(size_);
+        }
+        const Run first = runs_[head_++];
+        if (first.time == openTime_) {
+            openTime_ = -1;  // the open run is one of those taken
+        }
+        if (runs_[head_].time == first.time) {
+            return gather(first);
+        }
+        if (head_ == tail_) {  // nothing pending: start again from the front
+            head_ = tail_ = 0;
+            runs_[0].time = kNever;
+            size_ = 0;
+        }
+        const std::span<EventKey> events(keys_.data() + first.begin, first.end - first.begin);
+        if (events.size() > 1) {
+            sort(events);
+        }
+        return events;
+    }
     void clear();
 
     static constexpr Time kNever = INT64_MAX;  // no event has this time
@@ -68,10 +92,13 @@ private:
     };
     void openRun(Time time);
     void makeRoom();
+    std::span<const EventKey> gather(const Run& first);  // takeNext() of several runs
+    static void sort(std::span<EventKey> keys);
 
     // Pending runs: [head_, tail_), by time, runs of one time in push order. runs_[tail_].time is
     // kNever, so a scan forward needs no bound.
     std::vector<Run> runs_;
+    std::size_t runCapacity_;  // runs_.size(), kept
     std::size_t head_ = 0, tail_ = 0;
     std::vector<EventKey> keys_;  // [0, size_): the runs' events, and holes left by taken runs
     std::size_t size_ = 0;

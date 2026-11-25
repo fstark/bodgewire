@@ -9,8 +9,14 @@ namespace {
 
 constexpr std::size_t kFirstRuns = 64, kFirstKeys = 1024;  // doubled when full of pending events
 
+}  // namespace
+
+EventQueue::EventQueue() : runs_(kFirstRuns), runCapacity_(kFirstRuns), keys_(kFirstKeys) {
+    runs_[0].time = kNever;
+}
+
 // Insertion sort: takes are short (1 or 2 events, 8 or 16 for a bus) and nearly sorted.
-void Sort(std::span<EventKey> keys) {
+void EventQueue::sort(std::span<EventKey> keys) {
     for (std::size_t i = 1; i < keys.size(); ++i) {
         const EventKey key = keys[i];
         std::size_t j = i;
@@ -21,23 +27,20 @@ void Sort(std::span<EventKey> keys) {
     }
 }
 
-}  // namespace
-
-EventQueue::EventQueue() : runs_(kFirstRuns), keys_(kFirstKeys) { runs_[0].time = kNever; }
-
 void EventQueue::openRun(Time time) {
     assert(time >= 0 && time < kNever);
     if (openTime_ >= 0) {
         runs_[open_].end = static_cast<std::uint32_t>(size_);
     }
-    if (tail_ + 2 > runs_.size()) {  // no room for one more run and the kNever after it
+    if (tail_ + 2 > runCapacity_) {  // no room for one more run and the kNever after it
         if (head_ > 0) {             // taken runs first: move the pending ones down
             std::copy(runs_.begin() + static_cast<std::ptrdiff_t>(head_),
                       runs_.begin() + static_cast<std::ptrdiff_t>(tail_), runs_.begin());
             tail_ -= head_;
             head_ = 0;
         } else {
-            runs_.resize(runs_.size() * 2);
+            runCapacity_ *= 2;
+            runs_.resize(runCapacity_);
         }
     }
     // Later runs move up one place; a run of the same time stays before the new one.
@@ -51,31 +54,20 @@ void EventQueue::openRun(Time time) {
     openTime_ = time;
 }
 
-std::span<const EventKey> EventQueue::takeNext() {
-    assert(!empty());
-    if (openTime_ >= 0) {
-        runs_[open_].end = static_cast<std::uint32_t>(size_);
-    }
-    const Run first = runs_[head_++];
-    if (first.time == openTime_) {
-        openTime_ = -1;  // the open run is one of those taken
-    }
-    std::span<EventKey> events(keys_.data() + first.begin, first.end - first.begin);
-    if (runs_[head_].time == first.time) {  // more runs of this time: gather them
-        batch_.assign(events.begin(), events.end());
-        for (; runs_[head_].time == first.time; ++head_) {
-            batch_.insert(batch_.end(), keys_.begin() + runs_[head_].begin,
-                          keys_.begin() + runs_[head_].end);
-        }
-        events = batch_;
+// takeNext() when the first run is not the only one of its time.
+std::span<const EventKey> EventQueue::gather(const Run& first) {
+    batch_.assign(keys_.begin() + first.begin, keys_.begin() + first.end);
+    for (; runs_[head_].time == first.time; ++head_) {
+        batch_.insert(batch_.end(), keys_.begin() + runs_[head_].begin,
+                      keys_.begin() + runs_[head_].end);
     }
     if (head_ == tail_) {  // nothing pending: start again from the front
         head_ = tail_ = 0;
         runs_[0].time = kNever;
         size_ = 0;
     }
-    Sort(events);
-    return events;
+    sort(batch_);
+    return batch_;
 }
 
 // keys_ is full: moves the pending runs to the front of the other buffer, the open run last so
