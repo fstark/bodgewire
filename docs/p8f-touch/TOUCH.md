@@ -223,7 +223,7 @@ Nothing to change: a paddle's Knob (88 px, a vertical drag); Shift on the keyboa
 | L4 | both | **A sideways drag scrolls the post-its' row**; a vertical one inside a long post-it scrolls its text. | The row moves only when a post-it is selected; the wheel scrolls a long Brief. |
 | L5 | both | **On a narrow window the Shelf's cells shrink from 48 to 44 px.** | By its constants the BW-2001's Shelf needs about 1,075 px; a 1080 px iPad leaves 1,064. The Machine's tray, laid from the right edge, would overlap the Instruments'. |
 | L6 | both | **The hints and tooltips name the control, not the modifier**, and say "wheel or pinch". | "shift-click", "right-click", "Option", "mouse wheel". |
-| L7 | both | **Popup buttons 110 × 44 px**, the "Don't ask again" line 44 px high; the Thank-you Card's buttons 44 px high. | OK and Cancel are 80 × 19 px. |
+| L7 | both | **Popup buttons 110 × 44 px**; the Thank-you Card's buttons 44 px high. The "Don't ask again" box grows with every control (28 px). | OK and Cancel are 80 × 19 px. |
 | L8 | web | **The web page's notice ("Not made for phones and tablets") goes for tablets.** | Shown to every touch device at start. |
 | L9 | both | **The Launcher's "Delete: forget the ticks" hint 28 px high.** | A line of text, 13 px (P8e, after the study). |
 

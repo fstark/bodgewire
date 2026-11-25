@@ -16,7 +16,8 @@ namespace bw {
 
 namespace {
 
-constexpr float kMinWidth = 380;                             // labels at least 9 px
+constexpr float kMinWidth = 380;  // labels at least 9 px
+constexpr float kMinHit = 44;     // px: a control's item, whatever the case's size (P8f)
 constexpr float kSweep = 1.5f * std::numbers::pi_v<float>;   // 270°
 constexpr float kStart = 0.75f * std::numbers::pi_v<float>;  // 0: lower left (screen angles)
 
@@ -270,7 +271,7 @@ void TvWindow::draw(bool& open, TvView& view) {
     for (const TvKnob knob : kTvKnobs) {
         const auto i = static_cast<std::size_t>(knob);
         const ImVec2 c = P(kKnobX[i], kKnobY);
-        const float hit = kKnobHit * w;
+        const float hit = std::max(kKnobHit * w, kMinHit / 2);  // 44 px across at least (P8f)
         ImGui::SetCursorScreenPos({c.x - hit, c.y - hit});
         ImGui::PushID(static_cast<int>(i));
         ImGui::InvisibleButton("##knob", {2 * hit, 2 * hit});
@@ -290,8 +291,10 @@ void TvWindow::draw(bool& open, TvView& view) {
         }
     }
     const ImVec2 slotMin = P(kSlotLeft, kSlotTop), slotMax = P(kSlotRight, kSlotBottom);
-    ImGui::SetCursorScreenPos(slotMin);
-    ImGui::InvisibleButton("##power", {slotMax.x - slotMin.x, slotMax.y - slotMin.y});
+    const float slotGrow = std::max(0.0f, kMinHit - (slotMax.y - slotMin.y)) / 2;
+    ImGui::SetCursorScreenPos({slotMin.x, slotMin.y - slotGrow});
+    ImGui::InvisibleButton("##power",
+                           {slotMax.x - slotMin.x, slotMax.y - slotMin.y + 2 * slotGrow});
     if (ImGui::IsItemClicked()) {
         controls_.setOn(!controls_.on());
     }
@@ -299,7 +302,7 @@ void TvWindow::draw(bool& open, TvView& view) {
         ImGui::SetTooltip("POWER: the monitor's own switch (the Machine's is on the shelf)");
     }
     const ImVec2 trimmer = P(kTrimmerX, kTrimmerY);
-    const float trimmerHit = kTrimmerHit * w;
+    const float trimmerHit = std::max(kTrimmerHit * w, kMinHit / 2);
     ImGui::SetCursorScreenPos({trimmer.x - trimmerHit, trimmer.y - trimmerHit});
     ImGui::InvisibleButton("##trimmer", {2 * trimmerHit, 2 * trimmerHit});
     if (ImGui::IsItemClicked()) {

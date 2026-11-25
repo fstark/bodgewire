@@ -46,6 +46,7 @@
 #include "ui/board_tags.hpp"
 #include "ui/board_view.hpp"
 #include "ui/brief_window.hpp"
+#include "ui/controls.hpp"
 #include "ui/debug_window.hpp"
 #include "ui/gpu_render.hpp"
 #include "ui/keyboard_window.hpp"
@@ -741,7 +742,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             break;
         }
         // A text field takes the keys from the next event on (P6o).
-        textField = ImGui::GetIO().WantTextInput;
+        textField = ImGui::GetIO().WantTextInput || NumberPadOpen();  // the pad's keys (P8f)
         applyKeys();
         // Text input on the window with the keyboard focus: a popped-out keyboard's (P6j).
         SDL_Window* focused = SDL_GetKeyboardFocus();
@@ -787,6 +788,7 @@ public:
         ImGuiIO& io = ImGui::GetIO();
         io.IniFilename = nullptr;
         gpu.initImGui();
+        ApplyStyle();  // one size of controls (P8f)
         KeepFocusFromTooltips();
         // The UI font first, as NewFrame would pick it lazily (13 px at the framebuffer scale:
         // vector from 15 px); AddFontDefault() itself, before the first frame, assumes Retina on

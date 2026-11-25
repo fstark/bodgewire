@@ -9,6 +9,7 @@
 #include <imgui.h>
 
 #include "parts/catalogue.hpp"
+#include "ui/controls.hpp"
 #include "view/digit_shape.hpp"
 
 namespace bw {
@@ -72,7 +73,8 @@ void PinCell(const PinRow& row, std::string_view label, bool alignRight, std::si
     ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, {alignRight ? 1.0f : 0.0f, 0.5f});
     ImGui::PushID(row.number.c_str());
     const std::string text(label);
-    const bool clicked = ImGui::Selectable(text.c_str());
+    // A row as high as a control (P8f): the large way to a pin.
+    const bool clicked = ImGui::Selectable(text.c_str(), false, 0, {0, kControl});
     ImGui::PopID();
     ImGui::PopStyleVar();
     if (row.power) {
@@ -204,7 +206,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
             ImGui::TextWrapped("%s", Displayable(text).c_str());
         }
     }
-    if (ImGui::SmallButton("Zoom to")) {
+    if (ImGui::Button("Zoom to")) {
         hits.clicked = BoardTarget{{component}, std::nullopt, std::nullopt};
     }
 
@@ -226,14 +228,14 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
                     component, datasheet, hits);
             ImGui::TableNextColumn();
             const ImVec2 at = ImGui::GetCursorScreenPos();
-            const float height = ImGui::GetTextLineHeightWithSpacing();
+            const float height = kControl + ImGui::GetStyle().ItemSpacing.y;
             ImDrawList& list = *ImGui::GetWindowDrawList();
             list.AddRectFilled({at.x, at.y - 2}, {at.x + kBodyWidth, at.y + height}, kBody);
             if (r == 0) {
                 list.AddCircleFilled({at.x + kBodyWidth / 2, at.y - 2}, kBodyWidth / 5, kNotch);
                 list.AddCircleFilled({at.x + 6, at.y + height / 2}, 3, kPinOne);
             }
-            ImGui::Dummy({kBodyWidth, ImGui::GetTextLineHeight()});
+            ImGui::Dummy({kBodyWidth, kControl});
             ImGui::TableNextColumn();
             PinCell(right, std::format("{:<2}  {}  {}", right.number, right.name, right.net), false,
                     component, datasheet, hits);
@@ -253,14 +255,15 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         ImGui::TextDisabled("no datasheet");
         return hits;
     }
-    if (ImGui::TreeNodeEx("Function", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::TreeNodeEx("Function",
+                          ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_FramePadding)) {
         const TargetHits more =
             function_.draw(Section(*datasheet, "Function"), &scene, design, LinkScope::Parts);
         hits.hovered = hits.hovered ? hits.hovered : more.hovered;
         hits.clicked = hits.clicked ? hits.clicked : more.clicked;
         ImGui::TreePop();
     }
-    if (ImGui::TreeNode("Pins")) {
+    if (ImGui::TreeNodeEx("Pins", ImGuiTreeNodeFlags_FramePadding)) {
         pins_.draw(Section(*datasheet, "Pins"), &scene, design, LinkScope::Parts);
         ImGui::TreePop();
     }

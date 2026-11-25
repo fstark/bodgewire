@@ -138,3 +138,20 @@ TEST_CASE("time view: status line", "[view]") {
     CHECK(StatusText(3'700'000, 2_us) == "cursor +3.7 µs   M +2 µs   dt 1.7 µs (588 kHz)");
     CHECK(StatusText(2_us, 2_us) == "cursor +2 µs   M +2 µs   dt 0");
 }
+
+TEST_CASE("time view: a finger's cursor snaps to the nearest edge within reach", "[view]") {
+    const std::vector<std::uint32_t> starts{100, 140, 400};
+    CHECK(SnapToEdge(starts, 138.0, 12.0) == 140.0);
+    CHECK(SnapToEdge(starts, 121.0, 30.0) == 140.0);  // the nearer of two in reach
+    CHECK(SnapToEdge(starts, 119.0, 30.0) == 100.0);
+    CHECK_FALSE(SnapToEdge(starts, 250.0, 12.0).has_value());
+    CHECK(SnapToEdge(starts, 500.0, 100.0) == 400.0);  // past the last one
+    CHECK(SnapToEdge(starts, 0.0, 100.0) == 100.0);    // before the first
+    CHECK_FALSE(SnapToEdge(std::vector<std::uint32_t>{}, 5.0, 100.0).has_value());
+    struct Change {
+        Time time;
+        int value;
+    };
+    const std::vector<Change> changes{{1'000, 0}, {5'000, 1}, {9'000, 0}};  // a projection
+    CHECK(SnapToEdge(changes, 5'200.0, 500.0, &Change::time) == 5'000.0);
+}

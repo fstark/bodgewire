@@ -25,8 +25,8 @@ BenchRect BenchArea();
 void PlaceNext(BenchObject object, ImVec2 first);
 // Before Begin: height = width * aspect, at least `minWidth` wide (a case keeps its proportions).
 void KeepAspect(float aspect, float minWidth);
-// A case's put-away mark, last before End: a small circled × in the window's top-right corner,
-// faint until hovered. True when clicked.
+// A case's put-away mark, last before End: a circled × in the window's top-right corner, always
+// seen, brighter when hovered; its item the corner's 40 px (P8f). True when clicked.
 bool CaseClose(float inset = 6);
 // Inside a window, before drawing with a font other than the current one straight into a draw
 // list (the keycap legends): baked at the window's pixel density, as PushFont does for the current

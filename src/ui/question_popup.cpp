@@ -2,6 +2,8 @@
 
 #include <utility>
 
+#include "ui/controls.hpp"
+
 namespace bw {
 
 namespace {
@@ -45,12 +47,12 @@ PopupAnswer QuestionPopup::draw() {
         ImGui::PopStyleColor();
         ImGui::Spacing();
     }
-    if (ImGui::Button("OK", {80, 0})) {
+    if (ImGui::Button("OK", {110, kBig})) {
         dontAsk_ = dontAsk_ || ticked_;
         answer = PopupAnswer::Ok;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Cancel", {80, 0})) {
+    if (ImGui::Button("Cancel", {110, kBig})) {
         answer = PopupAnswer::Cancel;
     }
     if (answer != PopupAnswer::None) {

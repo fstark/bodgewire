@@ -13,7 +13,9 @@
 #include "instruments/volts.hpp"
 #include "ui/bench.hpp"
 #include "ui/board_view.hpp"
+#include "ui/controls.hpp"
 #include "ui/instrument_marks.hpp"
+#include "ui/touch.hpp"
 #include "view/time_text.hpp"
 
 namespace bw {
@@ -21,13 +23,15 @@ namespace bw {
 namespace {
 
 constexpr float kMinBand = 50.0f;
+constexpr float kEdgeReach = 12;    // px within which a finger's cursor lands on an edge
 constexpr double kFullScale = 5.0;  // V per band: 1 V a division
 constexpr ImU32 kScreen = IM_COL32(8, 14, 10, 255);
 constexpr ImU32 kGrid = IM_COL32(60, 80, 65, 255);
 constexpr ImU32 kGridMinor = IM_COL32(35, 50, 40, 255);
 constexpr ImU32 kScale = IM_COL32(150, 170, 150, 255);
 constexpr const char* kGestures =
-    "wheel: zoom   drag: position   click: marker   right-click: clear   double-click: T";
+    "wheel or pinch: zoom   drag: position   click: marker   hold and slide: cursor   "
+    "double-click: T";
 
 const char* StateText(const Session& session, bool stopped) {
     if (stopped) {
@@ -118,93 +122,74 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     };
     const auto centre = [&] { return ScopeView(settings).left + ScopeView(settings).span() / 2; };
 
-    // Header line 1.
-    if (ImGui::Button("-", {24, 0})) {
-        zoomBy(centre(), -1);
-    }
-    ImGui::SetItemTooltip("zoom out (wheel)");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(110);
-    if (ImGui::BeginCombo("##timebase", TimebaseText(settings.timebase).c_str())) {
-        for (const Time timebase : kTimebases) {
-            if (ImGui::Selectable(TimebaseText(timebase).c_str(), timebase == settings.timebase)) {
-                ScopeSettings next = settings;
-                next.timebase = timebase;
-                next.delay = std::min(next.delay, kMaxDelayDivisions * timebase);
-                set(next);
-            }
+    // Header line 1 (P8f: steppers and choices, no dropdowns): the timebase, longest first, so
+    // + is the finer step; its - and + zoom about the screen's centre, as the wheel does about
+    // the pointer.
+    static const std::vector<std::string> kTimebaseNames = [] {
+        std::vector<std::string> names;
+        for (auto it = kTimebases.rbegin(); it != kTimebases.rend(); ++it) {
+            names.push_back(TimebaseText(*it));
         }
-        ImGui::EndCombo();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("+", {24, 0})) {
-        zoomBy(centre(), 1);
-    }
-    ImGui::SetItemTooltip("zoom in (wheel)");
-    ImGui::SameLine(0, 16);
-    ImGui::SetNextItemWidth(100);
-    const auto triggerText = [](std::size_t t) {
-        return std::format("ch{} {}", t / 2 + 1, t % 2 == 0 ? "rise" : "fall");
-    };
-    const std::size_t trigger = settings.source * 2 + (settings.edge == ScopeEdge::Fall ? 1 : 0);
-    if (ImGui::BeginCombo("##trigger", triggerText(trigger).c_str())) {
-        for (std::size_t t = 0; t < 2 * kScopeChannels; ++t) {
-            if (ImGui::Selectable(triggerText(t).c_str(), t == trigger)) {
-                ScopeSettings next = settings;
-                next.source = t / 2;
-                next.edge = t % 2 == 0 ? ScopeEdge::Rise : ScopeEdge::Fall;
-                set(next);
-            }
+        return names;
+    }();
+    const std::size_t longest = kTimebases.size() - 1;
+    const std::size_t stepBefore = longest - TimebaseIndex(settings.timebase).value_or(longest);
+    std::size_t step = stepBefore;
+    if (Stepper("##timebase", kTimebaseNames, step, 104)) {
+        const int notches = static_cast<int>(step) - static_cast<int>(stepBefore);
+        if (notches == 1 || notches == -1) {
+            zoomBy(centre(), notches);
+        } else {
+            ScopeSettings next = settings;
+            next.timebase = kTimebases[longest - step];
+            next.delay = std::min(next.delay, kMaxDelayDivisions * next.timebase);
+            set(next);
         }
-        ImGui::EndCombo();
     }
-    ImGui::SameLine();
-    if (ImGui::RadioButton("auto", settings.mode == ScopeMode::Auto)) {
+    ImGui::SameLine(0, 12);
+    BigText("T");
+    ImGui::SetItemTooltip("the Trigger: its Channel and its edge");
+    ImGui::SameLine(0, 6);
+    constexpr std::array<const char*, kScopeChannels> kSources{"1", "2", "3", "4"};
+    std::size_t source = settings.source;
+    if (Choice("##source", kSources, source, kBig)) {
         ScopeSettings next = settings;
-        next.mode = ScopeMode::Auto;
+        next.source = source;
         set(next);
     }
-    ImGui::SameLine();
-    if (ImGui::RadioButton("normal", settings.mode == ScopeMode::Normal)) {
+    ImGui::SameLine(0, 6);
+    constexpr std::array<const char*, 2> kEdges{"rise", "fall"};
+    std::size_t edge = settings.edge == ScopeEdge::Fall ? 1 : 0;
+    if (Choice("##edge", kEdges, edge, kBig)) {
         ScopeSettings next = settings;
-        next.mode = ScopeMode::Normal;
+        next.edge = edge == 1 ? ScopeEdge::Fall : ScopeEdge::Rise;
         set(next);
     }
-    ImGui::SameLine(0, 16);
-    if (ImGui::Button(stopped_ ? "Run" : "Stop", {50, 0})) {
+    ImGui::SameLine(0, 12);
+    constexpr std::array<const char*, 2> kModes{"auto", "normal"};
+    std::size_t mode = settings.mode == ScopeMode::Normal ? 1 : 0;
+    if (Choice("##mode", kModes, mode, kBig)) {
+        ScopeSettings next = settings;
+        next.mode = mode == 1 ? ScopeMode::Normal : ScopeMode::Auto;
+        set(next);
+    }
+    ImGui::SameLine(0, 12);
+    if (ImGui::Button(stopped_ ? "Run" : "Stop", {56, kBig})) {
         stopped_ = !stopped_;
     }
     ImGui::SetItemTooltip(stopped_ ? "show the next Sweep" : "keep this Sweep on the screen");
-    ImGui::SameLine(0, 12);
-    ImGui::TextUnformatted(StateText(session, stopped_));
 
-    // Header line 2: position (the delay), typed or dragged on the screen.
+    // Header line 2: position (the delay), from the number pad or dragged on the screen.
+    ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted("position");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(90);
-    if (!delayEditing_) {
-        // To the tenth of a division a drag snaps to, so 98.45 µs never reads 98.4 µs.
-        const std::string text = FormatTimeStep(settings.delay, settings.timebase / 10, false);
-        std::ranges::fill(delayText_, '\0');
-        std::ranges::copy(text.substr(0, delayText_.size() - 1), delayText_.begin());
-    }
-    if (delayRefused_) {
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4{0.55f, 0.1f, 0.1f, 1.0f});
-    }
-    ImGui::InputText("##delay", delayText_.data(), delayText_.size());
-    if (delayRefused_) {
-        ImGui::PopStyleColor();
-    }
-    ImGui::SetItemTooltip("time from the Trigger to its mark: 12.5us, 2ms, 0 (or drag the screen)");
-    delayEditing_ = ImGui::IsItemActive();
-    if (ImGui::IsItemEdited()) {
-        delayRefused_ = false;
-    }
+    // To the tenth of a division a drag snaps to, so 98.45 µs never reads 98.4 µs.
+    std::string delay = FormatTimeStep(settings.delay, settings.timebase / 10, false);
     const Time maxDelay = kMaxDelayDivisions * settings.timebase;
-    if (ImGui::IsItemDeactivatedAfterEdit()) {
-        std::string text(delayText_.data());
-        std::erase(text, ' ');
-        const auto parsed = text == "0" ? std::expected<Time, std::string>(0) : ParseDuration(text);
+    if (NumberField("##delay", delay, PadKind::Duration, 104, delayRefused_)) {
+        std::erase(delay, ' ');
+        const auto parsed =
+            delay == "0" ? std::expected<Time, std::string>(0) : ParseDuration(delay);
         delayRefused_ = !parsed || *parsed > maxDelay;
         if (!delayRefused_) {
             ScopeSettings next = settings;
@@ -212,15 +197,19 @@ bool ScopeWindow::draw(bool& open, Session& session) {
             set(next);
         }
     }
+    ImGui::SetItemTooltip("time from the Trigger to its mark: 12.5us, 2ms, 0 (or drag the screen)");
     ImGui::SameLine();
-    if (ImGui::Button("T", {28, 0})) {
+    if (ImGui::Button("T", {kControl, 0})) {
         ScopeSettings next = settings;
         next.delay = 0;
         set(next);
+        delayRefused_ = false;
     }
     ImGui::SetItemTooltip("the Trigger back at the first division (double-click)");
     ImGui::SameLine(0, 24);
     ImGui::TextColored(kHintGrey, "1 V/div");
+    ImGui::SameLine(0, 24);
+    ImGui::TextUnformatted(StateText(session, stopped_));
 
     // Axis strip: reserved here, drawn once the input below settles the view.
     const float axisY = ImGui::GetCursorScreenPos().y;
@@ -234,7 +223,9 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         }
     }
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    const float footer = 3 * line + 2 * ImGui::GetStyle().ItemSpacing.y;
+    // Under the screen: two rows of Hooks, each as high as its x button, and the status line.
+    const float footer =
+        2 * (kControl + ImGui::GetStyle().ItemSpacing.y) + line + ImGui::GetStyle().ItemSpacing.y;
     const float bandHeight =
         std::max(kMinBand, (ImGui::GetContentRegionAvail().y - footer) /
                                static_cast<float>(std::max<std::size_t>(1, bands.size())));
@@ -282,11 +273,31 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         // From the press, so slow drags are not rounded away frame by frame.
         set(WithView(*pressed_, Pan(ScopeView(*pressed_), *input.dragFromPress, width)));
     }
+    // A finger's Marker and cursor land on an edge of the band it is on, within 12 px (P8f).
+    const auto landed = [&](float px) {
+        const Time t = timeAt(px);
+        if (!FingerPointer() || !shown_ || bands.empty()) {
+            return t;
+        }
+        const auto band = std::clamp<std::ptrdiff_t>(
+            static_cast<std::ptrdiff_t>((input.pressY - top.y) / bandHeight), 0,
+            static_cast<std::ptrdiff_t>(bands.size()) - 1);
+        const auto& samples = shown_->channels[bands[static_cast<std::size_t>(band)]];
+        if (samples.size() < 2) {
+            return t;
+        }
+        const Time triggerAt = TriggerTime(*shown_);
+        const double reach = kEdgeReach / width * static_cast<double>(ScopeView(settings).span());
+        const auto edge = SnapToEdge(
+            std::span(samples).subspan(1), static_cast<double>(t), reach,
+            [&](const Sample& sample) { return sample.time - triggerAt; });  // the first: no edge
+        return edge ? static_cast<Time>(std::llround(*edge)) : t;
+    };
     if (input.marker) {
-        marker_ = timeAt(*input.marker);
+        marker_ = landed(*input.marker);
     }
     if (input.scrub) {
-        placedCursor_ = timeAt(*input.scrub);
+        placedCursor_ = landed(*input.scrub);
     }
     if (input.released) {
         pressed_.reset();
@@ -421,9 +432,14 @@ bool ScopeWindow::draw(bool& open, Session& session) {
             ImGui::SameLine(width / 2 + ImGui::GetStyle().WindowPadding.x);
         }
         const auto& hook = session.scope().hooks()[c];
-        ImGui::ColorButton("##colour", ImColor(kHookColours[c]),
-                           ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker, {12, 12});
+        // A row as high as its x button: the swatch drawn centred on it, the text aligned.
+        const ImVec2 swatch = ImGui::GetCursorScreenPos();
+        ImGui::Dummy({12, kControl});
+        ImGui::GetWindowDrawList()->AddRectFilled({swatch.x, swatch.y + (kControl - 12) / 2},
+                                                  {swatch.x + 12, swatch.y + (kControl + 12) / 2},
+                                                  kHookColours[c]);
         ImGui::SameLine();
+        ImGui::AlignTextToFramePadding();
         const float rowX = ImGui::GetCursorPosX();
         if (hook) {
             ImGui::Text("%zu  %s", c + 1, hook->label.c_str());
@@ -436,7 +452,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         }
         ImGui::SameLine(rowX + 250);
         ImGui::BeginDisabled(!hook);
-        if (ImGui::SmallButton("×")) {
+        if (ImGui::Button("×", {kControl, kControl})) {
             session.scope().unhook(c);
         }
         ImGui::EndDisabled();

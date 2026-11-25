@@ -267,7 +267,10 @@ void ApplyStyle();
 // value opens every value in two columns of kBig lines. True when `index` changed.
 bool Stepper(const char* id, std::span<const std::string> values, std::size_t& index,
              float valueWidth);
-// Buttons side by side, the `index`-th lit. True when it changed.
+// A text on a line of kBig controls (beside a Stepper), centred on its height.
+void BigText(const char* text, ImU32 colour = 0);
+// Buttons side by side, the `index`-th lit. True when it changed. `height`: kBig on a line that
+// holds a Stepper, so the line's controls are one height.
 bool Choice(const char* id, std::span<const char* const> labels, std::size_t& index,
             float height = kControl);
 // The value as a button; a click opens the choices as a strip of kBig buttons.
@@ -358,7 +361,7 @@ The header lines grow: the columns' places (`kLabelWidth`, `kValueX`, `kTriggerX
 - **D4** `MatrixKeyboardWindow::drawCaps`: a left click on a key that is no SHIFT, HOLD off, also calls `session.inputs().press(reference, MatrixPress{key, shifted})`: the press queued in simulation time that the PC's keys use.
 - **D2** `tv_window.cpp`: the knobs', the slot's and the trimmer's items at least 44 px.
 - **D3**: an `InvisibleButton` over the glass; the loupe while the pointer is free over the window and not `Touch().two` (today's), or while that item is active, then drawn 80 px above the pointer.
-- **L7** `question_popup.cpp`, `thank_you_card.cpp`: buttons `{110, kBig}` and `kBig` high; the tick box's line `kBig` high.
+- **L7** `question_popup.cpp`, `thank_you_card.cpp`: buttons `{110, kBig}` and `kBig` high.
 
 ## 9. The Launcher and the Shelf (L1–L6, L9)
 

@@ -2,11 +2,17 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <format>
+#include <span>
+#include <string>
+#include <system_error>
 #include <utility>
+#include <vector>
 
 #include <imgui.h>
 
+#include "ui/controls.hpp"
 #include "ui/manual_view.hpp"
 
 namespace bw {
@@ -15,7 +21,6 @@ namespace {
 
 constexpr float kTitleScale = 1.3f;
 constexpr float kLabelScale = 0.8f;
-constexpr ImU32 kPaper = IM_COL32(246, 242, 228, 255);  // a combo's list: a slip of paper
 constexpr ImU32 kGlyphBack = IM_COL32(30, 28, 26, 255);
 constexpr ImU32 kGlyphLit = IM_COL32(255, 200, 80, 255);  // a lit phosphor on the paper
 constexpr ImU32 kOutline = kPageLink;
@@ -53,44 +58,59 @@ private:
     bool first_ = true;
 };
 
-constexpr float kHexField = 46, kSlider = 64;
+constexpr float kHexField = 56;
 
-// "Label [field]": an InputScalar in hex; true when edited (or Enter, with EnterReturnsTrue).
+// "Label [field]": a number's field in hex, `digits` wide, set from the number pad (P8f); true
+// when a value was confirmed.
 template <typename T>
-bool HexField(Row& row, const char* label, const char* id, T& value, const char* format,
-              ImGuiInputTextFlags flags = 0) {
-    const ImGuiDataType type = sizeof(T) == 2 ? ImGuiDataType_U16 : ImGuiDataType_U64;
+bool HexField(Row& row, const char* label, const char* id, T& value, int digits) {
     row.next(ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemInnerSpacing.x + kHexField);
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(label);
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
-    ImGui::SetNextItemWidth(kHexField);
-    return ImGui::InputScalar(id, type, &value, nullptr, nullptr, format,
-                              ImGuiInputTextFlags_CharsHexadecimal | flags);
+    std::string text = std::format("{:0{}X}", static_cast<std::uint64_t>(value), digits);
+    if (!NumberField(id, text, PadKind::Hex, kHexField, false, 4)) {
+        return false;
+    }
+    std::uint64_t parsed = 0;
+    if (std::from_chars(text.data(), text.data() + text.size(), parsed, 16).ec != std::errc{}) {
+        return false;
+    }
+    value = static_cast<T>(parsed);
+    return true;
 }
 
-bool Combo(Row& row, const char* label, const char* id, int& value, const char* items,
-           float width) {
-    row.next(ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemInnerSpacing.x + width);
+// "Label [a|b|c]": buttons side by side (P8f: no dropdown); true when the choice changed.
+bool Choices(Row& row, const char* label, const char* id, int& value,
+             std::span<const char* const> names) {
+    float width = ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemInnerSpacing.x;
+    for (const char* name : names) {
+        width += ImGui::CalcTextSize(name).x + 2 * ImGui::GetStyle().FramePadding.x + 1;
+    }
+    row.next(width);
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(label);
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
-    ImGui::SetNextItemWidth(width);
-    ImGui::PushStyleColor(ImGuiCol_PopupBg, kPaper);
-    const bool changed = ImGui::Combo(id, &value, items);
-    ImGui::PopStyleColor();
+    auto index = static_cast<std::size_t>(value);
+    const bool changed = Choice(id, names, index);
+    value = static_cast<int>(index);
     return changed;
 }
 
-bool Slider(Row& row, const char* label, const char* id, unsigned& value, int low, int high) {
-    row.next(ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemInnerSpacing.x + kSlider);
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(label);
+// "Label - n +": a stepper from `low` to `high` (P8f: no slider); true when it changed.
+bool Steps(Row& row, const char* label, const char* id, unsigned& value, int low, int high) {
+    constexpr float kValueWidth = 36;
+    row.next(ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemInnerSpacing.x + 2 * kBig +
+             kValueWidth + 2);
+    BigText(label);
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
-    ImGui::SetNextItemWidth(kSlider);
-    int v = static_cast<int>(value);
-    const bool changed = ImGui::SliderInt(id, &v, low, high);
-    value = static_cast<unsigned>(std::clamp(v, low, high));
+    std::vector<std::string> values;
+    for (int v = low; v <= high; ++v) {
+        values.push_back(std::to_string(v));
+    }
+    auto index = static_cast<std::size_t>(std::clamp(static_cast<int>(value), low, high) - low);
+    const bool changed = Stepper(id, values, index, kValueWidth);
+    value = static_cast<unsigned>(low + static_cast<int>(index));
     return changed;
 }
 
@@ -151,23 +171,12 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
         {{ContentsView::Hex, "Hex"},
          {ContentsView::Code, "Code"},
          {ContentsView::Glyphs, "Glyphs"}}};
-    for (std::size_t i = 0; i < kViews.size(); ++i) {
-        if (i > 0) {
-            ImGui::SameLine();
-        }
-        const bool on = s.view == kViews[i].first;
-        if (on) {  // the open view: pressed in, framed in ink
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
-            ImGui::PushStyleColor(ImGuiCol_Border, ImGui::GetColorU32(ImGuiCol_Text));
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-        }
-        if (ImGui::SmallButton(kViews[i].second)) {
-            s.view = kViews[i].first;
-        }
-        if (on) {
-            ImGui::PopStyleVar();
-            ImGui::PopStyleColor(2);
-        }
+    constexpr std::array<const char*, 3> kViewNames{"Hex", "Code", "Glyphs"};
+    auto viewIndex = static_cast<std::size_t>(
+        std::ranges::find(kViews, s.view, &std::pair<ContentsView, const char*>::first) -
+        kViews.begin());
+    if (Choice("##view", kViewNames, viewIndex)) {
+        s.view = kViews[viewIndex].first;
     }
     settingsLine(s, words);
     ImGui::Spacing();
@@ -194,42 +203,42 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
 void ContentsPage::settingsLine(ContentsSettings& s, std::size_t words) {
     Row row;
     if (s.view != ContentsView::Glyphs) {  // glyphs count the chip's own words
-        HexField(row, "Address", "##address", s.address, "%04X");
+        HexField(row, "Address", "##address", s.address, 4);
     }
     bool goTo = false;
     switch (s.view) {
     case ContentsView::Hex: {
         int set = static_cast<int>(s.charset);
-        if (Combo(row, "Characters", "##charset", set, "ASCII\0PETSCII\0ZX80\0", 76)) {
+        constexpr std::array<const char*, 3> kCharsets{"ASCII", "PETSCII", "ZX80"};
+        if (Choices(row, "Characters", "##charset", set, kCharsets)) {
             s.charset = static_cast<CharacterSet>(set);
         }
-        goTo =
-            HexField(row, "Go to", "##goto", goTo_, "%04X", ImGuiInputTextFlags_EnterReturnsTrue);
+        goTo = HexField(row, "Go to", "##goto", goTo_, 4);
         break;
     }
     case ContentsView::Code: {
         int cpu = static_cast<int>(s.cpu);
-        if (Combo(row, "CPU", "##cpu", cpu, "6502\0Z80\0", 60)) {
+        constexpr std::array<const char*, 2> kCpus{"6502", "Z80"};
+        if (Choices(row, "CPU", "##cpu", cpu, kCpus)) {
             s.cpu = static_cast<Cpu>(cpu);
         }
         std::uint64_t from = s.codeFrom;
-        if (HexField(row, "From", "##from", from, "%03llX")) {
+        if (HexField(row, "From", "##from", from, 3)) {
             s.codeFrom = std::min<std::size_t>(from, words - 1);
         }
         std::uint64_t length = s.codeLength != 0 ? s.codeLength : words - s.codeFrom;
-        if (HexField(row, "Length", "##length", length, "%03llX")) {
+        if (HexField(row, "Length", "##length", length, 3)) {
             s.codeLength = length;
         }
-        goTo =
-            HexField(row, "Go to", "##goto", goTo_, "%04X", ImGuiInputTextFlags_EnterReturnsTrue);
+        goTo = HexField(row, "Go to", "##goto", goTo_, 4);
         break;
     }
     case ContentsView::Glyphs: {
         std::uint64_t from = s.glyphFrom;
-        if (HexField(row, "From", "##from", from, "%03llX")) {
+        if (HexField(row, "From", "##from", from, 3)) {
             s.glyphFrom = std::min<std::size_t>(from, words - 1);
         }
-        Slider(row, "Rows", "##rows", s.glyphRows, 1, 16);
+        Steps(row, "Rows", "##rows", s.glyphRows, 1, 16);
         break;
     }
     }

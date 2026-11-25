@@ -17,6 +17,7 @@ add_library(bw_view STATIC
   pace.cpp
   keyboard_layout.cpp
   matrix_keyboard_layout.cpp
+  number_pad.cpp
   pencil_marks.cpp
   power_cycle.cpp
   repair_ack.cpp

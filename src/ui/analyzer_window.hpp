@@ -50,10 +50,6 @@ private:
         std::size_t channel = 0;           // Channel rows and members
         bool member = false;
     };
-    struct PatternEdit {
-        std::array<char, 16> text{};
-        bool refused = false;
-    };
 
     std::vector<Row> rows(const Session& session) const;
     const CaptureRuns& runs(const std::vector<std::size_t>& channels);
@@ -74,8 +70,7 @@ private:
     std::set<std::size_t> selected_;  // Channels picked for a hand group
     std::set<std::string> expanded_;  // group names shown with their members
     std::map<std::vector<std::size_t>, CaptureRuns> runs_;  // for shown_
-    std::map<std::string, PatternEdit> patterns_;           // per group name
-    std::string editing_;                                   // group whose pattern is active
+    std::map<std::string, bool> patternRefused_;  // per group name: its last pattern not taken
 };
 
 }  // namespace bw

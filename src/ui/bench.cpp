@@ -14,8 +14,9 @@ namespace bw {
 
 namespace {
 
-constexpr float kCloseSize = 14;
-constexpr ImU32 kCloseFaint = IM_COL32(200, 200, 200, 70);
+constexpr float kCloseSize = 22;  // the disc (P8f: 14, and faint until hovered)
+constexpr float kCloseHit = 40;   // its item: the window's corner
+constexpr ImU32 kCloseFaint = IM_COL32(215, 215, 215, 150);
 constexpr ImU32 kCloseBright = IM_COL32(240, 240, 240, 230);
 constexpr ImU32 kCloseDisc = IM_COL32(0, 0, 0, 120);
 
@@ -162,8 +163,9 @@ void SharpFont(ImFont* font) {
 bool CaseClose(float inset) {
     const ImVec2 pos = ImGui::GetWindowPos();
     const ImVec2 min{pos.x + ImGui::GetWindowWidth() - inset - kCloseSize, pos.y + inset};
-    ImGui::SetCursorScreenPos(min);
-    const bool clicked = ImGui::InvisibleButton("##case close", {kCloseSize, kCloseSize});
+    // Its item is the window's top right corner, larger than the disc: found by a finger.
+    ImGui::SetCursorScreenPos({pos.x + ImGui::GetWindowWidth() - kCloseHit, pos.y});
+    const bool clicked = ImGui::InvisibleButton("##case close", {kCloseHit, kCloseHit});
     const bool hovered = ImGui::IsItemHovered();
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const ImVec2 c{min.x + kCloseSize / 2, min.y + kCloseSize / 2};

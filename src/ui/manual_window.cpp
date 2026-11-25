@@ -338,7 +338,7 @@ void ManualWindows::datasheets(const Manuals& manuals, BoardView& board,
     const BoardScene* scene = board.scene();
     if (const auto chip = scene ? board.pointedComponent() : std::nullopt) {
         ImGui::PushID("chip");
-        if (ImGui::SmallButton("All datasheets")) {
+        if (ImGui::Button("All datasheets")) {
             board.deselect();
             binder_.closePart();
         }
@@ -349,7 +349,7 @@ void ManualWindows::datasheets(const Manuals& manuals, BoardView& board,
     }
     if (const auto& part = binder_.part()) {
         ImGui::PushID("sheet");
-        if (ImGui::SmallButton("All datasheets")) {
+        if (ImGui::Button("All datasheets")) {
             binder_.closePart();
         }
         ImGui::Spacing();

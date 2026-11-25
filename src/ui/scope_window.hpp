@@ -36,8 +36,7 @@ private:
     TimeCanvas canvas_;
     float panRest_ = 0;                     // px of horizontal wheel not yet a delay step
     std::optional<ScopeSettings> pressed_;  // settings when a drag began
-    std::array<char, 16> delayText_{};
-    bool delayEditing_ = false, delayRefused_ = false;
+    bool delayRefused_ = false;             // the position last entered was not taken
     // Column cache, per Channel: lo/hi volts per pixel; rebuilt when serial, width, rails or the
     // view change.
     std::array<std::vector<std::pair<float, float>>, kScopeChannels> columns_;

@@ -1,6 +1,11 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+#include <functional>
+#include <iterator>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -63,6 +68,31 @@ TimeView ScopeView(const ScopeSettings& settings);
 // Back: the timebase within kTimebases, the delay rounded to a tenth of a division and clamped
 // to 0 … kMaxDelayDivisions divisions.
 ScopeSettings WithView(ScopeSettings settings, const TimeView& view);
+
+// The edge nearest `at` within `reach`, among `sorted` (ascending once through `proj`, in `at`'s
+// unit); none out of reach. A finger's cursor and Marker land on it (P8f): the analyzer's run
+// starts in points, the scope's Samples by their time.
+template <std::ranges::random_access_range R, class Proj = std::identity>
+std::optional<double> SnapToEdge(R&& sorted, double at, double reach, Proj proj = {}) {
+    const auto value = [&](const auto& edge) {
+        return static_cast<double>(std::invoke(proj, edge));
+    };
+    const auto after = std::ranges::lower_bound(sorted, at, {}, value);
+    std::optional<double> best;
+    const auto consider = [&](auto edge) {
+        const double v = value(*edge);
+        if (std::abs(v - at) <= reach && (!best || std::abs(v - at) < std::abs(*best - at))) {
+            best = v;
+        }
+    };
+    if (after != std::ranges::end(sorted)) {
+        consider(after);
+    }
+    if (after != std::ranges::begin(sorted)) {
+        consider(std::ranges::prev(after));
+    }
+    return best;
+}
 
 // "cursor +3.7 µs   M +2 µs   dt 1.7 µs (588 kHz)" (the font has no Greek); parts left out
 // when unset; "" for neither.

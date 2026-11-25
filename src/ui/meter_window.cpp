@@ -1,5 +1,6 @@
 #include "ui/meter_window.hpp"
 
+#include <array>
 #include <format>
 #include <string>
 
@@ -7,6 +8,7 @@
 
 #include "ui/bench.hpp"
 #include "ui/board_view.hpp"
+#include "ui/controls.hpp"
 #include "ui/instrument_marks.hpp"
 #include "ui/shelf_drawings.hpp"
 
@@ -37,12 +39,10 @@ bool MeterWindow::draw(bool& open, Session& session) {
     }
     const bool clicked = InstrumentClicked();
     const MeterMode mode = session.meter().mode();
-    if (ImGui::RadioButton("V", mode == MeterMode::Volts)) {
-        session.meter().setMode(MeterMode::Volts);
-    }
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Continuity", mode == MeterMode::Continuity)) {
-        session.meter().setMode(MeterMode::Continuity);
+    constexpr std::array<const char*, 2> kModes{"V", "Continuity"};
+    std::size_t choice = mode == MeterMode::Continuity ? 1 : 0;
+    if (Choice("##mode", kModes, choice)) {
+        session.meter().setMode(choice == 1 ? MeterMode::Continuity : MeterMode::Volts);
     }
 
     if (mode == MeterMode::Continuity) {  // the Shelf's power switch, as tall as the readout
@@ -91,10 +91,11 @@ bool MeterWindow::draw(bool& open, Session& session) {
         ImGui::PopStyleColor();
     }
 
+    ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(LeadText("red", session.meter().red()).c_str());
     if (session.meter().red() || session.meter().black()) {
         ImGui::SameLine();
-        if (ImGui::SmallButton("\u00d7")) {
+        if (ImGui::Button("\u00d7", {kControl, kControl})) {
             session.meter().liftLeads();
         }
         ImGui::SetItemTooltip("Lift both leads");

@@ -17,7 +17,7 @@ ctest --preset release -j -R "^(fingers|number pad|view|time view|bench options|
 | 0 | Spec, design and plan, reviewed | `b07d734` |
 | 1 | Plumbing: the fingers, their glue, `--touch` and the scripted fingers | `0f46b16` |
 | 2 | The Board's zoom and picks; the view buttons; `/touch/` on Pages | `91fba8b` |
-| 3 | What has no control today: Stop, Hold, the cursor, the flag, pin / bus | |
+| 3 | What has no control today: Stop, Hold, the cursor, the flag, pin / bus | `9cddc7e` |
 | 4 | Sizes and numbers: the style, the stepper, the choices, the number pad | |
 | 5 | The loupe and lit-first repairs | |
 | 6 | Pages: drag to scroll, links at the release, "show" | |
@@ -175,3 +175,11 @@ Phase 3:
 - D4 (a clicked key typed in the Machine's time) joined this phase from phase 1's finding.
 - The Hold button shows only on a Board with a push button or a key; the keyboards' HOLD is a slide switch on the case, at the right of the BW-2001's strip and of the BW-80's bottom lip.
 - The pin / bus switch and the group's two choices are plain buttons here; phase 4 gives them the shared controls.
+
+Phase 4:
+
+- A line that holds a stepper has every control 44 px high (`Choice(…, kBig)`, `BigText`): two heights on one line could not be centred with ImGui's `SameLine`.
+- Measured again: the analyzer's label column 340 → 360 px (its x at 324), its normal size 940 × 440 → 940 × 520, its minimal 560 × 260 → 820 × 340 (its first header line needs about 800 px); the scope's 680 × 460 → 680 × 520 and 420 × 300 → 600 × 380; the Multimeter's 320 × 200 → 320 × 220.
+- The scope's − and + still zoom about the screen's centre (one step of the stepper); a value picked from its list sets the timebase alone.
+- A number field's value is confirmed whenever something was typed, the same value too (Go to twice).
+- The benches' sweep was the four that hold each kind of object (the Counter's Puzzle with its Brief, the Message, the BW-2001, the analyzer and scope on the Counter), not all fourteen: the style reaches framed controls only, and a bare bench has none.

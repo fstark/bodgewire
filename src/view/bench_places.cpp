@@ -69,11 +69,11 @@ Extent FirstSize(BenchObject object, Extent bench, float aspect, int count) {
 Extent NormalSize(BenchObject instrument) {
     switch (instrument) {
     case BenchObject::Analyzer:
-        return {940, 440};
+        return {940, 520};
     case BenchObject::Scope:
-        return {680, 460};
+        return {680, 520};
     case BenchObject::Meter:
-        return {320, 200};
+        return {320, 220};
     default:
         assert(false && "not an instrument");
         return {};
@@ -83,9 +83,9 @@ Extent NormalSize(BenchObject instrument) {
 Extent MinimalSize(BenchObject instrument) {
     switch (instrument) {
     case BenchObject::Analyzer:
-        return {560, 260};
+        return {820, 340};
     case BenchObject::Scope:
-        return {420, 300};
+        return {600, 380};
     case BenchObject::Meter:
         return {240, 150};
     default:

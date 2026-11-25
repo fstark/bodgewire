@@ -13,6 +13,7 @@
 #include "ui/bench.hpp"
 #include "ui/board_tags.hpp"
 #include "ui/brief_window.hpp"
+#include "ui/controls.hpp"
 #include "ui/manual_view.hpp"
 #include "ui/shelf.hpp"
 #include "ui/title.hpp"
@@ -48,6 +49,7 @@ constexpr float kTickSize = 34;   // px: a repaired Puzzle's tick on its post-it
 constexpr const char* kForgetHint = "Delete: forget the ticks";  // Proggy has no ⌫
 constexpr float kChevron = 18;                                   // px tall
 constexpr float kChevronGap = 10;                                // px outside the picture
+constexpr float kChevronHit = 44;                                // px: a chevron's item (P8f)
 constexpr auto kSettle = std::chrono::milliseconds(150);         // the selection at rest: load it
 constexpr ImU32 kName = IM_COL32(235, 235, 235, 255);
 constexpr ImU32 kParagraph = IM_COL32(200, 200, 205, 255);
@@ -573,8 +575,9 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
     if (anyTicked) {
         list.AddText(hintAt, kSpeedInk, kForgetHint);
         if (clicksOn) {
-            ImGui::SetCursorScreenPos(hintAt);
-            if (ImGui::InvisibleButton("##forget hint", forgetExtent)) {
+            // As high as a control (P8f): its line of text alone is 13 px.
+            ImGui::SetCursorScreenPos({hintAt.x, hintAt.y - (kControl - forgetExtent.y) / 2});
+            if (ImGui::InvisibleButton("##forget hint", {forgetExtent.x, kControl})) {
                 askNow = true;
             }
         }
@@ -686,9 +689,9 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
                 Chevron(list, tip, dir);
                 if (clicksOn) {
                     const float centre = tip.x - dir * kChevron * 0.3f;
-                    ImGui::SetCursorScreenPos({centre - kChevron * 0.8f, midY - kChevron * 0.8f});
+                    ImGui::SetCursorScreenPos({centre - kChevronHit / 2, midY - kChevronHit / 2});
                     ImGui::PushID(dir < 0 ? "previous" : "next");
-                    if (ImGui::InvisibleButton("##chevron", {kChevron * 1.6f, kChevron * 1.6f})) {
+                    if (ImGui::InvisibleButton("##chevron", {kChevronHit, kChevronHit})) {
                         clickedMachine = to;
                     }
                     ImGui::PopID();

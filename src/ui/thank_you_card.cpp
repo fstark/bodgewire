@@ -5,6 +5,7 @@
 #include <imgui.h>
 
 #include "ui/brief_window.hpp"
+#include "ui/controls.hpp"
 
 namespace bw {
 
@@ -68,7 +69,7 @@ CardAnswer ThankYouCard::draw(const std::string& title, const std::string* nextL
     const ImVec2 end{at.x + ImGui::GetWindowWidth(), at.y + ImGui::GetWindowHeight()};
     const float spacing = ImGui::GetStyle().ItemSpacing.y;
     DrawCard(*ImGui::GetWindowDrawList(), at, end, at.y + kPad + size * kHeadingScale + spacing / 2,
-             line, end.y - kPad - ImGui::GetFrameHeight() - spacing);
+             line, end.y - kPad - kBig - spacing);
 
     ImGui::PushStyleColor(ImGuiCol_Text, kNoteInk);
     ImGui::PushFont(nullptr, size * kHeadingScale);
@@ -87,18 +88,18 @@ CardAnswer ThankYouCard::draw(const std::string& title, const std::string* nextL
     ImGui::PushStyleColor(ImGuiCol_Border, kButtonBorder);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
     CardAnswer answer = CardAnswer::None;
-    if (ImGui::Button("Back to the Board")) {
+    if (ImGui::Button("Back to the Board", {0, kBig})) {
         answer = CardAnswer::Board;
     }
     if (nextLabel != nullptr) {
         ImGui::SameLine();
-        if (ImGui::Button(nextLabel->c_str())) {
+        if (ImGui::Button(nextLabel->c_str(), {0, kBig})) {
             answer = CardAnswer::Next;
         }
     }
     if (canLeave) {
         ImGui::SameLine();
-        if (ImGui::Button("Back to the Machines")) {
+        if (ImGui::Button("Back to the Machines", {0, kBig})) {
             answer = CardAnswer::Machines;
         }
     }

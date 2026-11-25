@@ -11,17 +11,21 @@
 
 #include "ui/bench.hpp"
 #include "ui/board_view.hpp"
+#include "ui/controls.hpp"
 #include "ui/instrument_marks.hpp"
+#include "ui/touch.hpp"
 #include "view/time_text.hpp"
 
 namespace bw {
 
 namespace {
 
-constexpr float kLaneHeight = 20.0f;
-constexpr float kOverviewHeight = 14.0f;
-constexpr float kLabelWidth = 340.0f;
-constexpr float kValueX = 190.0f, kTriggerX = 240.0f, kUnclipX = 316.0f;
+// A row and its lane, as high as a control (P8f); the overview strip as high.
+constexpr float kLaneHeight = kControl;
+constexpr float kOverviewHeight = 28.0f;
+constexpr float kLabelWidth = 360.0f;
+constexpr float kValueX = 190.0f, kTriggerX = 240.0f, kTriggerWidth = 76.0f, kUnclipX = 324.0f;
+constexpr float kEdgeReach = 12;  // px within which a finger's cursor lands on an edge
 constexpr ImU32 kUnknown = IM_COL32(140, 140, 140, 110);
 constexpr ImU32 kGridLine = IM_COL32(255, 255, 255, 22);
 constexpr ImU32 kOutside = IM_COL32(0, 0, 0, 70);  // beyond the Capture
@@ -29,13 +33,14 @@ constexpr ImU32 kOverviewBar = IM_COL32(20, 21, 24, 255);
 constexpr ImU32 kOverviewBox = IM_COL32(230, 230, 230, 255);
 constexpr ImU32 kFaint = IM_COL32(200, 200, 200, 90);
 constexpr ImU32 kBusText = IM_COL32(20, 20, 20, 255);
-constexpr ImVec4 kRefused{0.55f, 0.1f, 0.1f, 1.0f};
 constexpr std::array<const char*, 5> kConditions{"any", "0", "1", "rise", "fall"};
 constexpr std::array<TriggerPosition, 3> kPositions{TriggerPosition::Early, TriggerPosition::Middle,
                                                     TriggerPosition::Late};
-constexpr const char* kEmptyHint = "Clip, then click a chip pin. Shift-click: the pin's whole bus.";
+constexpr const char* kEmptyHint =
+    "Clip, then click a chip pin. The pin / bus switch clips a whole bus.";
 constexpr const char* kGestures =
-    "wheel: zoom   drag: pan   click: marker   right-click: clear   double-click: fit";
+    "wheel or pinch: zoom   drag: pan   click: marker   hold and slide: cursor   "
+    "double-click: fit";
 
 const char* PhaseText(AnalyzerPhase phase, bool powered) {
     switch (phase) {
@@ -184,54 +189,55 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
                                            ImGui::GetStyle().ScrollbarSize);
     const float laneX1 = laneX0 + width;
 
-    // Header line 1: tool, arm, sampling.
+    // Header line 1 (P8f: a stepper and choices, no dropdowns): arm, the phase, the sampling,
+    // where the Trigger sits in the Capture.
     const AnalyzerPhase phase = session.analyzer().phase();
     const bool running = phase == AnalyzerPhase::Armed || phase == AnalyzerPhase::Filling;
-    if (ImGui::Button(running ? "Stop" : "Arm", {60, 0})) {
+    if (ImGui::Button(running ? "Stop" : "Arm", {60, kBig})) {
         if (running) {
             session.analyzer().disarm();
         } else {
             session.analyzer().arm();
         }
     }
-    ImGui::SameLine(0, 16);
+    ImGui::SameLine(0, 12);
     // A slot as wide as the longest phase, so the settings after it never move.
     const float phaseX = ImGui::GetCursorPosX();
-    ImGui::TextUnformatted(PhaseText(phase, session.powered()));
+    BigText(PhaseText(phase, session.powered()));
     AnalyzerSettings settings = session.analyzer().settings();
     bool changed = false;
-    ImGui::SameLine(std::max(phaseX + ImGui::CalcTextSize("armed: waiting for trigger").x + 24,
-                             padX + kLabelWidth));
-    ImGui::TextUnformatted("Sample every");
+    ImGui::SameLine(phaseX + ImGui::CalcTextSize("armed: waiting for trigger").x + 16);
+    BigText("Sample every");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(90);
-    if (ImGui::BeginCombo("##period", FormatTime(settings.period, false).c_str())) {
+    // The periods run from the longest to the shortest: + samples finer.
+    static const std::vector<std::string> kPeriodNames = [] {
+        std::vector<std::string> names;
         for (const Time period : kAnalyzerPeriods) {
-            if (ImGui::Selectable(FormatTime(period, false).c_str(), period == settings.period)) {
-                settings.period = period;
-                changed = true;
-            }
+            names.push_back(FormatTime(period, false));
         }
-        ImGui::EndCombo();
+        return names;
+    }();
+    auto periodStep = static_cast<std::size_t>(
+        std::ranges::find(kAnalyzerPeriods, settings.period) - kAnalyzerPeriods.begin());
+    periodStep = std::min(periodStep, kAnalyzerPeriods.size() - 1);
+    if (Stepper("##period", kPeriodNames, periodStep, 84)) {
+        settings.period = kAnalyzerPeriods[periodStep];
+        changed = true;
     }
+    ImGui::SameLine(0, 16);
+    BigText("Before T");
     ImGui::SameLine();
-    ImGui::TextColored(kHintGrey, "· %s captured",
-                       FormatTime(static_cast<Time>(kDepth) * settings.period, false).c_str());
-    ImGui::SameLine(0, 24);
-    ImGui::TextUnformatted("Before T");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(90);
-    if (ImGui::BeginCombo(
-            "##position",
-            FormatTime(BeforeTrigger(settings.position, settings.period), false).c_str())) {
-        for (const TriggerPosition position : kPositions) {
-            const std::string text = FormatTime(BeforeTrigger(position, settings.period), false);
-            if (ImGui::Selectable(text.c_str(), position == settings.position)) {
-                settings.position = position;
-                changed = true;
-            }
-        }
-        ImGui::EndCombo();
+    std::array<std::string, kPositions.size()> beforeTexts;
+    std::array<const char*, kPositions.size()> beforeLabels{};
+    for (std::size_t i = 0; i < kPositions.size(); ++i) {
+        beforeTexts[i] = FormatTime(BeforeTrigger(kPositions[i], settings.period), false);
+        beforeLabels[i] = beforeTexts[i].c_str();
+    }
+    auto position = static_cast<std::size_t>(std::ranges::find(kPositions, settings.position) -
+                                             kPositions.begin());
+    if (Choice("##position", beforeLabels, position, kBig)) {
+        settings.position = kPositions[position];
+        changed = true;
     }
 
     // Header line 2: Channels left, the view's controls over the lanes.
@@ -240,27 +246,17 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     ImGui::AlignTextToFramePadding();
     ImGui::TextColored(kHintGrey, "%zu of %zu clipped", clipped, kChannels);
     // The pin / bus switch (P8f): what Shift does to a click on a pin.
-    const auto mode = [&](const char* label, bool bus) {
-        const bool on = bus_ == bus;
-        if (on) {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
-        }
-        if (ImGui::Button(label)) {
-            bus_ = bus;
-        }
-        if (on) {
-            ImGui::PopStyleColor();
-        }
-    };
     ImGui::SameLine(0, 12);
-    mode("pin", false);
-    ImGui::SameLine(0, 0);
-    mode("bus", true);
+    constexpr std::array<const char*, 2> kClipModes{"pin", "bus"};
+    std::size_t clipMode = bus_ ? 1 : 0;
+    if (Choice("##clip", kClipModes, clipMode)) {
+        bus_ = clipMode == 1;
+    }
     ImGui::SetItemTooltip("bus: a click on a pin clips, or unclips, its whole bus");
     std::erase_if(selected_,
                   [&](std::size_t c) { return !session.analyzer().clips()[c].has_value(); });
     if (selected_.size() >= 2) {
-        ImGui::SameLine(0, 16);
+        ImGui::SameLine(0, 12);
         if (ImGui::Button("Group")) {
             // Selected in row order, the top row most significant.
             std::vector<std::size_t> picked;
@@ -275,29 +271,32 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     }
     ImGui::SameLine(padX + kLabelWidth);
     ImGui::BeginDisabled(!shown_);
-    if (ImGui::Button("-", {24, 0}) && shown_) {
+    if (ImGui::Button("-", {kBig, 0}) && shown_) {
         zoom(view_.left + view_.span() / 2, -1);
     }
-    ImGui::SetItemTooltip("zoom out (wheel)");
-    ImGui::SameLine();
+    ImGui::SetItemTooltip("zoom out (wheel or pinch)");
+    ImGui::SameLine(0, 1);
     const std::string perDivision = FormatTime(view_.perDivision, false) + "/div";
     ImGui::Button(shown_ ? perDivision.c_str() : "-/div", {100, 0});
-    ImGui::SameLine();
-    if (ImGui::Button("+", {24, 0}) && shown_) {
+    ImGui::SameLine(0, 1);
+    if (ImGui::Button("+", {kBig, 0}) && shown_) {
         zoom(view_.left + view_.span() / 2, 1);
     }
-    ImGui::SetItemTooltip("zoom in (wheel)");
-    ImGui::SameLine(0, 16);
-    if (ImGui::Button("Fit") && shown_) {
+    ImGui::SetItemTooltip("zoom in (wheel or pinch)");
+    ImGui::SameLine(0, 12);
+    if (ImGui::Button("Fit", {kBig, 0}) && shown_) {
         view_ = Fit(RecordOf(*shown_));
     }
     ImGui::SetItemTooltip("the whole Capture (double-click)");
-    ImGui::SameLine();
-    if (ImGui::Button("T", {28, 0}) && shown_) {
+    ImGui::SameLine(0, 4);
+    if (ImGui::Button("T", {kBig, 0}) && shown_) {
         view_ = CentredOn(view_.perDivision, 0);
     }
     ImGui::SetItemTooltip("centre on the Trigger");
     ImGui::EndDisabled();
+    ImGui::SameLine(0, 16);
+    ImGui::TextColored(kHintGrey, "%s captured",
+                       FormatTime(static_cast<Time>(kDepth) * settings.period, false).c_str());
 
     // Both read view_ as it is when called: input below changes it before anything is drawn.
     const auto x = [&](Time t) {
@@ -372,11 +371,38 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         if (input.dragStep != 0) {
             view_ = Pan(view_, input.dragStep, width);
         }
+        // A finger's Marker and cursor land on an edge of the row it is on, within 12 px (P8f).
+        const auto landed = [&](float px) {
+            const Time t = timeAt(px);
+            if (!FingerPointer() || list.empty()) {
+                return t;
+            }
+            const auto index = std::clamp<std::ptrdiff_t>(
+                static_cast<std::ptrdiff_t>((input.pressY - origin.y) / kLaneHeight), 0,
+                static_cast<std::ptrdiff_t>(list.size()) - 1);
+            const Row& on = list[static_cast<std::size_t>(index)];
+            const std::vector<std::size_t> channels =
+                on.group && !on.member ? session.analyzer().groups()[*on.group].channels
+                                       : std::vector{on.channel};
+            const CaptureRuns& r = runs(channels);
+            if (r.start.size() < 2) {
+                return t;
+            }
+            const double samplePeriod = static_cast<double>(shown_->period);
+            const double triggerPoint = static_cast<double>(shown_->trigger);
+            const double reach =
+                kEdgeReach / width * static_cast<double>(view_.span()) / samplePeriod;
+            const auto edge =
+                SnapToEdge(std::span(r.start).subspan(1),  // the first start is no edge
+                           triggerPoint + static_cast<double>(t) / samplePeriod, reach);
+            return edge ? static_cast<Time>(std::llround((*edge - triggerPoint) * samplePeriod))
+                        : t;
+        };
         if (input.marker) {
-            marker_ = timeAt(*input.marker);
+            marker_ = landed(*input.marker);
         }
         if (input.scrub) {
-            placedCursor_ = timeAt(*input.scrub);
+            placedCursor_ = landed(*input.scrub);
         }
         view_ = Clamp(view_, record);
         if (input.hover) {
@@ -500,10 +526,13 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
             draw.AddRectFilled({origin.x, top}, {laneX1, top + kLaneHeight},
                                IM_COL32(255, 255, 255, 8));
         }
-        ImGui::SetCursorScreenPos({origin.x + (row.member ? 16.0f : 0.0f), top + 1});
-        ImGui::ColorButton("##colour", ImColor(colour),
-                           ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker, {12, 12});
-        ImGui::SameLine();
+        // The row's controls, each placed on its line (P8f): the swatch, the fold arrow or the
+        // name, the value, the Trigger, the x.
+        const float indent = row.member ? 16.0f : 0.0f;
+        const float textY = top + (kLaneHeight - ImGui::GetTextLineHeight()) / 2;
+        draw.AddRectFilled({origin.x + indent, top + (kLaneHeight - 12) / 2},
+                           {origin.x + indent + 12, top + (kLaneHeight + 12) / 2}, colour);
+        const float nameX = origin.x + indent + 20;
         std::string value;
         const auto readValue = [&](bool asBus) {
             if (!shown_ || !readTime) {
@@ -520,6 +549,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         };
         if (group && !row.member) {
             const bool unfolded = expanded_.contains(group->name);
+            ImGui::SetCursorScreenPos({nameX, top});
             if (ImGui::ArrowButton("##expand", unfolded ? ImGuiDir_Down : ImGuiDir_Right)) {
                 if (unfolded) {
                     expanded_.erase(group->name);
@@ -527,74 +557,50 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
                     expanded_.insert(group->name);
                 }
             }
-            ImGui::SameLine();
+            ImGui::SetCursorScreenPos({nameX + kLaneHeight + 6, textY});
             ImGui::Text("%s[%zu:0]", group->name.c_str(), group->channels.size() - 1);
             readValue(true);
         } else {
+            // The whole name cell, as high as the row, selects the Channel for a group.
             const auto& clip = session.analyzer().clips()[row.channel];
             const std::string label = clip ? clip->label : "free";
-            if (ImGui::Selectable(label.c_str(), selected_.contains(row.channel), 0, {120, 0})) {
+            ImGui::SetCursorScreenPos({nameX, top});
+            ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, {0.0f, 0.5f});
+            if (ImGui::Selectable(label.c_str(), selected_.contains(row.channel), 0,
+                                  {origin.x + kValueX - 8 - nameX, kLaneHeight})) {
                 if (!selected_.erase(row.channel)) {
                     selected_.insert(row.channel);
                 }
             }
+            ImGui::PopStyleVar();
             ImGui::SetItemTooltip("click: select for a group");
             readValue(false);
         }
-        ImGui::SameLine(origin.x - ImGui::GetWindowPos().x + kValueX);
-        ImGui::TextUnformatted(value.c_str());
-        ImGui::SameLine(origin.x - ImGui::GetWindowPos().x + kTriggerX);
-        ImGui::SetNextItemWidth(60);
+        draw.AddText({origin.x + kValueX, textY}, ImGui::GetColorU32(ImGuiCol_Text), value.c_str());
         if (group && !row.member) {
-            ImGui::SetNextItemWidth(
-                std::max(60.0f, ImGui::CalcTextSize("0").x *
-                                        static_cast<float>((group->channels.size() + 3) / 4) +
-                                    12));
-            PatternEdit& edit = patterns_[group->name];
-            if (editing_ != group->name) {
-                const std::string text = session.analyzer().groupTrigger(*row.group);
-                std::ranges::fill(edit.text, '\0');
-                std::ranges::copy(text.substr(0, edit.text.size() - 1), edit.text.begin());
-            }
-            if (edit.refused) {
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, kRefused);
-            }
-            ImGui::InputText("##pattern", edit.text.data(), edit.text.size());
-            if (edit.refused) {
-                ImGui::PopStyleColor();
-            }
-            ImGui::SetItemTooltip("bus Trigger: hex, x = any (E0xx)");
-            if (ImGui::IsItemActive()) {
-                editing_ = group->name;
-            } else if (editing_ == group->name) {
-                editing_.clear();
-            }
-            if (ImGui::IsItemEdited()) {
-                edit.refused = false;
-            }
-            if (ImGui::IsItemDeactivatedAfterEdit()) {
-                edit.refused = !session.analyzer().setGroupTrigger(*row.group, edit.text.data());
+            ImGui::SetCursorScreenPos({origin.x + kTriggerX, top});
+            std::string pattern = session.analyzer().groupTrigger(*row.group);
+            bool& refused = patternRefused_[group->name];
+            if (NumberField("##pattern", pattern, PadKind::Pattern, kTriggerWidth, refused,
+                            (group->channels.size() + 3) / 4)) {
+                refused = !session.analyzer().setGroupTrigger(*row.group, pattern);
                 settings = session.analyzer().settings();
             }
+            ImGui::SetItemTooltip("bus Trigger: hex, x = any (E0xx)");
         } else if (row.member) {
-            ImGui::TextColored(
-                kHintGrey, "%s",
-                kConditions[static_cast<std::size_t>(settings.trigger[row.channel])]);
+            draw.AddText({origin.x + kTriggerX, textY}, ImGui::GetColorU32(kHintGrey),
+                         kConditions[static_cast<std::size_t>(settings.trigger[row.channel])]);
         } else {
-            const auto condition = static_cast<std::size_t>(settings.trigger[row.channel]);
-            if (ImGui::BeginCombo("##trigger", kConditions[condition])) {
-                for (std::size_t t = 0; t < kConditions.size(); ++t) {
-                    if (ImGui::Selectable(kConditions[t], t == condition)) {
-                        settings.trigger[row.channel] = static_cast<TriggerCondition>(t);
-                        changed = true;
-                    }
-                }
-                ImGui::EndCombo();
+            ImGui::SetCursorScreenPos({origin.x + kTriggerX, top});
+            auto condition = static_cast<std::size_t>(settings.trigger[row.channel]);
+            if (ChoicePopup("##trigger", kConditions, condition, kTriggerWidth, kLaneHeight)) {
+                settings.trigger[row.channel] = static_cast<TriggerCondition>(condition);
+                changed = true;
             }
         }
-        ImGui::SameLine(origin.x - ImGui::GetWindowPos().x + kUnclipX);
+        ImGui::SetCursorScreenPos({origin.x + kUnclipX, top});
         bool rowsChanged = false;
-        if (ImGui::SmallButton("×")) {
+        if (ImGui::Button("\u00d7", {kLaneHeight, kLaneHeight})) {
             if (group && !row.member) {
                 if (ImGui::GetIO().KeyShift) {
                     session.analyzer().unclipGroup(*row.group);
@@ -610,12 +616,12 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         ImGui::SetItemTooltip(group && !row.member ? "ungroup, or unclip the whole group"
                                                    : "unclip");
         if (group && !row.member && ImGui::BeginPopup("##group")) {
-            if (ImGui::Button("Ungroup", {120, 44})) {
+            if (ImGui::Button("Ungroup", {120, kBig})) {
                 session.analyzer().ungroup(*row.group);
                 rowsChanged = true;
             }
             ImGui::SameLine();
-            if (ImGui::Button("Unclip all", {120, 44})) {
+            if (ImGui::Button("Unclip all", {120, kBig})) {
                 session.analyzer().unclipGroup(*row.group);
                 rowsChanged = true;
             }
@@ -703,7 +709,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     if (shown_) {
         StatusLine(cursor, marker_, kGestures);
     } else {
-        ImGui::TextColored(kHintGrey, "%s", "shift-click a pin: its whole bus");
+        ImGui::TextColored(kHintGrey, "%s", "the pin / bus switch: a pin's whole bus");
     }
     if (changed) {
         session.analyzer().setSettings(settings);
