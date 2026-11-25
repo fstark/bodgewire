@@ -11,6 +11,7 @@
 
 #include "instruments/logic_analyzer.hpp"
 #include "session/session.hpp"
+#include "ui/controls.hpp"
 #include "ui/gestures.hpp"
 #include "view/time_view.hpp"
 
@@ -60,6 +61,8 @@ private:
     TimeView view_;
     std::optional<Time> marker_;  // ps from the Trigger
     TimeCanvas canvas_;
+    DragScroll labelScroll_;   // a drag on the rows' labels scrolls them (P8f)
+    bool rowsScroll_ = false;  // the rows did not fit last frame
     float wheelRest_ = 0;
     std::optional<TimeView> presetView_;
     std::optional<Time> presetMarker_;

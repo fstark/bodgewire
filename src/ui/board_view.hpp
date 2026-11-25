@@ -77,6 +77,7 @@ struct SwitchTag {
 
 struct TargetHits {  // from a side panel or manual this frame
     std::optional<BoardTarget> hovered, clicked;
+    bool frame = false;  // `clicked` asks to be framed, as with Ctrl or Cmd (a pin's "show")
 };
 
 struct BoardClick {

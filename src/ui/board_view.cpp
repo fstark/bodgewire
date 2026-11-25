@@ -1537,7 +1537,7 @@ void BoardView::route(const TargetHits& hits) {
     }
     const BoardTarget& target = *hits.clicked;
     const ImGuiIO& io = ImGui::GetIO();
-    switch (RouteLink(owner_, target, io.KeyCtrl || io.KeySuper,
+    switch (RouteLink(owner_, target, hits.frame || io.KeyCtrl || io.KeySuper,
                       io.MouseClickedLastCount[ImGuiMouseButton_Left] >= 2)) {
     case LinkAction::Measure: {
         const std::size_t k = target.components.front();

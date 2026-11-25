@@ -38,6 +38,23 @@ bool Choice(const char* id, std::span<const char* const> labels, std::size_t& in
 bool ChoicePopup(const char* id, std::span<const char* const> labels, std::size_t& index,
                  float width, float height = kControl);
 
+// In a scrolling child window, after its content: a drag on it scrolls it, with a short glide
+// after the lift (P8f; the wheel still scrolls), and so do two fingers. The press of the item the
+// drag began on is let go: a scroll is no click. `taken`: something else has the drag (a time
+// screen): nothing.
+class DragScroll {
+public:
+    void update(bool taken = false);
+    // The window was scrolled by a drag or two fingers this frame.
+    bool scrolled() const { return scrolled_; }
+
+private:
+    bool pressed_ = false;   // the left button went down in the window, off its scrollbar
+    bool dragging_ = false;  // ... and moved past the drag threshold
+    bool scrolled_ = false;
+    float velocity_ = 0;  // px a second, the glide's
+};
+
 // A number's field: its text in a frame `width` wide. A click opens the number pad beside it,
 // never under the pointer, showing the value; the pad's keys and the PC's (the digits, A to F, X,
 // the point, N, U, M then S for a unit, Backspace, Enter, Escape) edit a copy of at most `limit`

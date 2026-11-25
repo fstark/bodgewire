@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <imgui_internal.h>
 #include <string_view>
 #include <utility>
 
@@ -193,6 +195,59 @@ bool ChoicePopup(const char* id, std::span<const char* const> labels, std::size_
     }
     ImGui::PopID();
     return changed;
+}
+
+void DragScroll::update(bool taken) {
+    constexpr float kGlideTau = 0.25f;  // s: the glide's speed falls by e in that time
+    constexpr float kGlideEnd = 20;     // px a second: under it the glide is over
+    const ImGuiIO& io = ImGui::GetIO();
+    scrolled_ = false;
+    if (taken) {
+        pressed_ = dragging_ = false;
+        velocity_ = 0;
+        return;
+    }
+    const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        pressed_ = hovered && ImGui::GetScrollMaxY() > 0 &&
+                   ImGui::GetActiveID() !=
+                       ImGui::GetWindowScrollbarID(ImGui::GetCurrentWindow(), ImGuiAxis_Y);
+        dragging_ = false;
+        velocity_ = 0;  // a press stops the glide
+    }
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        pressed_ = dragging_ = false;
+    }
+    if (hovered && io.MouseWheel != 0) {
+        velocity_ = 0;  // the wheel stops the glide too
+    }
+    if (pressed_ && !dragging_ && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+        dragging_ = true;
+        if (ImGui::GetActiveID() != ImGui::GetCurrentWindow()->MoveId) {
+            ImGui::ClearActiveID();  // the item the press began on lets go
+        }
+    }
+    const float before = ImGui::GetScrollY();
+    if (dragging_) {
+        ImGui::SetScrollY(before - io.MouseDelta.y);
+        if (io.DeltaTime > 0) {
+            velocity_ = 0.6f * velocity_ + 0.4f * (-io.MouseDelta.y / io.DeltaTime);
+        }
+        scrolled_ = io.MouseDelta.y != 0;
+    } else if (velocity_ != 0) {
+        const float to =
+            std::clamp(before + velocity_ * io.DeltaTime, 0.0f, ImGui::GetScrollMaxY());
+        ImGui::SetScrollY(to);
+        velocity_ *= std::exp(-io.DeltaTime / kGlideTau);
+        if (std::abs(velocity_) < kGlideEnd || to <= 0 || to >= ImGui::GetScrollMaxY()) {
+            velocity_ = 0;
+        }
+    }
+    if (const FingerFrame& touch = Touch(); hovered && touch.two && touch.panY != 0) {
+        ImGui::SetScrollY(ImGui::GetScrollY() - touch.panY);
+        velocity_ = 0;
+        scrolled_ = true;
+    }
 }
 
 bool NumberField(const char* id, std::string& text, PadKind kind, float width, bool refused,

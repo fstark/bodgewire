@@ -22,7 +22,8 @@ inline constexpr ImU32 kPageLink = IM_COL32(25, 80, 175, 255);
 class TextFlow {
 public:
     TextFlow();
-    // Each word keeps its trailing spaces. Whether the mouse is over / clicked one of them.
+    // Each word keeps its trailing spaces. With `underline` (a link): whether the pointer is over
+    // one of them / was released on one with no drag since its press (P8f).
     struct Result {
         bool hovered = false, clicked = false;
     };

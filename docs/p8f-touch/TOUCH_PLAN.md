@@ -19,7 +19,7 @@ ctest --preset release -j -R "^(fingers|number pad|view|time view|bench options|
 | 2 | The Board's zoom and picks; the view buttons; `/touch/` on Pages | `91fba8b` |
 | 3 | What has no control today: Stop, Hold, the cursor, the flag, pin / bus | `9cddc7e` |
 | 4 | Sizes and numbers: the style, the stepper, the choices, the number pad | `159506e` |
-| 5 | The loupe and lit-first repairs | |
+| 5 | The loupe and lit-first repairs | `5ea375a` |
 | 6 | Pages: drag to scroll, links at the release, "show" | |
 | 7 | Objects and the Launcher: grip, pinch, fill, the drags, the narrow Shelf | |
 | 8 | The web page's manifest, the turn notice; docs; the full suite; the row done | |
@@ -191,3 +191,14 @@ Phase 5:
 - While a repair is armed the Board's tooltip is not shown: the armed action's name is in its place.
 - A double-click on the TV's glass still pops the TV out (the glass, now a control, asks for it itself).
 - The second tap is "on the armed target" when it lands within the finger's reach of the first, or when the tool names the same part again (`SameRepair`: a chip, a pin, a wire's two pins).
+
+Phase 6:
+
+- A drag scrolls only where there is something to scroll: on a page that fits, or on the analyzer's rows when they all fit, a press and a drag are what they were (the analyzer's labels still move its window then). The binder's page never moves the binder (O1).
+- The lanes scroll by the canvas (no glide), the labels and the pages by `DragScroll` (a glide of about 0.25 s); two fingers scroll both through `DragScroll`.
+- With rows that scroll, the analyzer's pan waits for the drag to pass the slop and choose its direction, then catches up at once: a pan no longer begins at the first pixel there.
+- A link's click needs its press on the same link (a press elsewhere released on a link follows nothing), and a press a second finger cancelled follows nothing (`PressCancelled`).
+- "show" is on the digits' pinout too: above its top row, below its bottom one.
+- A pin's row in a table sat 7 px under its "show" button (ImGui lowers a row's text to a framed item's baseline): the row's baseline is put back to 0.
+- The Launcher's row follows the finger, without a glide after the lift; a drag on the lane lets go of the post-it's press, for the mouse too (a click that slides more than 6 px no longer selects).
+- The analyzer's hint says "drag: pan or scroll".

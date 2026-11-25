@@ -20,7 +20,7 @@ constexpr double kWheelStep = 0.01;     // turn per wheel notch
 }  // namespace
 
 TimeCanvasInput TimeCanvas::read(float width, int divisions, std::optional<float> markerX,
-                                 float top) {
+                                 float top, bool vertical) {
     ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
     ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelX);
     const ImGuiIO& io = ImGui::GetIO();
@@ -46,6 +46,7 @@ TimeCanvasInput TimeCanvas::read(float width, int divisions, std::optional<float
         pressY_ = io.MousePos.y;
         moved_ = false;
         scrubbing_ = false;
+        scrolling_ = false;
     }
     input.pressY = pressY_;
     if (ImGui::IsItemActive()) {
@@ -53,11 +54,23 @@ TimeCanvasInput TimeCanvas::read(float width, int divisions, std::optional<float
         if (scrubbing_) {
             input.scrub = x;  // a finger's hold: the cursor under it, no pan
         } else {
-            input.dragStep = io.MouseDelta.x;
             // The slop is the pointer's (P8f): a finger's tap slides more than a mouse's click.
-            moved_ = moved_ || std::abs(x - pressX_) > (finger ? kTapSlop : kClickSlop);
-            if (moved_) {
-                input.dragFromPress = x - pressX_;
+            const float slop = finger ? kTapSlop : kClickSlop;
+            const float dx = x - pressX_, dy = io.MousePos.y - pressY_;
+            const bool was = moved_;
+            if (!moved_ && (std::abs(dx) > slop || (vertical && std::abs(dy) > slop))) {
+                moved_ = true;
+                scrolling_ = vertical && std::abs(dy) > std::abs(dx);
+            }
+            // With `vertical` nothing moves before the drag has chosen; then all of it at once.
+            const bool chosen = vertical && moved_ && !was;
+            if (scrolling_) {
+                input.scrollY = chosen ? -dy : -io.MouseDelta.y;
+            } else if (moved_ || !vertical) {
+                input.dragStep = chosen ? dx : io.MouseDelta.x;
+            }
+            if (moved_ && !scrolling_) {
+                input.dragFromPress = dx;
             }
         }
     }

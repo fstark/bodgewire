@@ -8,6 +8,8 @@
 #include <string_view>
 #include <utility>
 
+#include <imgui_internal.h>
+
 #include "machine/machine.hpp"
 #include "session/session.hpp"
 #include "ui/bench.hpp"
@@ -790,12 +792,17 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         rowMachine_ = lanes_.machine();
         postIts_.jump(0);
         noteScroll_.clear();
+        rowFree_.reset();
     }
     // Where the row's post-it `k` (1: the first Puzzle) starts, before the scroll.
     const auto rowX = [&](std::size_t k) {
         return static_cast<float>(k - 1) * pitch + (k == randomAt ? apart : 0);
     };
-    if (lanes_.postIt() > 0) {
+    const float end = std::max(0.0f, static_cast<float>(puzzles) * pitch + apart - visible);
+    if (rowFree_ && *rowFree_ != lanes_.postIt()) {
+        rowFree_.reset();
+    }
+    if (lanes_.postIt() > 0 && !rowFree_) {
         // In view, with half of its neighbour on that side when there is one (the row still
         // shows that it scrolls).
         const std::size_t inRow = lanes_.postIt() - 1;
@@ -808,7 +815,6 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         } else if (at + kNoteWidth + after - target > visible) {
             target = at + kNoteWidth + after - visible;
         }
-        const float end = std::max(0.0f, static_cast<float>(puzzles) * pitch + apart - visible);
         postIts_.target = std::clamp(target, 0.0, static_cast<double>(end));
     }
     if (jump_) {
@@ -819,9 +825,21 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
 
     const std::size_t selected = lanes_.postIt();
     std::optional<std::size_t> clickedPostIt;
+    // A press on the lane, which may become a drag (P8f).
+    const ImGuiIO& io = ImGui::GetIO();
+    const bool pressedNow = clicksOn && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+                            ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    if (pressedNow) {
+        pressNote_.reset();
+        pressInRow_ = io.MousePos.x >= rowLeft && io.MousePos.x < woodEnd.x &&
+                      io.MousePos.y >= laneBottom + 2 && io.MousePos.y < woodEnd.y;
+    }
     const auto postIt = [&](std::size_t k, float x) {
         const bool chosenOne = k == selected;
         const ImVec2 at{x, noteTop};
+        if (pressedNow && ImGui::IsMouseHoveringRect(at, {at.x + kNoteWidth, at.y + noteHeight})) {
+            pressNote_ = k;
+        }
         // A brief longer than the note: the wheel over it scrolls its text.
         noteScroll_.resize(titles.size(), 0.0f);
         const float overflow = std::max(0.0f, NoteHeight(titles[k], briefs[k]) - noteHeight);
@@ -863,6 +881,32 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
     ImGui::PopClipRect();
     list.PopClipRect();
     ImGui::PopID();
+
+    // The drag: once past the threshold, the larger of its two moves decides between the row
+    // and the post-it's text; the post-it lets go of its press.
+    if (pressedNow) {
+        noteDrag_ = pressNote_ || pressInRow_ ? NoteDrag::Pressed : NoteDrag::None;
+    }
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || !clicksOn) {
+        noteDrag_ = NoteDrag::None;
+    }
+    ImVec2 step = io.MouseDelta;
+    if (noteDrag_ == NoteDrag::Pressed && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+        step = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+        const bool longNote =
+            pressNote_ && NoteHeight(titles[*pressNote_], briefs[*pressNote_]) > noteHeight;
+        noteDrag_ = std::abs(step.x) >= std::abs(step.y)
+                        ? (pressInRow_ ? NoteDrag::Row : NoteDrag::Dead)
+                        : (longNote ? NoteDrag::Text : NoteDrag::Dead);
+        ImGui::ClearActiveID();
+    }
+    if (noteDrag_ == NoteDrag::Row) {
+        postIts_.jump(std::clamp(postIts_.value - static_cast<double>(step.x), 0.0,
+                                 static_cast<double>(end)));
+        rowFree_ = lanes_.postIt();
+    } else if (noteDrag_ == NoteDrag::Text) {
+        noteScroll_[*pressNote_] -= step.y;  // kept within the text at the next draw
+    }
 
     // Clicks, applied after the drawing (the frame shows what was there when clicked). A post-it
     // not selected is selected (it starts running above); the selected one opens.

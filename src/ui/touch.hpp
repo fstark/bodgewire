@@ -28,6 +28,9 @@ void TouchNewFrame();
 const FingerFrame& Touch();
 // The pointer in use is a finger: the last pointer event ImGui took came from the touch screen.
 bool FingerPointer();
+// The last press was cancelled by a second finger: its release is no click. For what acts at a
+// release by its own test (a link); an ImGui item has already let go.
+bool PressCancelled();
 // Inside a window whose items are typed on with two fingers (the keyboards), each frame: a second
 // finger there takes over from the first, and nothing is pinched.
 void TouchTypingZone();

@@ -15,10 +15,10 @@ namespace bw {
 namespace {
 
 constexpr float kAspect = 500.0f / 600.0f;  // FirstSize(Manual): height / width
-constexpr float kMinWidth = 500;            // a BW-2001 pinout row needs about 126 px a side
-constexpr float kSpine = 34;                // the cover left of the page, the rings' strip
-constexpr float kTabStrip = 86;             // right of the page: the tabs and the cover's edge
-constexpr float kCoverEdge = 12;            // the cover above, below and right of everything
+constexpr float kMinWidth = 590;  // a BW-2001 pinout row: about 126 px a side, and two "show"
+constexpr float kSpine = 34;      // the cover left of the page, the rings' strip
+constexpr float kTabStrip = 86;   // right of the page: the tabs and the cover's edge
+constexpr float kCoverEdge = 12;  // the cover above, below and right of everything
 constexpr float kTabTop = 30;
 constexpr float kTabHeight = 44;
 constexpr float kTabStep = 50;
@@ -195,8 +195,9 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     ImGui::SetCursorScreenPos(page);
     PushPaper();
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+    // A drag on the page scrolls it (P8f) and no longer moves the binder: its cover does.
     if (ImGui::BeginChild(PageId(divider), size, ImGuiChildFlags_None,
-                          ImGuiWindowFlags_NoBackground)) {
+                          ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove)) {
         switch (divider) {
         case Divider::User:
             if (manuals.user) {
@@ -238,6 +239,7 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
             }
             break;
         }
+        pageScroll_.update();
     }
     ImGui::EndChild();
     ImGui::PopStyleVar();

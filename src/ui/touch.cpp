@@ -28,6 +28,7 @@ std::size_t scriptNext_ = 0;
 Clock::time_point start_;
 PointerChange shown_{false, 0, 0, false};  // what ImGui was last told
 bool ours_ = false;                        // the pointer is the fingers': told again each frame
+bool cancelled_ = false;                   // the last press was cancelled, until the next one
 std::vector<ImRect> zones_, zonesNow_;     // the typing zones: last frame's, this frame's
 
 double Now() { return std::chrono::duration<double>(Clock::now() - start_).count(); }
@@ -60,6 +61,7 @@ void Tell(const PointerChange& change) {
     io.AddMousePosEvent(change.present ? change.x : -FLT_MAX, change.present ? change.y : -FLT_MAX);
     if (change.down != shown_.down) {
         io.AddMouseButtonEvent(ImGuiMouseButton_Left, change.down);
+        cancelled_ = cancelled_ && !change.down;  // a new press
     }
     shown_ = change;
 }
@@ -90,6 +92,7 @@ void TouchStart(SDL_Window* window, bool emulated, std::span<const FingerScript>
     scriptNext_ = 0;
     start_ = Clock::now();
     shown_ = {false, 0, 0, false};
+    cancelled_ = false;
     ours_ = emulated || !script.empty();
     zones_.clear();
     zonesNow_.clear();
@@ -182,6 +185,7 @@ void TouchNewFrame() {
         // click; BoardView and TimeCanvas drop theirs on Touch().cancelled.
         ImGui::ClearActiveID();
         ImGui::StopMouseMovingWindow();
+        cancelled_ = true;
     }
     for (const PointerChange& change : frame_.pointer) {
         Tell(change);
@@ -203,6 +207,8 @@ void TouchNewFrame() {
 const FingerFrame& Touch() { return frame_; }
 
 bool FingerPointer() { return ImGui::GetIO().MouseSource == ImGuiMouseSource_TouchScreen; }
+
+bool PressCancelled() { return cancelled_; }
 
 void TouchTypingZone() {
     const ImGuiWindow* window = ImGui::GetCurrentWindowRead();

@@ -182,7 +182,8 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     ImGui::Spacing();
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
-    if (ImGui::BeginChild("view", {0, 0}, ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground)) {
+    if (ImGui::BeginChild("view", {0, 0}, ImGuiChildFlags_None,
+                          ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove)) {
         switch (s.view) {
         case ContentsView::Hex:
             hexView(*chip, s);
@@ -194,6 +195,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
             glyphView(*chip, s);
             break;
         }
+        viewScroll_.update();  // a drag scrolls the view (P8f)
     }
     ImGui::EndChild();
     ImGui::PopStyleVar();

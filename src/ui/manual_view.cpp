@@ -7,6 +7,8 @@
 
 #include <imgui.h>
 
+#include "ui/touch.hpp"
+
 namespace bw {
 
 namespace {
@@ -151,8 +153,35 @@ TextFlow::Result TextFlow::text(std::string_view raw, ImU32 colour, bool underli
             const float trimmed = ImGui::CalcTextSize(word.data(), word.data() + (last + 1)).x;
             ImGui::GetWindowDrawList()->AddLine({min.x, max.y}, {min.x + trimmed, max.y}, colour);
         }
-        result.hovered = result.hovered || ImGui::IsItemHovered();
-        result.clicked = result.clicked || ImGui::IsItemClicked(ImGuiMouseButton_Left);
+        if (!underline) {
+            continue;  // no link: nobody asks
+        }
+        // A link's own test (P8f). Its click is a release on it with no drag since the press: a
+        // scroll begun on a link does not follow it. A finger's hit is 6 px wider each side and
+        // as high as its line; ImGui's padding would let the words of two lines both answer.
+        const ImGuiIO& io = ImGui::GetIO();
+        ImVec2 min = ImGui::GetItemRectMin();
+        ImVec2 max = ImGui::GetItemRectMax();
+        if (FingerPointer()) {
+            const float half = ImGui::GetStyle().ItemSpacing.y / 2;
+            min = {min.x - kFingerPadding, min.y - half};
+            max = {max.x + kFingerPadding, max.y + half};
+        }
+        const ImDrawList* list = ImGui::GetWindowDrawList();
+        const ImVec2 clipMin = list->GetClipRectMin();
+        const ImVec2 clipMax = list->GetClipRectMax();
+        const auto inside = [&](ImVec2 at) {
+            return at.x >= std::max(min.x, clipMin.x) && at.x < std::min(max.x, clipMax.x) &&
+                   at.y >= std::max(min.y, clipMin.y) && at.y < std::min(max.y, clipMax.y);
+        };
+        const bool hovered = inside(io.MousePos) &&
+                             ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+        result.hovered = result.hovered || hovered;
+        result.clicked = result.clicked ||
+                         (hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
+                          inside(io.MouseClickedPos[ImGuiMouseButton_Left]) && !PressCancelled() &&
+                          io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] <
+                              io.MouseDragThreshold * io.MouseDragThreshold);
     }
     return result;
 }

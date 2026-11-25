@@ -9,6 +9,7 @@
 #include "ui/board_view.hpp"
 #include "ui/chip_panel.hpp"
 #include "ui/contents_page.hpp"
+#include "ui/controls.hpp"
 #include "ui/manual_view.hpp"
 #include "view/binder.hpp"
 
@@ -54,6 +55,7 @@ private:
     std::vector<IndexEntry> index_;
     bool indexed_ = false;
     std::optional<std::size_t> offered_;  // the selection last looked at for its Contents
+    DragScroll pageScroll_;               // a drag on the page scrolls it (P8f)
     float stretch_ = 1;
     bool faultShown_ = false;   // the Give up page's button pressed: for the bench
     bool faultCopied_ = false;  // its line clicked

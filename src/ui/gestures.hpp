@@ -23,15 +23,20 @@ struct TimeCanvasInput {
     // there and stays (no pan, no marker).
     std::optional<float> scrub;
     float pressY = 0;  // where the press began, screen px: the lane or band it is on
+    // A vertical drag's step, px to scroll down by (P8f, a canvas of rows that scroll): the drag
+    // then gives no dragStep, no dragFromPress and no marker.
+    float scrollY = 0;
 };
 
 class TimeCanvas {
 public:
     // After the canvas's InvisibleButton: `width` px wide, `divisions` across. `markerX`: the
     // Marker's x when it is set, `top` the canvas's top: a click on the Marker's flag there
-    // clears it (`clearMarker`) instead of moving it.
+    // clears it (`clearMarker`) instead of moving it. `vertical`: the canvas's rows scroll, so
+    // a drag is one or the other: nothing until it has moved past the slop, then the larger of
+    // its two moves decides between the time's pan (`dragStep`) and `scrollY`.
     TimeCanvasInput read(float width, int divisions, std::optional<float> markerX = std::nullopt,
-                         float top = 0);
+                         float top = 0, bool vertical = false);
 
 private:
     float wheelRest_ = 0;
@@ -39,6 +44,7 @@ private:
     float pressX_ = 0, pressY_ = 0;
     bool moved_ = false;
     bool scrubbing_ = false;  // this press became a finger's hold
+    bool scrolling_ = false;  // this press became a vertical drag
 };
 
 // A round knob's input this frame, read from the item just submitted (an InvisibleButton over

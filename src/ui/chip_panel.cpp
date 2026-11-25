@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "parts/catalogue.hpp"
 #include "ui/controls.hpp"
@@ -64,17 +65,36 @@ void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markd
     }
 }
 
-// One pin as a selectable row.
+// A pin's "show" button (P8f): frames the pin on the Board whatever tool is in hand, as a Ctrl-
+// or Cmd-click on its row does. `width` 0: the label's.
+constexpr const char* kShow = "show";
+float ShowWidth() { return ImGui::CalcTextSize(kShow).x + 2 * ImGui::GetStyle().FramePadding.x; }
+void ShowButton(const PinRow& row, std::size_t component, TargetHits& hits, float width = 0) {
+    if (!row.pad) {
+        ImGui::Dummy({width > 0 ? width : ShowWidth(), kControl});
+        return;
+    }
+    ImGui::PushID(row.number.c_str());
+    if (ImGui::Button(kShow, {width, 0})) {
+        hits.clicked = BoardTarget{{component}, row.pad, std::nullopt};
+        hits.frame = true;
+    }
+    ImGui::PopID();
+}
+
+// One pin as a selectable row, `width` wide (0: what is left of the line).
 void PinCell(const PinRow& row, std::string_view label, bool alignRight, std::size_t component,
-             const Markdown* datasheet, TargetHits& hits) {
+             const Markdown* datasheet, TargetHits& hits, float width = 0) {
     if (row.power) {
         ImGui::PushStyleColor(ImGuiCol_Text, kPowerText);
     }
     ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, {alignRight ? 1.0f : 0.0f, 0.5f});
     ImGui::PushID(row.number.c_str());
     const std::string text(label);
-    // A row as high as a control (P8f): the large way to a pin.
-    const bool clicked = ImGui::Selectable(text.c_str(), false, 0, {0, kControl});
+    // A row as high as a control (P8f): the large way to a pin. Level with the "show" button
+    // before it on a table's row, whose frame would lower this row's text by its padding.
+    ImGui::GetCurrentWindow()->DC.CurrLineTextBaseOffset = 0;
+    const bool clicked = ImGui::Selectable(text.c_str(), false, 0, {width, kControl});
     ImGui::PopID();
     ImGui::PopStyleVar();
     if (row.power) {
@@ -122,6 +142,16 @@ void DigitPinout(const BoardScene& scene, std::size_t component, const PartInfo&
     const float x0 = ImGui::GetCursorPosX();
     std::optional<std::string> hoveredPin;
 
+    // Each pin's "show" at its outer end: above the top row, below the bottom one.
+    const auto shows = [&](bool top) {
+        for (std::size_t c = 0; c < columns; ++c) {
+            if (c > 0) {
+                ImGui::SameLine(x0 + cell * static_cast<float>(c), 0);
+            }
+            ShowButton(Row(scene, component, top ? pins - c : c + 1), component, hits, cell - 4);
+        }
+    };
+    shows(true);
     // Top row, left to right: pins `pins` .. columns + 1; number next to the body.
     for (std::size_t c = 0; c < columns; ++c) {
         const PinRow row = Row(scene, component, pins - c);
@@ -147,6 +177,7 @@ void DigitPinout(const BoardScene& scene, std::size_t component, const PartInfo&
             hoveredPin = row.name;
         }
     }
+    shows(false);
 
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.AddRectFilled(body, {body.x + width, body.y + height}, kDigitBody);
@@ -215,14 +246,18 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
     const std::size_t pins = scene.board().components[component].pads.size();
     const bool dip = info && info->package.starts_with("DIP") && pins % 2 == 0;
     const ImGuiTableFlags flags = ImGuiTableFlags_SizingStretchProp;
-    if (dip && ImGui::BeginTable("pinout", 3, flags)) {
+    if (dip && ImGui::BeginTable("pinout", 5, flags)) {
+        ImGui::TableSetupColumn("show left", ImGuiTableColumnFlags_WidthFixed, ShowWidth());
         ImGui::TableSetupColumn("left", ImGuiTableColumnFlags_WidthStretch, 1.0f);
         ImGui::TableSetupColumn("body", ImGuiTableColumnFlags_WidthFixed, kBodyWidth);
         ImGui::TableSetupColumn("right", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+        ImGui::TableSetupColumn("show right", ImGuiTableColumnFlags_WidthFixed, ShowWidth());
         for (std::size_t r = 0; r < pins / 2; ++r) {
             const PinRow left = Row(scene, component, r + 1);
             const PinRow right = Row(scene, component, pins - r);
             ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ShowButton(left, component, hits);
             ImGui::TableNextColumn();
             PinCell(left, std::format("{}  {}  {:>2}", left.net, left.name, left.number), true,
                     component, datasheet, hits);
@@ -239,15 +274,21 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
             ImGui::TableNextColumn();
             PinCell(right, std::format("{:<2}  {}  {}", right.number, right.name, right.net), false,
                     component, datasheet, hits);
+            ImGui::TableNextColumn();
+            ShowButton(right, component, hits);
         }
         ImGui::EndTable();
     } else if (TopBottomRows(info) && pins % 2 == 0 && !info->lamps.empty()) {
         DigitPinout(scene, component, *info, datasheet, hits);
     } else if (!dip) {
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+        const float width = ImGui::GetContentRegionAvail().x - ShowWidth() - spacing;
         for (std::size_t n = 1; n <= pins; ++n) {
             const PinRow row = Row(scene, component, n);
             PinCell(row, std::format("{:>2}  {}  {}", row.number, row.name, row.net), false,
-                    component, datasheet, hits);
+                    component, datasheet, hits, width);
+            ImGui::SameLine();
+            ShowButton(row, component, hits);
         }
     }
 

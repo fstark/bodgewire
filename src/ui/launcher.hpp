@@ -134,6 +134,15 @@ private:
     Glide postIts_{0, 0, 0.5};
     std::size_t rowMachine_ = 0;     // whose post-its the row's scroll is for
     std::vector<float> noteScroll_;  // each post-it's text scrolled, px (a long brief)
+    // A drag on the bottom lane (P8f): sideways on the row moves it, up or down on a post-it
+    // with more text than fits scrolls its text. A drag is no click.
+    enum class NoteDrag : std::uint8_t { None, Pressed, Row, Text, Dead };
+    NoteDrag noteDrag_ = NoteDrag::None;
+    std::optional<std::size_t> pressNote_;  // the post-it the press began on
+    bool pressInRow_ = false;               // ... and whether on the row
+    // The row was dragged with this post-it selected: it stays where it was put, the selected
+    // post-it in view or not, until another is selected.
+    std::optional<std::size_t> rowFree_;
     bool jump_ = true;  // the glides jump at the next draw (shown, selected from outside)
     std::string error_;
     std::map<std::filesystem::path, Still> stills_;

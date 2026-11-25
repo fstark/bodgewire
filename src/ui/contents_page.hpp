@@ -11,6 +11,7 @@
 
 #include "machine/machine.hpp"
 #include "ui/board_view.hpp"
+#include "ui/controls.hpp"
 #include "view/contents_defaults.hpp"
 #include "view/memory_contents.hpp"
 
@@ -50,6 +51,7 @@ private:
     std::optional<std::size_t> scrollTo_;  // the word to scroll to, once
     std::optional<std::size_t> outlined_;  // the word Go to found, outlined in the hex view
     std::string shown_;                    // the chip on the page last frame
+    DragScroll viewScroll_;                // a drag on a view scrolls it (P8f)
 };
 
 }  // namespace bw

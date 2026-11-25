@@ -39,7 +39,7 @@ constexpr std::array<TriggerPosition, 3> kPositions{TriggerPosition::Early, Trig
 constexpr const char* kEmptyHint =
     "Clip, then click a chip pin. The pin / bus switch clips a whole bus.";
 constexpr const char* kGestures =
-    "wheel or pinch: zoom   drag: pan   click: marker   hold and slide: cursor   "
+    "wheel or pinch: zoom   drag: pan or scroll   click: marker   hold and slide: cursor   "
     "double-click: fit";
 
 const char* PhaseText(AnalyzerPhase phase, bool powered) {
@@ -338,7 +338,11 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     // Rows: labels left, one canvas of lanes right; scrolls when they do not fit.
     const std::vector<Row> list = rows(session);
     const float footer = ImGui::GetTextLineHeightWithSpacing() + 4;
-    ImGui::BeginChild("rows", {0, -footer});
+    // While the rows do not fit, a drag on their labels scrolls them (P8f) instead of moving
+    // the window.
+    ImGui::BeginChild("rows", {0, -footer}, ImGuiChildFlags_None,
+                      rowsScroll_ ? ImGuiWindowFlags_NoMove : ImGuiWindowFlags_None);
+    rowsScroll_ = ImGui::GetScrollMaxY() > 0;
     ImDrawList& draw = *ImGui::GetWindowDrawList();
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const float lanesHeight = std::max(kLaneHeight, kLaneHeight * static_cast<float>(list.size()));
@@ -350,9 +354,13 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     // Canvas input, once, before anything is drawn: every lane uses the same view.
     ImGui::SetCursorScreenPos({laneX0, origin.y});
     ImGui::InvisibleButton("##canvas", {width, lanesHeight});
-    const TimeCanvasInput input =
-        canvas_.read(width, kDivisions,
-                     shown_ && marker_ ? std::optional(x(*marker_)) : std::nullopt, visibleTop);
+    const TimeCanvasInput input = canvas_.read(
+        width, kDivisions, shown_ && marker_ ? std::optional(x(*marker_)) : std::nullopt,
+        visibleTop, rowsScroll_);
+    const bool canvasHeld = ImGui::IsItemActive();
+    if (input.scrollY != 0) {
+        ImGui::SetScrollY(ImGui::GetScrollY() + input.scrollY);  // a vertical drag on the lanes
+    }
     std::optional<Time> cursor;
     if (shown_) {
         const TimeRange record = RecordOf(*shown_);
@@ -669,6 +677,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         }
         draw.PopClipRect();
     }
+    labelScroll_.update(canvasHeld);  // a drag on the labels; the lanes' is the canvas's
     ImGui::EndChild();
 
     // Overview: the whole record, the view as a box, T and the marker as ticks.
