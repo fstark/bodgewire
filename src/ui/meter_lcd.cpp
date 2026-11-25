@@ -16,7 +16,8 @@ constexpr ImU32 kLcd = IM_COL32(168, 184, 158, 255);
 constexpr ImU32 kLcdBeep = IM_COL32(150, 232, 130, 255);  // the backlight on a beep
 constexpr ImU32 kInk = IM_COL32(28, 34, 28, 255);
 constexpr ImU32 kGhost = IM_COL32(0, 0, 0, 20);  // an unlit segment
-constexpr float kCellW = 22, kCellH = 34, kCellGap = 9, kThick = 4.5f;
+constexpr float kCellW = 22, kCellH = 34, kCellGap = 14, kThick = 4.5f;
+constexpr float kPoint = 2.6f;  // half the decimal point's side
 constexpr float kSlant = 0.1f;  // the digits lean right, as an LCD's
 
 // One segment between two points of the cell, a hexagon `kThick` wide, slanted about `baseY`.
@@ -25,10 +26,18 @@ void Segment(ImDrawList& list, ImVec2 a, ImVec2 b, float baseY, ImU32 colour) {
     const bool across = a.y == b.y;
     std::array<ImVec2, 6> p;
     if (across) {
-        p = {{{a.x, a.y}, {a.x + h, a.y - h}, {b.x - h, b.y - h}, {b.x, b.y}, {b.x - h, b.y + h},
+        p = {{{a.x, a.y},
+              {a.x + h, a.y - h},
+              {b.x - h, b.y - h},
+              {b.x, b.y},
+              {b.x - h, b.y + h},
               {a.x + h, a.y + h}}};
     } else {
-        p = {{{a.x, a.y}, {a.x + h, a.y + h}, {b.x + h, b.y - h}, {b.x, b.y}, {b.x - h, b.y - h},
+        p = {{{a.x, a.y},
+              {a.x + h, a.y + h},
+              {b.x + h, b.y - h},
+              {b.x, b.y},
+              {b.x - h, b.y - h},
               {a.x - h, a.y + h}}};
     }
     for (ImVec2& q : p) {
@@ -54,9 +63,10 @@ void Cell(ImDrawList& list, ImVec2 at, std::uint8_t bits, bool point) {
         const bool lit = (bits >> s) & 1;
         Segment(list, ends[s].first, ends[s].second, b, lit ? kInk : kGhost);
     }
-    const ImVec2 dot{r + kCellGap / 2 - 1.5f, b - 1.5f};
-    list.AddRectFilled({dot.x - 1.8f, dot.y - 1.8f}, {dot.x + 1.8f, dot.y + 1.8f},
-                       point ? kInk : kGhost);
+    // The decimal point in the middle of the gap after the cell, clear of both digits.
+    const ImVec2 dot{r + kCellGap / 2, b - kPoint};
+    list.AddRectFilled({dot.x - kPoint, dot.y - kPoint}, {dot.x + kPoint, dot.y + kPoint},
+                       point ? kInk : kGhost, 1.0f);
 }
 
 // The continuity sign: a dot and three sound waves, `at` the dot's centre.
@@ -74,8 +84,8 @@ void Beeper(ImDrawList& list, ImVec2 at) {
 void DrawMeterLcd(ImDrawList& list, ImVec2 base, const MeterReading& reading) {
     const ImGuiViewport& viewport = *ImGui::GetMainViewport();
     const float half = kMeterLcdSize.x / 2;
-    const float x = std::clamp(base.x, viewport.Pos.x + half + 4,
-                               viewport.Pos.x + viewport.Size.x - half - 4);
+    const float x =
+        std::clamp(base.x, viewport.Pos.x + half + 4, viewport.Pos.x + viewport.Size.x - half - 4);
     const ImVec2 min{x - half, base.y - kMeterLcdSize.y};
     const ImVec2 max{x + half, base.y};
     // The case's top, rising from the shelf: its upper corners round, a shadow at its right.
@@ -110,11 +120,11 @@ void DrawMeterLcd(ImDrawList& list, ImVec2 base, const MeterReading& reading) {
         Cell(list, {left, top}, Segments(cell.c), cell.point);
         left += kCellW + kCellGap;
     }
-    // The mode's sign at the right.
+    // The sign at the right: the beep's, or V.
     const ImVec2 sign{lcdMax.x - 16, (lcdMin.y + lcdMax.y) / 2};
-    if (reading.continuity) {
+    if (reading.beep) {
         Beeper(list, {sign.x - 6, sign.y});
-    } else {
+    } else if (reading.volts) {
         ImFont* font = ImGui::GetFont();
         const float size = 22.0f;
         const ImVec2 v = ImGui::CalcTextSize("V");

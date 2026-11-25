@@ -23,7 +23,8 @@ From the roadmap row and a grilling (the user, 2026-11-25):
 - The power switch is the mode: Volts while the Machine is powered (black on GND, implied), Continuity while it is off. No mode button, no "power off for continuity" refusal.
 - Volts: press on copper and hold; the LCD shows the reading; sliding reads each copper passed; release ends it.
 - Continuity: a click clips the black lead, which stays; press-and-hold then probes with the red lead; a click on the clip lifts it; the power going on lifts it too. (A drag from one point to the other was proposed and rejected: a complex gesture, and fixing one point then poking around is the real use.)
-- The LCD: the top of the yellow handheld, a grey LCD with seven-segment digits; `2.43 V`, dashes while settling; in Continuity `OL` open, `0.0` with the `•)))` sign and a green backlight when connected (no sound in `bw_ui`). No dial, no lead labels: the Board's + and − tags show where the leads are.
+- The LCD: the top of the yellow handheld, a grey LCD with seven-segment digits; `2.43 V`, dashes while settling. No dial, no lead labels: the Board's + and − tags show where the leads are.
+- Continuity on the LCD (the user, 2026-11-25, after trying it): `bEEP` with the `•)))` sign and a green backlight when connected, `----` with no sign when not (no sound in `bw_ui`). First built as a real meter's `0.0` against `OL`, the sign always shown: too alike to read at a glance. The decimal point larger, in the middle of a wider gap between the digits.
 - Paused (the run switch at `‖`): no reading, dashes. A paused instant-level reading was proposed and dropped: "In real life you cannot read a paused board."
 - A pin link in a manual or the chip panel held down with the meter in hand measures that pin until released, as a press on it does.
 - Touch: a finger held brings up the loupe, the LCD above the Shelf's meter, reading under the loupe live; lifting ends it.
@@ -34,7 +35,7 @@ Chosen without asking:
 - A pin link is the pin: held, the red lead on it; clicked, a click on it. In Continuity a click on a link with no clip clips the black lead there, as a click on the pad does.
 - With the meter, a left drag that starts on copper reads instead of panning (as the Wire tool's drag draws); one that starts off copper pans, and the right or middle button still pans (a trackpad has no middle button). A finger's drag still pans: the finger reads through the loupe.
 - While paused the LCD shows dashes whatever it read before the pause, a rail included.
-- While pressed off copper the LCD stays up: dashes in Volts, `OL` in Continuity (a real meter's tip in the air), so sliding between pins does not flicker.
+- While pressed off copper the LCD stays up: dashes in Volts and in Continuity, so sliding between pins does not flicker.
 - In Continuity with no clip, a press shows no LCD (nothing to compare with): its release is the click that clips. A press that starts on the clip shows none either: its release lifts it.
 - The Shelf's meter drawing loses its fake `5.0`: held, its own small LCD is lit and blank.
 - The Shelf's hint names the next step with the meter in hand (§4).
@@ -47,11 +48,11 @@ Chosen without asking:
 3. **Volts.** Press on copper and hold: the LCD rises above the Shelf's meter (§5) and reads the Net's average volts (200 ms, refreshed every 250 ms of simulated time, as before; dashes until the first reading). Slide, still pressed: each copper passed is read afresh. Off copper: dashes. Release: the LCD goes. The Board does not pan under that drag. Paused: dashes.
 4. **Continuity.** With the power off:
    - no clip: a click on copper clips the black lead there; the Board's − tag marks it. Hint: "Meter: clip black lead".
-   - clipped: press and hold anywhere else: the LCD shows `0.0`, lit green with `•)))`, when the red lead's copper is connected to the clip's, `OL` when not (also off copper). Hint: "Meter: hold red lead"; the tooltip adds "a click on it lifts it" to the clip's line.
+   - clipped: press and hold anywhere else: the LCD shows `bEEP`, lit green with `•)))`, when the red lead's copper is connected to the clip's, `----` when not (also off copper). Hint: "Meter: hold red lead"; the tooltip adds "a click on it lifts it" to the clip's line.
    - a click on the clip (the copper it is on) lifts it. Powering on lifts it too.
    - A Repair keeps the clip; the next press reads the repaired Copper.
    With the power on and the meter in hand the hint says "Meter: hold on copper". (The hint has room for about 22 characters at 1280 px.)
-5. **The LCD.** About 150 × 64 px, its bottom on the Shelf's top edge, centred over the meter's drawing (inside the window): the yellow case's top, a grey-green LCD, three seven-segment digit cells with their decimal points, the unused segments faintly visible; `V` in Volts, the `•)))` sign in Continuity. Drawn above every window.
+5. **The LCD.** About 200 × 64 px, its bottom on the Shelf's top edge, centred over the meter's drawing (inside the window): the yellow case's top, a grey-green LCD, four seven-segment digit cells, a decimal point in the middle of each gap, the unused segments faintly visible; `V` in Volts, the `•)))` sign on a beep. Drawn above every window.
 6. **Pin links.** With the meter in hand, a pin link in a manual or the chip panel held down measures that pin (§3, §4: the LCD up, the pin flashed) until released; clicked, it is a click on the pin (in Continuity, the clip). Cmd-click and a double-click's second frame the pin, as before.
 7. **Touch.** A finger's drag pans, as before. A finger held still brings up the loupe; from then the meter reads the copper under the loupe's centre, the LCD up, until the finger lifts. A tap is a click (in Continuity, the clip).
 8. **Flags.** `--meter REF.PIN[,REF.PIN]` as above; `--focus meter` takes it; `--pop meter` and `--away meter` are refused (no window).

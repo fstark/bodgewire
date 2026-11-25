@@ -304,7 +304,7 @@ _Avoid_: Scope (fine in speech, not in docs)
 An Instrument recording many Nets at once, with Triggers and a history from before the Trigger.
 
 **Multimeter**:
-An Instrument reading voltage levels and continuity, held like the Logic Probe (P8g): no window. The power switch is its mode: volts while the Machine is powered (black on GND, implied), continuity while it is off. Pressed on copper with it in hand, its LCD rises above its drawing on the Shelf and reads what the red Test Lead touches until the press ends (dashes while paused: a paused Board cannot be read); a pin link held in a manual is the pin held. In continuity a click clips the black Test Lead first; a click on the clip, or the power going on, lifts it; the LCD shows `0.0`, lit green, when the two are connected, `OL` when not.
+An Instrument reading voltage levels and continuity, held like the Logic Probe (P8g): no window. The power switch is its mode: volts while the Machine is powered (black on GND, implied), continuity while it is off. Pressed on copper with it in hand, its LCD rises above its drawing on the Shelf and reads what the red Test Lead touches until the press ends (dashes while paused: a paused Board cannot be read); a pin link held in a manual is the pin held. In continuity a click clips the black Test Lead first; a click on the clip, or the power going on, lifts it; the LCD shows `bEEP` with its sign, lit green, when the two are connected, `----` when not.
 
 **Trigger**:
 A condition, such as an address appearing on a Bus, that marks when an Instrument should capture.

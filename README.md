@@ -52,8 +52,8 @@ goes to the LED.
 ![U5's traces and pins](docs/readme/traces.png)
 
 So is the chip broken, or the LED, or something in between? Power off, take the multimeter, clip
-its black lead on the LED's pad and hold the red one on `U5` pin 11. It reads OL, "open": a trace
-runs from one to the other, but they aren't connected.
+its black lead on the LED's pad and hold the red one on `U5` pin 11. It shows dashes, no beep: a
+trace runs from one to the other, but they aren't connected.
 
 ![The multimeter reading open between U5 and the LED](docs/readme/continuity.png)
 

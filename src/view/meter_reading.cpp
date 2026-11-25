@@ -9,22 +9,21 @@ namespace bw {
 
 MeterReading VoltsReading(std::optional<double> volts) {
     if (!volts) {
-        return {"---"};
+        return {"----", true};
     }
     const double v = std::abs(*volts);
-    return {v < 9.995 ? std::format("{:.2f}", v) : std::format("{:.1f}", v)};
+    return {v < 9.995 ? std::format("{:.2f}", v) : std::format("{:.1f}", v), true};
 }
 
 MeterReading ContinuityReading(std::optional<bool> connected) {
     const bool beep = connected.value_or(false);
-    return {beep ? "0.0" : "OL", true, beep};
+    return {beep ? "bEEP" : "----", false, beep};
 }
 
 std::uint8_t Segments(char c) {
     constexpr std::uint8_t a = 1, b = 2, cc = 4, d = 8, e = 16, f = 32, g = 64;
     switch (c) {
     case '0':
-    case 'O':
         return a | b | cc | d | e | f;
     case '1':
         return b | cc;
@@ -46,8 +45,12 @@ std::uint8_t Segments(char c) {
         return a | b | cc | d | f | g;
     case '-':
         return g;
-    case 'L':
-        return d | e | f;
+    case 'b':
+        return cc | d | e | f | g;
+    case 'E':
+        return a | d | e | f | g;
+    case 'P':
+        return a | b | e | f | g;
     case ' ':
         return 0;
     default:

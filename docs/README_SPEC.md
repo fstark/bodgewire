@@ -83,7 +83,7 @@ short walk-through, one picture per step:
 2. `traces`: hover a chip and its traces light up, with every pin named. U5's pin 11 (QD) is the
    one that drives the LED.
 3. `continuity`: power off, the multimeter's black lead clipped on the LED's pad, its red lead
-   held on U5 pin 11: its LCD reads OL, "open". The chip and the LED are not connected, though a
+   held on U5 pin 11: its LCD shows dashes, no beep. The chip and the LED are not connected, though a
    trace runs between them.
 4. `crack`: zoom in on that trace: a hairline crack across the copper, about half way.
 5. `mended`: the soldering iron bridges the crack with a blob of solder; power on, the LED

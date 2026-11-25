@@ -111,17 +111,17 @@ private:
 ```cpp
 // What the Multimeter's LCD shows (P8g): three seven-segment cells and the mode's sign.
 struct MeterReading {
-    std::string digits;       // the cells' characters, right-aligned in kMeterCells; a '.'
-                              // lights the decimal point of the cell before it
-    bool continuity = false;  // the •))) sign; else V
-    bool beep = false;        // connected: the backlight green
+    std::string digits;  // the cells' characters, right-aligned in kMeterCells; a '.' lights
+                         // the decimal point of the cell before it
+    bool volts = false;  // the V sign
+    bool beep = false;   // connected: "bEEP", the •))) sign, the backlight green
     bool operator==(const MeterReading&) const = default;
 };
-inline constexpr std::size_t kMeterCells = 3;
+inline constexpr std::size_t kMeterCells = 4;
 
-// "2.43" (two decimals under 9.995 V), "12.0" (one from there), "---" for nullopt.
+// "2.43" (two decimals under 9.995 V), "12.0" (one from there), "----" for nullopt; V.
 MeterReading VoltsReading(std::optional<double> volts);
-// "0.0" lit green when connected, "OL" otherwise (nullopt: off copper, or no red Lead).
+// "bEEP" with its sign when connected, "----" otherwise (nullopt: off copper, or no red Lead).
 MeterReading ContinuityReading(std::optional<bool> connected);
 // Seven-segment bits, a = 1 … g = 64, for '0'-'9', '-', 'O', 'L', ' '; Check()s anything else.
 std::uint8_t Segments(char c);
@@ -129,7 +129,7 @@ std::uint8_t Segments(char c);
 
 ### Tests (`tests/view/meter_reading_test.cpp`, `[view]`)
 
-`meter reading: volts with two decimals` (2.434 → "2.43", 0 → "0.00", 4.996 → "5.00"), `meter reading: ten volts and over with one` (12 → "12.0"), `meter reading: no reading is dashes`, `meter reading: continuity` (true → "0.0", beep; false and nullopt → "OL", no beep), `meter reading: segments` ('8' all seven, '-' g alone, 'L' d e f, ' ' none).
+`meter reading: volts with two decimals` (2.434 → "2.43", 0 → "0.00", 4.996 → "5.00"), `meter reading: ten volts and over with one` (12 → "12.0"), `meter reading: no reading is dashes` ("----"), `meter reading: continuity` (true → "bEEP", beep; false and nullopt → "----"), `meter reading: segments` ('8' all seven, '-' g alone, 'b', 'E', 'P', ' ' none).
 
 ## 3. The meter out of the bench objects (§1, §8)
 
@@ -210,10 +210,10 @@ bool OnClip(const BoardScene& scene, const Pick& press, const TestLead& clip, Pi
 ### `src/ui/meter_lcd.hpp` (new)
 
 ```cpp
-inline constexpr ImVec2 kMeterLcdSize{150, 64};  // logical px
+inline constexpr ImVec2 kMeterLcdSize{200, 64};  // logical px
 // The Multimeter's LCD risen from its Shelf drawing (P8g): the yellow case's top, a grey-green
 // LCD (lit green on `beep`) with kMeterCells seven-segment cells, their unlit segments faint, the
-// decimal points, `V` or the •))) sign. Its bottom centre at `base`, moved sideways to stay
+// decimal points in the gaps, `V` or, on a beep, the •))) sign. Its bottom centre at `base`, moved sideways to stay
 // inside the main viewport.
 void DrawMeterLcd(ImDrawList& list, ImVec2 base, const MeterReading& reading);
 ```
@@ -271,7 +271,7 @@ then, after `shelf.draw`, when `measuring`: the reading (`VoltsReading(paused ? 
 - ADD_INSTRUMENT.md's CLI row ("these bring the window out without the focus"): `--meter` takes the meter.
 - `src/session/session.hpp:101`'s comment: "the Multimeter's held and clipped Test Leads".
 - README_SPEC.md line 195 (`--meter A,B`: black first).
-- README_SPEC.md item 3 and README.md: "Power off, take the multimeter, clip its black lead on the LED's pad and hold the red one on `U5` pin 11: it reads OL". `tools/readme_shots.py`: `continuity` becomes `--meter D1.1,U5.11` (black first); regenerate `docs/readme/continuity.png`.
+- README_SPEC.md item 3 and README.md: "Power off, take the multimeter, clip its black lead on the LED's pad and hold the red one on `U5` pin 11: it shows dashes, no beep". `tools/readme_shots.py`: `continuity` becomes `--meter D1.1,U5.11` (black first); regenerate `docs/readme/continuity.png`.
 - ARCHITECTURE: the P8g row done.
 
 ## Checks
