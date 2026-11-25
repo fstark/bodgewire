@@ -84,9 +84,16 @@
   }
   // An error at start (memory refused, a failed compile) shown on the page, where a tablet with no
   // console can read it, and kept.
+  // SDL's fill-document window hides every element of the body but the canvas (SDL3's
+  // SDL3_fill_document_background_elements): what must stay in view goes under <html>, above it.
+  const keepInView = (element) => {
+    element.style.zIndex = '2';
+    document.documentElement.appendChild(element);
+  };
   const stop = (why) => {
     if (stopped) return;
     Module.setStatus('Bodgewire stopped: ' + (why || 'see the console.'));
+    keepInView(status);
     stopped = true;
   };
   window.addEventListener('error', (e) => stop(e.error?.message || e.message));
@@ -104,6 +111,7 @@
     if (!forced && (!phone || seen)) return;
     const notice = document.getElementById('mobile');
     notice.style.display = 'flex';
+    keepInView(notice);  // it waits for "Try it anyway", whenever the game's window opens
     document.getElementById('mobile-ok').addEventListener('click', () => {
       notice.style.display = 'none';
       try { sessionStorage.setItem('bw-mobile-seen', '1'); } catch {}
