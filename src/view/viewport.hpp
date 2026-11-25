@@ -33,6 +33,9 @@ public:
     // Centres `box` and zooms so it fills `share` of the panel, but at least `minPixelsPerMm`;
     // clamped to [fitted, kMaxPixelsPerMm].
     void frame(Bounds box, double share, double minPixelsPerMm);
+    // As frame(box, share, 0), but never past `maxPixelsPerMm` (a chip framed so its pins are a
+    // finger's size, no larger: P8f); still within [fitted, kMaxPixelsPerMm].
+    void frameUpTo(Bounds box, double share, double maxPixelsPerMm);
 
     ScreenPoint toScreen(Point p) const;
     Point toBoard(ScreenPoint s) const;

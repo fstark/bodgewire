@@ -29,8 +29,10 @@ public:
     // the Board's selected Component. Coming out: the divider `show` asked for, else the User
     // Manual, the selection taken as seen (no turn), the opened Part closed. Out, a selection
     // different from the last frame's (not a deselection) turns to Datasheets and closes the
-    // opened Part. Away, the selection is only remembered.
-    void frame(bool out, std::optional<std::size_t> selected);
+    // opened Part. Away, the selection is only remembered. `hasContents` (the selected Component
+    // is a memory chip): a new selection also makes the Contents divider show it, its tab there
+    // without the chip's small window clicked, and turns nothing more (P8f).
+    void frame(bool out, std::optional<std::size_t> selected, bool hasContents = false);
     Divider divider() const { return divider_; }
     void turn(Divider divider) { divider_ = divider; }  // its tab clicked
     void show(Divider divider) { shown_ = divider; }    // --manual: the next coming out

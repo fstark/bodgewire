@@ -28,6 +28,7 @@ public:
 
 private:
     float wheelRest_ = 0;
+    float pinchRest_ = 0;  // of a pinch, not yet a whole step
     float pressX_ = 0;
     bool moved_ = false;
 };

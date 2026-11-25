@@ -18,6 +18,7 @@
 #include "parts/switch.hpp"
 #include "session/session.hpp"
 #include "ui/board_look.hpp"
+#include "ui/view_buttons.hpp"
 #include "view/board_scene.hpp"
 #include "view/focus.hpp"
 #include "view/pencil_marks.hpp"
@@ -183,12 +184,17 @@ private:
 
     void input(ImVec2 origin);  // hover, zoom, pan, click while the panel is hovered or dragged
     PickReach reach() const;
+    // Selected and framed so its pins are a finger's size, or it fills most of the panel (P8f).
+    void frameChip(std::size_t component);
 
     std::optional<BoardScene> scene_;
     std::optional<ImVec2> corner_;
     Viewport viewport_;
     Layer active_ = Layer::Front;
     bool plainLook_ = false;
+    ViewButtons buttons_;  // Fit, Look, Copper, Hold, Flip (P8f)
+    bool copper_ = false;  // Copper on: picks go under chip bodies, as with Option held
+    bool hold_ = false;    // Hold on: a click latches a Board button
     Owner owner_ = Owner::Probe;
     bool needFit_ = true;  // first draw knows the panel size
     std::optional<Bounds> still_;
@@ -201,6 +207,7 @@ private:
     std::optional<Flash> flash_;
     bool pressed_ = false;                      // left button went down on the panel
     bool cornerPressed_ = false;                // ... on the flip corner (P6o)
+    std::optional<std::size_t> framePress_;     // ... a second time on this chip's body (P8f)
     std::optional<std::size_t> windowPressed_;  // ... on a memory chip's window (P6p)
     std::optional<std::size_t> contentsClick_;
     bool dragging_ = false;

@@ -147,3 +147,19 @@ TEST_CASE("binder: one tab, none", "[binder]") {
     // No room at all: the tabs pile up at the top, never above it.
     CHECK(TabTops(3, 30, 40, 44, 50) == std::vector<float>{30, 30, 30});
 }
+
+TEST_CASE("binder: a memory chip selected offers its Contents, turning nothing", "[binder]") {
+    Binder binder;
+    binder.frame(true, std::nullopt);
+    CHECK_FALSE(binder.contents().has_value());
+    binder.frame(true, 7, true);  // a memory chip selected: its tab is there
+    CHECK(binder.contents() == 7);
+    CHECK(binder.divider() == Divider::Datasheets);  // as any selection: no turn to Contents
+    binder.openContents(3);                          // another chip's window clicked
+    CHECK(binder.contents() == 3);
+    CHECK(binder.divider() == Divider::Contents);
+    binder.frame(true, 7, true);  // the same selection, the next frame: not undone
+    CHECK(binder.contents() == 3);
+    binder.frame(true, 9, false);  // a chip without contents: the tab stays as it was
+    CHECK(binder.contents() == 3);
+}

@@ -17,7 +17,10 @@ std::vector<float> TabTops(std::size_t count, float top, float bottom, float tab
     return tops;
 }
 
-void Binder::frame(bool out, std::optional<std::size_t> selected) {
+void Binder::frame(bool out, std::optional<std::size_t> selected, bool hasContents) {
+    if (selected && selected != selected_ && hasContents) {
+        contents_ = selected;
+    }
     if (out && !out_) {
         divider_ = shown_.value_or(Divider::User);
         shown_.reset();

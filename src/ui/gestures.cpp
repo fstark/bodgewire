@@ -30,6 +30,12 @@ TimeCanvasInput TimeCanvas::read(float width, int divisions) {
         input.pan = -io.MouseWheelH * width / static_cast<float>(divisions) / 2;
         input.fit = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
         input.clearMarker = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+        if (const FingerFrame& touch = Touch(); touch.two) {
+            // Two fingers (P8f): a step each time their distance doubles or halves, about their
+            // centre (the hover); the time panned with them.
+            input.zoom += WheelNotches(std::log2(touch.pinch), pinchRest_);
+            input.pan += touch.panX;
+        }
     }
     if (ImGui::IsItemActivated()) {
         input.pressed = true;

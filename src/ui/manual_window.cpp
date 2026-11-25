@@ -142,7 +142,16 @@ void ManualWindows::openContents(const BoardScene& scene, std::size_t component,
 void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
                          const LoadedCircuit& design, std::span<const std::string> log,
                          const Machine* machine, const std::string* fault) {
-    binder_.frame(open, board.selected());
+    // A memory chip selected (P8f): its Contents tab is there without its small window clicked.
+    const std::optional<std::size_t> selected = board.selected();
+    bool hasContents = false;
+    if (selected != offered_) {
+        offered_ = selected;
+        hasContents =
+            selected && machine != nullptr && board.scene() != nullptr &&
+            machine->contents(board.scene()->board().components[*selected].reference).has_value();
+    }
+    binder_.frame(open, selected, hasContents);
     if (!open) {
         return;
     }

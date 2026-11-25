@@ -53,6 +53,7 @@ private:
     ContentsPage contents_;
     std::vector<IndexEntry> index_;
     bool indexed_ = false;
+    std::optional<std::size_t> offered_;  // the selection last looked at for its Contents
     float stretch_ = 1;
     bool faultShown_ = false;   // the Give up page's button pressed: for the bench
     bool faultCopied_ = false;  // its line clicked

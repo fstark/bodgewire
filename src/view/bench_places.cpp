@@ -23,7 +23,7 @@ Place DefaultPlace(BenchObject object, Extent bench) {
     case BenchObject::Tv:
         return {w - m, m, 1, 0};
     case BenchObject::Keyboard:
-        return {w - m, kKeyboardTop, 1, 0};
+        return {w - m - kViewLane, kKeyboardTop, 1, 0};
     case BenchObject::Knob:
         return {m, m, 0, 0};
     case BenchObject::Analyzer:
@@ -31,7 +31,7 @@ Place DefaultPlace(BenchObject object, Extent bench) {
     case BenchObject::Scope:
         return {w / 2, h - m, 0.5f, 1};
     case BenchObject::Meter:
-        return {w - m, h - m, 1, 1};
+        return {w - m - kViewLane, h - m, 1, 1};
     case BenchObject::Manual:
         return {m, m + kKnobBox.height + m, 0, 0};
     case BenchObject::Brief:
@@ -50,8 +50,8 @@ Extent FirstSize(BenchObject object, Extent bench, float aspect, int count) {
         return {kKnobBox.width * static_cast<float>(count), kKnobBox.height};
     case BenchObject::Keyboard: {
         const float room = bench.height - kKeyboardTop - kBenchMargin;
-        const float width =
-            std::min({kKeyboardFirstWidth, room / aspect, bench.width - 2 * kBenchMargin});
+        const float width = std::min(
+            {kKeyboardFirstWidth, room / aspect, bench.width - 2 * kBenchMargin - kViewLane});
         return {width, width * aspect};
     }
     case BenchObject::Manual:

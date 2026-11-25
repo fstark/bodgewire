@@ -120,6 +120,11 @@ constexpr ImU32 kSlideText = IM_COL32(245, 235, 225, 255);
 constexpr float kSlideBodyShare = 0.78f;  // of the courtyard's height
 constexpr double kPadReachPx = 12;
 constexpr double kCopperReachPx = 10;
+// A finger's reach for pads, copper, pencil marks and Board buttons (P8f, TOUCH.md §R2).
+constexpr double kFingerReachPx = 22;
+// A chip framed by a double-click: its pin pitch on screen, or this share of the panel.
+constexpr double kFramePitchPx = 44;
+constexpr double kFrameShare = 0.9;
 constexpr double kFocusPadMinPx = 14;
 constexpr std::int64_t kFocusPadMargin = 4'000'000;  // nm around a focused pad
 constexpr auto kFlashTime = std::chrono::seconds(1);
@@ -638,6 +643,26 @@ void BoardView::draw(ImVec2 size) {
         panel_ = panel;
     }
     if (!still_) {
+        if (const auto button =
+                buttons_.items(origin, {origin.x + panel.x, origin.y + panel.y}, false)) {
+            switch (*button) {
+            case ViewButton::Fit:
+                fit();
+                break;
+            case ViewButton::Look:
+                plainLook_ = !plainLook_;
+                break;
+            case ViewButton::Copper:
+                copper_ = !copper_;
+                break;
+            case ViewButton::Hold:
+                hold_ = !hold_;
+                break;
+            case ViewButton::Flip:
+                toggleLayer();
+                break;
+            }
+        }
         input(origin);
     }
     const std::optional<BoardTarget> outside = std::exchange(outside_, std::nullopt);
@@ -1039,9 +1064,14 @@ void BoardView::draw(ImVec2 size) {
                      IM_COL32_BLACK, digit);
     }
     if (refusal_ && std::chrono::steady_clock::now() < refusal_->until) {
+        // Above the pointer (P8f: below it, a finger hides it), kept inside the panel.
         const ImVec2 text = ImGui::CalcTextSize(refusal_->reason.c_str());
-        const ImVec2 min{refusal_->at.x + 14, refusal_->at.y + 14};
-        const ImVec2 max{min.x + text.x + 12, min.y + text.y + 8};
+        const ImVec2 box{text.x + 12, text.y + 8};
+        const ImVec2 min{std::clamp(refusal_->at.x - box.x / 2, origin.x,
+                                    std::max(origin.x, origin.x + panel.x - box.x)),
+                         std::clamp(refusal_->at.y - 14 - box.y, origin.y,
+                                    std::max(origin.y, origin.y + panel.y - box.y))};
+        const ImVec2 max{min.x + box.x, min.y + box.y};
         list.AddRectFilled(min, max, IM_COL32(60, 10, 10, 235), 4.0f);
         list.AddRect(min, max, IM_COL32(255, 90, 90, 255), 4.0f);
         list.AddText({min.x + 6, min.y + 4}, IM_COL32(255, 220, 220, 255),
@@ -1084,6 +1114,7 @@ void BoardView::draw(ImVec2 size) {
                      IM_COL32(0, 0, 0, 110), 4.0f);
         list.AddTriangleFilled(left, up, corner, back);
         list.AddLine(left, up, IM_COL32(255, 255, 255, 150), 1.5f);
+        buttons_.draw(list, {plainLook_, copper_, hold_, active_ == Layer::Back});
     }
     ImGui::EndChild();
 }
@@ -1095,9 +1126,10 @@ PickReach BoardView::reach() const {
     // cutters and the iron reach the Trace under it and between two pins, the hover showing
     // what the click will cut or mend (2026-11-24).
     const bool copperTool = owner_ == Owner::Cutters || owner_ == Owner::Iron;
-    return {.pad = std::llround(kPadReachPx * nmPerPixel),
-            .copper = std::llround(kCopperReachPx * nmPerPixel),
-            .bodies = !ImGui::GetIO().KeyAlt && !copperTool,
+    const bool finger = FingerPointer();
+    return {.pad = std::llround((finger ? kFingerReachPx : kPadReachPx) * nmPerPixel),
+            .copper = std::llround((finger ? kFingerReachPx : kCopperReachPx) * nmPerPixel),
+            .bodies = !ImGui::GetIO().KeyAlt && !copper_ && !copperTool,
             .copperFirst = copperTool};
 }
 
@@ -1115,9 +1147,11 @@ void BoardView::input(ImVec2 origin) {
     hovered_.reset();
     const ImGuiIO& io = ImGui::GetIO();
     const ScreenPoint mouse{io.MousePos.x - origin.x, io.MousePos.y - origin.y};
-    const bool hoveredPanel = ImGui::IsWindowHovered();
+    // A press on the view buttons is not the Board's.
+    const bool hoveredPanel = ImGui::IsWindowHovered() && !buttons_.hovered();
 
     if (Touch().cancelled) {
+        framePress_.reset();
         // A second finger (P8f): the press under way is void; its release finds nothing pressed.
         pressed_ = false;
         dragging_ = false;
@@ -1155,7 +1189,9 @@ void BoardView::input(ImVec2 origin) {
         picked = scene_->pick(at, active_, reach());
     }
     if (pressed_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-        if (!dragging_ && cornerPressed_) {
+        if (!dragging_ && framePress_) {
+            frameChip(*framePress_);  // a double-click's second: no click
+        } else if (!dragging_ && cornerPressed_) {
             if (onCorner) {
                 toggleLayer();
             }
@@ -1183,6 +1219,7 @@ void BoardView::input(ImVec2 origin) {
         wirePress_.reset();
         cornerPressed_ = false;
         windowPressed_.reset();
+        framePress_.reset();
         dragging_ = false;
     }
     if (held_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
@@ -1191,16 +1228,58 @@ void BoardView::input(ImVec2 origin) {
     if (!hoveredPanel) {
         return;
     }
+    if (const FingerFrame& touch = Touch(); touch.two) {
+        // Two fingers (P8f): the Board zoomed about their centre and panned with it; no pick, no
+        // highlight, no tooltip meanwhile.
+        if (touch.pinch != 1) {
+            viewport_.zoomAt(mouse, std::log(touch.pinch) / std::log(Viewport::kZoomStep));
+        }
+        if (touch.panX != 0 || touch.panY != 0) {
+            viewport_.pan({touch.panX, touch.panY});
+        }
+        return;
+    }
     const auto buttonAt = [&]() -> std::optional<std::size_t> {
-        const auto body = scene_->bodyAt(at);
         // Not under the Swap tool: a click on a switch body swaps it (P5i); nor the pencil: it
         // marks it (P6h); nor on the flip corner (P6o).
-        if (body && !onCorner && owner_ != Owner::Puller && owner_ != Owner::Pencil &&
-            std::ranges::any_of(switches_,
-                                [&](const SwitchTag& b) { return b.component == *body; })) {
+        if (onCorner || owner_ == Owner::Puller || owner_ == Owner::Pencil) {
+            return std::nullopt;
+        }
+        const auto isSwitch = [&](std::size_t component) {
+            return std::ranges::any_of(
+                switches_, [&](const SwitchTag& b) { return b.component == component; });
+        };
+        if (const auto body = scene_->bodyAt(at); body && isSwitch(*body)) {
             return body;
         }
-        return std::nullopt;
+        // A finger beside a button or a switch (P8f): the nearest one within its reach, when
+        // nothing else is picked there (the button's own pads apart).
+        const bool otherPick =
+            picked &&
+            !((picked->hit.kind == HitKind::Pad || picked->hit.kind == HitKind::Component) &&
+              isSwitch(picked->hit.component));
+        if (!FingerPointer() || otherPick) {
+            return std::nullopt;
+        }
+        std::optional<std::size_t> nearest;
+        double best = kFingerReachPx * 1e6 / viewport_.pixelsPerMm();  // nm
+        for (const SwitchTag& b : switches_) {
+            const auto courtyard = scene_->courtyard(b.component);
+            if (courtyard.empty()) {
+                continue;
+            }
+            const auto [minX, maxX] = std::ranges::minmax(courtyard, {}, &Point::x);
+            const auto [minY, maxY] = std::ranges::minmax(courtyard, {}, &Point::y);
+            const double dx =
+                static_cast<double>(std::max<std::int64_t>({minX.x - at.x, at.x - maxX.x, 0}));
+            const double dy =
+                static_cast<double>(std::max<std::int64_t>({minY.y - at.y, at.y - maxY.y, 0}));
+            if (const double d = std::hypot(dx, dy); d <= best) {
+                best = d;
+                nearest = b.component;
+            }
+        }
+        return nearest;
     };
     if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
         io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Right] <
@@ -1231,6 +1310,14 @@ void BoardView::input(ImVec2 origin) {
         wirePress_ = pressed_ && owner_ == Owner::Wire && onPad && !onCorner && !onWindow
                          ? picked
                          : std::nullopt;
+        // The second click of a double-click on a chip's body (no Board button: `held_`), with
+        // the probe or an Instrument in hand (P8f): its release frames the chip.
+        framePress_.reset();
+        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && pressed_ && picked &&
+            picked->hit.kind == HitKind::Component && !onCorner && !onWindow &&
+            (owner_ == Owner::Probe || IsInstrument(owner_))) {
+            framePress_ = picked->hit.component;
+        }
     }
     // Not under the pencil: two quick clicks change a mark from dot to cross.
     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !picked && !onCorner && !onWindow &&
@@ -1277,6 +1364,15 @@ void BoardView::input(ImVec2 origin) {
     }
 }
 
+void BoardView::frameChip(std::size_t component) {
+    select(component);
+    if (const auto box = scene_->boundsOf(BoardTarget{{component}, std::nullopt, std::nullopt},
+                                          kFocusPadMargin)) {
+        needFit_ = false;
+        viewport_.frameUpTo(*box, kFrameShare, kFramePitchPx / 2.54);
+    }
+}
+
 void BoardView::refuse(std::string reason) {
     refusal_ = Refusal{std::move(reason), ImGui::GetIO().MousePos,
                        std::chrono::steady_clock::now() + std::chrono::milliseconds(1500)};
@@ -1294,7 +1390,8 @@ std::optional<Point> BoardView::takeRightClick() {
 
 std::int64_t BoardView::markReach() const {
     const double nmPerPixel = 1e6 / viewport_.pixelsPerMm();
-    return std::max<std::int64_t>(kMarkSize / 2, std::llround(kMarkMinPx / 2 * nmPerPixel));
+    const double minPx = FingerPointer() ? kFingerReachPx : kMarkMinPx / 2;
+    return std::max<std::int64_t>(kMarkSize / 2, std::llround(minPx * nmPerPixel));
 }
 
 std::optional<std::size_t> BoardView::takeLatchToggle() {

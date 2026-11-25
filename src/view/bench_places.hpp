@@ -31,6 +31,9 @@ struct Place {
 };
 
 inline constexpr float kBenchMargin = 16;
+// The Board's view buttons stand in a column at the bench's bottom right (P8f): the objects whose
+// place is on that side (the keyboard, the Multimeter) leave its lane free.
+inline constexpr float kViewLane = 52;
 // The TV case's height for its width: a small 1970s monitor's, near square (P6f).
 inline constexpr float kTvAspect = 0.96f;
 inline constexpr float kTvFirstWidth = 440;

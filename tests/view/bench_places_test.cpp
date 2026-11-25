@@ -46,18 +46,20 @@ TEST_CASE("bench places: every object at its first size lies inside the bench", 
     }
 }
 
-TEST_CASE("bench places: the TV top right, the keyboard under it, the instruments along the bottom",
-          "[view]") {
+TEST_CASE(
+    "bench places: the TV top right, the keyboard under it, the instruments along the bottom, "
+    "the view buttons' lane left free",
+    "[view]") {
     const Box tv = Placed(BenchObject::Tv, FirstSize(BenchObject::Tv, kBench));
     CHECK(tv.right == Catch::Approx(kBench.width - kBenchMargin));
     CHECK(tv.top == Catch::Approx(kBenchMargin));
     const Box keyboard =
         Placed(BenchObject::Keyboard, FirstSize(BenchObject::Keyboard, kBench, 0.36f));
     CHECK(keyboard.top > tv.bottom);
-    CHECK(keyboard.right == Catch::Approx(tv.right));
+    CHECK(keyboard.right == Catch::Approx(tv.right - kViewLane));
 
     const Box meter = Placed(BenchObject::Meter, NormalSize(BenchObject::Meter));
-    CHECK(meter.right == Catch::Approx(kBench.width - kBenchMargin));
+    CHECK(meter.right == Catch::Approx(kBench.width - kBenchMargin - kViewLane));
     CHECK(meter.bottom == Catch::Approx(kBench.height - kBenchMargin));
     const Box scope = Placed(BenchObject::Scope, NormalSize(BenchObject::Scope));
     CHECK((scope.left + scope.right) / 2 == Catch::Approx(kBench.width / 2));

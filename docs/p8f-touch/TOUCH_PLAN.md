@@ -15,7 +15,7 @@ ctest --preset release -j -R "^(fingers|number pad|view|time view|bench options|
 | Phase | Description | Commit |
 |---|---|---|
 | 0 | Spec, design and plan, reviewed | `d2f8eda` |
-| 1 | Plumbing: the fingers, their glue, `--touch` and the scripted fingers | |
+| 1 | Plumbing: the fingers, their glue, `--touch` and the scripted fingers | `ddd9bc2` |
 | 2 | The Board's zoom and picks; the view buttons; `/touch/` on Pages | |
 | 3 | What has no control today: Stop, Hold, the cursor, the flag, pin / bus | |
 | 4 | Sizes and numbers: the style, the stepper, the choices, the number pad | |
@@ -162,3 +162,9 @@ Phase 1:
 - A scripted finger turns `--touch` on, so the real mouse cannot take the pointer back during a shot (its motion with no button is dropped).
 - A scripted pinch's fingers start 200 px apart (the design said 60): the 10 px they must pass first then costs 5 % of the factor, not 17 %.
 - The keyboard's check is a `--hold` on a key, not two taps: the BW-2001 runs at about a third of real time here, so a 50 ms tap is 16 ms for the Machine, under its keyboard scan. A quick tap on a key of a slow Machine can be missed, with the mouse as with a finger; on an iPad, slower still, it will matter. To look at with the devices (phase 3).
+
+Phase 2:
+
+- The view buttons' column stands over the Board's right margin: on a Board fitted to the panel's width (the Counter) its top button covers the Flip Corner. Flip is in the column, so nothing is lost; the fit could leave the lane free if it bothers on the iPad.
+- A Board button's reach for a finger gives way to any other pick there, but not to the button's own pads, which lie under its cap.
+- The page's hold (no selection, callout or bounce) is in `shell.html` from this phase, for the first sitting; the manifest waits for phase 8.

@@ -67,6 +67,17 @@ void Viewport::frame(Bounds box, double share, double minPixelsPerMm) {
     fitted_ = false;
 }
 
+void Viewport::frameUpTo(Bounds box, double share, double maxPixelsPerMm) {
+    frame(box, share, 0);
+    const double cap = std::max(minNmToPixel_, maxPixelsPerMm / 1e6);
+    if (nmToPixel_ > cap) {
+        nmToPixel_ = cap;
+        const double cx = (static_cast<double>(box.min.x) + static_cast<double>(box.max.x)) / 2;
+        const double cy = (static_cast<double>(box.min.y) + static_cast<double>(box.max.y)) / 2;
+        offset_ = {panel_.x / 2 - cx * nmToPixel_, panel_.y / 2 - cy * nmToPixel_};
+    }
+}
+
 ScreenPoint Viewport::toScreen(Point p) const {
     return {static_cast<double>(p.x) * nmToPixel_ + offset_.x,
             static_cast<double>(p.y) * nmToPixel_ + offset_.y};

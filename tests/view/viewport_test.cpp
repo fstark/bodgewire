@@ -123,3 +123,21 @@ TEST_CASE("view: viewport frame", "[view]") {
     CHECK(point.x == Catch::Approx(400));
     CHECK(point.y == Catch::Approx(300));
 }
+
+TEST_CASE("view: viewport frameUpTo stops at the scale asked, or fills its share", "[view]") {
+    Viewport v;
+    v.fit(kBoard, kPanel);
+    // A 14-pin chip, 10 × 20 mm: filling 90 % of the panel would be 27 px/mm; 44 px a pin's
+    // pitch (2.54 mm) is 17.3.
+    constexpr Bounds kSmall{{30 * kMm, 30 * kMm}, {40 * kMm, 50 * kMm}};
+    v.frameUpTo(kSmall, 0.9, 44 / 2.54);
+    CHECK(v.pixelsPerMm() == Catch::Approx(44 / 2.54));
+    const ScreenPoint centre = v.toScreen({35 * kMm, 40 * kMm});
+    CHECK(centre.x == Catch::Approx(400));
+    CHECK(centre.y == Catch::Approx(300));
+    CHECK_FALSE(v.fitted());
+    // A 40-pin chip, 18 × 52 mm: it fills 90 % of the panel's height first (10.4 px/mm).
+    constexpr Bounds kLarge{{20 * kMm, 15 * kMm}, {38 * kMm, 67 * kMm}};
+    v.frameUpTo(kLarge, 0.9, 44 / 2.54);
+    CHECK(v.pixelsPerMm() == Catch::Approx(0.9 * 600 / 52));
+}
