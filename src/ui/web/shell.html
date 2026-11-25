@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bodgewire</title>
 <!-- Cross-origin isolation for the Runner's threads (shared memory): GitHub Pages sends no
-     COOP/COEP headers, so this service worker adds them, reloading the page once. -->
+     COOP/COEP headers, so this service worker adds them, reloading the page once. Always
+     COEP require-corp: its default switches to credentialless on every browser but Chrome and
+     Firefox from the second load on, and Safari, without credentialless, then is not isolated
+     ("The object can not be cloned" at start on an iPad's reload, 2026-11-25). Every file is
+     the page's own, so require-corp loses nothing. -->
+<script>window.coi = { coepCredentialless: () => false };</script>
 <script src="coi-serviceworker.js"></script>
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
