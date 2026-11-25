@@ -26,6 +26,10 @@ inline constexpr ImU32 kCardShadow = IM_COL32(0, 0, 0, 110);
 // that far below and right (the launcher's selected post-it, P7b).
 void DrawNote(ImDrawList& list, ImVec2 at, ImVec2 end, float lift = 0);
 
+// The owner's ballpoint tick (P8c) in a `size` px square at `at`: the brief's, the Launcher's
+// post-its' (P8e).
+void DrawTick(ImDrawList& list, ImVec2 at, float size);
+
 // Where the note sits on the Board (P6o): its offset from the Board's top-left corner in screen
 // px, moved by dragging the note, kept for the bench (folded away too).
 struct BriefNote {

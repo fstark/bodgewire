@@ -38,15 +38,17 @@ constexpr float kNameScale = 1.5f;
 constexpr float kNoteWidth = 190;
 constexpr float kNotePad = 12;
 constexpr float kNoteTitleScale = 1.2f;
-constexpr float kNoteGap = 20;     // between the Puzzles' post-its; above them on the wood
-constexpr float kNoteLeft = 24;    // "Start the Machine"
-constexpr float kRowGap = 32;      // from it to the Puzzles' row
-constexpr int kNoteLines = 8;      // of brief: every post-it this tall, a longer brief scrolled
-constexpr float kWoodBelow = 26;   // px under the post-its: the gold bar and a margin
-constexpr float kLiftShadow = 6;   // the selected post-it's, deeper
-constexpr float kChevron = 18;     // px tall
-constexpr float kChevronGap = 10;  // px outside the picture
-constexpr auto kSettle = std::chrono::milliseconds(150);  // the selection at rest: load it
+constexpr float kNoteGap = 20;    // between the Puzzles' post-its; above them on the wood
+constexpr float kNoteLeft = 24;   // "Start the Machine"
+constexpr float kRowGap = 32;     // from it to the Puzzles' row
+constexpr int kNoteLines = 8;     // of brief: every post-it this tall, a longer brief scrolled
+constexpr float kWoodBelow = 26;  // px under the post-its: the gold bar and a margin
+constexpr float kLiftShadow = 6;  // the selected post-it's, deeper
+constexpr float kTickSize = 34;   // px: a repaired Puzzle's tick on its post-it (P8e)
+constexpr const char* kForgetHint = "Delete: forget the ticks";  // Proggy has no ⌫
+constexpr float kChevron = 18;                                   // px tall
+constexpr float kChevronGap = 10;                                // px outside the picture
+constexpr auto kSettle = std::chrono::milliseconds(150);         // the selection at rest: load it
 constexpr ImU32 kName = IM_COL32(235, 235, 235, 255);
 constexpr ImU32 kParagraph = IM_COL32(200, 200, 205, 255);
 constexpr ImU32 kErrorText = IM_COL32(255, 90, 76, 255);
@@ -151,9 +153,10 @@ float NoteHeight(const std::string& title, const std::string& brief) {
 // `scroll`: px of its text scrolled up, out of `overflow` (the text past the note's height): a
 // small ink arrow at the bottom while more is below, at the top once scrolled.
 // `sign`: drawn large in place of the brief ("Random fault"'s "?", P8d).
+// `ticked`: the owner's tick in the bottom-right corner, over the brief (Saved progress, P8e).
 void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& title,
                 const std::string& brief, bool selected, bool card, float scroll = 0,
-                float overflow = 0, const char* sign = nullptr) {
+                float overflow = 0, const char* sign = nullptr, bool ticked = false) {
     const ImVec2 end{at.x + kNoteWidth, at.y + height};
     if (card) {
         const float shadow = selected ? kLiftShadow : 2;
@@ -196,6 +199,9 @@ void DrawPostIt(ImDrawList& list, ImVec2 at, float height, const std::string& ti
         list.AddText(font, size, {at.x + kNotePad, y}, ink, brief.c_str(), nullptr, wrap);
     }
     list.PopClipRect();
+    if (ticked) {
+        DrawTick(list, {end.x - kNotePad - kTickSize, end.y - kNotePad - kTickSize}, kTickSize);
+    }
     const float midX = at.x + kNoteWidth / 2;
     const ImU32 arrow = WithAlpha(ink, 0.55f);
     if (scroll < overflow - 0.5f) {
@@ -465,6 +471,11 @@ void Launcher::updateLive(TvView& tv) {
     }
 }
 
+void Launcher::setProgress(const Progress* progress, std::function<void()> forget) {
+    progress_ = progress;
+    forget_ = std::move(forget);
+}
+
 std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont* titleFont) {
     std::optional<std::filesystem::path> chosen;
     ImDrawList& list = *ImGui::GetWindowDrawList();
@@ -505,7 +516,28 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
     const Lane laneBefore = lanes_.lane();
     // A Random fault being made (P8d): Esc alone does anything; its choice once made.
     std::optional<LauncherChoice> made = updateMaking();
-    if (!making_ && !made) {
+    // Saved progress (P8e): the hint while some listed Puzzle is ticked; Delete, Backspace or a
+    // click on it asks first. While the question is open the keys move nothing.
+    bool anyTicked = false;
+    if (progress_ != nullptr && !progress_->empty()) {
+        for (const MachineEntry& entry : list_.machines) {
+            anyTicked = anyTicked || std::ranges::any_of(entry.puzzles, [&](const PuzzleEntry& p) {
+                            return progress_->has(ProgressKey(entry, p));
+                        });
+        }
+    }
+    const ImVec2 forgetExtent = ImGui::CalcTextSize(kForgetHint);
+    const ImVec2 hintAt{origin.x + width - kNoteLeft - forgetExtent.x, origin.y + kTitleTop + 8};
+    const ImVec2 hintEnd{hintAt.x + forgetExtent.x, hintAt.y + forgetExtent.y};
+    const bool asking = ImGui::IsPopupOpen("##forget");
+    bool askNow = askForget_;
+    askForget_ = false;
+    if (!making_ && !made && !asking && anyTicked &&
+        (ImGui::IsKeyPressed(ImGuiKey_Backspace, false) ||
+         ImGui::IsKeyPressed(ImGuiKey_Delete, false))) {
+        askNow = true;
+    }
+    if (!making_ && !made && !asking) {
         if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
             lanes_.left();
         }
@@ -536,7 +568,19 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
     const float areaTop = origin.y + kTitleBand;
     const ImVec2 area{(static_cast<float>(kPictureTo - kPictureFrom)) * width,
                       topHeight - kTitleBand - kAreaMargin};
-    const bool clicksOn = !chosen && !making_ && !made;
+    const bool clicksOn = !chosen && !making_ && !made && !asking;
+    if (anyTicked) {
+        list.AddText(hintAt, kSpeedInk, kForgetHint);
+        if (clicksOn) {
+            ImGui::SetCursorScreenPos(hintAt);
+            if (ImGui::InvisibleButton("##forget hint", forgetExtent)) {
+                askNow = true;
+            }
+        }
+    }
+    if (askNow && progress_ != nullptr) {
+        forgetQuestion_.open({hintEnd.x, hintEnd.y + 4}, {1, 0});
+    }
     std::optional<std::size_t> clickedMachine;
     bool clickedLive = false;
     std::optional<std::size_t> doubleClicked;
@@ -783,8 +827,10 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
             scroll -= ImGui::GetIO().MouseWheel * ImGui::GetFontSize() * 2;
         }
         scroll = std::clamp(scroll, 0.0f, overflow);
+        const bool ticked = k > 0 && k != randomAt && progress_ != nullptr &&
+                            progress_->has(ProgressKey(machine, machine.puzzles[k - 1]));
         DrawPostIt(list, at, noteHeight, titles[k], briefs[k], chosenOne, k == 0, scroll, overflow,
-                   k == randomAt ? kRandomSign : nullptr);
+                   k == randomAt ? kRandomSign : nullptr, ticked);
         if (chosenOne && lanes_.lane() == Lane::PostIts) {
             SelectionBar(list, {at.x, at.y + noteHeight}, kNoteWidth);
         }
@@ -860,6 +906,9 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         list.AddText(font, fontSize * kLineScale, {centre - extent.x / 2, middle - extent.y}, kName,
                      kMakingLines[line]);
         list.AddText({centre - hintExtent.x / 2, middle + fontSize * 0.6f}, kMakingHint, hint);
+    }
+    if (forgetQuestion_.draw() == PopupAnswer::Ok && forget_) {
+        forget_();
     }
     updateLive(tv);
     // The cursor back inside the window with an item last (SetCursorScreenPos alone past the

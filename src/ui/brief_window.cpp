@@ -1,5 +1,6 @@
 #include "ui/brief_window.hpp"
 
+#include <algorithm>
 #include <cfloat>
 #include <string>
 
@@ -20,6 +21,13 @@ constexpr ImU32 kShadow = IM_COL32(0, 0, 0, 70);
 constexpr ImU32 kLiftShadow = IM_COL32(0, 0, 0, 90);
 
 }  // namespace
+
+void DrawTick(ImDrawList& list, ImVec2 at, float size) {
+    const float thick = std::max(2.0f, size / 12);
+    const ImVec2 bottom{at.x + size * 0.35f, at.y + size * 0.9f};
+    list.AddLine({at.x + 1, at.y + size * 0.55f}, bottom, kBallpoint, thick);
+    list.AddLine(bottom, {at.x + size, at.y + 1}, kBallpoint, thick);
+}
 
 void DrawNote(ImDrawList& list, ImVec2 at, ImVec2 end, float lift) {
     if (lift > 0) {  // the whole note lifted off the wood: its shadow below and right
@@ -107,10 +115,7 @@ void DrawBrief(bool& open, const OpenedMachine& loaded, std::optional<ImVec2> co
         const float line = ImGui::GetTextLineHeight();
         const ImVec2 pen = ImGui::GetCursorScreenPos();
         ImDrawList& list = *ImGui::GetWindowDrawList();
-        list.AddLine({pen.x + 1, pen.y + line * 0.55f}, {pen.x + line * 0.35f, pen.y + line * 0.9f},
-                     kBallpoint, 2.0f);
-        list.AddLine({pen.x + line * 0.35f, pen.y + line * 0.9f}, {pen.x + line, pen.y + 1},
-                     kBallpoint, 2.0f);
+        DrawTick(list, pen, line);
         ImGui::Dummy({line + 4, line});
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Text, kBallpoint);

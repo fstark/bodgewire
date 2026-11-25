@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <future>
 #include <map>
 #include <memory>
@@ -17,10 +18,12 @@
 #include <imgui.h>
 
 #include "machine/machine_list.hpp"
+#include "machine/progress.hpp"
 #include "runner/runner.hpp"
 #include "session/puzzle_maker.hpp"
 #include "ui/board_view.hpp"
 #include "ui/loaded.hpp"
+#include "ui/question_popup.hpp"
 #include "ui/tv_view.hpp"
 #include "view/board_scene.hpp"
 #include "view/launcher_lanes.hpp"
@@ -87,6 +90,11 @@ public:
     // --screenshot: no bench is ever opened; a making's lines stay up once its Fault is made.
     void holdChoices() { hold_ = true; }
     void setError(std::string text);  // "Could not load …: see the terminal", in red
+    // Saved progress (P8e): the repaired Puzzles' post-its ticked, and "Delete: forget the
+    // ticks" while one listed is; `forget` called at the question's OK (it empties and saves).
+    // nullptr: no ticks, no hint.
+    void setProgress(const Progress* progress, std::function<void()> forget);
+    void askForget() { askForget_ = true; }  // --forget: the question open at the next draw
     const MachineList& list() const { return list_; }
     // Each frame, inside a window filling the main one with no padding: keys, clicks, the loads,
     // the live run, both lanes, a making. The entry to open.
@@ -139,6 +147,10 @@ private:
     std::size_t firstLine_ = 0;      // of the waiting lines: a new start each making
     std::optional<FaultDecl> made_;  // made, waiting for its line to be read
     bool hold_ = false;
+    const Progress* progress_ = nullptr;
+    std::function<void()> forget_;
+    QuestionPopup forgetQuestion_{"##forget", "Forget every repaired Puzzle?", false};
+    bool askForget_ = false;
     StillLoader loader_;  // last: its thread joined first
 };
 

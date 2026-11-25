@@ -833,6 +833,9 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
     if (options.screenshot) {
         launcher.holdChoices();  // the shot is the Launcher's: no bench opens before it
     }
+    if (options.forget) {
+        launcher.askForget();  // --forget: the question open for the shot (P8e)
+    }
     if (options.make) {
         launcher.make(options.seed);  // --make: the selected Random fault's making, at once
     }
@@ -1016,6 +1019,7 @@ int main(int argc, char** argv) {
     // Saved progress (P8e): the Puzzles repaired, kept across launches.
     ProgressStore store = ProgressStore::For(options);
     Progress progress = store.load();
+    launcher.setProgress(&progress, [&] { store.clear(progress); });
 
     int exitCode = 0;
     std::optional<Options> benchOptions;  // the bench's flags: the command line's for its file
