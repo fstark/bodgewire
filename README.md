@@ -51,8 +51,8 @@ goes to the LED.
 
 ![U5's traces and pins](docs/readme/traces.png)
 
-So is the chip broken, or the LED, or something in between? Power off, take the multimeter, switch
-it to Continuity, red lead on `U5` pin 11, black lead on the LED's pad. It reads "open": a trace
+So is the chip broken, or the LED, or something in between? Power off, take the multimeter, clip
+its black lead on the LED's pad and hold the red one on `U5` pin 11. It reads OL, "open": a trace
 runs from one to the other, but they aren't connected.
 
 ![The multimeter reading open between U5 and the LED](docs/readme/continuity.png)
@@ -98,7 +98,7 @@ Here the first four counters have been checked off, and the trace to the LED is 
 - **Logic analyzer**: clip it on chip pins (shift-click takes a whole bus), set a trigger, and read
   what happened before and after it.
 - **Oscilloscope**: four channels, for when the exact timing between signals matters.
-- **Multimeter**: volts, or continuity with the power off.
+- **Multimeter**: hold on copper; volts, or continuity with the power off.
 
 The logic analyzer on the LED computer's 6502, triggered on its first instruction fetch. The
 address and data buses read as values: the processor fetches its reset vector at FFFC and FFFD

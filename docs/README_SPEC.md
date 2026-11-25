@@ -82,8 +82,9 @@ short walk-through, one picture per step:
    dark.
 2. `traces`: hover a chip and its traces light up, with every pin named. U5's pin 11 (QD) is the
    one that drives the LED.
-3. `continuity`: power off, multimeter in Continuity, red lead on U5 pin 11, black lead on the
-   LED's pad: "open". The chip and the LED are not connected, though a trace runs between them.
+3. `continuity`: power off, the multimeter's black lead clipped on the LED's pad, its red lead
+   held on U5 pin 11: its LCD reads OL, "open". The chip and the LED are not connected, though a
+   trace runs between them.
 4. `crack`: zoom in on that trace: a hairline crack across the copper, about half way.
 5. `mended`: the soldering iron bridges the crack with a blob of solder; power on, the LED
    blinks.
@@ -192,7 +193,7 @@ From a clean machine to the game running, as commands to copy:
 - A change to the Dark LED Puzzle or the Counter's Board: §6's shots (the crack's coordinates in
   `tools/readme_shots.py` come from the Board: U5 pin 11 and D1 pad 1 in
   `machines/010-counter/board/counter.kicad_pcb`).
-- The screenshot flags the shots use: `--probe`, `--meter A,B` (two pins: Continuity, power
-  off), `--zoom X:Y:W`, `--repair`, `--press`, `--knob`, `--type`, `--focus`, `--mark`,
+- The screenshot flags the shots use: `--probe`, `--meter A,B` (two pins: the black lead clipped
+  on A, the red one held on B, power off), `--zoom X:Y:W`, `--repair`, `--press`, `--knob`, `--type`, `--focus`, `--mark`,
   `--clip`, `--group`, `--sample`, `--view`, `--hook`, `--timebase`, `--manual`, `--contents`
   (`bw_ui` usage line).

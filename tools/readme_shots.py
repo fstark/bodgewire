@@ -23,7 +23,7 @@ SHOTS = {
     "launcher": ([], "1s"),
     "bench": ([DARK_LED], "1s"),
     "traces": ([DARK_LED, "--probe", "U5.11"], "1s"),
-    "continuity": ([DARK_LED, "--meter", "U5.11,D1.1"], "1s"),
+    "continuity": ([DARK_LED, "--meter", "D1.1,U5.11"], "1s"),
     "crack": ([DARK_LED, "--zoom", "192.6:122:6", "--focus", "iron"], "1s"),
     "mended": ([DARK_LED, "--repair", "mend:F.Cu:192.6:121.96"], "0.7s"),
     # 3 s after the power-on: the Thank-you Card and the post-it's tick (P8c).
