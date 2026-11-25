@@ -294,7 +294,7 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
 
 void MatrixKeyboardWindow::holdSwitch(ImVec2 right, float u, ImU32 ink) {
     ImDrawList& list = *ImGui::GetWindowDrawList();
-    const float slotW = 0.80f * u, slotH = std::min(0.34f * u, 16.0f);
+    const float slotW = 0.80f * u, slotH = std::min(0.28f * u, 16.0f);
     const float px = std::max(6.0f, std::round(0.22f * u));
     const ImVec2 text = legends_->CalcTextSizeA(px, FLT_MAX, 0, "HOLD");
     const ImVec2 slotA{right.x - slotW, right.y - slotH / 2};
@@ -387,11 +387,14 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
                  kCaseEdge);
     const ImVec2 keys{origin.x + kMargin * u, origin.y + (kMargin + kLabel) * u};
     const std::string engraving = "BW-2001 \xc2\xb7 " + capture.reference;
-    list.AddText(legends_, std::max(6.0f, std::round(0.24f * u)),
-                 {std::round(keys.x), std::round(origin.y + kMargin * u)}, kEngraving,
-                 engraving.c_str());
-    holdSwitch({keys.x + kMatrixMainWidth * u, origin.y + (kMargin + kLabel / 2) * u}, u,
-               kEngraving);
+    // The name and HOLD on one line, clear of the plate below (HOLD's slot is taller than the
+    // name).
+    const float engravingPx = std::max(6.0f, std::round(0.24f * u));
+    const float lineY = origin.y + kMargin * u;
+    const float engravingH = legends_->CalcTextSizeA(engravingPx, FLT_MAX, 0, "B").y;
+    list.AddText(legends_, engravingPx, {std::round(keys.x), std::round(lineY - engravingH / 2)},
+                 kEngraving, engraving.c_str());
+    holdSwitch({keys.x + kMatrixMainWidth * u, lineY}, u, kEngraving);
     // The plates under the main block and the pad.
     const float lip = 0.12f * u;
     list.AddRectFilled(
