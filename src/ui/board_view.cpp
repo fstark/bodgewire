@@ -1252,20 +1252,25 @@ void BoardView::input(ImVec2 origin) {
         cornerPressed_ = false;
         windowPressed_.reset();
         held_.reset();
+        meterStart_.reset();
+        meterDown_ = false;
     }
     // A finger held still on the Board (P8f): the loupe, until it lifts. No pan meanwhile.
     if (pressed_ && !loupe_ && !dragging_ && Touch().hold && !cornerPressed_ && !windowPressed_ &&
         !framePress_) {
         loupe_ = true;
     }
+    // The meter's drag reads (P8g), as the Wire tool's draws: neither pans. A finger's pans until
+    // its loupe is up.
+    const bool readsDrag = wirePress_ || (meterStart_ && !FingerPointer());
     if (pressed_ && !loupe_) {
         if (!dragging_ && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
             dragging_ = true;
-            if (!wirePress_) {
+            if (!readsDrag) {
                 const ImVec2 total = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
                 viewport_.pan({total.x, total.y});
             }
-        } else if (dragging_ && !wirePress_) {
+        } else if (dragging_ && !readsDrag) {
             viewport_.pan({io.MouseDelta.x, io.MouseDelta.y});
         }
     }
@@ -1286,6 +1291,11 @@ void BoardView::input(ImVec2 origin) {
     if (hoveredPanel || pressed_) {
         picked = scene_->pick(at, active_, reach());
     }
+    // The Multimeter's press (P8g): a mouse's at once, a finger's once its loupe is up; not on
+    // the release's frame.
+    meterDown_ = pressed_ && meterStart_ && (!FingerPointer() || loupe_) &&
+                 !ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+    meterAt_ = meterDown_ ? picked : std::nullopt;
     if (pressed_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
         if (!dragging_ && framePress_) {
             frameChip(*framePress_);  // a double-click's second: no click
@@ -1329,6 +1339,7 @@ void BoardView::input(ImVec2 origin) {
         framePress_.reset();
         dragging_ = false;
         loupe_ = false;
+        meterStart_.reset();
     }
     if (held_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
         held_.reset();
@@ -1422,12 +1433,18 @@ void BoardView::input(ImVec2 origin) {
         wirePress_ = pressed_ && owner_ == Owner::Wire && onPad && !onCorner && !onWindow
                          ? picked
                          : std::nullopt;
+        // The Multimeter (P8g): a press that starts on copper measures; off it, it pans.
+        meterStart_ = pressed_ && owner_ == Owner::Meter && picked &&
+                              AcceptsLead(LeadKind::Held, picked->hit.kind) && !onCorner &&
+                              !onWindow
+                          ? picked
+                          : std::nullopt;
         // The second click of a double-click on a chip's body (no Board button: `held_`), with
         // the probe or an Instrument in hand (P8f): its release frames the chip.
         framePress_.reset();
         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && pressed_ && picked &&
             picked->hit.kind == HitKind::Component && !onCorner && !onWindow &&
-            (owner_ == Owner::Probe || IsInstrument(owner_))) {
+            Measures(owner_)) {
             framePress_ = picked->hit.component;
         }
     }
@@ -1436,7 +1453,7 @@ void BoardView::input(ImVec2 origin) {
         owner_ != Owner::Pencil) {
         fit();
     }
-    if (dragging_) {
+    if (dragging_ && !meterDown_) {  // the meter's drag: the Net under it lit
         return;
     }
     if (onCorner) {
@@ -1498,6 +1515,17 @@ void BoardView::refuse(std::string reason) {
 
 std::optional<BoardClick> BoardView::takeClick() { return std::exchange(click_, std::nullopt); }
 
+std::optional<MeterPress> BoardView::meterPress() const {
+    if (meterDown_) {
+        return MeterPress{*meterStart_, meterAt_};
+    }
+    // route() runs after the Board's draw: a link held at the last frame is held still.
+    if (linkPress_ && linkPress_->second >= ImGui::GetFrameCount() - 1) {
+        return MeterPress{linkPress_->first, linkPress_->first};
+    }
+    return std::nullopt;
+}
+
 std::optional<std::size_t> BoardView::takeContentsClick() {
     return std::exchange(contentsClick_, std::nullopt);
 }
@@ -1538,6 +1566,14 @@ void BoardView::focus(BoardTarget target) {
 void BoardView::route(const TargetHits& hits) {
     if (hits.hovered) {
         hoverFromOutside(hits.hovered);
+    }
+    // A pin link held with the meter in hand (P8g): the pin measured until it is let go.
+    if (const auto& held = hits.held; held && scene_ && owner_ == Owner::Meter &&
+                                      held->components.size() == 1 && held->pad && !held->net) {
+        const std::size_t k = held->components.front();
+        const Point at = scene_->board().components[k].pads[*held->pad].position;
+        linkPress_ = {Pick{{HitKind::Pad, k, *held->pad}, active_, at}, ImGui::GetFrameCount()};
+        flash_ = Flash{*held, std::chrono::steady_clock::now() + kFlashTime};
     }
     if (!hits.clicked || !scene_) {
         return;

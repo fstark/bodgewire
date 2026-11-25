@@ -223,8 +223,8 @@ Segments drawn as convex hexagons from `Segments(c)`; ImGui draw lists only (no 
 ### `src/ui/shelf.{hpp,cpp}`, `src/ui/shelf_drawings.cpp`
 
 - `Item::Meter` keeps `Owner::Meter`; the click's `default:` branch takes it (`focus.take`) now that it is not an Instrument; its `look.lit` is the owner's (held), as the probe's. `WindowOf` loses the meter.
-- Tooltip (§1): "Multimeter: hold on copper; volts, or continuity with the power off", then `"black clip: " + black()->label` while clipped.
-- The hint (§4), with the meter in hand: powered "Meter: hold on copper to read volts"; off, no clip, "Meter: click to clip the black lead"; clipped, "Meter: hold the red lead on copper; click the clip to lift it".
+- Tooltip (§1): "Multimeter: hold on copper; volts, or continuity with the power off", then `"black clip: " + black()->label + "; a click on it lifts it"` while clipped.
+- The hint (§4), with the meter in hand: powered "Meter: hold on copper"; off, no clip, "Meter: clip black lead"; clipped, "Meter: hold red lead" (about 22 characters fit at 1280 px).
 - `ImVec2 meterAt{}`: the meter cell's centre x and the Shelf's top edge y, screen px, written by `draw()` (as `leaveAt`).
 - `Meter(Pen&, look)` draws its little LCD lit and blank when held.
 

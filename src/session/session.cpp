@@ -135,6 +135,7 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
     }
     live_->runner->powerOn(seed);
     build_->powered = true;
+    meter_.powerChanged();  // the runner started: a live retarget, as the probe's
     ++powerOns_;
     inputs_.poweredOn();
 }
@@ -143,6 +144,7 @@ void Session::powerOff() {
     inputs_.poweredOff();
     live_->runner->powerOff();
     build_->powered = false;
+    meter_.powerChanged();
 }
 
 void Session::setSpeed(Speed speed) {

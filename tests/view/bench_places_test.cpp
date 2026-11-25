@@ -29,8 +29,7 @@ bool Inside(const Box& box) {
 }  // namespace
 
 TEST_CASE("bench places: every object at its first size lies inside the bench", "[view]") {
-    for (const BenchObject instrument :
-         {BenchObject::Analyzer, BenchObject::Scope, BenchObject::Meter}) {
+    for (const BenchObject instrument : {BenchObject::Analyzer, BenchObject::Scope}) {
         CHECK(Inside(Placed(instrument, NormalSize(instrument))));
         CHECK(Inside(Placed(instrument, MinimalSize(instrument))));
     }
@@ -58,9 +57,6 @@ TEST_CASE(
     CHECK(keyboard.top > tv.bottom);
     CHECK(keyboard.right == Catch::Approx(tv.right - kViewLane));
 
-    const Box meter = Placed(BenchObject::Meter, NormalSize(BenchObject::Meter));
-    CHECK(meter.right == Catch::Approx(kBench.width - kBenchMargin - kViewLane));
-    CHECK(meter.bottom == Catch::Approx(kBench.height - kBenchMargin));
     const Box scope = Placed(BenchObject::Scope, NormalSize(BenchObject::Scope));
     CHECK((scope.left + scope.right) / 2 == Catch::Approx(kBench.width / 2));
     const Box analyzer = Placed(BenchObject::Analyzer, NormalSize(BenchObject::Analyzer));

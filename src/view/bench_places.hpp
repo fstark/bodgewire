@@ -13,7 +13,6 @@ enum class BenchObject : std::uint8_t {
     Knob,
     Analyzer,
     Scope,
-    Meter,
     Manual,
     Brief,
     Debug
@@ -32,7 +31,7 @@ struct Place {
 
 inline constexpr float kBenchMargin = 16;
 // The Board's view buttons stand in a column at the bench's bottom right (P8f): the objects whose
-// place is on that side (the keyboard, the Multimeter) leave its lane free.
+// place is on that side (the keyboard) leave its lane free.
 inline constexpr float kViewLane = 52;
 // The TV case's height for its width: a small 1970s monitor's, near square (P6f).
 inline constexpr float kTvAspect = 0.96f;
@@ -47,7 +46,7 @@ Place DefaultPlace(BenchObject object, Extent bench);
 // until it fits between its place and the bench's bottom margin (`aspect`: height / width); the
 // manuals, brief and Debug windows' fixed sizes.
 Extent FirstSize(BenchObject object, Extent bench, float aspect = 1, int count = 1);
-// The instruments' two presets (Analyzer, Scope, Meter); the first size is the normal one.
+// The instruments' two presets (Analyzer, Scope); the first size is the normal one.
 Extent NormalSize(BenchObject instrument);
 Extent MinimalSize(BenchObject instrument);
 // The size button of an instrument in its own desktop window: the preset further from `current`

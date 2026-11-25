@@ -9,27 +9,25 @@ namespace bw {
 namespace {
 
 bool IsInstrument(BenchObject object) {
-    return object == BenchObject::Analyzer || object == BenchObject::Scope ||
-           object == BenchObject::Meter;
+    return object == BenchObject::Analyzer || object == BenchObject::Scope;
 }
 
 }  // namespace
 
-bool IsInstrument(Owner owner) {
-    return owner == Owner::Analyzer || owner == Owner::Scope || owner == Owner::Meter;
+bool IsInstrument(Owner owner) { return owner == Owner::Analyzer || owner == Owner::Scope; }
+
+bool Measures(Owner owner) {
+    return owner == Owner::Probe || owner == Owner::Meter || IsInstrument(owner);
 }
 
 BenchObject ObjectOf(Owner instrument) {
     assert(IsInstrument(instrument));
-    return instrument == Owner::Analyzer ? BenchObject::Analyzer
-           : instrument == Owner::Scope  ? BenchObject::Scope
-                                         : BenchObject::Meter;
+    return instrument == Owner::Analyzer ? BenchObject::Analyzer : BenchObject::Scope;
 }
 
 LinkAction RouteLink(Owner owner, const BoardTarget& target, bool frame, bool secondClick) {
-    const bool measures = owner == Owner::Probe || IsInstrument(owner);
     const bool pin = target.components.size() == 1 && target.pad && !target.net;
-    if (measures && pin && !frame) {
+    if (Measures(owner) && pin && !frame) {
         return secondClick ? LinkAction::Frame : LinkAction::Measure;
     }
     return target.components.size() == 1 && !target.net ? LinkAction::FrameAndSelect

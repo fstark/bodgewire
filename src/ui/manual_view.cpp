@@ -47,6 +47,7 @@ void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const Loade
             const TextFlow::Result part = flow.text(spans[i + k].text, kPageLink, true);
             result.hovered = result.hovered || part.hovered;
             result.clicked = result.clicked || part.clicked;
+            result.held = result.held || part.held;
         }
         i += link->spansUsed - 1;
         if (link->pinChars > 0) {
@@ -54,10 +55,11 @@ void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const Loade
             const TextFlow::Result pin = flow.text(next.substr(0, link->pinChars), kPageLink, true);
             result.hovered = result.hovered || pin.hovered;
             result.clicked = result.clicked || pin.clicked;
+            result.held = result.held || pin.held;
             flow.text(next.substr(link->pinChars), Colour(spans[i + 1].style), false);
             ++i;
         }
-        if (!scene || (!result.hovered && !result.clicked)) {
+        if (!scene || (!result.hovered && !result.clicked && !result.held)) {
             continue;
         }
         BoardTarget target;
@@ -80,6 +82,9 @@ void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const Loade
         }
         if (result.clicked) {
             hits.clicked = target;
+        }
+        if (result.held) {
+            hits.held = target;
         }
     }
 }
@@ -177,11 +182,12 @@ TextFlow::Result TextFlow::text(std::string_view raw, ImU32 colour, bool underli
         const bool hovered = inside(io.MousePos) &&
                              ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
         result.hovered = result.hovered || hovered;
-        result.clicked = result.clicked ||
-                         (hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
-                          inside(io.MouseClickedPos[ImGuiMouseButton_Left]) && !PressCancelled() &&
-                          io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] <
-                              io.MouseDragThreshold * io.MouseDragThreshold);
+        const bool still = hovered && inside(io.MouseClickedPos[ImGuiMouseButton_Left]) &&
+                           !PressCancelled() &&
+                           io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] <
+                               io.MouseDragThreshold * io.MouseDragThreshold;
+        result.clicked = result.clicked || (still && ImGui::IsMouseReleased(ImGuiMouseButton_Left));
+        result.held = result.held || (still && ImGui::IsMouseDown(ImGuiMouseButton_Left));
     }
     return result;
 }

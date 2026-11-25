@@ -56,7 +56,7 @@
 #include "ui/loaded.hpp"
 #include "ui/manual_window.hpp"
 #include "ui/matrix_keyboard_window.hpp"
-#include "ui/meter_window.hpp"
+#include "ui/meter_lcd.hpp"
 #include "ui/progress_store.hpp"
 #include "ui/question_popup.hpp"
 #include "ui/scope_window.hpp"
@@ -339,7 +339,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         focus.bringOut(Owner::Scope);
     }
     if (!options.bench.meter.empty()) {
-        focus.bringOut(Owner::Meter);
+        focus.take(Owner::Meter);  // held (P8g); a --focus below takes another
     }
     if (options.bench.focus && IsInstrument(*options.bench.focus)) {
         focus.bringOutFocused(*options.bench.focus);
@@ -371,6 +371,10 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         boardView.setCovered(left, right);
     }
     Owner lastOwner = focus.owner();
+    // The Multimeter (P8g): --meter's red Lead held until the first press or another owner; the
+    // copper the red Lead is held on, so that a slide along one Trace is not a new hold.
+    bool meterHeldAtStart = !options.bench.meter.empty();
+    std::optional<std::pair<Hit, Layer>> meterHit;
     ManualWindows manualWindows;
     if (options.bench.manual) {
         manualWindows.show(*options.bench.manual);
@@ -398,7 +402,6 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         briefNote.offset = ImVec2{options.bench.brief->first, options.bench.brief->second};
     }
     AnalyzerWindow analyzerWindow;
-    MeterWindow meterWindow;
     ScopeWindow scopeWindow;
     analyzerWindow.preset(options.bench.view, options.bench.marker, options.bench.cursor);
     scopeWindow.preset(options.bench.marker, options.bench.cursor);
@@ -659,6 +662,38 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             InsideOutline(boardView.scene()->outline(), *at)) {
             marks.clear(*at, boardView.markReach());
         }
+        // The Multimeter (P8g): the red Lead held where its press is; the LCD up while it measures.
+        bool measuring = false;
+        if (const BoardScene* scene = boardView.scene(); scene && session.machine()) {
+            const auto press =
+                focus.owner() == Owner::Meter ? boardView.meterPress() : std::nullopt;
+            if (press || focus.owner() != Owner::Meter) {
+                meterHeldAtStart = false;
+            }
+            measuring = meterHeldAtStart;
+            std::optional<Pick> at;
+            if (press) {
+                // Continuity: a press with no clip clips at its release, one on the clip lifts it.
+                const auto& black = session.meter().black();
+                measuring = session.meter().mode() == MeterMode::Volts ||
+                            (black && !OnClip(*scene, press->start, *black, boardView.pickReach()));
+                if (measuring && press->at &&
+                    AcceptsLead(LeadKind::Held, press->at->hit.kind)) {
+                    at = press->at;
+                }
+            }
+            if (!meterHeldAtStart && !at) {
+                session.meter().hold(std::nullopt);
+                meterHit.reset();
+            } else if (!meterHeldAtStart) {
+                const std::pair key{at->hit, at->layer};
+                if (!session.meter().red() || meterHit != key) {
+                    meterHit = key;
+                    session.meter().hold(
+                        TestLead{at->contact, at->layer, LeadLabel(*scene, at->hit, at->layer)});
+                }
+            }
+        }
         boardView.setArmed(armed ? std::optional(armed->at) : std::nullopt,
                            armed ? armed->action : std::string());
         boardView.setMarks(marks.marks());
@@ -691,6 +726,15 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         shelf.running = status.state == RunState::Running;
         shelf.speedRatio = speedRatio;
         shelf.draw(session, boardView, focus, run, seed);
+        if (measuring) {  // paused: no simulated time, no reading (the user, 2026-11-25)
+            const MeterReading reading =
+                session.meter().mode() == MeterMode::Volts
+                    ? VoltsReading(status.state == RunState::Paused ? std::nullopt
+                                                                    : session.meter().volts())
+                    : ContinuityReading(session.meter().continuity());
+            DrawMeterLcd(*ImGui::GetForegroundDrawList(ImGui::GetMainViewport()), shelf.meterAt,
+                         reading);
+        }
         if (shelf.leaveClicked || leaveAtStart) {
             // Opening upwards from above the arrow, so it stays inside the main window and
             // leaves the shelf seen.
@@ -728,14 +772,6 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             };
             instrument(Owner::Analyzer, analyzerWindow);
             instrument(Owner::Scope, scopeWindow);
-            instrument(Owner::Meter, meterWindow);  // the smallest in front at start
-            if (meterWindow.takePowerClick()) {     // its power switch, in Continuity
-                if (session.powered()) {
-                    session.powerOff();
-                } else {
-                    PowerOn(session, run, seed);
-                }
-            }
         }
         // Also without a Board (a netlist-only Session, the bench).
         // One keyboard per Machine, either kind: the shelf's drawing shows or hides it.

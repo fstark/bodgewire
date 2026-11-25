@@ -98,7 +98,7 @@ public:
     const AnalyzerSetup& analyzer() const { return analyzer_; }
     ScopeSetup& scope() { return scope_; }
     const ScopeSetup& scope() const { return scope_; }
-    // The Logic Probe's tip and the Multimeter's mode and Test Leads.
+    // The Logic Probe's tip and the Multimeter's held and clipped Test Leads.
     ProbeSetup& probe() { return probe_; }
     const ProbeSetup& probe() const { return probe_; }
     MeterSetup& meter() { return meter_; }

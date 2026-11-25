@@ -127,7 +127,7 @@ std::vector<LeadTag> LeadTagsOf(const Session& session) {
     if (session.meter().red()) {
         tags.push_back({session.meter().red()->at, true});
     }
-    if (session.meter().black() && session.meter().mode() == MeterMode::Continuity) {
+    if (session.meter().black()) {  // clipped: Continuity only
         tags.push_back({session.meter().black()->at, false});
     }
     return tags;

@@ -33,7 +33,6 @@ constexpr std::array<std::pair<std::string_view, BenchObject>, 7> kObjects{{
     {"knob", BenchObject::Knob},
     {"analyzer", BenchObject::Analyzer},
     {"scope", BenchObject::Scope},
-    {"meter", BenchObject::Meter},
 }};
 
 constexpr std::array<std::pair<std::string_view, Owner>, 9> kOwners{{
@@ -348,7 +347,7 @@ const std::array kFlags{
          }},
     Flag{"--mark", "dot|cross|check:X:Y,...", false,
          [](Options& o, std::string_view v) { return Each(o.bench.mark, v, ParseMark); }},
-    Flag{"--pop", "manual|tv|keyboard|knob|analyzer|scope|meter,...", false,
+    Flag{"--pop", "manual|tv|keyboard|knob|analyzer|scope,...", false,
          [](Options& o, std::string_view v) {
              return Each(o.bench.pop, v,
                          [](std::string_view name) { return Named<BenchObject>(kObjects, name); });

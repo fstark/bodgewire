@@ -17,7 +17,7 @@ std::vector<SwitchTag> SwitchTagsOf(const BoardScene& scene, const Session& sess
 std::vector<LedTag> StillLedTags(const BoardScene& scene, const LoadedCircuit& design);
 std::vector<SwitchTag> StillSwitchTags(const BoardScene& scene, const LoadedCircuit& design);
 // The instruments' leads on the Board: the Analyzer's Clips (coloured by Channel or Channel
-// Group), the Oscilloscope's Hooks, the Multimeter's Test Leads (the black one in Continuity).
+// Group), the Oscilloscope's Hooks, the Multimeter's Test Leads (red held, black clipped).
 std::vector<ClipTag> ClipTagsOf(const Session& session);
 std::vector<HookTag> HookTagsOf(const Session& session);
 std::vector<LeadTag> LeadTagsOf(const Session& session);

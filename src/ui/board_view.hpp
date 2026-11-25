@@ -77,6 +77,7 @@ struct SwitchTag {
 
 struct TargetHits {  // from a side panel or manual this frame
     std::optional<BoardTarget> hovered, clicked;
+    std::optional<BoardTarget> held;  // a link held down (P8g: measured by the meter)
     bool frame = false;  // `clicked` asks to be framed, as with Ctrl or Cmd (a pin's "show")
 };
 
@@ -91,6 +92,13 @@ struct BoardClick {
     std::optional<Pick> from = {};
     bool finger = false;  // the pointer was a finger's (P8f)
     bool loupe = false;   // released from the loupe: its target was shown
+};
+
+// The Multimeter's press (P8g): the copper it began on and what is under it now (nullopt: off
+// copper).
+struct MeterPress {
+    Pick start;
+    std::optional<Pick> at;
 };
 
 using TooltipText = std::function<std::string(const BoardScene&, const Hit&)>;
@@ -122,6 +130,11 @@ public:
     // parts drawn as the real ones, out of the way where the player works.
     void setPlainLook(bool on) { plainLook_ = on; }
     bool plainLook() const { return plainLook_; }
+    // With the meter in hand (P8g): the left button held on the Board since a press on copper (a
+    // mouse: from the press, its drag never panning; a finger: once its loupe is up), or a pin
+    // link held in a manual or the chip panel (route()). nullopt otherwise.
+    std::optional<MeterPress> meterPress() const;
+    PickReach pickReach() const { return reach(); }  // what a pick at this zoom reaches
     // Released without dragging; or, the Wire tool pressed on a pad, released after a drag
     // (`from`: that pad, the Board not panned).
     std::optional<BoardClick> takeClick();
@@ -134,10 +147,10 @@ public:
     // Highlighted like a Board hover at the next draw only: panels draw after the Board.
     void hoverFromOutside(std::optional<BoardTarget> target) { outside_ = target; }
     void focus(BoardTarget target);  // frame + flash 1 s
-    // A manual's or chip panel's hits. A clicked pin, the probe or an instrument owning the focus:
+    // A manual's or chip panel's hits. A clicked pin, the probe, meter or an instrument owning the focus:
     // a click on that pad for takeClick(), flashed in place, the view unmoved; a double-click's
     // second click focus()es it (the first measured). Cmd-click, or any other target or owner:
-    // focus() it (a single part also selected).
+    // focus() it (a single part also selected). A pin held with the meter: meterPress().
     void route(const TargetHits& hits);
     const BoardScene* scene() const { return scene_ ? &*scene_ : nullptr; }
     // The Board outline's top-left corner on screen at the last draw (none without a Board).
@@ -228,6 +241,10 @@ private:
     std::optional<std::size_t> contentsClick_;
     bool dragging_ = false;
     std::optional<Pick> wirePress_;  // the Wire tool pressed on this pad: a drag draws a wire
+    std::optional<Pick> meterStart_;  // the press began on copper, the meter in hand (P8g)
+    std::optional<Pick> meterAt_;     // the pick under the pointer, while meterDown_
+    bool meterDown_ = false;          // the press is the meter's: meterPress()
+    std::optional<std::pair<Pick, int>> linkPress_;  // a held pin link, the frame it was set
     std::optional<BoardClick> click_;
     std::optional<Point> tip_;
     std::vector<SolderBlob> blobs_;

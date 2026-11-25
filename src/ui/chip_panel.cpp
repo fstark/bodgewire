@@ -11,6 +11,7 @@
 
 #include "parts/catalogue.hpp"
 #include "ui/controls.hpp"
+#include "ui/touch.hpp"
 #include "view/digit_shape.hpp"
 
 namespace bw {
@@ -54,6 +55,13 @@ void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markd
              TargetHits& hits) {
     if (clicked && row.pad) {
         hits.clicked = BoardTarget{{component}, row.pad, std::nullopt};
+    }
+    // Held down on it, not dragged nor slid off (P8g: the meter measures it meanwhile).
+    const ImGuiIO& io = ImGui::GetIO();
+    if (row.pad && ImGui::IsItemActive() && ImGui::IsItemHovered() && !PressCancelled() &&
+        io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] <
+            io.MouseDragThreshold * io.MouseDragThreshold) {
+        hits.held = BoardTarget{{component}, row.pad, std::nullopt};
     }
     if (ImGui::IsItemHovered() && row.pad) {
         hits.hovered = BoardTarget{{component}, row.pad, std::nullopt};
@@ -302,6 +310,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
             function_.draw(Section(*datasheet, "Function"), &scene, design, LinkScope::Parts);
         hits.hovered = hits.hovered ? hits.hovered : more.hovered;
         hits.clicked = hits.clicked ? hits.clicked : more.clicked;
+        hits.held = hits.held ? hits.held : more.held;
         ImGui::TreePop();
     }
     if (ImGui::TreeNodeEx("Pins", ImGuiTreeNodeFlags_FramePadding)) {

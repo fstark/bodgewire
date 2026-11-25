@@ -50,6 +50,11 @@ std::string ActionName(const RepairPlan& plan) {
                       plan.tries.front());
 }
 
+bool OnClip(const BoardScene& scene, const Pick& press, const TestLead& clip, PickReach reach) {
+    const auto at = scene.pick(clip.at, clip.layer, reach);
+    return at && at->hit == press.hit;
+}
+
 std::optional<RepairPlan> ToolClick(Owner owner, const BoardClick& click, Session& session,
                                     const BoardView& boardView, PencilMarks& marks, WireDraft& wire,
                                     const std::function<void(std::string)>& refuse) {
@@ -190,11 +195,18 @@ std::optional<RepairPlan> ToolClick(Owner owner, const BoardClick& click, Sessio
             marks.click(click.at, boardView.scene()->bodyAt(click.at), boardView.markReach());
         }
         break;
-    case Owner::Meter:
-        if (pick && AcceptsLead(LeadKind::Held, pick->hit.kind) &&
-            !session.meter().placeLead({pick->contact, pick->layer,
-                                        LeadLabel(*boardView.scene(), pick->hit, pick->layer)})) {
-            refuse("Meter: power off for continuity");
+    case Owner::Meter:  // Volts: the press measured, the click nothing more (P8g)
+        if (session.meter().mode() != MeterMode::Continuity || !pick ||
+            !AcceptsLead(LeadKind::Held, pick->hit.kind)) {
+            break;
+        }
+        if (const auto& black = session.meter().black()) {
+            if (OnClip(*boardView.scene(), *pick, *black, boardView.pickReach())) {
+                session.meter().unclip();
+            }  // elsewhere: the red Lead's press measured
+        } else {
+            session.meter().clip(
+                {pick->contact, pick->layer, LeadLabel(*boardView.scene(), pick->hit, pick->layer)});
         }
         break;
     }

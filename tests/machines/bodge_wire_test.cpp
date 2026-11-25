@@ -76,9 +76,8 @@ TEST_CASE("bodge wire: unbridge through the Session", "[machines]") {
         REQUIRE(at.has_value());
         return TestLead{*at, Layer::Back, ""};
     };
-    session.meter().setMode(MeterMode::Continuity);
-    REQUIRE(session.meter().placeLead(pad("7")));
-    REQUIRE(session.meter().placeLead(pad("8")));
+    REQUIRE(session.meter().clip(pad("7")));
+    session.meter().hold(pad("8"));
     CHECK(session.meter().continuity() == true);
 
     const UnbridgeRepair unbridge{{"U1", "7"}, {"U1", "8"}};
@@ -89,6 +88,8 @@ TEST_CASE("bodge wire: unbridge through the Session", "[machines]") {
     CHECK(session.repair(unbridge) == RepairResult::Done);
     REQUIRE(session.log().size() == 1);
     CHECK(session.log()[0] == "unbridge U1.7 U1.8");
+    CHECK_FALSE(session.meter().black().has_value());  // the power on lifted the clip
+    REQUIRE(session.meter().clip(pad("7")));
     CHECK(session.meter().continuity() == false);
     CHECK(session.repair(unbridge) == RepairResult::Unknown);
 }

@@ -42,15 +42,15 @@ Chosen without asking:
 
 ## What the player sees
 
-1. **The meter in hand.** A click on the Shelf's meter takes it, framed in gold, as the Logic Probe; taking another tool puts it down. It has no window; the click no longer brings one out, and a double-click pops nothing out. Its Shelf tooltip: "Multimeter: hold on copper; volts, or continuity with the power off", plus "black clip: U1.14 QA leg" while clipped.
+1. **The meter in hand.** A click on the Shelf's meter takes it, framed in gold, as the Logic Probe; taking another tool puts it down. It has no window; the click no longer brings one out, and a double-click pops nothing out. Its Shelf tooltip: "Multimeter: hold on copper; volts, or continuity with the power off", plus "black clip: U1.14 QA leg; a click on it lifts it" while clipped.
 2. **The power is the mode.** Powered: Volts. Off: Continuity. The Shelf's power switch is the only mode control.
 3. **Volts.** Press on copper and hold: the LCD rises above the Shelf's meter (§5) and reads the Net's average volts (200 ms, refreshed every 250 ms of simulated time, as before; dashes until the first reading). Slide, still pressed: each copper passed is read afresh. Off copper: dashes. Release: the LCD goes. The Board does not pan under that drag. Paused: dashes.
 4. **Continuity.** With the power off:
-   - no clip: a click on copper clips the black lead there; the Board's − tag marks it. Hint: "Meter: click to clip the black lead".
-   - clipped: press and hold anywhere else: the LCD shows `0.0`, lit green with `•)))`, when the red lead's copper is connected to the clip's, `OL` when not (also off copper). Hint: "Meter: hold the red lead on copper; click the clip to lift it".
+   - no clip: a click on copper clips the black lead there; the Board's − tag marks it. Hint: "Meter: clip black lead".
+   - clipped: press and hold anywhere else: the LCD shows `0.0`, lit green with `•)))`, when the red lead's copper is connected to the clip's, `OL` when not (also off copper). Hint: "Meter: hold red lead"; the tooltip adds "a click on it lifts it" to the clip's line.
    - a click on the clip (the copper it is on) lifts it. Powering on lifts it too.
    - A Repair keeps the clip; the next press reads the repaired Copper.
-   With the power on and the meter in hand the hint says "Meter: hold on copper to read volts".
+   With the power on and the meter in hand the hint says "Meter: hold on copper". (The hint has room for about 22 characters at 1280 px.)
 5. **The LCD.** About 150 × 64 px, its bottom on the Shelf's top edge, centred over the meter's drawing (inside the window): the yellow case's top, a grey-green LCD, three seven-segment digit cells with their decimal points, the unused segments faintly visible; `V` in Volts, the `•)))` sign in Continuity. Drawn above every window.
 6. **Pin links.** With the meter in hand, a pin link in a manual or the chip panel held down measures that pin (§3, §4: the LCD up, the pin flashed) until released; clicked, it is a click on the pin (in Continuity, the clip). Cmd-click and a double-click's second frame the pin, as before.
 7. **Touch.** A finger's drag pans, as before. A finger held still brings up the loupe; from then the meter reads the copper under the loupe's centre, the LCD up, until the finger lifts. A tap is a click (in Continuity, the clip).

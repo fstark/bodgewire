@@ -60,7 +60,8 @@ constexpr std::array<Entry, 16> kItems{{
     {Item::Analyzer, "Logic Analyzer: click a chip pin; its pin / bus switch: a whole bus",
      Tray::Instruments, 1},
     {Item::Scope, "Oscilloscope: click a chip pin (4 channels)", Tray::Instruments, 1},
-    {Item::Meter, "Multimeter: volts, or continuity with the power off", Tray::Instruments, 1},
+    {Item::Meter, "Multimeter: hold on copper; volts, or continuity with the power off",
+     Tray::Instruments, 1},
     {Item::Brief, "Puzzle brief", Tray::Machine, 1},
     {Item::Manual, "Manuals binder: User and Service Manuals, datasheets, repairs", Tray::Machine,
      1},
@@ -93,9 +94,7 @@ std::optional<Owner> OwnerOf(Item item) {
 }
 
 const char* WindowOf(Owner instrument) {
-    return instrument == Owner::Analyzer ? kAnalyzerWindowName
-           : instrument == Owner::Scope  ? kScopeWindowName
-                                         : kMeterWindowName;
+    return instrument == Owner::Analyzer ? kAnalyzerWindowName : kScopeWindowName;
 }
 
 // A window's shelf drawing clicked (not an instrument's): away, out and in front; out behind
@@ -320,6 +319,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         if (entry.item == Item::Reset) {
             resetAt = {min.x - kTrayPad, origin.y - cellGap};
         }
+        if (entry.item == Item::Meter) {
+            meterAt = {(min.x + max.x) / 2, origin.y};
+        }
         const std::optional<Owner> owner = OwnerOf(entry.item);
         if (entry.item == Item::Machine) {
             const float divider = min.x - machineGap / 2;
@@ -420,6 +422,11 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
                     tip += "\n" + touched;
                 }
             }
+            if (entry.item == Item::Meter) {
+                if (const auto& black = session.meter().black()) {
+                    tip += "\nblack clip: " + black->label + "; a click on it lifts it";
+                }
+            }
             if (owner && IsInstrument(*owner) && !inert) {
                 tip += focus.owner() == *owner ? "\nhas the focus" : look.lit ? "\nout" : "\naway";
             }
@@ -514,9 +521,10 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         amber = true;
     } else if (wireStarted) {
         hint = "Wire: click the second pin";
-    } else if (focus.owner() == Owner::Meter && session.meter().mode() == MeterMode::Continuity &&
-               !powered) {
-        hint = session.meter().blackNext() ? "Meter: black lead next" : "Meter: red lead next";
+    } else if (focus.owner() == Owner::Meter) {  // what it does next (P8g)
+        hint = powered                    ? "Meter: hold on copper"
+               : session.meter().black() ? "Meter: hold red lead"
+                                         : "Meter: clip black lead";
     }
     if (!hint.empty()) {
         const float left = leftEnd + groupGap;

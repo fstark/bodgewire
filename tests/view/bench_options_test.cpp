@@ -32,7 +32,7 @@ TEST_CASE("bench options: no file opens the launcher", "[view]") {
 TEST_CASE("bench options: a file's bench flags", "[view]") {
     const auto options =
         Parse({"m.bwp",   "--probe",         "U1.3",     "--hook",   "U1.1,U2.2", "--focus",
-               "scope",   "--pop",           "tv,meter", "--run",    "max",       "--side",
+               "scope",   "--pop",           "tv,scope", "--run",    "max",       "--side",
                "back",    "--binder-height", "120%",     "--brief",  "10:-5",     "--contents",
                "U3:code", "--debug",         "--manual", "datasheet"});
     REQUIRE(options.has_value());
@@ -41,7 +41,7 @@ TEST_CASE("bench options: a file's bench flags", "[view]") {
     CHECK(bench.probe == "U1.3");
     CHECK(bench.hook == std::vector<std::string>{"U1.1", "U2.2"});
     CHECK(bench.focus == Owner::Scope);
-    CHECK(bench.pop == std::vector{BenchObject::Tv, BenchObject::Meter});
+    CHECK(bench.pop == std::vector{BenchObject::Tv, BenchObject::Scope});
     CHECK(bench.run == RunSwitch::Max);
     CHECK(bench.back);
     CHECK(bench.binderHeight == 1.2f);
@@ -58,6 +58,7 @@ TEST_CASE("bench options: usage errors", "[view]") {
     CHECK(Parse({"--after", "1s"}).error().empty());              // no --screenshot
     CHECK(Parse({"m.bwp", "--nope"}).error().empty());            // unknown flag
     CHECK(Parse({"m.bwp", "--probe"}).error().empty());           // no value
+    CHECK(Parse({"m.bwp", "--pop", "meter"}).error().empty());   // held: no window (P8g)
     CHECK(Parse({"m.bwp", "--away", "manual"}).error().empty());  // not a slot object
     CHECK(Parse({"m.bwp", "--binder-height", "300%"}).error().empty());
     CHECK(Parse({"m.bwp", "--hook", "A1.1,A1.2,A1.3,A1.4,A1.5"}).error().empty());

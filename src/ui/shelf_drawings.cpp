@@ -335,10 +335,7 @@ void Analyzer(Pen& p, const ItemLook& look) {
 
 void Meter(Pen& p, const ItemLook& look) {
     p.box(14, 4, 42, 52, IM_COL32(230, 180, 30, 255), 5);
-    p.box(17, 8, 39, 19, look.lit ? IM_COL32(170, 200, 160, 255) : kScreenOff, 1);
-    if (look.lit) {
-        p.text(28, 13.5f, 9, kBlack, "5.0");
-    }
+    p.box(17, 8, 39, 19, look.lit ? IM_COL32(170, 200, 160, 255) : kScreenOff, 1);  // held: lit
     p.disc(28, 31, 7, kBlack);
     p.line(28, 31, 28, 25, kWhite, 1.5f);
     p.disc(21, 46, 2.2f, kRed);

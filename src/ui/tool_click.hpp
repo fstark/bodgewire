@@ -37,6 +37,10 @@ struct WireDraft {
     Point at{};
 };
 
+// The Multimeter's black clip's copper (P8g): what a pick at the clip's point finds is `press`'s
+// Hit (the pad, Trace or via it is on).
+bool OnClip(const BoardScene& scene, const Pick& press, const TestLead& clip, PickReach reach);
+
 // A click on the Board with the focus owner's tool (P6c, P6o). The probe, the instruments' leads
 // and the pencil act at once; a tool that needs the power off returns its plan, which the caller
 // applies, asks about or power-cycles (StepFor). A click the tool cannot take goes to `refuse`.

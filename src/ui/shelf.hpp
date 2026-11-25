@@ -47,6 +47,7 @@ public:
     ImVec2 leaveAt{};  // above the Leave arrow, screen px: where its question opens upwards
     bool resetClicked = false;  // the Reset (every repair undone), as leaveClicked
     ImVec2 resetAt{};           // above it, as leaveAt
+    ImVec2 meterAt{};  // the Multimeter's drawing's centre x on the shelf's top edge (P8g)
     bool running = false;       // the runner running (not off, not paused)
     double speedRatio = 0;      // simulated over wall time, shown on the run switch
 

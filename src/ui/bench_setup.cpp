@@ -79,10 +79,10 @@ std::expected<void, std::string> ApplyBenchOptions(Session& session, const Bench
         }
         session.scope().setSettings(scope);
     }
-    if (options.meter.size() == 2) {  // red then black, before the power-on: none for these
-        session.meter().setMode(MeterMode::Continuity);
-    }
-    for (const std::string& item : options.meter) {
+    // The Multimeter (P8g): the red Lead held on the last pin; two, the black clipped on the first
+    // (before the power-on, which main leaves off for two).
+    for (std::size_t i = 0; i < options.meter.size(); ++i) {
+        const std::string& item = options.meter[i];
         const auto pin = ParsePinRef(item);
         const auto lead = pin ? session.padLead(pin->reference, pin->pin) : std::nullopt;
         if (!lead) {
@@ -92,7 +92,12 @@ std::expected<void, std::string> ApplyBenchOptions(Session& session, const Bench
             session.machine()->designCircuit().parts, [&](const LoadedPart& part) {
                 return part.reference == lead->reference && part.info->kind == PartKind::Chip;
             });
-        session.meter().placeLead({lead->at, Layer::Front, lead->label + (chip ? " leg" : "")});
+        TestLead test{lead->at, Layer::Front, lead->label + (chip ? " leg" : "")};
+        if (i + 1 < options.meter.size()) {
+            session.meter().clip(std::move(test));
+        } else {
+            session.meter().hold(std::move(test));
+        }
     }
     for (const std::string& text : options.repair) {
         const auto repair = ParseRepair(text);

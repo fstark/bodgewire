@@ -13,7 +13,7 @@ void MeterSetup::follow() {
     if (build_->machine == nullptr) {
         return;
     }
-    const auto net = mode_ == MeterMode::Volts && red_
+    const auto net = mode() == MeterMode::Volts && red_
                          ? build_->machine->probeNet(*build_->circuit, red_->layer, red_->at)
                          : std::nullopt;
     consumer_->touch(*build_->runner, net);
@@ -26,51 +26,54 @@ void MeterSetup::findContinuity() {
                                 : std::nullopt;
 }
 
-void MeterSetup::setMode(MeterMode mode) {
+void MeterSetup::hold(std::optional<TestLead> red) {
     if (build_->machine == nullptr) {
         return;
     }
-    mode_ = mode;
-    blackNext_ = false;
+    const bool same = red && red_ ? red->at == red_->at && red->layer == red_->layer
+                                  : red.has_value() == red_.has_value();
+    if (same) {
+        return;
+    }
+    red_ = std::move(red);
     follow();
     findContinuity();
 }
 
-bool MeterSetup::placeLead(TestLead lead) {
-    if (build_->machine == nullptr) {
+bool MeterSetup::clip(TestLead black) {
+    if (build_->machine == nullptr || build_->powered) {
         return false;
     }
-    if (mode_ == MeterMode::Volts) {
-        red_ = std::move(lead);
-    } else {
-        if (build_->powered) {
-            return false;
-        }
-        (blackNext_ ? black_ : red_) = std::move(lead);
-        blackNext_ = !blackNext_;
-    }
-    follow();
+    black_ = std::move(black);
     findContinuity();
     return true;
 }
 
-void MeterSetup::liftLeads() {
+void MeterSetup::unclip() {
     if (build_->machine == nullptr) {
         return;
     }
-    red_.reset();
     black_.reset();
-    blackNext_ = false;
+    findContinuity();
+}
+
+void MeterSetup::powerChanged() {
+    if (build_->machine == nullptr) {
+        return;
+    }
+    if (build_->powered) {
+        black_.reset();
+    }
     follow();
     findContinuity();
 }
 
 std::optional<double> MeterSetup::volts() const {
-    if (mode_ != MeterMode::Volts || !red_) {
+    if (mode() != MeterMode::Volts || !red_) {
         return std::nullopt;
     }
-    if (!build_->powered || !consumer_->touched()) {
-        return 0.0;  // power off; bare Copper
+    if (!consumer_->touched()) {
+        return 0.0;  // bare Copper
     }
     if (rail_) {
         return rail_;
@@ -79,7 +82,7 @@ std::optional<double> MeterSetup::volts() const {
 }
 
 std::optional<bool> MeterSetup::continuity() const {
-    return mode_ == MeterMode::Continuity && !build_->powered ? connected_ : std::nullopt;
+    return mode() == MeterMode::Continuity ? connected_ : std::nullopt;
 }
 
 }  // namespace bw

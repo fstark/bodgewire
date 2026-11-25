@@ -21,11 +21,14 @@ enum class Owner : std::uint8_t {
     Meter
 };
 
-bool IsInstrument(Owner owner);          // Analyzer, Scope, Meter
+bool IsInstrument(Owner owner);          // Analyzer, Scope: the Equipment, with a window
 BenchObject ObjectOf(Owner instrument);  // its window on the bench
+// The Logic Probe, the Multimeter (held, P8g) or an Instrument: a pin link measures, a double-
+// click on a chip frames it.
+bool Measures(Owner owner);
 
 // What a click on a link to the Board (a manual's or the chip panel's pin, part or Net) does
-// (P6i, P6o): under the probe or an instrument a pin is measured, as if clicked on the Board;
+// (P6i, P6o): under the probe, the meter or an instrument a pin is measured, as if clicked on the Board;
 // with Cmd or Ctrl (`frame`), or for anything but a pin, the Board frames it and a single part is
 // selected. A double-click's second click frames what the first measured.
 enum class LinkAction : std::uint8_t { Measure, Frame, FrameAndSelect };

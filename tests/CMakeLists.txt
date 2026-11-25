@@ -207,6 +207,7 @@ add_executable(bw_tests
   view/keyboard_layout_test.cpp
   view/launcher_lanes_test.cpp
   view/machine_slot_test.cpp
+  view/meter_reading_test.cpp
   view/neon_sign_test.cpp
   view/memory_contents_test.cpp
   view/output_frame_test.cpp

@@ -23,7 +23,6 @@ inline constexpr float kMarkerFlagWidth = 28.0f, kMarkerFlagHeight = 20.0f;
 // The instrument windows' names, for the shelf to bring them to the front.
 inline constexpr const char* kAnalyzerWindowName = "Logic Analyzer";
 inline constexpr const char* kScopeWindowName = "Oscilloscope";
-inline constexpr const char* kMeterWindowName = "Multimeter";
 
 // ImGui::Begin for an instrument window, at its default place each time it comes out, normal size
 // at first, with the minimal / normal size button in its title bar (P6d); End it as usual whatever

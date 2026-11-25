@@ -31,8 +31,6 @@ Place DefaultPlace(BenchObject object, Extent bench) {
         return {m, h - m, 0, 1};
     case BenchObject::Scope:
         return {w / 2, h - m, 0.5f, 1};
-    case BenchObject::Meter:
-        return {w - m - kViewLane, h - m, 1, 1};
     case BenchObject::Manual:
         return {m, m + kKnobBox.height + m, 0, 0};
     case BenchObject::Brief:
@@ -73,8 +71,6 @@ Extent NormalSize(BenchObject instrument) {
         return {940, 520};
     case BenchObject::Scope:
         return {680, 520};
-    case BenchObject::Meter:
-        return {320, 220};
     default:
         assert(false && "not an instrument");
         return {};
@@ -87,8 +83,6 @@ Extent MinimalSize(BenchObject instrument) {
         return {820, 340};
     case BenchObject::Scope:
         return {600, 380};
-    case BenchObject::Meter:
-        return {240, 150};
     default:
         assert(false && "not an instrument");
         return {};

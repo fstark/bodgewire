@@ -26,6 +26,7 @@ public:
     // one of them / was released on one with no drag since its press (P8f).
     struct Result {
         bool hovered = false, clicked = false;
+        bool held = false;  // pressed on it, not yet let go nor dragged (P8g)
     };
     Result text(std::string_view raw, ImU32 colour, bool underline);
 
