@@ -12,6 +12,7 @@ add_library(bw_view STATIC
   focus.cpp
   launcher_lanes.cpp
   machine_slot.cpp
+  neon_sign.cpp
   memory_contents.cpp
   output_frame.cpp
   pace.cpp
