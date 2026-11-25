@@ -151,7 +151,8 @@ void Simulator::updateExternal(NetId net, PinId own, External& external) {
     }
 }
 
-Resolution Simulator::resolveNet(NetId net) const {
+// Out of line: runUntil takes its single-driver and shared fast paths inline (cut 3).
+[[gnu::noinline]] Resolution Simulator::resolveNet(NetId net) const {
     const NetState& state = nets_[ToIndex(net)];
     if (state.networked && circuit_.secondNetworkPin(net) == Circuit::kNoPin) {
         // external_ is up to date: add the network Pin's own drive
@@ -340,7 +341,18 @@ void Simulator::runUntil(Time end) {
                     updateExternal(net, second, external2_[ToIndex(net)]);
                 }
             }
-            const Resolution r = resolveNet(net);
+            // resolveNet's fast paths for a Net with no network Pin, inline; anything else (and a
+            // fast path that does not apply) is resolveNet itself, out of line.
+            Resolution r;
+            const PinId single = s.networked ? Circuit::kNoPin : circuit_.singleDriver(net);
+            if (single != Circuit::kNoPin && outputs[ToIndex(single)].current != LogicValue::Z) {
+                r = {outputs[ToIndex(single)].current, false};
+            } else if (!s.networked && circuit_.isSharedNet(net) &&
+                       driving[ToIndex(net)].count == 1) {
+                r = {outputs[driving[ToIndex(net)].pinSum].current, false};
+            } else {
+                r = resolveNet(net);
+            }
             s.dirty = false;
             const bool wasFloating = s.floating;
             s.floating = r.floating;
