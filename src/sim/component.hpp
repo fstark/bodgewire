@@ -58,6 +58,9 @@ public:
     // whether they changed at this timestamp.
     inline const Resolver& external(PinIndex pin) const;
     inline bool externalChanged(PinIndex pin) const;
+    // The network Pins, every Component's, whose Net's other drives changed at this timestamp:
+    // each once, in the order their Nets were resolved (a network finds its own among them).
+    inline std::span<const PinId> changedNetworkPins() const;
 
 private:
     friend class Simulator;

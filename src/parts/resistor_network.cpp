@@ -129,19 +129,75 @@ void ResistorNetwork::build() {
     for (PinIndex p = 0; p < pinCount; ++p) {
         order_[slot[groupOf[root(p)]]++] = p;
     }
+    groupOf_.resize(pinCount);
+    for (PinIndex p = 0; p < pinCount; ++p) {
+        groupOf_[p] = groupOf[root(p)];
+    }
+    pair_.assign(groups_, 0);
+    for (std::uint32_t g = 0; g < groups_; ++g) {
+        if (size[g] != 2) {
+            continue;
+        }
+        const PinIndex a = order_[start_[g]], b = order_[start_[g] + 1];
+        const auto one = [&](PinIndex p) {
+            return linkStart_[p + 1] - linkStart_[p] == 1 && pullStart_[p + 1] == pullStart_[p];
+        };
+        pair_[g] = one(a) && one(b) ? 1 : 0;
+    }
+    pending_.reserve(groups_);
 }
 
+// Only the groups with a Pin whose other drives changed now, in group order (as a scan of every
+// group would find them); the power-on evaluation resolves every group.
 void ResistorNetwork::evaluate(EvalContext& ctx) {
-    const bool all = fresh_;  // the power-on evaluation resolves every group
-    fresh_ = false;
-    for (std::uint32_t g = 0; g < groups_; ++g) {
-        bool changed = all;
-        for (std::uint32_t i = start_[g]; i < start_[g + 1] && !changed; ++i) {
-            changed = ctx.externalChanged(order_[i]);
-        }
-        if (changed) {
+    if (fresh_) {
+        fresh_ = false;
+        for (std::uint32_t g = 0; g < groups_; ++g) {
             resolve(ctx, g);
         }
+        return;
+    }
+    pending_.clear();
+    const std::uint32_t first = ToIndex(firstPin());
+    for (const PinId id : ctx.changedNetworkPins()) {
+        const std::uint32_t p = ToIndex(id) - first;  // another Component's wraps past the end
+        if (p < groupOf_.size()) {
+            pending_.push_back(groupOf_[p]);
+        }
+    }
+    if (pending_.size() > 1) {
+        std::ranges::sort(pending_);
+        const auto [end, last] = std::ranges::unique(pending_);
+        pending_.erase(end, last);
+    }
+    for (const std::uint32_t g : pending_) {
+        if (pair_[g] != 0) {
+            resolvePair(ctx, g);
+        } else {
+            resolve(ctx, g);
+        }
+    }
+}
+
+// resolve() for two Nets joined by one resistor, neither pulled: a Net with a source of its own
+// is released; one without takes the other's source if it has one, else floats (Z).
+void ResistorNetwork::resolvePair(EvalContext& ctx, std::uint32_t group) {
+    const PinIndex a = order_[start_[group]], b = order_[start_[group] + 1];
+    const Resolver& externalA = ctx.external(a);
+    const Resolver& externalB = ctx.external(b);
+    const bool sourceA = externalA.strength() != DriveStrength::None;
+    const bool sourceB = externalB.strength() != DriveStrength::None;
+    const LogicValue valueA =
+        sourceB && !sourceA ? externalB.finish(false, LogicValue::Zero).value : LogicValue::Z;
+    const LogicValue valueB =
+        sourceA && !sourceB ? externalA.finish(false, LogicValue::Zero).value : LogicValue::Z;
+    if (valueA != driven_[a]) {
+        driven_[a] = valueA;
+        ctx.drive(a, valueA, kJoinDelay);
+    }
+    if (valueB != driven_[b]) {
+        driven_[b] = valueB;
+        ctx.drive(b, valueB, kJoinDelay);
     }
 }
 

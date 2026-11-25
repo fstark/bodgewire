@@ -109,6 +109,7 @@ private:
     }
     std::vector<NetId> dirtyNets_;
     std::vector<ComponentId> dirtyComponents_;
+    std::vector<PinId> changedNetworkPins_;  // this timestamp's, by updateExternal
     EventQueue queue_;
     Rng rng_;
     Recorder recorder_;
@@ -161,6 +162,10 @@ inline bool EvalContext::externalChanged(PinIndex pin) const {
     const auto& externals =
         sim_.circuit_.secondNetworkPin(net) == id ? sim_.external2_ : sim_.external_;
     return externals[ToIndex(net)].changedAt == sim_.now_;
+}
+
+inline std::span<const PinId> EvalContext::changedNetworkPins() const {
+    return sim_.changedNetworkPins_;
 }
 
 inline void EvalContext::drive(PinIndex pin, LogicValue value, Time delay) {

@@ -118,6 +118,20 @@ void Simulator::markComponentDirty(ComponentId component) {
 Resolver Simulator::externalDrives(NetId net, PinId own) const {
     Resolver resolver;
     resolver.add(circuit_.tieOf(net));
+    // From how many Drivers are not at Z (driving_, P5z): with none of the others, nothing to
+    // add (a Z drives nothing, whatever its Pin's kind); with one, the sum names it.
+    const Driving& d = driving_[ToIndex(net)];
+    const bool ownDrives = outputs_[ToIndex(own)].current != LogicValue::Z;
+    const std::uint32_t others = d.count - (ownDrives ? 1 : 0);
+    if (others == 0) {
+        return resolver;
+    }
+    if (others == 1) {
+        const PinId pin{static_cast<std::uint32_t>(d.pinSum - (ownDrives ? ToIndex(own) : 0))};
+        const PinInfo& info = circuit_.pinInfo(pin);
+        resolver.add(DriveOf(info.kind, info.family, outputs_[ToIndex(pin)].current));
+        return resolver;
+    }
     for (const PinId pin : circuit_.drivers(net)) {
         if (pin != own) {
             const PinInfo& info = circuit_.pinInfo(pin);
@@ -132,6 +146,7 @@ void Simulator::updateExternal(NetId net, PinId own, External& external) {
     const Resolver drives = externalDrives(net, own);
     if (drives != external.drives) {
         external = {drives, now_};
+        changedNetworkPins_.push_back(own);
         markComponentDirty(circuit_.pinInfo(own).owner);
     }
 }
@@ -196,6 +211,7 @@ void Simulator::powerOn(std::uint64_t seed) {
     stats_ = {};
     dirtyNets_.clear();
     dirtyComponents_.clear();
+    changedNetworkPins_.clear();
     std::fill(componentDirty_.begin(), componentDirty_.end(), 0);
     // Every Pin loud, before the first evaluations below may quiet some.
     std::ranges::copy(circuit_.fanOutEntries(), fanOut_.begin());
@@ -329,6 +345,7 @@ void Simulator::runUntil(Time end) {
             ++stats_.evaluations;
         }
         dirtyComponents_.clear();
+        changedNetworkPins_.clear();
     }
     now_ = end;
 }

@@ -88,14 +88,15 @@ tree_args() {
 # record <bw> <tree> <out dir> <run>: the VCD, then the options and counts in <run>.txt
 record() {
     local bw="$1" tree="$2" out="$3" run="$4"
-    local args
+    local args netlist
     args="$(run_args "$run")$(tree_args "$tree" "$run")"
     if [[ "$args" != *--record* ]]; then
         args+=" --record-all"
     fi
+    netlist="$(netlist_path "$tree" "$(run_netlist "$run")")" # its glob, before set -f
     set -f # typed text may hold glob characters
     # shellcheck disable=SC2086 # the options hold no spaces
-    "$bw" run "$(netlist_path "$tree" "$(run_netlist "$run")")" $args --seed 1 --vcd "$out/$run.vcd" |
+    "$bw" run "$netlist" $args --seed 1 --vcd "$out/$run.vcd" |
         grep -E '^(applied_events|evaluations) ' >"$out/$run.counts"
     set +f
     { echo "args $(run_args "$run")"; cat "$out/$run.counts"; } >"$out/$run.txt"

@@ -45,6 +45,7 @@ private:
     };
     void build();
     void resolve(EvalContext& ctx, std::uint32_t group);
+    void resolvePair(EvalContext& ctx, std::uint32_t group);
 
     std::vector<Edge> edges_;               // builder input
     std::vector<Pull> pulls_;               // builder input
@@ -54,6 +55,9 @@ private:
     std::vector<Pull> pullsByPin_;
     std::vector<PinIndex> order_;          // Pins of the groups, group by group
     std::vector<std::uint32_t> start_;     // group g: order_[start_[g], start_[g + 1])
+    std::vector<std::uint32_t> groupOf_;   // per Pin
+    std::vector<std::uint8_t> pair_;       // per group: two Nets, one resistor, no pull
+    std::vector<std::uint32_t> pending_;   // scratch: the groups to resolve now
     std::vector<std::uint64_t> distance_;  // per Pin, scratch: ohms to its value's source
     std::vector<LogicValue> value_;        // per Pin, scratch
     std::vector<std::uint8_t> source_;     // per Pin, scratch: driven by something else
