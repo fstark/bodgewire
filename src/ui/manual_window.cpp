@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 #include "ui/bench.hpp"
+#include "ui/controls.hpp"
 #include "view/bench_places.hpp"
 
 namespace bw {
@@ -248,6 +249,8 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
         open = false;
     }
     PopOnDoubleClick(BenchObject::Manual);
+    CornerGrip();
+    PinchResize(pageScroll_.scrolled() || contents_.scrolled());  // two fingers scrolled the page
     ImGui::End();
 }
 

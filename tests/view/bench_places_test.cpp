@@ -96,6 +96,30 @@ TEST_CASE("bench places: the size button goes to the preset further away", "[vie
     CHECK(same(NextPreset({600, 400}, minimal, normal), minimal));  // larger than both
 }
 
+TEST_CASE("bench places: on the bench the size button goes round minimal, normal, full", "[view]") {
+    const Extent minimal{240, 150}, normal{320, 220};
+    const auto same = [](Extent a, Extent b) { return a.width == b.width && a.height == b.height; };
+    CHECK(same(NextPreset(minimal, minimal, normal, kBench), normal));
+    CHECK(same(NextPreset(normal, minimal, normal, kBench), kBench));
+    CHECK(same(NextPreset(kBench, minimal, normal, kBench), minimal));
+    // From a size between two: as from the nearer one.
+    CHECK(same(NextPreset({300, 200}, minimal, normal, kBench), kBench));
+    CHECK(same(NextPreset({900, 600}, minimal, normal, kBench), minimal));
+}
+
+TEST_CASE("bench places: an object fills the bench, one that keeps its proportions inside it",
+          "[view]") {
+    const Extent free = FillBench(kBench);
+    CHECK(free.width == Catch::Approx(kBench.width));
+    CHECK(free.height == Catch::Approx(kBench.height));
+    const Extent tv = FillBench(kBench, kTvAspect);  // by the height
+    CHECK(tv.height == Catch::Approx(kBench.height));
+    CHECK(tv.width == Catch::Approx(kBench.height / kTvAspect));
+    const Extent keyboard = FillBench(kBench, 0.36f);  // by the width
+    CHECK(keyboard.width == Catch::Approx(kBench.width));
+    CHECK(keyboard.height == Catch::Approx(kBench.width * 0.36f));
+}
+
 TEST_CASE("bench places: a popped-out object goes right of the main window, its top kept",
           "[view]") {
     const Area display{0, 25, 2560, 1390};

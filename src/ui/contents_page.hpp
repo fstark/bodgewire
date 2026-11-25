@@ -29,6 +29,9 @@ public:
     // (BoardView::focus), without selecting it, so the page stays.
     TargetHits draw(BoardView& board, std::size_t component, const Machine& machine);
 
+    // Its view was scrolled by a drag or two fingers this frame.
+    bool scrolled() const { return viewScroll_.scrolled(); }
+
 private:
     struct CodeCache {
         std::string reference;

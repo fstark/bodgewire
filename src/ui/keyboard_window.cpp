@@ -10,6 +10,7 @@
 #include <imgui_internal.h>
 
 #include "ui/bench.hpp"
+#include "ui/controls.hpp"
 #include "ui/instrument_marks.hpp"
 #include "ui/keycap.hpp"
 #include "ui/touch.hpp"
@@ -75,6 +76,7 @@ void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
         open = false;
     }
     PopOnDoubleClick(BenchObject::Keyboard);
+    CornerGrip();  // no pinch: two fingers here type
     ImGui::End();
 }
 

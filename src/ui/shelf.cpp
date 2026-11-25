@@ -24,9 +24,6 @@ namespace bw {
 namespace {
 
 constexpr auto kReasonTime = std::chrono::seconds(2);
-constexpr float kCell = kShelfHeight - 16.0f;  // a square cell's side
-constexpr float kCellGap = 4.0f;
-constexpr float kGroupGap = 20.0f;
 constexpr float kGrayed = 0.35f;
 // The trays (P6o): recessed, a shade lighter than the wood, a dark line along the top.
 constexpr float kTrayPad = 4.0f;
@@ -51,16 +48,14 @@ constexpr std::array<Entry, 16> kItems{{
     {Item::Power, "Power", Tray::Controls, 1},
     {Item::RunSwitch, "Pause, real time, or as fast as possible", Tray::Controls, 2},
     {Item::Reset, "Reset: undo every repair; the pencil marks stay", Tray::Controls, 1},
-    {Item::Pencil,
-     "Grease pencil: mark the Board; click a mark: dot, check, cross, none; shift- or "
-     "right-click: clear",
+    {Item::Pencil, "Grease pencil: mark the Board; click a mark: dot, check, cross, none",
      Tray::Tools, 1},
     {Item::Puller, "Chip puller: swap a chip", Tray::Tools, 1},
     {Item::Iron, "Soldering iron: mend a crack, resolder a chip pin", Tray::Tools, 1},
     {Item::Cutters, "Cutters: cut a trace or a wire", Tray::Tools, 1},
     {Item::Wire, "Wire: solder a bodge wire between two pins", Tray::Tools, 1},
     {Item::Probe, "Logic probe: touch any copper; HIGH, LOW, PULSE", Tray::Instruments, 2},
-    {Item::Analyzer, "Logic Analyzer: click a chip pin; shift-click: its whole bus",
+    {Item::Analyzer, "Logic Analyzer: click a chip pin; its pin / bus switch: a whole bus",
      Tray::Instruments, 1},
     {Item::Scope, "Oscilloscope: click a chip pin (4 channels)", Tray::Instruments, 1},
     {Item::Meter, "Multimeter: volts, or continuity with the power off", Tray::Instruments, 1},
@@ -197,6 +192,20 @@ void Shelf::machineClick(Focus& focus, bool second) {
         const bool out = focus.out(m.object);
         objects.push_back({out, out && InFrontOf(m.window, group), PoppedOut(m.object)});
     }
+    if (second && !members.empty() &&
+        (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0) {
+        // No desktop windows (P8f): one object fills the bench, the slot's first (the TV when
+        // there is one); again, it goes back.
+        const auto filled =
+            std::ranges::find_if(members, [](const Member& m) { return Filled(m.object); });
+        const Member& one = filled != members.end() ? *filled : members.front();
+        for (const Member& m : members) {
+            focus.bringOut(m.object);
+        }
+        TogglePop(one.object, one.window);
+        BringToFront(one.window);
+        return;
+    }
     if (second) {  // the double-click's second: all out, then all popped out or all back in
         const bool out = PopAll(objects);
         for (std::size_t i = 0; i < members.size(); ++i) {
@@ -231,6 +240,8 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         found_ = true;
     }
     const bool hasDevice = devices_.tv || devices_.keyboard || devices_.knob;
+    // Desktop windows for the objects (P6j), or none (the web build): what a double-click does.
+    const bool windows = (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0;
     const Pace pace = pace_.update(running, speedRatio, std::chrono::steady_clock::now());
     // The brief only on a Puzzle: not grayed, left out.
     std::vector<Entry> items;
@@ -256,23 +267,26 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
                                                  devices_.tv, devices_.keyboard, devices_.knob))
                                            : entry.width;
     };
-    const auto widthOf = [&](const Entry& entry) {
-        const float n = cells(entry);
-        return kCell * n + kCellGap * (n - 1);
-    };
     std::vector<ShelfCell> cellsOf;
     for (const Entry& entry : items) {
         cellsOf.push_back({static_cast<int>(entry.tray), cells(entry), entry.tray == Tray::Machine,
                            entry.item == Item::Machine});
     }
-    ShelfPlaces places = LayOutShelf(cellsOf, width, {kCell, kCellGap, kGroupGap});
+    // The cells' size: the narrow ones in a window the Shelf does not fit (P8f).
+    const ShelfMetrics& metrics = ShelfMetricsFor(cellsOf, width);
+    const float cell = metrics.cell, cellGap = metrics.cellGap, groupGap = metrics.groupGap;
+    const auto widthOf = [&](const Entry& entry) {
+        const float n = cells(entry);
+        return cell * n + cellGap * (n - 1);
+    };
+    ShelfPlaces places = LayOutShelf(cellsOf, width, metrics);
     std::vector<float>& xs = places.x;
     for (float& itemX : xs) {
         itemX += origin.x;
     }
     const float leftEnd = origin.x + places.leftEnd;
-    const float machineGap = kGroupGap / 2;  // the Machine slot set apart in its tray
-    const float top = origin.y + (kShelfHeight - kCell) / 2;
+    const float machineGap = groupGap / 2;  // the Machine slot set apart in its tray
+    const float top = origin.y + (kShelfHeight - cell) / 2;
     // The trays, under their items.
     for (std::size_t i = 0; i < items.size();) {
         std::size_t j = i;
@@ -280,7 +294,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
             ++j;
         }
         const ImVec2 a{xs[i] - kTrayPad, top - kTrayPad};
-        const ImVec2 b{xs[j] + widthOf(items[j]) + kTrayPad, top + kCell + kTrayPad};
+        const ImVec2 b{xs[j] + widthOf(items[j]) + kTrayPad, top + cell + kTrayPad};
         list.AddRectFilled(a, b, kTray, 6.0f);
         list.AddLine({a.x + 4, a.y + 1}, {b.x - 4, a.y + 1}, kTrayShadow, 2.0f);
         i = j + 1;
@@ -289,17 +303,17 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
     for (std::size_t i = 0; i < items.size(); ++i) {
         const Entry& entry = items[i];
         const float w = widthOf(entry);
-        const ImVec2 min{xs[i], top}, max{xs[i] + w, top + kCell};
+        const ImVec2 min{xs[i], top}, max{xs[i] + w, top + cell};
         if (entry.item == Item::Leave) {
-            leaveAt = {min.x - kTrayPad, origin.y - kCellGap};
+            leaveAt = {min.x - kTrayPad, origin.y - cellGap};
         }
         if (entry.item == Item::Reset) {
-            resetAt = {min.x - kTrayPad, origin.y - kCellGap};
+            resetAt = {min.x - kTrayPad, origin.y - cellGap};
         }
         const std::optional<Owner> owner = OwnerOf(entry.item);
         if (entry.item == Item::Machine) {
             const float divider = min.x - machineGap / 2;
-            list.AddLine({divider, top + 4}, {divider, top + kCell - 4}, kTrayDivider, 1.0f);
+            list.AddLine({divider, top + 4}, {divider, top + cell - 4}, kTrayDivider, 1.0f);
         }
 
         // Grayed: not on this Machine (inert).
@@ -362,7 +376,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
 
         ImGui::SetCursorScreenPos(min);
         ImGui::PushID(static_cast<int>(entry.item));
-        const bool clicked = ImGui::InvisibleButton("##item", {w, kCell}) && !inert;
+        const bool clicked = ImGui::InvisibleButton("##item", {w, cell}) && !inert;
         const bool hovered = ImGui::IsItemHovered();
         if (hovered) {
             list.AddRectFilled(min, max, kHover, 6.0f);
@@ -374,13 +388,15 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         if (hovered) {
             std::string tip(entry.name);
             if (entry.item == Item::Machine) {
-                tip = hasDevice
-                          ? SlotName(devices_.tv, devices_.keyboard, devices_.knob) +
-                                "\nclick: out, to the front, or away\ndouble-click: " +
-                                (MachineSlotCells(devices_.tv, devices_.keyboard, devices_.knob) > 1
-                                     ? "their own windows, or back"
-                                     : "its own window, or back")
-                          : std::string("TV, keyboard, knobs");
+                tip =
+                    hasDevice
+                        ? SlotName(devices_.tv, devices_.keyboard, devices_.knob) +
+                              "\nclick: out, to the front, or away\ndouble-click: " +
+                              (!windows ? "the bench filled, or back"
+                               : MachineSlotCells(devices_.tv, devices_.keyboard, devices_.knob) > 1
+                                   ? "their own windows, or back"
+                                   : "its own window, or back")
+                        : std::string("TV, keyboard, knobs");
             }
             if (entry.item == Item::RunSwitch && pace.behind) {
                 tip += "\nRed: this computer cannot keep up with real time";
@@ -401,7 +417,8 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
                 tip += "\nWith the power on: power-cycles the Machine";
             }
             if (((owner && IsInstrument(*owner)) || entry.item == Item::Manual) && !inert) {
-                tip += "\ndouble-click: its own window, or back";
+                tip += windows ? "\ndouble-click: its own window, or back"
+                               : "\ndouble-click: the bench filled, or back";
             }
             if (inert && !why.empty()) {
                 tip += "\n" + why;
@@ -492,8 +509,8 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
         hint = session.meter().blackNext() ? "Meter: black lead next" : "Meter: red lead next";
     }
     if (!hint.empty()) {
-        const float left = leftEnd + kGroupGap;
-        const float end = origin.x + places.rightStart - kGroupGap / 2;
+        const float left = leftEnd + groupGap;
+        const float end = origin.x + places.rightStart - groupGap / 2;
         const ImVec2 size = ImGui::CalcTextSize(hint.c_str());
         list.PushClipRect({left, origin.y}, {end, origin.y + kShelfHeight}, true);
         list.AddText({left, origin.y + (kShelfHeight - size.y) / 2},

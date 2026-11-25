@@ -26,6 +26,10 @@ std::array<bool, kBenchObjects> popAtStart_{};  // --pop: beside from its first 
 std::array<std::optional<ImVec2>, kBenchObjects> at_{};    // PopOut: its next position, once
 std::array<std::optional<ImVec2>, kBenchObjects> size_{};  // popped in: its next size, once
 std::array<Place, kBenchObjects> benchAt_{};  // its offset on the bench before it popped out (P6o)
+std::array<std::optional<Area>, kBenchObjects> filledFrom_{};  // filling the bench: where it was
+// A fill or its undoing waits in at_: the double-click that asked for it has begun to move the
+// window (ImGui, at that frame's end), and the move would put it back where it was.
+bool letGo_ = false;
 
 std::size_t Index(BenchObject object) { return static_cast<std::size_t>(object); }
 
@@ -42,7 +46,26 @@ std::vector<Area> Displays() {
     return displays;
 }
 
+// The objects whose window keeps its proportions (KeepAspect).
+bool KeepsAspect(BenchObject object) {
+    return object == BenchObject::Tv || object == BenchObject::Keyboard ||
+           object == BenchObject::Knob;
+}
+
+void FillFrom(BenchObject object, Area from) {
+    const BenchRect bench = BenchArea();
+    const Extent room = bench.extent();
+    const Extent size = FillBench(
+        room, KeepsAspect(object) ? std::optional(from.height / from.width) : std::nullopt);
+    filledFrom_[Index(object)] = from;
+    letGo_ = true;
+    size_[Index(object)] = ImVec2{size.width, size.height};
+    at_[Index(object)] = ImVec2{bench.min.x + (room.width - size.width) / 2,
+                                bench.min.y + (room.height - size.height) / 2};
+}
+
 void PopOutFrom(BenchObject object, Area rect) {
+    filledFrom_[Index(object)].reset();
     const BenchRect bench = BenchArea();
     benchAt_[Index(object)] = {rect.x - bench.min.x, rect.y - bench.min.y, 0, 0};
     popped_[Index(object)] = true;
@@ -77,6 +100,19 @@ void PlaceNext(BenchObject object, ImVec2 first) {
     const BenchRect bench = BenchArea();
     const Place place = DefaultPlace(object, bench.extent());
     const std::size_t i = Index(object);
+    ImVec2 firstAt{bench.min.x + place.x, bench.min.y + place.y};
+    ImVec2 pivot{place.pivotX, place.pivotY};
+    if (first.x > 0 && first.y > 0) {  // not a window that sizes itself (the brief)
+        // On a bench smaller than it (P8f): shrunk in proportion, and moved in from its default
+        // place as an object popped back in is.
+        const Extent fit = FitBench({first.x, first.y}, bench.extent());
+        first = {fit.width, fit.height};
+        const Place in = ReturnPlace(
+            {place.x - place.pivotX * fit.width, place.y - place.pivotY * fit.height, 0, 0}, fit,
+            bench.extent());
+        firstAt = {bench.min.x + in.x, bench.min.y + in.y};
+        pivot = {0, 0};
+    }
     if (popAtStart_[i]) {
         popAtStart_[i] = false;
         PopOutFrom(object, {bench.min.x + place.x - place.pivotX * first.x,
@@ -91,11 +127,15 @@ void PlaceNext(BenchObject object, ImVec2 first) {
         OnBench();
     }
     if (at_[i]) {
+        if (letGo_ && ImGui::GetCurrentContext()->MovingWindow != nullptr) {
+            ImGui::ClearActiveID();
+            ImGui::StopMouseMovingWindow();
+        }
+        letGo_ = false;
         ImGui::SetNextWindowPos(*at_[i], ImGuiCond_Always);
         at_[i].reset();
     } else {
-        ImGui::SetNextWindowPos({bench.min.x + place.x, bench.min.y + place.y},
-                                ImGuiCond_FirstUseEver, {place.pivotX, place.pivotY});
+        ImGui::SetNextWindowPos(firstAt, ImGuiCond_FirstUseEver, pivot);
     }
     if (size_[i]) {
         ImGui::SetNextWindowSize(*size_[i], ImGuiCond_Always);
@@ -122,8 +162,42 @@ void PopOnDoubleClick(BenchObject object) {
     }
 }
 
+void FillBenchWith(BenchObject object) {
+    const ImVec2 pos = ImGui::GetWindowPos();
+    const ImVec2 size = ImGui::GetWindowSize();
+    FillFrom(object, {pos.x, pos.y, size.x, size.y});
+}
+
+void Unfill(BenchObject object, std::optional<Extent> size) {
+    const std::size_t i = Index(object);
+    if (!filledFrom_[i]) {
+        return;
+    }
+    const Area from = *filledFrom_[i];
+    filledFrom_[i].reset();
+    letGo_ = true;
+    // As an object popped back in: inside the bench as it is now.
+    const BenchRect bench = BenchArea();
+    const Extent fit = FitBench(size ? *size : Extent{from.width, from.height}, bench.extent());
+    size_[i] = ImVec2{fit.width, fit.height};
+    const Place at =
+        ReturnPlace({from.x - bench.min.x, from.y - bench.min.y, 0, 0}, fit, bench.extent());
+    at_[i] = ImVec2{bench.min.x + at.x, bench.min.y + at.y};
+}
+
+bool Filled(BenchObject object) { return filledFrom_[Index(object)].has_value(); }
+
 void TogglePop(BenchObject object, const char* window) {
     const ImGuiWindow* found = window != nullptr ? ImGui::FindWindowByName(window) : nullptr;
+    if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0) {
+        // No desktop windows (P8f): the bench filled, and back.
+        if (Filled(object)) {
+            Unfill(object);
+        } else if (found != nullptr) {
+            FillFrom(object, {found->Pos.x, found->Pos.y, found->Size.x, found->Size.y});
+        }
+        return;
+    }
     if (found == nullptr) {
         if (!popped_[Index(object)]) {
             PopOutAtStart(object);  // never drawn: from its default place, when it first comes out
@@ -145,6 +219,8 @@ void ResetBench() {
     at_ = {};
     size_ = {};
     benchAt_ = {};
+    filledFrom_ = {};
+    letGo_ = false;
 }
 
 void PopOutAtStart(BenchObject object) {

@@ -825,12 +825,16 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
 // fresh (a context remembers every window's place and size by name for its life).
 class ImGuiScreen {
 public:
-    ImGuiScreen(SDL_Window* window, GpuRender& gpu) : gpu_(gpu) {
+    // `oneWindow` (--one-window): no desktop windows, as the web build.
+    ImGuiScreen(SDL_Window* window, GpuRender& gpu, bool oneWindow) : gpu_(gpu) {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.IniFilename = nullptr;
         gpu.initImGui();
+        if (oneWindow) {
+            io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
+        }
         ApplyStyle();  // one size of controls (P8f)
         KeepFocusFromTooltips();
         // The UI font first, as NewFrame would pick it lazily (13 px at the framebuffer scale:
@@ -1122,7 +1126,7 @@ int main(int argc, char** argv) {
                 if (another) {
                     launcher.make();
                 }
-                ImGuiScreen screen(window, *gpu);
+                ImGuiScreen screen(window, *gpu, options.oneWindow);
                 LauncherResult chosen = RunLauncher(window, *gpu, screen, launcher, options,
                                                     std::exchange(fingers, {}));
                 launcher.stop();  // the live run's Session ends before the bench's Load
@@ -1171,7 +1175,7 @@ int main(int argc, char** argv) {
             }
         };
         {
-            ImGuiScreen screen(window, *gpu);
+            ImGuiScreen screen(window, *gpu, options.oneWindow);
             result =
                 RunBench(window, *gpu, *loaded, *loaded->session, *benchOptions, screen.legends(),
                          screen.petLegends(), machinesDir ? &launcher.list() : nullptr, repaired,

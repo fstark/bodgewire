@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 #include "ui/bench.hpp"
+#include "ui/controls.hpp"
 #include "ui/gestures.hpp"
 #include "ui/instrument_marks.hpp"
 #include "ui/touch.hpp"
@@ -289,7 +290,7 @@ void TvWindow::draw(bool& open, TvView& view) {
             if (input.reset) {
                 controls_.reset(knob);
             }
-            ImGui::SetTooltip("%s %.0f %%\ndrag up or down, or the mouse wheel; double-click: back "
+            ImGui::SetTooltip("%s %.0f %%\ndrag up or down, or wheel; double-click: back "
                               "to its mark",
                               ::bw::Label(knob), controls_.turn(knob) * 100.0);
         }
@@ -340,6 +341,8 @@ void TvWindow::draw(bool& open, TvView& view) {
         open = false;
     }
     PopOnDoubleClick(BenchObject::Tv);
+    CornerGrip();
+    PinchResize();
     ImGui::End();
 }
 

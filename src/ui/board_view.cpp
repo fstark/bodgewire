@@ -1455,7 +1455,7 @@ void BoardView::input(ImVec2 origin) {
             copper.bodies = false;
             const auto under = scene_->pick(at, active_, copper);
             if (under && (under->hit.kind == HitKind::Trace || under->hit.kind == HitKind::Via)) {
-                text += "\nOption: the copper under it";
+                text += "\nCopper: the copper under it";
             }
         }
         // A refusal is drawn where the tooltip would go: it wins while it shows.

@@ -55,6 +55,15 @@ private:
     float velocity_ = 0;  // px a second, the glide's
 };
 
+// Last in an object's window: a drawn grip in its bottom right corner, 28 px; its item the
+// corner's 44 px of the window's own surface (P8f). A drag on it resizes the window, its
+// constraints applied (a case keeps its proportions).
+void CornerGrip();
+// Last in an object's window: two fingers on it resize it by their pinch, proportions kept, its
+// centre where it was (P8f). `taken`: the two fingers are something else's this frame (a time
+// screen zoomed, a page scrolled): no resize.
+void PinchResize(bool taken = false);
+
 // A number's field: its text in a frame `width` wide. A click opens the number pad beside it,
 // never under the pointer, showing the value; the pad's keys and the PC's (the digits, A to F, X,
 // the point, N, U, M then S for a unit, Backspace, Enter, Escape) edit a copy of at most `limit`

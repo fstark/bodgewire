@@ -1,6 +1,7 @@
 #include "view/bench_places.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 
@@ -96,6 +97,25 @@ Extent MinimalSize(BenchObject instrument) {
 
 Extent NextPreset(Extent current, Extent minimal, Extent normal) {
     return Distance(current, minimal) > Distance(current, normal) ? minimal : normal;
+}
+
+Extent NextPreset(Extent current, Extent minimal, Extent normal, Extent full) {
+    const std::array presets{minimal, normal, full};
+    std::size_t nearest = 0;
+    for (std::size_t i = 1; i < presets.size(); ++i) {
+        if (Distance(current, presets[i]) < Distance(current, presets[nearest])) {
+            nearest = i;
+        }
+    }
+    return presets[(nearest + 1) % presets.size()];
+}
+
+Extent FillBench(Extent bench, std::optional<float> aspect) {
+    if (!aspect) {
+        return bench;
+    }
+    const float width = std::min(bench.width, bench.height / *aspect);
+    return {width, width * *aspect};
 }
 
 std::optional<Area> BesidePlace(Area object, Area main, std::span<const Area> displays) {

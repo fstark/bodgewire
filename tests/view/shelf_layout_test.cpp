@@ -26,3 +26,21 @@ TEST_CASE("shelf layout: trays from the left, the Machine's from the right", "[v
     CHECK(places.x[4] - (places.x[3] + 40) == 10);  // set apart: half a tray gap
     CHECK(places.rightStart == places.x[3]);
 }
+
+TEST_CASE("shelf layout: the narrow cells where the BW-2001's Shelf does not fit", "[view]") {
+    // The BW-2001 on a Puzzle: Leave; Power, the run switch, Reset; five tools; the probe and
+    // three Instruments; the brief, the binder, the Machine slot (a TV and a keyboard).
+    std::vector<ShelfCell> items{{.tray = 0}, {.tray = 1}, {.tray = 1, .cells = 2}, {.tray = 1}};
+    items.insert(items.end(), 5, {.tray = 2});
+    items.push_back({.tray = 3, .cells = 2});
+    items.insert(items.end(), 3, {.tray = 3});
+    items.insert(items.end(), 2, {.tray = 4, .right = true});
+    items.push_back({.tray = 4, .cells = 2, .right = true, .apart = true});
+    CHECK(ShelfWidth(items, kShelfMetrics) == 1074);
+    CHECK(ShelfWidth(items, kShelfNarrow) == 954);
+    CHECK(ShelfMetricsFor(items, 1264).cell == kShelfMetrics.cell);  // a 1280 px window
+    CHECK(ShelfMetricsFor(items, 1064).cell == kShelfNarrow.cell);   // a 1080 px one
+    // At the width it needs, the two sides are a tray's gap apart.
+    const ShelfPlaces places = LayOutShelf(items, 1074, kShelfMetrics);
+    CHECK(places.rightStart - places.leftEnd == kShelfMetrics.groupGap);
+}

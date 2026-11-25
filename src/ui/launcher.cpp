@@ -566,8 +566,29 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
     if (jump_) {
         machines_.jump(static_cast<double>(lanes_.machine()));
     }
-    machines_.target = static_cast<double>(lanes_.machine());
-    machines_.update(dt);
+    // A drag on the top lane (P8f): its picture follows the pointer; the others with it.
+    const auto dragLane = [&](float dx) {
+        const double d = static_cast<double>(laneDrag_->picture) - machines_.value;
+        const double pitch = std::abs(PictureLeft(d < 0 ? -1 : 1, laneDrag_->share) -
+                                      PictureLeft(0, laneDrag_->share)) *
+                             static_cast<double>(width);
+        machines_.jump(std::clamp(machines_.value - static_cast<double>(dx) / pitch, 0.0,
+                                  static_cast<double>(list_.machines.size() - 1)));
+    };
+    if (laneDrag_ && (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || making_)) {
+        // Let go: the nearest Machine, which the glide settles on.
+        const auto nearest = static_cast<std::size_t>(std::lround(machines_.value));
+        laneDrag_.reset();
+        if (nearest != lanes_.machine() && !making_) {
+            lanes_.selectMachine(nearest);
+        }
+    }
+    if (laneDrag_) {
+        dragLane(ImGui::GetIO().MouseDelta.x);
+    } else {
+        machines_.target = static_cast<double>(lanes_.machine());
+        machines_.update(dt);
+    }
 
     // The top lane's pictures.
     const float areaTop = origin.y + kTitleBand;
@@ -677,6 +698,12 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
                 } else {
                     clickedMachine = i;
                 }
+            }
+            // A drag on it moves the lane, and is no click.
+            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                laneDrag_ = LaneDrag{i, share};
+                ImGui::ClearActiveID();
+                dragLane(ImGui::GetMouseDragDelta(ImGuiMouseButton_Left).x);
             }
         }
         // The bar under the selected picture (its colour how well the live run keeps up),

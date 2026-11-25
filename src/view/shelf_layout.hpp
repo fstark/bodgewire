@@ -30,4 +30,12 @@ struct ShelfPlaces {
 // trays; the right-hand tray from the right edge, its set-apart item half a tray's gap away.
 ShelfPlaces LayOutShelf(std::span<const ShelfCell> items, float width, const ShelfMetrics& metrics);
 
+// The width the shelf needs: its left-hand trays, a tray's gap, its right-hand tray.
+float ShelfWidth(std::span<const ShelfCell> items, const ShelfMetrics& metrics);
+// The Shelf's metrics, and the narrow ones for a window they do not fit (P8f: a tablet's 1080 px,
+// where the BW-2001's two sides would overlap).
+inline constexpr ShelfMetrics kShelfMetrics{48, 4, 20};
+inline constexpr ShelfMetrics kShelfNarrow{44, 4, 12};
+const ShelfMetrics& ShelfMetricsFor(std::span<const ShelfCell> items, float width);
+
 }  // namespace bw

@@ -106,6 +106,8 @@ bool MeterWindow::draw(bool& open, Session& session) {
         ImGui::TextUnformatted(LeadText("black", session.meter().black()).c_str());
     }
     PopOnDoubleClick(BenchObject::Meter);
+    CornerGrip();
+    PinchResize();
     ImGui::End();
     return clicked;
 }

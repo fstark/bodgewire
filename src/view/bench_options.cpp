@@ -509,6 +509,11 @@ const std::array kFlags{
              o.window = std::pair{static_cast<int>((*n)[0]), static_cast<int>((*n)[1])};
              return {};
          }},
+    Flag{"--one-window", "", true,
+         [](Options& o, std::string_view) -> Result {
+             o.oneWindow = true;
+             return {};
+         }},
     Flag{"--screenshot", "OUT.png", true,
          [](Options& o, std::string_view v) -> Result {
              o.screenshot = v;

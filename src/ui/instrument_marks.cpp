@@ -132,8 +132,22 @@ bool BeginInstrument(const char* name, bool& open, BenchObject object) {
     ImGui::SetCursorScreenPos(min);
     if (ImGui::InvisibleButton("##size", {side, side})) {
         const ImVec2 now = ImGui::GetWindowSize();
-        const Extent next = NextPreset({now.x, now.y}, MinimalSize(object), normal);
-        ImGui::SetWindowSize({next.width, next.height});
+        const Extent minimal = MinimalSize(object);
+        if (PoppedOut(object)) {
+            const Extent next = NextPreset({now.x, now.y}, minimal, normal);
+            ImGui::SetWindowSize({next.width, next.height});
+        } else {
+            // On the bench (P8f): minimal, normal, then the whole bench, and back where it was.
+            const Extent full = BenchArea().extent();
+            const Extent next = NextPreset({now.x, now.y}, minimal, normal, full);
+            if (next.width == full.width && next.height == full.height) {
+                FillBenchWith(object);
+            } else if (Filled(object)) {
+                Unfill(object, next);
+            } else {
+                ImGui::SetWindowSize({next.width, next.height});
+            }
+        }
     }
     const bool hovered = ImGui::IsItemHovered();
     ImDrawList& list = *ImGui::GetWindowDrawList();
@@ -143,7 +157,8 @@ bool BeginInstrument(const char* name, bool& open, BenchObject object) {
                  1.0f);
     list.AddRectFilled({min.x + 4 * u, min.y + 8 * u}, {min.x + 8 * u, min.y + 12 * u}, colour);
     if (hovered) {
-        ImGui::SetTooltip("Minimal / normal size");
+        ImGui::SetTooltip(PoppedOut(object) ? "Minimal / normal size"
+                                            : "Minimal / normal / full size");
     }
     ImGui::PopClipRect();
     ImGui::SetCursorScreenPos(cursor);

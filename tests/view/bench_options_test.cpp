@@ -172,6 +172,8 @@ TEST_CASE("bench options: --touch and the scripted fingers", "[view]") {
     CHECK(Parse({"m.bwp", "--drag", "1:2:3"}).error().empty());
     CHECK(Parse({"m.bwp", "--pinch", "1:2:0"}).error().empty());  // no factor of 0
     CHECK_FALSE(Parse({"m.bwp"})->touch);
+    CHECK(Parse({"m.bwp", "--one-window"})->oneWindow);
+    CHECK_FALSE(Parse({"m.bwp"})->oneWindow);
 }
 
 TEST_CASE("bench options: --window", "[view]") {

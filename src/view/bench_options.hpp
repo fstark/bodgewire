@@ -99,6 +99,9 @@ struct Options {
     std::vector<FingerScript> fingers;
     // --window W:H: the main window's size (a tablet's: 1180:820), not 1280 × 800.
     std::optional<std::pair<int, int>> window;
+    // --one-window: no desktop windows, as the web build: a double-click on an object fills the
+    // bench with it.
+    bool oneWindow = false;
     BenchOptions bench;  // the file's bench; a visited one starts plain
 };
 

@@ -7,6 +7,7 @@
 #include <string_view>
 #include <utility>
 
+#include "ui/bench.hpp"
 #include "ui/touch.hpp"
 
 namespace bw {
@@ -77,6 +78,11 @@ bool LitButton(const char* label, ImVec2 size, bool lit) {
 
 void ApplyStyle() {
     ImGuiStyle& style = ImGui::GetStyle();
+    // ImGui's own corner grip still answers but is not drawn: CornerGrip draws the one seen.
+    for (const ImGuiCol colour :
+         {ImGuiCol_ResizeGrip, ImGuiCol_ResizeGripHovered, ImGuiCol_ResizeGripActive}) {
+        style.Colors[colour].w = 0;
+    }
     style.FramePadding = {8, (kControl - kFontSize) / 2};
     style.ScrollbarSize = 20;
     style.GrabMinSize = 20;
@@ -195,6 +201,89 @@ bool ChoicePopup(const char* id, std::span<const char* const> labels, std::size_
     }
     ImGui::PopID();
     return changed;
+}
+
+void CornerGrip() {
+    constexpr float kGrip = 28, kGripHit = 44;
+    constexpr ImU32 kGripDark = IM_COL32(0, 0, 0, 110);
+    static ImVec2 held;  // from the pointer to the corner, while the one grip in use is dragged
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    const ImVec2 corner{window->Pos.x + window->Size.x, window->Pos.y + window->Size.y};
+    // The item lies over the window's padding: its place is no part of the window's content.
+    const ImVec2 cursor = window->DC.CursorPos;
+    const ImVec2 cursorMax = window->DC.CursorMaxPos;
+    const ImVec2 idealMax = window->DC.IdealMaxPos;
+    ImGui::PushClipRect(window->Pos, corner, false);
+    ImGui::SetCursorScreenPos({corner.x - kGripHit, corner.y - kGripHit});
+    ImGui::InvisibleButton("##corner grip", {kGripHit, kGripHit});
+    const bool lit = ImGui::IsItemHovered() || ImGui::IsItemActive();
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    if (ImGui::IsItemActivated()) {
+        held = {corner.x - mouse.x, corner.y - mouse.y};
+    }
+    if (ImGui::IsItemActive()) {
+        ImGui::SetWindowSize({mouse.x + held.x - window->Pos.x, mouse.y + held.y - window->Pos.y});
+    }
+    if (lit) {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNWSE);
+    }
+    // Three slanted strokes, light on a dark shadow: seen on a pale case and on a dark window.
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    const ImU32 light = IM_COL32(235, 235, 235, lit ? 255 : 150);
+    for (int i = 1; i <= 3; ++i) {
+        const float d = kGrip * static_cast<float>(i) / 3 - 2;
+        const ImVec2 a{corner.x - 4 - d, corner.y - 4}, b{corner.x - 4, corner.y - 4 - d};
+        list.AddLine({a.x + 1, a.y + 1}, {b.x + 1, b.y + 1}, kGripDark, 2.0f);
+        list.AddLine(a, b, light, 2.0f);
+    }
+    ImGui::PopClipRect();
+    window->DC.CursorPos = cursor;
+    window->DC.CursorMaxPos = cursorMax;
+    window->DC.IdealMaxPos = idealMax;
+}
+
+void PinchResize(bool taken) {
+    static ImGuiID pinched = 0;  // the window the two fingers resize, until one lifts
+    static ImVec2 centre;
+    const FingerFrame& touch = Touch();
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (!touch.two) {
+        if (pinched == window->ID) {
+            pinched = 0;
+        }
+        return;
+    }
+    if (pinched == 0 && !taken && touch.pinch != 1 &&
+        ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows |
+                               ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) {
+        pinched = window->ID;
+        centre = {window->Pos.x + window->Size.x / 2, window->Pos.y + window->Size.y / 2};
+    }
+    if (pinched != window->ID) {
+        return;
+    }
+    // About the centre it had: placed from the size it got last frame (its constraints applied),
+    // so a window held at its smallest size does not creep. On the bench it stays inside it, and
+    // grows no larger than it.
+    const bool onBench = window->Viewport == ImGui::GetMainViewport();
+    const BenchRect bench = BenchArea();
+    ImVec2 at{centre.x - window->Size.x / 2, centre.y - window->Size.y / 2};
+    if (onBench) {
+        const auto inside = [](float from, float length, float low, float high) {
+            return length > high - low ? (low + high - length) / 2
+                                       : std::clamp(from, low, high - length);
+        };
+        at = {inside(at.x, window->Size.x, bench.min.x, bench.max.x),
+              inside(at.y, window->Size.y, bench.min.y, bench.max.y)};
+    }
+    ImGui::SetWindowPos(at);
+    if (!taken && touch.pinch != 1) {
+        Extent size{window->Size.x * touch.pinch, window->Size.y * touch.pinch};
+        if (onBench && touch.pinch > 1) {
+            size = FitBench(size, bench.extent());
+        }
+        ImGui::SetWindowSize({size.width, size.height});
+    }
 }
 
 void DragScroll::update(bool taken) {

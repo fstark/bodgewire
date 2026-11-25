@@ -50,8 +50,15 @@ Extent FirstSize(BenchObject object, Extent bench, float aspect = 1, int count =
 // The instruments' two presets (Analyzer, Scope, Meter); the first size is the normal one.
 Extent NormalSize(BenchObject instrument);
 Extent MinimalSize(BenchObject instrument);
-// The size button: the preset further from `current` (by the two sides' distances summed).
+// The size button of an instrument in its own desktop window: the preset further from `current`
+// (by the two sides' distances summed).
 Extent NextPreset(Extent current, Extent minimal, Extent normal);
+// The size button on the bench (P8f): the preset after the one nearest `current`, round minimal,
+// normal, full (the bench's).
+Extent NextPreset(Extent current, Extent minimal, Extent normal, Extent full);
+// What fills the bench (P8f): the bench itself; with `aspect` (height / width, an object that
+// keeps its proportions) the largest of that shape inside it.
+Extent FillBench(Extent bench, std::optional<float> aspect = std::nullopt);
 
 // A rectangle in desktop logical px (ImGui's coordinates with viewports on), top left (P6j).
 struct Area {

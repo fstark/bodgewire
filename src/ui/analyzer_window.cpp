@@ -678,6 +678,8 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         draw.PopClipRect();
     }
     labelScroll_.update(canvasHeld);  // a drag on the labels; the lanes' is the canvas's
+    // Two fingers on the rows zoom the time and scroll them: no pinch of the window there.
+    const bool rowsHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
     ImGui::EndChild();
 
     // Overview: the whole record, the view as a box, T and the marker as ticks.
@@ -724,6 +726,8 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         session.analyzer().setSettings(settings);
     }
     PopOnDoubleClick(BenchObject::Analyzer);
+    CornerGrip();
+    PinchResize(rowsHovered);
     ImGui::End();
     return clicked;
 }

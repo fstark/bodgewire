@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 #include "ui/bench.hpp"
+#include "ui/controls.hpp"
 #include "ui/gestures.hpp"
 #include "ui/instrument_marks.hpp"
 #include "view/bench_places.hpp"
@@ -174,10 +175,10 @@ void KnobWindow::draw(bool& open, Session& session) {
         if (hovered) {
             const std::size_t upDown = players ? 1 : 0;  // the knob Up and Down turn
             const char* keys = players && i == 0
-                                   ? "Turn the knob: drag up or down, mouse wheel, or Q and A"
+                                   ? "Turn the knob: drag up or down, wheel, or Q and A"
                                : static_cast<std::size_t>(i) == upDown
-                                   ? "Turn the knob: drag up or down, mouse wheel, or Up and Down"
-                                   : "Turn the knob: drag up or down or mouse wheel";
+                                   ? "Turn the knob: drag up or down, wheel, or Up and Down"
+                                   : "Turn the knob: drag up or down, or wheel";
             ImGui::SetTooltip("%s\n%s %.0f %%", keys, reference.c_str(),
                               session.inputs().knob(reference) * 100.0);
         }
@@ -207,6 +208,8 @@ void KnobWindow::draw(bool& open, Session& session) {
         open = false;
     }
     PopOnDoubleClick(BenchObject::Knob);
+    CornerGrip();
+    PinchResize();
     ImGui::End();
 }
 

@@ -13,6 +13,7 @@
 #include "parts/matrix_keyboard.hpp"
 #include "parts/zx80_keys.hpp"
 #include "ui/bench.hpp"
+#include "ui/controls.hpp"
 #include "ui/instrument_marks.hpp"
 #include "ui/pet_graphics.hpp"
 #include "ui/touch.hpp"
@@ -287,6 +288,7 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
         open = false;
     }
     PopOnDoubleClick(BenchObject::Keyboard);
+    CornerGrip();  // no pinch: two fingers here type
     ImGui::End();
 }
 

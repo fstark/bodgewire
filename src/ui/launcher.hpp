@@ -131,6 +131,13 @@ private:
     MachineList list_;
     LauncherLanes lanes_;
     Glide machines_;
+    // A drag on the Machines' lane (P8f): the picture it began on and its width (a share of the
+    // lane's); the pictures follow it, and the release selects the nearest Machine.
+    struct LaneDrag {
+        std::size_t picture;
+        double share;
+    };
+    std::optional<LaneDrag> laneDrag_;
     Glide postIts_{0, 0, 0.5};
     std::size_t rowMachine_ = 0;     // whose post-its the row's scroll is for
     std::vector<float> noteScroll_;  // each post-it's text scrolled, px (a long brief)

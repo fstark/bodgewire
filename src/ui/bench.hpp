@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <imgui.h>
 
 #include "view/bench_places.hpp"
@@ -20,8 +22,8 @@ BenchRect BenchArea();
 
 // Before Begin: on the bench (locked to the main window, clipped at its edge) or, popped out, in
 // its own desktop window (P6j); at its default place and `first` its size the first time it comes
-// out; after that where and as large as the player left it, for the bench (FirstUseEver), unless
-// TogglePop moved it.
+// out, shrunk in proportion on a bench smaller than it (P8f); after that where and as large as
+// the player left it, for the bench (FirstUseEver), unless TogglePop or a fill moved it.
 void PlaceNext(BenchObject object, ImVec2 first);
 // Before Begin: height = width * aspect, at least `minWidth` wide (a case keeps its proportions).
 void KeepAspect(float aspect, float minWidth);
@@ -38,8 +40,16 @@ bool PoppedOut(BenchObject object);
 // The shelf's double-click (P6o): popped out, back on the bench where it was before it popped out
 // (ReturnPlace), its size kept or shrunk in proportion to fit (FitBench); else to its own desktop
 // window beside the main one (BesidePlace; else where it is), from its window's last place. From
-// the next frame. `window`: its Begin name.
+// the next frame. `window`: its Begin name. Where there are no desktop windows (the web build,
+// --one-window; P8f) it fills the bench instead (the largest of its shape for an object that
+// keeps its proportions, centred); again, it goes back where and as large as it was.
 void TogglePop(BenchObject object, const char* window);
+// Inside `object`'s window: it fills the bench from the next frame (an Instrument's full size).
+void FillBenchWith(BenchObject object);
+// Back where it was before it filled the bench, `size` its size there (nullopt: the one it
+// had); nothing for an object that does not fill it.
+void Unfill(BenchObject object, std::optional<Extent> size = std::nullopt);
+bool Filled(BenchObject object);
 // Inside a window, last before End: a double-click on its drag zone (its title bar, or its own
 // body off every control: where a drag moves it; not inside a child, a binder's page) pops it out,
 // or back in (P6o), as a double-click on its shelf drawing does.

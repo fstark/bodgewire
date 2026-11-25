@@ -20,7 +20,7 @@ ctest --preset release -j -R "^(fingers|number pad|view|time view|bench options|
 | 3 | What has no control today: Stop, Hold, the cursor, the flag, pin / bus | `9cddc7e` |
 | 4 | Sizes and numbers: the style, the stepper, the choices, the number pad | `159506e` |
 | 5 | The loupe and lit-first repairs | `5ea375a` |
-| 6 | Pages: drag to scroll, links at the release, "show" | |
+| 6 | Pages: drag to scroll, links at the release, "show" | `7842c2a` |
 | 7 | Objects and the Launcher: grip, pinch, fill, the drags, the narrow Shelf | |
 | 8 | The web page's manifest, the turn notice; docs; the full suite; the row done | |
 
@@ -202,3 +202,17 @@ Phase 6:
 - A pin's row in a table sat 7 px under its "show" button (ImGui lowers a row's text to a framed item's baseline): the row's baseline is put back to 0.
 - The Launcher's row follows the finger, without a glide after the lift; a drag on the lane lets go of the post-it's press, for the mouse too (a click that slides more than 6 px no longer selects).
 - The analyzer's hint says "drag: pan or scroll".
+
+Phase 7:
+
+- `--one-window` gives the native build the web's single window (no desktop windows), so the fill can be seen in a screenshot: `bw_ui … --one-window --double-tap X:Y`.
+- An object's first place is moved in as well as its first size shrunk (`ReturnPlace`): at 1080 × 810 the binder's default place put its foot under the bench's edge.
+- The fill had to stop the window's move: a double-click's second press begins one at that frame's end, and the move put the window back where it was a frame after the fill.
+- An Instrument's size button on the bench goes minimal, normal, full; full is the same fill, so the next press gives the minimal size where the Instrument was. In its own desktop window the button keeps its two sizes.
+- The Machine slot's double-click with no desktop windows fills the bench with one object, the slot's first (the TV when there is one).
+- A pinched object stays inside the bench and grows no larger than it; its centre is kept from the size it really got, so one held at its smallest size does not creep.
+- ImGui's own corner grip still answers (about 14 px) but is no longer drawn: `CornerGrip` draws the one seen. In the analyzer and the scope the grip's 44 px item stops at their rows' and screen's child window: it answers on the footer's height there, and its full width.
+- The lane's drag uses the dragged picture's own pitch (`PictureLeft` either side of the centre), so that picture follows the pointer; a drag shorter than half the way settles back, the selected post-it kept.
+- The Shelf's widths by the constants: the BW-2001's 1,074 px, 954 px with the narrow cells; a 1080 px window leaves 1,064.
+- The pencil's tooltip no longer names shift- or right-click (they still clear a mark; its taps go round to none). The Shelf's tooltips say "the bench filled, or back" for a double-click where there are no desktop windows.
+

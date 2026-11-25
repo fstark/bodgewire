@@ -464,6 +464,8 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         session.scope().setSettings(settings);
     }
     PopOnDoubleClick(BenchObject::Scope);
+    CornerGrip();
+    PinchResize(input.hover.has_value());  // two fingers on the screen zoom the time
     ImGui::End();
     return clicked;
 }
