@@ -579,7 +579,10 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             focus.bringOut(BenchObject::Manual);
             BringToFront(kManualWindowName);
         }
-        if (const auto click = boardView.takeClick()) {
+        if (auto click = boardView.takeClick()) {
+            // The analyzer's pin / bus switch on bus (P8f): as a Shift-click.
+            click->shift =
+                click->shift || (focus.owner() == Owner::Analyzer && analyzerWindow.bus());
             const auto& pick = click->pick;
             // A click on a part selects it (its pins too, as a probe touches them); on the
             // selected part's body again, or on bare board, it deselects.

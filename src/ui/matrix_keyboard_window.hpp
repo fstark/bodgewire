@@ -22,9 +22,10 @@ inline constexpr const char* kMatrixKeyboardWindowName = "###matrix keyboard";
 
 // A key matrix keyboard as a floating window of drawn keys: the BW-2001's point-of-sale keys, as
 // the PET 2001's (P5q, P6l2), or the BW-80's membrane in its cream case, as the ZX80's (P5x, P6l),
-// by the capture's kind. Typed on from the PC keys (MatrixCapture); a click holds a
-// key while the mouse is down, a click on SHIFT holds it until the next key clicked is up (or SHIFT
-// is clicked again), a right-click latches a key until right-clicked again.
+// by the capture's kind. Typed on from the PC keys (MatrixCapture); a click types a key in the
+// Machine's time (seen however slow it runs, P8f) and holds it while the mouse is down, a click
+// on SHIFT holds it until the next key clicked is up (or SHIFT is clicked again), a right-click
+// latches a key until right-clicked again, and so does a click while the case's HOLD switch is on.
 class MatrixKeyboardWindow {
 public:
     // `petLegends`: the BW-2001's square bold legends (Saira Expanded Bold, P6l2).
@@ -37,6 +38,9 @@ public:
 private:
     void drawKeys(Session& session, const MatrixCapture& capture);
     void drawMembrane(Session& session, const MatrixCapture& capture);
+    // The HOLD switch on the case (P8f), its right end at `right`, `u` px a key: while on, a
+    // click latches a key down and another releases it, as a right-click does.
+    void holdSwitch(ImVec2 right, float u, ImU32 ink);
     // The cap loop both looks share: the buttons, the latches, the Session's held keys; each cap
     // drawn `gap` (u) smaller than its pitch, `height` (u) high. `shifts`: the SHIFT keys, the
     // first one drawn down for a PC key typed with SHIFT.
@@ -49,6 +53,7 @@ private:
     ImFont* petLegends_;
     std::vector<bool> latched_;       // per key: right-clicked down
     std::vector<bool> shiftClicked_;  // per SHIFT key: clicked down, for the next key clicked
+    bool hold_ = false;               // the HOLD switch
 };
 
 }  // namespace bw

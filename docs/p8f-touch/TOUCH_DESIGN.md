@@ -355,6 +355,7 @@ The header lines grow: the columns' places (`kLabelWidth`, `kValueX`, `kTriggerX
 - **M4, M5** `chip_panel.cpp`: a pin's `Selectable` is `kControl` high; each pin has a "show" button at its row's outer end (a DIP row holds two pins: one at each end) whose click is `hits.clicked` with `frame` asked: `TargetHits` gains `bool frame`, which `BoardView::route` passes to `RouteLink` beside Ctrl and Cmd. The binder's `kMinWidth` grows by the two buttons. "Zoom to", "All datasheets", the Contents page's Hex / Code / Glyphs and the fold headings: `ImGui::Button` or framed at `kControl`.
 - **M6** `contents_page.cpp`: `HexField` becomes a `NumberField` (`PadKind::Hex`), `Combo` a `Choice`, `Slider` a `Stepper`.
 - **D1** `MatrixKeyboardWindow`: a slide switch "HOLD" drawn at the right of the strip above the keys, `bool hold_`; with it on, a left click on a key toggles `latched_`.
+- **D4** `MatrixKeyboardWindow::drawCaps`: a left click on a key that is no SHIFT, HOLD off, also calls `session.inputs().press(reference, MatrixPress{key, shifted})`: the press queued in simulation time that the PC's keys use.
 - **D2** `tv_window.cpp`: the knobs', the slot's and the trimmer's items at least 44 px.
 - **D3**: an `InvisibleButton` over the glass; the loupe while the pointer is free over the window and not `Touch().two` (today's), or while that item is active, then drawn 80 px above the pointer.
 - **L7** `question_popup.cpp`, `thank_you_card.cpp`: buttons `{110, kBig}` and `kBig` high; the tick box's line `kBig` high.

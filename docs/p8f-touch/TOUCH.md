@@ -207,6 +207,7 @@ Nothing to change: the tabs (44 × 72 px). What a link or a pinout row shows whi
 | D1 | both | **A Hold switch**: the view buttons' fifth, and one on each matrix keyboard's case (BW-2001, BW-80). While it is on, a click latches a button or a key down, and another releases it. | A right-click latches, and stays. |
 | D2 | both | **The TV's controls answer within 44 px.** | At the TV's first width: a knob 28 px across, the POWER slot 53 × 13 px, the underscan trimmer 12 px. |
 | D3 | both | **The TV's glass is a control**: a press on it shows the loupe, above the pointer, and does not move the TV. | The loupe follows a pointer with no button down; a drag on the glass moves the TV. |
+| D4 | both | **A key clicked on a matrix keyboard is typed in the Machine's time**, as the PC's keys are, and held as long as the pointer stays down. | Held for the click's own time: on a Machine running slowly (the BW-2001 at a third of real time here, less on an iPad) a quick tap ends before the keyboard is scanned. Found in phase 1. |
 
 Why a switch for D1 and not a gesture: a hold is already the button held, a double tap is a doubled letter on a keyboard, and a finger sliding off a key is ordinary typing.
 

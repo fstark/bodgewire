@@ -60,7 +60,7 @@ Time TriggerTime(const Sweep& sweep) { return sweep.start - (sweep.delay - sweep
 
 void ScopeWindow::preset(std::optional<Time> marker, std::optional<Time> cursor) {
     marker_ = marker;
-    presetCursor_ = cursor;
+    placedCursor_ = cursor;
 }
 
 std::string ScopeWindow::valueAt(std::size_t channel, Time t,
@@ -242,7 +242,13 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     const ImVec2 top = ImGui::GetCursorScreenPos();
     const float height = bandHeight * static_cast<float>(std::max<std::size_t>(1, bands.size()));
     ImGui::InvisibleButton("##screen", {width, height});
-    const TimeCanvasInput input = canvas_.read(width, kDivisions);
+    std::optional<float> markerX;
+    if (marker_) {
+        const TimeView before = ScopeView(settings);
+        markerX = top.x + static_cast<float>(static_cast<double>(*marker_ - before.left) /
+                                             static_cast<double>(before.span()) * width);
+    }
+    const TimeCanvasInput input = canvas_.read(width, kDivisions, markerX, top.y);
     const auto timeAt = [&](float px) {  // ps from the Trigger, at the current settings
         const TimeView view = ScopeView(settings);
         return view.left + static_cast<Time>(std::llround((px - top.x) / width *
@@ -279,6 +285,9 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     if (input.marker) {
         marker_ = timeAt(*input.marker);
     }
+    if (input.scrub) {
+        placedCursor_ = timeAt(*input.scrub);
+    }
     if (input.released) {
         pressed_.reset();
     }
@@ -290,8 +299,8 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     std::optional<Time> cursor;
     if (input.hover) {
         cursor = timeAt(*input.hover);
-    } else if (presetCursor_) {
-        cursor = presetCursor_;
+    } else if (placedCursor_) {
+        cursor = placedCursor_;
     }
 
     // Grid.

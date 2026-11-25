@@ -14,9 +14,9 @@ ctest --preset release -j -R "^(fingers|number pad|view|time view|bench options|
 
 | Phase | Description | Commit |
 |---|---|---|
-| 0 | Spec, design and plan, reviewed | `d2f8eda` |
-| 1 | Plumbing: the fingers, their glue, `--touch` and the scripted fingers | `ddd9bc2` |
-| 2 | The Board's zoom and picks; the view buttons; `/touch/` on Pages | |
+| 0 | Spec, design and plan, reviewed | `b07d734` |
+| 1 | Plumbing: the fingers, their glue, `--touch` and the scripted fingers | `0f46b16` |
+| 2 | The Board's zoom and picks; the view buttons; `/touch/` on Pages | `91fba8b` |
 | 3 | What has no control today: Stop, Hold, the cursor, the flag, pin / bus | |
 | 4 | Sizes and numbers: the style, the stepper, the choices, the number pad | |
 | 5 | The loupe and lit-first repairs | |
@@ -68,7 +68,7 @@ Fence:
 ## Phase 3 — What has no control today
 
 1. L1: Stop on the making's plate (D§9).
-2. D1: Hold among the view buttons and on the matrix keyboards' cases (D§3, D§4, D§8).
+2. D1: Hold among the view buttons and on the matrix keyboards' cases (D§3, D§4, D§8); D4: a clicked key typed in the Machine's time.
 3. I2, I3: the placed cursor, the flag's click and size (D§6).
 4. I9, I10: pin / bus, the group's two choices (D§7), with plain buttons until phase 4's controls.
 
@@ -168,3 +168,10 @@ Phase 2:
 - The view buttons' column stands over the Board's right margin: on a Board fitted to the panel's width (the Counter) its top button covers the Flip Corner. Flip is in the column, so nothing is lost; the fit could leave the lane free if it bothers on the iPad.
 - A Board button's reach for a finger gives way to any other pick there, but not to the button's own pads, which lie under its cap.
 - The page's hold (no selection, callout or bounce) is in `shell.html` from this phase, for the first sitting; the manifest waits for phase 8.
+
+Phase 3:
+
+- `main` (its `web.yml`) and `touch` were pushed after phase 2, on the user's choice of the `/touch/` page (2026-11-25); `touch` rebased on `main` just before, so the hashes above are the pushed ones.
+- D4 (a clicked key typed in the Machine's time) joined this phase from phase 1's finding.
+- The Hold button shows only on a Board with a push button or a key; the keyboards' HOLD is a slide switch on the case, at the right of the BW-2001's strip and of the BW-80's bottom lip.
+- The pin / bus switch and the group's two choices are plain buttons here; phase 4 gives them the shared controls.

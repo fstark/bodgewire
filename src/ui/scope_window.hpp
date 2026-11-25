@@ -30,7 +30,8 @@ private:
 
     std::optional<Sweep> shown_;  // kept across rebuilds and power-off; frozen while stopped
     std::optional<Time> marker_;  // ps from the Trigger
-    std::optional<Time> presetCursor_;
+    // The cursor where it was put (--cursor, or a finger's hold and slide, P8f).
+    std::optional<Time> placedCursor_;
     bool stopped_ = false;
     TimeCanvas canvas_;
     float panRest_ = 0;                     // px of horizontal wheel not yet a delay step

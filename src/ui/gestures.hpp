@@ -19,18 +19,26 @@ struct TimeCanvasInput {
     std::optional<float> dragFromPress;  // px since the press, once past a click's slop
     std::optional<float> marker;         // a click without a drag, released here
     bool released = false;               // the press ended this frame
+    // A finger held still on the canvas, then slid (P8f): its x each frame; the cursor goes
+    // there and stays (no pan, no marker).
+    std::optional<float> scrub;
+    float pressY = 0;  // where the press began, screen px: the lane or band it is on
 };
 
 class TimeCanvas {
 public:
-    // After the canvas's InvisibleButton: `width` px wide, `divisions` across.
-    TimeCanvasInput read(float width, int divisions);
+    // After the canvas's InvisibleButton: `width` px wide, `divisions` across. `markerX`: the
+    // Marker's x when it is set, `top` the canvas's top: a click on the Marker's flag there
+    // clears it (`clearMarker`) instead of moving it.
+    TimeCanvasInput read(float width, int divisions, std::optional<float> markerX = std::nullopt,
+                         float top = 0);
 
 private:
     float wheelRest_ = 0;
     float pinchRest_ = 0;  // of a pinch, not yet a whole step
-    float pressX_ = 0;
+    float pressX_ = 0, pressY_ = 0;
     bool moved_ = false;
+    bool scrubbing_ = false;  // this press became a finger's hold
 };
 
 // A round knob's input this frame, read from the item just submitted (an InvisibleButton over

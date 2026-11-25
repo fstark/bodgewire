@@ -290,6 +290,28 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
     ImGui::End();
 }
 
+void MatrixKeyboardWindow::holdSwitch(ImVec2 right, float u, ImU32 ink) {
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    const float slotW = 0.80f * u, slotH = std::min(0.34f * u, 16.0f);
+    const float px = std::max(6.0f, std::round(0.22f * u));
+    const ImVec2 text = legends_->CalcTextSizeA(px, FLT_MAX, 0, "HOLD");
+    const ImVec2 slotA{right.x - slotW, right.y - slotH / 2};
+    const ImVec2 slotB{right.x, right.y + slotH / 2};
+    const ImVec2 textAt{std::round(slotA.x - 0.15f * u - text.x), std::round(right.y - text.y / 2)};
+    const float hitH = std::max(slotH + 8, 0.8f * u);
+    ImGui::SetCursorScreenPos({textAt.x - 4, right.y - hitH / 2});
+    if (ImGui::InvisibleButton("##hold", {slotB.x - textAt.x + 8, hitH})) {
+        hold_ = !hold_;
+    }
+    ImGui::SetItemTooltip("HOLD: a click latches a key down, another releases it");
+    list.AddText(legends_, px, textAt, ink, "HOLD");
+    list.AddRectFilled(slotA, slotB, IM_COL32(18, 18, 20, 255), slotH / 2);
+    const float knob = slotH - 4;
+    const float left = hold_ ? slotB.x - 2 - knob * 1.6f : slotA.x + 2;
+    list.AddRectFilled({left, slotA.y + 2}, {left + knob * 1.6f, slotB.y - 2},
+                       hold_ ? kFocusGold : IM_COL32(196, 194, 188, 255), knob / 2);
+}
+
 template <class Draw>
 void MatrixKeyboardWindow::drawCaps(Session& session, const MatrixCapture& capture,
                                     std::span<const MatrixCap> caps,
@@ -315,18 +337,27 @@ void MatrixKeyboardWindow::drawCaps(Session& session, const MatrixCapture& captu
                                ImGuiButtonFlags_MouseButtonLeft |
                                    ImGuiButtonFlags_MouseButtonRight);
         ImGui::PopID();
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+        const bool isShift = std::ranges::contains(shifts, cap.key);
+        const bool leftClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Right) || (hold_ && !isShift && leftClicked)) {
             latched_[cap.key] = !latched_[cap.key];
         }
-        const bool isShift = std::ranges::contains(shifts, cap.key);
-        if (isShift && ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+        if (isShift && leftClicked) {
             shiftClicked_[cap.key] = !shiftClicked_[cap.key];
+        }
+        if (!hold_ && !isShift && leftClicked) {
+            // Typed in the Machine's time as a PC key is (P8f): a quick tap is seen however
+            // slow the Machine runs; the key is also held below, as long as the pointer is down.
+            const bool shifted = std::ranges::any_of(
+                shifts, [&](std::size_t shift) { return shiftClicked_[shift] || latched_[shift]; });
+            session.inputs().press(capture.reference, MatrixPress{cap.key, shifted});
         }
         if (!isShift && ImGui::IsItemDeactivated() &&
             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
             std::ranges::fill(shiftClicked_, false);  // down until the key it shifted is up
         }
-        const bool mouse = ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        const bool mouse = !(hold_ && !isShift) && ImGui::IsItemActive() &&
+                           ImGui::IsMouseDown(ImGuiMouseButton_Left);
         const bool held = mouse || latched_[cap.key] || shiftClicked_[cap.key];
         if (held != session.inputs().matrixKeyHeld(capture.reference, cap.key)) {
             session.inputs().setMatrixKeyHeld(capture.reference, cap.key,
@@ -357,6 +388,8 @@ void MatrixKeyboardWindow::drawKeys(Session& session, const MatrixCapture& captu
     list.AddText(legends_, std::max(6.0f, std::round(0.24f * u)),
                  {std::round(keys.x), std::round(origin.y + kMargin * u)}, kEngraving,
                  engraving.c_str());
+    holdSwitch({keys.x + kMatrixMainWidth * u, origin.y + (kMargin + kLabel / 2) * u}, u,
+               kEngraving);
     // The plates under the main block and the pad.
     const float lip = 0.12f * u;
     list.AddRectFilled(
@@ -581,6 +614,7 @@ void MatrixKeyboardWindow::drawMembrane(Session& session, const MatrixCapture& c
         legends_, px,
         {std::round(panelA.x + 0.1f * u), std::round(panelB.y + (kLipBottom * u - px) / 2)},
         kCreamText, engraving.c_str());
+    holdSwitch({panelB.x - 0.6f * u, panelB.y + kLipBottom * u / 2}, u, kCreamText);
 
     const ImVec2 keys{panelA.x + kMembraneSide * u, panelA.y + kMembraneTop * u};
     const auto all = Zx80Keys();

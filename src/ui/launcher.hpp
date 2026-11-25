@@ -141,7 +141,8 @@ private:
     Headroom headroom_;  // the live run's: the Machine's bar colour, its sentence
     std::vector<std::future<OpenedMachine>> abandoned_;  // loads of entries no longer selected
     PuzzleMaker maker_;                                  // a Random fault's making (P8d)
-    bool making_ = false;  // from make() to the choice returned, Esc or an error
+    bool making_ = false;     // from make() to the choice returned, Esc, Stop or an error
+    bool stopAsked_ = false;  // the plate's Stop button (P8f), as Esc
     std::filesystem::path makingFile_;
     std::chrono::steady_clock::time_point makingSince_;
     std::size_t firstLine_ = 0;      // of the waiting lines: a new start each making

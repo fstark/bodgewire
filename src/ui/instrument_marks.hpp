@@ -18,6 +18,8 @@ inline constexpr ImU32 kCursorLine = IM_COL32(255, 255, 255, 90);
 inline constexpr ImU32 kAxisText = IM_COL32(170, 175, 180, 255);
 inline constexpr ImVec4 kHintGrey{0.5f, 0.5f, 0.5f, 1.0f};
 inline constexpr float kAxisHeight = 18.0f;
+// The Marker's flag at the top of its line: a click on it clears the Marker (P8f).
+inline constexpr float kMarkerFlagWidth = 28.0f, kMarkerFlagHeight = 20.0f;
 // The instrument windows' names, for the shelf to bring them to the front.
 inline constexpr const char* kAnalyzerWindowName = "Logic Analyzer";
 inline constexpr const char* kScopeWindowName = "Oscilloscope";
@@ -44,7 +46,7 @@ void DrawTrigger(ImDrawList& list, float x, float top, float bottom);  // line +
 // The Trigger off the view: an arrow at that end of the axis strip and its distance (nothing
 // when the view holds it).
 void DrawOffScreenTrigger(ImDrawList& list, const TimeView& view, float left, float right, float y);
-void DrawMarker(ImDrawList& list, float x, float top, float bottom);  // line + "M" tag on top
+void DrawMarker(ImDrawList& list, float x, float top, float bottom);  // line + "M" flag on top
 // One line: the cursor, marker and dt, or `hint` in grey when there are neither.
 void StatusLine(std::optional<Time> cursor, std::optional<Time> marker, const char* hint);
 

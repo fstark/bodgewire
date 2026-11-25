@@ -114,7 +114,7 @@ void AnalyzerWindow::preset(std::optional<TimeView> view, std::optional<Time> ma
                             std::optional<Time> cursor) {
     presetView_ = view;
     presetMarker_ = marker;
-    presetCursor_ = cursor;
+    placedCursor_ = cursor;
 }
 
 void AnalyzerWindow::zoom(Time anchor, int notches) {
@@ -237,7 +237,26 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     // Header line 2: Channels left, the view's controls over the lanes.
     const auto clipped = static_cast<std::size_t>(std::ranges::count_if(
         session.analyzer().clips(), [](const auto& c) { return c.has_value(); }));
+    ImGui::AlignTextToFramePadding();
     ImGui::TextColored(kHintGrey, "%zu of %zu clipped", clipped, kChannels);
+    // The pin / bus switch (P8f): what Shift does to a click on a pin.
+    const auto mode = [&](const char* label, bool bus) {
+        const bool on = bus_ == bus;
+        if (on) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+        }
+        if (ImGui::Button(label)) {
+            bus_ = bus;
+        }
+        if (on) {
+            ImGui::PopStyleColor();
+        }
+    };
+    ImGui::SameLine(0, 12);
+    mode("pin", false);
+    ImGui::SameLine(0, 0);
+    mode("bus", true);
+    ImGui::SetItemTooltip("bus: a click on a pin clips, or unclips, its whole bus");
     std::erase_if(selected_,
                   [&](std::size_t c) { return !session.analyzer().clips()[c].has_value(); });
     if (selected_.size() >= 2) {
@@ -332,7 +351,9 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     // Canvas input, once, before anything is drawn: every lane uses the same view.
     ImGui::SetCursorScreenPos({laneX0, origin.y});
     ImGui::InvisibleButton("##canvas", {width, lanesHeight});
-    const TimeCanvasInput input = canvas_.read(width, kDivisions);
+    const TimeCanvasInput input =
+        canvas_.read(width, kDivisions,
+                     shown_ && marker_ ? std::optional(x(*marker_)) : std::nullopt, visibleTop);
     std::optional<Time> cursor;
     if (shown_) {
         const TimeRange record = RecordOf(*shown_);
@@ -354,11 +375,14 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         if (input.marker) {
             marker_ = timeAt(*input.marker);
         }
+        if (input.scrub) {
+            placedCursor_ = timeAt(*input.scrub);
+        }
         view_ = Clamp(view_, record);
         if (input.hover) {
             cursor = timeAt(*input.hover);
-        } else if (presetCursor_) {
-            cursor = presetCursor_;
+        } else if (placedCursor_) {
+            cursor = placedCursor_;
         }
     }
     const double period = shown_ ? static_cast<double>(shown_->period) : 1.0;
@@ -569,20 +593,41 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
             }
         }
         ImGui::SameLine(origin.x - ImGui::GetWindowPos().x + kUnclipX);
+        bool rowsChanged = false;
         if (ImGui::SmallButton("×")) {
             if (group && !row.member) {
                 if (ImGui::GetIO().KeyShift) {
                     session.analyzer().unclipGroup(*row.group);
+                    rowsChanged = true;
                 } else {
-                    session.analyzer().ungroup(*row.group);
+                    ImGui::OpenPopup("##group");  // its two choices (P8f)
                 }
             } else {
                 session.analyzer().unclip(row.channel);
+                rowsChanged = true;
             }
+        }
+        ImGui::SetItemTooltip(group && !row.member ? "ungroup, or unclip the whole group"
+                                                   : "unclip");
+        if (group && !row.member && ImGui::BeginPopup("##group")) {
+            if (ImGui::Button("Ungroup", {120, 44})) {
+                session.analyzer().ungroup(*row.group);
+                rowsChanged = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Unclip all", {120, 44})) {
+                session.analyzer().unclipGroup(*row.group);
+                rowsChanged = true;
+            }
+            if (rowsChanged) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        if (rowsChanged) {
             ImGui::PopID();
             break;  // rows changed under us
         }
-        ImGui::SetItemTooltip(group && !row.member ? "ungroup; shift: unclip the group" : "unclip");
 
         // Lane.
         if (shown_) {

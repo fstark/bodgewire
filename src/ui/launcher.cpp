@@ -333,7 +333,8 @@ std::optional<LauncherChoice> Launcher::updateMaking() {
     if (!making_) {
         return std::nullopt;
     }
-    if (!hold_ && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+    if (std::exchange(stopAsked_, false) ||
+        (!hold_ && ImGui::IsKeyPressed(ImGuiKey_Escape, false))) {
         maker_.stop();
         making_ = false;
         made_.reset();
@@ -894,15 +895,23 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         const float fontSize = ImGui::GetFontSize();
         const ImVec2 extent =
             font->CalcTextSizeA(fontSize * kLineScale, FLT_MAX, 0, kMakingLines[line]);
-        const char* hint = "Making a random fault. Esc stops.";
+        const char* hint = "Making a random fault.";
         const ImVec2 hintExtent = ImGui::CalcTextSize(hint);
-        // A dark plate behind the two lines: the post-its' text is still under the dimming.
-        const float middle = (laneBottom + woodEnd.y) / 2;
+        // A dark plate behind the two lines and the Stop button (P8f: Esc alone was the way
+        // out): the post-its' text is still under the dimming.
+        constexpr ImVec2 kStop{110, 44};
+        const float stopGap = fontSize;
+        const float block = extent.y + fontSize * 0.6f + hintExtent.y + stopGap + kStop.y;
+        const float middle = (laneBottom + woodEnd.y) / 2 - block / 2 + extent.y;
         const float half = std::max(extent.x, hintExtent.x) / 2 + kMakingPad;
         const float centre = origin.x + width / 2;
+        const float stopTop = middle + fontSize * 0.6f + hintExtent.y + stopGap;
         list.AddRectFilled({centre - half, middle - extent.y - kMakingPad},
-                           {centre + half, middle + fontSize * 0.6f + hintExtent.y + kMakingPad},
-                           kMakingPlate, 8.0f);
+                           {centre + half, stopTop + kStop.y + kMakingPad}, kMakingPlate, 8.0f);
+        ImGui::SetCursorScreenPos({centre - kStop.x / 2, stopTop});
+        if (ImGui::Button("Stop", kStop)) {
+            stopAsked_ = true;
+        }
         list.AddText(font, fontSize * kLineScale, {centre - extent.x / 2, middle - extent.y}, kName,
                      kMakingLines[line]);
         list.AddText({centre - hintExtent.x / 2, middle + fontSize * 0.6f}, kMakingHint, hint);

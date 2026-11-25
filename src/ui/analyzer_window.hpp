@@ -40,6 +40,9 @@ public:
     // drawn whenever the mouse is not over the waveforms.
     void preset(std::optional<TimeView> view, std::optional<Time> marker,
                 std::optional<Time> cursor);
+    // The pin / bus switch (P8f) is on bus: a click on a pin clips or unclips its whole bus, as
+    // a Shift-click does.
+    bool bus() const { return bus_; }
 
 private:
     struct Row {
@@ -63,9 +66,13 @@ private:
     TimeCanvas canvas_;
     float wheelRest_ = 0;
     std::optional<TimeView> presetView_;
-    std::optional<Time> presetMarker_, presetCursor_;
-    std::set<std::size_t> selected_;                        // Channels picked for a hand group
-    std::set<std::string> expanded_;                        // group names shown with their members
+    std::optional<Time> presetMarker_;
+    // The cursor where it was put (--cursor, or a finger's hold and slide, P8f): shown while no
+    // pointer is over the waveforms.
+    std::optional<Time> placedCursor_;
+    bool bus_ = false;                // the pin / bus switch: a click on a pin clips its whole bus
+    std::set<std::size_t> selected_;  // Channels picked for a hand group
+    std::set<std::string> expanded_;  // group names shown with their members
     std::map<std::vector<std::size_t>, CaptureRuns> runs_;  // for shown_
     std::map<std::string, PatternEdit> patterns_;           // per group name
     std::string editing_;                                   // group whose pattern is active

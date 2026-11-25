@@ -94,9 +94,10 @@ void DrawOffScreenTrigger(ImDrawList& list, const TimeView& view, float left, fl
 
 void DrawMarker(ImDrawList& list, float x, float top, float bottom) {
     list.AddLine({x, top}, {x, bottom}, kMarkerLine, 1.0f);
-    list.AddRectFilled({x - 7, top}, {x + 7, top + 13}, kMarkerLine, 2.0f);
+    list.AddRectFilled({x - kMarkerFlagWidth / 2, top},
+                       {x + kMarkerFlagWidth / 2, top + kMarkerFlagHeight}, kMarkerLine, 3.0f);
     const ImVec2 size = ImGui::CalcTextSize("M");
-    list.AddText({x - size.x / 2, top + (13 - size.y) / 2}, kMarkText, "M");
+    list.AddText({x - size.x / 2, top + (kMarkerFlagHeight - size.y) / 2}, kMarkText, "M");
 }
 
 void StatusLine(std::optional<Time> cursor, std::optional<Time> marker, const char* hint) {

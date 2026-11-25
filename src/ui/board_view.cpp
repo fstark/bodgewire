@@ -643,8 +643,12 @@ void BoardView::draw(ImVec2 size) {
         panel_ = panel;
     }
     if (!still_) {
+        // Hold is there on a Board with a button or a key to latch.
+        const bool latchable = std::ranges::any_of(
+            switches_, [](const SwitchTag& t) { return t.kind != SwitchKind::Slide; });
+        hold_ = hold_ && latchable;
         if (const auto button =
-                buttons_.items(origin, {origin.x + panel.x, origin.y + panel.y}, false)) {
+                buttons_.items(origin, {origin.x + panel.x, origin.y + panel.y}, latchable)) {
             switch (*button) {
             case ViewButton::Fit:
                 fit();
@@ -1300,6 +1304,10 @@ void BoardView::input(ImVec2 origin) {
                 return t.component == *held_ && t.kind == SwitchKind::Slide;
             })) {
             latchToggle_ = held_;  // a slide moves at the click and is not held
+            held_.reset();
+            pressed_ = false;
+        } else if (held_ && hold_) {
+            latchToggle_ = held_;  // Hold on (P8f): the click latches it, as a right-click does
             held_.reset();
             pressed_ = false;
         } else {
