@@ -793,6 +793,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         matrixCapture.sync(focused != nullptr ? focused : window);
         boardKeys.sync();
 
+        TurnNotice();  // a tablet held upright (P8f)
         ImGui::Render();
         clock.built();
         gpu.present(&view);
@@ -929,6 +930,7 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
         ImGui::PopStyleVar();
         auto chosen = launcher.draw(view, screen.legends(), screen.title());
         ImGui::End();
+        TurnNotice();  // a tablet held upright (P8f)
         ImGui::Render();
         clock.built();
         const auto status = launcher.liveStatus();

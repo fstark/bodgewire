@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bodgewire</title>
+<!-- Added to a tablet's home screen (P8f): its own full screen, landscape, no browser bars. -->
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
 <!-- Cross-origin isolation for the Runner's threads (shared memory): GitHub Pages sends no
      COOP/COEP headers, so this service worker adds them, reloading the page once. Always
      COEP require-corp: its default switches to credentialless on every browser but Chrome and
@@ -28,7 +34,7 @@
     color: #6ff; font: 16px/1.4 system-ui, sans-serif; text-align: center; padding: 16px;
     pointer-events: none;
   }
-  /* On a phone or tablet: a notice over the page at start, the app loading behind it. */
+  /* On a phone: a notice over the page at start, the app loading behind it. */
   #mobile {
     position: fixed; inset: 0; z-index: 1; display: none; align-items: center;
     justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.85);
@@ -51,9 +57,9 @@
 <div id="status">Loading Bodgewire…</div>
 <div id="mobile" role="dialog" aria-labelledby="mobile-title">
   <div>
-    <h1 id="mobile-title">Not made for phones and tablets</h1>
-    <p>Bodgewire needs a mouse and a large screen: right clicks, the wheel, hovering over a pin.
-       On a touch screen most of the repair work cannot be done.</p>
+    <h1 id="mobile-title">Not made for phones</h1>
+    <p>Bodgewire needs a large screen: a tablet's or a computer's. On a phone its Boards and
+       its controls are too small to work with.</p>
     <p>You are welcome to try it anyway: the Machines run, slowly.</p>
     <button id="mobile-ok" type="button">Try it anyway</button>
   </div>
@@ -86,14 +92,16 @@
   window.addEventListener('error', (e) => stop(e.error?.message || e.message));
   window.addEventListener('unhandledrejection', (e) => stop(e.reason?.message || String(e.reason)));
 
-  // A finger as the main pointer (phones, tablets, an iPad that says it is a Mac), or ?mobile to
-  // see the notice on a desktop. Once per tab: the service worker's reload does not ask again.
+  // A phone (P8f: a tablet works): a finger as the main pointer and a screen under 600 px on
+  // its shorter side; or ?mobile to see the notice on a desktop. Once per tab: the service
+  // worker's reload does not ask again.
   (() => {
     const forced = new URLSearchParams(location.search).has('mobile');
     const touch = matchMedia('(pointer: coarse)').matches || navigator.userAgentData?.mobile;
+    const phone = touch && Math.min(screen.width, screen.height) < 600;
     let seen = false;
     try { seen = sessionStorage.getItem('bw-mobile-seen') === '1'; } catch {}
-    if (!forced && (!touch || seen)) return;
+    if (!forced && (!phone || seen)) return;
     const notice = document.getElementById('mobile');
     notice.style.display = 'flex';
     document.getElementById('mobile-ok').addEventListener('click', () => {

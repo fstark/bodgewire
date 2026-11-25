@@ -1,5 +1,6 @@
 #include "ui/touch.hpp"
 
+#include <algorithm>
 #include <cfloat>
 #include <chrono>
 #include <vector>
@@ -213,6 +214,32 @@ bool PressCancelled() { return cancelled_; }
 void TouchTypingZone() {
     const ImGuiWindow* window = ImGui::GetCurrentWindowRead();
     zonesNow_.push_back(window->Rect());
+}
+
+void TurnNotice() {
+    const ImGuiViewport* main = ImGui::GetMainViewport();
+    if (!(ours_ || FingerPointer()) || main->Size.y <= main->Size.x) {
+        return;
+    }
+    constexpr const char* kTitle = "Turn the tablet";
+    constexpr const char* kLine = "Bodgewire is laid out for landscape.";
+    constexpr float kTitleScale = 1.5f, kPad = 24;
+    ImDrawList& list = *ImGui::GetForegroundDrawList(ImGui::GetMainViewport());
+    ImFont* font = ImGui::GetFont();
+    const float size = ImGui::GetFontSize();
+    const ImVec2 title = font->CalcTextSizeA(size * kTitleScale, FLT_MAX, 0, kTitle);
+    const ImVec2 line = ImGui::CalcTextSize(kLine);
+    const ImVec2 card{std::max(title.x, line.x) + 2 * kPad, title.y + line.y + 2 * kPad + 10};
+    const ImVec2 min{main->Pos.x + (main->Size.x - card.x) / 2,
+                     main->Pos.y + (main->Size.y - card.y) / 2};
+    list.AddRectFilled(main->Pos, {main->Pos.x + main->Size.x, main->Pos.y + main->Size.y},
+                       IM_COL32(0, 0, 0, 200));
+    list.AddRectFilled(min, {min.x + card.x, min.y + card.y}, IM_COL32(17, 17, 17, 255), 8.0f);
+    list.AddRect(min, {min.x + card.x, min.y + card.y}, IM_COL32(102, 255, 255, 255), 8.0f);
+    list.AddText(font, size * kTitleScale, {min.x + (card.x - title.x) / 2, min.y + kPad},
+                 IM_COL32(102, 255, 255, 255), kTitle);
+    list.AddText({min.x + (card.x - line.x) / 2, min.y + kPad + title.y + 10},
+                 IM_COL32(221, 221, 221, 255), kLine);
 }
 
 NoFingerPadding::NoFingerPadding() : saved(ImGui::GetStyle().TouchExtraPadding) {

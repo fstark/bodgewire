@@ -1,0 +1,11 @@
+{
+  "name": "Bodgewire",
+  "short_name": "Bodgewire",
+  "description": "Repair 1970s computers at a bench: logic probe, oscilloscope, soldering iron.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}

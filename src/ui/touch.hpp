@@ -35,6 +35,10 @@ bool PressCancelled();
 // finger there takes over from the first, and nothing is pinched.
 void TouchTypingZone();
 
+// Each frame, last: with a finger in use and the window taller than wide, a card over everything
+// asks to turn the tablet (the benches are laid out for landscape).
+void TurnNotice();
+
 // The finger's reach around a control, px (ImGui's TouchExtraPadding while FingerPointer()).
 inline constexpr float kFingerPadding = 6;
 
