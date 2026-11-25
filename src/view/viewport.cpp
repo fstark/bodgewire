@@ -78,6 +78,16 @@ void Viewport::frameUpTo(Bounds box, double share, double maxPixelsPerMm) {
     }
 }
 
+Viewport Viewport::magnified(Point at, double factor, ScreenPoint size) const {
+    Viewport loupe = *this;
+    loupe.nmToPixel_ = nmToPixel_ * factor;
+    loupe.panel_ = size;
+    loupe.offset_ = {size.x / 2 - static_cast<double>(at.x) * loupe.nmToPixel_,
+                     size.y / 2 - static_cast<double>(at.y) * loupe.nmToPixel_};
+    loupe.fitted_ = false;
+    return loupe;
+}
+
 ScreenPoint Viewport::toScreen(Point p) const {
     return {static_cast<double>(p.x) * nmToPixel_ + offset_.x,
             static_cast<double>(p.y) * nmToPixel_ + offset_.y};

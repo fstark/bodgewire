@@ -24,6 +24,13 @@ struct RepairPlan {
     std::string unknown;
 };
 
+// The same named target (P8f, a finger's second tap): both swap one chip, resolder one pin, or
+// join or part the same two pins. A mend and a cut name a point on copper: never the same by name.
+bool SameRepair(const RepairAction& a, const RepairAction& b);
+// What a plan would do, for a finger's first tap: "Swap U7", "Solder here", "Cut here", "Solder
+// the wire".
+std::string ActionName(const RepairPlan& plan);
+
 // The Wire tool between its two clicks: the first pin and its pad.
 struct WireDraft {
     std::optional<PinRef> start;

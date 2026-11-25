@@ -141,3 +141,18 @@ TEST_CASE("view: viewport frameUpTo stops at the scale asked, or fills its share
     v.frameUpTo(kLarge, 0.9, 44 / 2.54);
     CHECK(v.pixelsPerMm() == Catch::Approx(0.9 * 600 / 52));
 }
+
+TEST_CASE("view: viewport magnified, the loupe's view", "[view]") {
+    Viewport v;
+    v.fit(kBoard, kPanel);
+    const Point at{42 * kMm, 33 * kMm};
+    const Viewport loupe = v.magnified(at, 3, {140, 140});
+    CHECK(loupe.pixelsPerMm() == Catch::Approx(3 * v.pixelsPerMm()));
+    const ScreenPoint centre = loupe.toScreen(at);
+    CHECK(centre.x == Catch::Approx(70));
+    CHECK(centre.y == Catch::Approx(70));
+    // A millimetre to its right is three times as far as in the panel's view.
+    const double apart = loupe.toScreen({43 * kMm, 33 * kMm}).x - centre.x;
+    CHECK(apart == Catch::Approx(3 * (v.toScreen({43 * kMm, 33 * kMm}).x - v.toScreen(at).x)));
+    CHECK(v.fitted());  // the panel's view is untouched
+}

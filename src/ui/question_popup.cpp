@@ -1,5 +1,6 @@
 #include "ui/question_popup.hpp"
 
+#include <algorithm>
 #include <utility>
 
 #include "ui/controls.hpp"
@@ -19,6 +20,20 @@ void QuestionPopup::open(ImVec2 at, ImVec2 pivot) {
     opening_ = at;
     pivot_ = pivot;
     ticked_ = false;
+}
+
+void QuestionPopup::openAbove(ImVec2 pointer) {
+    // Its size is not known before it is drawn: the text's width and about seven lines.
+    constexpr ImVec2 kAbout{kTextWidth + 24, 170};
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float left = viewport->WorkPos.x, right = left + viewport->WorkSize.x;
+    const float x = std::clamp(pointer.x, left + kAbout.x / 2,
+                               std::max(left + kAbout.x / 2, right - kAbout.x / 2));
+    if (pointer.y - 14 - kAbout.y >= viewport->WorkPos.y) {
+        open({x, pointer.y - 14}, {0.5f, 1.0f});
+    } else {
+        open({x, pointer.y + 24}, {0.5f, 0.0f});
+    }
 }
 
 PopupAnswer QuestionPopup::draw() {

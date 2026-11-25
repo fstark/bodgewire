@@ -9,6 +9,47 @@
 
 namespace bw {
 
+namespace {
+
+bool SamePin(const PinRef& a, const PinRef& b) {
+    return a.reference == b.reference && a.pin == b.pin;
+}
+
+// The same two pins, either way round.
+template <class Ends>
+bool SameEnds(const Ends& x, const Ends& y) {
+    return (SamePin(x.a, y.a) && SamePin(x.b, y.b)) || (SamePin(x.a, y.b) && SamePin(x.b, y.a));
+}
+
+}  // namespace
+
+bool SameRepair(const RepairAction& a, const RepairAction& b) {
+    return std::visit(
+        Overloaded{
+            [](const SwapRepair& x, const SwapRepair& y) { return x.reference == y.reference; },
+            [](const ResolderRepair& x, const ResolderRepair& y) { return SamePin(x.pin, y.pin); },
+            [](const WireRepair& x, const WireRepair& y) { return SameEnds(x, y); },
+            [](const UnwireRepair& x, const UnwireRepair& y) { return SameEnds(x, y); },
+            [](const UnbridgeRepair& x, const UnbridgeRepair& y) { return SameEnds(x, y); },
+            [](const auto&, const auto&) { return false; },
+        },
+        a, b);
+}
+
+std::string ActionName(const RepairPlan& plan) {
+    if (plan.tries.empty()) {
+        return "";
+    }
+    return std::visit(Overloaded{
+                          [](const SwapRepair& swap) { return "Swap " + swap.reference; },
+                          [](const WireRepair&) { return std::string("Solder the wire"); },
+                          [](const MendRepair&) { return std::string("Solder here"); },
+                          [](const ResolderRepair&) { return std::string("Solder here"); },
+                          [](const auto&) { return std::string("Cut here"); },
+                      },
+                      plan.tries.front());
+}
+
 std::optional<RepairPlan> ToolClick(Owner owner, const BoardClick& click, Session& session,
                                     const BoardView& boardView, PencilMarks& marks, WireDraft& wire,
                                     const std::function<void(std::string)>& refuse) {

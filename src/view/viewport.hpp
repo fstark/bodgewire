@@ -37,6 +37,10 @@ public:
     // finger's size, no larger: P8f); still within [fitted, kMaxPixelsPerMm].
     void frameUpTo(Bounds box, double share, double maxPixelsPerMm);
 
+    // The loupe's view (P8f): this one `factor` times larger, `at` at the centre of a `size`
+    // panel; whatever the zoom's limits.
+    Viewport magnified(Point at, double factor, ScreenPoint size) const;
+
     ScreenPoint toScreen(Point p) const;
     Point toBoard(ScreenPoint s) const;
     double toPixels(std::int64_t nm) const { return static_cast<double>(nm) * nmToPixel_; }

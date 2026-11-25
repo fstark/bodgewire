@@ -18,7 +18,7 @@ ctest --preset release -j -R "^(fingers|number pad|view|time view|bench options|
 | 1 | Plumbing: the fingers, their glue, `--touch` and the scripted fingers | `0f46b16` |
 | 2 | The Board's zoom and picks; the view buttons; `/touch/` on Pages | `91fba8b` |
 | 3 | What has no control today: Stop, Hold, the cursor, the flag, pin / bus | `9cddc7e` |
-| 4 | Sizes and numbers: the style, the stepper, the choices, the number pad | |
+| 4 | Sizes and numbers: the style, the stepper, the choices, the number pad | `159506e` |
 | 5 | The loupe and lit-first repairs | |
 | 6 | Pages: drag to scroll, links at the release, "show" | |
 | 7 | Objects and the Launcher: grip, pinch, fill, the drags, the narrow Shelf | |
@@ -183,3 +183,11 @@ Phase 4:
 - The scope's − and + still zoom about the screen's centre (one step of the stepper); a value picked from its list sets the timebase alone.
 - A number field's value is confirmed whenever something was typed, the same value too (Go to twice).
 - The benches' sweep was the four that hold each kind of object (the Counter's Puzzle with its Brief, the Message, the BW-2001, the analyzer and scope on the Counter), not all fourteen: the style reaches framed controls only, and a bare bench has none.
+
+Phase 5:
+
+- The loupe costs about 1.3 ms a frame on the BW-2001 (UI 2.3 ms against 1.0 ms, release, native): a second pass of the Board's drawing, culled to its square.
+- The loupe's name is above it, not under it: under it is where the finger is.
+- While a repair is armed the Board's tooltip is not shown: the armed action's name is in its place.
+- A double-click on the TV's glass still pops the TV out (the glass, now a control, asks for it itself).
+- The second tap is "on the armed target" when it lands within the finger's reach of the first, or when the tool names the same part again (`SameRepair`: a chip, a pin, a wire's two pins).

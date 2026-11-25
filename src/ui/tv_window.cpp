@@ -10,6 +10,7 @@
 #include "ui/bench.hpp"
 #include "ui/gestures.hpp"
 #include "ui/instrument_marks.hpp"
+#include "ui/touch.hpp"
 #include "view/bench_places.hpp"
 
 namespace bw {
@@ -37,6 +38,7 @@ constexpr float kTrimmerX = 0.87f, kTrimmerY = 0.945f, kTrimmer = 0.009f, kTrimm
 
 constexpr float kLoupeSource = 16;  // px of the picture across the loupe
 constexpr float kLoupeZoom = 6;     // its magnification: 96 px across
+constexpr float kLoupeLift = 80;    // px above the pointer while pressed (a finger is there)
 constexpr ImU32 kLoupeRim = IM_COL32(20, 20, 22, 255);
 constexpr ImU32 kLoupeGlint = IM_COL32(255, 255, 255, 60);
 constexpr ImU32 kShell = IM_COL32(226, 220, 200, 255);
@@ -78,8 +80,8 @@ void Label(ImDrawList& list, ImVec2 centre, float size, const char* text) {
 }  // namespace
 
 void DrawMonitor(ImDrawList& list, ImVec2 at, float width, const TvControls& controls,
-                 const TvView* view, std::optional<TvKnob> hoveredKnob,
-                 std::optional<ImVec2> loupe) {
+                 const TvView* view, std::optional<TvKnob> hoveredKnob, std::optional<ImVec2> loupe,
+                 float loupeLift) {
     const float w = width;
     const float h = width * kTvAspect;
     const auto P = [&](float x, float y) { return ImVec2{at.x + x * w, at.y + y * w}; };
@@ -219,21 +221,23 @@ void DrawMonitor(ImDrawList& list, ImVec2 at, float width, const TvControls& con
         const ImVec2 uv{(m.mouse.x - m.imageMin.x) / span.x, (m.mouse.y - m.imageMin.y) / span.y};
         const ImVec2 halfUv{kLoupeSource / 2 / span.x, kLoupeSource / 2 / span.y};
         const float radius = kLoupeSource * kLoupeZoom / 2;
+        // Drawn above the point it magnifies when a finger is on it (P8f).
+        const ImVec2 centre{m.mouse.x, m.mouse.y - loupeLift};
         list.PushClipRectFullScreen();
-        list.AddCircleFilled(m.mouse, radius, kBlack);
+        list.AddCircleFilled(centre, radius, kBlack);
         const ImGuiPlatformIO& platform = ImGui::GetPlatformIO();
         if (platform.DrawCallback_SetSamplerNearest != nullptr) {
             list.AddCallback(platform.DrawCallback_SetSamplerNearest, nullptr);
         }
-        list.AddImageRounded(view->texture(), {m.mouse.x - radius, m.mouse.y - radius},
-                             {m.mouse.x + radius, m.mouse.y + radius},
+        list.AddImageRounded(view->texture(), {centre.x - radius, centre.y - radius},
+                             {centre.x + radius, centre.y + radius},
                              {uv.x - halfUv.x, uv.y - halfUv.y}, {uv.x + halfUv.x, uv.y + halfUv.y},
                              IM_COL32_WHITE, radius);
         if (platform.DrawCallback_SetSamplerLinear != nullptr) {
             list.AddCallback(platform.DrawCallback_SetSamplerLinear, nullptr);
         }
-        list.AddCircle(m.mouse, radius, kLoupeRim, 0, 4.0f);
-        list.AddCircle(m.mouse, radius - 3, kLoupeGlint, 0, 1.0f);
+        list.AddCircle(centre, radius, kLoupeRim, 0, 4.0f);
+        list.AddCircle(centre, radius - 3, kLoupeGlint, 0, 1.0f);
         list.PopClipRect();
         ImGui::SetMouseCursor(ImGuiMouseCursor_None);
     }
@@ -313,16 +317,24 @@ void TvWindow::draw(bool& open, TvView& view) {
                               ? "UNDERSCAN trimmer: the picture as a real monitor shows it"
                               : "UNDERSCAN trimmer: the whole frame");
     }
-    // The loupe while the mouse is free over the window: no control under it, no button held
-    // (a drag moves the case).
-    const bool free = ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered() &&
-                      !ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left);
-    std::optional<ImVec2> loupe = free ? std::optional(io.MousePos) : std::nullopt;
+    // The glass is a control (P8f): a press on it does not move the TV. The loupe while the
+    // pointer is free over it (no button held, no two fingers), or pressed on it: then drawn
+    // above the pointer, a finger being on what it shows.
+    const ImVec2 glassMin = P(kScreenLeft, kScreenTop);
+    ImGui::SetCursorScreenPos(glassMin);
+    ImGui::InvisibleButton("##glass", {kScreenWidth * w, kScreenWidth * w * 0.75f});
+    const bool pressed = ImGui::IsItemActive();
+    const bool free = ImGui::IsItemHovered() && !ImGui::IsAnyItemActive() &&
+                      !ImGui::IsMouseDown(ImGuiMouseButton_Left) && !Touch().two;
+    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        TogglePop(BenchObject::Tv, kTvWindowName);  // as a double-click on the case
+    }
+    std::optional<ImVec2> loupe = free || pressed ? std::optional(io.MousePos) : std::nullopt;
     if (loupeAt_) {
         loupe = P(kScreenLeft + static_cast<float>(loupeAt_->x) * kScreenWidth,
                   kScreenTop + static_cast<float>(loupeAt_->y) * kScreenWidth * 0.75f);
     }
-    DrawMonitor(list, at, w, controls_, &view, hoveredKnob, loupe);
+    DrawMonitor(list, at, w, controls_, &view, hoveredKnob, loupe, pressed ? kLoupeLift : 0.0f);
 
     if (CaseClose()) {
         open = false;

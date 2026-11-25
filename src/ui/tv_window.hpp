@@ -16,12 +16,12 @@ inline constexpr const char* kTvWindowName = "TV";
 // cream shell filled and its edge, front, bezel, screen, strip, knobs at `controls`' turns, lamp,
 // power switch, trimmer. The picture from `view` when `controls.on()` and `view` is not null,
 // else the dark glass; `hoveredKnob` a knob drawn hovered. Draws only: no item, no input (the TV
-// window's and the launcher's, P7b). `loupe`: the mouse, free over the TV window: where it is over
-// the picture, a round loupe there shows the pixels under it magnified, sharp, and the mouse
-// cursor is hidden.
+// window's and the launcher's, P7b). `loupe`: the pointer, free over the TV's glass or pressed on
+// it: where it is over the picture, a round loupe shows the pixels under it magnified, sharp,
+// `loupeLift` px above it (a finger pressing there), and the mouse cursor is hidden.
 void DrawMonitor(ImDrawList& list, ImVec2 at, float width, const TvControls& controls,
                  const TvView* view, std::optional<TvKnob> hoveredKnob = std::nullopt,
-                 std::optional<ImVec2> loupe = std::nullopt);
+                 std::optional<ImVec2> loupe = std::nullopt, float loupeLift = 0);
 
 // The TV as an object on the bench (P6d): a monitor case with no title bar, dragged by its body,
 // resized from its corner keeping its proportions, put away by the × on the case. Drawn in the

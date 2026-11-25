@@ -125,6 +125,12 @@ constexpr double kFingerReachPx = 22;
 // A chip framed by a double-click: its pin pitch on screen, or this share of the panel.
 constexpr double kFramePitchPx = 44;
 constexpr double kFrameShare = 0.9;
+// The loupe (P8f): its side, how far above the finger it stands, how much it magnifies.
+constexpr float kLoupeSide = 140;
+constexpr float kLoupeGap = 44;
+constexpr double kLoupeFactor = 3;
+constexpr ImU32 kLoupeRim = IM_COL32(20, 20, 22, 255);
+constexpr ImU32 kLoupeEdge = IM_COL32(235, 235, 235, 200);
 constexpr double kFocusPadMinPx = 14;
 constexpr std::int64_t kFocusPadMargin = 4'000'000;  // nm around a focused pad
 constexpr auto kFlashTime = std::chrono::seconds(1);
@@ -605,89 +611,14 @@ void DrawPencilMark(ImDrawList& list, ImVec2 c, float size, MarkShape shape, std
 }
 }  // namespace
 
-void BoardView::draw(ImVec2 size) {
-    // A still (P7b) lets the mouse through to the launcher's buttons under it.
-    ImGui::BeginChild("board", size, ImGuiChildFlags_None,
-                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
-                          (still_ ? ImGuiWindowFlags_NoInputs : ImGuiWindowFlags_None));
-    const ImVec2 origin = ImGui::GetCursorScreenPos();
-    const ImVec2 panel = ImGui::GetContentRegionAvail();
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    SharpFont(legendFont_);
-    list.AddRectFilled(origin, {origin.x + panel.x, origin.y + panel.y}, kPanelBackground);
-    if (!scene_) {
-        const char* text = "no board";
-        const ImVec2 textSize = ImGui::CalcTextSize(text);
-        list.AddText({origin.x + (panel.x - textSize.x) / 2, origin.y + (panel.y - textSize.y) / 2},
-                     IM_COL32_WHITE, text);
-        ImGui::EndChild();
-        return;
-    }
-
-    const ScreenPoint panelSize{panel.x, panel.y};
-    if (panel.x > 0 && panel.y > 0) {
-        if (still_ && (needFit_ || panel.x != panel_.x || panel.y != panel_.y)) {
-            viewport_.fit(scene_->bounds(), panelSize);
-            viewport_.frame(*still_, 1.0, 0);
-            needFit_ = false;
-        } else if (needFit_) {
-            viewport_.fit(scene_->bounds(), panelSize);
-            if (zoomAtStart_) {
-                viewport_.frame(*zoomAtStart_, 1.0, 0);
-                zoomAtStart_.reset();
-            }
-            needFit_ = false;
-        } else if (panel.x != panel_.x || panel.y != panel_.y) {
-            viewport_.resize(panelSize);
-        }
-        panel_ = panel;
-    }
-    if (!still_) {
-        // Hold is there on a Board with a button or a key to latch.
-        const bool latchable = std::ranges::any_of(
-            switches_, [](const SwitchTag& t) { return t.kind != SwitchKind::Slide; });
-        hold_ = hold_ && latchable;
-        if (const auto button =
-                buttons_.items(origin, {origin.x + panel.x, origin.y + panel.y}, latchable)) {
-            switch (*button) {
-            case ViewButton::Fit:
-                fit();
-                break;
-            case ViewButton::Look:
-                plainLook_ = !plainLook_;
-                break;
-            case ViewButton::Copper:
-                copper_ = !copper_;
-                break;
-            case ViewButton::Hold:
-                hold_ = !hold_;
-                break;
-            case ViewButton::Flip:
-                toggleLayer();
-                break;
-            }
-        }
-        input(origin);
-    }
-    const std::optional<BoardTarget> outside = std::exchange(outside_, std::nullopt);
-    if (!ImGui::IsWindowHovered() && outside) {
-        hoverTarget_ = outside;
-        if (outside->net) {
-            highlight_ = outside->net;
-        } else if (outside->pad && !outside->components.empty()) {
-            highlight_ = scene_->padNet(outside->components.front(), *outside->pad);
-        } else {
-            highlight_.reset();
-        }
-    }
-    // A Net link clicked: its Net stays lit while it flashes.
-    if (!highlight_ && flash_ && flash_->target.net &&
-        std::chrono::steady_clock::now() < flash_->until) {
-        highlight_ = flash_->target.net;
-    }
-
-    const Mapper map(viewport_, origin, panel);
-    const LookMap look{viewport_, origin};
+// The Board drawn through `viewport` into the panel at `origin`: the copper, the parts, the
+// marks and the tags. Twice a frame while the loupe is up (P8f): the panel's own pass
+// (`panelPass`: with what belongs to the pointer and the panel, the wire in hand, a refusal),
+// then the loupe's, magnified.
+void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 origin, ImVec2 panel,
+                          bool panelPass) {
+    const Mapper map(viewport, origin, panel);
+    const LookMap look{viewport, origin};
     const Board& board = scene_->board();
     const bool real = !plainLook_;
     std::vector<ImVec2> outline;
@@ -699,7 +630,9 @@ void BoardView::draw(ImVec2 size) {
         for (const ImVec2 q : outline) {
             corner = {std::min(corner.x, q.x), std::min(corner.y, q.y)};
         }
-        corner_ = corner;
+        if (panelPass) {
+            corner_ = corner;
+        }
     }
     const std::optional<NetId> lit = highlight_;
     // Gold, or the rail's own colour on VCC and GND (the builder names every power Net so).
@@ -1025,8 +958,8 @@ void BoardView::draw(ImVec2 size) {
     }
     // The wire in hand: dragged from a pad, else started by a click.
     const std::optional<Point> band =
-        wirePress_ && dragging_ ? std::optional(wirePress_->contact) : wireStart_;
-    if (band && (ImGui::IsWindowHovered() || dragging_)) {
+        wirePress_ && (dragging_ || loupe_) ? std::optional(wirePress_->contact) : wireStart_;
+    if (panelPass && band && (ImGui::IsWindowHovered() || dragging_ || loupe_)) {
         list.AddLine(map(*band), ImGui::GetIO().MousePos, kWireInsulation, wireWidth);
         list.AddCircleFilled(map(*band), wireBlob, kSolder);
     }
@@ -1067,21 +1000,38 @@ void BoardView::draw(ImVec2 size) {
         list.AddText(nullptr, fontSize, {centre.x - text.x / 2, centre.y - text.y / 2},
                      IM_COL32_BLACK, digit);
     }
-    if (refusal_ && std::chrono::steady_clock::now() < refusal_->until) {
-        // Above the pointer (P8f: below it, a finger hides it), kept inside the panel.
-        const ImVec2 text = ImGui::CalcTextSize(refusal_->reason.c_str());
+    if (panelPass) {
+        if (refusal_ && std::chrono::steady_clock::now() < refusal_->until) {
+            // Above the pointer (P8f: below it, a finger hides it), kept inside the panel.
+            const ImVec2 text = ImGui::CalcTextSize(refusal_->reason.c_str());
+            const ImVec2 box{text.x + 12, text.y + 8};
+            const ImVec2 min{std::clamp(refusal_->at.x - box.x / 2, origin.x,
+                                        std::max(origin.x, origin.x + panel.x - box.x)),
+                             std::clamp(refusal_->at.y - 14 - box.y, origin.y,
+                                        std::max(origin.y, origin.y + panel.y - box.y))};
+            const ImVec2 max{min.x + box.x, min.y + box.y};
+            list.AddRectFilled(min, max, IM_COL32(60, 10, 10, 235), 4.0f);
+            list.AddRect(min, max, IM_COL32(255, 90, 90, 255), 4.0f);
+            list.AddText({min.x + 6, min.y + 4}, IM_COL32(255, 220, 220, 255),
+                         refusal_->reason.c_str());
+        } else {
+            refusal_.reset();
+        }
+    }
+    // What a finger's first tap with a repair tool would do (P8f): named above its place, as a
+    // refusal is, until the second tap or its time.
+    if (panelPass && armed_) {
+        const ImVec2 at = map(armed_->first);
+        const ImVec2 text = ImGui::CalcTextSize(armed_->second.c_str());
         const ImVec2 box{text.x + 12, text.y + 8};
-        const ImVec2 min{std::clamp(refusal_->at.x - box.x / 2, origin.x,
-                                    std::max(origin.x, origin.x + panel.x - box.x)),
-                         std::clamp(refusal_->at.y - 14 - box.y, origin.y,
-                                    std::max(origin.y, origin.y + panel.y - box.y))};
+        const ImVec2 min{
+            std::clamp(at.x - box.x / 2, origin.x, std::max(origin.x, origin.x + panel.x - box.x)),
+            std::clamp(at.y - 18 - box.y, origin.y,
+                       std::max(origin.y, origin.y + panel.y - box.y))};
         const ImVec2 max{min.x + box.x, min.y + box.y};
-        list.AddRectFilled(min, max, IM_COL32(60, 10, 10, 235), 4.0f);
-        list.AddRect(min, max, IM_COL32(255, 90, 90, 255), 4.0f);
-        list.AddText({min.x + 6, min.y + 4}, IM_COL32(255, 220, 220, 255),
-                     refusal_->reason.c_str());
-    } else {
-        refusal_.reset();
+        list.AddRectFilled(min, max, IM_COL32(30, 30, 34, 240), 4.0f);
+        list.AddRect(min, max, kFocusGold, 4.0f);
+        list.AddText({min.x + 6, min.y + 4}, IM_COL32(245, 235, 200, 255), armed_->second.c_str());
     }
     for (const LeadTag& tag : leads_) {
         const ImU32 fill = tag.red ? kProbeRed : IM_COL32(20, 20, 20, 255);
@@ -1102,6 +1052,134 @@ void BoardView::draw(ImVec2 size) {
                      {(min.x + max.x - text.x) / 2, (min.y + max.y - text.y) / 2}, IM_COL32_WHITE,
                      sign);
     }
+}
+
+// The loupe (P8f): while a finger holds on the Board, what is under it magnified in a square
+// above it (beside it at the panel's top), a crosshair on the pick, the pick's name under it.
+void BoardView::drawLoupe(ImDrawList& list, ImVec2 origin, ImVec2 panel) {
+    if (!loupe_ || !pressed_) {
+        return;
+    }
+    const ImVec2 finger = ImGui::GetIO().MousePos;
+    ImVec2 min{finger.x - kLoupeSide / 2, finger.y - kLoupeGap - kLoupeSide};
+    if (min.y < origin.y) {
+        const bool left = finger.x > origin.x + panel.x / 2;
+        min = {left ? finger.x - kLoupeGap - kLoupeSide : finger.x + kLoupeGap,
+               finger.y - kLoupeSide / 2};
+    }
+    min.x = std::clamp(min.x, origin.x, std::max(origin.x, origin.x + panel.x - kLoupeSide));
+    min.y = std::clamp(min.y, origin.y, std::max(origin.y, origin.y + panel.y - kLoupeSide));
+    const ImVec2 max{min.x + kLoupeSide, min.y + kLoupeSide};
+    const Point at = viewport_.toBoard({finger.x - origin.x, finger.y - origin.y});
+    const Viewport zoomed = viewport_.magnified(at, kLoupeFactor, {kLoupeSide, kLoupeSide});
+    list.AddRectFilled({min.x - 4, min.y - 4}, {max.x + 4, max.y + 4}, kLoupeRim, 10.0f);
+    list.PushClipRect(min, max, true);
+    list.AddRectFilled(min, max, kPanelBackground);
+    drawBoard(list, zoomed, min, {kLoupeSide, kLoupeSide}, false);
+    const ImVec2 c{(min.x + max.x) / 2, (min.y + max.y) / 2};
+    for (const ImVec2 d : {ImVec2{1, 0}, ImVec2{-1, 0}, ImVec2{0, 1}, ImVec2{0, -1}}) {
+        list.AddLine({c.x + d.x * 6, c.y + d.y * 6}, {c.x + d.x * 16, c.y + d.y * 16},
+                     IM_COL32(255, 255, 255, 220), 1.5f);
+    }
+    list.PopClipRect();
+    list.AddRect(min, max, kLoupeEdge, 8.0f, 0, 2.0f);
+    if (!loupeText_.empty()) {
+        const ImVec2 text = ImGui::CalcTextSize(loupeText_.c_str());
+        const ImVec2 box{text.x + 12, text.y + 8};
+        // Above the loupe, clear of the finger; under it at the panel's top.
+        const bool above = min.y - 8 - box.y >= origin.y;
+        const ImVec2 at0{
+            std::clamp(c.x - box.x / 2, origin.x, std::max(origin.x, origin.x + panel.x - box.x)),
+            above ? min.y - 8 - box.y : max.y + 8};
+        list.AddRectFilled(at0, {at0.x + box.x, at0.y + box.y}, IM_COL32(20, 20, 24, 235), 4.0f);
+        list.AddText({at0.x + 6, at0.y + 4}, IM_COL32(235, 235, 235, 255), loupeText_.c_str());
+    }
+}
+
+void BoardView::draw(ImVec2 size) {
+    // A still (P7b) lets the mouse through to the launcher's buttons under it.
+    ImGui::BeginChild("board", size, ImGuiChildFlags_None,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                          (still_ ? ImGuiWindowFlags_NoInputs : ImGuiWindowFlags_None));
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    const ImVec2 panel = ImGui::GetContentRegionAvail();
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    SharpFont(legendFont_);
+    list.AddRectFilled(origin, {origin.x + panel.x, origin.y + panel.y}, kPanelBackground);
+    if (!scene_) {
+        const char* text = "no board";
+        const ImVec2 textSize = ImGui::CalcTextSize(text);
+        list.AddText({origin.x + (panel.x - textSize.x) / 2, origin.y + (panel.y - textSize.y) / 2},
+                     IM_COL32_WHITE, text);
+        ImGui::EndChild();
+        return;
+    }
+
+    const ScreenPoint panelSize{panel.x, panel.y};
+    if (panel.x > 0 && panel.y > 0) {
+        if (still_ && (needFit_ || panel.x != panel_.x || panel.y != panel_.y)) {
+            viewport_.fit(scene_->bounds(), panelSize);
+            viewport_.frame(*still_, 1.0, 0);
+            needFit_ = false;
+        } else if (needFit_) {
+            viewport_.fit(scene_->bounds(), panelSize);
+            if (zoomAtStart_) {
+                viewport_.frame(*zoomAtStart_, 1.0, 0);
+                zoomAtStart_.reset();
+            }
+            needFit_ = false;
+        } else if (panel.x != panel_.x || panel.y != panel_.y) {
+            viewport_.resize(panelSize);
+        }
+        panel_ = panel;
+    }
+    if (!still_) {
+        // Hold is there on a Board with a button or a key to latch.
+        const bool latchable = std::ranges::any_of(
+            switches_, [](const SwitchTag& t) { return t.kind != SwitchKind::Slide; });
+        hold_ = hold_ && latchable;
+        if (const auto button =
+                buttons_.items(origin, {origin.x + panel.x, origin.y + panel.y}, latchable)) {
+            switch (*button) {
+            case ViewButton::Fit:
+                fit();
+                break;
+            case ViewButton::Look:
+                plainLook_ = !plainLook_;
+                break;
+            case ViewButton::Copper:
+                copper_ = !copper_;
+                break;
+            case ViewButton::Hold:
+                hold_ = !hold_;
+                break;
+            case ViewButton::Flip:
+                toggleLayer();
+                break;
+            }
+        }
+        input(origin);
+    }
+    const std::optional<BoardTarget> outside = std::exchange(outside_, std::nullopt);
+    if (!ImGui::IsWindowHovered() && outside) {
+        hoverTarget_ = outside;
+        if (outside->net) {
+            highlight_ = outside->net;
+        } else if (outside->pad && !outside->components.empty()) {
+            highlight_ = scene_->padNet(outside->components.front(), *outside->pad);
+        } else {
+            highlight_.reset();
+        }
+    }
+    // A Net link clicked: its Net stays lit while it flashes.
+    if (!highlight_ && flash_ && flash_->target.net &&
+        std::chrono::steady_clock::now() < flash_->until) {
+        highlight_ = flash_->target.net;
+    }
+
+    drawBoard(list, viewport_, origin, panel, true);
+    drawLoupe(list, origin, panel);
+    const Mapper map(viewport_, origin, panel);
     if (!still_) {
         // The flip corner (P6o), last: a control on the Board. The corner turned over, showing the
         // other side's copper; a fold line and its shadow along the diagonal.
@@ -1130,9 +1208,11 @@ PickReach BoardView::reach() const {
     // cutters and the iron reach the Trace under it and between two pins, the hover showing
     // what the click will cut or mend (2026-11-24).
     const bool copperTool = owner_ == Owner::Cutters || owner_ == Owner::Iron;
-    const bool finger = FingerPointer();
-    return {.pad = std::llround((finger ? kFingerReachPx : kPadReachPx) * nmPerPixel),
-            .copper = std::llround((finger ? kFingerReachPx : kCopperReachPx) * nmPerPixel),
+    // In the loupe the pick is what its crosshair is on: the mouse's reach, as magnified.
+    const bool finger = FingerPointer() && !loupe_;
+    const double shown = loupe_ ? 1 / kLoupeFactor : 1;
+    return {.pad = std::llround((finger ? kFingerReachPx : kPadReachPx * shown) * nmPerPixel),
+            .copper = std::llround((finger ? kFingerReachPx : kCopperReachPx * shown) * nmPerPixel),
             .bodies = !ImGui::GetIO().KeyAlt && !copper_ && !copperTool,
             .copperFirst = copperTool};
 }
@@ -1154,8 +1234,10 @@ void BoardView::input(ImVec2 origin) {
     // A press on the view buttons is not the Board's.
     const bool hoveredPanel = ImGui::IsWindowHovered() && !buttons_.hovered();
 
+    loupeText_.clear();
     if (Touch().cancelled) {
         framePress_.reset();
+        loupe_ = false;
         // A second finger (P8f): the press under way is void; its release finds nothing pressed.
         pressed_ = false;
         dragging_ = false;
@@ -1164,7 +1246,12 @@ void BoardView::input(ImVec2 origin) {
         windowPressed_.reset();
         held_.reset();
     }
-    if (pressed_) {
+    // A finger held still on the Board (P8f): the loupe, until it lifts. No pan meanwhile.
+    if (pressed_ && !loupe_ && !dragging_ && Touch().hold && !cornerPressed_ && !windowPressed_ &&
+        !framePress_) {
+        loupe_ = true;
+    }
+    if (pressed_ && !loupe_) {
         if (!dragging_ && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
             dragging_ = true;
             if (!wirePress_) {
@@ -1203,6 +1290,8 @@ void BoardView::input(ImVec2 origin) {
             if (onWindow == windowPressed_) {
                 contentsClick_ = windowPressed_;
             }
+        } else if (loupe_ && (!hoveredPanel || !InsideOutline(scene_->outline(), at))) {
+            // The loupe slid off the Board: nothing.
         } else if (!dragging_ || wirePress_) {
             std::optional<std::size_t> component;
             if (picked &&
@@ -1211,13 +1300,20 @@ void BoardView::input(ImVec2 origin) {
             } else {
                 component = scene_->componentAt(at);
             }
+            // A wire by the loupe: held on one pin, lifted on another, as a drag between them.
+            const bool otherPad = loupe_ && wirePress_ && picked &&
+                                  picked->hit.kind == HitKind::Pad &&
+                                  (picked->hit.component != wirePress_->hit.component ||
+                                   picked->hit.index != wirePress_->hit.index);
             click_ = BoardClick{at,
                                 active_,
                                 picked,
                                 component,
                                 io.KeyShift,
                                 false,
-                                dragging_ ? wirePress_ : std::nullopt};
+                                dragging_ || otherPad ? wirePress_ : std::nullopt,
+                                FingerPointer(),
+                                loupe_};
         }
         pressed_ = false;
         wirePress_.reset();
@@ -1225,6 +1321,7 @@ void BoardView::input(ImVec2 origin) {
         windowPressed_.reset();
         framePress_.reset();
         dragging_ = false;
+        loupe_ = false;
     }
     if (held_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
         held_.reset();
@@ -1363,7 +1460,9 @@ void BoardView::input(ImVec2 origin) {
         }
         // A refusal is drawn where the tooltip would go: it wins while it shows.
         const bool refusing = refusal_ && std::chrono::steady_clock::now() < refusal_->until;
-        if (!text.empty() && !refusing) {
+        if (loupe_) {
+            loupeText_ = text;  // by the loupe: a tooltip would be under the finger
+        } else if (!text.empty() && !refusing && !armed_) {  // an armed repair's name shows there
             ImGui::SetTooltip("%s", text.c_str());
         }
     }
@@ -1379,6 +1478,10 @@ void BoardView::frameChip(std::size_t component) {
         needFit_ = false;
         viewport_.frameUpTo(*box, kFrameShare, kFramePitchPx / 2.54);
     }
+}
+
+std::int64_t BoardView::fingerReach() const {
+    return std::llround(kFingerReachPx * 1e6 / viewport_.pixelsPerMm());
 }
 
 void BoardView::refuse(std::string reason) {

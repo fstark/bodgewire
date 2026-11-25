@@ -21,6 +21,9 @@ public:
     // At `at` from the next draw, `pivot` ImGui's (0, 0: its top-left at `at`; 0, 1: opening
     // upwards from it).
     void open(ImVec2 at, ImVec2 pivot = {0, 0});
+    // Above `pointer` (P8f: a finger would cover it), kept inside the main window; under it
+    // near the window's top.
+    void openAbove(ImVec2 pointer);
     // Each frame, last. Cancel also when closed by a click elsewhere.
     PopupAnswer draw();
     bool dontAsk() const { return dontAsk_; }

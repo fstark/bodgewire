@@ -88,6 +88,8 @@ struct BoardClick {
     bool fromPage = false;  // a pin link in a manual or the chip panel: the selection stays
     // The Wire tool dragged from this pad (`pick`: where it was released); else a plain click.
     std::optional<Pick> from = {};
+    bool finger = false;  // the pointer was a finger's (P8f)
+    bool loupe = false;   // released from the loupe: its target was shown
 };
 
 using TooltipText = std::function<std::string(const BoardScene&, const Hit&)>;
@@ -175,6 +177,13 @@ public:
     std::optional<std::size_t> bridgeAt(Point at) const;  // as wireAt()
     // Shows `reason` next to the cursor for a moment (with the banner's own message).
     void refuse(std::string reason);
+    // What a finger's first tap with a repair tool would do (P8f), named above Board point
+    // `at` until cleared (nullopt): "Cut here: tap again".
+    void setArmed(std::optional<Point> at, std::string action) {
+        armed_ = at ? std::optional(std::pair{*at, std::move(action)}) : std::nullopt;
+    }
+    // A finger's reach in nm at the current zoom: a second tap that near the first is on it.
+    std::int64_t fingerReach() const;
 
 private:
     struct Flash {
@@ -183,6 +192,9 @@ private:
     };
 
     void input(ImVec2 origin);  // hover, zoom, pan, click while the panel is hovered or dragged
+    void drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 origin, ImVec2 panel,
+                   bool panelPass);
+    void drawLoupe(ImDrawList& list, ImVec2 origin, ImVec2 panel);
     PickReach reach() const;
     // Selected and framed so its pins are a finger's size, or it fills most of the panel (P8f).
     void frameChip(std::size_t component);
@@ -205,10 +217,13 @@ private:
     std::optional<std::size_t> hovered_, selected_;
     std::optional<BoardTarget> outside_;
     std::optional<Flash> flash_;
-    bool pressed_ = false;                      // left button went down on the panel
-    bool cornerPressed_ = false;                // ... on the flip corner (P6o)
-    std::optional<std::size_t> framePress_;     // ... a second time on this chip's body (P8f)
-    std::optional<std::size_t> windowPressed_;  // ... on a memory chip's window (P6p)
+    bool pressed_ = false;                   // left button went down on the panel
+    bool cornerPressed_ = false;             // ... on the flip corner (P6o)
+    std::optional<std::size_t> framePress_;  // ... a second time on this chip's body (P8f)
+    bool loupe_ = false;     // this press became a finger's hold: the loupe is up (P8f)
+    std::string loupeText_;  // the pick's name, under the loupe
+    std::optional<std::pair<Point, std::string>> armed_;  // setArmed
+    std::optional<std::size_t> windowPressed_;            // ... on a memory chip's window (P6p)
     std::optional<std::size_t> contentsClick_;
     bool dragging_ = false;
     std::optional<Pick> wirePress_;  // the Wire tool pressed on this pad: a drag draws a wire

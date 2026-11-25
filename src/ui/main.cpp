@@ -24,6 +24,7 @@
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 
+#include "board/geometry.hpp"
 #include "board/kicad_board.hpp"
 #include "machine/knob_setting.hpp"
 #include "machine/machine.hpp"
@@ -203,6 +204,15 @@ std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manu
     return Displayable(text);
 }
 
+// A repair a finger's first tap lit (P8f): where the tap was, what a second tap there will do,
+// its name on the Board, until when.
+struct Armed {
+    Point at;
+    RepairPlan plan;
+    std::string action;
+    std::chrono::steady_clock::time_point until;
+};
+
 // How a bench ended (P7a): the app quits, the launcher shows again, or (P8c) the Thank-you Card
 // opens the Machine's next Puzzle.
 enum class BenchEnd : std::uint8_t { Quit, Back, Next };
@@ -236,8 +246,9 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                                                             machine->designCircuit())
                                 : std::nullopt);
     std::uint64_t seed = 1;
-    WireDraft wire;     // the Wire tool's first pin
-    PencilMarks marks;  // the grease pencil's (P6h)
+    WireDraft wire;              // the Wire tool's first pin
+    std::optional<Armed> armed;  // a repair a finger's first tap lit, until its second (P8f)
+    PencilMarks marks;           // the grease pencil's (P6h)
     for (const auto& [shape, at] : options.bench.mark) {
         marks.add({at, shape, boardView.scene()->bodyAt(at)});  // a Board: checked in main()
     }
@@ -531,7 +542,11 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
 
         if (focus.owner() != lastOwner) {
             wire.start.reset();  // a wire is started with one tool only
+            armed.reset();       // and a repair lit by a tap is that tool's
             lastOwner = focus.owner();
+        }
+        if (armed && std::chrono::steady_clock::now() >= armed->until) {
+            armed.reset();
         }
         boardView.setOwner(focus.owner());
         const Extent bench = BenchArea().extent();  // above the shelf
@@ -596,8 +611,34 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                     boardView.select(*click->component);
                 }
             }
-            const std::optional<RepairPlan> plan =
-                ToolClick(focus.owner(), *click, session, boardView, marks, wire, refuse);
+            // A tool that changes the Board acts only on a target that is already lit (P8f). A
+            // mouse's hover lit it. A finger's first tap lights it and names what it would do;
+            // a second tap near it, or on the same chip, does it. The loupe showed its target,
+            // and the power-cycle question is a confirmation of its own.
+            const bool tap = click->finger && !click->loupe;
+            const WireDraft wireBefore = wire;
+            std::optional<RepairPlan> plan;
+            if (tap && armed &&
+                Distance(click->at, armed->at) <= static_cast<double>(boardView.fingerReach())) {
+                plan = std::move(armed->plan);  // the second tap
+                armed.reset();
+                wire.start.reset();
+            } else {
+                plan = ToolClick(focus.owner(), *click, session, boardView, marks, wire, refuse);
+                const bool asks =
+                    plan && *StepFor(true, session.powered(), popup.dontAsk()) == RepairStep::Ask;
+                const bool same =
+                    plan && armed && SameRepair(armed->plan.tries.front(), plan->tries.front());
+                armed.reset();
+                if (plan && tap && !asks && !same) {
+                    armed = Armed{click->at, *plan, ActionName(*plan) + ": tap again",
+                                  std::chrono::steady_clock::now() +
+                                      std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                          std::chrono::duration<double>(kLingerTime))};
+                    wire = wireBefore;  // a wire's start stays: its band still shows
+                    plan.reset();
+                }
+            }
             if (plan) {
                 switch (*StepFor(true, session.powered(), popup.dontAsk())) {
                 case RepairStep::Apply:
@@ -605,7 +646,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                     break;
                 case RepairStep::Ask:
                     pending = std::move(plan);
-                    popup.open(ImGui::GetIO().MousePos);
+                    popup.openAbove(ImGui::GetIO().MousePos);
                     break;
                 case RepairStep::Cycle:
                     cycle(*plan);
@@ -618,6 +659,8 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             InsideOutline(boardView.scene()->outline(), *at)) {
             marks.clear(*at, boardView.markReach());
         }
+        boardView.setArmed(armed ? std::optional(armed->at) : std::nullopt,
+                           armed ? armed->action : std::string());
         boardView.setMarks(marks.marks());
         const auto tip = session.probe().tip();
         boardView.setProbeTip(tip ? std::optional(tip->at) : std::nullopt);
