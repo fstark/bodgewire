@@ -16,13 +16,14 @@ struct Pace {
     double shown = 0;     // the speed printed, held 0.5 s so its last digit does not flicker
 };
 
-// Behind once the speed ratio has stayed under 0.9 for 2 s; caught up as soon as it is over 0.95,
-// so a ratio wavering at the bar does not flicker. Not running (off, paused): not behind, the 2 s
-// waited again, the next speed shown at once.
+// Behind once the speed ratio has stayed under 0.9 of `target` (the switch's speed: 1 at 1× and
+// Max, 0.25 at ¼×) for 2 s; caught up as soon as it is over 0.95 of it, so a ratio wavering at the
+// bar does not flicker. Not running (off, paused): not behind, the 2 s waited again, the next speed
+// shown at once.
 class PaceWatch {
 public:
     using Clock = std::chrono::steady_clock;
-    Pace update(bool running, double ratio, Clock::time_point now);
+    Pace update(bool running, double ratio, Clock::time_point now, double target = 1.0);
 
 private:
     Pace pace_;

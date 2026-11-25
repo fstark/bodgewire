@@ -113,34 +113,36 @@ void Power(Pen& p, const ItemLook& look) {
     p.disc(41, 45, 3, look.limit ? kRed : kLampDark);  // LIMIT
 }
 
-// A three-position slide across two cells: a pause sign, 1×, Max printed over its slot, the slider
-// at the chosen third; the pause sign grayed while the power is off (it cannot be chosen). Running
-// at Max, the speed reached in place of "Max"; behind real time, in place of the chosen label too,
-// and the slider red (red print on the wood read poorly, 2026-11-23).
+// A four-position slide across two cells: a pause sign, ¼× (slow motion, 2026-11-25), 1×, Max
+// printed over its slot, the slider at the chosen quarter; the pause sign grayed while the power is
+// off (it cannot be chosen). Running at Max, the speed reached in place of "Max"; behind the chosen
+// speed, in place of its label too, and the slider red (red print on the wood read poorly,
+// 2026-11-23).
 void RunSlide(Pen& p, const ItemLook& look) {
-    constexpr std::array<float, 3> kAt{22, 58, 94};
-    constexpr ImU32 kSlowKnob = IM_COL32(200, 55, 45, 255);
-    constexpr ImU32 kSlowGrip = IM_COL32(110, 25, 20, 255);
+    constexpr std::array<float, 4> kAt{18, 44, 70, 96};
+    constexpr ImU32 kBehindKnob = IM_COL32(200, 55, 45, 255);
+    constexpr ImU32 kBehindGrip = IM_COL32(110, 25, 20, 255);
     const auto chosen = static_cast<std::size_t>(look.run);
     const ImU32 pauseInk = !look.powered ? kLampDark : chosen == 0 ? kWhite : kGrey;
     p.box(kAt[0] - 5, 8, kAt[0] - 1.5f, 20, pauseInk, 0.5f);
     p.box(kAt[0] + 1.5f, 8, kAt[0] + 5, 20, pauseInk, 0.5f);
-    const bool slow = look.behind && chosen != 0;
-    const bool measured = slow || (look.running && look.run == RunSwitch::Max);
+    const bool behind = look.behind && chosen != 0;
+    const bool measured = behind || (look.running && look.run == RunSwitch::Max);
     const std::string speed = measured ? SpeedText(look.speed) : std::string();
     const auto label = [&](std::size_t at, const char* name) {
         p.text(kAt[at], 14, 11, chosen != at ? kGrey : kWhite,
                chosen == at && measured ? speed.c_str() : name);
     };
-    label(1, "1×");
-    label(2, "Max");
-    p.box(10, 31, 106, 41, kBlack, 5);
+    label(1, "¼×");
+    label(2, "1×");
+    label(3, "Max");
+    p.box(6, 31, 108, 41, kBlack, 5);
     for (const float x : kAt) {
         p.line(x, 43.5f, x, 46, kDarkMetal, 1.2f);
     }
     const float x = kAt[chosen];
-    p.box(x - 9, 28, x + 9, 44, slow ? kSlowKnob : kMetal, 3);
-    p.line(x, 30, x, 42, slow ? kSlowGrip : kDarkMetal, 1.5f);
+    p.box(x - 9, 28, x + 9, 44, behind ? kBehindKnob : kMetal, 3);
+    p.line(x, 30, x, 42, behind ? kBehindGrip : kDarkMetal, 1.5f);
 }
 
 void Probe(Pen& p, const ItemLook& look) {

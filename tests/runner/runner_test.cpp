@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <span>
+#include <thread>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -156,6 +157,18 @@ TEST_CASE("runner: pause and resume", "[runner]") {
     RunTo(runner, 60_ms);
     CHECK(runner.status().simTime == 60_ms);
     CHECK(Latest(tv) == reference);
+}
+
+TEST_CASE("runner: slow motion runs a quarter of real time", "[runner]") {
+    TestPattern pattern = Load();
+    TvConsumer tv(pattern.video, pattern.syncN);
+    Runner runner(pattern.loaded->circuit, {&tv});
+    runner.setSpeed(Speed::Slow);
+    runner.powerOn(1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    const Time simTime = runner.status().simTime;
+    CHECK(simTime > 0);
+    CHECK(simTime <= 110_ms);  // 100 ms paced, a slice or so late; real time would be 400 ms
 }
 
 TEST_CASE("runner: power cycle", "[runner]") {

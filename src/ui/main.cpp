@@ -407,8 +407,8 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     });
     // --run pause: paused once a picture is drawn, the switch kept at `‖` (PowerOn would move it).
     constexpr Time kPauseAt = 200 * kPicosPerSecond / 1000;
-    if (run == RunSwitch::Max) {
-        session.setSpeed(Speed::Max);
+    if (run != RunSwitch::Pause) {
+        session.setSpeed(SpeedOf(run));
     }
     const bool continuity =
         options.bench.meter.size() == 2;  // the power left off: Continuity needs it

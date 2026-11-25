@@ -46,7 +46,9 @@ struct Entry {
 constexpr std::array<Entry, 16> kItems{{
     {Item::Leave, "Back to the Machines", Tray::Leave, 1},
     {Item::Power, "Power", Tray::Controls, 1},
-    {Item::RunSwitch, "Pause, real time, or as fast as possible", Tray::Controls, 2},
+    {Item::RunSwitch,
+     "Pause, slow motion (a quarter of real time), real time, or as fast as possible",
+     Tray::Controls, 2},
     {Item::Reset, "Reset: undo every repair; the pencil marks stay", Tray::Controls, 1},
     {Item::Pencil, "Grease pencil: mark the Board; click a mark: dot, check, cross, none",
      Tray::Tools, 1},
@@ -163,6 +165,12 @@ void PowerOn(Session& session, RunSwitch& run, std::uint64_t seed) {
     session.powerOn(seed);
 }
 
+Speed SpeedOf(RunSwitch run) {
+    return run == RunSwitch::Slow  ? Speed::Slow
+           : run == RunSwitch::Max ? Speed::Max
+                                   : Speed::RealTime;
+}
+
 void Shelf::refused(std::string reason) {
     reason_ = std::move(reason);
     reasonUntil_ = std::chrono::steady_clock::now() + kReasonTime;
@@ -242,7 +250,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
     const bool hasDevice = devices_.tv || devices_.keyboard || devices_.knob;
     // Desktop windows for the objects (P6j), or none (the web build): what a double-click does.
     const bool windows = (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0;
-    const Pace pace = pace_.update(running, speedRatio, std::chrono::steady_clock::now());
+    const Pace pace =
+        pace_.update(running, speedRatio, std::chrono::steady_clock::now(),
+                     run == RunSwitch::Slow ? 1.0 / static_cast<double>(kSlowMotion) : 1.0);
     // The brief only on a Puzzle: not grayed, left out.
     std::vector<Entry> items;
     for (const Entry& entry : kItems) {
@@ -446,9 +456,9 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
                 }
                 break;
             case Item::RunSwitch: {
-                const float third = (ImGui::GetIO().MousePos.x - min.x) / w * 3;
+                const float quarter = (ImGui::GetIO().MousePos.x - min.x) / w * 4;
                 const auto chosen =
-                    static_cast<RunSwitch>(std::clamp(static_cast<int>(third), 0, 2));
+                    static_cast<RunSwitch>(std::clamp(static_cast<int>(quarter), 0, 3));
                 if (chosen == RunSwitch::Pause) {
                     if (powered) {  // with the power off `‖` cannot be chosen
                         session.pause();
@@ -456,7 +466,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
                     }
                     break;
                 }
-                session.setSpeed(chosen == RunSwitch::Max ? Speed::Max : Speed::RealTime);
+                session.setSpeed(SpeedOf(chosen));
                 if (powered) {
                     session.resume();
                 }

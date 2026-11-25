@@ -62,8 +62,9 @@ constexpr std::array<std::pair<std::string_view, Divider>, 5> kDividers{{
     {"giveup", Divider::GiveUp},  // a Random fault's bench only (P8d)
 }};
 
-constexpr std::array<std::pair<std::string_view, RunSwitch>, 3> kRuns{{
+constexpr std::array<std::pair<std::string_view, RunSwitch>, 4> kRuns{{
     {"pause", RunSwitch::Pause},
+    {"slow", RunSwitch::Slow},
     {"1x", RunSwitch::RealTime},
     {"max", RunSwitch::Max},
 }};
@@ -361,7 +362,7 @@ const std::array kFlags{
                  return slot ? object : std::nullopt;
              });
          }},
-    Flag{"--run", "pause|1x|max", false,
+    Flag{"--run", "pause|slow|1x|max", false,
          [](Options& o, std::string_view v) -> Result {
              const auto run = Named<RunSwitch>(kRuns, v);
              if (!run) {

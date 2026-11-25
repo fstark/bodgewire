@@ -120,11 +120,12 @@ void Runner::simulate(std::stop_token stop) {
         if (stop.stop_requested() || !commands.empty() || state_.load() != RunState::Running) {
             continue;
         }
-        if (speed_ == Speed::RealTime) {
-            const auto due = wallBase_ + ToWall(sim_.now() + kSlice - simBase_);
+        if (speed_ != Speed::Max) {
+            const std::int64_t stretch = speed_ == Speed::Slow ? kSlowMotion : 1;
+            const auto due = wallBase_ + ToWall((sim_.now() + kSlice - simBase_) * stretch);
             const auto now = Clock::now();
             if (due < now - kMaxLag) {
-                wallBase_ = now - ToWall(kSlice);
+                wallBase_ = now - ToWall(kSlice * stretch);
                 simBase_ = sim_.now();
             } else if (due > now) {
                 std::unique_lock lock(mutex_);

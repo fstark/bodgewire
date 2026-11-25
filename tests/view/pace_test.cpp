@@ -45,6 +45,15 @@ TEST_CASE("pace: not behind while not running, and the wait starts over") {
     CHECK(watch.update(true, 0.3, t0 + 6s).behind);
 }
 
+TEST_CASE("pace: at ¼×, behind against a quarter of real time") {
+    PaceWatch watch;
+    CHECK_FALSE(watch.update(true, 0.25, t0, 0.25).behind);
+    CHECK_FALSE(watch.update(true, 0.25, t0 + 3s, 0.25).behind);
+    watch.update(true, 0.2, t0 + 4s, 0.25);
+    CHECK(watch.update(true, 0.2, t0 + 6s, 0.25).behind);
+    CHECK_FALSE(watch.update(true, 0.24, t0 + 7s, 0.25).behind);  // over 0.95 of it
+}
+
 TEST_CASE("pace: the speed shown held 0.5 s") {
     PaceWatch watch;
     CHECK(watch.update(true, 3.41, t0).shown == 3.41);

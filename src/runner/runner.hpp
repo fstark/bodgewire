@@ -22,7 +22,10 @@
 
 namespace bw {
 
-enum class Speed : std::uint8_t { RealTime, Max };
+// Slow: slow motion, a simulated second every kSlowMotion wall seconds (2026-11-25); Max: no
+// pacing.
+enum class Speed : std::uint8_t { Slow, RealTime, Max };
+inline constexpr std::int64_t kSlowMotion = 4;
 enum class RunState : std::uint8_t { Off, Running, Paused };
 
 struct RunnerStatus {

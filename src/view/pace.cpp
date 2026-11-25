@@ -36,7 +36,7 @@ Playability NextBand(Playability band, double ratio) {
 
 }  // namespace
 
-Pace PaceWatch::update(bool running, double ratio, Clock::time_point now) {
+Pace PaceWatch::update(bool running, double ratio, Clock::time_point now, double target) {
     if (!running) {
         pace_ = {};
         under_.reset();
@@ -48,8 +48,8 @@ Pace PaceWatch::update(bool running, double ratio, Clock::time_point now) {
         shownAt_ = now;
     }
     if (pace_.behind) {
-        pace_.behind = ratio < kCaughtUp;
-    } else if (ratio >= kBehind) {
+        pace_.behind = ratio < kCaughtUp * target;
+    } else if (ratio >= kBehind * target) {
         under_.reset();
     } else if (!under_) {
         under_ = now;

@@ -24,6 +24,8 @@ inline constexpr float kShelfHeight = 64.0f;
 
 // Power on with the run switch (P6o): at `‖` it jumps to `1×` first (powering on always runs).
 void PowerOn(Session& session, RunSwitch& run, std::uint64_t seed);
+// The Runner's speed at a run switch position other than `‖`.
+Speed SpeedOf(RunSwitch run);
 
 // The strip along the bottom (P6c, regrouped in P6o): each group in its own tray, the way back to
 // the launcher (P7a), the controls, the Board's tools, the instruments from the left; this
