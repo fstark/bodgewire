@@ -32,7 +32,9 @@ Every Machine shows up in the launcher with a short description, and each of its
 post-it you can pick. "Start the Machine" gives you the working one, to see how it should behave.
 A Puzzle you've repaired keeps its tick on the launcher, from one launch to the next.
 The last post-it, "Random fault", breaks the Machine somewhere new each time you open it, and
-checks that the fault shows before handing you the bench.
+checks that the fault shows before handing you the bench. It can be anywhere on the board, so
+they never run out: fix one and the owner's card offers you another. If one beats you, the
+binder's Give up page tells you what it was.
 
 ![The launcher](docs/readme/launcher.png)
 
@@ -95,8 +97,8 @@ Here the first four counters have been checked off, and the trace to the LED is 
 ### Instruments
 
 - **Logic probe**: touch any copper and it tells you HIGH, LOW or PULSE.
-- **Logic analyzer**: clip it on chip pins (shift-click takes a whole bus), set a trigger, and read
-  what happened before and after it.
+- **Logic analyzer**: clip it on chip pins (its pin / bus switch takes a whole bus), set a
+  trigger, and read what happened before and after it.
 - **Oscilloscope**: four channels, for when the exact timing between signals matters.
 - **Multimeter**: hold on copper; volts, or continuity with the power off.
 
@@ -135,7 +137,10 @@ And you can look inside the memory chips: the BW-2001's ROM disassembled as 6502
 - **The post-it** with the Puzzle's symptom.
 - **The Machine's own devices**: its TV, keyboard or paddle knobs, each in a window you can pop
   out to its own window on the desktop.
-- **Controls**: power, pause / real time / as fast as possible, and Reset to undo every repair.
+- **Controls**: power, pause / slow motion (a quarter of real time) / real time / as fast as
+  possible, and Reset to undo every repair (your pencil marks stay).
+- **View buttons** beside the Board: fit the whole Board, switch between the real and the plain
+  look, pick the copper under the chips, hold a button or key down, flip the Board over.
 
 The faults you'll meet are cracked traces, chip outputs stuck high or low, solder bridges, bad
 joints, bad memory cells, and the odd dead switch.

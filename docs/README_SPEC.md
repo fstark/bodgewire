@@ -70,7 +70,9 @@ back on. 114 Puzzles on 14 Machines, from a five-chip LED blinker to copies of t
 Then the launcher picture (`launcher`): each Machine with its paragraph, and a post-it per Puzzle.
 One sentence: a repaired Puzzle's post-it keeps its tick on the launcher, from one launch to the
 next. One sentence on the last post-it, "Random fault": a fault picked at random each time it is
-opened, checked to show before the bench opens; no count for those.
+opened, checked to show before the bench opens; no count for those. Then (the user, 2026-11-25)
+that they never run out: one can be anywhere on the Board, and the Thank-you Card offers
+another; and the binder's Give up page, which tells what it was.
 
 ### 6. A repair, step by step
 
@@ -119,8 +121,11 @@ The shelf's items, each with one line from its tooltip (`src/ui/shelf.cpp`, `kIt
     text and disassembles into nonsense);
   - `binder-glyphs`: the character ROM UA2, glyph by glyph.
 - **And the rest**, no pictures: the post-it, the Machine's own devices (TV, keyboard, paddle
-  knobs) in windows that pop out to their own desktop windows, the controls (power, pause / real
-  time / as fast as possible, Reset: undo every repair).
+  knobs) in windows that pop out to their own desktop windows, the controls (power, pause / slow
+  motion, a quarter of real time / real time / as fast as possible, Reset: undo every repair, the
+  pencil marks stay), the view buttons beside the Board (P8f, `src/ui/view_buttons.cpp`: fit the
+  whole Board, real or plain look, pick the copper under the chips, hold a button or key down,
+  flip the Board).
 
 Then one line on the kinds of faults met (from the `fault` lines of the Puzzles): cracked traces,
 stuck chip outputs, solder bridges, bad joints, bad memory cells, dead switches. No fault names
