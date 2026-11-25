@@ -52,7 +52,8 @@ constexpr const char* kForgetHint = "Delete: forget the ticks";  // Proggy has n
 constexpr float kChevron = 18;                                   // px tall
 constexpr float kChevronGap = 10;                                // px outside the picture
 constexpr float kChevronHit = 44;                                // px: a chevron's item (P8f)
-constexpr auto kSettle = std::chrono::milliseconds(150);         // the selection at rest: load it
+constexpr double kSwipe = 0.1;  // of the way to the next Machine: a drag let go moves on to it
+constexpr auto kSettle = std::chrono::milliseconds(150);  // the selection at rest: load it
 constexpr ImU32 kName = IM_COL32(235, 235, 235, 255);
 constexpr ImU32 kParagraph = IM_COL32(200, 200, 205, 255);
 constexpr ImU32 kErrorText = IM_COL32(255, 90, 76, 255);
@@ -566,7 +567,8 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
     if (jump_) {
         machines_.jump(static_cast<double>(lanes_.machine()));
     }
-    // A drag on the top lane (P8f): its picture follows the pointer; the others with it.
+    // A drag on the top lane (P8f), from anywhere above the wood: the selected picture follows
+    // the pointer; the others with it.
     const auto dragLane = [&](float dx) {
         const double d = static_cast<double>(laneDrag_->picture) - machines_.value;
         const double pitch = std::abs(PictureLeft(d < 0 ? -1 : 1, laneDrag_->share) -
@@ -576,8 +578,15 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
                                   static_cast<double>(list_.machines.size() - 1)));
     };
     if (laneDrag_ && (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || making_)) {
-        // Let go: the nearest Machine, which the glide settles on.
-        const auto nearest = static_cast<std::size_t>(std::lround(machines_.value));
+        // Let go: the nearest Machine, which the glide settles on; past kSwipe of the way (a
+        // finger's swipe), at least the next one in the drag's direction.
+        const auto from = static_cast<double>(lanes_.machine());
+        double to = std::round(machines_.value);
+        // (The value stays within the lane: past kSwipe toward a neighbour, there is one.)
+        if (to == from && std::abs(machines_.value - from) >= kSwipe) {
+            to = from + (machines_.value < from ? -1 : 1);
+        }
+        const auto nearest = static_cast<std::size_t>(to);
         laneDrag_.reset();
         if (nearest != lanes_.machine() && !making_) {
             lanes_.selectMachine(nearest);
@@ -609,8 +618,8 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         forgetQuestion_.open({hintEnd.x, hintEnd.y + 4}, {1, 0});
     }
     std::optional<std::size_t> clickedMachine;
-    bool clickedLive = false;
-    std::optional<std::size_t> doubleClicked;
+    bool openMachine = false;
+    double selectedShare = area.x / width;  // the selected picture's width, while it is drawn
     for (std::size_t i = 0; i < list_.machines.size(); ++i) {
         const double d = static_cast<double>(i) - machines_.value;
         if (std::abs(d) >= 1.6 || area.x <= 0 || area.y <= 0) {
@@ -622,6 +631,9 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         const bool hasTv = still ? still->tv : session && session->tv() != nullptr;
         const ImVec2 picture = hasTv || !still ? area : Fit(area, Aspect(still->frame));
         const double share = picture.x / width;
+        if (i == lanes_.machine()) {
+            selectedShare = share;
+        }
         const ImVec2 at{origin.x + static_cast<float>(PictureLeft(d, share)) * width,
                         areaTop + (area.y - picture.y) / 2};
         BoardView* view = live && live_.view ? &*live_.view : still ? &still->view : nullptr;
@@ -686,24 +698,21 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
             }
             ImGui::EndChild();
         }
-        // The click: a neighbour moves to it, the selected one gives the top lane the keys.
+        // The click: a neighbour moves to it; the selected one opens its Machine, no Puzzle (as
+        // a click on the selected post-it opens it).
         if (clicksOn) {
             ImGui::SetCursorScreenPos(at);
-            if (ImGui::InvisibleButton("##picture", picture)) {
-                const bool selected = i == lanes_.machine();
-                if (selected && ImGui::GetIO().MouseClickedLastCount[ImGuiMouseButton_Left] >= 2) {
-                    doubleClicked = i;  // the live one: its Machine opened, no Puzzle
-                } else if (selected) {
-                    clickedLive = true;
+            // A press that went past the drag threshold is no click, even let go on the frame
+            // it got there (a quick flick on a slow frame).
+            const ImGuiIO& io = ImGui::GetIO();
+            const bool moved = io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] >=
+                               io.MouseDragThreshold * io.MouseDragThreshold;
+            if (ImGui::InvisibleButton("##picture", picture) && !moved) {
+                if (i == lanes_.machine()) {
+                    openMachine = true;
                 } else {
                     clickedMachine = i;
                 }
-            }
-            // A drag on it moves the lane, and is no click.
-            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-                laneDrag_ = LaneDrag{i, share};
-                ImGui::ClearActiveID();
-                dragLane(ImGui::GetMouseDragDelta(ImGuiMouseButton_Left).x);
             }
         }
         // The bar under the selected picture (its colour how well the live run keeps up),
@@ -734,6 +743,21 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
             }
         }
         ImGui::PopID();
+    }
+    // A press above the wood, on a picture, a chevron or nothing, becomes the lane's drag past
+    // the drag threshold, and is no click.
+    if (clicksOn && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+        ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) {
+        pressTop_ = ImGui::GetIO().MousePos.y < laneBottom;
+    }
+    if (!clicksOn || !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        pressTop_ = false;
+    }
+    if (pressTop_ && !laneDrag_ && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+        pressTop_ = false;
+        laneDrag_ = LaneDrag{lanes_.machine(), selectedShare};
+        ImGui::ClearActiveID();
+        dragLane(ImGui::GetMouseDragDelta(ImGuiMouseButton_Left).x);
     }
 
     // The paragraph: the nearest Machine's, fading as the lane scrolls.
@@ -942,13 +966,11 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
             chosen = entryFile();
         }
         lanes_.selectPostIt(*clickedPostIt);
-    } else if (doubleClicked) {
-        lanes_.selectMachine(*doubleClicked);
+    } else if (openMachine) {
+        lanes_.up();  // "Start the Machine": no Puzzle
         chosen = entryFile();
     } else if (clickedMachine) {
         lanes_.selectMachine(*clickedMachine);
-    } else if (clickedLive) {
-        lanes_.up();
     }
     if (lanes_.machine() != machineBefore || lanes_.postIt() != postItBefore ||
         lanes_.lane() != laneBefore) {

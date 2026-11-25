@@ -131,13 +131,15 @@ private:
     MachineList list_;
     LauncherLanes lanes_;
     Glide machines_;
-    // A drag on the Machines' lane (P8f): the picture it began on and its width (a share of the
-    // lane's); the pictures follow it, and the release selects the nearest Machine.
+    // A drag on the Machines' lane (P8f), from anywhere above the wood: the selected picture and
+    // its width (a share of the lane's); the pictures follow it, and the release selects the
+    // nearest Machine, or the next one its way past kSwipe.
     struct LaneDrag {
         std::size_t picture;
         double share;
     };
     std::optional<LaneDrag> laneDrag_;
+    bool pressTop_ = false;  // the left button went down above the wood: maybe the lane's drag
     Glide postIts_{0, 0, 0.5};
     std::size_t rowMachine_ = 0;     // whose post-its the row's scroll is for
     std::vector<float> noteScroll_;  // each post-it's text scrolled, px (a long brief)
