@@ -57,11 +57,14 @@ target_link_libraries(bw_ui PRIVATE bw_session bw_machine bw_manual bw_runner bw
 # The web build (the `web` preset): the frame loops kept, the browser given its turn in
 # GpuRender::present (ASYNCIFY); the Runner's threads as Web Workers (shared memory: the page
 # cross-origin isolated, web/coi-serviceworker.js); the Machines and datasheets packed into the
-# page's file system at /machines and /datasheets, without their development files.
+# page's file system at /machines and /datasheets, without their development files. At most 1 GB
+# of memory (2 GB by default): the shared memory is reserved whole at start, and iOS Safari
+# failed to start on a reload while the page before still held its 2 GB (2026-11-25); about
+# 250 MB used at most (a BW-2001 Random fault).
 if(EMSCRIPTEN)
   set_target_properties(bw_ui PROPERTIES SUFFIX ".html")
   target_link_options(bw_ui PRIVATE
-    -sASYNCIFY -sASYNCIFY_IGNORE_INDIRECT -sPTHREAD_POOL_SIZE=12 -sALLOW_MEMORY_GROWTH
+    -sASYNCIFY -sASYNCIFY_IGNORE_INDIRECT -sPTHREAD_POOL_SIZE=12 -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=1GB
     -sSTACK_SIZE=8MB -sENVIRONMENT=web,worker
     "SHELL:--shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html"
     "SHELL:--preload-file ${PROJECT_SOURCE_DIR}/machines@/machines"

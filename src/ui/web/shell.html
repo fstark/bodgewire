@@ -47,11 +47,13 @@
 </div>
 <script>
   const status = document.getElementById('status');
+  let stopped = false;
   var Module = {
     canvas: document.getElementById('canvas'),
     // bw_ui's command line from the address: ?arg=/machines/070-tennis/tennis.bwn
     arguments: new URLSearchParams(location.search).getAll('arg'),
     setStatus(text) {
+      if (stopped) return;  // the error stays: the download's progress would hide it
       status.textContent = text;
       status.style.display = text ? 'flex' : 'none';
     },
@@ -61,7 +63,15 @@
   if (window.crossOriginIsolated === false && !window.isSecureContext) {
     Module.setStatus('Bodgewire needs HTTPS (or localhost) to run its threads.');
   }
-  window.addEventListener('error', () => Module.setStatus('Bodgewire stopped: see the console.'));
+  // An error at start (memory refused, a failed compile) shown on the page, where a tablet with no
+  // console can read it, and kept.
+  const stop = (why) => {
+    if (stopped) return;
+    Module.setStatus('Bodgewire stopped: ' + (why || 'see the console.'));
+    stopped = true;
+  };
+  window.addEventListener('error', (e) => stop(e.error?.message || e.message));
+  window.addEventListener('unhandledrejection', (e) => stop(e.reason?.message || String(e.reason)));
 
   // A finger as the main pointer (phones, tablets, an iPad that says it is a Mac), or ?mobile to
   // see the notice on a desktop. Once per tab: the service worker's reload does not ask again.
