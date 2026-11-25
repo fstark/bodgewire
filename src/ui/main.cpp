@@ -7,6 +7,7 @@
 #include <deque>
 #include <filesystem>
 #include <format>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <print>
@@ -54,6 +55,7 @@
 #include "ui/manual_window.hpp"
 #include "ui/matrix_keyboard_window.hpp"
 #include "ui/meter_window.hpp"
+#include "ui/progress_store.hpp"
 #include "ui/question_popup.hpp"
 #include "ui/scope_window.hpp"
 #include "ui/shelf.hpp"
@@ -211,7 +213,8 @@ struct BenchResult {
 
 BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& loaded,
                      Session& session, const Options& options, ImFont* legends, ImFont* petLegends,
-                     const MachineList* list) {  // nullptr: no machines/ to go back to
+                     const MachineList* list,  // nullptr: no machines/ to go back to
+                     const std::function<void()>& repaired) {  // at the tick: saved (P8e)
     ResetBench();
     TvView view(gpu.tvTexture());
     Shelf shelf;
@@ -280,6 +283,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         nextLabel = "Another random fault";
     }
     RepairAck ack(session.puzzle());
+    bool wasTicked = false;
     ThankYouCard card;
     bool cardDue = false;                            // waits for any open question to be answered
     std::optional<std::filesystem::path> following;  // the card's Next
@@ -438,6 +442,10 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
             session.completed(), session.powered(), session.powerOns(),
             std::chrono::duration<double>(std::chrono::steady_clock::now() - benchStart).count());
         cardDue = ack.takeCard() || cardDue;
+        if (ack.ticked() && !wasTicked && repaired) {
+            repaired();
+        }
+        wasTicked = ack.ticked();
         applyKeys();
         while (SDL_PollEvent(&event)) {
             const bool keyDown = event.type == SDL_EVENT_KEY_DOWN;
@@ -1005,6 +1013,10 @@ int main(int argc, char** argv) {
         return kExitErrors;
     }
 
+    // Saved progress (P8e): the Puzzles repaired, kept across launches.
+    ProgressStore store = ProgressStore::For(options);
+    Progress progress = store.load();
+
     int exitCode = 0;
     std::optional<Options> benchOptions;  // the bench's flags: the command line's for its file
     if (loaded) {
@@ -1080,11 +1092,18 @@ int main(int argc, char** argv) {
         }
         SDL_SetWindowTitle(window, ("Bodgewire \u2014 " + loaded->title).c_str());
         BenchResult result{};
+        const std::optional<std::string> key =
+            machinesDir ? ProgressKey(launcher.list(), *benchOptions->file) : std::nullopt;
+        const auto repaired = [&] {
+            if (key && !progress.has(*key)) {
+                store.add(progress, *key);
+            }
+        };
         {
             ImGuiScreen screen(window, *gpu);
             result =
                 RunBench(window, *gpu, *loaded, *loaded->session, *benchOptions, screen.legends(),
-                         screen.petLegends(), machinesDir ? &launcher.list() : nullptr);
+                         screen.petLegends(), machinesDir ? &launcher.list() : nullptr, repaired);
         }
         left = *benchOptions->file;
         loaded.reset();
