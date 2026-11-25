@@ -86,6 +86,11 @@ struct Options {
     std::optional<std::uint64_t> seed;
     // --make, with --select of a .bwr: the Launcher starts making its Random fault at once.
     bool make = false;
+    // --progress FILE: the player's saved progress kept there (P8e), not in SDL's pref path; a
+    // --screenshot run without it reads and writes none.
+    std::optional<std::filesystem::path> progress;
+    // --forget, the launcher only: its question "Forget every repaired Puzzle?" open at start.
+    bool forget = false;
     BenchOptions bench;  // the file's bench; a visited one starts plain
 };
 

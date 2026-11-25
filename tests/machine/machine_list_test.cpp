@@ -1,13 +1,13 @@
 #include "machine/machine_list.hpp"
 
 #include <filesystem>
-#include <fstream>
 #include <string>
 #include <string_view>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include "../paths.hpp"
+#include "../temp_files.hpp"
 
 using namespace bw;
 
@@ -15,10 +15,7 @@ namespace {
 
 namespace fs = std::filesystem;
 
-void WriteFile(const fs::path& path, std::string_view text) {
-    fs::create_directories(path.parent_path());
-    std::ofstream(path) << text;
-}
+using test::WriteFile;
 
 }  // namespace
 

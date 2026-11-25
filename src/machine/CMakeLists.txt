@@ -7,6 +7,7 @@ add_library(bw_machine STATIC
   machine.cpp
   machine_list.cpp
   press.cpp
+  progress.cpp
   puzzle.cpp
   repair.cpp
   typing.cpp

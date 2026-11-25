@@ -1,5 +1,6 @@
 #include "view/bench_options.hpp"
 
+#include <filesystem>
 #include <initializer_list>
 #include <string_view>
 #include <vector>
@@ -132,4 +133,21 @@ TEST_CASE("bench options: --make without --select", "[view]") {
     CHECK(Parse({"--select", "m/puzzles/01-x.bwp", "--make"}).error().empty());  // not a .bwr
     CHECK(Parse({"m/puzzles/random.bwr", "--make"}).error().empty());            // a bench
     CHECK(Parse({"--select", "m/puzzles/random.bwr", "--seed", "4"}).error().empty());
+}
+
+TEST_CASE("bench options: --progress", "[view]") {
+    // The player's saved progress in a file of the agent's (P8e), with or without a bench.
+    CHECK(Parse({"--progress", "/tmp/p.txt"})->progress == std::filesystem::path("/tmp/p.txt"));
+    CHECK(Parse({"m.bwp", "--progress", "/tmp/p.txt"})->progress ==
+          std::filesystem::path("/tmp/p.txt"));
+    CHECK_FALSE(Parse({})->progress.has_value());
+    CHECK(Parse({"--progress"}).error().empty());
+}
+
+TEST_CASE("bench options: --forget", "[view]") {
+    // The Launcher's forget question open at start (P8e): the launcher only.
+    CHECK(Parse({"--forget", "--screenshot", "a.png"})->forget);
+    CHECK_FALSE(Parse({})->forget);
+    CHECK(Parse({"m.bwp", "--forget"}).error().empty());
+    CHECK(Parse({"--visit", "m.bwp", "--forget", "--screenshot", "a.png"}).error().empty());
 }

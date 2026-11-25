@@ -198,6 +198,16 @@ const std::array kFlags{
              o.make = true;
              return {};
          }},
+    Flag{"--progress", "FILE", true,
+         [](Options& o, std::string_view v) -> Result {
+             o.progress = v;
+             return {};
+         }},
+    Flag{"--forget", "", true,
+         [](Options& o, std::string_view) -> Result {
+             o.forget = true;
+             return {};
+         }},
     Flag{"--seed", "N", true,
          [](Options& o, std::string_view v) -> Result {
              std::uint64_t seed = 0;
@@ -478,7 +488,8 @@ std::expected<Options, std::string> ParseOptions(std::span<const std::string_vie
         (!options.visit.empty() && options.file) ||
         (!options.visit.empty() && !options.screenshot) || (bench.leave && bench.ask) ||
         (bench.reset && (bench.leave || bench.ask)) ||
-        (options.select && (options.file || !options.visit.empty()))) {
+        (options.select && (options.file || !options.visit.empty())) ||
+        (options.forget && (options.file || !options.visit.empty()))) {
         return std::unexpected(std::string());
     }
     // A Random fault's (P8d): its seed needs a Vetting Script to make one for, its Give up page

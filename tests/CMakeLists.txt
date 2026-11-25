@@ -40,6 +40,7 @@ add_executable(bw_tests
   machine/typing_test.cpp
   machine/vetting_script_test.cpp
   machine/press_test.cpp
+  machine/progress_test.cpp
   machine/puzzle_test.cpp
   machine/repair_test.cpp
   manual/manual_test.cpp
