@@ -566,7 +566,7 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
     }
 
     // The wheel, up/down or sideways, moves the lane under the pointer by one: a notch (or a
-    // trackpad's swipe adding up to one) up or left, the previous Machine or post-it; down or
+    // trackpad's swipe adding up to one) down or left, the previous Machine or post-it; up or
     // right, the next. Then it is not heard for kWheelQuiet: a trackpad's swipe and its momentum
     // would otherwise run through the whole list.
     const ImGuiIO& io = ImGui::GetIO();
@@ -587,7 +587,7 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         return notches > 0 ? 1 : -1;
     };
     if (io.MousePos.y < laneBottom) {
-        if (const int by = wheelStep(-io.MouseWheel - io.MouseWheelH); by != 0) {
+        if (const int by = wheelStep(io.MouseWheel - io.MouseWheelH); by != 0) {
             const long to = static_cast<long>(lanes_.machine()) + by;
             lanes_.selectMachine(static_cast<std::size_t>(
                 std::clamp(to, 0L, static_cast<long>(list_.machines.size()) - 1)));
@@ -993,7 +993,7 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
     // The wheel on the wood: the next or previous post-it (up or down over a long brief scrolls
     // its text instead; sideways still moves).
     if (noteDrag_ == NoteDrag::None && io.MousePos.y >= laneBottom) {
-        const float wheel = -io.MouseWheelH - (wheelOnText ? 0 : io.MouseWheel);
+        const float wheel = -io.MouseWheelH + (wheelOnText ? 0 : io.MouseWheel);
         if (const int by = wheelStep(wheel); by != 0) {
             const long to = static_cast<long>(lanes_.postIt()) + by;
             lanes_.selectPostIt(
