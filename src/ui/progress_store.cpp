@@ -17,13 +17,14 @@ namespace bw {
 
 namespace {
 
+// clang-format off: JavaScript (it would split ===)
 EM_JS_DEPS(bw_progress, "$stringToNewUTF8,$UTF8ToString");
 
 // localStorage's text, malloc'ed (the caller frees it); 0 when absent or not allowed.
 EM_JS(char*, BwProgressGet, (), {
     try {
         const text = localStorage.getItem("bodgewire.progress");
-        return text == = null ? 0 : stringToNewUTF8(text);
+        return text === null ? 0 : stringToNewUTF8(text);
     } catch (e) {
         return 0;
     }
@@ -38,6 +39,7 @@ EM_JS(int, BwProgressSet, (const char* text), {
         return 0;
     }
 });
+// clang-format on
 
 }  // namespace
 

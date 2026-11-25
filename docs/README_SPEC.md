@@ -68,7 +68,8 @@ back on. 114 Puzzles on 14 Machines, from a five-chip LED blinker to copies of t
 `machines/*/` at each regeneration.
 
 Then the launcher picture (`launcher`): each Machine with its paragraph, and a post-it per Puzzle.
-One sentence on the last post-it, "Random fault": a fault picked at random each time it is
+One sentence: a repaired Puzzle's post-it keeps its tick on the launcher, from one launch to the
+next. One sentence on the last post-it, "Random fault": a fault picked at random each time it is
 opened, checked to show before the bench opens; no count for those.
 
 ### 6. A repair, step by step
