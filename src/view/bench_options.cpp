@@ -137,6 +137,24 @@ std::optional<TimeView> ParseView(std::string_view text) {
     return CentredOn(*perDivision, *centre);
 }
 
+// "640:400:3": `count` numbers, a sign allowed.
+std::optional<std::vector<float>> ParseNumbers(std::string_view text, std::size_t count) {
+    const auto fields = Split(text, ':');
+    if (fields.size() != count) {
+        return std::nullopt;
+    }
+    std::vector<float> numbers;
+    for (const std::string_view field : fields) {
+        float value = 0;
+        const char* last = field.data() + field.size();
+        if (field.empty() || std::from_chars(field.data(), last, value).ptr != last) {
+            return std::nullopt;
+        }
+        numbers.push_back(value);
+    }
+    return numbers;
+}
+
 using Result = std::expected<void, std::string>;
 
 Result Bad() { return std::unexpected(std::string()); }
@@ -425,6 +443,70 @@ const std::array kFlags{
     Flag{"--debug", "", false,
          [](Options& o, std::string_view) -> Result {
              o.bench.debug = true;
+             return {};
+         }},
+    Flag{"--touch", "", true,
+         [](Options& o, std::string_view) -> Result {
+             o.touch = true;
+             return {};
+         }},
+    Flag{"--tap", "X:Y,...", true,
+         [](Options& o, std::string_view v) -> Result {
+             o.touch = true;
+             return Each(o.fingers, v, [](std::string_view item) -> std::optional<FingerScript> {
+                 const auto n = ParseNumbers(item, 2);
+                 return n ? std::optional(FingerScript{FingerScript::Kind::Tap, (*n)[0], (*n)[1]})
+                          : std::nullopt;
+             });
+         }},
+    Flag{"--double-tap", "X:Y", true,
+         [](Options& o, std::string_view v) -> Result {
+             const auto n = ParseNumbers(v, 2);
+             if (!n) {
+                 return Bad();
+             }
+             o.touch = true;
+             o.fingers.push_back({FingerScript::Kind::DoubleTap, (*n)[0], (*n)[1]});
+             return {};
+         }},
+    Flag{"--hold", "X:Y", true,
+         [](Options& o, std::string_view v) -> Result {
+             const auto n = ParseNumbers(v, 2);
+             if (!n) {
+                 return Bad();
+             }
+             o.touch = true;
+             o.fingers.push_back({FingerScript::Kind::Hold, (*n)[0], (*n)[1]});
+             return {};
+         }},
+    Flag{"--drag", "X:Y:DX:DY", true,
+         [](Options& o, std::string_view v) -> Result {
+             const auto n = ParseNumbers(v, 4);
+             if (!n) {
+                 return Bad();
+             }
+             o.touch = true;
+             o.fingers.push_back(
+                 {FingerScript::Kind::Drag, (*n)[0], (*n)[1], (*n)[2], (*n)[3]});
+             return {};
+         }},
+    Flag{"--pinch", "X:Y:FACTOR", true,
+         [](Options& o, std::string_view v) -> Result {
+             const auto n = ParseNumbers(v, 3);
+             if (!n || (*n)[2] <= 0) {
+                 return Bad();
+             }
+             o.touch = true;
+             o.fingers.push_back({FingerScript::Kind::Pinch, (*n)[0], (*n)[1], 0, 0, (*n)[2]});
+             return {};
+         }},
+    Flag{"--window", "W:H", true,
+         [](Options& o, std::string_view v) -> Result {
+             const auto n = ParseNumbers(v, 2);
+             if (!n || (*n)[0] < 320 || (*n)[1] < 240) {
+                 return Bad();
+             }
+             o.window = std::pair{static_cast<int>((*n)[0]), static_cast<int>((*n)[1])};
              return {};
          }},
     Flag{"--screenshot", "OUT.png", true,

@@ -18,6 +18,7 @@
 
 #include "board/copper.hpp"
 #include "ui/keycap.hpp"
+#include "ui/touch.hpp"
 #include "view/digit_shape.hpp"
 
 namespace bw {
@@ -1116,6 +1117,15 @@ void BoardView::input(ImVec2 origin) {
     const ScreenPoint mouse{io.MousePos.x - origin.x, io.MousePos.y - origin.y};
     const bool hoveredPanel = ImGui::IsWindowHovered();
 
+    if (Touch().cancelled) {
+        // A second finger (P8f): the press under way is void; its release finds nothing pressed.
+        pressed_ = false;
+        dragging_ = false;
+        wirePress_.reset();
+        cornerPressed_ = false;
+        windowPressed_.reset();
+        held_.reset();
+    }
     if (pressed_) {
         if (!dragging_ && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
             dragging_ = true;

@@ -18,6 +18,7 @@
 #include "sim/time.hpp"
 #include "view/bench_places.hpp"
 #include "view/binder.hpp"
+#include "view/fingers.hpp"
 #include "view/focus.hpp"
 #include "view/memory_contents.hpp"
 #include "view/pencil_marks.hpp"
@@ -91,6 +92,13 @@ struct Options {
     std::optional<std::filesystem::path> progress;
     // --forget, the launcher only: its question "Forget every repaired Puzzle?" open at start.
     bool forget = false;
+    // --touch: the mouse stands in for one finger (P8f), on the Launcher and every bench.
+    bool touch = false;
+    // --tap, --double-tap, --hold, --drag, --pinch: scripted fingers on the first screen, in the
+    // flags' order (window px; ScriptEvents gives their times); each also sets `touch`.
+    std::vector<FingerScript> fingers;
+    // --window W:H: the main window's size (a tablet's: 1180:820), not 1280 × 800.
+    std::optional<std::pair<int, int>> window;
     BenchOptions bench;  // the file's bench; a visited one starts plain
 };
 

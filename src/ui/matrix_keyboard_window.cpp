@@ -15,6 +15,7 @@
 #include "ui/bench.hpp"
 #include "ui/instrument_marks.hpp"
 #include "ui/pet_graphics.hpp"
+#include "ui/touch.hpp"
 #include "view/matrix_keyboard_layout.hpp"
 
 namespace bw {
@@ -273,6 +274,8 @@ void MatrixKeyboardWindow::draw(bool& open, Session& session, MatrixCapture& cap
         ImGui::End();
         return;
     }
+    TouchTypingZone();  // two fingers here type (P8f)
+    const NoFingerPadding keys;
     SharpFont(legends_);
     SharpFont(petLegends_);
     if (capture.kind == KeyMatrixKind::Bw80) {

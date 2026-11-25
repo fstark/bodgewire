@@ -12,6 +12,7 @@
 #include "ui/bench.hpp"
 #include "ui/instrument_marks.hpp"
 #include "ui/keycap.hpp"
+#include "ui/touch.hpp"
 
 namespace bw {
 
@@ -66,6 +67,8 @@ void KeyboardWindow::draw(bool& open, Session& session, KeyboardCapture& capture
         ImGui::End();
         return;
     }
+    TouchTypingZone();  // two fingers here type (P8f)
+    const NoFingerPadding keys;
     SharpFont(legends_);
     drawCaps(session, capture);
     if (CaseClose()) {

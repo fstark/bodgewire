@@ -151,3 +151,37 @@ TEST_CASE("bench options: --forget", "[view]") {
     CHECK(Parse({"m.bwp", "--forget"}).error().empty());
     CHECK(Parse({"--visit", "m.bwp", "--forget", "--screenshot", "a.png"}).error().empty());
 }
+
+TEST_CASE("bench options: --touch and the scripted fingers", "[view]") {
+    const auto plain = Parse({"--touch"});  // the Launcher takes it
+    REQUIRE(plain.has_value());
+    CHECK(plain->touch);
+    CHECK(plain->fingers.empty());
+    const auto scripted = Parse({"m.bwp", "--tap", "100:200,30.5:40", "--double-tap", "5:6",
+                                 "--hold", "7:8", "--drag", "10:20:0:-80", "--pinch", "640:400:3"});
+    REQUIRE(scripted.has_value());
+    CHECK(scripted->touch);  // a scripted finger is a finger
+    using Kind = FingerScript::Kind;
+    CHECK(scripted->fingers ==
+          std::vector{FingerScript{Kind::Tap, 100, 200}, FingerScript{Kind::Tap, 30.5f, 40},
+                      FingerScript{Kind::DoubleTap, 5, 6}, FingerScript{Kind::Hold, 7, 8},
+                      FingerScript{Kind::Drag, 10, 20, 0, -80},
+                      FingerScript{Kind::Pinch, 640, 400, 0, 0, 3}});
+    CHECK(Parse({"m.bwp", "--tap", "100"}).error().empty());
+    CHECK(Parse({"m.bwp", "--tap", "100:x"}).error().empty());
+    CHECK(Parse({"m.bwp", "--drag", "1:2:3"}).error().empty());
+    CHECK(Parse({"m.bwp", "--pinch", "1:2:0"}).error().empty());  // no factor of 0
+    CHECK_FALSE(Parse({"m.bwp"})->touch);
+}
+
+TEST_CASE("bench options: --window", "[view]") {
+    const auto tablet = Parse({"--window", "1180:820"});
+    REQUIRE(tablet.has_value());
+    CHECK(tablet->window == std::pair{1180, 820});
+    CHECK_FALSE(Parse({})->window.has_value());
+    CHECK(Parse({"--window", "1180"}).error().empty());
+    CHECK(Parse({"--window", "100:100"}).error().empty());  // too small to hold the bench
+    const std::string usage = Usage();
+    CHECK(usage.contains("[--touch] [--tap X:Y,...] [--double-tap X:Y] [--hold X:Y]"));
+    CHECK(usage.contains("[--drag X:Y:DX:DY] [--pinch X:Y:FACTOR] [--window W:H]"));
+}

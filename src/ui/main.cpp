@@ -62,6 +62,7 @@
 #include "ui/thank_you_card.hpp"
 #include "ui/title.hpp"
 #include "ui/tool_click.hpp"
+#include "ui/touch.hpp"
 #include "ui/tv_view.hpp"
 #include "ui/tv_window.hpp"
 #include "ui/window_order.hpp"
@@ -213,9 +214,11 @@ struct BenchResult {
 
 BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& loaded,
                      Session& session, const Options& options, ImFont* legends, ImFont* petLegends,
-                     const MachineList* list,  // nullptr: no machines/ to go back to
-                     const std::function<void()>& repaired) {  // at the tick: saved (P8e)
+                     const MachineList* list,                // nullptr: no machines/ to go back to
+                     const std::function<void()>& repaired,  // at the tick: saved (P8e)
+                     std::span<const FingerScript> fingers) {  // scripted, this screen's (P8f)
     ResetBench();
+    TouchStart(window, options.touch, fingers);
     TvView view(gpu.tvTexture());
     Shelf shelf;
     Focus focus;  // the focus owner, and what is out on the bench
@@ -448,6 +451,9 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         wasTicked = ack.ticked();
         applyKeys();
         while (SDL_PollEvent(&event)) {
+            if (TouchEvent(event)) {
+                continue;  // a finger's: the one pointer comes from TouchNewFrame (P8f)
+            }
             const bool keyDown = event.type == SDL_EVENT_KEY_DOWN;
             const bool keyUpDown = keyDown || event.type == SDL_EVENT_KEY_UP;
             // Cmd combinations are the app's (quit, the windows), but the matrix keyboard's paste.
@@ -512,6 +518,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
         const double speedRatio = ratio.update(status.simTime);
 
         gpu.newFrame();
+        TouchNewFrame();
         ImGui::NewFrame();
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         OnBench();
@@ -824,8 +831,10 @@ struct LauncherResult {
 // The launcher's frames (P7a), until an entry is clicked, the window closed, or --screenshot
 // taken --after it shows (with the live run's speed line, P7b).
 LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen& screen,
-                           Launcher& launcher, const Options& options) {
+                           Launcher& launcher, const Options& options,
+                           std::span<const FingerScript> fingers) {
     SDL_SetWindowTitle(window, "Bodgewire");
+    TouchStart(window, options.touch, fingers);
     TvView view(gpu.tvTexture());
     SpeedRatio ratio;
     double speedRatio = 0;
@@ -843,6 +852,9 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
         clock.frameStarts();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+            if (TouchEvent(event)) {
+                continue;
+            }
             ImGui_ImplSDL3_ProcessEvent(&event);
             if (event.type == SDL_EVENT_QUIT ||
                 (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
@@ -851,6 +863,7 @@ LauncherResult RunLauncher(SDL_Window* window, GpuRender& gpu, const ImGuiScreen
             }
         }
         gpu.newFrame();
+        TouchNewFrame();
         ImGui::NewFrame();
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -996,12 +1009,14 @@ int main(int argc, char** argv) {
         return kExitUsage;
     }
 
+    TouchInit();
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         return kExitErrors;
     }
-    SDL_Window* window =
-        SDL_CreateWindow("Bodgewire", kWindowWidth, kWindowHeight, GpuRender::windowFlags());
+    SDL_Window* window = SDL_CreateWindow(
+        "Bodgewire", options.window ? options.window->first : kWindowWidth,
+        options.window ? options.window->second : kWindowHeight, GpuRender::windowFlags());
     if (window == nullptr) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         SDL_Quit();
@@ -1029,6 +1044,8 @@ int main(int argc, char** argv) {
     // The last bench's file: its entry selected; at start --select's (P7b).
     std::optional<std::filesystem::path> left = options.select;
     std::optional<std::filesystem::path> next;  // the Thank-you Card's Next (P8c)
+    // The scripted fingers (P8f) are the first screen's: taken once.
+    std::span<const FingerScript> fingers = options.fingers;
     while (true) {
         if (!loaded) {
             std::filesystem::path file;
@@ -1058,7 +1075,8 @@ int main(int argc, char** argv) {
                     launcher.make();
                 }
                 ImGuiScreen screen(window, *gpu);
-                LauncherResult chosen = RunLauncher(window, *gpu, screen, launcher, options);
+                LauncherResult chosen = RunLauncher(window, *gpu, screen, launcher, options,
+                                                    std::exchange(fingers, {}));
                 launcher.stop();  // the live run's Session ends before the bench's Load
                 if (!chosen.choice) {
                     exitCode = chosen.exitCode != 0 ? chosen.exitCode : exitCode;
@@ -1090,6 +1108,7 @@ int main(int argc, char** argv) {
             benchOptions = Options{};
             benchOptions->file = file;
             benchOptions->machines = options.machines;
+            benchOptions->touch = options.touch;  // a finger stays a finger (P8f)
             if (visiting) {
                 benchOptions->visitFor = options.after;
             }
@@ -1107,7 +1126,8 @@ int main(int argc, char** argv) {
             ImGuiScreen screen(window, *gpu);
             result =
                 RunBench(window, *gpu, *loaded, *loaded->session, *benchOptions, screen.legends(),
-                         screen.petLegends(), machinesDir ? &launcher.list() : nullptr, repaired);
+                         screen.petLegends(), machinesDir ? &launcher.list() : nullptr, repaired,
+                         std::exchange(fingers, {}));
         }
         left = *benchOptions->file;
         loaded.reset();

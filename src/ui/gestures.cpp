@@ -5,12 +5,14 @@
 #include <imgui.h>
 
 #include "ui/instrument_marks.hpp"
+#include "ui/touch.hpp"
+#include "view/fingers.hpp"
 
 namespace bw {
 
 namespace {
 
-constexpr float kClickSlop = 3;      // px a press may move and still be a click
+constexpr float kClickSlop = 3;      // px a mouse's press may move and still be a click
 constexpr double kDragTurn = 200;    // px of vertical drag for a whole turn
 constexpr double kWheelStep = 0.01;  // turn per wheel notch
 
@@ -36,14 +38,15 @@ TimeCanvasInput TimeCanvas::read(float width, int divisions) {
     }
     if (ImGui::IsItemActive()) {
         input.dragStep = io.MouseDelta.x;
-        moved_ = moved_ || std::abs(x - pressX_) > kClickSlop;
+        // The slop is the pointer's (P8f): a finger's tap slides more than a mouse's click.
+        moved_ = moved_ || std::abs(x - pressX_) > (FingerPointer() ? kTapSlop : kClickSlop);
         if (moved_) {
             input.dragFromPress = x - pressX_;
         }
     }
     if (ImGui::IsItemDeactivated()) {
         input.released = true;
-        if (!moved_) {
+        if (!moved_ && !Touch().cancelled) {  // a second finger's cancel sets no Marker
             input.marker = x;
         }
     }

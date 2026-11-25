@@ -7,6 +7,7 @@ add_library(bw_view STATIC
   board_scene.cpp
   chip_body.cpp
   digit_shape.cpp
+  fingers.cpp
   flip_corner.cpp
   focus.cpp
   launcher_lanes.cpp

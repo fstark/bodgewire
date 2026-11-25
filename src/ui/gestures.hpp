@@ -6,7 +6,7 @@ namespace bw {
 
 // What the player did this frame on a time canvas (the Oscilloscope's screen, the Logic
 // Analyzer's lanes), read from the item just submitted (an InvisibleButton): the gestures both
-// windows share, so another input (touch, docs/mobile/MOBILE.md) lands in one place. Positions
+// windows share, so another input (touch, docs/p8f-touch/TOUCH.md) lands in one place. Positions
 // are screen px.
 struct TimeCanvasInput {
     std::optional<float> hover;  // under the pointer; nullopt off the canvas

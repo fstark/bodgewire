@@ -14,7 +14,7 @@ ctest --preset release -j -R "^(fingers|number pad|view|time view|bench options|
 
 | Phase | Description | Commit |
 |---|---|---|
-| 0 | Spec, design and plan, reviewed | |
+| 0 | Spec, design and plan, reviewed | `d2f8eda` |
 | 1 | Plumbing: the fingers, their glue, `--touch` and the scripted fingers | |
 | 2 | The Board's zoom and picks; the view buttons; `/touch/` on Pages | |
 | 3 | What has no control today: Stop, Hold, the cursor, the flag, pin / bus | |
@@ -156,4 +156,9 @@ Fence:
 
 ## Implementation notes
 
-(As phases land.)
+Phase 1:
+
+- The glue's `TouchNewFrame` runs after the backend's `NewFrame` and tells ImGui its pointer again every frame while the fingers have it: on a desktop the SDL3 backend queues the real cursor's place each frame. With that, a scripted tap gives the same screenshot wherever the real mouse is.
+- A scripted finger turns `--touch` on, so the real mouse cannot take the pointer back during a shot (its motion with no button is dropped).
+- A scripted pinch's fingers start 200 px apart (the design said 60): the 10 px they must pass first then costs 5 % of the factor, not 17 %.
+- The keyboard's check is a `--hold` on a key, not two taps: the BW-2001 runs at about a third of real time here, so a 50 ms tap is 16 ms for the Machine, under its keyboard scan. A quick tap on a key of a slow Machine can be missed, with the mouse as with a finger; on an iPad, slower still, it will matter. To look at with the devices (phase 3).
