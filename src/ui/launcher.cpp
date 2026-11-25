@@ -16,6 +16,7 @@
 #include "ui/board_tags.hpp"
 #include "ui/brief_window.hpp"
 #include "ui/controls.hpp"
+#include "ui/instrument_marks.hpp"
 #include "ui/manual_view.hpp"
 #include "ui/shelf.hpp"
 #include "ui/title.hpp"
@@ -53,6 +54,7 @@ constexpr float kChevron = 18;                                   // px tall
 constexpr float kChevronGap = 10;                                // px outside the picture
 constexpr float kChevronHit = 44;                                // px: a chevron's item (P8f)
 constexpr double kSwipe = 0.1;  // of the way to the next Machine: a drag let go moves on to it
+constexpr float kWheelQuiet = 0.15f;  // s after a wheel's step: the wheel not heard (a trackpad)
 constexpr auto kSettle = std::chrono::milliseconds(150);  // the selection at rest: load it
 constexpr ImU32 kName = IM_COL32(235, 235, 235, 255);
 constexpr ImU32 kParagraph = IM_COL32(200, 200, 205, 255);
@@ -563,6 +565,35 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         }
     }
 
+    // The wheel, up/down or sideways, moves the lane under the pointer by one: a notch (or a
+    // trackpad's swipe adding up to one) up or left, the previous Machine or post-it; down or
+    // right, the next. Then it is not heard for kWheelQuiet: a trackpad's swipe and its momentum
+    // would otherwise run through the whole list.
+    const ImGuiIO& io = ImGui::GetIO();
+    wheelQuiet_ = std::max(0.0f, wheelQuiet_ - io.DeltaTime);
+    const bool wheelOn = !making_ && !made && !asking && !laneDrag_ &&
+                         ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    const auto wheelStep = [&](float wheel) {  // -1, 0 or 1
+        if (!wheelOn || wheelQuiet_ > 0) {
+            wheelRest_ = 0;
+            return 0;
+        }
+        const int notches = WheelNotches(wheel, wheelRest_);
+        if (notches == 0) {
+            return 0;
+        }
+        wheelRest_ = 0;
+        wheelQuiet_ = kWheelQuiet;
+        return notches > 0 ? 1 : -1;
+    };
+    if (io.MousePos.y < laneBottom) {
+        if (const int by = wheelStep(-io.MouseWheel - io.MouseWheelH); by != 0) {
+            const long to = static_cast<long>(lanes_.machine()) + by;
+            lanes_.selectMachine(static_cast<std::size_t>(
+                std::clamp(to, 0L, static_cast<long>(list_.machines.size()) - 1)));
+        }
+    }
+
     const float dt = ImGui::GetIO().DeltaTime;
     if (jump_) {
         machines_.jump(static_cast<double>(lanes_.machine()));
@@ -704,7 +735,6 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
             ImGui::SetCursorScreenPos(at);
             // A press that went past the drag threshold is no click, even let go on the frame
             // it got there (a quick flick on a slow frame).
-            const ImGuiIO& io = ImGui::GetIO();
             const bool moved = io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] >=
                                io.MouseDragThreshold * io.MouseDragThreshold;
             if (ImGui::InvisibleButton("##picture", picture) && !moved) {
@@ -876,8 +906,8 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
 
     const std::size_t selected = lanes_.postIt();
     std::optional<std::size_t> clickedPostIt;
+    bool wheelOnText = false;  // the pointer over a brief longer than its post-it
     // A press on the lane, which may become a drag (P8f).
-    const ImGuiIO& io = ImGui::GetIO();
     const bool pressedNow = clicksOn && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
                             ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
     if (pressedNow) {
@@ -897,7 +927,8 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         float& scroll = noteScroll_[k];
         if (overflow > 0 && ImGui::IsWindowHovered() &&
             ImGui::IsMouseHoveringRect(at, {at.x + kNoteWidth, at.y + noteHeight})) {
-            scroll -= ImGui::GetIO().MouseWheel * ImGui::GetFontSize() * 2;
+            scroll -= io.MouseWheel * ImGui::GetFontSize() * 2;
+            wheelOnText = true;
         }
         scroll = std::clamp(scroll, 0.0f, overflow);
         const bool ticked = k > 0 && k != randomAt && progress_ != nullptr &&
@@ -957,6 +988,17 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         rowFree_ = lanes_.postIt();
     } else if (noteDrag_ == NoteDrag::Text) {
         noteScroll_[*pressNote_] -= step.y;  // kept within the text at the next draw
+    }
+
+    // The wheel on the wood: the next or previous post-it (up or down over a long brief scrolls
+    // its text instead; sideways still moves).
+    if (noteDrag_ == NoteDrag::None && io.MousePos.y >= laneBottom) {
+        const float wheel = -io.MouseWheelH - (wheelOnText ? 0 : io.MouseWheel);
+        if (const int by = wheelStep(wheel); by != 0) {
+            const long to = static_cast<long>(lanes_.postIt()) + by;
+            lanes_.selectPostIt(
+                static_cast<std::size_t>(std::clamp(to, 0L, static_cast<long>(titles.size()) - 1)));
+        }
     }
 
     // Clicks, applied after the drawing (the frame shows what was there when clicked). A post-it

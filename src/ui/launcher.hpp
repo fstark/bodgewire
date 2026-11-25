@@ -140,6 +140,8 @@ private:
     };
     std::optional<LaneDrag> laneDrag_;
     bool pressTop_ = false;  // the left button went down above the wood: maybe the lane's drag
+    float wheelRest_ = 0;    // the wheel short of a notch (a trackpad's)
+    float wheelQuiet_ = 0;   // s: the wheel not heard after a step
     Glide postIts_{0, 0, 0.5};
     std::size_t rowMachine_ = 0;     // whose post-its the row's scroll is for
     std::vector<float> noteScroll_;  // each post-it's text scrolled, px (a long brief)
