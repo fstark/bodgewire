@@ -2,7 +2,7 @@
 
 Spec: [TOUCH.md](TOUCH.md). Design: [TOUCH_DESIGN.md](TOUCH_DESIGN.md).
 
-On the `touch` branch, in its own checkout (`.claude/worktrees/touch`); merged to `main` once it has worked on the user's iPad (the page under `/touch/`, rebuilt by `gh workflow run web.yml --ref main` after a push of `touch`). The unit tests that reach it:
+Built on the `touch` branch and tried on the user's iPad from the page under `/touch/`; merged to `main` on 2026-11-25, once it worked there. The unit tests that reach it:
 
 ```
 ctest --preset release -j -R "^(fingers|number pad|view|time view|bench options|bench places|binder|shelf layout|launcher lanes): "
@@ -20,7 +20,7 @@ ctest --preset release -j -R "^(fingers|number pad|view|time view|bench options|
 | 5 | The loupe and lit-first repairs | `5ea375a` |
 | 6 | Pages: drag to scroll, links at the release, "show" | `7842c2a` |
 | 7 | Objects and the Launcher: grip, pinch, fill, the drags, the narrow Shelf | `1187833` |
-| 8 | The web page's manifest, the turn notice; docs; the full suite; the row done | this commit |
+| 8 | The web page's manifest, the turn notice; docs; the full suite; the row done | `a2d78cb` |
 
 ## Implementation notes
 
@@ -90,5 +90,5 @@ Phase 8:
 - The turn notice is the app's own (a card on ImGui's foreground list over a dimmed screen), shown while a finger is the pointer and the window is taller than wide; it takes no input. A desktop window made tall with the mouse never shows it.
 - The page's notice is for phones only now (a coarse pointer and a screen under 600 px on its shorter side), reworded; `main`'s fix that keeps it in view over SDL's window (`ed63d1b`) comes with the merge.
 - `manifest.json` has no icon: a home screen shows the page's picture. An icon is for a later row.
-- Left for the user's iPad: whether the browser's fingers reach all of this (the three sittings), and every size here, which is a first setting. Left for a later row, as the spec's "Later" says: fingers that keep what they hold (two knobs at once), a glide after the Launcher's drags.
+- The user's check on the iPad (2026-11-25, after this phase): "it works very well", with a few rough edges not listed yet; the sizes here stay a first setting until they are. Left for a later row, as the spec's "Later" says: fingers that keep what they hold (two knobs at once), a glide after the Launcher's drags.
 
