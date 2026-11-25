@@ -273,26 +273,6 @@ void Simulator::powerOn(std::uint64_t seed) {
 void Simulator::runUntil(Time end) {
     Check(end >= now_, "simulator: runUntil into the past");
     const auto components = circuit_.components();
-    // The per-Pin, per-Net and per-Component arrays never resize during a run. Held in locals, so
-    // that the byte stores below (a uint8_t or a LogicValue may alias anything) do not make the
-    // compiler load every member again; the counters likewise, added to stats_ at the end.
-    NetState* const nets = nets_.data();
-    const NetId* const pinNet = pinNet_.data();
-    OutputState* const outputs = outputs_.data();
-    Driving* const driving = driving_.data();
-    const FanOut* const fanOut = fanOut_.data();
-    const std::uint32_t* const fanOutStart = fanOutStart_.data();
-    std::uint8_t* const componentDirty = componentDirty_.data();
-    const bool recording = !recorder_.nets().empty();  // only between runs does it change
-    std::uint64_t applied = 0, stale = 0, wakes = 0, evaluations = 0;
-    const auto markDirty = [&](ComponentId component) {
-        std::uint8_t& dirty = componentDirty[ToIndex(component)];
-        if (dirty == 0) {
-            dirty = 1;
-            dirtyComponents_.push_back(component);
-        }
-    };
-
     while (!queue_.empty() && queue_.nextTime() <= end) {
         now_ = queue_.nextTime();
 
@@ -301,39 +281,24 @@ void Simulator::runUntil(Time end) {
             const std::uint32_t target = KeyTarget(key);
             const std::uint32_t stamp = KeyStamp(key);
             if (StampIsWake(stamp)) {
-                markDirty(ComponentId{target});
-                ++wakes;
+                markComponentDirty(ComponentId{target});
+                ++stats_.wakes;
                 continue;
             }
-            OutputState& o = outputs[target];
+            OutputState& o = outputs_[target];
             if (StampGeneration(stamp) != o.generation) {
-                ++stale;
+                ++stats_.staleEvents;
                 continue;
             }
-            const LogicValue value = StampValue(stamp);
-            const NetId net = pinNet[target];
-            if ((o.current == LogicValue::Z) != (value == LogicValue::Z)) {  // countDriving
-                Driving& d = driving[ToIndex(net)];
-                if (value == LogicValue::Z) {
-                    --d.count;
-                    d.pinSum -= target;
-                } else {
-                    ++d.count;
-                    d.pinSum += target;
-                }
-            }
-            o.current = value;
+            countDriving(PinId{target}, o.current, StampValue(stamp));
+            o.current = StampValue(stamp);
             o.hasPending = false;
-            ++applied;
-            NetState& s = nets[ToIndex(net)];
-            if (!s.dirty) {
-                s.dirty = true;
-                dirtyNets_.push_back(net);
-            }
+            ++stats_.appliedEvents;
+            markNetDirty(pinNet_[target]);
         }
 
         for (const NetId net : dirtyNets_) {
-            NetState& s = nets[ToIndex(net)];
+            NetState& s = nets_[ToIndex(net)];
             if (s.networked) {
                 updateExternal(net, circuit_.networkPin(net), external_[ToIndex(net)]);
                 if (const PinId second = circuit_.secondNetworkPin(net);
@@ -345,11 +310,11 @@ void Simulator::runUntil(Time end) {
             // fast path that does not apply) is resolveNet itself, out of line.
             Resolution r;
             const PinId single = s.networked ? Circuit::kNoPin : circuit_.singleDriver(net);
-            if (single != Circuit::kNoPin && outputs[ToIndex(single)].current != LogicValue::Z) {
-                r = {outputs[ToIndex(single)].current, false};
+            if (single != Circuit::kNoPin && outputs_[ToIndex(single)].current != LogicValue::Z) {
+                r = {outputs_[ToIndex(single)].current, false};
             } else if (!s.networked && circuit_.isSharedNet(net) &&
-                       driving[ToIndex(net)].count == 1) {
-                r = {outputs[driving[ToIndex(net)].pinSum].current, false};
+                       driving_[ToIndex(net)].count == 1) {
+                r = {outputs_[driving_[ToIndex(net)].pinSum].current, false};
             } else {
                 r = resolveNet(net);
             }
@@ -363,7 +328,7 @@ void Simulator::runUntil(Time end) {
                 s.previous = s.value;
                 s.value = r.value;
                 s.changedAt = now_;
-                if (recording && recorder_.isRecording(net)) {
+                if (recorder_.isRecording(net)) {
                     recorder_.add(net, {now_, r.value, r.floating});
                 }
                 const std::uint8_t change =
@@ -371,14 +336,13 @@ void Simulator::runUntil(Time end) {
                     : s.previous == LogicValue::One && s.value == LogicValue::Zero ? kWakeOnFall
                                                                                    : kWakeOnOther;
                 const std::uint32_t n = ToIndex(net);
-                const std::uint32_t last = fanOutStart[n + 1];
-                for (std::uint32_t e = fanOutStart[n]; e < last; ++e) {
-                    const FanOut& f = fanOut[e];
+                for (std::uint32_t e = fanOutStart_[n]; e < fanOutStart_[n + 1]; ++e) {
+                    const FanOut& f = fanOut_[e];
                     if ((f.edges & change) && f.pins != 0) {
-                        markDirty(f.component);
+                        markComponentDirty(f.component);
                     }
                 }
-            } else if (recording && r.floating != wasFloating && recorder_.isRecording(net)) {
+            } else if (r.floating != wasFloating && recorder_.isRecording(net)) {
                 recorder_.add(net, {now_, r.value, r.floating});
             }
         }
@@ -386,19 +350,15 @@ void Simulator::runUntil(Time end) {
 
         // Evaluate phase: evaluations only schedule, so the dirty list is stable.
         for (const ComponentId id : dirtyComponents_) {
-            componentDirty[ToIndex(id)] = 0;
+            componentDirty_[ToIndex(id)] = 0;
             Component& component = *components[ToIndex(id)];
             EvalContext ctx(*this, component.firstPin(), id);
             component.evaluate(ctx);
-            ++evaluations;
+            ++stats_.evaluations;
         }
         dirtyComponents_.clear();
         changedNetworkPins_.clear();
     }
-    stats_.appliedEvents += applied;
-    stats_.staleEvents += stale;
-    stats_.wakes += wakes;
-    stats_.evaluations += evaluations;
     now_ = end;
 }
 
