@@ -45,8 +45,8 @@ void DrawGrid(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX
 }
 
 void DrawAxisLabels(ImDrawList& list, const TimeView& view, const std::vector<GridLine>& grid,
-                    const TimeToX& x, float y, float left, float right) {
-    const std::optional<Time> offScreenTrigger = OffScreenTrigger(view);
+                    const TimeToX& x, float y, float left, float right, bool arrow) {
+    const std::optional<Time> offScreenTrigger = arrow ? OffScreenTrigger(view) : std::nullopt;
     list.PushClipRect({left, y}, {right, y + kAxisHeight}, true);
     float from = left, to = right;  // where labels may go
     if (offScreenTrigger) {

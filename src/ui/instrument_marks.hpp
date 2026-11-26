@@ -38,9 +38,10 @@ void DrawGrid(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX
 // Grid lines of `view` over `width` px, labelled as often as its widest label allows.
 std::vector<GridLine> LabelledGrid(const TimeView& view, float width);
 // Labels along an axis strip at `y`, each right of its line; a label not wholly inside
-// [left, right], or under the off-screen Trigger's arrow, is left out.
+// [left, right], or under the off-screen Trigger's arrow, is left out. `arrow`: room is kept for
+// that arrow (the analyzer's); the scope draws none (P8h).
 void DrawAxisLabels(ImDrawList& list, const TimeView& view, const std::vector<GridLine>& grid,
-                    const TimeToX& x, float y, float left, float right);
+                    const TimeToX& x, float y, float left, float right, bool arrow = true);
 void DrawTrigger(ImDrawList& list, float x, float top, float bottom);  // line + triangle on top
 // The Trigger off the view: an arrow at that end of the axis strip and its distance (nothing
 // when the view holds it).

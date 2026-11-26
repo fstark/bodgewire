@@ -14,8 +14,9 @@
 
 namespace bw {
 
-// The floating Oscilloscope: settings, the screen with the last Sweep drawn at the current
-// settings, Hook rows with values, the status line.
+// The floating Oscilloscope (P8h): its screen in bands, one per Hook in the scope's order, each
+// labelled on a plate over its left end (pin, reading, Trigger, ×); the last Sweep drawn at the
+// current settings.
 class ScopeWindow {
 public:
     // True when clicked: it takes the focus.
@@ -44,6 +45,15 @@ private:
     float columnsWidth_ = 0;
     std::array<std::optional<double>, kScopeChannels> columnsRail_;
     TimeView columnsView_;
+    // A band's reading, per Channel, and what it was made from (P8h).
+    struct Reading {
+        std::string text;
+        std::uint64_t serial = 0;
+        Time from = 0, to = 0;
+        bool powered = false;
+        std::optional<double> rail;
+    };
+    std::array<Reading, kScopeChannels> readings_;
 };
 
 }  // namespace bw
