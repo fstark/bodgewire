@@ -75,17 +75,18 @@ A zoom (`ZoomAbout` on `ScopeView(settings, lead)`) keeps its anchor at the same
 //   at least two rising edges: "1 MHz · 50 %": the frequency of their mean period (first rise to
 //     last over the count less one), the share of that time high, to the percent;
 //   else a whole pulse (a level held between two edges, the first one): "high 1 µs", "low 4 µs";
-//   else the level at `to`: "H", "L", "Z 1.4 V", "X";
+//   else its first change, from `trigger`: "rises +64 µs", "falls -2 µs", "floats …", "unknown …";
+//   else (no change) its level: "high", "low", "floating 1.4 V", "unknown";
 //   a rail (`rail`: its volts): "5.0 V"; no Samples: "".
-std::string BandReading(std::span<const Sample> samples, Time from, Time to,
+std::string BandReading(std::span<const Sample> samples, Time from, Time to, Time trigger,
                         std::optional<double> rail);
 ```
 
-`FormatFrequency(period)` and `FormatTime(width, false)` (`view/time_text.hpp`) format, trailing zeros dropped as everywhere (`1 MHz`, `4 µs`, `15.6 kHz`); `LogicVolts` (`instruments/volts.hpp`) gives `Z`'s volts. The window caches a band's reading by Sweep serial, `to` and powered (power off: `""`, the traces flat at 0 V); a 10 ms/div Sweep of a 1 MHz clock holds 20 000 Samples a Channel.
+`FormatFrequency(period)` and `FormatTime(width, false)` (`view/time_text.hpp`) format, trailing zeros dropped as everywhere (`1 MHz`, `4 µs`, `15.6 kHz`); `LogicVolts` (`instruments/volts.hpp`) gives a float's volts. The window caches a band's reading by Sweep serial, `to` and powered (power off: `""`, the traces flat at 0 V); a 10 ms/div Sweep of a 1 MHz clock holds 20 000 Samples a Channel.
 
 ### Tests (`tests/view/scope_reading_test.cpp`, `scope reading: …`, `[view]`)
 
-A 1 MHz square wave over 10 µs (`1 MHz · 50 %`), a 25 % duty cycle, edges past `to` left out, one high pulse (`high 1 µs`), one low pulse (`low 4 µs`), a single rise (`H`), a constant `L`, floating (`Z 1.4 V`), a float driven high counted as a rise, X, a rail (`5.0 V`), no Samples (`""`).
+A 1 MHz square wave over 10 µs (`1 MHz · 50 %`), a 25 % duty cycle, edges past `to` left out, one high pulse (`high 1 µs`), one low pulse (`low 4 µs`), a rise, a fall and a float from the Trigger (`rises +2 µs`, `falls -2 µs`, `floats 0`), constants (`low`, `high`, `floating 1.4 V`, `unknown`), a float driven high counted as a rise, a rail (`5.0 V`), no Samples (`""`).
 
 ## 3. The bands' order (§2, §3, §5, §9)
 
@@ -176,7 +177,7 @@ Each frame, in this order:
    - the time lines from `LabelledGrid(view, width)` across all bands and gaps;
    - the traces from the column cache (as now: one rectangle per run of equal columns), each glowing: the same rectangles first in the Hook's colour at 25 % alpha grown by 2 px, then at full alpha;
    - the Trigger (`DrawTrigger`) when on screen;
-   - the plates: filled `kPlateColour` (opaque), `kPlate` wide, the band's height; on each the `T` key (lit orange on the source, with a small triangle drawn up for rise, down for fall: no ▲ in the font), the name (`hooks()[c]->label`, the Hook's colour), the ×, the reading (`BandReading` over `[shown_->start, the screen's right edge]`, cached), then with a cursor or Marker the value under it (`valueAt`, as now); the texts clipped to the plate;
+   - the plates: filled `kPlateColour` (opaque), `kPlate` wide, the band's height; on each the `T` key (lit orange on the source, with a small triangle drawn up for rise, down for fall: no ▲ in the font), the name (`hooks()[c]->label`, the Hook's colour), the ×, the reading (`BandReading` over `[shown_->start, the screen's right edge]`, cached), the texts clipped to the plate;
    - the 0 V arrow, a triangle in the Hook's colour pointing right, at the plate's right edge on the band's 0 V line;
    - clipped to the right of the plates: the Marker (`DrawMarker`), the cursor's line and tag (`CursorTagText`, a light tag 20 px high at the screen's top, flipped left of the line when it would pass the right edge).
    - the axis: `DrawAxisLabels(list, view, grid, x, axisY, plateRight, right, false)`: none over the plates, no room kept for an arrow; `DrawOffScreenTrigger` not called (§10).

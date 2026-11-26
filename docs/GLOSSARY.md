@@ -330,7 +330,7 @@ One of the two Multimeter tips, on any copper: the red one held while a press la
 One pass of the Oscilloscope across its screen, starting at a Trigger.
 
 **Band**:
-One Hook's strip of the Oscilloscope's screen (P8h), with its own 0 to 5 V scale, black between Bands. A plate over its left end names it: its `T` (lit on the Trigger's source, its edge an arrow; a click makes it the source, or flips the edge), the pin, its ×, and its reading (`1 MHz · 50 %`, `low 4 µs`, `H`). The Bands share the screen top to bottom in the order hooked; a plate dragged up or down moves its Band.
+One Hook's strip of the Oscilloscope's screen (P8h), with its own 0 to 5 V scale, black between Bands. A plate over its left end names it: its `T` (lit on the Trigger's source, its edge an arrow; a click makes it the source, or flips the edge), the pin, its ×, and its reading (`1 MHz · 50 %`, `low 4 µs`, `rises +64 µs`, `high`). The Bands share the screen top to bottom in the order hooked; a plate dragged up or down moves its Band.
 _Avoid_: lane (that is the Logic Analyzer's row)
 
 **Capture**:

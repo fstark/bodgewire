@@ -35,7 +35,7 @@ struct Change {
 
 }  // namespace
 
-std::string BandReading(std::span<const Sample> samples, Time from, Time to,
+std::string BandReading(std::span<const Sample> samples, Time from, Time to, Time trigger,
                         std::optional<double> rail) {
     if (samples.empty()) {
         return "";
@@ -88,15 +88,23 @@ std::string BandReading(std::span<const Sample> samples, Time from, Time to,
                                FormatTime(changes[i + 1].time - changes[i].time, false));
         }
     }
-    switch (changes.back().level) {
+    if (changes.size() >= 2) {
+        const Change& edge = changes[1];
+        const char* verb = edge.level == Level::High       ? "rises"
+                           : edge.level == Level::Low      ? "falls"
+                           : edge.level == Level::Floating ? "floats"
+                                                           : "unknown";
+        return std::format("{} {}", verb, FormatTime(edge.time - trigger, true));
+    }
+    switch (changes.front().level) {
     case Level::High:
-        return "H";
+        return "high";
     case Level::Low:
-        return "L";
+        return "low";
     case Level::Floating:
-        return std::format("Z {:.1f} V", LogicVolts(*changes.back().sample));
+        return std::format("floating {:.1f} V", LogicVolts(*changes.front().sample));
     case Level::Unknown:
-        return "X";
+        return "unknown";
     }
     return "";
 }

@@ -26,9 +26,6 @@ public:
     void preset(std::optional<Time> marker, std::optional<Time> cursor);
 
 private:
-    // "H 3.5 V", "Z 1.4 V", "X", the rail's volts; "" outside the Sweep. `t`: ps from the Trigger.
-    std::string valueAt(std::size_t channel, Time t, const std::optional<double>& rail) const;
-
     std::optional<Sweep> shown_;  // kept across rebuilds and power-off
     std::optional<Time> marker_;  // ps from the Trigger
     // The cursor where it was put (--cursor, or a finger's hold and slide, P8f).

@@ -83,34 +83,6 @@ void ScopeWindow::preset(std::optional<Time> marker, std::optional<Time> cursor)
     placedCursor_ = cursor;
 }
 
-std::string ScopeWindow::valueAt(std::size_t channel, Time t,
-                                 const std::optional<double>& rail) const {
-    if (!shown_ || shown_->channels[channel].empty()) {
-        return "";
-    }
-    const Time at = TriggerTime(*shown_) + t;
-    if (at < shown_->start || at > shown_->start + kDivisions * shown_->timebase) {
-        return "";
-    }
-    if (rail) {
-        return std::format("{:.1f} V", *rail);
-    }
-    const auto& samples = shown_->channels[channel];
-    const auto it = std::ranges::upper_bound(samples, at, {}, &Sample::time);
-    const Sample& sample = *(it == samples.begin() ? it : it - 1);
-    if (sample.floating) {
-        return std::format("Z {:.1f} V", LogicVolts(sample));
-    }
-    switch (sample.value) {
-    case LogicValue::Zero:
-        return std::format("L {:.1f} V", LogicVolts(sample));
-    case LogicValue::One:
-        return std::format("H {:.1f} V", LogicVolts(sample));
-    default:
-        return "X";
-    }
-}
-
 bool ScopeWindow::draw(bool& open, Session& session) {
     if (session.scope().sweeps().update()) {
         shown_ = session.scope().sweeps().front();
@@ -546,8 +518,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         DrawTrigger(list, std::round(x(0)), top, screen.y1);
     }
 
-    // The plates: T, the pin, ×; the reading under them, and the value at the cursor or Marker.
-    const std::optional<Time> readTime = cursor ? cursor : marker_;
+    // The plates: T, the pin, ×; the reading under them.
     const auto drawPlate = [&](std::size_t place, float dy) {
         const std::size_t c = order[place];
         const Box band{bands[place].x0, bands[place].y0 + dy, bands[place].x1,
@@ -577,27 +548,18 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         const std::uint64_t serial = shown_ ? shown_->serial : 0;
         if (reading.serial != serial || reading.from != from || reading.to != to ||
             reading.powered != powered || reading.rail != rails[c]) {
-            reading = {.text = powered && shown_
-                                   ? BandReading(shown_->channels[c], from, to, rails[c])
-                                   : "",
+            reading = {.text = powered && shown_ ? BandReading(shown_->channels[c], from, to,
+                                                               TriggerTime(*shown_), rails[c])
+                                                 : "",
                        .serial = serial,
                        .from = from,
                        .to = to,
                        .powered = powered,
                        .rail = rails[c]};
         }
-        std::string text = reading.text;
-        if (readTime && powered && !rails[c]) {
-            // The level under the cursor or Marker, its letter only: the plate is narrow, and the
-            // reading already gives a float's or a rail's volts.
-            const std::string value = valueAt(c, *readTime, rails[c]);
-            if (!value.empty()) {
-                text += "  " + value.substr(0, 1);
-            }
-        }
         list.PushClipRect({band.x0, band.y0}, {plateRight - 4, band.y1}, true);
         list.AddText({band.x0 + kInset + 2, band.y0 + kInset + kKey + 2}, kReadingText,
-                     text.c_str());
+                     reading.text.c_str());
         list.PopClipRect();
         if (dy != 0) {
             list.AddRect({band.x0, band.y0}, {plateRight, band.y1}, kHookColours[c], 0, 0, 2.0f);

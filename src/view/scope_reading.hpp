@@ -18,10 +18,12 @@ namespace bw {
 //   rise to the last over their count less one), the share of that time spent high, to the
 //   percent.
 //   Else the first whole pulse (a level held from one edge to the next): "high 1 µs", "low 4 µs".
-//   Else the level at `to`: "H", "L", "Z 1.4 V", "X".
+//   Else its first change, from `trigger` (ps since power-on): "rises +64 µs", "falls -2 µs",
+//   "floats +1 µs", "unknown +1 µs".
+//   Else (no change) its level: "high", "low", "floating 1.4 V", "unknown".
 //   A rail (`rail`: its volts): "5.0 V". No Samples: "".
 // `samples`: one Channel of a Sweep, the value at its start then each change, in time order.
-std::string BandReading(std::span<const Sample> samples, Time from, Time to,
+std::string BandReading(std::span<const Sample> samples, Time from, Time to, Time trigger,
                         std::optional<double> rail);
 
 }  // namespace bw
