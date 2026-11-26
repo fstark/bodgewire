@@ -43,6 +43,7 @@ constexpr ImU32 kOverviewBox = IM_COL32(230, 230, 230, 255);
 constexpr int kDimmed = 90;      // a lane's alpha while armed: the Capture shown is the last one
 constexpr float kPlateKey = 28;  // a plate's keys' hit boxes, a finger's (kControl)
 constexpr float kBitKey = 28, kBusKey = 44, kCloseKey = 24;
+constexpr float kBackKey = 22;  // ◀ or ▶, back to the Trigger, at an end of the axis
 constexpr std::array<const char*, 5> kConditions{"any", "0", "1", "rise", "fall"};
 constexpr std::array<TriggerPosition, 3> kPositions{TriggerPosition::Early, TriggerPosition::Middle,
                                                     TriggerPosition::Late};
@@ -191,8 +192,9 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         return false;
     }
     // A drawn case (P8i), as the scope's: no title bar, dragged by its body, resized freely.
-    const Extent normal = NormalSize(BenchObject::Analyzer);
-    PlaceNext(BenchObject::Analyzer, {normal.width, normal.height});
+    // It opens at its minimal size, as the scope does (2026-11-27).
+    const Extent opening = MinimalSize(BenchObject::Analyzer);
+    PlaceNext(BenchObject::Analyzer, {opening.width, opening.height});
     const Extent bench = BenchArea().extent();
     ImGui::SetNextWindowSizeConstraints(
         {std::min(kAnalyzerMinWidth, bench.width), std::min(kAnalyzerMinHeight, bench.height)},
@@ -409,6 +411,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     // on that part of the Capture, the wheel zooming.
     const Box overview = abs(layout.overview), axis = abs(layout.axis);
     ImGui::SetCursorScreenPos({laneX0, screen.y0});
+    ImGui::SetNextItemAllowOverlap();  // the Trigger's ◀ ▶ keys over the axis take it
     ImGui::InvisibleButton("##overview", {width, axis.y1 - screen.y0});
     ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
     if (shown_) {
@@ -542,6 +545,30 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     };
     const double fromPoint = pointOf(view_.left);
     const double toPoint = pointOf(view_.left + view_.span());
+    // The Trigger off the view (2026-11-27, as the scope's ◀): an orange key at that end of the
+    // axis brings it back, one division in from the lanes' left.
+    const auto triggerSide = [&]() -> int {  // -1: left of the view, 1: right of it, 0: in it
+        if (!shown_) {
+            return 0;
+        }
+        return 0 < view_.left ? -1 : 0 > view_.left + view_.span() ? 1 : 0;
+    };
+    const auto backKeyBox = [&](int side) {
+        return side < 0 ? Box{laneX0 + 1, axis.y0 + 1, laneX0 + 1 + kBackKey, axis.y1 - 1}
+                        : Box{laneX1 - 1 - kBackKey, axis.y0 + 1, laneX1 - 1, axis.y1 - 1};
+    };
+    bool backHovered = false;
+    if (const int side = triggerSide(); side != 0) {
+        const Box box = backKeyBox(side);
+        ImGui::SetCursorScreenPos({box.x0, box.y0});
+        if (ImGui::InvisibleButton("##back to the Trigger", {box.width(), box.height()})) {
+            view_ = Clamp(TimeView{.perDivision = view_.perDivision, .left = -view_.perDivision},
+                          RecordOf(*shown_));
+        }
+        ImGui::SetItemTooltip("back to the Trigger");
+        backHovered = ImGui::IsItemHovered();
+    }
+
     // The plates' values: at the cursor, else the Marker, else the Trigger (P8i).
     const Time readTime = cursor ? *cursor : marker_ ? *marker_ : 0;
 
@@ -910,7 +937,19 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         }
         list.AddRect({box0, overview.y0 - 1}, {box1, overview.y1 + 1}, kOverviewBox, 2.0f, 0, 1.5f);
         list.PopClipRect();
-        DrawAxisLabels(list, view_, LabelledGrid(view_, width), x, axis.y0, laneX0, laneX1);
+        const int side = triggerSide();
+        DrawAxisLabels(list, view_, LabelledGrid(view_, width), x, axis.y0,
+                       side < 0 ? laneX0 + kBackKey + 2 : laneX0,
+                       side > 0 ? laneX1 - kBackKey - 2 : laneX1);
+        if (side != 0) {
+            const Box box = backKeyBox(side);
+            list.AddRectFilled({box.x0, box.y0}, {box.x1, box.y1},
+                               backHovered ? IM_COL32(255, 170, 60, 255) : kTriggerMark, 3);
+            const float cx = (box.x0 + box.x1) / 2, mid = (box.y0 + box.y1) / 2;
+            const float dir = static_cast<float>(side);  // the arrow points where the Trigger is
+            list.AddTriangleFilled({cx + 4 * dir, mid}, {cx - 3 * dir, mid - 5},
+                                   {cx - 3 * dir, mid + 5}, kKeyInk);
+        }
     }
 
     if (changed) {
