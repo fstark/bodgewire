@@ -10,56 +10,8 @@ Spec: [LOGIC_ANALYZER.md](LOGIC_ANALYZER.md). Design: [LOGIC_ANALYZER_DESIGN.md]
 | 2 | The rows' order, the arming, the Board's discs by row | `8ba1b2d` |
 | 3 | The analyzer's case layout | `96e643d` |
 | 4 | The window: case, strip, corner, screen, plates; ARM resumes a paused run | `665ca07` |
-| 5 | Grouping by ticks, rows reordered by dragging | (this commit) |
-| 6 | Docs, README shot, web build, finish | |
-
-## Phase 1 — The shared case pieces (design §1)
-
-1. `src/view/case_strip.{hpp,cpp}`: `Box` and `BandAt` moved from `scope_layout`, the strip's sizes, `LayOutStepper`, `Badge`, `LayOutBadge`, `SizeKeyBox`; `scope_layout.cpp` built on them; `kScopeStrip`, `kScopeClose` renamed `kCaseStrip`, `kCaseClose` (scope window and tests).
-2. `src/ui/case_keys.{hpp,cpp}`: the keys, LEDs, `DrawLamp` with its name, `DrawRocker` of 2 or 3 halves, `DrawCaseFrame`, `DrawGroup`, `DrawGroupLabel`, `DrawBadge`, `DrawBezel`, `TimeGrid`; `scope_case` keeps `DrawScopeCase` on them.
-3. `kAxisHeight` and `UnitRows` in `time_view` (`TimebaseRows` gone, its case rewritten as `time view: unit rows`, the analyzer's periods too); `DrawCursorTag` in `instrument_marks`; the scope through them.
-4. Screenshots of the scope after, against the ones taken from `main` before: the case, strip and plates pixel for pixel, the traces by eye (they vary run to run); the timebase grid opened; the minimal size.
-
-Fence: release `^(time view|scope layout|scope reading|bench places): ` and the full release suite; the scope's case unchanged. Commit: `view, ui: a drawn case's strip and keys shared, the scope built on them (P8i phase 1)`.
-
-## Phase 2 — Rows, arming, discs (design §2)
-
-1. `AnalyzerSetup`: `order_`, `rows()`, `move()`, `label()`, `inCapture()`, `poweringOn()`; `clip()` and `clipGroup()` arm; `Session::powerOn` calls `poweringOn()`.
-2. The old window lists its rows from `rows()` (same drawing) and colours them `RowColour`; `ClipTagsOf` and the disc numbered by row.
-3. Tests: the five `session:` cases; `a capture is not re-armed by a repair` replaced.
-
-Fence: release `-R "^(session|analyzer)"`, debug as in the design's Checks; a screenshot of the LED computer's Board with its discs. Commit: `session: the analyzer's rows in order, a new Clip and every power-on arm (P8i phase 2)`.
-
-## Phase 3 — The case's layout (design §3)
-
-1. `src/view/analyzer_layout.{hpp,cpp}` and its tests; `MinimalSize(Analyzer)` 880 × 340.
-
-Fence: release `^(analyzer layout|bench places): `. Commit: `view: the Logic Analyzer's case laid out (P8i phase 3)`.
-
-## Phase 4 — The window (design §4, but grouping and reordering)
-
-1. `analyzer_window` rewritten, no child window: the case, the strip and its items, the corner (`PIN | BUS`, the count; `GROUP` drawn, not yet working), the overview and the axis, the screen to its bottom, the rows scrolled by hand, the plates (swatches, names, values at the cursor, Marker or Trigger, Trigger keys and `ChoicesPopup`, the bus pattern's field, ×), the lanes (dimmed while armed, empty when not in the Capture), the cursor's tag, the mouse's snap.
-2. Removed: `BeginInstrument`, `StatusLine`, `DrawOffScreenTrigger`, `OffScreenText`, `OffScreenWidth`, `DrawAxisLabels`' `arrow`, `StatusText`, `OffScreenTrigger` and their cases, `AnalyzerSetup::disarm`; `ChoicePopup` becomes `ChoicesPopup` (AGENTS.md's list).
-3. `Resume` in `shelf`; `main.cpp` resumes on `takeRunAsked()`.
-4. Screenshots: the LED computer, the counter at the minimal size, the bug's repro, `ARM` while paused, the SAMPLE grid, a Trigger key's choices, twenty Clips scrolled, `--window 1080:810`.
-
-Fence: the full release suite; the screenshots viewed; UI ms. Commit: `ui: the Logic Analyzer as a drawn case, its rows labelled on the screen (P8i phase 4)`.
-
-## Phase 5 — Grouping and reordering (design §4.8, §4.9)
-
-1. Tick boxes with two rows or more; `GROUP` / `UNGROUP`.
-2. Plates dragged up or down; `setup.move` after the drawing.
-3. Screenshots: two plates ticked, `GROUP` tapped (one bus row); a group ticked, `UNGROUP`; a plate dragged (`--drag`), the Board's discs renumbered.
-
-Fence: release `-R "^(session|analyzer)"`; the screenshots viewed. Commit: `ui: the analyzer's rows grouped by ticks and moved by their plates (P8i phase 5)`.
-
-## Phase 6 — Docs and finish (design §5)
-
-1. GLOSSARY, ADD_INSTRUMENT.md (its Window row rewritten for the drawn case), AGENTS.md's helpers, the README shot, README_SPEC checked, the manuals' setups checked.
-2. `cmake --build --preset web`.
-3. The full release suite; ARCHITECTURE's row done; this plan cut down to the status table and notes.
-
-Fence: the full release suite. Commit: `docs: P8i done, GLOSSARY, recipe, README shot (P8i phase 6)`.
+| 5 | Grouping by ticks, rows reordered by dragging | `2c9a6c2` |
+| 6 | Docs, README shot, web build, finish | (this commit) |
 
 ## Implementation notes
 
@@ -68,4 +20,5 @@ Fence: the full release suite. Commit: `docs: P8i done, GLOSSARY, recipe, README
 - 2026-11-26, phase 2: as designed. A rebuilt consumer counts its Captures from 1 again, so `a power-on re-arms after a Capture` checks that a new Capture came (`update()`), not a larger serial. The old window's Stop became Arm (`disarm` gone). Screenshot: the LED computer's Board, its discs 1 to 5 in their rows' colours (SYNC, PHI2, RW, the A bus, the D bus). Checks: release `^(session|analyzer)` (88), debug as the design's Checks (18).
 - 2026-11-26, phase 3: as designed, but the lamps 44 px apart (not 40): their names in the UI font would touch. The strip then ends 1 px left of the size key's gap at 940, the words still shown. Checks: release `^(analyzer layout|bench places): ` (18).
 - 2026-11-26, phase 4: as designed. The plates' name, value and keys drawn on the window's list under a clip of the rows; a group's pattern field a `NumberField` with an orange `FieldLook` once set. Screenshots: the LED computer at 940 × 520 (SYNC's ▲ and the A bus's `F800` lit, the values at the cursor, `+2.3 µs   dt 1.3 µs` on the screen, the screen to its bottom); the bug's repro (paused, × on QB, a tap on U5.15: `U5.15 RCO` `not in this Capture`, `ARMED`, QA dimmed); `ARM` tapped while paused (the run switch at 1×, `DONE`, the LED lit); the SAMPLE grid (`100 ns` lit); QA's Trigger choices; twenty Clips before and after a vertical drag (scrolled to A3, the top row clipped under the axis); the full and the minimal size by the size key; `--window 1080:810`. UI 0.8 ms on the LED computer. Checks: the full release suite (1716).
-- 2026-11-26, phase 5: as designed. `GROUP` and `UNGROUP` lit in the screen's key colour, not orange (orange is the Trigger's on both instruments). The dragged plate drawn as an outline in its row's colour with its name. Screenshots on the counter: QB and QC ticked (`GROUP` lit); `GROUP` tapped (`group 1[1:0]` reading 3, 0, 1, 2); the group ticked (`UNGROUP`); QD's plate dragged to the top (QD, QA, QB, QC, the colours by place). Checks: release `^(session|analyzer)` (90).
+- 2026-11-26, phase 5: as designed. `GROUP` and `UNGROUP` lit in the screen's key colour, not orange (orange is the Trigger's on both instruments). The dragged plate drawn as an outline in its row's colour with its name. Screenshots on the counter: QB and QC ticked (`GROUP` lit); `GROUP` tapped (`group 1[1:0]` reading 3, 0, 1, 2); the group ticked (`UNGROUP`); QD's plate dragged to the top (QD, QA, QB, QC, the colours by place). Checks: release `^(session|analyzer)` (92).
+- 2026-11-26, phase 6: GLOSSARY (Logic Analyzer, Clip, Channel Group, Marker, Equipment); ADD_INSTRUMENT.md's Window row rewritten for the drawn case as the only shape, its gotchas for `ChoicesPopup`, the mouse's snap and rows scrolled by hand; AGENTS.md's shared helpers (`case_strip`, `case_keys`, `ChoicesPopup`); `docs/readme/analyzer.png` retaken and viewed (README_SPEC's words still true; the values at the Trigger: A `F800`); the manuals' setups still read right ("Sample every", "Arm", "as one group"); the web build builds. Left to the user: the web page's look, the feel of the keys, the ticks and the drag, the upright tablet (below 880 px the strip runs under the case's edge). Checks: the full release suite.
