@@ -50,6 +50,7 @@ private:
         std::optional<std::size_t> group;  // a group's row, or a member's
         std::size_t channel = 0;           // Channel rows and members
         bool member = false;
+        std::size_t place = 0;  // its top row's place (P8i): its colour
     };
 
     std::vector<Row> rows(const Session& session) const;

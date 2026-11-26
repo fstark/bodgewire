@@ -133,6 +133,7 @@ void Session::powerOn(std::uint64_t seed, std::optional<Time> pauseAt) {
     if (pauseAt) {
         live_->runner->pauseAt(*pauseAt);
     }
+    analyzer_.poweringOn();  // every power-on arms (P8i), adopted at the runner's power-on
     live_->runner->powerOn(seed);
     build_->powered = true;
     meter_.powerChanged();  // the runner started: a live retarget, as the probe's

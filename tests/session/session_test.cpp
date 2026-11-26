@@ -411,20 +411,101 @@ TEST_CASE("session: arm before power-on captures", "[session]") {
     session.powerOff();
 }
 
-TEST_CASE("session: a capture is not re-armed by a repair", "[session]") {
+TEST_CASE("session: a power-on re-arms after a Capture", "[session]") {
     Session session = PuzzleSession("broken_trace");
     REQUIRE(session.analyzer().clip("U1", "14") == 0);
     session.analyzer().setSettings({.period = 10'000});  // 100 MHz: a Capture in 655 us
-    session.analyzer().arm();
     session.powerOn(1);
     RunTo(session, 5_ms);
     REQUIRE(session.analyzer().phase() == AnalyzerPhase::Captured);
     session.powerOff();
     REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
-    session.powerOn(1);
+    session.powerOn(1);  // P8i: armed again, no key
+    CHECK(session.analyzer().phase() == AnalyzerPhase::Armed);
     RunTo(session, 6_ms);
+    CHECK(session.analyzer().phase() == AnalyzerPhase::Captured);
+    CHECK(session.analyzer().captures().update());  // the rebuilt consumer's own Capture
+    session.powerOff();
+}
+
+TEST_CASE("session: a power-on with no Clip does not arm", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    session.powerOn(1);
+    RunTo(session, 1_ms);
     CHECK(session.analyzer().phase() == AnalyzerPhase::Idle);
     session.powerOff();
+}
+
+TEST_CASE("session: a new Clip arms", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    REQUIRE(session.analyzer().clip("U1", "14") == 0);
+    session.analyzer().setSettings({.period = 10'000});
+    session.powerOn(1);
+    RunTo(session, 5_ms);
+    REQUIRE(session.analyzer().phase() == AnalyzerPhase::Captured);
+    REQUIRE(session.analyzer().clip("U1", "13") == 1);  // after a Capture too (P8i)
+    CHECK(session.analyzer().phase() == AnalyzerPhase::Armed);
+    RunTo(session, 10_ms);
+    CHECK(session.analyzer().phase() == AnalyzerPhase::Captured);
+    session.powerOff();
+}
+
+TEST_CASE("session: a Channel reused is not in the Capture", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    AnalyzerSetup& analyzer = session.analyzer();
+    REQUIRE(analyzer.clip("U1", "14") == 0);
+    REQUIRE(analyzer.clip("U1", "13") == 1);
+    analyzer.setSettings({.period = 10'000});
+    session.powerOn(1);
+    RunTo(session, 5_ms);
+    REQUIRE(analyzer.phase() == AnalyzerPhase::Captured);
+    REQUIRE(analyzer.captures().update());
+    const Capture capture = analyzer.captures().front();
+    analyzer.unclip(1);
+    REQUIRE(analyzer.clip("U1", "12") == 1);  // the freed Channel, another pin
+    CHECK(analyzer.inCapture(capture, std::vector<std::size_t>{0}));
+    CHECK_FALSE(analyzer.inCapture(capture, std::vector<std::size_t>{1}));
+    CHECK_FALSE(analyzer.inCapture(capture, std::vector<std::size_t>{0, 1}));
+    analyzer.unclip(1);
+    REQUIRE(analyzer.clip("U1", "13") == 1);  // the same pin again: what the Capture holds
+    CHECK(analyzer.inCapture(capture, std::vector<std::size_t>{1}));
+    analyzer.unclip(1);
+    CHECK_FALSE(analyzer.inCapture(capture, std::vector<std::size_t>{1}));  // free
+    session.powerOff();
+}
+
+TEST_CASE("session: the analyzer's rows in clip order", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    AnalyzerSetup& analyzer = session.analyzer();
+    const auto order = [&] {
+        std::vector<std::size_t> out;  // a loose row's Channel; a group's: 100 + its index
+        for (const AnalyzerRow& row : analyzer.rows()) {
+            out.push_back(row.group ? 100 + *row.group : row.channel);
+        }
+        return out;
+    };
+    REQUIRE(analyzer.clip("U1", "14") == 0);
+    REQUIRE(analyzer.clip("U1", "13") == 1);
+    REQUIRE(analyzer.clip("U1", "12") == 2);
+    CHECK(order() == std::vector<std::size_t>{0, 1, 2});
+    analyzer.unclip(1);
+    CHECK(order() == std::vector<std::size_t>{0, 2});
+    REQUIRE(analyzer.clip("U1", "11") == 1);  // the free Channel, its row at the bottom
+    CHECK(order() == std::vector<std::size_t>{0, 2, 1});
+    REQUIRE(analyzer.group({2, 1}) == 0);  // a group's row where its first member is
+    CHECK(order() == std::vector<std::size_t>{0, 100});
+    CHECK(analyzer.rows()[1].channel == 2);
+    analyzer.move(1, 0);
+    CHECK(order() == std::vector<std::size_t>{100, 0});
+    analyzer.move(0, 9);  // clamped: to the bottom
+    CHECK(order() == std::vector<std::size_t>{0, 100});
+    analyzer.move(1, 0);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
+    session.powerOn(1);  // a rebuild
+    CHECK(order() == std::vector<std::size_t>{100, 0});
+    session.powerOff();
+    analyzer.ungroup(0);
+    CHECK(order() == std::vector<std::size_t>{2, 1, 0});  // the members where the group was
 }
 
 TEST_CASE("session: hooking the scope leaves a running Capture alone", "[session]") {

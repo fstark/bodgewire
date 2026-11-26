@@ -102,11 +102,15 @@ void ShowRepairs(BoardView& view, const Machine& machine) {
 }
 
 std::vector<ClipTag> ClipTagsOf(const Session& session) {
+    const AnalyzerSetup& analyzer = session.analyzer();
+    const std::vector<AnalyzerRow> rows = analyzer.rows();
     std::vector<ClipTag> tags;
-    for (std::size_t c = 0; c < kChannels; ++c) {
-        if (const auto& clip = session.analyzer().clips()[c]) {
-            const auto group = session.analyzer().groupOf(c);
-            tags.push_back({clip->at, c, group ? GroupColour(*group) : ChannelColour(c)});
+    for (std::size_t place = 0; place < rows.size(); ++place) {
+        const AnalyzerRow& row = rows[place];
+        const std::vector<std::size_t> channels =
+            row.group ? analyzer.groups()[*row.group].channels : std::vector{row.channel};
+        for (const std::size_t c : channels) {
+            tags.push_back({analyzer.clips()[c]->at, place, RowColour(place)});
         }
     }
     return tags;

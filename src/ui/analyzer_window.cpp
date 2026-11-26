@@ -128,24 +128,17 @@ void AnalyzerWindow::zoom(Time anchor, int notches) {
 }
 
 std::vector<AnalyzerWindow::Row> AnalyzerWindow::rows(const Session& session) const {
-    // Groups and loose Channels, ordered by their first Channel.
-    std::vector<std::pair<std::size_t, Row>> top;
-    for (std::size_t g = 0; g < session.analyzer().groups().size(); ++g) {
-        top.push_back({std::ranges::min(session.analyzer().groups()[g].channels), Row{.group = g}});
-    }
-    for (std::size_t c = 0; c < kChannels; ++c) {
-        if (session.analyzer().clips()[c] && !session.analyzer().groupOf(c)) {
-            top.push_back({c, Row{.channel = c}});
-        }
-    }
-    std::ranges::sort(top, {}, &std::pair<std::size_t, Row>::first);
+    // The setup's rows in order (P8i), a group's members under it when expanded.
+    const std::vector<AnalyzerRow> top = session.analyzer().rows();
     std::vector<Row> rows;
-    for (const auto& [first, row] : top) {
-        rows.push_back(row);
+    for (std::size_t place = 0; place < top.size(); ++place) {
+        const AnalyzerRow& row = top[place];
+        rows.push_back(Row{.group = row.group, .channel = row.channel, .place = place});
         if (row.group && expanded_.contains(session.analyzer().groups()[*row.group].name)) {
             const auto& channels = session.analyzer().groups()[*row.group].channels;
             for (auto c = channels.rbegin(); c != channels.rend(); ++c) {
-                rows.push_back(Row{.group = row.group, .channel = *c, .member = true});
+                rows.push_back(
+                    Row{.group = row.group, .channel = *c, .member = true, .place = place});
             }
         }
     }
@@ -192,13 +185,8 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     // Header line 1 (P8f: a stepper and choices, no dropdowns): arm, the phase, the sampling,
     // where the Trigger sits in the Capture.
     const AnalyzerPhase phase = session.analyzer().phase();
-    const bool running = phase == AnalyzerPhase::Armed || phase == AnalyzerPhase::Filling;
-    if (ImGui::Button(running ? "Stop" : "Arm", {60, kBig})) {
-        if (running) {
-            session.analyzer().disarm();
-        } else {
-            session.analyzer().arm();
-        }
+    if (ImGui::Button("Arm", {60, kBig})) {
+        session.analyzer().arm();
     }
     ImGui::SameLine(0, 12);
     // A slot as wide as the longest phase, so the settings after it never move.
@@ -529,7 +517,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         const ChannelGroup* group = row.group ? &session.analyzer().groups()[*row.group] : nullptr;
         const std::vector<std::size_t> channels =
             group && !row.member ? group->channels : std::vector{row.channel};
-        const ImU32 colour = group ? GroupColour(*row.group) : ChannelColour(row.channel);
+        const ImU32 colour = RowColour(row.place);
         if (i % 2 == 1) {
             draw.AddRectFilled({origin.x, top}, {laneX1, top + kLaneHeight},
                                IM_COL32(255, 255, 255, 8));

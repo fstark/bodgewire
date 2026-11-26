@@ -68,13 +68,16 @@ std::optional<std::size_t> AnalyzerSetup::clip(std::string_view reference, std::
         return std::nullopt;
     }
     *free = std::move(*lead);
-    configure();
-    return static_cast<std::size_t>(free - clips_.begin());
+    const auto channel = static_cast<std::size_t>(free - clips_.begin());
+    order_.push_back(channel);
+    arm();
+    return channel;
 }
 
 void AnalyzerSetup::unclip(std::size_t channel) {
     leaveGroup(channel);
     clips_[channel].reset();
+    std::erase(order_, channel);
     config_.settings.trigger[channel] = TriggerCondition::Any;  // a free Channel reads X
     configure();
 }
@@ -144,6 +147,7 @@ void AnalyzerSetup::unclipGroup(std::size_t group) {
     groups_.erase(groups_.begin() + static_cast<std::ptrdiff_t>(group));
     for (const std::size_t channel : channels) {
         clips_[channel].reset();
+        std::erase(order_, channel);
         config_.settings.trigger[channel] = TriggerCondition::Any;
     }
     configure();
@@ -249,9 +253,68 @@ void AnalyzerSetup::arm() {
     configure();
 }
 
-void AnalyzerSetup::disarm() {
-    config_.armed = false;
-    configure();
+void AnalyzerSetup::poweringOn() {
+    if (!order_.empty()) {
+        arm();
+    }
+}
+
+std::vector<AnalyzerRow> AnalyzerSetup::rows() const {
+    std::vector<AnalyzerRow> rows;
+    std::vector<bool> met(groups_.size(), false);
+    for (const std::size_t channel : order_) {
+        const auto group = groupOf(channel);
+        if (!group) {
+            rows.push_back({std::nullopt, channel});
+        } else if (!met[*group]) {
+            met[*group] = true;
+            rows.push_back({group, channel});
+        }
+    }
+    return rows;
+}
+
+void AnalyzerSetup::move(std::size_t from, std::size_t to) {
+    const std::vector<AnalyzerRow> before = rows();
+    if (from >= before.size()) {
+        return;
+    }
+    to = std::min(to, before.size() - 1);
+    if (from == to) {
+        return;
+    }
+    const auto channelsOf = [&](const AnalyzerRow& row) {
+        return row.group ? groups_[*row.group].channels : std::vector{row.channel};
+    };
+    std::vector<std::vector<std::size_t>> blocks;  // each row's Channels in their order
+    for (const AnalyzerRow& row : before) {
+        std::vector<std::size_t> block;
+        const std::vector<std::size_t> members = channelsOf(row);
+        for (const std::size_t channel : order_) {
+            if (std::ranges::contains(members, channel)) {
+                block.push_back(channel);
+            }
+        }
+        blocks.push_back(std::move(block));
+    }
+    std::vector<std::size_t> moved = std::move(blocks[from]);
+    blocks.erase(blocks.begin() + static_cast<std::ptrdiff_t>(from));
+    blocks.insert(blocks.begin() + static_cast<std::ptrdiff_t>(to), std::move(moved));
+    order_.clear();
+    for (const auto& block : blocks) {
+        order_.insert(order_.end(), block.begin(), block.end());
+    }
+}
+
+const std::string& AnalyzerSetup::label(std::size_t channel) const {
+    static const std::string kNone;
+    return clips_[channel] ? clips_[channel]->label : kNone;
+}
+
+bool AnalyzerSetup::inCapture(const Capture& capture, std::span<const std::size_t> channels) const {
+    return std::ranges::all_of(channels, [&](std::size_t c) {
+        return clips_[c] && capture.labels[c] == clips_[c]->label;
+    });
 }
 
 }  // namespace bw

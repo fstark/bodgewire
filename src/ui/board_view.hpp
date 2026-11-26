@@ -35,14 +35,14 @@ inline constexpr std::array<ImU32, 8> kChannelColours{
     IM_COL32(255, 140, 0, 255),   IM_COL32(140, 255, 100, 255), IM_COL32(110, 160, 255, 255),
     IM_COL32(255, 150, 180, 255), IM_COL32(255, 255, 255, 255)};
 
-inline ImU32 ChannelColour(std::size_t channel) { return kChannelColours[channel % 8]; }
-// A Channel Group's colour, by its index: groups made one after the other differ.
-inline ImU32 GroupColour(std::size_t group) { return kChannelColours[(group + 2) % 8]; }
+// A row's colour on the Logic Analyzer and on the Board (P8i): by its place, eight colours
+// repeating; a group's members take their group's.
+inline ImU32 RowColour(std::size_t place) { return kChannelColours[place % 8]; }
 
 struct ClipTag {
-    Point at;  // pad, nm
-    std::size_t channel;
-    ImU32 colour;  // the Channel's, or its Channel Group's
+    Point at;           // pad, nm
+    std::size_t place;  // its row's place on the analyzer's screen (P8i): the disc's number - 1
+    ImU32 colour;       // its row's
 };
 
 // Oscilloscope Channel colours: yellow, cyan, magenta, blue.

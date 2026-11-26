@@ -985,7 +985,7 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
         const float side = std::max(12.0f, map.pixels(1'000'000));
         const ImVec2 pad = map(tag.at);
         const ImVec2 min{pad.x + 2, pad.y - 2 - side};
-        const std::string number = std::to_string(tag.channel + 1);
+        const std::string number = std::to_string(tag.place + 1);
         const float fontSize = std::min(ImGui::GetFontSize(), side);
         const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, number.c_str());
         const ImVec2 max{std::max(pad.x + 2 + side, min.x + text.x + 4), pad.y - 2};
