@@ -31,7 +31,7 @@ Each idea has the agent's recommendation; the user decides.
 
 2. **The strip of keys**, left to right, one group per concern:
    - the badge (logo, `BODGE` / `WIRE`);
-   - CAPTURE: `RUN` (or `ARM`) as a key, three lamps for the phase (`ARMED`, `TRIG'D`, `DONE`) in place of the word;
+   - CAPTURE: `ARM` as a key, three lamps for the phase (`ARMED`, `TRIG'D`, `DONE`) in place of the word;
    - SAMPLE: ◀ LED ▶ (`100 ns`), as TIME / DIV is on the scope, a click on the LED opening the grid by unit;
    - TRIGGER AT: a three-way rocker `EARLY | MID | LATE` (10, 50, 90 % of memory), the time before it in the tooltip, not on the key;
    - VIEW: ◀ LED ▶ for the zoom (`1 µs/div`), `FIT`;
@@ -59,12 +59,11 @@ Each idea has the agent's recommendation; the user decides.
 
 12. **The `pin | bus` switch** as a drawn rocker in the strip (`PIN | BUS`), lit side as now. It stays a mode of the Board's clicks; on the analyzer is where the player looks for it. Recommended.
 
-13. **Run repeats**: after a Capture, the analyzer re-arms at once and shows each new Capture, as the scope's Sweeps do; `SINGLE` keeps today's one-shot (capture, then stop). Then nobody presses Arm after every change on the Board. Cost: a 65 536-point Capture handed over each time the Trigger matches; to measure. To ask: the user may prefer one-shot, the analyzer's traditional use.
+13. **One-shot, re-armed at every power-on** (the user, 2026-11-26). A Capture still ends the arming, but a power-on now always arms (today it only carries an arming still waiting: after a Capture, the player has to press Arm again). Repair, power on, read the new Capture: no key. `ARM` stays on the strip to capture again without a power cycle. Rejected: a repeating Run. A new Capture each time the Trigger matches is stable only on a repeating signal (the counter, video sync), which the scope already shows well; on a CPU triggered on SYNC it replaces the Capture every frame, a different moment of the program each time, and studying one would need a STOP key, the Run/Stop the scope just lost.
 
 ## Questions for the user
 
 - The drawn case (1) and its strip (2): wanted, as on the scope?
-- Run repeats (13), or one-shot as now, or both (`RUN` / `SINGLE`)?
 - The overview (7): kept thin, or gone?
 - The value at the Trigger when there is no cursor (6)?
 - Which of 3–12 are worth their cost; anything missing from the list of problems?
