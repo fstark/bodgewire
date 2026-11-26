@@ -297,7 +297,7 @@ What a click on a pin does: exactly one Board tool or Instrument owns it, shown 
 An Instrument showing the Logic Value and activity of one Net.
 
 **Oscilloscope**:
-An Instrument showing a few Nets over time at fine timing resolution. Drawn as an HP-like case with no title bar (P8h): a strip of keys along its top (TIME / DIV and POSITION round red LED windows, the timebase's opening a grid by unit; the AUTO | NORM rocker and the TRIG'D lamp; the Bodge Wire logo; the size key), its screen in a bezel under it, one Band per Hook, each named on its plate; dragged by its body, resized freely.
+An Instrument showing a few Nets over time at fine timing resolution. Drawn as an HP-like case with no title bar (P8h): a strip of keys along its top (the Bodge Wire logo; TIME / DIV and POSITION round red LED windows, the timebase's opening a grid by unit; the AUTO | NORM rocker and the TRIG'D lamp; the size key), its screen in a bezel under it, one Band per Hook, each named on its plate; dragged by its body, resized freely.
 _Avoid_: Scope (fine in speech, not in docs)
 
 **Logic Analyzer**:

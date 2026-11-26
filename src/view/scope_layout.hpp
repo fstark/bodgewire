@@ -24,7 +24,7 @@ struct ScopeCaseLayout {
     Box positionLess, positionValue, positionMore;  // POSITION ◀ value ▶
     Box autoHalf, normHalf, lamp;                   // the rocker's halves, TRIG'D
     Box logo;                                       // the BW logo
-    Box words;                                      // BODGE·WIRE / OSCILLOSCOPE, when `hasWords`
+    Box words;                                      // BODGE over WIRE, when `hasWords`
     bool hasWords = false;
     Box sizeKey;  // minimal / normal / full; left of CaseClose's corner
     Box bezel, screen;

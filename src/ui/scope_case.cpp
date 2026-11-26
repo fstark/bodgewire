@@ -67,11 +67,9 @@ void DrawScopeCase(ImDrawList& list, ImVec2 at, const ScopeCaseLayout& l, float 
     Label(list, at, l.autoHalf.x0, l.lamp.x1, labelY, "TRIGGER");
     DrawBwLogo(list, Min(at, l.logo), l.logo.height());
     if (l.hasWords) {
-        const float big = ImGui::GetFontSize() * 0.85f, small = ImGui::GetFontSize() * 0.7f;
-        list.AddText(nullptr, big, {at.x + l.words.x0, at.y + l.words.y0 + 1}, kInk,
-                     "BODGE\xc2\xb7WIRE");
-        list.AddText(nullptr, small, {at.x + l.words.x0, at.y + l.words.y0 + big + 3}, kInkFaint,
-                     "OSCILLOSCOPE");
+        const float size = ImGui::GetFontSize() * 0.85f;
+        list.AddText(nullptr, size, {at.x + l.words.x0, at.y + l.words.y0}, kInk, "BODGE");
+        list.AddText(nullptr, size, {at.x + l.words.x0, at.y + l.words.y1 - size}, kInk, "WIRE");
     }
     list.AddRectFilled(Min(at, l.bezel), Max(at, l.bezel), kBezel, 8);
     list.AddRect(Min(at, l.bezel), Max(at, l.bezel), kBezelEdge, 8, 0, 1.5f);

@@ -24,7 +24,8 @@ void CheckStrip(const ScopeCaseLayout& l, float width) {
     }
     CHECK(l.sizeKey.x1 <= width - kScopeClose);  // clear of CaseClose's corner
     CHECK_FALSE(l.timeGroup.overlaps(l.triggerGroup));
-    CHECK(l.triggerGroup.x1 <= l.logo.x0);
+    CHECK((l.hasWords ? l.words : l.logo).x1 <= l.timeGroup.x0);  // the badge first
+    CHECK(l.triggerGroup.x1 <= l.sizeKey.x0);
 }
 
 }  // namespace
@@ -38,10 +39,10 @@ TEST_CASE("scope layout: the strip at the minimal size", "[view]") {
 }
 
 TEST_CASE("scope layout: the maker's words where there is room", "[view]") {
-    CHECK_FALSE(LayOutScopeCase(680, 520).hasWords);
-    const ScopeCaseLayout l = LayOutScopeCase(720, 520);
+    CHECK_FALSE(LayOutScopeCase(660, 520).hasWords);
+    const ScopeCaseLayout l = LayOutScopeCase(680, 520);  // the normal size
     CHECK(l.hasWords);
-    CheckStrip(l, 720);
+    CheckStrip(l, 680);
 }
 
 TEST_CASE("scope layout: the bands", "[view]") {

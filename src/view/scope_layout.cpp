@@ -17,7 +17,7 @@ constexpr float kKeysTop = 22;  // under the groups' labels
 constexpr float kTimeLed = 64, kPositionLed = 80;
 constexpr float kRocker = 96, kLamp = 22;
 constexpr float kLogoHeight = 32, kLogoWidth = kLogoHeight * 1000 / 622;
-constexpr float kWords = 100;  // the two lines of words, a gap before them included
+constexpr float kWords = 58;  // BODGE over WIRE, a gap before them included
 constexpr float kSizeKey = 36;
 constexpr float kBezelTop = 80, kBezelSide = 14, kBezelBottom = 12, kBezelInset = 8;
 
@@ -30,15 +30,18 @@ float Stepper(float x, float led, Box& less, Box& value, Box& more) {
     return more.x1;
 }
 
-}  // namespace
-
-ScopeCaseLayout LayOutScopeCase(float width, float height) {
-    ScopeCaseLayout l;
+// The badge's logo at `x`, the words after it when `words`; then the time and trigger groups.
+void LayOutStrip(ScopeCaseLayout& l, float x, bool words) {
+    const float logoY = kKeysTop + (kKeyHigh - kLogoHeight) / 2;
+    l.logo = {x, logoY, x + kLogoWidth, logoY + kLogoHeight};
+    l.hasWords = words;
+    l.words = words ? Box{l.logo.x1 + kGap, l.logo.y0, l.logo.x1 + kWords, l.logo.y1} : Box{};
+    x = (words ? l.words.x1 : l.logo.x1) + kGap;
     const float groupTop = 6, groupBottom = kKeysTop + kKeyHigh + 4;
-    float x = kMargin + kPad;
-    x = Stepper(x, kTimeLed, l.timeLess, l.timeValue, l.timeMore);
+    const float timeX = x;
+    x = Stepper(x + kPad, kTimeLed, l.timeLess, l.timeValue, l.timeMore);
     x = Stepper(x + kGap, kPositionLed, l.positionLess, l.positionValue, l.positionMore);
-    l.timeGroup = {kMargin, groupTop, x + kPad, groupBottom};
+    l.timeGroup = {timeX, groupTop, x + kPad, groupBottom};
     x = l.timeGroup.x1 + kGap;
     const float rockerX = x + kPad, y1 = kKeysTop + kKeyHigh;
     l.autoHalf = {rockerX, kKeysTop, rockerX + kRocker / 2, y1};
@@ -46,14 +49,19 @@ ScopeCaseLayout LayOutScopeCase(float width, float height) {
     const float lampY = kKeysTop + (kKeyHigh - kLamp) / 2;
     l.lamp = {l.normHalf.x1 + kGap, lampY, l.normHalf.x1 + kGap + kLamp, lampY + kLamp};
     l.triggerGroup = {x, groupTop, l.lamp.x1 + kPad, groupBottom};
-    x = l.triggerGroup.x1 + kGap;
-    const float logoY = kKeysTop + (kKeyHigh - kLogoHeight) / 2;
-    l.logo = {x, logoY, x + kLogoWidth, logoY + kLogoHeight};
+}
+
+}  // namespace
+
+ScopeCaseLayout LayOutScopeCase(float width, float height) {
+    ScopeCaseLayout l;
     const float sizeY = kKeysTop + (kKeyHigh - kSizeKey) / 2;
     l.sizeKey = {width - kScopeClose - 2 - kSizeKey, sizeY, width - kScopeClose - 2,
                  sizeY + kSizeKey};
-    l.hasWords = l.logo.x1 + kWords + kGap <= l.sizeKey.x0;
-    l.words = l.hasWords ? Box{l.logo.x1 + kGap, l.logo.y0, l.logo.x1 + kWords, l.logo.y1} : Box{};
+    LayOutStrip(l, kMargin, true);
+    if (l.triggerGroup.x1 + kGap > l.sizeKey.x0) {
+        LayOutStrip(l, kMargin, false);
+    }
     l.bezel = {kBezelSide, kBezelTop, width - kBezelSide, height - kBezelBottom};
     l.screen = {l.bezel.x0 + kBezelInset, l.bezel.y0 + kBezelInset, l.bezel.x1 - kBezelInset,
                 l.bezel.y1 - kBezelInset};

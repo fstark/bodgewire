@@ -153,11 +153,11 @@ std::vector<Box> ScopeBands(const Box& screen, float axis, std::size_t count);
 std::size_t BandAt(std::span<const Box> bands, float y);
 ```
 
-The strip is 72 px high, from the left at 12 px: the time group (6 px padding; TIME / DIV: ◀ 36, LED 64, ▶ 36; 8 px; POSITION: ◀ 36, LED 80, ▶ 36), 8 px, the trigger group (rocker 96, 8, lamp 22, 6 px padding), 8 px, the badge (logo 51 × 32; with `words`, 110 px more for `BODGE·WIRE` / `OSCILLOSCOPE`), 8 px, the size key (36 × 36), then `CaseClose`'s 40 px corner: 609 px without words. Keys `kBig` (44 px) high, 36 wide. The time LED shows `1 µs` (no `/div`: the label says it); the position LED holds `FormatTimeStep` values up to `123.46 µs`. The words appear when the window is at least 719 px wide (the full preset on a laptop's bench; not at 680). The bezel from 80 px to 12 px above the bottom, 14 px in from the sides; the screen 8 px inside it, so its bottom right lies 22 px from the window's corner (the corner grip's 44 px overlap it: §5).
+The strip is 72 px high, from the left at 12 px: the badge (logo 51 × 32; with `words`, 58 px more for `BODGE` over `WIRE`), 8 px, the time group (6 px padding; TIME / DIV: ◀ 36, LED 64, ▶ 36; 8 px; POSITION: ◀ 36, LED 80, ▶ 36), 8 px, the trigger group (rocker 96, 8, lamp 22, 6 px padding), 8 px, the size key (36 × 36), then `CaseClose`'s 40 px corner: 609 px without words. Keys `kBig` (44 px) high, 36 wide. The time LED shows `1 µs` (no `/div`: the label says it); the position LED holds `FormatTimeStep` values up to `123.46 µs`. The words appear when the window is at least 667 px wide (the normal and full presets, not the minimal). The bezel from 80 px to 12 px above the bottom, 14 px in from the sides; the screen 8 px inside it, so its bottom right lies 22 px from the window's corner (the corner grip's 44 px overlap it: §5).
 
 ### Tests (`tests/view/scope_layout_test.cpp`, `scope layout: …`, `[view]`)
 
-At 620 × 400: no two boxes of the strip overlap, the size key ends left of the 40 px close corner, no words; at 720: words, the badge clear of the size key; four bands at 620 × 400 each at least kMinBand; `BandAt` above, inside, in a gap, below.
+At 620 × 400: no two boxes of the strip overlap, the size key ends left of the 40 px close corner, no words; at 660 none, at 680 words, the groups clear of the size key; four bands at 620 × 400 each at least kMinBand; `BandAt` above, inside, in a gap, below.
 
 ## 5. The screen (§2, §3, §4, §5, §7, §8)
 
