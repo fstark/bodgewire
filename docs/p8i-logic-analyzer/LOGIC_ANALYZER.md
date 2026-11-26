@@ -1,6 +1,6 @@
 # P8i — The Logic Analyzer redesigned
 
-Roadmap step P8i (ARCHITECTURE.md#roadmap): the Logic Analyzer's window given the Oscilloscope's treatment (P8h) where its many uses allow: a drawn case by Bodge Wire, a strip of keys, its rows labelled on the screen, the cursor's tag at the cursor, no status line; and two bugs fixed where it shows a Capture that is not what happened. The Capture engine (`AnalyzerState`, `AnalyzerConsumer`) stays but for its arming; `AnalyzerSetup` gains the rows' order. **Spec in progress (2026-11-26):** the user's decisions are in, the mock-ups drawn; next, the design and plan.
+Roadmap step P8i (ARCHITECTURE.md#roadmap): the Logic Analyzer's window given the Oscilloscope's treatment (P8h) where its many uses allow: a drawn case by Bodge Wire, a strip of keys, its rows labelled on the screen, the cursor's tag at the cursor, no status line; and two bugs fixed where it shows a Capture that is not what happened. The Capture engine (`AnalyzerState`, `AnalyzerConsumer`) stays; `AnalyzerSetup` gains the rows' order and arms on a new Clip and at power-on. Design: [LOGIC_ANALYZER_DESIGN.md](LOGIC_ANALYZER_DESIGN.md). Plan: [LOGIC_ANALYZER_PLAN.md](LOGIC_ANALYZER_PLAN.md).
 
 ![The LED computer: the Trigger on SYNC rising and the address at F800, a Marker and the cursor](mockups/analyzer_normal.svg)
 
@@ -42,20 +42,20 @@ The user, 2026-11-26, on the agent's list of ideas:
 - **A drawn case in the scope's family**: the same frame, panel, key caps, red LEDs and BW logo; no title bar; the size key and × on the case; dragged by its body.
 - **A strip of keys, one group per concern**, left to right: the badge; CAPTURE (`ARM`, lamps `ARMED`, `TRIG'D`, `DONE`); SAMPLE (◀ LED ▶, the LED opening the grid by unit); TRIGGER AT (a rocker `EARLY | MID | LATE`); VIEW (◀ LED ▶ for the zoom, `FIT`); the size key. Hard to judge before seeing it; taken as proposed (`PIN | BUS` and `GROUP` then moved to the screen's corner, above).
 - **Labels on the screen**: each row's one-line plate over its lane's left end (swatch, name, value, Trigger key, ×); no column headings.
-- **The Trigger as a lit key on each plate**, dark on `any`, lit orange with its condition otherwise (`0`, `1`, ↑, ↓), a group's with its pattern (`F800`); the whole Trigger summed up in the strip only if it fits.
+- **The Trigger as a lit key on each plate**, dark on `any`, lit orange with its condition otherwise (`0`, `1`, ↑, ↓), a group's with its pattern (`F800`). The whole Trigger summed up in the strip only if it fits: it does not (the strip fills 940 px), so not.
 - **The cursor's tag on the screen** (its time, `dt` from the Marker), the mouse snapping to an edge; the status line and the gesture hint go ("status lines are evil").
 - **The value at the Trigger** on each plate when there is no cursor or Marker.
 - **The overview kept, thin**, inside the screen above the time axis. Unused so far, maybe for the window's other troubles.
 - **Rows grow to fill the screen when few** (28 px up to about 56), and scroll when many.
 - **Rows reordered by dragging their plates**; the Board's discs numbered by row place, as the scope's Hooks are.
 - **Colours by row**, a group's members in their group's colour.
-- **Grouping visible**: the plates' swatches tick, two ticked light a `GROUP` key; a group's plate has its own ungroup key.
+- **Grouping visible**: the plates' swatches tick; two Channels ticked light the `GROUP` key; a group ticked turns it into `UNGROUP` (asked, 2026-11-26: a key of its own on a group's plate does not fit beside its pattern and ×).
 - **One-shot Captures, re-armed at every power-on**: repair, power on, read the new Capture, no key; `ARM` captures again without a power cycle. A repeating Run rejected: stable only on a repeating signal, which the scope already shows, and studying a CPU's Capture would need Stop back.
 - **`ARM` resumes a paused run**: pause saves the host's CPU, it is not a way to capture. Powered off, `ARM` waits for the power-on, which arms anyway.
 - **A new Clip always arms** (today only while the analyzer waits: after a Capture the phase stays `captured`), since its lane is empty until a Capture that has it. While paused it arms without resuming, so several pins can be clipped first.
 - **The analyzer never shows a Capture that is not what happened** (the two cases above): fixed in this step. Other surprises the user met are forgotten but the pause; to be found with the new design.
 
-Chosen without asking: the overview's height (about 10 px), the grown rows' height (up to 56 px: five rows leave the screen's bottom fifth to its grid at the normal size), the lamps' and keys' names, the empty Trigger key's `·` (a bus's: `xxxx`).
+Chosen without asking: what goes with the old header: the `T` key (centre on the Trigger: `FIT` and the overview do it), the off-screen Trigger's `◀ T 19 µs`, `6.55 ms captured` (the overview shows the Capture), Stop (`ARM` restarts a waiting Capture); every key at least 28 px for a finger, drawn smaller where it sits on a plate; the overview's height (about 10 px), the grown rows' height (up to 56 px: five rows leave the screen's bottom fifth to its grid at the normal size), the lamps' and keys' names, the empty Trigger key's `·` (a bus's: `xxxx`).
 
 ## What the player sees
 
@@ -75,13 +75,13 @@ To settle in the design, file by file:
 1. **The case and the strip**: from the scope's `scope_case` and `bw_logo`, shared where the two cases are drawn alike.
 2. **The screen**: plates, Trigger keys, the cursor's tag, rows that grow, the thin overview, in a pure layout tested in `src/view` as the scope's.
 3. **The rows' order** in `AnalyzerSetup`, the Board's discs numbered by it; colours by row.
-4. **Arming**: re-armed at every power-on (`AnalyzerState::powerOn`) and by every new Clip (`AnalyzerSetup`); `ARM` resuming a paused run; a row's lane drawn only from its own pin's Samples (the Capture's labels per Channel).
+4. **Arming**: by every new Clip and at every power-on (`AnalyzerSetup`, its arming handed to the consumer as `ARM`'s is); `ARM` resuming a paused run; a row's lane drawn only from its own pin's Samples (the Capture's labels per Channel).
 
 The sampling and the Trigger, the runner, the scope and the Machines are untouched.
 
 ## Tests
 
-To settle in the design: unit cases for the layout, the rows' order, the re-arming at power-on and by a new Clip; a case for a Channel reused while paused showing an empty lane; screenshots of the LED computer and the counter at the three sizes; the full release suite.
+To settle in the design: unit cases for the layout, the rows' order, the re-arming at power-on and by a new Clip; a case for a Channel reused after a Capture, not in it; screenshots of the LED computer and the counter at the three sizes; the full release suite.
 
 ## Later
 
