@@ -55,12 +55,12 @@ The user, 2026-11-26, on the agent's list of ideas:
 - **A new Clip always arms** (today only while the analyzer waits: after a Capture the phase stays `captured`), since its lane is empty until a Capture that has it. While paused it arms without resuming, so several pins can be clipped first.
 - **The analyzer never shows a Capture that is not what happened** (the two cases above): fixed in this step. Other surprises the user met are forgotten but the pause; to be found with the new design.
 
-Chosen without asking: the overview's height (about 10 px), the grown rows' height (up to 56 px: five rows leave the screen's bottom fifth empty at the normal size), the lamps' and keys' names, the empty Trigger key's `·` (a bus's: `xxxx`).
+Chosen without asking: the overview's height (about 10 px), the grown rows' height (up to 56 px: five rows leave the screen's bottom fifth to its grid at the normal size), the lamps' and keys' names, the empty Trigger key's `·` (a bus's: `xxxx`).
 
 ## What the player sees
 
 1. **The case.** A drawn case, no title bar, the scope's frame and panel: the strip along its top, the screen below in a dark bezel, the size key and × at the strip's right end, the corner grip. Dragged by its body; resized freely; the presets minimal, normal, full as now.
-2. **The strip** (decided above), drawn as the scope's: key caps, red LED windows, green lamps. `ARMED` lit while waiting for the Trigger, `TRIG'D` while filling after it, `DONE` with a Capture shown. SAMPLE's LED `100 ns`, its grid by unit as the scope's timebase. TRIGGER AT's halves `EARLY`, `MID`, `LATE`, the time before the Trigger in their tooltips. VIEW's LED `1 µs/div`. 
+2. **The strip** (decided above), drawn as the scope's: key caps, red LED windows, green lamps. `ARMED` lit while waiting for the Trigger, `TRIG'D` while filling after it, `DONE` with a Capture shown. SAMPLE's LED `100 ns`, its grid by unit as the scope's timebase. TRIGGER AT's halves `EARLY`, `MID`, `LATE`, the time before the Trigger in their tooltips. VIEW / DIV's LED `1 µs` (the label says per division, as TIME / DIV's on the scope).
 3. **The screen.** Its top left corner, above the plates: `PIN | BUS`, `GROUP`, the count of Clips (`5 of 64`). Above the lanes: the overview (thin, the view as a box, the Trigger and Marker as ticks), the time axis. Then the rows, each a lane with its plate, black between them; under the last row the screen goes on to its bottom, its grid and marks too.
 4. **A plate**: a swatch (a tick box for grouping), the name (`U1.7 SYNC`, `U1 A[15:0]` with its fold arrow), the value (at the cursor, else the Marker, else the Trigger: `1`, `F802`, `X`), the Trigger key, ×. Dragged up or down, it moves its row.
 5. **The cursor's tag** at the cursor on the screen: `+2.3 µs   dt 1.3 µs`. The mouse and a Finger land on an edge of the row they are on within 12 px.
