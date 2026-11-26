@@ -38,7 +38,7 @@ constexpr ImU32 kKeyLine = IM_COL32(74, 85, 80, 255);
 constexpr ImU32 kKeyText = IM_COL32(150, 165, 158, 255);
 constexpr ImU32 kReadingText = IM_COL32(184, 196, 188, 255);
 constexpr ImU32 kTagFill = IM_COL32(216, 224, 218, 235);
-constexpr float kBackKeyWidth = 84;  // "◀ Trigger", in the corner above the plates
+constexpr float kBackKeyWidth = 22;  // ◀, back to the Trigger, at the axis strip's left
 constexpr ImU32 kBackKeyInk = IM_COL32(20, 20, 20, 255);
 constexpr ImU32 kTagText = IM_COL32(17, 17, 17, 255);
 constexpr float kKey = 28;   // a plate's T and × (kControl)
@@ -408,15 +408,15 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     }
 
     // The Trigger hidden left of the screen (under the plates or past them; 2026-11-26): an
-    // orange key in the corner above the plates brings the position back to 0, as a double-click
-    // on the screen does.
+    // orange ◀ key where it left, at the axis strip's left, brings the position back to 0, as a
+    // double-click on the screen does.
     const auto triggerHidden = [&] {
         const TimeView now = ScopeView(settings, lead);
         return now.left + static_cast<Time>(
                               std::llround(kPlate / width * static_cast<double>(now.span()))) >
                0;
     };
-    const Box backKey{screen.x0 + 4, axisY + 1, screen.x0 + 4 + kBackKeyWidth, top - 1};
+    const Box backKey{plateRight + 1, axisY + 1, plateRight + 1 + kBackKeyWidth, top - 1};
     if (triggerHidden() && !bands.empty()) {
         ImGui::SetCursorScreenPos({backKey.x0, backKey.y0});
         if (ImGui::InvisibleButton("##back to the Trigger", {backKey.width(), backKey.height()})) {
@@ -621,14 +621,14 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     list.PopClipRect();
 
     // The axis strip: none over the plates, no off-screen arrow (P8h).
-    DrawAxisLabels(list, view, grid, x, axisY, plateRight, screen.x1, false);
-    if (triggerHidden() && !bands.empty()) {
+    const bool showBack = triggerHidden() && !bands.empty();
+    DrawAxisLabels(list, view, grid, x, axisY, showBack ? backKey.x1 + 1 : plateRight, screen.x1,
+                   false);
+    if (showBack) {
         const ImU32 fill = backHovered ? IM_COL32(255, 170, 60, 255) : kTriggerMark;
         list.AddRectFilled({backKey.x0, backKey.y0}, {backKey.x1, backKey.y1}, fill, 3);
-        const float mid = (backKey.y0 + backKey.y1) / 2;
-        list.AddTriangleFilled({backKey.x0 + 5, mid}, {backKey.x0 + 12, mid - 5},
-                               {backKey.x0 + 12, mid + 5}, kBackKeyInk);
-        list.AddText({backKey.x0 + 17, axisY + 1}, kBackKeyInk, "Trigger");
+        const float cx = (backKey.x0 + backKey.x1) / 2, mid = (backKey.y0 + backKey.y1) / 2;
+        list.AddTriangleFilled({cx - 4, mid}, {cx + 3, mid - 5}, {cx + 3, mid + 5}, kBackKeyInk);
     }
 
     if (changed) {
