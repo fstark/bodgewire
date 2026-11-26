@@ -1,6 +1,20 @@
 # P8i — The Logic Analyzer redesigned
 
-Roadmap step P8i (ARCHITECTURE.md#roadmap): the Logic Analyzer's window given the Oscilloscope's treatment (P8h) where its many uses allow: a drawn case by Bodge Wire, a strip of keys, its rows labelled on the screen, the cursor's tag at the cursor, no status line; and two bugs fixed where it shows a Capture that is not what happened. The Capture engine (`AnalyzerState`, `AnalyzerConsumer`) stays but for its arming; `AnalyzerSetup` gains the rows' order. **Spec in progress (2026-11-26):** the user's decisions are in; next, mock-ups, then the design and plan.
+Roadmap step P8i (ARCHITECTURE.md#roadmap): the Logic Analyzer's window given the Oscilloscope's treatment (P8h) where its many uses allow: a drawn case by Bodge Wire, a strip of keys, its rows labelled on the screen, the cursor's tag at the cursor, no status line; and two bugs fixed where it shows a Capture that is not what happened. The Capture engine (`AnalyzerState`, `AnalyzerConsumer`) stays but for its arming; `AnalyzerSetup` gains the rows' order. **Spec in progress (2026-11-26):** the user's decisions are in, the mock-ups drawn; next, the design and plan.
+
+![The LED computer: the Trigger on SYNC rising and the address at F800, a Marker and the cursor](mockups/analyzer_normal.svg)
+
+| Minimal size, two plates ticked: GROUP lit | Armed after a new Clip: the old Capture dimmed, the new pin's lane empty |
+|---|---|
+| ![](mockups/analyzer_minimal.svg) | ![](mockups/analyzer_armed.svg) |
+
+Mock-ups drawn by [mockups/analyzer_mock.py](mockups/analyzer_mock.py) (`python3 -I analyzer_mock.py` rewrites the SVGs beside it and prints the strip's widths), not by the game, at its sizes (keys 36 × 44, the scope's case): 940 × 520 normal, 880 × 340 minimal.
+
+Drawing them changed three things (the agent, 2026-11-26, to confirm):
+
+- **`PIN | BUS` and `GROUP` sit in the screen's corner above the plates**, not in the strip. With them the strip does not fit 940 px; and both act on the rows, under which they now sit, with the count of Clips (`5 of 64`).
+- **The minimal size grows to 880 × 340** (from 820): the strip's groups need about 870 px with the logo alone. Keeping 820 would mean dropping `FIT` from the strip (a double-click on the screen fits too).
+- **The plate is 248 px**, not 200: a bus's name, its value and its pattern key (`U1 A[15:0]  F802  F800`) need it.
 
 ## Why
 
@@ -25,7 +39,7 @@ The user, 2026-11-26, on the agent's list of ideas:
 
 - **A drawn case in the scope's family**: the same frame, panel, key caps, red LEDs and BW logo; no title bar; the size key and × on the case; dragged by its body.
 - **A strip of keys, one group per concern**, left to right: the badge; CAPTURE (`ARM`, lamps `ARMED`, `TRIG'D`, `DONE`); SAMPLE (◀ LED ▶, the LED opening the grid by unit); TRIGGER AT (a rocker `EARLY | MID | LATE`); VIEW (◀ LED ▶ for the zoom, `FIT`); the `PIN | BUS` rocker; the size key. Hard to judge before seeing it; taken as proposed.
-- **Labels on the screen**: each row's one-line plate over its lane's left end (swatch, name, value, Trigger key, ×), about 200 px; no column headings.
+- **Labels on the screen**: each row's one-line plate over its lane's left end (swatch, name, value, Trigger key, ×); no column headings.
 - **The Trigger as a lit key on each plate**, dark on `any`, lit orange with its condition otherwise (`0`, `1`, ↑, ↓), a group's with its pattern (`F800`); the whole Trigger summed up in the strip only if it fits.
 - **The cursor's tag on the screen** (its time, `dt` from the Marker), the mouse snapping to an edge; the status line and the gesture hint go ("status lines are evil").
 - **The value at the Trigger** on each plate when there is no cursor or Marker.
@@ -39,7 +53,7 @@ The user, 2026-11-26, on the agent's list of ideas:
 - **A new Clip always arms** (today only while the analyzer waits: after a Capture the phase stays `captured`), since its lane is empty until a Capture that has it. While paused it arms without resuming, so several pins can be clipped first.
 - **The analyzer never shows a Capture that is not what happened** (the two cases above): fixed in this step. Other surprises the user met are forgotten but the pause; to be found with the new design.
 
-Chosen without asking: the plate's width (about 200 px), the overview's height (about 10 px), the grown rows' height (up to 56 px), the lamps' and keys' names.
+Chosen without asking: the overview's height (about 10 px), the grown rows' height (up to 56 px: five rows leave the screen's bottom fifth empty at the normal size), the lamps' and keys' names, the empty Trigger key's `·` (a bus's: `xxxx`).
 
 ## What the player sees
 
