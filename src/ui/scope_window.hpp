@@ -53,6 +53,14 @@ private:
         std::optional<double> rail;
     };
     std::array<Reading, kScopeChannels> readings_;
+    // A plate pressed (P8h): its band's place, where the press began, and whether it has moved
+    // past the slop (then it is a drag that moves the band at its release).
+    struct Dragging {
+        std::size_t place;
+        float pressY;
+        bool moving;
+    };
+    std::optional<Dragging> dragging_;
 };
 
 }  // namespace bw

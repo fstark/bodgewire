@@ -17,6 +17,7 @@
 #include "ui/instrument_marks.hpp"
 #include "ui/scope_case.hpp"
 #include "ui/touch.hpp"
+#include "view/fingers.hpp"
 #include "view/scope_layout.hpp"
 #include "view/scope_reading.hpp"
 #include "view/time_text.hpp"
@@ -381,6 +382,10 @@ bool ScopeWindow::draw(bool& open, Session& session) {
 
     // The plates' items: T, ×, then the plate itself (its press is no click on the screen).
     std::optional<std::size_t> unhookChannel;
+    std::optional<std::pair<std::size_t, std::size_t>> dropAt;  // a dragged plate: from, to
+    if (dragging_ && dragging_->place >= bands.size()) {
+        dragging_.reset();  // its band gone
+    }
     for (std::size_t place = 0; place < bands.size(); ++place) {
         const std::size_t c = order[place];
         const Box& band = bands[place];
@@ -402,8 +407,28 @@ bool ScopeWindow::draw(bool& open, Session& session) {
             unhookChannel = c;
         }
         ImGui::SetItemTooltip("unhook");
+        // The plate: dragged up or down past the slop, it moves its band (P8h).
         ImGui::SetCursorScreenPos({band.x0, band.y0});
         ImGui::InvisibleButton("##plate", {kPlate, band.height()});
+        const float pointerY = ImGui::GetIO().MousePos.y;
+        if (ImGui::IsItemActivated()) {
+            dragging_ = Dragging{place, pointerY, false};
+        }
+        if (dragging_ && dragging_->place == place) {
+            if (ImGui::IsItemActive() &&
+                std::abs(pointerY - dragging_->pressY) > (FingerPointer() ? kTapSlop : 3.0f)) {
+                dragging_->moving = true;
+            }
+            if (ImGui::IsItemDeactivated()) {
+                if (dragging_->moving) {
+                    dropAt = std::pair{place, BandAt(bands, pointerY)};
+                }
+                dragging_.reset();
+            }
+        }
+        if (ImGui::IsItemHovered() && !dragging_) {
+            ImGui::SetTooltip("drag up or down: move the band");
+        }
         ImGui::PopID();
     }
 
@@ -522,9 +547,10 @@ bool ScopeWindow::draw(bool& open, Session& session) {
 
     // The plates: T, the pin, ×; the reading under them, and the value at the cursor or Marker.
     const std::optional<Time> readTime = cursor ? cursor : marker_;
-    for (std::size_t place = 0; place < bands.size(); ++place) {
+    const auto drawPlate = [&](std::size_t place, float dy) {
         const std::size_t c = order[place];
-        const Box& band = bands[place];
+        const Box band{bands[place].x0, bands[place].y0 + dy, bands[place].x1,
+                       bands[place].y1 + dy};
         list.AddRectFilled({band.x0, band.y0}, {plateRight, band.y1}, kPlateColour);
         list.AddLine({plateRight, band.y0}, {plateRight, band.y1}, kPlateEdge);
         const float y0 = voltsY(band, 0.0);
@@ -572,6 +598,21 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         list.AddText({band.x0 + kInset + 2, band.y0 + kInset + kKey + 2}, kReadingText,
                      text.c_str());
         list.PopClipRect();
+        if (dy != 0) {
+            list.AddRect({band.x0, band.y0}, {plateRight, band.y1}, kHookColours[c], 0, 0, 2.0f);
+        }
+    };
+    const bool moving = dragging_ && dragging_->moving;
+    for (std::size_t place = 0; place < bands.size(); ++place) {
+        if (!moving || place != dragging_->place) {
+            drawPlate(place, 0);
+        }
+    }
+    if (moving) {  // last, over the others, at the pointer
+        const Box& band = bands[dragging_->place];
+        const float dy = std::clamp(ImGui::GetIO().MousePos.y - dragging_->pressY, top - band.y0,
+                                    screen.y1 - band.y1);
+        drawPlate(dragging_->place, dy);
     }
 
     // Right of the plates: the Marker, the cursor and its tag.
@@ -602,6 +643,8 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     // After the settings: an unhook may move the Trigger's source (P8h).
     if (unhookChannel) {
         session.scope().unhook(*unhookChannel);
+    } else if (dropAt) {
+        session.scope().move(dropAt->first, dropAt->second);
     }
     if (CaseClose()) {
         open = false;
