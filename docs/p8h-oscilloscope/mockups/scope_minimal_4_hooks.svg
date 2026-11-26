@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="440" viewBox="0 0 660 440"><defs>
+<filter id="glow" x="-5%" y="-20%" width="110%" height="140%">
+  <feGaussianBlur stdDeviation="2.4" result="b"/>
+  <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<radialGradient id="crt" cx="50%" cy="50%" r="75%">
+  <stop offset="0%" stop-color="#ffffff" stop-opacity="0.035"/>
+  <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
+</radialGradient>
+<linearGradient id="case" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0%" stop-color="#d8d2c6"/><stop offset="100%" stop-color="#b9b2a4"/>
+</linearGradient>
+<radialGradient id="knob" cx="40%" cy="35%" r="70%">
+  <stop offset="0%" stop-color="#5a5d62"/><stop offset="100%" stop-color="#1c1d20"/>
+</radialGradient>
+<radialGradient id="lamp" cx="40%" cy="35%" r="70%">
+  <stop offset="0%" stop-color="#c8ffb0"/><stop offset="60%" stop-color="#3ce03c"/><stop offset="100%" stop-color="#1a7a1a"/>
+</radialGradient>
+</defs><rect x="0.0" y="0.0" width="660.0" height="440.0" rx="0" fill="#15161a" /><rect x="23.0" y="25.0" width="620.0" height="400.0" rx="12" fill="#000" opacity="0.45"/>
+<rect x="20.0" y="20.0" width="620.0" height="400.0" rx="12" fill="#3c3e42" stroke="#1d1e20" stroke-width="1.5" />
+<rect x="26.0" y="26.0" width="608.0" height="388.0" rx="7" fill="#dedbd2" />
+<line x1="631.0" y1="412.0" x2="632.0" y2="411.0" stroke="#8f8c84" stroke-width="1.4" />
+<line x1="625.0" y1="412.0" x2="632.0" y2="405.0" stroke="#8f8c84" stroke-width="1.4" />
+<line x1="619.0" y1="412.0" x2="632.0" y2="399.0" stroke="#8f8c84" stroke-width="1.4" />
+<rect x="566.0" y="34.0" width="28.0" height="28.0" rx="4" fill="#c4c1b8" stroke="#9c9a93" stroke-width="1" />
+<rect x="573.0" y="41.0" width="14.0" height="14.0" rx="0" fill="none" stroke="#2b2f36" stroke-width="1.5" />
+<rect x="600.0" y="34.0" width="28.0" height="28.0" rx="4" fill="#c4c1b8" stroke="#9c9a93" stroke-width="1" />
+<text x="614.0" y="53.0" font-family="Menlo, monospace" font-size="17" fill="#2b2f36" text-anchor="middle" font-weight="bold">×</text>
+<rect x="32.0" y="30.0" width="302.0" height="50.0" rx="5" fill="#cfd5dc" />
+<rect x="340.0" y="30.0" width="124.0" height="50.0" rx="5" fill="#cfd5dc" />
+<text x="113.0" y="41.0" font-family="Menlo, monospace" font-size="10" fill="#2b2f36" text-anchor="middle" font-weight="bold">TIME / DIV</text>
+<rect x="38.0" y="48.0" width="30.0" height="30.0" rx="4" fill="#9c9a93" />
+<rect x="38.0" y="46.0" width="30.0" height="30.0" rx="4" fill="#efeee9" stroke="#a9a69e" stroke-width="1" />
+<text x="53.0" y="66.0" font-family="Menlo, monospace" font-size="12" fill="#2b2f36" text-anchor="middle" font-weight="bold">◀</text>
+<rect x="72.0" y="46.0" width="82.0" height="30.0" rx="3" fill="#1a0705" stroke="#555" stroke-width="1" />
+<text x="113.0" y="66.0" font-family="Menlo, monospace" font-size="13" fill="#ff4a3a" text-anchor="middle" font-weight="bold">1 µs</text>
+<rect x="158.0" y="48.0" width="30.0" height="30.0" rx="4" fill="#9c9a93" />
+<rect x="158.0" y="46.0" width="30.0" height="30.0" rx="4" fill="#efeee9" stroke="#a9a69e" stroke-width="1" />
+<text x="173.0" y="66.0" font-family="Menlo, monospace" font-size="12" fill="#2b2f36" text-anchor="middle" font-weight="bold">▶</text>
+<text x="262.0" y="41.0" font-family="Menlo, monospace" font-size="10" fill="#2b2f36" text-anchor="middle" font-weight="bold">POSITION</text>
+<rect x="196.0" y="48.0" width="30.0" height="30.0" rx="4" fill="#9c9a93" />
+<rect x="196.0" y="46.0" width="30.0" height="30.0" rx="4" fill="#efeee9" stroke="#a9a69e" stroke-width="1" />
+<text x="211.0" y="66.0" font-family="Menlo, monospace" font-size="12" fill="#2b2f36" text-anchor="middle" font-weight="bold">◀</text>
+<rect x="230.0" y="46.0" width="64.0" height="30.0" rx="3" fill="#1a0705" stroke="#555" stroke-width="1" />
+<text x="262.0" y="66.0" font-family="Menlo, monospace" font-size="13" fill="#ff4a3a" text-anchor="middle" font-weight="bold">0</text>
+<rect x="298.0" y="48.0" width="30.0" height="30.0" rx="4" fill="#9c9a93" />
+<rect x="298.0" y="46.0" width="30.0" height="30.0" rx="4" fill="#efeee9" stroke="#a9a69e" stroke-width="1" />
+<text x="313.0" y="66.0" font-family="Menlo, monospace" font-size="12" fill="#2b2f36" text-anchor="middle" font-weight="bold">▶</text>
+<text x="402.0" y="41.0" font-family="Menlo, monospace" font-size="10" fill="#2b2f36" text-anchor="middle" font-weight="bold">TRIGGER</text>
+<rect x="346.0" y="46.0" width="88.0" height="30.0" rx="4" fill="#9c9a93" />
+<rect x="348.0" y="48.0" width="42.0" height="26.0" rx="3" fill="#efeee9" />
+<text x="369.0" y="66.0" font-family="Menlo, monospace" font-size="11" fill="#2b2f36" text-anchor="middle" font-weight="bold">AUTO</text>
+<text x="412.0" y="66.0" font-family="Menlo, monospace" font-size="11" fill="#55585e" text-anchor="middle" font-weight="normal">NORM</text>
+<circle cx="450" cy="61" r="7" fill="url(#lamp)" stroke="#222"/>
+<circle cx="450" cy="61" r="11" fill="#3ce03c" opacity="0.18"/>
+<g transform="translate(472,42) scale(0.05144694533762058)"><clipPath id="clipplain47242"><rect width="1000" height="622" rx="74"/></clipPath><g clip-path="url(#clipplain47242)"><rect width="1000" height="622" fill="#0a55a0"/><circle cx="500" cy="311" r="292" fill="#fff"/><g transform="translate(500,311) skewX(-21) scale(0.94) translate(-500,-311)"><path d="M282,-60 H338 V196 H402 Q442,196 442,236 V385 Q442,425 402,425 H282 Z M338,240 V381 H386 V240 Z" fill="#fff" stroke="#fff" stroke-width="36" stroke-linejoin="round"/><path d="M472,196 528,196 V381 H562 V260 H618 V381 H652 V196 H708 V385 Q708,425 668,425 H512 Q472,425 472,385 Z" fill="#fff" stroke="#fff" stroke-width="36" stroke-linejoin="round"/><path d="M282,-60 H338 V196 H402 Q442,196 442,236 V385 Q442,425 402,425 H282 Z M338,240 V381 H386 V240 Z" fill="#0a55a0"/><path d="M472,196 528,196 V381 H562 V260 H618 V381 H652 V196 H708 V385 Q708,425 668,425 H512 Q472,425 472,385 Z" fill="#0a55a0"/></g></g></g>
+<rect x="34.0" y="88.0" width="592.0" height="316.0" rx="10" fill="#26282b" stroke="#111" stroke-width="1.5" />
+<rect x="42.0" y="96.0" width="576.0" height="300.0" rx="8" fill="#000000" />
+<text x="270.4" y="114.0" font-family="Menlo, monospace" font-size="11" fill="#ff8c1a" text-anchor="start" font-weight="normal">0</text>
+<text x="381.2" y="114.0" font-family="Menlo, monospace" font-size="11" fill="#7f9a86" text-anchor="start" font-weight="normal">+2 µs</text>
+<text x="492.0" y="114.0" font-family="Menlo, monospace" font-size="11" fill="#7f9a86" text-anchor="start" font-weight="normal">+4 µs</text>
+<path d="M262.4,113.0 L272.4,113.0 L267.4,120.0 Z" fill="#ff8c1a"/>
+<rect x="56.0" y="120.0" width="554.0" height="62.5" rx="0" fill="#08130d" />
+<line x1="56.0" y1="132.5" x2="610.0" y2="132.5" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="145.0" x2="610.0" y2="145.0" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="157.5" x2="610.0" y2="157.5" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="170.0" x2="610.0" y2="170.0" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="120.0" x2="610.0" y2="120.0" stroke="#2b4234" stroke-width="1" />
+<line x1="56.0" y1="182.5" x2="610.0" y2="182.5" stroke="#2b4234" stroke-width="1" />
+<rect x="56.0" y="188.5" width="554.0" height="62.5" rx="0" fill="#08130d" />
+<line x1="56.0" y1="201.0" x2="610.0" y2="201.0" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="213.5" x2="610.0" y2="213.5" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="226.0" x2="610.0" y2="226.0" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="238.5" x2="610.0" y2="238.5" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="188.5" x2="610.0" y2="188.5" stroke="#2b4234" stroke-width="1" />
+<line x1="56.0" y1="251.0" x2="610.0" y2="251.0" stroke="#2b4234" stroke-width="1" />
+<rect x="56.0" y="257.0" width="554.0" height="62.5" rx="0" fill="#08130d" />
+<line x1="56.0" y1="269.5" x2="610.0" y2="269.5" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="282.0" x2="610.0" y2="282.0" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="294.5" x2="610.0" y2="294.5" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="307.0" x2="610.0" y2="307.0" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="257.0" x2="610.0" y2="257.0" stroke="#2b4234" stroke-width="1" />
+<line x1="56.0" y1="319.5" x2="610.0" y2="319.5" stroke="#2b4234" stroke-width="1" />
+<rect x="56.0" y="325.5" width="554.0" height="62.5" rx="0" fill="#08130d" />
+<line x1="56.0" y1="338.0" x2="610.0" y2="338.0" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="350.5" x2="610.0" y2="350.5" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="363.0" x2="610.0" y2="363.0" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="375.5" x2="610.0" y2="375.5" stroke="#15251b" stroke-width="1" />
+<line x1="56.0" y1="325.5" x2="610.0" y2="325.5" stroke="#2b4234" stroke-width="1" />
+<line x1="56.0" y1="388.0" x2="610.0" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="101.2" y1="120.0" x2="101.2" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="156.6" y1="120.0" x2="156.6" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="212.0" y1="120.0" x2="212.0" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="267.4" y1="120.0" x2="267.4" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="322.8" y1="120.0" x2="322.8" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="378.2" y1="120.0" x2="378.2" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="433.6" y1="120.0" x2="433.6" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="489.0" y1="120.0" x2="489.0" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="544.4" y1="120.0" x2="544.4" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<line x1="599.8" y1="120.0" x2="599.8" y2="388.0" stroke="#2b4234" stroke-width="1" />
+<polyline points="56.0,140.3 73.5,140.3 73.5,176.3 101.2,176.3 101.2,140.3 128.9,140.3 128.9,176.3 156.6,176.3 156.6,140.3 184.3,140.3 184.3,176.3 212.0,176.3 212.0,140.3 239.7,140.3 239.7,176.3 267.4,176.3 267.4,140.3 295.1,140.3 295.1,176.3 322.8,176.3 322.8,140.3 350.5,140.3 350.5,176.3 378.2,176.3 378.2,140.3 405.9,140.3 405.9,176.3 433.6,176.3 433.6,140.3 461.3,140.3 461.3,176.3 489.0,176.3 489.0,140.3 516.7,140.3 516.7,176.3 544.4,176.3 544.4,140.3 572.1,140.3 572.1,176.3 599.8,176.3 599.8,140.3 610.0,140.3" fill="none" stroke="#ffe600" stroke-width="1.6" filter="url(#glow)"/>
+<path d="M46.0,173.5 L54.0,178.5 L46.0,183.5 Z" fill="#ffe600"/>
+<rect x="57.0" y="121.0" width="155.0" height="60.5" rx="0" fill="#050a07" />
+<rect x="62.0" y="125.0" width="28.0" height="28.0" rx="4" fill="#ff8c1a" />
+<text x="76.0" y="144.0" font-family="Menlo, monospace" font-size="12" fill="#1a1a1a" text-anchor="middle" font-weight="bold">▲T</text>
+<text x="96.0" y="144.0" font-family="Menlo, monospace" font-size="12" fill="#ffe600" text-anchor="start" font-weight="normal">U1.2 CLK</text>
+<rect x="178.0" y="125.0" width="28.0" height="28.0" rx="4" fill="#0b120e" stroke="#4a5550" stroke-width="1" />
+<text x="192.0" y="144.0" font-family="Menlo, monospace" font-size="15" fill="#9aa8a0" text-anchor="middle" font-weight="normal">×</text>
+<text x="64.0" y="171.0" font-family="Menlo, monospace" font-size="12" fill="#b8c4bc" text-anchor="start" font-weight="normal">1 MHz · 50 %</text>
+<polyline points="56.0,208.8 212.0,208.8 212.0,208.8 267.4,208.8 267.4,244.8 322.8,244.8 322.8,208.8 378.2,208.8 378.2,244.8 433.6,244.8 433.6,208.8 489.0,208.8 489.0,244.8 544.4,244.8 544.4,208.8 599.8,208.8 599.8,244.8 610.0,244.8" fill="none" stroke="#00e6ff" stroke-width="1.6" filter="url(#glow)"/>
+<path d="M46.0,242.0 L54.0,247.0 L46.0,252.0 Z" fill="#00e6ff"/>
+<rect x="57.0" y="189.5" width="155.0" height="60.5" rx="0" fill="#050a07" />
+<rect x="62.0" y="193.5" width="28.0" height="28.0" rx="4" fill="#0b120e" stroke="#4a5550" stroke-width="1" />
+<text x="76.0" y="212.5" font-family="Menlo, monospace" font-size="12" fill="#6c7a72" text-anchor="middle" font-weight="normal">T</text>
+<text x="96.0" y="212.5" font-family="Menlo, monospace" font-size="12" fill="#00e6ff" text-anchor="start" font-weight="normal">U1.14 QA</text>
+<rect x="178.0" y="193.5" width="28.0" height="28.0" rx="4" fill="#0b120e" stroke="#4a5550" stroke-width="1" />
+<text x="192.0" y="212.5" font-family="Menlo, monospace" font-size="15" fill="#9aa8a0" text-anchor="middle" font-weight="normal">×</text>
+<text x="64.0" y="239.5" font-family="Menlo, monospace" font-size="12" fill="#b8c4bc" text-anchor="start" font-weight="normal">500 kHz · 50 %</text>
+<polyline points="56.0,313.3 267.4,313.3 267.4,277.4 378.2,277.4 378.2,313.3 489.0,313.3 489.0,277.4 599.8,277.4 599.8,313.3 610.0,313.3" fill="none" stroke="#ff3cdc" stroke-width="1.6" filter="url(#glow)"/>
+<path d="M46.0,310.5 L54.0,315.5 L46.0,320.5 Z" fill="#ff3cdc"/>
+<rect x="57.0" y="258.0" width="155.0" height="60.5" rx="0" fill="#050a07" />
+<rect x="62.0" y="262.0" width="28.0" height="28.0" rx="4" fill="#0b120e" stroke="#4a5550" stroke-width="1" />
+<text x="76.0" y="281.0" font-family="Menlo, monospace" font-size="12" fill="#6c7a72" text-anchor="middle" font-weight="normal">T</text>
+<text x="96.0" y="281.0" font-family="Menlo, monospace" font-size="12" fill="#ff3cdc" text-anchor="start" font-weight="normal">U1.13 QB</text>
+<rect x="178.0" y="262.0" width="28.0" height="28.0" rx="4" fill="#0b120e" stroke="#4a5550" stroke-width="1" />
+<text x="192.0" y="281.0" font-family="Menlo, monospace" font-size="15" fill="#9aa8a0" text-anchor="middle" font-weight="normal">×</text>
+<text x="64.0" y="308.0" font-family="Menlo, monospace" font-size="12" fill="#b8c4bc" text-anchor="start" font-weight="normal">250 kHz · 50 %</text>
+<polyline points="56.0,381.8 322.8,381.8 322.8,345.9 378.2,345.9 378.2,381.8 610.0,381.8" fill="none" stroke="#6ea0ff" stroke-width="1.6" filter="url(#glow)"/>
+<path d="M46.0,379.0 L54.0,384.0 L46.0,389.0 Z" fill="#6ea0ff"/>
+<rect x="57.0" y="326.5" width="155.0" height="60.5" rx="0" fill="#050a07" />
+<rect x="62.0" y="330.5" width="28.0" height="28.0" rx="4" fill="#0b120e" stroke="#4a5550" stroke-width="1" />
+<text x="76.0" y="349.5" font-family="Menlo, monospace" font-size="12" fill="#6c7a72" text-anchor="middle" font-weight="normal">T</text>
+<text x="96.0" y="349.5" font-family="Menlo, monospace" font-size="12" fill="#6ea0ff" text-anchor="start" font-weight="normal">U1.15 RCO</text>
+<rect x="178.0" y="330.5" width="28.0" height="28.0" rx="4" fill="#0b120e" stroke="#4a5550" stroke-width="1" />
+<text x="192.0" y="349.5" font-family="Menlo, monospace" font-size="15" fill="#9aa8a0" text-anchor="middle" font-weight="normal">×</text>
+<text x="64.0" y="376.5" font-family="Menlo, monospace" font-size="12" fill="#b8c4bc" text-anchor="start" font-weight="normal">high 1 µs</text>
+<line x1="267.4" y1="120.0" x2="267.4" y2="388.0" stroke="#ff8c1a" stroke-width="1" opacity="0.75"/>
+<rect x="42.0" y="96.0" width="576.0" height="300.0" rx="8" fill="url(#crt)" /></svg>
