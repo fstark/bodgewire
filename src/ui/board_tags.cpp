@@ -114,10 +114,10 @@ std::vector<ClipTag> ClipTagsOf(const Session& session) {
 
 std::vector<HookTag> HookTagsOf(const Session& session) {
     std::vector<HookTag> tags;
-    for (std::size_t c = 0; c < kScopeChannels; ++c) {
-        if (const auto& hook = session.scope().hooks()[c]) {
-            tags.push_back({hook->at, c});
-        }
+    const auto order = session.scope().order();
+    for (std::size_t place = 0; place < order.size(); ++place) {
+        const std::size_t c = order[place];
+        tags.push_back({session.scope().hooks()[c]->at, c, place});
     }
     return tags;
 }

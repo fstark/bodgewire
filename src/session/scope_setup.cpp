@@ -34,13 +34,35 @@ std::optional<std::size_t> ScopeSetup::hook(std::string_view reference, std::str
         return std::nullopt;
     }
     *free = std::move(*lead);
+    const auto channel = static_cast<std::size_t>(free - hooks_.begin());
+    if (!hooks_[config_.settings.source] || config_.settings.source == channel) {
+        config_.settings.source = channel;  // the first Hook, or the source's gone: it triggers
+    }
+    order_.push_back(channel);
     configure();
-    return static_cast<std::size_t>(free - hooks_.begin());
+    return channel;
 }
 
 void ScopeSetup::unhook(std::size_t channel) {
+    if (!hooks_[channel]) {
+        return;
+    }
     hooks_[channel].reset();
+    std::erase(order_, channel);
+    if (config_.settings.source == channel && !order_.empty()) {
+        config_.settings.source = order_.front();
+    }
     configure();
+}
+
+void ScopeSetup::move(std::size_t from, std::size_t to) {
+    if (from >= order_.size()) {
+        return;
+    }
+    to = std::min(to, order_.size() - 1);
+    const std::size_t channel = order_[from];
+    order_.erase(order_.begin() + static_cast<std::ptrdiff_t>(from));
+    order_.insert(order_.begin() + static_cast<std::ptrdiff_t>(to), channel);
 }
 
 std::optional<std::size_t> ScopeSetup::hookAt(std::string_view reference,

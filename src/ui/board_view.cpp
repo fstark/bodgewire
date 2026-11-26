@@ -1001,7 +1001,7 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
         const ImVec2 centre{pad.x - 2 - radius, pad.y - 2 - radius};
         list.AddCircleFilled(centre, radius, kHookColours[tag.channel]);
         list.AddCircle(centre, radius, IM_COL32_BLACK, 0, 1.0f);
-        const char digit[2] = {static_cast<char>('1' + tag.channel), '\0'};
+        const char digit[2] = {static_cast<char>('1' + tag.place), '\0'};
         const float fontSize = std::min(ImGui::GetFontSize(), radius * 2);
         const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, digit);
         list.AddText(nullptr, fontSize, {centre.x - text.x / 2, centre.y - text.y / 2},
@@ -1443,8 +1443,7 @@ void BoardView::input(ImVec2 origin) {
         // the probe or an Instrument in hand (P8f): its release frames the chip.
         framePress_.reset();
         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && pressed_ && picked &&
-            picked->hit.kind == HitKind::Component && !onCorner && !onWindow &&
-            Measures(owner_)) {
+            picked->hit.kind == HitKind::Component && !onCorner && !onWindow && Measures(owner_)) {
             framePress_ = picked->hit.component;
         }
     }

@@ -8,7 +8,7 @@ Screenshots: `build/release/src/ui/bw_ui machines/010-counter/puzzles/01-dark-le
 
 | Phase | Description | Commit |
 |---|---|---|
-| 1 | The view behind the plate, the cursor's tag, the timebase rows, the readings, the layout | |
+| 1 | The view behind the plate, the cursor's tag, the timebase rows, the readings, the layout | `e201870` |
 | 2 | The bands' order; the Board's Hook numbers | |
 | 3 | The screen: bands, plates, labels, Trigger on the labels, cursor tag, snap | |
 | 4 | The case and the strip: logo, keys, LEDs, timebase grid, presets on the case | |
@@ -68,3 +68,5 @@ Fence: the full release suite `ctest --preset release -j`; the phase 3–5 scree
 ## Implementation notes
 
 - 2026-11-26, review (a fresh agent, the three docs against the code): 13 must-fixes, all fixed in the docs before phase 1. The screen's item allows overlap (`IsItemHovered` ignores later items otherwise: a plate's double-click would reset the position, the corner grip would be dead); ×, `T` and the drop applied after the drawing and the settings; a new Hook takes the Trigger when its source is not hooked; the readings in the existing formatters' trimmed form (`1 MHz`, `high 1 µs`) with "high" defined (One, not floating); the ◀ ▶ ▲ ▼ drawn as triangles; `NumberField` given a look that does not leak into its pad; the logo's counter filled white after the letters (`AddConcavePolyFilled` has no holes); one list of `scope_case`'s functions; the debug regex kept off the BW-80's and BW-2001's `session:` cases; the removal screenshot added; the mouse's snap left to the user (every scripted pointer is a finger); the logo checked in a crop. Taken from the suggestions: the layout pure and tested in `src/view`; the strip's widths fitted to 620 px (the words only from 719); the readings over the visible part, with the power in their cache key; the Marker and cursor clipped right of the plates, the 0 V arrows at their edge; the slop per pointer; a shared size icon; the minimum size clamped to the bench; the lamp from the Sweep shown; the zoom about the visible centre; the full suite after phases 3 and 4.
+- 2026-11-26, phase 1: as designed. The cursor's tag's `dt` unsigned when positive (`dt 3 µs`, `dt -2 µs`). The layout's strip comes to 609 px at the minimal 620; the words from 719. Checks: release and debug `^(time view|scope reading|scope layout): ` (21 cases).
+- 2026-11-26, phase 2: as designed; `unhook` of a Channel not hooked does nothing. Screenshots: the counter with three Hooks, the scope dragged off the Board (`--drag 450:202:0:420`): discs 1, 2, 3; a `--tap 436:366` on `U1.QA`'s pad unhooks it: QB's disc reads 2. Checks: release `^(session|scope): ` (72), debug `$DEBUG_R` (26).

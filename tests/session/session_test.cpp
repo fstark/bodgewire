@@ -458,6 +458,61 @@ TEST_CASE("session: hooks", "[session]") {
     CHECK(session.scope().rail(0) == 0.0);
 }
 
+TEST_CASE("session: the scope's bands in hook order", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    ScopeSetup& scope = session.scope();
+    REQUIRE(scope.hook("U1", "2") == 0);
+    REQUIRE(scope.hook("U1", "14") == 1);
+    REQUIRE(scope.hook("U1", "13") == 2);
+    CHECK(std::ranges::equal(scope.order(), std::vector<std::size_t>{0, 1, 2}));
+    scope.unhook(1);
+    CHECK(std::ranges::equal(scope.order(), std::vector<std::size_t>{0, 2}));
+    REQUIRE(scope.hook("U1", "12") == 1);  // the free Channel, its band at the bottom
+    CHECK(std::ranges::equal(scope.order(), std::vector<std::size_t>{0, 2, 1}));
+}
+
+TEST_CASE("session: the scope's source follows its Hook", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    ScopeSetup& scope = session.scope();
+    REQUIRE(scope.hook("U1", "2") == 0);
+    REQUIRE(scope.hook("U1", "14") == 1);
+    REQUIRE(scope.hook("U1", "13") == 2);
+    ScopeSettings settings = scope.settings();
+    settings.source = 1;
+    scope.setSettings(settings);
+    scope.unhook(1);  // the source's band: the Trigger goes to the top band
+    CHECK(scope.settings().source == 0);
+    scope.unhook(0);
+    CHECK(scope.settings().source == 2);
+    scope.unhook(2);
+    REQUIRE(scope.hook("U1", "12") == 0);
+    REQUIRE(scope.hook("U1", "11") == 1);
+    settings = scope.settings();
+    settings.source = 1;
+    scope.setSettings(settings);
+    scope.unhook(1);
+    scope.unhook(0);                       // none left: the source stays where it was
+    REQUIRE(scope.hook("U1", "13") == 0);  // the first Hook takes the Trigger
+    CHECK(scope.settings().source == 0);
+}
+
+TEST_CASE("session: the scope's bands moved", "[session]") {
+    Session session = PuzzleSession("broken_trace");
+    ScopeSetup& scope = session.scope();
+    REQUIRE(scope.hook("U1", "2") == 0);
+    REQUIRE(scope.hook("U1", "14") == 1);
+    REQUIRE(scope.hook("U1", "13") == 2);
+    scope.move(2, 0);
+    CHECK(std::ranges::equal(scope.order(), std::vector<std::size_t>{2, 0, 1}));
+    scope.move(0, 9);  // clamped: to the bottom
+    CHECK(std::ranges::equal(scope.order(), std::vector<std::size_t>{0, 1, 2}));
+    scope.move(1, 1);
+    CHECK(std::ranges::equal(scope.order(), std::vector<std::size_t>{0, 1, 2}));
+    scope.move(2, 1);
+    REQUIRE(session.repair(MendRepair{H0Crack().layer, H0Crack().at}) == RepairResult::Done);
+    CHECK(std::ranges::equal(scope.order(), std::vector<std::size_t>{0, 2, 1}));  // a rebuild
+}
+
 TEST_CASE("session: clips and hooks on a resistor's pad and a capacitor's", "[session]") {
     // A passive Part has no Component: its pads by number, on the Net the Board gives them.
     Session session = PuzzleSession("gap");

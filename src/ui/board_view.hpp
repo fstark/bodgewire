@@ -53,6 +53,7 @@ inline constexpr std::array<ImU32, kScopeChannels> kHookColours{
 struct HookTag {
     Point at;  // pad, nm
     std::size_t channel;
+    std::size_t place;  // its band on the scope's screen, 0 the top one (P8h): its number
 };
 
 struct LeadTag {
@@ -147,10 +148,10 @@ public:
     // Highlighted like a Board hover at the next draw only: panels draw after the Board.
     void hoverFromOutside(std::optional<BoardTarget> target) { outside_ = target; }
     void focus(BoardTarget target);  // frame + flash 1 s
-    // A manual's or chip panel's hits. A clicked pin, the probe, meter or an instrument owning the focus:
-    // a click on that pad for takeClick(), flashed in place, the view unmoved; a double-click's
-    // second click focus()es it (the first measured). Cmd-click, or any other target or owner:
-    // focus() it (a single part also selected). A pin held with the meter: meterPress().
+    // A manual's or chip panel's hits. A clicked pin, the probe, meter or an instrument owning the
+    // focus: a click on that pad for takeClick(), flashed in place, the view unmoved; a
+    // double-click's second click focus()es it (the first measured). Cmd-click, or any other target
+    // or owner: focus() it (a single part also selected). A pin held with the meter: meterPress().
     void route(const TargetHits& hits);
     const BoardScene* scene() const { return scene_ ? &*scene_ : nullptr; }
     // The Board outline's top-left corner on screen at the last draw (none without a Board).
@@ -240,7 +241,7 @@ private:
     std::optional<std::size_t> windowPressed_;            // ... on a memory chip's window (P6p)
     std::optional<std::size_t> contentsClick_;
     bool dragging_ = false;
-    std::optional<Pick> wirePress_;  // the Wire tool pressed on this pad: a drag draws a wire
+    std::optional<Pick> wirePress_;   // the Wire tool pressed on this pad: a drag draws a wire
     std::optional<Pick> meterStart_;  // the press began on copper, the meter in hand (P8g)
     std::optional<Pick> meterAt_;     // the pick under the pointer, while meterDown_
     bool meterDown_ = false;          // the press is the meter's: meterPress()
