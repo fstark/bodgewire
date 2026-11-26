@@ -45,25 +45,30 @@ void DrawGrid(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX
 }
 
 void DrawAxisLabels(ImDrawList& list, const TimeView& view, const std::vector<GridLine>& grid,
-                    const TimeToX& x, float y, float left, float right, bool arrow) {
-    const std::optional<Time> offScreenTrigger = arrow ? OffScreenTrigger(view) : std::nullopt;
+                    const TimeToX& x, float y, float left, float right) {
     list.PushClipRect({left, y}, {right, y + kAxisHeight}, true);
-    float from = left, to = right;  // where labels may go
-    if (offScreenTrigger) {
-        (*offScreenTrigger < 0 ? from : to) +=
-            (*offScreenTrigger < 0 ? 1 : -1) * OffScreenWidth(*offScreenTrigger, view.perDivision);
-    }
     for (const GridLine& line : grid) {
         const float at = std::round(x(line.time));
         list.AddLine({at, y + kAxisHeight - 5}, {at, y + kAxisHeight}, kAxisText);
         const std::string label = GridLabel(line.time, view.perDivision);
-        if (line.labelled && at + 3 >= from &&
-            at + 3 + ImGui::CalcTextSize(label.c_str()).x <= to) {
+        if (line.labelled && at + 3 >= left &&
+            at + 3 + ImGui::CalcTextSize(label.c_str()).x <= right) {
             const ImU32 colour = line.time == 0 ? kTriggerMark : kAxisText;
             list.AddText({at + 3, y + 1}, colour, label.c_str());
         }
     }
     list.PopClipRect();
+}
+
+void DrawCursorTag(ImDrawList& list, float x, float top, float right, const std::string& text) {
+    constexpr ImU32 kTagFill = IM_COL32(216, 224, 218, 235);
+    constexpr ImU32 kTagText = IM_COL32(17, 17, 17, 255);
+    const ImVec2 size = ImGui::CalcTextSize(text.c_str());
+    const float width = size.x + 12;
+    const float left = x + 4 + width <= right ? x + 4 : x - 4 - width;
+    const float tagTop = top + kMarkerFlagHeight + 2;
+    list.AddRectFilled({left, tagTop}, {left + width, tagTop + size.y + 4}, kTagFill, 3);
+    list.AddText({left + 6, tagTop + 2}, kTagText, text.c_str());
 }
 
 void DrawTrigger(ImDrawList& list, float x, float top, float bottom) {

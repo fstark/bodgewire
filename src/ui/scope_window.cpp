@@ -37,10 +37,8 @@ constexpr ImU32 kPlateEdge = IM_COL32(43, 66, 52, 255);
 constexpr ImU32 kKeyLine = IM_COL32(74, 85, 80, 255);
 constexpr ImU32 kKeyText = IM_COL32(150, 165, 158, 255);
 constexpr ImU32 kReadingText = IM_COL32(184, 196, 188, 255);
-constexpr ImU32 kTagFill = IM_COL32(216, 224, 218, 235);
 constexpr float kBackKeyWidth = 22;  // ◀, back to the Trigger, at the axis strip's left
 constexpr ImU32 kBackKeyInk = IM_COL32(20, 20, 20, 255);
-constexpr ImU32 kTagText = IM_COL32(17, 17, 17, 255);
 constexpr float kKey = 28;   // a plate's T and × (kControl)
 constexpr float kInset = 5;  // a plate's keys from its edges
 
@@ -103,7 +101,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(60, 62, 66, 255));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, kCaseFrame);
     const bool visible =
         ImGui::Begin(kScopeWindowName, &open,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings |
@@ -115,7 +113,7 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         ImGui::End();
         return false;
     }
-    const bool clicked = InstrumentClicked(kScopeClose);
+    const bool clicked = InstrumentClicked(kCaseClose);
     ScopeSettings settings = session.scope().settings();
     bool changed = false;
     const auto set = [&](const ScopeSettings& next) {
@@ -174,40 +172,13 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     DrawArrowKey(list, at, layout.timeLess, false, timeLessHeld);
     DrawArrowKey(list, at, layout.timeMore, true, timeMoreHeld);
     DrawLed(list, at, layout.timeValue, FormatTime(settings.timebase, false).c_str());
-    ImGui::SetNextWindowPos({at.x + layout.timeValue.x0, at.y + layout.timeValue.y1 + 4});
-    if (ImGui::BeginPopup("##timebase grid", ImGuiWindowFlags_NoMove |
-                                                 ImGuiWindowFlags_NoSavedSettings |
-                                                 ImGuiWindowFlags_AlwaysAutoResize)) {
-        for (const TimebaseRow& row : TimebaseRows()) {
-            ImGui::PushID(row.unit);
-            ImGui::AlignTextToFramePadding();
-            BigText(row.unit);
-            for (const std::size_t i : row.indices) {
-                ImGui::SameLine(i == row.indices.front() ? 40.0f : 0.0f);
-                const Time t = kTimebases[i];
-                const Time unit = t < 1'000'000       ? 1'000
-                                  : t < 1'000'000'000 ? 1'000'000
-                                                      : 1'000'000'000;
-                const bool current = t == settings.timebase;
-                if (current) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(61, 122, 74, 255));
-                }
-                ImGui::PushID(static_cast<int>(i));
-                if (ImGui::Button(std::to_string(t / unit).c_str(), {kBig, kBig})) {
-                    ScopeSettings next = settings;
-                    next.timebase = t;
-                    next.delay = std::min(next.delay, kMaxDelayDivisions * next.timebase);
-                    set(next);
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::PopID();
-                if (current) {
-                    ImGui::PopStyleColor();
-                }
-            }
-            ImGui::PopID();
-        }
-        ImGui::EndPopup();
+    if (const auto chosen =
+            TimeGrid("##timebase grid", kTimebases, settings.timebase,
+                     {at.x + layout.timeValue.x0, at.y + layout.timeValue.y1 + 4})) {
+        ScopeSettings next = settings;
+        next.timebase = *chosen;
+        next.delay = std::min(next.delay, kMaxDelayDivisions * next.timebase);
+        set(next);
     }
     // POSITION: ◀ earlier, ▶ later, by half a screen; the value from the number pad.
     const Time maxDelay = kMaxDelayDivisions * settings.timebase;
@@ -258,9 +229,11 @@ bool ScopeWindow::draw(bool& open, Session& session) {
             return next;
         }());
     }
-    DrawRocker(list, at, layout.autoHalf, layout.normHalf, settings.mode == ScopeMode::Normal);
+    static constexpr std::array<const char*, 2> kModeNames{"AUTO", "NORM"};
+    DrawRocker(list, at, std::array{layout.autoHalf, layout.normHalf}, kModeNames,
+               settings.mode == ScopeMode::Normal ? 1 : 0);
     DrawLamp(list, at, layout.lamp,
-             session.powered() && shown_ && shown_->kind == SweepKind::Triggered);
+             session.powered() && shown_ && shown_->kind == SweepKind::Triggered, "TRIG'D");
     // The size key: minimal, normal, full.
     const auto [resize, resizeHeld] = key(
         "##size", layout.sizeKey,
@@ -609,21 +582,14 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     if (cursor) {
         const float cx = x(*cursor);
         list.AddLine({cx, top}, {cx, screen.y1}, kCursorLine);
-        const std::string tag = CursorTagText(*cursor, marker_);
-        const ImVec2 size = ImGui::CalcTextSize(tag.c_str());
-        const float tagWidth = size.x + 12;
-        const float left = cx + 4 + tagWidth <= screen.x1 ? cx + 4 : cx - 4 - tagWidth;
-        const float tagTop = top + kMarkerFlagHeight + 2;
-        list.AddRectFilled({left, tagTop}, {left + tagWidth, tagTop + size.y + 4}, kTagFill, 3);
-        list.AddText({left + 6, tagTop + 2}, kTagText, tag.c_str());
+        DrawCursorTag(list, cx, top, screen.x1, CursorTagText(*cursor, marker_));
     }
     list.PopClipRect();
     list.PopClipRect();
 
     // The axis strip: none over the plates, no off-screen arrow (P8h).
     const bool showBack = triggerHidden() && !bands.empty();
-    DrawAxisLabels(list, view, grid, x, axisY, showBack ? backKey.x1 + 1 : plateRight, screen.x1,
-                   false);
+    DrawAxisLabels(list, view, grid, x, axisY, showBack ? backKey.x1 + 1 : plateRight, screen.x1);
     if (showBack) {
         const ImU32 fill = backHovered ? IM_COL32(255, 170, 60, 255) : kTriggerMark;
         list.AddRectFilled({backKey.x0, backKey.y0}, {backKey.x1, backKey.y1}, fill, 3);

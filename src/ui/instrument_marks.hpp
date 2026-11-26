@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <imgui.h>
@@ -17,7 +18,6 @@ inline constexpr ImU32 kMarkerLine = IM_COL32(255, 200, 0, 200);
 inline constexpr ImU32 kCursorLine = IM_COL32(255, 255, 255, 90);
 inline constexpr ImU32 kAxisText = IM_COL32(170, 175, 180, 255);
 inline constexpr ImVec4 kHintGrey{0.5f, 0.5f, 0.5f, 1.0f};
-inline constexpr float kAxisHeight = 18.0f;
 // The Marker's flag at the top of its line: a click on it clears the Marker (P8f).
 inline constexpr float kMarkerFlagWidth = 28.0f, kMarkerFlagHeight = 20.0f;
 // The instrument windows' names, for the shelf to bring them to the front.
@@ -45,15 +45,17 @@ void DrawGrid(ImDrawList& list, const std::vector<GridLine>& grid, const TimeToX
 // Grid lines of `view` over `width` px, labelled as often as its widest label allows.
 std::vector<GridLine> LabelledGrid(const TimeView& view, float width);
 // Labels along an axis strip at `y`, each right of its line; a label not wholly inside
-// [left, right], or under the off-screen Trigger's arrow, is left out. `arrow`: room is kept for
-// that arrow (the analyzer's); the scope draws none (P8h).
+// [left, right] is left out.
 void DrawAxisLabels(ImDrawList& list, const TimeView& view, const std::vector<GridLine>& grid,
-                    const TimeToX& x, float y, float left, float right, bool arrow = true);
+                    const TimeToX& x, float y, float left, float right);
 void DrawTrigger(ImDrawList& list, float x, float top, float bottom);  // line + triangle on top
 // The Trigger off the view: an arrow at that end of the axis strip and its distance (nothing
 // when the view holds it).
 void DrawOffScreenTrigger(ImDrawList& list, const TimeView& view, float left, float right, float y);
 void DrawMarker(ImDrawList& list, float x, float top, float bottom);  // line + "M" flag on top
+// The cursor's tag (P8h, P8i): `text` on a light plate right of `x`, under the Marker's flag
+// below `top`, or left of `x` when it would pass `right`.
+void DrawCursorTag(ImDrawList& list, float x, float top, float right, const std::string& text);
 // One line: the cursor, marker and dt, or `hint` in grey when there are neither.
 void StatusLine(std::optional<Time> cursor, std::optional<Time> marker, const char* hint);
 

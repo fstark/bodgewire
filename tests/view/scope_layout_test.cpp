@@ -20,9 +20,9 @@ void CheckStrip(const ScopeCaseLayout& l, float width) {
         for (std::size_t j = i + 1; j < boxes.size(); ++j) {
             CHECK_FALSE(boxes[i].overlaps(boxes[j]));
         }
-        CHECK(boxes[i].y1 <= kScopeStrip);
+        CHECK(boxes[i].y1 <= kCaseStrip);
     }
-    CHECK(l.sizeKey.x1 <= width - kScopeClose);  // clear of CaseClose's corner
+    CHECK(l.sizeKey.x1 <= width - kCaseClose);  // clear of CaseClose's corner
     CHECK_FALSE(l.timeGroup.overlaps(l.triggerGroup));
     CHECK((l.hasWords ? l.words : l.logo).x1 <= l.timeGroup.x0);  // the badge first
     CHECK(l.triggerGroup.x1 <= l.sizeKey.x0);
@@ -35,7 +35,7 @@ TEST_CASE("scope layout: the strip at the minimal size", "[view]") {
     CheckStrip(l, kScopeMinWidth);
     CHECK_FALSE(l.hasWords);
     CHECK(l.timeLess.height() == 44);  // a finger's
-    CHECK(l.screen.y0 >= kScopeStrip);
+    CHECK(l.screen.y0 >= kCaseStrip);
 }
 
 TEST_CASE("scope layout: the maker's words where there is room", "[view]") {

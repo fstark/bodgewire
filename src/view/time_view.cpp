@@ -158,12 +158,17 @@ std::string CursorTagText(Time cursor, std::optional<Time> marker) {
     return text;
 }
 
-std::vector<TimebaseRow> TimebaseRows() {
-    std::vector<TimebaseRow> rows{{"ns", {}}, {"µs", {}}, {"ms", {}}};
-    for (std::size_t i = 0; i < kTimebases.size(); ++i) {
-        const Time t = kTimebases[i];
-        rows[t < 1'000'000 ? 0 : t < 1'000'000'000 ? 1 : 2].indices.push_back(i);
+std::vector<UnitRow> UnitRows(std::span<const Time> values) {
+    std::vector<UnitRow> rows{{"ns", {}}, {"µs", {}}, {"ms", {}}, {"s", {}}};
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        const Time t = values[i];
+        rows[t < 1'000'000           ? 0
+             : t < 1'000'000'000     ? 1
+             : t < 1'000'000'000'000 ? 2
+                                     : 3]
+            .indices.push_back(i);
     }
+    std::erase_if(rows, [](const UnitRow& row) { return row.indices.empty(); });
     return rows;
 }
 

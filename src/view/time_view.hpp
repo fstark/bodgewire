@@ -6,6 +6,7 @@
 #include <iterator>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,9 @@
 #include "sim/time.hpp"
 
 namespace bw {
+
+// A time axis strip's height (the analyzer's and the scope's), px.
+inline constexpr float kAxisHeight = 18.0f;
 
 // What an instrument window shows: kDivisions divisions of a 1-2-5 step, from a left edge given
 // in ps from the Trigger (negative before it). The analyzer's view over its Capture; the scope's
@@ -74,13 +78,14 @@ ScopeSettings WithView(ScopeSettings settings, const TimeView& view, double lead
 // The scope's cursor tag (P8h): "+5 µs", "+5 µs   dt 3 µs" (the font has no Greek).
 std::string CursorTagText(Time cursor, std::optional<Time> marker);
 
-// kTimebases by unit, for the scope's timebase grid (P8h): the ns, µs and ms rows, each its
-// indices into kTimebases, shortest first.
-struct TimebaseRow {
+// `values` (ps, shortest first) by unit, for a drawn LED's grid (the scope's timebase, P8h; the
+// analyzer's sample period, P8i): the ns, µs, ms and s rows that have values, each its indices
+// into `values`.
+struct UnitRow {
     const char* unit;
     std::vector<std::size_t> indices;
 };
-std::vector<TimebaseRow> TimebaseRows();
+std::vector<UnitRow> UnitRows(std::span<const Time> values);
 
 // The edge nearest `at` within `reach`, among `sorted` (ascending once through `proj`, in `at`'s
 // unit); none out of reach. A finger's cursor and Marker land on it (P8f): the analyzer's run

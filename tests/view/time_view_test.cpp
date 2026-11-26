@@ -1,6 +1,11 @@
 #include "view/time_view.hpp"
 
+#include <string>
+#include <vector>
+
 #include <catch2/catch_test_macros.hpp>
+
+#include "instruments/logic_analyzer.hpp"
 
 using namespace bw;
 using namespace bw::literals;
@@ -183,8 +188,9 @@ TEST_CASE("time view: the scope's cursor tag", "[view]") {
     CHECK(CursorTagText(2_us, 2_us) == "+2 µs   dt 0");
 }
 
-TEST_CASE("time view: the scope's timebase rows", "[view]") {
-    const std::vector<TimebaseRow> rows = TimebaseRows();
+TEST_CASE("time view: unit rows", "[view]") {
+    // The scope's timebases: ns 5–500, µs 1–500, ms 1–10.
+    const std::vector<UnitRow> rows = UnitRows(kTimebases);
     REQUIRE(rows.size() == 3);
     CHECK(std::string(rows[0].unit) == "ns");
     CHECK(std::string(rows[1].unit) == "µs");
@@ -193,10 +199,18 @@ TEST_CASE("time view: the scope's timebase rows", "[view]") {
     CHECK(rows[1].indices.size() == 9);
     CHECK(rows[2].indices.size() == 4);
     std::size_t next = 0;
-    for (const TimebaseRow& row : rows) {
+    for (const UnitRow& row : rows) {
         for (const std::size_t i : row.indices) {
             CHECK(i == next++);
         }
     }
     CHECK(next == kTimebases.size());
+    // The analyzer's sample periods, shortest first: ns 10–500, µs 1–500, ms 1.
+    const std::vector<Time> periods(kAnalyzerPeriods.rbegin(), kAnalyzerPeriods.rend());
+    const std::vector<UnitRow> sampled = UnitRows(periods);
+    REQUIRE(sampled.size() == 3);
+    CHECK(sampled[0].indices.size() == 6);
+    CHECK(sampled[1].indices.size() == 9);
+    CHECK(sampled[2].indices.size() == 1);
+    CHECK(periods[sampled[2].indices[0]] == 1'000'000'000);
 }
