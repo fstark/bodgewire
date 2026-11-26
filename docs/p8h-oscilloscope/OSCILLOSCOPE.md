@@ -4,7 +4,7 @@ Roadmap step P8h (ARCHITECTURE.md#roadmap): the Oscilloscope's window rebuilt ar
 
 ![The scope with three Hooks, a Marker and the cursor](mockups/scope_3_hooks.svg)
 
-Mock-ups drawn by [mockups/scope_mock.py](mockups/scope_mock.py) (`python3 -I scope_mock.py` rewrites the SVGs beside it), not by the game: sizes and places are the bench's (680 × 520 normal, 620 × 400 minimal), fonts and colours approximate.
+Mock-ups drawn by [mockups/scope_mock.py](mockups/scope_mock.py) (`python3 -I scope_mock.py` rewrites the SVGs beside it), not by the game: sizes and places are the bench's (680 × 520 normal, 620 × 400 minimal, the size it opens at since 2026-11-26), fonts and colours approximate.
 
 ## Why
 

@@ -57,7 +57,7 @@ TEST_CASE(
     CHECK(keyboard.top > tv.bottom);
     CHECK(keyboard.right == Catch::Approx(tv.right - kViewLane));
 
-    const Box scope = Placed(BenchObject::Scope, NormalSize(BenchObject::Scope));
+    const Box scope = Placed(BenchObject::Scope, MinimalSize(BenchObject::Scope));
     CHECK((scope.left + scope.right) / 2 == Catch::Approx(kBench.width / 2));
     const Box analyzer = Placed(BenchObject::Analyzer, NormalSize(BenchObject::Analyzer));
     CHECK(analyzer.left == Catch::Approx(kBenchMargin));

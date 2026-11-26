@@ -119,8 +119,9 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         return false;
     }
     // A drawn case (P8h), as the TV is: no title bar, dragged by its body, resized freely.
-    const Extent normal = NormalSize(BenchObject::Scope);
-    PlaceNext(BenchObject::Scope, {normal.width, normal.height});
+    // It opens at its minimal size, the size key's normal and full sizes taller (2026-11-26).
+    const Extent opening = MinimalSize(BenchObject::Scope);
+    PlaceNext(BenchObject::Scope, {opening.width, opening.height});
     const Extent bench = BenchArea().extent();
     ImGui::SetNextWindowSizeConstraints(
         {std::min(kScopeMinWidth, bench.width), std::min(kScopeMinHeight, bench.height)},
