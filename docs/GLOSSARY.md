@@ -287,7 +287,7 @@ The strip along the bottom of `bw_ui`'s window (P6c, regrouped in P6o), each gro
 The Shelf's last item (P6o): the Machine's own devices, its TV, keyboard and knob box, drawn together, one cell each, each lit while out (a grayed monitor on a Machine with none). A click brings them all out (any away), to the front (some behind), or puts them all away (all out in front); a double-click pops them all out to desktop windows, or all back in (where there are none, the web build, the slot's first object fills the bench, and goes back: P8f). Each object keeps its own `×`.
 
 **Equipment**:
-The objects brought out from the Shelf or put away: TV, keyboard, Logic Analyzer, Oscilloscope, the manuals binder, a paddle's knob. One that is out is drawn lit on the Shelf. Each comes out first at its default place on the bench, then where and as large as the player left it for the bench (P6d; no way back to the default place, P6o); a double-click on its shelf drawing (the Machine Slot's for the TV, keyboard and knob box), or on its own drag zone (an Instrument's title bar, a case's body off its controls, the binder's cover), sends it to a desktop window of its own, beside the main one, drawn the same, and a second double-click brings it back where it was on the bench (popped out, P6j, P6o; `--pop` at start); the Instruments have two presets, minimal and normal, from a button in their title bar, and on the bench a third, full: the bench filled, the next press back to minimal where the Instrument was (P8f); every object has a drawn grip in its bottom right corner (28 px, answering within 44) and is resized by a Finger's pinch too, but the keyboards, where two Fingers type; an object's first size is shrunk to fit a small bench; where there are no desktop windows (the web build) a double-click fills the bench with the object instead, and a second puts it back; the TV, keyboard, knob and manuals binder are drawn cases with no title bar, dragged by their body and put away by the × on the case; the cases keep their proportions, but the binder, resized freely (P6o). The TV (P6f) is a monitor in a small 1970s set's look: `H-POS` and `V-POS` move the picture, `BRIGHT` and `CONTRAST` set its tone, its own `POWER` switch and red lamp; it shows what a real monitor shows (the line's sync and back porch and the vertical retrace hidden), and an unlabelled trimmer below the strip shows the whole frame (underscan); a round loupe follows the mouse over the picture, its pixels six times larger and sharp, the cursor hidden (2026-11-22); the controls keep their turns for the bench. The binder (P6e) has four dividers (User Manual, Service Manual, Datasheets, Repairs), and a fifth, Contents, once a memory chip's window is clicked (P6p), and a sixth, Give up, on a Procedural Puzzle's bench only (P8d): its page asks, then shows the Fault's `fault` line for the rest of the bench, copied by a click; it comes out at the User Manual and turns to a chip's datasheet when a chip is selected. Its tabs keep 50 px apart, closer in a binder too short for them all.
+The objects brought out from the Shelf or put away: TV, keyboard, Logic Analyzer, Oscilloscope, the manuals binder, a paddle's knob. One that is out is drawn lit on the Shelf. Each comes out first at its default place on the bench, then where and as large as the player left it for the bench (P6d; no way back to the default place, P6o); a double-click on its shelf drawing (the Machine Slot's for the TV, keyboard and knob box), or on its own drag zone (the Logic Analyzer's title bar, a case's body off its controls (the Oscilloscope's since P8h), the binder's cover), sends it to a desktop window of its own, beside the main one, drawn the same, and a second double-click brings it back where it was on the bench (popped out, P6j, P6o; `--pop` at start); the Instruments have two presets, minimal and normal, from a button in the Logic Analyzer's title bar and on the Oscilloscope's case (P8h), and on the bench a third, full: the bench filled, the next press back to minimal where the Instrument was (P8f); every object has a drawn grip in its bottom right corner (28 px, answering within 44) and is resized by a Finger's pinch too, but the keyboards, where two Fingers type; an object's first size is shrunk to fit a small bench; where there are no desktop windows (the web build) a double-click fills the bench with the object instead, and a second puts it back; the TV, keyboard, knob and manuals binder are drawn cases with no title bar, dragged by their body and put away by the × on the case; the cases keep their proportions, but the binder, resized freely (P6o). The TV (P6f) is a monitor in a small 1970s set's look: `H-POS` and `V-POS` move the picture, `BRIGHT` and `CONTRAST` set its tone, its own `POWER` switch and red lamp; it shows what a real monitor shows (the line's sync and back porch and the vertical retrace hidden), and an unlabelled trimmer below the strip shows the whole frame (underscan); a round loupe follows the mouse over the picture, its pixels six times larger and sharp, the cursor hidden (2026-11-22); the controls keep their turns for the bench. The binder (P6e) has four dividers (User Manual, Service Manual, Datasheets, Repairs), and a fifth, Contents, once a memory chip's window is clicked (P6p), and a sixth, Give up, on a Procedural Puzzle's bench only (P8d): its page asks, then shows the Fault's `fault` line for the rest of the bench, copied by a click; it comes out at the User Manual and turns to a chip's datasheet when a chip is selected. Its tabs keep 50 px apart, closer in a binder too short for them all.
 _Avoid_: instrument (for the TV, keyboard or manuals)
 
 **Focus**:
@@ -297,7 +297,7 @@ What a click on a pin does: exactly one Board tool or Instrument owns it, shown 
 An Instrument showing the Logic Value and activity of one Net.
 
 **Oscilloscope**:
-An Instrument showing a few Nets over time at fine timing resolution.
+An Instrument showing a few Nets over time at fine timing resolution. Drawn as an HP-like case with no title bar (P8h): a strip of keys along its top (TIME / DIV and POSITION round red LED windows, the timebase's opening a grid by unit; the AUTO | NORM rocker and the TRIG'D lamp; the Bodge Wire logo; the size key), its screen in a bezel under it, one Band per Hook, each named on its plate; dragged by its body, resized freely.
 _Avoid_: Scope (fine in speech, not in docs)
 
 **Logic Analyzer**:
@@ -317,7 +317,7 @@ A Logic Analyzer lead attached to one pad; it feeds one Channel.
 _Avoid_: Probe (that is the Logic Probe)
 
 **Hook**:
-An Oscilloscope lead attached to one pad; it feeds one Channel.
+An Oscilloscope lead attached to one pad; it feeds one Channel and has its Band. On the Board a disc in its Channel's colour, numbered by its Band's place on the screen (P8h: 1 the top one; renumbered when a Band goes or moves).
 _Avoid_: Probe (that is the Logic Probe)
 
 **Test Point**:
@@ -329,6 +329,10 @@ One of the two Multimeter tips, on any copper: the red one held while a press la
 **Sweep**:
 One pass of the Oscilloscope across its screen, starting at a Trigger.
 
+**Band**:
+One Hook's strip of the Oscilloscope's screen (P8h), with its own 0 to 5 V scale, black between Bands. A plate over its left end names it: its `T` (lit on the Trigger's source, its edge an arrow; a click makes it the source, or flips the edge), the pin, its ×, and its reading (`1 MHz · 50 %`, `low 4 µs`, `H`). The Bands share the screen top to bottom in the order hooked; a plate dragged up or down moves its Band.
+_Avoid_: lane (that is the Logic Analyzer's row)
+
 **Capture**:
 What a Logic Analyzer recorded around one Trigger: every Channel over the same sample points. Not a Vetting's capture time (a simulated time a Vetting Script names: what a Machine shows there is a `Shown`).
 
@@ -337,7 +341,7 @@ Logic Analyzer Channels read and triggered as one Bus value, shown in hex, such 
 _Avoid_: Bus (that is the circuit's group of Nets)
 
 **Marker**:
-A time picked with a click on an Oscilloscope or Logic Analyzer screen, from which the cursor's `dt` is measured. It carries a flag at its top, 28 × 20 px: a click on the flag clears it, as a right-click on the screen does (P8f). A Finger's Marker lands on an edge of the row or band it is on when one lies within 12 px.
+A time picked with a click on an Oscilloscope or Logic Analyzer screen, from which the cursor's `dt` is measured. It carries a flag at its top, 28 × 20 px: a click on the flag clears it, as a right-click on the screen does (P8f). A Finger's Marker lands on an edge of the row or Band it is on when one lies within 12 px; on the Oscilloscope the mouse's too, and its cursor (P8h), the cursor's tag there showing its time and the `dt`.
 
 **Pencil Mark**:
 A grey dot, cross or check the player puts on the Board with the grease pencil (a china marker), a note for the session (P6h), on the Board only (P6o): a click on bare Board or a part puts a dot, a click on a mark turns it to a check, a cross, then none; a Shift-click or right-click clears it. Drawn whatever the tool, layer or look; one on a chip's body leaves with the chip when it is swapped; nothing is saved.
@@ -367,7 +371,7 @@ _Avoid_: Magnifier, zoom (that is the Board's own)
 The slide switch marked HOLD on a keyboard's case (P8f). While it is on, a click on a key holds it down until it is clicked again, as a right-click does: a chord for a Finger, which has one button.
 
 **Stepper**:
-A control for one value out of a list (P8f): −, the value, +, the two buttons 44 px square; + is always the finer step, and a click on the value opens the whole list. It replaces a dropdown: the Logic Analyzer's sample period, the Oscilloscope's timebase, the Contents page's width.
+A control for one value out of a list (P8f): −, the value, +, the two buttons 44 px square; + is always the finer step, and a click on the value opens the whole list. It replaces a dropdown: the Logic Analyzer's sample period and its view, the Contents page's width (the Oscilloscope's timebase is its case's keys since P8h).
 
 **Number Pad**:
 The keys that open beside a number's field when it is clicked (P8f): the hex digits, a trigger pattern's `X`, or a duration's digits and units, with `<` to take one back and OK. The PC's keys type into it as well. It replaces a text field, which a Finger cannot type in: the web build has no on-screen keyboard.

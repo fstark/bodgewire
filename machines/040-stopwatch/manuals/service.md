@@ -45,7 +45,7 @@ What the logic probe shows on a working board. **P** is the pulse lamp: it stays
 | `U12.1Y` | `GCLK` | P lit while running. H, steady, while stopped |
 | `U12.2Y`, `U1.R01` (the same on every counter's R01 and R02 pins) | `RESET` | L; H while RESET is held |
 | `U1.QD`, `U2.QD`, `U3.QD`, `U4.QD` | `F100K`, `F10K`, `F1K`, `F100` | P lit while running; no P while stopped |
-| `U4.QD`, `U7.QA`, `U7.QD`, `U6.QA` | `F100`, `H0`, `H3`, `T0` | Hook all four on the oscilloscope, at 10 ms a division, trigger on channel 1 rising, while running. `F100` is a short high pulse every 10 ms. `H0` changes at each of its falls. `H3` is high for 20 ms in every 100 ms. When `H3` falls, `T0` changes |
+| `U4.QD`, `U7.QA`, `U7.QD`, `U6.QA` | `F100`, `H0`, `H3`, `T0` | Hook all four on the oscilloscope, at 10 ms a division, trigger on `U4.QD` rising, while running. `F100` is a short high pulse every 10 ms. `H0` changes at each of its falls. `H3` is high for 20 ms in every 100 ms. When `H3` falls, `T0` changes |
 | `U6.QD` | `T3` | while running: H for two tenths of every second (at .8 and .9), L the rest; P flashes at each change |
 | `U5.QA` | `S0` | while running: H for one second, L for the next; P flashes at each change |
 | `U5.QD` | `S3` | while running: H only at 8 and 9 seconds, L the rest |
