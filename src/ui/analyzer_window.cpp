@@ -355,9 +355,35 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     list.AddRectFilled({lit.x0 + 2, lit.y0 + 2}, {lit.x1 - 2, lit.y1 - 2}, kKeyLit, 3);
     CentredText(list, {pin.x0, pin.y0}, {pin.x1, pin.y1}, bus_ ? kKeyText : kKeyTextLit, "PIN");
     CentredText(list, {bus.x0, bus.y0}, {bus.x1, bus.y1}, bus_ ? kKeyTextLit : kKeyText, "BUS");
+    // GROUP: the ticked pins as one bus; with a group ticked, UNGROUP (P8i).
+    std::erase_if(selected_, [&](std::size_t c) {
+        return !setup.clips()[c].has_value() || setup.groupOf(c).has_value();
+    });
+    const auto groupNamed = [&](const std::string& name) -> std::optional<std::size_t> {
+        for (std::size_t g = 0; g < setup.groups().size(); ++g) {
+            if (setup.groups()[g].name == name) {
+                return g;
+            }
+        }
+        return std::nullopt;
+    };
+    if (tickedGroup_ && !groupNamed(*tickedGroup_)) {
+        tickedGroup_.reset();
+    }
+    const bool canGroup = selected_.size() >= 2;
+    const bool canUngroup = tickedGroup_.has_value();
     const Box groupKey = abs(layout.groupKey);
-    ScreenKey(list, {groupKey.x0, groupKey.y0}, {groupKey.x1, groupKey.y1}, false);
-    CentredText(list, {groupKey.x0, groupKey.y0}, {groupKey.x1, groupKey.y1}, kKeyLine, "GROUP");
+    ImGui::SetCursorScreenPos({groupKey.x0, groupKey.y0});
+    bool groupNow = false, ungroupNow = false;
+    if (ImGui::InvisibleButton("##group", {groupKey.width(), groupKey.height()})) {
+        groupNow = canGroup;
+        ungroupNow = canUngroup;
+    }
+    ImGui::SetItemTooltip(canUngroup ? "ungroup the ticked group"
+                                     : "tick two pins or more, then group them as one bus");
+    ScreenKey(list, {groupKey.x0, groupKey.y0}, {groupKey.x1, groupKey.y1}, canGroup || canUngroup);
+    CentredText(list, {groupKey.x0, groupKey.y0}, {groupKey.x1, groupKey.y1},
+                canGroup || canUngroup ? kKeyTextLit : kKeyLine, canUngroup ? "UNGROUP" : "GROUP");
     {
         const auto clipped = static_cast<std::size_t>(
             std::ranges::count_if(setup.clips(), [](const auto& c) { return c.has_value(); }));
@@ -605,8 +631,24 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         list.PopClipRect();
     };
 
-    // Rows: each its lane, its plate's text and keys.
+    // Rows: each its lane, its plate's text and keys. The top rows' boxes (a group's without its
+    // members) are a dragged plate's targets.
     std::optional<std::size_t> unclipChannel, unclipGroup;
+    std::optional<std::pair<std::size_t, std::size_t>> dropAt;  // a dragged plate: from, to
+    std::vector<Box> topBoxes;
+    std::vector<std::string> topNames;
+    for (std::size_t i = 0; i < list_.size(); ++i) {
+        if (!list_[i].member) {
+            topBoxes.push_back({rowsBox.x0, rowTop(i), laneX0, rowTop(i) + rowHeight});
+            const Row& row = list_[i];
+            topNames.push_back(row.group ? setup.groups()[*row.group].name
+                                         : setup.label(row.channel));
+        }
+    }
+    const std::size_t topCount = topBoxes.size();
+    if (dragging_ && dragging_->place >= topCount) {
+        dragging_.reset();  // its row gone
+    }
     ImGui::PushClipRect({rowsBox.x0, rowsBox.y0}, {rowsBox.x1, rowsBox.y1}, true);
     for (std::size_t i = 0; i < list_.size(); ++i) {
         const Row& row = list_[i];
@@ -635,7 +677,39 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         const float textY = cy - ImGui::GetTextLineHeight() / 2;
         const float indent = row.member ? 14.0f : 0.0f;
         const float swatchX = rowsBox.x0 + 8 + indent;
-        list.AddRectFilled({swatchX, cy - 6}, {swatchX + 12, cy + 6}, colour, 2);
+        // The swatch; with two rows or more, a tick box for grouping (P8i), a member's not.
+        const bool tickable = !row.member && topCount >= 2;
+        const bool ticked =
+            isGroup ? tickedGroup_ == group->name : !row.member && selected_.contains(row.channel);
+        if (tickable) {
+            ImGui::SetCursorScreenPos(
+                {rowsBox.x0 + 2, top + (rowHeight - std::max(kPlateKey, rowHeight)) / 2});
+            if (ImGui::InvisibleButton("##tick", {kPlateKey, std::max(kPlateKey, rowHeight)})) {
+                if (isGroup) {
+                    tickedGroup_ = ticked ? std::nullopt : std::optional(group->name);
+                    selected_.clear();
+                } else {
+                    if (!selected_.erase(row.channel)) {
+                        selected_.insert(row.channel);
+                    }
+                    tickedGroup_.reset();
+                }
+            }
+            ImGui::SetItemTooltip(isGroup ? "tick: then UNGROUP"
+                                          : "tick two pins or more: then GROUP");
+            if (ticked) {
+                list.AddRectFilled({swatchX - 1, cy - 7}, {swatchX + 13, cy + 7}, colour, 2);
+                list.AddPolyline(std::array<ImVec2, 3>{ImVec2{swatchX + 2, cy},
+                                                       ImVec2{swatchX + 5, cy + 4},
+                                                       ImVec2{swatchX + 11, cy - 4}}
+                                     .data(),
+                                 3, kKeyInk, 0, 2.0f);
+            } else {
+                list.AddRect({swatchX - 1, cy - 7}, {swatchX + 13, cy + 7}, colour, 2, 0, 1.5f);
+            }
+        } else {
+            list.AddRectFilled({swatchX, cy - 6}, {swatchX + 12, cy + 6}, colour, 2);
+        }
         float nameX = swatchX + 20;
         if (isGroup) {
             const bool unfolded = expanded_.contains(group->name);
@@ -757,10 +831,43 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
                 xMax{closeX + kCloseKey, cy + kCloseKey / 2};
             ScreenKey(list, xMin, xMax, false);
             CentredText(list, xMin, xMax, kKeyText, "\u00d7");
+            // The plate, after its keys: dragged up or down past the slop, it moves its row
+            // (P8i, as the scope's bands, P8h).
+            ImGui::SetCursorScreenPos({rowsBox.x0, top});
+            ImGui::InvisibleButton("##plate", {laneX0 - rowsBox.x0, rowHeight});
+            const std::size_t place = row.place;
+            if (ImGui::IsItemActivated()) {
+                dragging_ = Dragging{place, mouse.y, false};
+            }
+            if (dragging_ && dragging_->place == place) {
+                if (ImGui::IsItemActive() &&
+                    std::abs(mouse.y - dragging_->pressY) > (FingerPointer() ? kTapSlop : 3.0f)) {
+                    dragging_->moving = true;
+                }
+                if (ImGui::IsItemDeactivated()) {
+                    if (dragging_->moving) {
+                        dropAt = std::pair{place, BandAt(topBoxes, mouse.y)};
+                    }
+                    dragging_.reset();
+                }
+            }
+            if (ImGui::IsItemHovered() && !dragging_) {
+                ImGui::SetTooltip("drag up or down: move the row");
+            }
         }
         ImGui::PopID();
     }
     ImGui::PopClipRect();
+    // The row dragged, at the pointer: an outline in its colour with its name.
+    if (dragging_ && dragging_->moving && dragging_->place < topCount) {
+        const float dy = mouse.y - dragging_->pressY;
+        const Box& from = topBoxes[dragging_->place];
+        const ImU32 colour = RowColour(dragging_->place);
+        list.AddRectFilled({from.x0, from.y0 + dy}, {laneX0, from.y1 + dy}, kPlate);
+        list.AddRect({from.x0, from.y0 + dy}, {laneX0, from.y1 + dy}, colour, 0, 0, 2.0f);
+        list.AddText({from.x0 + 28, (from.y0 + from.y1 - ImGui::GetTextLineHeight()) / 2 + dy},
+                     colour, topNames[dragging_->place].c_str());
+    }
     if (list_.empty()) {
         const ImVec2 size = ImGui::CalcTextSize(kEmptyHint);
         list.AddText(
@@ -809,11 +916,27 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     if (changed) {
         setup.setSettings(settings);
     }
-    // After the drawing: an unclip changes the rows.
+    // After the drawing: an unclip, a group, an ungroup or a move changes the rows.
     if (unclipChannel) {
         setup.unclip(*unclipChannel);
     } else if (unclipGroup) {
         setup.unclipGroup(*unclipGroup);
+    } else if (groupNow) {
+        std::vector<std::size_t> picked;  // in row order, the top row most significant
+        for (const Row& row : list_) {
+            if (!row.member && !row.group && selected_.contains(row.channel)) {
+                picked.push_back(row.channel);
+            }
+        }
+        setup.group(picked);
+        selected_.clear();
+    } else if (ungroupNow) {
+        if (const auto g = groupNamed(*tickedGroup_)) {
+            setup.ungroup(*g);
+        }
+        tickedGroup_.reset();
+    } else if (dropAt) {
+        setup.move(dropAt->first, dropAt->second);
     }
     if (CaseClose()) {
         open = false;

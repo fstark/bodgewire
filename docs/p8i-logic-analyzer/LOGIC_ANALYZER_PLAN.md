@@ -9,8 +9,8 @@ Spec: [LOGIC_ANALYZER.md](LOGIC_ANALYZER.md). Design: [LOGIC_ANALYZER_DESIGN.md]
 | 1 | The shared case pieces; the scope rebuilt on them, unchanged | `6fc4e08` |
 | 2 | The rows' order, the arming, the Board's discs by row | `8ba1b2d` |
 | 3 | The analyzer's case layout | `96e643d` |
-| 4 | The window: case, strip, corner, screen, plates; ARM resumes a paused run | (this commit) |
-| 5 | Grouping by ticks, rows reordered by dragging | |
+| 4 | The window: case, strip, corner, screen, plates; ARM resumes a paused run | `665ca07` |
+| 5 | Grouping by ticks, rows reordered by dragging | (this commit) |
 | 6 | Docs, README shot, web build, finish | |
 
 ## Phase 1 — The shared case pieces (design §1)
@@ -68,3 +68,4 @@ Fence: the full release suite. Commit: `docs: P8i done, GLOSSARY, recipe, README
 - 2026-11-26, phase 2: as designed. A rebuilt consumer counts its Captures from 1 again, so `a power-on re-arms after a Capture` checks that a new Capture came (`update()`), not a larger serial. The old window's Stop became Arm (`disarm` gone). Screenshot: the LED computer's Board, its discs 1 to 5 in their rows' colours (SYNC, PHI2, RW, the A bus, the D bus). Checks: release `^(session|analyzer)` (88), debug as the design's Checks (18).
 - 2026-11-26, phase 3: as designed, but the lamps 44 px apart (not 40): their names in the UI font would touch. The strip then ends 1 px left of the size key's gap at 940, the words still shown. Checks: release `^(analyzer layout|bench places): ` (18).
 - 2026-11-26, phase 4: as designed. The plates' name, value and keys drawn on the window's list under a clip of the rows; a group's pattern field a `NumberField` with an orange `FieldLook` once set. Screenshots: the LED computer at 940 × 520 (SYNC's ▲ and the A bus's `F800` lit, the values at the cursor, `+2.3 µs   dt 1.3 µs` on the screen, the screen to its bottom); the bug's repro (paused, × on QB, a tap on U5.15: `U5.15 RCO` `not in this Capture`, `ARMED`, QA dimmed); `ARM` tapped while paused (the run switch at 1×, `DONE`, the LED lit); the SAMPLE grid (`100 ns` lit); QA's Trigger choices; twenty Clips before and after a vertical drag (scrolled to A3, the top row clipped under the axis); the full and the minimal size by the size key; `--window 1080:810`. UI 0.8 ms on the LED computer. Checks: the full release suite (1716).
+- 2026-11-26, phase 5: as designed. `GROUP` and `UNGROUP` lit in the screen's key colour, not orange (orange is the Trigger's on both instruments). The dragged plate drawn as an outline in its row's colour with its name. Screenshots on the counter: QB and QC ticked (`GROUP` lit); `GROUP` tapped (`group 1[1:0]` reading 3, 0, 1, 2); the group ticked (`UNGROUP`); QD's plate dragged to the top (QD, QA, QB, QC, the colours by place). Checks: release `^(session|analyzer)` (90).

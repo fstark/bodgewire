@@ -74,6 +74,16 @@ private:
     std::optional<Time> placedCursor_;
     bool bus_ = false;  // PIN | BUS: a click on a pin clips its whole bus
     bool runAsked_ = false;
+    std::set<std::size_t> selected_;          // ticked loose Channels, for GROUP (P8i)
+    std::optional<std::string> tickedGroup_;  // a ticked group's name, for UNGROUP
+    // A plate pressed (P8i, as the scope's): its row's place, where the press began, and whether
+    // it has moved past the slop (then it is a drag that moves the row at its release).
+    struct Dragging {
+        std::size_t place;
+        float pressY;
+        bool moving;
+    };
+    std::optional<Dragging> dragging_;
     std::set<std::string> expanded_;                        // group names shown with their members
     std::map<std::vector<std::size_t>, CaptureRuns> runs_;  // for shown_
     std::map<std::string, bool> patternRefused_;  // per group name: its last pattern not taken
