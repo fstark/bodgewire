@@ -1,6 +1,6 @@
 # P8i — The Logic Analyzer redesigned
 
-Roadmap step P8i (ARCHITECTURE.md#roadmap): the Logic Analyzer's window given the Oscilloscope's treatment (P8h) where its many uses allow: a drawn case by Bodge Wire, a strip of keys, its rows labelled on the screen, the cursor's tag at the cursor, no status line; and two bugs fixed where it shows a Capture that is not what happened. The Capture engine (`AnalyzerState`, `AnalyzerConsumer`) stays; `AnalyzerSetup` gains the rows' order. **Spec in progress (2026-11-26):** the user's decisions are in; the open questions below remain, then the design and plan.
+Roadmap step P8i (ARCHITECTURE.md#roadmap): the Logic Analyzer's window given the Oscilloscope's treatment (P8h) where its many uses allow: a drawn case by Bodge Wire, a strip of keys, its rows labelled on the screen, the cursor's tag at the cursor, no status line; and two bugs fixed where it shows a Capture that is not what happened. The Capture engine (`AnalyzerState`, `AnalyzerConsumer`) stays but for its arming; `AnalyzerSetup` gains the rows' order. **Spec in progress (2026-11-26):** the user's decisions are in; next, mock-ups, then the design and plan.
 
 ## Why
 
@@ -35,7 +35,9 @@ The user, 2026-11-26, on the agent's list of ideas:
 - **Colours by row**, a group's members in their group's colour.
 - **Grouping visible**: the plates' swatches tick, two ticked light a `GROUP` key; a group's plate has its own ungroup key.
 - **One-shot Captures, re-armed at every power-on**: repair, power on, read the new Capture, no key; `ARM` captures again without a power cycle. A repeating Run rejected: stable only on a repeating signal, which the scope already shows, and studying a CPU's Capture would need Stop back.
-- **The analyzer never shows a Capture that is not what happened** (the two cases above): fixed in this step.
+- **`ARM` resumes a paused run**: pause saves the host's CPU, it is not a way to capture. Powered off, `ARM` waits for the power-on, which arms anyway.
+- **A new Clip always arms** (today only while the analyzer waits: after a Capture the phase stays `captured`), since its lane is empty until a Capture that has it. While paused it arms without resuming, so several pins can be clipped first.
+- **The analyzer never shows a Capture that is not what happened** (the two cases above): fixed in this step. Other surprises the user met are forgotten but the pause; to be found with the new design.
 
 Chosen without asking: the plate's width (about 200 px), the overview's height (about 10 px), the grown rows' height (up to 56 px), the lamps' and keys' names.
 
@@ -47,14 +49,8 @@ Chosen without asking: the plate's width (about 200 px), the overview's height (
 4. **A plate**: a swatch (a tick box for grouping), the name (`U1.7 SYNC`, `U1 A[15:0]` with its fold arrow), the value (at the cursor, else the Marker, else the Trigger: `1`, `F802`, `X`), the Trigger key, ×. Dragged up or down, it moves its row.
 5. **The cursor's tag** at the cursor on the screen: `+2.3 µs   dt 1.3 µs`. The mouse and a Finger land on an edge of the row they are on within 12 px.
 6. **The Board's discs**: each Clip's disc in its row's colour, numbered by its row's place (a group's members by the group's).
-7. **Arming.** A power-on arms; `ARM` arms; a new Clip arms (open question below). Each new Capture replaces the shown one.
-8. **What a row shows** is only what its own pin recorded: a row whose pin was not clipped on that Channel for the shown Capture has an empty lane (`not in this Capture`), never another pin's waveform. While armed, the shown Capture is drawn dimmed until the new one comes. Arming while paused: see the open questions.
-
-## Open questions
-
-- **Arm while paused.** Nothing is captured until the run resumes. The user's options: refuse to arm, ask "Run?", or run on `ARM`. The agent's recommendation: `ARM` resumes a paused run (pause saves the host's CPU; it is not a way to capture), and a Clip added while paused arms without resuming (several pins can be clipped first), the plates' lanes empty until the run resumes. Powered off: `ARM` waits for the power-on, which arms anyway.
-- **A new Clip arms?** Today a Clip added while the analyzer waits restarts the waiting with the new pin, but one added after a Capture does not arm (the agent's test, 2026-11-26: the phase stays `captured`). The agent's recommendation: a new Clip always arms, since its lane is empty until a Capture that has it.
-- **Other surprises**: the user has met other moments where the analyzer breaks the law of least astonishment. Which ones?
+7. **Arming.** A power-on arms; a new Clip arms; `ARM` arms, and resumes a paused run. Each new Capture replaces the shown one.
+8. **What a row shows** is only what its own pin recorded: a row whose pin was not clipped on that Channel for the shown Capture has an empty lane (`not in this Capture`), never another pin's waveform. While armed, the shown Capture is drawn dimmed until the new one comes.
 
 ## What is new
 
@@ -63,13 +59,13 @@ To settle in the design, file by file:
 1. **The case and the strip**: from the scope's `scope_case` and `bw_logo`, shared where the two cases are drawn alike.
 2. **The screen**: plates, Trigger keys, the cursor's tag, rows that grow, the thin overview, in a pure layout tested in `src/view` as the scope's.
 3. **The rows' order** in `AnalyzerSetup`, the Board's discs numbered by it; colours by row.
-4. **Arming**: re-armed at every power-on (`AnalyzerState::powerOn`); a row's lane drawn only from its own pin's Samples (the Capture's labels per Channel).
+4. **Arming**: re-armed at every power-on (`AnalyzerState::powerOn`) and by every new Clip (`AnalyzerSetup`); `ARM` resuming a paused run; a row's lane drawn only from its own pin's Samples (the Capture's labels per Channel).
 
-The Capture engine, the runner, the scope and the Machines are untouched.
+The sampling and the Trigger, the runner, the scope and the Machines are untouched.
 
 ## Tests
 
-To settle in the design: unit cases for the layout, the rows' order and the re-arming at power-on; a case for a Channel reused while paused showing an empty lane; screenshots of the LED computer and the counter at the three sizes; the full release suite.
+To settle in the design: unit cases for the layout, the rows' order, the re-arming at power-on and by a new Clip; a case for a Channel reused while paused showing an empty lane; screenshots of the LED computer and the counter at the three sizes; the full release suite.
 
 ## Later
 
