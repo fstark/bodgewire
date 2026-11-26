@@ -93,6 +93,19 @@ void DrawKey(ImDrawList& list, ImVec2 at, const Box& key, const char* label, boo
     Centred(list, at, Cap(list, at, key, pressed), label, kInk);
 }
 
+void DrawLitKey(ImDrawList& list, ImVec2 at, const Box& key, const char* label, bool pressed,
+                ImU32 light) {
+    const Box face = Cap(list, at, key, pressed);
+    if (light != 0) {
+        const ImU32 halo = (light & ~IM_COL32_A_MASK) | (60u << IM_COL32_A_SHIFT);
+        list.AddRect({at.x + face.x0 - 2, at.y + face.y0 - 2},
+                     {at.x + face.x1 + 2, at.y + face.y1 + 2}, halo, 6, 0, 4.0f);
+        list.AddRectFilled({at.x + face.x0 + 1, at.y + face.y0 + 1},
+                           {at.x + face.x1 - 1, at.y + face.y1 - 1}, light, 4);
+    }
+    Centred(list, at, face, label, kInk);
+}
+
 void DrawArrowKey(ImDrawList& list, ImVec2 at, const Box& key, bool right, bool pressed) {
     const Box face = Cap(list, at, key, pressed);
     const float cx = at.x + (face.x0 + face.x1) / 2, cy = at.y + (face.y0 + face.y1) / 2;

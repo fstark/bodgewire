@@ -45,9 +45,8 @@ constexpr float kPlateKey = 28;  // a plate's keys' hit boxes, a finger's (kCont
 constexpr float kBitKey = 28, kBusKey = 44, kCloseKey = 24;
 constexpr float kBackKey = 22;  // ◀ or ▶, back to the Trigger, at an end of the axis
 constexpr std::array<const char*, 5> kConditions{"any", "0", "1", "rise", "fall"};
-constexpr std::array<TriggerPosition, 3> kPositions{TriggerPosition::Early, TriggerPosition::Middle,
-                                                    TriggerPosition::Late};
-constexpr std::array<const char*, 3> kPositionNames{"EARLY", "MID", "LATE"};
+constexpr ImU32 kArmWaiting = IM_COL32(255, 196, 92, 255);   // ARM lit amber: armed
+constexpr ImU32 kArmFilling = IM_COL32(124, 230, 112, 255);  // and green: triggered
 constexpr const char* kEmptyHint = "Clip a pin: the analyzer in hand, click a chip's pin.";
 
 // `width` bits in hex, X for a value with an unknown member.
@@ -57,10 +56,6 @@ std::string BusText(std::uint32_t value, bool unknown, std::size_t width) {
         return std::string(digits, 'X');
     }
     return std::format("{:0{}X}", value, digits);
-}
-
-Time BeforeTrigger(TriggerPosition position, Time period) {
-    return static_cast<Time>(PreTriggerPoints(position)) * period;
 }
 
 ImU32 WithAlpha(ImU32 colour, int alpha) {
@@ -228,15 +223,12 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
 
     // The case: frame, groups and their labels, badge, bezel.
     DrawCaseFrame(list, at, windowSize.x, windowSize.y);
-    for (const Box& group :
-         {layout.captureGroup, layout.sampleGroup, layout.triggerAtGroup, layout.viewGroup}) {
+    for (const Box& group : {layout.captureGroup, layout.sampleGroup, layout.viewGroup}) {
         DrawGroup(list, at, group);
     }
     const float labelY = layout.captureGroup.y0 + 2;
     DrawGroupLabel(list, at, layout.captureGroup.x0, layout.captureGroup.x1, labelY, "CAPTURE");
     DrawGroupLabel(list, at, layout.sampleGroup.x0, layout.sampleGroup.x1, labelY, "SAMPLE");
-    DrawGroupLabel(list, at, layout.triggerAtGroup.x0, layout.triggerAtGroup.x1, labelY,
-                   "TRIGGER AT");
     DrawGroupLabel(list, at, layout.viewLess.x0, layout.viewMore.x1, labelY, "VIEW / DIV");
     DrawBadge(list, at, layout.badge);
     DrawBezel(list, at, layout.bezel);
@@ -248,20 +240,25 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         ImGui::SetItemTooltip("%s", tip);
         return std::pair{hit, ImGui::IsItemActive()};
     };
-    // CAPTURE: ARM, and while paused the run resumed (P8i); the phase's lamps.
-    const auto [arm, armHeld] = key("##arm", layout.armKey, "arm: a Capture at the next Trigger");
+    // CAPTURE: ARM, lit by the phase (2026-11-27: in place of three lamps): amber while it waits
+    // for the Trigger, green while it fills after it, dark with a Capture shown; and while paused,
+    // ARM resumes the run (P8i).
+    const AnalyzerPhase phase = setup.phase();
+    const bool armed = phase == AnalyzerPhase::Armed || phase == AnalyzerPhase::Filling;
+    const char* armTip = phase == AnalyzerPhase::Armed     ? "armed: waiting for the Trigger"
+                         : phase == AnalyzerPhase::Filling ? "triggered: filling the Capture"
+                                                           : "arm: a Capture at the next Trigger";
+    const auto [arm, armHeld] = key("##arm", layout.armKey, armTip);
     if (arm) {
         setup.arm();
         if (session.powered() && session.status().state == RunState::Paused) {
             runAsked_ = true;
         }
     }
-    DrawKey(list, at, layout.armKey, "ARM", armHeld);
-    const AnalyzerPhase phase = setup.phase();
-    const bool armed = phase == AnalyzerPhase::Armed || phase == AnalyzerPhase::Filling;
-    DrawLamp(list, at, layout.lamps[0], phase == AnalyzerPhase::Armed, "ARMED");
-    DrawLamp(list, at, layout.lamps[1], phase == AnalyzerPhase::Filling, "TRIG'D");
-    DrawLamp(list, at, layout.lamps[2], shown_.has_value() && !armed, "DONE");
+    DrawLitKey(list, at, layout.armKey, "ARM", armHeld,
+               phase == AnalyzerPhase::Armed     ? kArmWaiting
+               : phase == AnalyzerPhase::Filling ? kArmFilling
+                                                 : 0);
     // SAMPLE: ◀ a longer period, ▶ a shorter; the LED opens the periods by unit.
     const auto period = static_cast<std::size_t>(
         std::ranges::find(kAnalyzerPeriods, settings.period) - kAnalyzerPeriods.begin());
@@ -287,23 +284,6 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         settings.period = *chosen;
         changed = true;
     }
-    // TRIGGER AT: EARLY | MID | LATE, the time before the Trigger in each tooltip.
-    std::size_t position = 0;
-    for (std::size_t i = 0; i < kPositions.size(); ++i) {
-        const std::string tip =
-            std::format("{} of the Capture before the Trigger",
-                        FormatTime(BeforeTrigger(kPositions[i], settings.period), false));
-        ImGui::PushID(static_cast<int>(i));
-        if (key("##at", layout.triggerAt[i], tip.c_str()).first) {
-            settings.position = kPositions[i];
-            changed = true;
-        }
-        ImGui::PopID();
-        if (settings.position == kPositions[i]) {
-            position = i;
-        }
-    }
-    DrawRocker(list, at, layout.triggerAt, kPositionNames, position);
     // VIEW / DIV: ◀ see more, ▶ look closer, about the view's centre; FIT the whole Capture.
     const auto [wider, widerHeld] = key("##view-", layout.viewLess, "see more (wheel or pinch)");
     const auto [closer, closerHeld] = key("##view+", layout.viewMore, "look closer");

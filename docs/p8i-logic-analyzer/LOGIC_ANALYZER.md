@@ -8,7 +8,7 @@ Roadmap step P8i (ARCHITECTURE.md#roadmap): the Logic Analyzer's window given th
 |---|---|
 | ![](mockups/analyzer_minimal.svg) | ![](mockups/analyzer_armed.svg) |
 
-Mock-ups drawn by [mockups/analyzer_mock.py](mockups/analyzer_mock.py) (`python3 -I analyzer_mock.py` rewrites the SVGs beside it and prints the strip's widths), not by the game, at its sizes (keys 36 × 44, the scope's case): 940 × 520 normal, 880 × 340 minimal.
+The mock-ups predate two decisions of 2026-11-27 (below: no TRIGGER AT, the lamps folded into `ARM`; the minimal size 620 × 340). Mock-ups drawn by [mockups/analyzer_mock.py](mockups/analyzer_mock.py) (`python3 -I analyzer_mock.py` rewrites the SVGs beside it and prints the strip's widths), not by the game, at its sizes (keys 36 × 44, the scope's case): 940 × 520 normal, 880 × 340 minimal.
 
 Drawing them changed three things (the agent; taken by the user, 2026-11-26, "we may have to revisit later"):
 
@@ -40,7 +40,7 @@ What works and stays: the Capture model (64 Channels, 65 536 points, the sample 
 The user, 2026-11-26, on the agent's list of ideas:
 
 - **A drawn case in the scope's family**: the same frame, panel, key caps, red LEDs and BW logo; no title bar; the size key and × on the case; dragged by its body.
-- **A strip of keys, one group per concern**, left to right: the badge; CAPTURE (`ARM`, lamps `ARMED`, `TRIG'D`, `DONE`); SAMPLE (◀ LED ▶, the LED opening the grid by unit); TRIGGER AT (a rocker `EARLY | MID | LATE`); VIEW (◀ LED ▶ for the zoom, `FIT`); the size key. Hard to judge before seeing it; taken as proposed (`PIN | BUS` and `GROUP` then moved to the screen's corner, above).
+- **A strip of keys, one group per concern**, left to right: the badge; CAPTURE (`ARM`); SAMPLE (◀ LED ▶, the LED opening the grid by unit); VIEW (◀ LED ▶ for the zoom, `FIT`); the size key. Hard to judge before seeing it; taken as proposed (`PIN | BUS` and `GROUP` then moved to the screen's corner, above).
 - **Labels on the screen**: each row's one-line plate over its lane's left end (swatch, name, value, Trigger key, ×); no column headings.
 - **The Trigger as a lit key on each plate**, dark on `any`, lit orange with its condition otherwise (`0`, `1`, ↑, ↓), a group's with its pattern (`F800`). The whole Trigger summed up in the strip only if it fits: it does not (the strip fills 940 px), so not.
 - **The cursor's tag on the screen** (its time, `dt` from the Marker), the mouse snapping to an edge; the status line and the gesture hint go ("status lines are evil").
@@ -50,6 +50,8 @@ The user, 2026-11-26, on the agent's list of ideas:
 - **Rows reordered by dragging their plates**; the Board's discs numbered by row place, as the scope's Hooks are.
 - **Colours by row**, a group's members in their group's colour.
 - **Grouping visible**: the plates' swatches tick; two Channels ticked light the `GROUP` key; a group ticked turns it into `UNGROUP` (asked, 2026-11-26: a key of its own on a group's plate does not fit beside its pattern and ×).
+- **No TRIGGER AT; the phase on the ARM key** (2026-11-27, the window being too wide): the Trigger stays early in memory (10 %), enough for every manual's setup (the most history read before a Trigger is 2 ms, at 10 µs a sample: EARLY keeps 65 ms there); `ARM` lit amber while waiting for the Trigger, green while filling, dark with a Capture shown, in place of three lamps. The minimal size 620 × 340, the scope's width; BODGE / WIRE from about 650 px.
+- **It opens at its minimal size**, as the scope (2026-11-27); **an orange ◀ or ▶ at the axis's end** while the Trigger is off the view brings it back (the scope's ◀, 2026-11-26).
 - **One-shot Captures, re-armed at every power-on**: repair, power on, read the new Capture, no key; `ARM` captures again without a power cycle. A repeating Run rejected: stable only on a repeating signal, which the scope already shows, and studying a CPU's Capture would need Stop back.
 - **`ARM` resumes a paused run**: pause saves the host's CPU, it is not a way to capture. Powered off, `ARM` waits for the power-on, which arms anyway.
 - **A new Clip always arms** (today only while the analyzer waits: after a Capture the phase stays `captured`), since its lane is empty until a Capture that has it. While paused it arms without resuming, so several pins can be clipped first.
@@ -60,7 +62,7 @@ Chosen without asking: what goes with the old header: the `T` key (centre on the
 ## What the player sees
 
 1. **The case.** A drawn case, no title bar, the scope's frame and panel: the strip along its top, the screen below in a dark bezel, the size key and × at the strip's right end, the corner grip. Dragged by its body; resized freely; the presets minimal, normal, full as now.
-2. **The strip** (decided above), drawn as the scope's: key caps, red LED windows, green lamps. `ARMED` lit while waiting for the Trigger, `TRIG'D` while filling after it, `DONE` with a Capture shown. SAMPLE's LED `100 ns`, its grid by unit as the scope's timebase. TRIGGER AT's halves `EARLY`, `MID`, `LATE`, the time before the Trigger in their tooltips. VIEW / DIV's LED `1 µs` (the label says per division, as TIME / DIV's on the scope).
+2. **The strip** (decided above), drawn as the scope's: key caps, red LED windows. `ARM` lit amber while waiting for the Trigger, green while filling after it, dark with a Capture shown. SAMPLE's LED `100 ns`, its grid by unit as the scope's timebase. VIEW / DIV's LED `1 µs` (the label says per division, as TIME / DIV's on the scope).
 3. **The screen.** Its top left corner, above the plates: `PIN | BUS`, `GROUP`, the count of Clips (`5 of 64`). Above the lanes: the overview (thin, the view as a box, the Trigger and Marker as ticks), the time axis. Then the rows, each a lane with its plate, black between them; under the last row the screen goes on to its bottom, its grid and marks too.
 4. **A plate**: a swatch (a tick box for grouping), the name (`U1.7 SYNC`, `U1 A[15:0]` with its fold arrow), the value (at the cursor, else the Marker, else the Trigger: `1`, `F802`, `X`), the Trigger key, ×. Dragged up or down, it moves its row.
 5. **The cursor's tag** at the cursor on the screen: `+2.3 µs   dt 1.3 µs`. The mouse and a Finger land on an edge of the row they are on within 12 px.

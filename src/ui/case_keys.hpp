@@ -24,6 +24,10 @@ void DrawBadge(ImDrawList& list, ImVec2 at, const Badge& badge);  // the logo, B
 void DrawBezel(ImDrawList& list, ImVec2 at, const Box& bezel);
 // A key cap with a text; pressed: lower, no shadow.
 void DrawKey(ImDrawList& list, ImVec2 at, const Box& key, const char* label, bool pressed);
+// A key cap lit from within (P8i: the analyzer's ARM, by its phase), `light` its colour; 0: dark,
+// as DrawKey.
+void DrawLitKey(ImDrawList& list, ImVec2 at, const Box& key, const char* label, bool pressed,
+                ImU32 light);
 // A ◀ or ▶ key, its arrow a triangle (the font has none).
 void DrawArrowKey(ImDrawList& list, ImVec2 at, const Box& key, bool right, bool pressed);
 // The size key: a key cap with the instruments' two-squares icon.

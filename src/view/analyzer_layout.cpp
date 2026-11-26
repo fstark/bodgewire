@@ -8,9 +8,8 @@ namespace bw {
 
 namespace {
 
-constexpr float kArm = 48, kLamp = 22, kLampStep = 44;
+constexpr float kArm = 48;
 constexpr float kLed = 64;
-constexpr float kHalf = 44;  // a TRIGGER AT half
 constexpr float kFit = 44;
 constexpr float kBezelTop = 80, kBezelSide = 14, kBezelBottom = 12, kBezelInset = 8;
 // The screen's top rows: the corner's keys, the overview, the axis.
@@ -21,29 +20,16 @@ constexpr float kRowsTop = kAxisTop + kAxisHeight;  // 34
 // The groups after the badge, from `x`.
 void LayOutGroups(AnalyzerCaseLayout& l, float x) {
     const float y0 = kStripKeysTop, y1 = kStripKeysTop + kStripKeyHigh;
-    // CAPTURE: ARM, three lamps.
+    // CAPTURE: ARM, lit by the phase.
     l.armKey = {x + kStripPad, y0, x + kStripPad + kArm, y1};
-    const float lampY = kStripKeysTop + (kStripKeyHigh - kLamp) / 2 - 4;
-    for (std::size_t i = 0; i < l.lamps.size(); ++i) {
-        const float cx = l.armKey.x1 + kStripGap + kLampStep * (static_cast<float>(i) + 0.5f);
-        l.lamps[i] = {cx - kLamp / 2, lampY, cx + kLamp / 2, lampY + kLamp};
-    }
-    l.captureGroup = {x, kGroupTop, l.armKey.x1 + kStripGap + 3 * kLampStep + kStripPad,
-                      kGroupBottom};
+    l.captureGroup = {x, kGroupTop, l.armKey.x1 + kStripPad, kGroupBottom};
     // SAMPLE: ◀ LED ▶.
     x = l.captureGroup.x1 + kStripGap;
     const float sampleEnd =
         LayOutStepper(x + kStripPad, kLed, l.sampleLess, l.sampleValue, l.sampleMore);
     l.sampleGroup = {x, kGroupTop, sampleEnd + kStripPad, kGroupBottom};
-    // TRIGGER AT: EARLY | MID | LATE.
-    x = l.sampleGroup.x1 + kStripGap;
-    for (std::size_t i = 0; i < l.triggerAt.size(); ++i) {
-        const float hx = x + kStripPad + kHalf * static_cast<float>(i);
-        l.triggerAt[i] = {hx, y0, hx + kHalf, y1};
-    }
-    l.triggerAtGroup = {x, kGroupTop, l.triggerAt.back().x1 + kStripPad, kGroupBottom};
     // VIEW / DIV: ◀ LED ▶, FIT.
-    x = l.triggerAtGroup.x1 + kStripGap;
+    x = l.sampleGroup.x1 + kStripGap;
     const float viewEnd = LayOutStepper(x + kStripPad, kLed, l.viewLess, l.viewValue, l.viewMore);
     l.fitKey = {viewEnd + kStripGap, y0, viewEnd + kStripGap + kFit, y1};
     l.viewGroup = {x, kGroupTop, l.fitKey.x1 + kStripPad, kGroupBottom};

@@ -36,7 +36,7 @@ SHOTS = {
     # The 6502 starting: the reset vector fetched (FFFC, FFFD), then F800's first instructions.
     "analyzer": (
         ["machines/110-led-computer/led_computer.bwn", "--group", "U1.A0,U1.D0",
-         "--clip", "U1.SYNC:r,U1.PHI2,U1.RW", "--sample", "100ns", "--view", "1us:+3us"], "1s"),
+         "--clip", "U1.SYNC:r,U1.PHI2,U1.RW", "--sample", "100ns", "--view", "500ns:+500ns"], "1s"),
     # Triggered on VIDEO: a visible line's vertical-line pulses, then the horizontal sync.
     "scope": (
         ["machines/050-test-pattern/test_pattern.bwn", "--hook", "J2.VIDEO,J2.SYNC_N",

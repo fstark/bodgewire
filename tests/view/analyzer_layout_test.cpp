@@ -14,8 +14,6 @@ std::vector<Box> Strip(const AnalyzerCaseLayout& l) {
     if (l.badge.hasWords) {
         boxes.push_back(l.badge.words);
     }
-    boxes.insert(boxes.end(), l.lamps.begin(), l.lamps.end());
-    boxes.insert(boxes.end(), l.triggerAt.begin(), l.triggerAt.end());
     return boxes;
 }
 
@@ -29,7 +27,7 @@ void CheckStrip(const AnalyzerCaseLayout& l, float width) {
     }
     CHECK(l.sizeKey.x1 <= width - kCaseClose);  // clear of CaseClose's corner
     CHECK(l.viewGroup.x1 <= l.sizeKey.x0);
-    const std::vector<Box> groups{l.captureGroup, l.sampleGroup, l.triggerAtGroup, l.viewGroup};
+    const std::vector<Box> groups{l.captureGroup, l.sampleGroup, l.viewGroup};
     for (std::size_t i = 0; i + 1 < groups.size(); ++i) {
         CHECK(groups[i].x1 < groups[i + 1].x0);
     }
@@ -43,6 +41,13 @@ TEST_CASE("analyzer layout: the strip at the minimal size", "[view]") {
     CheckStrip(l, kAnalyzerMinWidth);
     CHECK_FALSE(l.badge.hasWords);
     CHECK(l.screen.y0 >= kCaseStrip);
+}
+
+TEST_CASE("analyzer layout: the words from about 650 px", "[view]") {
+    CHECK_FALSE(LayOutAnalyzerCase(640, 400).badge.hasWords);
+    const AnalyzerCaseLayout at660 = LayOutAnalyzerCase(660, 400);
+    CHECK(at660.badge.hasWords);
+    CheckStrip(at660, 660);
 }
 
 TEST_CASE("analyzer layout: the words at the normal size", "[view]") {
