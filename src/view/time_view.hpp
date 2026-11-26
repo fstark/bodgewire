@@ -57,9 +57,6 @@ std::vector<GridLine> Grid(const TimeView& view, float width, float labelGap);
 // "-3 µs", "0", "+100.5 µs": with the digits the step needs.
 std::string GridLabel(Time time, Time perDivision);
 
-// The Trigger's distance from the view when it is off screen: < 0 left of it, > 0 right.
-std::optional<Time> OffScreenTrigger(const TimeView& view);
-
 // Where a run's value text starts, or none: [x0, x1] the run's true ends (they may lie outside
 // [left, right]); a slant only at an end inside the view; a cut run puts its text against the cut
 // edge, so it never looks shorter than it is.
@@ -111,9 +108,5 @@ std::optional<double> SnapToEdge(R&& sorted, double at, double reach, Proj proj 
     }
     return best;
 }
-
-// "cursor +3.7 µs   M +2 µs   dt 1.7 µs (588 kHz)" (the font has no Greek); parts left out
-// when unset; "" for neither.
-std::string StatusText(std::optional<Time> cursor, std::optional<Time> marker);
 
 }  // namespace bw

@@ -33,11 +33,11 @@ bool Stepper(const char* id, std::span<const std::string> values, std::size_t& i
 bool Choice(const char* id, std::span<const char* const> labels, std::size_t& index,
             float height = kControl);
 
-// The value as one button `width` wide; a click opens the choices as a strip of kBig buttons.
-// True when it changed.
-bool ChoicePopup(const char* id, std::span<const char* const> labels, std::size_t& index,
-                 float width, float height = kControl);
-
+// The choices of a drawn key (P8i: a plate's Trigger) as a strip of kBig buttons, at least
+// `width` wide, the `index`-th lit, shown once ImGui::OpenPopup(id) was called in the same ID
+// scope. True when `index` changed.
+bool ChoicesPopup(const char* id, std::span<const char* const> labels, std::size_t& index,
+                  float width);
 // In a scrolling child window, after its content: a drag on it scrolls it, with a short glide
 // after the lift (P8f; the wheel still scrolls), and so do two fingers. The press of the item the
 // drag began on is let go: a scroll is no click. `taken`: something else has the drag (a time

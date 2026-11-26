@@ -24,18 +24,13 @@ inline constexpr float kMarkerFlagWidth = 28.0f, kMarkerFlagHeight = 20.0f;
 inline constexpr const char* kAnalyzerWindowName = "Logic Analyzer";
 inline constexpr const char* kScopeWindowName = "Oscilloscope";
 
-// ImGui::Begin for an instrument window, at its default place each time it comes out, normal size
-// at first, with the minimal / normal size button in its title bar (P6d); End it as usual whatever
-// this returns.
-bool BeginInstrument(const char* name, bool& open, BenchObject object);
 // The left button went down in the window this frame, not in its top-right close zone
-// (`closeZone` px square; the title bar's height by default).
+// (`closeZone` px square; CaseClose's for a drawn case).
 bool InstrumentClicked(std::optional<float> closeZone = std::nullopt);
-// The minimal / normal (/ full, on the bench) preset after the window's size now (P6d, P8f), as
-// BeginInstrument's title-bar button does; inside the window. For an instrument drawn as a case
-// (the scope, P8h).
+// The minimal / normal (/ full, on the bench) preset after the window's size now (P6d, P8f): a
+// drawn case's size key (the scope's, P8h; the analyzer's, P8i); inside the window.
 void NextInstrumentSize(BenchObject object);
-// The size button's icon, two squares, `side` px at `min`: BeginInstrument's and the scope's.
+// The size key's icon, two squares, `side` px at `min`.
 void DrawSizeIcon(ImDrawList& list, ImVec2 min, float side, ImU32 colour);
 
 using TimeToX = std::function<float(Time)>;  // ps from the Trigger → screen x
@@ -49,15 +44,10 @@ std::vector<GridLine> LabelledGrid(const TimeView& view, float width);
 void DrawAxisLabels(ImDrawList& list, const TimeView& view, const std::vector<GridLine>& grid,
                     const TimeToX& x, float y, float left, float right);
 void DrawTrigger(ImDrawList& list, float x, float top, float bottom);  // line + triangle on top
-// The Trigger off the view: an arrow at that end of the axis strip and its distance (nothing
-// when the view holds it).
-void DrawOffScreenTrigger(ImDrawList& list, const TimeView& view, float left, float right, float y);
-void DrawMarker(ImDrawList& list, float x, float top, float bottom);  // line + "M" flag on top
+void DrawMarker(ImDrawList& list, float x, float top, float bottom);   // line + "M" flag on top
 // The cursor's tag (P8h, P8i): `text` on a light plate right of `x`, under the Marker's flag
 // below `top`, or left of `x` when it would pass `right`.
 void DrawCursorTag(ImDrawList& list, float x, float top, float right, const std::string& text);
-// One line: the cursor, marker and dt, or `hint` in grey when there are neither.
-void StatusLine(std::optional<Time> cursor, std::optional<Time> marker, const char* hint);
 
 // Whole wheel notches from fractional wheel input (trackpads): `rest` keeps the remainder.
 int WheelNotches(float wheel, float& rest);

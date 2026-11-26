@@ -1,17 +1,16 @@
 #pragma once
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <map>
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "instruments/logic_analyzer.hpp"
 #include "session/session.hpp"
-#include "ui/controls.hpp"
 #include "ui/gestures.hpp"
 #include "view/time_view.hpp"
 
@@ -31,8 +30,10 @@ CaptureRuns RunsOf(const Capture& capture, const std::vector<std::size_t>& chann
 // What a Capture holds from its first sampled point, ps from its Trigger.
 TimeRange RecordOf(const Capture& capture);
 
-// The floating Logic Analyzer: settings, Channel Group and Channel rows, the last Capture's
-// waveforms on one canvas under an overview and a time axis.
+// The floating Logic Analyzer (P8i): a drawn case, its strip of keys (ARM and the phase's lamps,
+// SAMPLE, TRIGGER AT, VIEW / DIV); its screen's rows in the setup's order, each labelled on a
+// plate over its left end (swatch, name, value, Trigger key, ×); the shown Capture drawn at the
+// view, the cursor's tag on the screen.
 class AnalyzerWindow {
 public:
     // True when clicked: it takes the focus.
@@ -41,9 +42,11 @@ public:
     // drawn whenever the mouse is not over the waveforms.
     void preset(std::optional<TimeView> view, std::optional<Time> marker,
                 std::optional<Time> cursor);
-    // The pin / bus switch (P8f) is on bus: a click on a pin clips or unclips its whole bus, as
+    // The PIN | BUS switch (P8f) is on BUS: a click on a pin clips or unclips its whole bus, as
     // a Shift-click does.
     bool bus() const { return bus_; }
+    // ARM was pressed while paused (P8i): bw_ui resumes the run (Resume), once.
+    bool takeRunAsked() { return std::exchange(runAsked_, false); }
 
 private:
     struct Row {
@@ -62,17 +65,16 @@ private:
     TimeView view_;
     std::optional<Time> marker_;  // ps from the Trigger
     TimeCanvas canvas_;
-    DragScroll labelScroll_;   // a drag on the rows' labels scrolls them (P8f)
-    bool rowsScroll_ = false;  // the rows did not fit last frame
     float wheelRest_ = 0;
+    float scroll_ = 0;  // the rows' scroll, px (P8i: no child window)
     std::optional<TimeView> presetView_;
     std::optional<Time> presetMarker_;
     // The cursor where it was put (--cursor, or a finger's hold and slide, P8f): shown while no
     // pointer is over the waveforms.
     std::optional<Time> placedCursor_;
-    bool bus_ = false;                // the pin / bus switch: a click on a pin clips its whole bus
-    std::set<std::size_t> selected_;  // Channels picked for a hand group
-    std::set<std::string> expanded_;  // group names shown with their members
+    bool bus_ = false;  // PIN | BUS: a click on a pin clips its whole bus
+    bool runAsked_ = false;
+    std::set<std::string> expanded_;                        // group names shown with their members
     std::map<std::vector<std::size_t>, CaptureRuns> runs_;  // for shown_
     std::map<std::string, bool> patternRefused_;  // per group name: its last pattern not taken
 };

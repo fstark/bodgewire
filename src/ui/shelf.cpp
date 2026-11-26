@@ -164,6 +164,14 @@ void PowerOn(Session& session, RunSwitch& run, std::uint64_t seed) {
     session.powerOn(seed);
 }
 
+void Resume(Session& session, RunSwitch& run) {
+    if (run == RunSwitch::Pause) {
+        run = RunSwitch::RealTime;
+        session.setSpeed(Speed::RealTime);
+    }
+    session.resume();
+}
+
 Speed SpeedOf(RunSwitch run) {
     return run == RunSwitch::Slow  ? Speed::Slow
            : run == RunSwitch::Max ? Speed::Max
@@ -522,7 +530,7 @@ void Shelf::draw(Session& session, BoardView& board, Focus& focus, RunSwitch& ru
     } else if (wireStarted) {
         hint = "Wire: click the second pin";
     } else if (focus.owner() == Owner::Meter) {  // what it does next (P8g)
-        hint = powered                    ? "Meter: hold on copper"
+        hint = powered                   ? "Meter: hold on copper"
                : session.meter().black() ? "Meter: hold red lead"
                                          : "Meter: clip black lead";
     }

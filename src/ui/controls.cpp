@@ -176,14 +176,10 @@ bool Choice(const char* id, std::span<const char* const> labels, std::size_t& in
     return changed;
 }
 
-bool ChoicePopup(const char* id, std::span<const char* const> labels, std::size_t& index,
-                 float width, float height) {
+bool ChoicesPopup(const char* id, std::span<const char* const> labels, std::size_t& index,
+                  float width) {
     bool changed = false;
-    ImGui::PushID(id);
-    if (ImGui::Button(labels[index], {width, height})) {
-        ImGui::OpenPopup("##choices");
-    }
-    if (ImGui::BeginPopup("##choices")) {
+    if (ImGui::BeginPopup(id)) {
         const NoFingerPadding edgeToEdge;
         for (std::size_t i = 0; i < labels.size(); ++i) {
             if (i > 0) {
@@ -199,7 +195,6 @@ bool ChoicePopup(const char* id, std::span<const char* const> labels, std::size_
         }
         ImGui::EndPopup();
     }
-    ImGui::PopID();
     return changed;
 }
 

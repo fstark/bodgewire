@@ -101,16 +101,6 @@ std::string GridLabel(Time time, Time perDivision) {
     return FormatTimeStep(time, perDivision, true);
 }
 
-std::optional<Time> OffScreenTrigger(const TimeView& view) {
-    if (view.left > 0) {
-        return -view.left;
-    }
-    if (view.left + view.span() < 0) {
-        return -(view.left + view.span());
-    }
-    return std::nullopt;
-}
-
 std::optional<float> RunTextX(float x0, float x1, float left, float right, float textWidth,
                               float slant) {
     if (x1 <= left || x0 >= right) {
@@ -170,26 +160,6 @@ std::vector<UnitRow> UnitRows(std::span<const Time> values) {
     }
     std::erase_if(rows, [](const UnitRow& row) { return row.indices.empty(); });
     return rows;
-}
-
-std::string StatusText(std::optional<Time> cursor, std::optional<Time> marker) {
-    std::string text;
-    const auto add = [&](const std::string& part) { text += text.empty() ? part : "   " + part; };
-    if (cursor) {
-        add("cursor " + FormatTime(*cursor, true));
-    }
-    if (marker) {
-        add("M " + FormatTime(*marker, true));
-    }
-    if (cursor && marker) {
-        const Time delta = *cursor - *marker;
-        std::string part = "dt " + FormatTime(delta, false);
-        if (delta != 0) {
-            part += " (" + FormatFrequency(std::abs(delta)) + ")";
-        }
-        add(part);
-    }
-    return text;
 }
 
 }  // namespace bw

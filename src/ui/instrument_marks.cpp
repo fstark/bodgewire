@@ -15,15 +15,6 @@ namespace {
 
 constexpr ImU32 kMarkText = IM_COL32(23, 24, 27, 255);
 
-// To a tenth of a division, as the scope's position is set.
-std::string OffScreenText(Time distance, Time perDivision) {
-    return "T " + FormatTimeStep(std::abs(distance), perDivision / 10, false);
-}
-
-float OffScreenWidth(Time distance, Time perDivision) {
-    return ImGui::CalcTextSize(OffScreenText(distance, perDivision).c_str()).x + 18;
-}
-
 }  // namespace
 
 std::vector<GridLine> LabelledGrid(const TimeView& view, float width) {
@@ -76,42 +67,12 @@ void DrawTrigger(ImDrawList& list, float x, float top, float bottom) {
     list.AddTriangleFilled({x - 6, top}, {x + 6, top}, {x, top + 8}, kTriggerMark);
 }
 
-void DrawOffScreenTrigger(ImDrawList& list, const TimeView& view, float left, float right,
-                          float y) {
-    const std::optional<Time> off = OffScreenTrigger(view);
-    if (!off) {
-        return;
-    }
-    const Time distance = *off;
-    const std::string text = OffScreenText(distance, view.perDivision);
-    const float mid = y + kAxisHeight / 2;
-    const float width = OffScreenWidth(distance, view.perDivision);
-    if (distance < 0) {
-        list.AddTriangleFilled({left + 2, mid}, {left + 10, mid - 5}, {left + 10, mid + 5},
-                               kTriggerMark);
-        list.AddText({left + 14, y + 1}, kTriggerMark, text.c_str());
-    } else {
-        list.AddTriangleFilled({right - 2, mid}, {right - 10, mid - 5}, {right - 10, mid + 5},
-                               kTriggerMark);
-        list.AddText({right - width + 2, y + 1}, kTriggerMark, text.c_str());
-    }
-}
-
 void DrawMarker(ImDrawList& list, float x, float top, float bottom) {
     list.AddLine({x, top}, {x, bottom}, kMarkerLine, 1.0f);
     list.AddRectFilled({x - kMarkerFlagWidth / 2, top},
                        {x + kMarkerFlagWidth / 2, top + kMarkerFlagHeight}, kMarkerLine, 3.0f);
     const ImVec2 size = ImGui::CalcTextSize("M");
     list.AddText({x - size.x / 2, top + (kMarkerFlagHeight - size.y) / 2}, kMarkText, "M");
-}
-
-void StatusLine(std::optional<Time> cursor, std::optional<Time> marker, const char* hint) {
-    const std::string text = StatusText(cursor, marker);
-    if (text.empty()) {
-        ImGui::TextColored(kHintGrey, "%s", hint);
-    } else {
-        ImGui::TextUnformatted(text.c_str());
-    }
 }
 
 int WheelNotches(float wheel, float& rest) {
@@ -146,35 +107,6 @@ void DrawSizeIcon(ImDrawList& list, ImVec2 min, float side, ImU32 colour) {
     list.AddRect({min.x + 4 * u, min.y + 4 * u}, {min.x + 12 * u, min.y + 12 * u}, colour, 0, 0,
                  1.0f);
     list.AddRectFilled({min.x + 4 * u, min.y + 8 * u}, {min.x + 8 * u, min.y + 12 * u}, colour);
-}
-
-bool BeginInstrument(const char* name, bool& open, BenchObject object) {
-    const Extent normal = NormalSize(object);
-    PlaceNext(object, {normal.width, normal.height});
-    if (!ImGui::Begin(name, &open,
-                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
-        return false;
-    }
-    // The size button, in the title bar left of the close button (P6d).
-    const ImRect title = ImGui::GetCurrentWindow()->TitleBarRect();
-    const float side = title.GetHeight();
-    const ImVec2 min{title.Max.x - 2 * side, title.Min.y};
-    const ImVec2 cursor = ImGui::GetCursorScreenPos();
-    ImGui::PushClipRect(title.Min, title.Max, false);
-    ImGui::SetCursorScreenPos(min);
-    if (ImGui::InvisibleButton("##size", {side, side})) {
-        NextInstrumentSize(object);
-    }
-    const bool hovered = ImGui::IsItemHovered();
-    DrawSizeIcon(*ImGui::GetWindowDrawList(), min, side,
-                 ImGui::GetColorU32(ImGuiCol_Text, hovered ? 1.0f : 0.6f));
-    if (hovered) {
-        ImGui::SetTooltip(PoppedOut(object) ? "Minimal / normal size"
-                                            : "Minimal / normal / full size");
-    }
-    ImGui::PopClipRect();
-    ImGui::SetCursorScreenPos(cursor);
-    return true;
 }
 
 bool InstrumentClicked(std::optional<float> closeZone) {

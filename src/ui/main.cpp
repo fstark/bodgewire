@@ -677,8 +677,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                 const auto& black = session.meter().black();
                 measuring = session.meter().mode() == MeterMode::Volts ||
                             (black && !OnClip(*scene, press->start, *black, boardView.pickReach()));
-                if (measuring && press->at &&
-                    AcceptsLead(LeadKind::Held, press->at->hit.kind)) {
+                if (measuring && press->at && AcceptsLead(LeadKind::Held, press->at->hit.kind)) {
                     at = press->at;
                 }
             }
@@ -771,6 +770,9 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                 }
             };
             instrument(Owner::Analyzer, analyzerWindow);
+            if (analyzerWindow.takeRunAsked()) {  // ARM while paused (P8i)
+                Resume(session, run);
+            }
             instrument(Owner::Scope, scopeWindow);
         }
         // Also without a Board (a netlist-only Session, the bench).

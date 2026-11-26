@@ -87,13 +87,6 @@ TEST_CASE("time view: grid anchored to the Trigger", "[view]") {
     CHECK(GridLabel(2'500'000'000, 500_us) == "+2.5 ms");
 }
 
-TEST_CASE("time view: off-screen Trigger", "[view]") {
-    const ScopeSettings delayed{.timebase = 200_ns, .delay = 1_us};
-    CHECK(OffScreenTrigger(ScopeView(delayed)) == -800_ns);
-    CHECK(OffScreenTrigger(ScopeView(ScopeSettings{})) == std::nullopt);
-    CHECK(OffScreenTrigger({.perDivision = 1_us, .left = -12_us}) == 2_us);
-}
-
 TEST_CASE("time view: value text of a cut run", "[view]") {
     // View from 100 to 500 px, text 40 px wide, slants 3 px.
     CHECK(RunTextX(50, 200, 100, 500, 40, 3) == 104.0f);   // cut left: against the left edge
@@ -134,14 +127,6 @@ TEST_CASE("time view: a slow scope drag moves from the press", "[view]") {
     }
     CHECK(perFrame.delay == 1_us);
     CHECK(fromPress.delay == 1'040'000);
-}
-
-TEST_CASE("time view: status line", "[view]") {
-    CHECK(StatusText(std::nullopt, std::nullopt).empty());
-    CHECK(StatusText(3'700'000, std::nullopt) == "cursor +3.7 µs");
-    CHECK(StatusText(std::nullopt, 2_us) == "M +2 µs");
-    CHECK(StatusText(3'700'000, 2_us) == "cursor +3.7 µs   M +2 µs   dt 1.7 µs (588 kHz)");
-    CHECK(StatusText(2_us, 2_us) == "cursor +2 µs   M +2 µs   dt 0");
 }
 
 TEST_CASE("time view: a finger's cursor snaps to the nearest edge within reach", "[view]") {
