@@ -82,7 +82,7 @@ Extent MinimalSize(BenchObject instrument) {
     case BenchObject::Analyzer:
         return {820, 340};
     case BenchObject::Scope:
-        return {600, 380};
+        return {620, 400};  // P8h: the strip's 44 px keys
     default:
         assert(false && "not an instrument");
         return {};

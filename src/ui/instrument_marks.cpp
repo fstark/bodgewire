@@ -116,6 +116,33 @@ int WheelNotches(float wheel, float& rest) {
     return notches;
 }
 
+void NextInstrumentSize(BenchObject object) {
+    const ImVec2 now = ImGui::GetWindowSize();
+    const Extent minimal = MinimalSize(object), normal = NormalSize(object);
+    if (PoppedOut(object)) {
+        const Extent next = NextPreset({now.x, now.y}, minimal, normal);
+        ImGui::SetWindowSize({next.width, next.height});
+        return;
+    }
+    // On the bench (P8f): minimal, normal, then the whole bench, and back where it was.
+    const Extent full = BenchArea().extent();
+    const Extent next = NextPreset({now.x, now.y}, minimal, normal, full);
+    if (next.width == full.width && next.height == full.height) {
+        FillBenchWith(object);
+    } else if (Filled(object)) {
+        Unfill(object, next);
+    } else {
+        ImGui::SetWindowSize({next.width, next.height});
+    }
+}
+
+void DrawSizeIcon(ImDrawList& list, ImVec2 min, float side, ImU32 colour) {
+    const float u = side / 16;
+    list.AddRect({min.x + 4 * u, min.y + 4 * u}, {min.x + 12 * u, min.y + 12 * u}, colour, 0, 0,
+                 1.0f);
+    list.AddRectFilled({min.x + 4 * u, min.y + 8 * u}, {min.x + 8 * u, min.y + 12 * u}, colour);
+}
+
 bool BeginInstrument(const char* name, bool& open, BenchObject object) {
     const Extent normal = NormalSize(object);
     PlaceNext(object, {normal.width, normal.height});
@@ -131,31 +158,11 @@ bool BeginInstrument(const char* name, bool& open, BenchObject object) {
     ImGui::PushClipRect(title.Min, title.Max, false);
     ImGui::SetCursorScreenPos(min);
     if (ImGui::InvisibleButton("##size", {side, side})) {
-        const ImVec2 now = ImGui::GetWindowSize();
-        const Extent minimal = MinimalSize(object);
-        if (PoppedOut(object)) {
-            const Extent next = NextPreset({now.x, now.y}, minimal, normal);
-            ImGui::SetWindowSize({next.width, next.height});
-        } else {
-            // On the bench (P8f): minimal, normal, then the whole bench, and back where it was.
-            const Extent full = BenchArea().extent();
-            const Extent next = NextPreset({now.x, now.y}, minimal, normal, full);
-            if (next.width == full.width && next.height == full.height) {
-                FillBenchWith(object);
-            } else if (Filled(object)) {
-                Unfill(object, next);
-            } else {
-                ImGui::SetWindowSize({next.width, next.height});
-            }
-        }
+        NextInstrumentSize(object);
     }
     const bool hovered = ImGui::IsItemHovered();
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    const ImU32 colour = ImGui::GetColorU32(ImGuiCol_Text, hovered ? 1.0f : 0.6f);
-    const float u = side / 16;
-    list.AddRect({min.x + 4 * u, min.y + 4 * u}, {min.x + 12 * u, min.y + 12 * u}, colour, 0, 0,
-                 1.0f);
-    list.AddRectFilled({min.x + 4 * u, min.y + 8 * u}, {min.x + 8 * u, min.y + 12 * u}, colour);
+    DrawSizeIcon(*ImGui::GetWindowDrawList(), min, side,
+                 ImGui::GetColorU32(ImGuiCol_Text, hovered ? 1.0f : 0.6f));
     if (hovered) {
         ImGui::SetTooltip(PoppedOut(object) ? "Minimal / normal size"
                                             : "Minimal / normal / full size");
@@ -165,7 +172,7 @@ bool BeginInstrument(const char* name, bool& open, BenchObject object) {
     return true;
 }
 
-bool InstrumentClicked() {
+bool InstrumentClicked(std::optional<float> closeZone) {
     if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows |
                                 ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ||
         !ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
@@ -175,9 +182,9 @@ bool InstrumentClicked() {
     // window would first take the focus from the tool that has it, then give it to the probe.
     const ImVec2 pos = ImGui::GetWindowPos();
     const float right = pos.x + ImGui::GetWindowWidth();
-    const float title = ImGui::GetFrameHeight();
+    const float zone = closeZone.value_or(ImGui::GetFrameHeight());
     const ImVec2 mouse = ImGui::GetIO().MousePos;
-    return !(mouse.y < pos.y + title && mouse.x > right - title);
+    return !(mouse.y < pos.y + zone && mouse.x > right - zone);
 }
 
 }  // namespace bw

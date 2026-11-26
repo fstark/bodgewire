@@ -46,7 +46,7 @@ configure_file(title_font.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/title_font.cpp @ONL
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS fonts/Audiowide-Regular.ttf)
 
 add_executable(bw_ui main.cpp gestures.cpp touch.cpp view_buttons.cpp controls.cpp bench_input.cpp bench_setup.cpp tool_click.cpp ${bw_gpu_render} window_order.cpp analyzer_window.cpp board_look.cpp board_view.cpp chip_panel.cpp contents_page.cpp instrument_marks.cpp keyboard_capture.cpp
-                     keyboard_window.cpp matrix_capture.cpp matrix_keyboard_window.cpp keycap.cpp board_keys.cpp manual_view.cpp meter_lcd.cpp scope_window.cpp
+                     keyboard_window.cpp matrix_capture.cpp matrix_keyboard_window.cpp keycap.cpp board_keys.cpp manual_view.cpp meter_lcd.cpp scope_window.cpp scope_case.cpp bw_logo.cpp
                      shelf.cpp shelf_drawings.cpp tv_view.cpp tv_window.cpp knob_window.cpp bench.cpp
                      manual_window.cpp brief_window.cpp thank_you_card.cpp debug_window.cpp question_popup.cpp progress_store.cpp launcher.cpp loaded.cpp board_tags.cpp title.cpp
                      ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp ${CMAKE_CURRENT_BINARY_DIR}/pet_font.cpp

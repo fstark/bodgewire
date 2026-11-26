@@ -28,8 +28,15 @@ inline constexpr const char* kScopeWindowName = "Oscilloscope";
 // at first, with the minimal / normal size button in its title bar (P6d); End it as usual whatever
 // this returns.
 bool BeginInstrument(const char* name, bool& open, BenchObject object);
-// After BeginInstrument: the left button went down in the window this frame.
-bool InstrumentClicked();
+// The left button went down in the window this frame, not in its top-right close zone
+// (`closeZone` px square; the title bar's height by default).
+bool InstrumentClicked(std::optional<float> closeZone = std::nullopt);
+// The minimal / normal (/ full, on the bench) preset after the window's size now (P6d, P8f), as
+// BeginInstrument's title-bar button does; inside the window. For an instrument drawn as a case
+// (the scope, P8h).
+void NextInstrumentSize(BenchObject object);
+// The size button's icon, two squares, `side` px at `min`: BeginInstrument's and the scope's.
+void DrawSizeIcon(ImDrawList& list, ImVec2 min, float side, ImU32 colour);
 
 using TimeToX = std::function<float(Time)>;  // ps from the Trigger → screen x
 

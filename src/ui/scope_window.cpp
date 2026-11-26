@@ -15,6 +15,7 @@
 #include "ui/board_view.hpp"
 #include "ui/controls.hpp"
 #include "ui/instrument_marks.hpp"
+#include "ui/scope_case.hpp"
 #include "ui/touch.hpp"
 #include "view/scope_layout.hpp"
 #include "view/scope_reading.hpp"
@@ -39,29 +40,6 @@ constexpr ImU32 kTagFill = IM_COL32(216, 224, 218, 235);
 constexpr ImU32 kTagText = IM_COL32(17, 17, 17, 255);
 constexpr float kKey = 28;   // a plate's T and × (kControl)
 constexpr float kInset = 5;  // a plate's keys from its edges
-
-const char* StateText(const Session& session, bool stopped) {
-    if (stopped) {
-        return "stopped";
-    }
-    if (!session.powered()) {
-        return "power off";
-    }
-    if (session.scope().order().empty()) {
-        return "no hooks";
-    }
-    switch (session.scope().status()) {
-    case SweepKind::None:
-        return "waiting for trigger";
-    case SweepKind::Triggered:
-        return "triggered";
-    case SweepKind::Auto:
-        return "auto";
-    }
-    return "";
-}
-
-std::string TimebaseText(Time timebase) { return FormatTime(timebase, false) + "/div"; }
 
 // Power-on time of the Sweep's Trigger: its left edge is delay - timebase after it.
 Time TriggerTime(const Sweep& sweep) { return sweep.start - (sweep.delay - sweep.timebase); }
@@ -133,17 +111,35 @@ std::string ScopeWindow::valueAt(std::size_t channel, Time t,
 }
 
 bool ScopeWindow::draw(bool& open, Session& session) {
-    if (session.scope().sweeps().update() && !stopped_) {
+    if (session.scope().sweeps().update()) {
         shown_ = session.scope().sweeps().front();
     }
     if (!open) {
         return false;
     }
-    if (!BeginInstrument(kScopeWindowName, open, BenchObject::Scope)) {
+    // A drawn case (P8h), as the TV is: no title bar, dragged by its body, resized freely.
+    const Extent normal = NormalSize(BenchObject::Scope);
+    PlaceNext(BenchObject::Scope, {normal.width, normal.height});
+    const Extent bench = BenchArea().extent();
+    ImGui::SetNextWindowSizeConstraints(
+        {std::min(kScopeMinWidth, bench.width), std::min(kScopeMinHeight, bench.height)},
+        {FLT_MAX, FLT_MAX});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(60, 62, 66, 255));
+    const bool visible =
+        ImGui::Begin(kScopeWindowName, &open,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings |
+                         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                         ImGuiWindowFlags_NoCollapse);
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar(3);
+    if (!visible) {
         ImGui::End();
         return false;
     }
-    const bool clicked = InstrumentClicked();
+    const bool clicked = InstrumentClicked(kScopeClose);
     ScopeSettings settings = session.scope().settings();
     bool changed = false;
     const auto set = [&](const ScopeSettings& next) {
@@ -152,7 +148,15 @@ bool ScopeWindow::draw(bool& open, Session& session) {
             changed = true;
         }
     };
-    const float width = std::max(kPlate + 40, ImGui::GetContentRegionAvail().x);
+    const ImVec2 at = ImGui::GetWindowPos();
+    const ImVec2 windowSize = ImGui::GetWindowSize();
+    const ScopeCaseLayout layout = LayOutScopeCase(windowSize.x, windowSize.y);
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    DrawScopeCase(list, at, layout, windowSize.x, windowSize.y);
+
+    const Box screen{at.x + layout.screen.x0, at.y + layout.screen.y0, at.x + layout.screen.x1,
+                     at.y + layout.screen.y1};
+    const float width = std::max(kPlate + 40, screen.width());
     // Divisions under the label plates (P8h): the Trigger one division right of them.
     const double lead = kPlate / width * static_cast<double>(kDivisions);
     const auto zoomBy = [&](Time anchor, int notches) {
@@ -170,52 +174,88 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         return (plateEnd + view.left + view.span()) / 2;
     };
 
-    // Header line 1 (P8f: steppers and choices, no dropdowns): the timebase, longest first, so
-    // + is the finer step; its - and + zoom about the visible centre, as the wheel does about
-    // the pointer.
-    static const std::vector<std::string> kTimebaseNames = [] {
-        std::vector<std::string> names;
-        for (auto it = kTimebases.rbegin(); it != kTimebases.rend(); ++it) {
-            names.push_back(TimebaseText(*it));
-        }
-        return names;
-    }();
-    const std::size_t longest = kTimebases.size() - 1;
-    const std::size_t stepBefore = longest - TimebaseIndex(settings.timebase).value_or(longest);
-    std::size_t step = stepBefore;
-    if (Stepper("##timebase", kTimebaseNames, step, 104)) {
-        const int notches = static_cast<int>(step) - static_cast<int>(stepBefore);
-        if (notches == 1 || notches == -1) {
-            zoomBy(centre(), notches);
-        } else {
-            ScopeSettings next = settings;
-            next.timebase = kTimebases[longest - step];
-            next.delay = std::min(next.delay, kMaxDelayDivisions * next.timebase);
-            set(next);
-        }
+    // The strip (P8h): its keys' items, each drawn pressed while held.
+    const auto key = [&](const char* id, const Box& box, const char* tip) {
+        ImGui::SetCursorScreenPos({at.x + box.x0, at.y + box.y0});
+        const bool hit = ImGui::InvisibleButton(id, {box.width(), box.height()});
+        ImGui::SetItemTooltip("%s", tip);
+        return std::pair{hit, ImGui::IsItemActive()};
+    };
+    // TIME / DIV: ◀ longer, ▶ shorter (▶ always looks closer), about the visible centre; the
+    // value opens the grid by unit.
+    const auto [timeLess, timeLessHeld] = key("##time-", layout.timeLess, "longer: see more");
+    if (timeLess && settings.timebase < kTimebases.back()) {
+        zoomBy(centre(), -1);
     }
-    ImGui::SameLine(0, 12);
-    constexpr std::array<const char*, 2> kModes{"auto", "normal"};
-    std::size_t mode = settings.mode == ScopeMode::Normal ? 1 : 0;
-    if (Choice("##mode", kModes, mode, kBig)) {
+    const auto [timeMore, timeMoreHeld] = key("##time+", layout.timeMore, "shorter: look closer");
+    if (timeMore && settings.timebase > kTimebases.front()) {
+        zoomBy(centre(), 1);
+    }
+    const auto [timeOpen, timeHeld] = key("##timebase", layout.timeValue, "time per division");
+    if (timeOpen) {
+        ImGui::OpenPopup("##timebase grid");
+    }
+    DrawArrowKey(list, at, layout.timeLess, false, timeLessHeld);
+    DrawArrowKey(list, at, layout.timeMore, true, timeMoreHeld);
+    DrawLed(list, at, layout.timeValue, FormatTime(settings.timebase, false).c_str());
+    ImGui::SetNextWindowPos({at.x + layout.timeValue.x0, at.y + layout.timeValue.y1 + 4});
+    if (ImGui::BeginPopup("##timebase grid", ImGuiWindowFlags_NoMove |
+                                                 ImGuiWindowFlags_NoSavedSettings |
+                                                 ImGuiWindowFlags_AlwaysAutoResize)) {
+        for (const TimebaseRow& row : TimebaseRows()) {
+            ImGui::PushID(row.unit);
+            ImGui::AlignTextToFramePadding();
+            BigText(row.unit);
+            for (const std::size_t i : row.indices) {
+                ImGui::SameLine(i == row.indices.front() ? 40.0f : 0.0f);
+                const Time t = kTimebases[i];
+                const Time unit = t < 1'000'000       ? 1'000
+                                  : t < 1'000'000'000 ? 1'000'000
+                                                      : 1'000'000'000;
+                const bool current = t == settings.timebase;
+                if (current) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(61, 122, 74, 255));
+                }
+                ImGui::PushID(static_cast<int>(i));
+                if (ImGui::Button(std::to_string(t / unit).c_str(), {kBig, kBig})) {
+                    ScopeSettings next = settings;
+                    next.timebase = t;
+                    next.delay = std::min(next.delay, kMaxDelayDivisions * next.timebase);
+                    set(next);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::PopID();
+                if (current) {
+                    ImGui::PopStyleColor();
+                }
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndPopup();
+    }
+    // POSITION: ◀ earlier, ▶ later, by half a screen; the value from the number pad.
+    const Time maxDelay = kMaxDelayDivisions * settings.timebase;
+    const auto [earlier, earlierHeld] = key("##pos-", layout.positionLess, "half a screen earlier");
+    const auto [later, laterHeld] = key("##pos+", layout.positionMore, "half a screen later");
+    if (earlier || later) {
         ScopeSettings next = settings;
-        next.mode = mode == 1 ? ScopeMode::Normal : ScopeMode::Auto;
+        const Time half = kDivisions / 2 * settings.timebase;
+        next.delay = std::clamp<Time>(settings.delay + (later ? half : -half), 0, maxDelay);
         set(next);
     }
-    ImGui::SameLine(0, 12);
-    if (ImGui::Button(stopped_ ? "Run" : "Stop", {56, kBig})) {
-        stopped_ = !stopped_;
-    }
-    ImGui::SetItemTooltip(stopped_ ? "show the next Sweep" : "keep this Sweep on the screen");
-
-    // Header line 2: position (the delay), from the number pad or dragged on the screen.
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("position");
-    ImGui::SameLine();
+    DrawArrowKey(list, at, layout.positionLess, false, earlierHeld);
+    DrawArrowKey(list, at, layout.positionMore, true, laterHeld);
     // To the tenth of a division a drag snaps to, so 98.45 µs never reads 98.4 µs.
     std::string delay = FormatTimeStep(settings.delay, settings.timebase / 10, false);
-    const Time maxDelay = kMaxDelayDivisions * settings.timebase;
-    if (NumberField("##delay", delay, PadKind::Duration, 104, delayRefused_)) {
+    ImGui::SetCursorScreenPos({at.x + layout.positionValue.x0, at.y + layout.positionValue.y0});
+    const FieldLook led{.frame = kLedFrame,
+                        .frameHovered = kLedFrameHovered,
+                        .frameActive = kLedFrameHovered,
+                        .text = kLedText,
+                        .rounding = 3,
+                        .height = layout.positionValue.height()};
+    if (NumberField("##delay", delay, PadKind::Duration, layout.positionValue.width(),
+                    delayRefused_, 16, &led)) {
         std::erase(delay, ' ');
         const auto parsed =
             delay == "0" ? std::expected<Time, std::string>(0) : ParseDuration(delay);
@@ -227,27 +267,40 @@ bool ScopeWindow::draw(bool& open, Session& session) {
         }
     }
     ImGui::SetItemTooltip("time from the Trigger to its mark: 12.5us, 2ms, 0 (or drag the screen)");
-    ImGui::SameLine();
-    if (ImGui::Button("T", {kControl, 0})) {
-        ScopeSettings next = settings;
-        next.delay = 0;
-        set(next);
-        delayRefused_ = false;
+    // TRIGGER: AUTO | NORM, and the lamp: lit when the Sweep shown was triggered.
+    if (key("##auto", layout.autoHalf, "auto: a Sweep even without a Trigger").first) {
+        set([&] {
+            ScopeSettings next = settings;
+            next.mode = ScopeMode::Auto;
+            return next;
+        }());
     }
-    ImGui::SetItemTooltip("the Trigger back at its place (double-click the screen)");
-    ImGui::SameLine(0, 24);
-    ImGui::TextUnformatted(StateText(session, stopped_));
+    if (key("##normal", layout.normHalf, "normal: only triggered Sweeps").first) {
+        set([&] {
+            ScopeSettings next = settings;
+            next.mode = ScopeMode::Normal;
+            return next;
+        }());
+    }
+    DrawRocker(list, at, layout.autoHalf, layout.normHalf, settings.mode == ScopeMode::Normal);
+    DrawLamp(list, at, layout.lamp,
+             session.powered() && shown_ && shown_->kind == SweepKind::Triggered);
+    // The size key: minimal, normal, full.
+    const auto [resize, resizeHeld] = key(
+        "##size", layout.sizeKey,
+        PoppedOut(BenchObject::Scope) ? "minimal / normal size" : "minimal / normal / full size");
+    if (resize) {
+        NextInstrumentSize(BenchObject::Scope);
+    }
+    DrawSizeKey(list, at, layout.sizeKey, resizeHeld);
 
     // The screen: the axis strip, then the bands, one per Hook in the scope's order (P8h).
-    const ImVec2 origin = ImGui::GetCursorScreenPos();
-    const float height = std::max(kAxisHeight + kMinBand, ImGui::GetContentRegionAvail().y);
-    const Box screen{origin.x, origin.y, origin.x + width, origin.y + height};
     const float axisY = screen.y0;
     const float top = screen.y0 + kAxisHeight;  // the bands' top
     const float plateRight = screen.x0 + kPlate;
     const std::span<const std::size_t> order = session.scope().order();
     const std::vector<Box> bands = ScopeBands(screen, kAxisHeight, order.size());
-    ImDrawList& list = *ImGui::GetWindowDrawList();
+    list.AddRectFilled({screen.x0, screen.y0}, {screen.x1, top}, kGap);
 
     // The screen's item first, overlappable: the plates' items and the corner grip, submitted
     // after it, take the hover from it (IsItemHovered tests the rectangle only, unless the item
@@ -549,6 +602,9 @@ bool ScopeWindow::draw(bool& open, Session& session) {
     // After the settings: an unhook may move the Trigger's source (P8h).
     if (unhookChannel) {
         session.scope().unhook(*unhookChannel);
+    }
+    if (CaseClose()) {
+        open = false;
     }
     PopOnDoubleClick(BenchObject::Scope);
     CornerGrip();

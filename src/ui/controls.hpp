@@ -64,13 +64,22 @@ void CornerGrip();
 // screen zoomed, a page scrolled): no resize.
 void PinchResize(bool taken = false);
 
+// A NumberField's own look (P8h: the scope's position as an LED window): its frame's colours,
+// hovered and pressed included, its text's, its rounding and its height (0: the style's frame).
+struct FieldLook {
+    ImU32 frame = 0, frameHovered = 0, frameActive = 0, text = 0;
+    float rounding = 0;
+    float height = 0;
+};
+
 // A number's field: its text in a frame `width` wide. A click opens the number pad beside it,
 // never under the pointer, showing the value; the pad's keys and the PC's (the digits, A to F, X,
 // the point, N, U, M then S for a unit, Backspace, Enter, Escape) edit a copy of at most `limit`
 // characters. True once, when something typed is confirmed: `text` then holds it. `refused`:
 // the field drawn red (the last value was not taken).
+// `look`: the field's own (below); the pad keeps the style's.
 bool NumberField(const char* id, std::string& text, PadKind kind, float width, bool refused = false,
-                 std::size_t limit = 16);
+                 std::size_t limit = 16, const FieldLook* look = nullptr);
 // A pad is open: the PC's keys are its own this frame, not the Machine's.
 bool NumberPadOpen();
 

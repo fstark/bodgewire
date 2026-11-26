@@ -29,11 +29,10 @@ private:
     // "H 3.5 V", "Z 1.4 V", "X", the rail's volts; "" outside the Sweep. `t`: ps from the Trigger.
     std::string valueAt(std::size_t channel, Time t, const std::optional<double>& rail) const;
 
-    std::optional<Sweep> shown_;  // kept across rebuilds and power-off; frozen while stopped
+    std::optional<Sweep> shown_;  // kept across rebuilds and power-off
     std::optional<Time> marker_;  // ps from the Trigger
     // The cursor where it was put (--cursor, or a finger's hold and slide, P8f).
     std::optional<Time> placedCursor_;
-    bool stopped_ = false;
     TimeCanvas canvas_;
     float panRest_ = 0;                     // px of horizontal wheel not yet a delay step
     std::optional<ScopeSettings> pressed_;  // settings when a drag began

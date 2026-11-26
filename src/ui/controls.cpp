@@ -340,22 +340,29 @@ void DragScroll::update(bool taken) {
 }
 
 bool NumberField(const char* id, std::string& text, PadKind kind, float width, bool refused,
-                 std::size_t limit) {
+                 std::size_t limit, const FieldLook* look) {
     ImGui::PushID(id);
     const ImGuiID field = ImGui::GetID("##field");
     const bool editing = pad_.field == field;
     // The field: a frame showing the value, or the pad's copy while it is open.
+    const auto colour = [&](ImU32 own, ImGuiCol style) {
+        return look ? ImGui::ColorConvertU32ToFloat4(own) : ImGui::GetStyleColorVec4(style);
+    };
     ImGui::PushStyleColor(ImGuiCol_Button, refused && !editing
                                                ? kRefused
-                                               : ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+                                               : colour(look ? look->frame : 0, ImGuiCol_FrameBg));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                          ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
-    ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, {0.0f, 0.5f});
+                          colour(look ? look->frameHovered : 0, ImGuiCol_FrameBgHovered));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,
+                          colour(look ? look->frameActive : 0, ImGuiCol_FrameBgActive));
+    ImGui::PushStyleColor(ImGuiCol_Text, colour(look ? look->text : 0, ImGuiCol_Text));
+    ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, {look ? 0.5f : 0.0f, 0.5f});
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,
+                        look ? look->rounding : ImGui::GetStyle().FrameRounding);
     const std::string shown = (editing ? pad_.text + "_" : text) + "##field";
-    const bool clicked = ImGui::Button(shown.c_str(), {width, 0});
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor(3);
+    const bool clicked = ImGui::Button(shown.c_str(), {width, look ? look->height : 0});
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(4);
     const ImVec2 fieldMin = ImGui::GetItemRectMin(), fieldMax = ImGui::GetItemRectMax();
     if (clicked && !editing) {
         pad_ = Pad{field, text, true, 0, ImGui::GetFrameCount()};
