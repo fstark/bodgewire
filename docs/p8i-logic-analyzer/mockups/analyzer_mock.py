@@ -377,8 +377,18 @@ def screen(x, y, w, h, rows, view, trigger=0.0, marker=None, cursor=None, state=
                 s = "0" if t == 0 else f"{t:+d} µs"
                 out.append(text(tx(t) + 3, ay, s, 12, ORANGE if t == 0 else "#9aa8a0"))
         t += 1
-    # Rows: they share the height up to ROW_MAX each.
+    # The screen under the rows, to its bottom: background, grid and the plates' column, so the
+    # part no row uses still reads as the screen.
     top = y + CORNER_H
+    out.append(rect(lx0, top, lx1 - lx0, y + h - top, SCREEN))
+    out.append(rect(x, top, PLATE_W, y + h - top, PLATE))
+    out.append(line(x + PLATE_W, top, x + PLATE_W, y + h, PLATE_EDGE))
+    t = int(left) - 1
+    while tx(t) <= lx1:
+        if tx(t) >= lx0:
+            out.append(line(tx(t), top, tx(t), y + h, GRID))
+        t += 1
+    # Rows: they share the height up to ROW_MAX each.
     room = y + h - top
     rh = max(ROW_MIN, min(ROW_MAX, (room - ROW_GAP * (len(rows) - 1)) / len(rows)))
     for i, row in enumerate(rows):
@@ -395,8 +405,9 @@ def screen(x, y, w, h, rows, view, trigger=0.0, marker=None, cursor=None, state=
         at = cursor if cursor is not None else (marker if marker is not None else trigger)
         v = "" if row.empty else value(row.data, at, row.kind == "bus")
         out.append(plate(x, ry, PLATE_W, rh, row, colour, v, ticks_shown, dim))
+        out.append(rect(x, ry + rh, w, ROW_GAP, GAP_BLACK))  # the black under each row
     # The Trigger, the Marker, the cursor and its tag.
-    bottom = top + len(rows) * (rh + ROW_GAP) - ROW_GAP
+    bottom = y + h  # the marks run to the screen's bottom, as the grid does
     out.append(f'<g clip-path="url(#lanes)">')
     out.append(line(tx(trigger), top, tx(trigger), bottom, ORANGE, 1.5))
     out.append(f'<path d="M{tx(trigger) - 6},{top} h12 l-6,8 Z" fill="{ORANGE}"/>')

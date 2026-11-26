@@ -10,11 +10,13 @@ Roadmap step P8i (ARCHITECTURE.md#roadmap): the Logic Analyzer's window given th
 
 Mock-ups drawn by [mockups/analyzer_mock.py](mockups/analyzer_mock.py) (`python3 -I analyzer_mock.py` rewrites the SVGs beside it and prints the strip's widths), not by the game, at its sizes (keys 36 × 44, the scope's case): 940 × 520 normal, 880 × 340 minimal.
 
-Drawing them changed three things (the agent, 2026-11-26, to confirm):
+Drawing them changed three things (the agent; taken by the user, 2026-11-26, "we may have to revisit later"):
 
 - **`PIN | BUS` and `GROUP` sit in the screen's corner above the plates**, not in the strip. With them the strip does not fit 940 px; and both act on the rows, under which they now sit, with the count of Clips (`5 of 64`).
 - **The minimal size grows to 880 × 340** (from 820): the strip's groups need about 870 px with the logo alone. Keeping 820 would mean dropping `FIT` from the strip (a double-click on the screen fits too).
 - **The plate is 248 px**, not 200: a bus's name, its value and its pattern key (`U1 A[15:0]  F802  F800`) need it.
+
+And one the user asked for: **the screen is drawn to its bottom** under the last row (its background, the grid's lines, the plates' column, the Trigger, Marker and cursor lines), so the part no row uses still reads as the screen, not as an empty window.
 
 ## Why
 
@@ -38,7 +40,7 @@ What works and stays: the Capture model (64 Channels, 65 536 points, the sample 
 The user, 2026-11-26, on the agent's list of ideas:
 
 - **A drawn case in the scope's family**: the same frame, panel, key caps, red LEDs and BW logo; no title bar; the size key and × on the case; dragged by its body.
-- **A strip of keys, one group per concern**, left to right: the badge; CAPTURE (`ARM`, lamps `ARMED`, `TRIG'D`, `DONE`); SAMPLE (◀ LED ▶, the LED opening the grid by unit); TRIGGER AT (a rocker `EARLY | MID | LATE`); VIEW (◀ LED ▶ for the zoom, `FIT`); the `PIN | BUS` rocker; the size key. Hard to judge before seeing it; taken as proposed.
+- **A strip of keys, one group per concern**, left to right: the badge; CAPTURE (`ARM`, lamps `ARMED`, `TRIG'D`, `DONE`); SAMPLE (◀ LED ▶, the LED opening the grid by unit); TRIGGER AT (a rocker `EARLY | MID | LATE`); VIEW (◀ LED ▶ for the zoom, `FIT`); the size key. Hard to judge before seeing it; taken as proposed (`PIN | BUS` and `GROUP` then moved to the screen's corner, above).
 - **Labels on the screen**: each row's one-line plate over its lane's left end (swatch, name, value, Trigger key, ×); no column headings.
 - **The Trigger as a lit key on each plate**, dark on `any`, lit orange with its condition otherwise (`0`, `1`, ↑, ↓), a group's with its pattern (`F800`); the whole Trigger summed up in the strip only if it fits.
 - **The cursor's tag on the screen** (its time, `dt` from the Marker), the mouse snapping to an edge; the status line and the gesture hint go ("status lines are evil").
@@ -58,8 +60,8 @@ Chosen without asking: the overview's height (about 10 px), the grown rows' heig
 ## What the player sees
 
 1. **The case.** A drawn case, no title bar, the scope's frame and panel: the strip along its top, the screen below in a dark bezel, the size key and × at the strip's right end, the corner grip. Dragged by its body; resized freely; the presets minimal, normal, full as now.
-2. **The strip** (decided above), drawn as the scope's: key caps, red LED windows, green lamps. `ARMED` lit while waiting for the Trigger, `TRIG'D` while filling after it, `DONE` with a Capture shown. SAMPLE's LED `100 ns`, its grid by unit as the scope's timebase. TRIGGER AT's halves `EARLY`, `MID`, `LATE`, the time before the Trigger in their tooltips. VIEW's LED `1 µs/div`. `GROUP` lit only with two plates ticked.
-3. **The screen.** The overview (thin, the view as a box, the Trigger and Marker as ticks), the time axis, then the rows, each a lane with its plate.
+2. **The strip** (decided above), drawn as the scope's: key caps, red LED windows, green lamps. `ARMED` lit while waiting for the Trigger, `TRIG'D` while filling after it, `DONE` with a Capture shown. SAMPLE's LED `100 ns`, its grid by unit as the scope's timebase. TRIGGER AT's halves `EARLY`, `MID`, `LATE`, the time before the Trigger in their tooltips. VIEW's LED `1 µs/div`. 
+3. **The screen.** Its top left corner, above the plates: `PIN | BUS`, `GROUP`, the count of Clips (`5 of 64`). Above the lanes: the overview (thin, the view as a box, the Trigger and Marker as ticks), the time axis. Then the rows, each a lane with its plate, black between them; under the last row the screen goes on to its bottom, its grid and marks too.
 4. **A plate**: a swatch (a tick box for grouping), the name (`U1.7 SYNC`, `U1 A[15:0]` with its fold arrow), the value (at the cursor, else the Marker, else the Trigger: `1`, `F802`, `X`), the Trigger key, ×. Dragged up or down, it moves its row.
 5. **The cursor's tag** at the cursor on the screen: `+2.3 µs   dt 1.3 µs`. The mouse and a Finger land on an edge of the row they are on within 12 px.
 6. **The Board's discs**: each Clip's disc in its row's colour, numbered by its row's place (a group's members by the group's).
