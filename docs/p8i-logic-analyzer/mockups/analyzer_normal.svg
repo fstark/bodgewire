@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="980" height="560" viewBox="0 0 980 560"><defs>
-<filter id="glow" x="-5%" y="-30%" width="110%" height="160%">
+<!-- In user space: a flat line's box has no height, and a box-sized filter would hide it. -->
+<filter id="glow" filterUnits="userSpaceOnUse" x="0" y="0" width="2000" height="1200">
   <feGaussianBlur stdDeviation="1.6" result="b"/>
   <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
 </filter>
