@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Counts what a Bus kept as one entity would save (docs/p1d-kernel-perf/OPTIMISATION_IDEAS.md,
-idea 8). A count of events, not a speed: nothing in the kernel changes.
+"""Counts what a Bus kept as one entity would save (docs/PERFORMANCE.md,
+"Bus as one entity"). A count of events, not a speed: nothing in the kernel changes.
 
 Runs a netlist with every Net recorded, then gives, per simulated µs and per Bus:
   changes      Net changes of its lines

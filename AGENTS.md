@@ -63,7 +63,7 @@ Before writing a small helper, look here: most of the project's duplicated code 
 ## Docs
 
 - Each Machine in its own directory `machines/NNN-name/` (P6a): netlist, `board/`, `manuals/` (the player's), `docs/` (its development docs), `roms/`, `puzzles/` (`NN-name.bwp`, easiest first; `random.bwr`, its Vetting Script: Random faults, P8d). Datasheets, footprints and benchmarks stay shared (`datasheets/`, `footprints/`, `bench/`). Layout and loading rules: [ADD_MACHINE.md](docs/recipes/ADD_MACHINE.md#the-directory).
-- Conventions: `docs/GLOSSARY.md`, `docs/STYLE.md`, `docs/NAMING.md`. Structure and roadmap: `docs/ARCHITECTURE.md`. Routing a Board in KiCad (the user's part): `docs/KICAD_GUIDE.md`.
+- Conventions: `docs/GLOSSARY.md`, `docs/STYLE.md`, `docs/NAMING.md`. Structure and roadmap: `docs/ARCHITECTURE.md`. Routing a Board in KiCad (the user's part): `docs/KICAD_GUIDE.md`. Kernel speed (each host's numbers, how to measure, what was kept and dropped, the ideas left): `docs/PERFORMANCE.md`; a kernel speed change updates it.
 - `README.md` is written from [docs/README_SPEC.md](docs/README_SPEC.md), its pictures by `tools/readme_shots.py` into `docs/readme/`: change the spec, then regenerate.
 - `docs/p*-*/` are finished milestones: history only, the code is the truth. Read one only when the task names it.
 - The user edits docs in parallel: commit only your own paths.
