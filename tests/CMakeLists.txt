@@ -217,6 +217,7 @@ add_executable(bw_tests
   view/pencil_marks_test.cpp
   view/power_cycle_test.cpp
   view/repair_ack_test.cpp
+  view/analyzer_layout_test.cpp
   view/scope_layout_test.cpp
   view/scope_reading_test.cpp
   view/shelf_layout_test.cpp

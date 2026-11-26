@@ -80,7 +80,7 @@ Extent NormalSize(BenchObject instrument) {
 Extent MinimalSize(BenchObject instrument) {
     switch (instrument) {
     case BenchObject::Analyzer:
-        return {820, 340};
+        return {880, 340};  // P8i: the strip of keys
     case BenchObject::Scope:
         return {620, 400};  // P8h: the strip's 44 px keys
     default:

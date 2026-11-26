@@ -23,6 +23,7 @@ add_library(bw_view STATIC
   pencil_marks.cpp
   power_cycle.cpp
   repair_ack.cpp
+  analyzer_layout.cpp
   case_strip.cpp
   scope_layout.cpp
   scope_reading.cpp
