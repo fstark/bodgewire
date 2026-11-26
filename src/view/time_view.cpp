@@ -131,19 +131,40 @@ std::optional<float> RunTextX(float x0, float x1, float left, float right, float
     return (from + to - textWidth) / 2;
 }
 
-TimeView ScopeView(const ScopeSettings& settings) {
-    return {.perDivision = settings.timebase, .left = settings.delay - settings.timebase};
+TimeView ScopeView(const ScopeSettings& settings, double lead) {
+    const auto under =
+        static_cast<Time>(std::llround(lead * static_cast<double>(settings.timebase)));
+    return {.perDivision = settings.timebase, .left = settings.delay - settings.timebase - under};
 }
 
-ScopeSettings WithView(ScopeSettings settings, const TimeView& view) {
+ScopeSettings WithView(ScopeSettings settings, const TimeView& view, double lead) {
+    const auto under =
+        static_cast<Time>(std::llround(lead * static_cast<double>(view.perDivision)));
     settings.timebase = std::clamp(view.perDivision, kTimebases.front(), kTimebases.back());
     const Time tenth = settings.timebase / 10;
-    const Time delay = view.left + settings.timebase;
+    const Time delay = view.left + settings.timebase + under;
     const Time rounded =
         static_cast<Time>(std::llround(static_cast<double>(delay) / static_cast<double>(tenth))) *
         tenth;
     settings.delay = std::clamp<Time>(rounded, 0, kMaxDelayDivisions * settings.timebase);
     return settings;
+}
+
+std::string CursorTagText(Time cursor, std::optional<Time> marker) {
+    std::string text = FormatTime(cursor, true);
+    if (marker) {
+        text += "   dt " + FormatTime(cursor - *marker, false);
+    }
+    return text;
+}
+
+std::vector<TimebaseRow> TimebaseRows() {
+    std::vector<TimebaseRow> rows{{"ns", {}}, {"µs", {}}, {"ms", {}}};
+    for (std::size_t i = 0; i < kTimebases.size(); ++i) {
+        const Time t = kTimebases[i];
+        rows[t < 1'000'000 ? 0 : t < 1'000'000'000 ? 1 : 2].indices.push_back(i);
+    }
+    return rows;
 }
 
 std::string StatusText(std::optional<Time> cursor, std::optional<Time> marker) {

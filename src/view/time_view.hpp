@@ -62,12 +62,25 @@ std::optional<Time> OffScreenTrigger(const TimeView& view);
 std::optional<float> RunTextX(float x0, float x1, float left, float right, float textWidth,
                               float slant);
 
-// The scope's view is its settings: left = delay - timebase (the Trigger at the first division
-// for a delay of 0).
-TimeView ScopeView(const ScopeSettings& settings);
-// Back: the timebase within kTimebases, the delay rounded to a tenth of a division and clamped
-// to 0 … kMaxDelayDivisions divisions.
-ScopeSettings WithView(ScopeSettings settings, const TimeView& view);
+// The scope's view is its settings: left = delay - timebase - lead × timebase (rounded). `lead`:
+// divisions under the label plates, left of the division before the Trigger (P8h); 0: the
+// Trigger at the first division.
+TimeView ScopeView(const ScopeSettings& settings, double lead = 0);
+// Back: delay = left + perDivision + lead × perDivision (rounded as ScopeView does, so a round
+// trip is exact), then the timebase within kTimebases, the delay rounded to a tenth of a division
+// and clamped to 0 … kMaxDelayDivisions divisions.
+ScopeSettings WithView(ScopeSettings settings, const TimeView& view, double lead = 0);
+
+// The scope's cursor tag (P8h): "+5 µs", "+5 µs   dt 3 µs" (the font has no Greek).
+std::string CursorTagText(Time cursor, std::optional<Time> marker);
+
+// kTimebases by unit, for the scope's timebase grid (P8h): the ns, µs and ms rows, each its
+// indices into kTimebases, shortest first.
+struct TimebaseRow {
+    const char* unit;
+    std::vector<std::size_t> indices;
+};
+std::vector<TimebaseRow> TimebaseRows();
 
 // The edge nearest `at` within `reach`, among `sorted` (ascending once through `proj`, in `at`'s
 // unit); none out of reach. A finger's cursor and Marker land on it (P8f): the analyzer's run

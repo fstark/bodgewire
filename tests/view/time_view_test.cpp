@@ -155,3 +155,48 @@ TEST_CASE("time view: a finger's cursor snaps to the nearest edge within reach",
     const std::vector<Change> changes{{1'000, 0}, {5'000, 1}, {9'000, 0}};  // a projection
     CHECK(SnapToEdge(changes, 5'200.0, 500.0, &Change::time) == 5'000.0);
 }
+
+TEST_CASE("time view: the scope's view with a lead", "[view]") {
+    // 2.5 divisions under the plates: the left edge 3.5 divisions before the Trigger mark.
+    const ScopeSettings start{.timebase = 1_us};
+    CHECK(ScopeView(start, 2.5).left == -3'500'000);
+    CHECK(WithView(start, ScopeView(start, 2.5), 2.5) == start);
+    const ScopeSettings delayed{.timebase = 1_us, .delay = 7_us};
+    CHECK(WithView(delayed, ScopeView(delayed, 2.5), 2.5) == delayed);
+    // Zooming in about +1 µs keeps it at the same fraction of the width.
+    const TimeView before = ScopeView(start, 2.5);
+    const ScopeSettings in =
+        WithView(start, ZoomAbout(before, 1_us, 1, kTimebases.front(), kTimebases.back()), 2.5);
+    const TimeView after = ScopeView(in, 2.5);
+    CHECK(in.timebase == 500_ns);
+    const double was = static_cast<double>(1_us - before.left) / static_cast<double>(before.span());
+    const double now = static_cast<double>(1_us - after.left) / static_cast<double>(after.span());
+    CHECK(std::abs(was - now) < 0.011);  // the delay is rounded to a tenth of a division
+    // The content dragged 100 px left over 1000 px: one division later.
+    CHECK(WithView(start, Pan(ScopeView(start, 2.5), -100, 1000), 2.5).delay == 1_us);
+}
+
+TEST_CASE("time view: the scope's cursor tag", "[view]") {
+    CHECK(CursorTagText(5_us, std::nullopt) == "+5 µs");
+    CHECK(CursorTagText(5_us, 2_us) == "+5 µs   dt 3 µs");
+    CHECK(CursorTagText(2_us, 4_us) == "+2 µs   dt -2 µs");
+    CHECK(CursorTagText(2_us, 2_us) == "+2 µs   dt 0");
+}
+
+TEST_CASE("time view: the scope's timebase rows", "[view]") {
+    const std::vector<TimebaseRow> rows = TimebaseRows();
+    REQUIRE(rows.size() == 3);
+    CHECK(std::string(rows[0].unit) == "ns");
+    CHECK(std::string(rows[1].unit) == "µs");
+    CHECK(std::string(rows[2].unit) == "ms");
+    CHECK(rows[0].indices.size() == 7);
+    CHECK(rows[1].indices.size() == 9);
+    CHECK(rows[2].indices.size() == 4);
+    std::size_t next = 0;
+    for (const TimebaseRow& row : rows) {
+        for (const std::size_t i : row.indices) {
+            CHECK(i == next++);
+        }
+    }
+    CHECK(next == kTimebases.size());
+}
