@@ -187,15 +187,18 @@ BoardScene::BoardScene(Board drawn, const Board& pristine, const LoadedCircuit& 
             nets.push_back(pinNet(component.reference, pad.number));
             std::string name;
             bool power = false;
+            std::optional<PinKind> kind;
             const auto number = PinNumber(pad.number);
             if (chip != design.components.end() && number &&
                 *number <= chip->second->pins().size()) {
                 const PinSpec& spec = chip->second->pins()[*number - 1];
                 name = spec.name;
                 power = spec.kind == PinKind::Power;
+                kind = spec.kind;
             }
             info.pinNames.push_back(std::move(name));
             info.powerPins.push_back(power);
+            info.pinKinds.push_back(kind);
         }
         double pitch = DBL_MAX;
         for (std::size_t a = 0; a < component.pads.size(); ++a) {
@@ -406,6 +409,11 @@ std::optional<std::size_t> BoardScene::chipBodyAt(Point at) const {
         }
     }
     return std::nullopt;
+}
+
+bool BoardScene::alone(std::size_t component, std::size_t pad) const {
+    const auto net = padNets_[component][pad];
+    return !net || netPads_[static_cast<std::size_t>(std::to_underlying(*net))] < 2;
 }
 
 std::string BoardScene::hoverText(const Hit& hit) const {

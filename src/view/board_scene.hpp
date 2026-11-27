@@ -107,6 +107,15 @@ public:
     std::string_view marking(std::size_t component) const { return info_[component].marking; }
     std::string_view pinName(std::size_t component, std::size_t pad) const;  // "" if unknown
     bool powerPin(std::size_t component, std::size_t pad) const;             // PinKind::Power
+    // The component's pin names and kinds by pad (P8j: a pin's look and what it works with).
+    std::span<const std::string> pinNames(std::size_t component) const {
+        return info_[component].pinNames;
+    }
+    std::span<const std::optional<PinKind>> pinKinds(std::size_t component) const {
+        return info_[component].pinKinds;
+    }
+    // The pad's design Net reaches no other pad, or it has none: a pin that goes nowhere (P8j).
+    bool alone(std::size_t component, std::size_t pad) const;
     bool chip(std::size_t component) const;  // a PartKind::Chip of the design
     // A Part with lamps (an LED, a digit): what the launcher frames (P7b).
     bool lamp(std::size_t component) const;
@@ -130,12 +139,13 @@ public:
 
 private:
     struct ComponentInfo {
-        std::string value;                  // LoadedPart::value: "74LS161", "4k7"
-        std::string marking;                // LoadedPart::marking: "1MHz"
-        const PartInfo* part = nullptr;     // LoadedPart::info
-        std::vector<std::string> pinNames;  // [pad], "" when unknown (resistors)
-        std::vector<bool> powerPins;        // [pad]
-        std::int64_t halfPitch = 0;         // nm: half the smallest pad spacing, 0 for one pad
+        std::string value;                             // LoadedPart::value: "74LS161", "4k7"
+        std::string marking;                           // LoadedPart::marking: "1MHz"
+        const PartInfo* part = nullptr;                // LoadedPart::info
+        std::vector<std::string> pinNames;             // [pad], "" when unknown (resistors)
+        std::vector<bool> powerPins;                   // [pad]
+        std::vector<std::optional<PinKind>> pinKinds;  // [pad], nullopt without a Component
+        std::int64_t halfPitch = 0;  // nm: half the smallest pad spacing, 0 for one pad
     };
 
     Board board_;

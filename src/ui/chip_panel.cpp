@@ -15,6 +15,7 @@
 #include "ui/page_fonts.hpp"
 #include "ui/touch.hpp"
 #include "view/digit_shape.hpp"
+#include "view/pin_marks.hpp"
 
 namespace bw {
 
@@ -24,7 +25,8 @@ constexpr float kBodyWidth = 34;
 constexpr ImU32 kBody = IM_COL32(60, 60, 66, 255);
 constexpr ImU32 kNotch = IM_COL32(25, 25, 28, 255);
 constexpr ImU32 kPinOne = IM_COL32(220, 220, 220, 255);
-constexpr ImVec4 kPowerText{0.5f, 0.48f, 0.44f, 1.0f};  // on paper
+constexpr ImVec4 kPowerText{0.5f, 0.48f, 0.44f, 1.0f};    // on paper
+constexpr ImVec4 kNumberText{0.45f, 0.43f, 0.40f, 1.0f};  // a pin's number, quieter than names
 constexpr ImU32 kDigitBody = IM_COL32(28, 28, 30, 255);
 constexpr ImU32 kSegmentDim = IM_COL32(70, 22, 22, 255);
 constexpr ImU32 kSegmentLit = IM_COL32(255, 40, 30, 255);
@@ -32,25 +34,117 @@ constexpr ImU32 kPad = IM_COL32(200, 200, 190, 255);
 constexpr float kDigitLines = 7;     // body height in text lines
 constexpr float kTitleScale = 1.3f;  // the page title's, as the manuals'
 
+constexpr float kStub = 20;    // a pin's line between its number and the body (P8j)
+constexpr float kStubGap = 4;  // between the line and the number
+// One colour for every pin's symbol (P8j), a colour the Board gives no meaning: not the levels'
+// red, blue or yellow, the hovered Net's yellow, nor the clips' magenta or blue.
+constexpr ImU32 kSymbol = IM_COL32(138, 79, 216, 255);
+constexpr ImU32 kPowerLine = IM_COL32(128, 122, 112, 255);
+constexpr ImVec4 kAloneText{0.66f, 0.64f, 0.58f, 1.0f};       // a pin that goes nowhere: faint
+constexpr ImU32 kGroupTint = IM_COL32(236, 226, 250, 255);    // what a hovered pin works with
+constexpr ImU32 kHoveredTint = IM_COL32(220, 202, 246, 255);  // the hovered pin
+
 struct PinRow {
     std::optional<std::size_t> pad;
-    std::string number, name, net;
+    std::string number, name, net;  // net "" when none, or when it reaches no other pad unnamed
     bool power = false;
+    PinLook look;
+    bool alone = false;  // its Net reaches no other pad: it goes nowhere
+    ImU32 tint = 0;      // the hovered pin's group (P8j), 0 none
 };
 
-PinRow Row(const BoardScene& scene, std::size_t component, std::size_t number) {
-    PinRow row{scene.padIndex(component, std::to_string(number)), std::to_string(number), "", "",
-               false};
+// The pads a hovered pin works with (WorksWith) and the hovered one, for the rows' tints.
+struct Group {
+    std::vector<std::size_t> pads;
+    std::optional<std::size_t> hovered;
+};
+
+PinRow Row(const BoardScene& scene, std::size_t component, std::size_t number,
+           const Group& group = {}) {
+    PinRow row;
+    row.pad = scene.padIndex(component, std::to_string(number));
+    row.number = std::to_string(number);
     if (row.pad) {
         row.name = scene.pinName(component, *row.pad);
         const auto net = scene.padNet(component, *row.pad);
-        row.net = net ? std::string(scene.netName(*net)) : "-";
+        row.net = net ? std::string(scene.netName(*net)) : "";
         row.power = scene.powerPin(component, *row.pad);
+        row.look = LookOf(row.name, scene.pinKinds(component)[*row.pad], scene.chip(component));
+        row.alone = scene.alone(component, *row.pad);
+        if (group.hovered == row.pad) {
+            row.tint = kHoveredTint;
+        } else if (std::ranges::find(group.pads, *row.pad) != group.pads.end()) {
+            row.tint = kGroupTint;
+        }
     }
     if (row.name.empty()) {
         row.name = "-";
     }
     return row;
+}
+
+// A pin's line from the body's edge `edge` outwards (`side` -1 left, +1 right) at `y`, its
+// symbol on it (P8j): an arrow into the body (in), out of it (out, hollow for open collector),
+// both; a bubble at the body (active low); a pulse over it (a clock); dashed when it goes
+// nowhere; plain grey for power; nothing for NC.
+void DrawPinSymbol(ImDrawList& list, float edge, float y, float side, const PinLook& look,
+                   bool alone) {
+    if (look.mark == PinMark::NoConnect) {
+        return;
+    }
+    const float outer = edge + side * kStub;
+    if (look.mark == PinMark::Power) {
+        list.AddLine({edge, y}, {outer, y}, kPowerLine, 2.0f);
+        return;
+    }
+    constexpr float kBubble = 3.6f, kHead = 5.0f;
+    const float inner = look.activeLow ? edge + side * kBubble * 2 : edge;
+    if (alone) {
+        for (float x = 0; x < kStub - (inner - edge) * side; x += 6) {
+            const float a = inner + side * x;
+            list.AddLine({a, y}, {a + side * std::min(3.0f, std::abs(outer - a)), y}, kSymbol,
+                         1.5f);
+        }
+    } else {
+        list.AddLine({inner, y}, {outer, y}, kSymbol, 1.5f);
+    }
+    // An arrowhead at `tip` pointing `dir` (+1 right, -1 left).
+    const auto head = [&](float tip, float dir, bool hollow) {
+        const ImVec2 a{tip, y}, b{tip - dir * kHead * 1.2f, y - kHead},
+            c{tip - dir * kHead * 1.2f, y + kHead};
+        if (hollow) {
+            list.AddTriangleFilled(a, b, c, ImGui::GetColorU32(ImGuiCol_WindowBg) | 0xff000000);
+            list.AddTriangle(a, b, c, kSymbol, 1.5f);
+        } else {
+            list.AddTriangleFilled(a, b, c, kSymbol);
+        }
+    };
+    const float middle = (inner + outer) / 2;
+    switch (look.mark) {
+    case PinMark::In:
+        head(middle - side * kHead * 0.6f, -side, false);
+        break;
+    case PinMark::Out:
+    case PinMark::OpenCollector:
+        head(middle + side * kHead * 0.6f, side, look.mark == PinMark::OpenCollector);
+        break;
+    case PinMark::Both:
+        head(inner + side * 1.0f, -side, false);
+        head(outer - side * 1.0f, side, false);
+        break;
+    default:
+        break;
+    }
+    if (look.activeLow) {
+        list.AddCircleFilled({edge + side * kBubble, y}, kBubble, IM_COL32(246, 242, 228, 255));
+        list.AddCircle({edge + side * kBubble, y}, kBubble, kSymbol, 0, 1.5f);
+    }
+    if (look.clock) {  // a pulse over the line
+        const float x = middle, top = y - 13, base = y - 7;
+        const ImVec2 pulse[] = {{x - 6, base}, {x - 3, base}, {x - 3, top},
+                                {x + 3, top},  {x + 3, base}, {x + 6, base}};
+        list.AddPolyline(pulse, 6, kSymbol, 0, 1.5f);
+    }
 }
 
 // After a pin's Selectable: fills `hits` and shows a tooltip: the pin's number, name and Net in
@@ -138,34 +232,58 @@ void PinCell(const PinRow& row, PinSide side, std::size_t component, const Markd
     ImGui::PopID();
     const ImVec2 min = ImGui::GetItemRectMin();
     const ImVec2 max = ImGui::GetItemRectMax();
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    if (row.tint != 0) {
+        list.AddRectFilled(min, max, row.tint, 3.0f);
+    }
     const float slot = ImGui::CalcTextSize("00").x;
     const float gap = ImGui::CalcTextSize("  ").x;
     const float number = ImGui::CalcTextSize(row.number.c_str()).x;
-    const std::string words = side == PinSide::Left ? std::format("{}  {}", row.net, row.name)
-                                                    : std::format("{}  {}", row.name, row.net);
     const float y = min.y + (max.y - min.y - ImGui::GetTextLineHeight()) / 2;
-    const ImU32 colour =
-        ImGui::GetColorU32(row.power ? kPowerText : ImGui::GetStyleColorVec4(ImGuiCol_Text));
-    ImDrawList& list = *ImGui::GetWindowDrawList();
+    const ImVec4 ink = row.power   ? kPowerText
+                       : row.alone ? kAloneText
+                                   : ImGui::GetStyleColorVec4(ImGuiCol_Text);
+    const ImU32 colour = ImGui::GetColorU32(ink);
+    const ImU32 numberColour = ImGui::GetColorU32(row.power ? kPowerText : kNumberText);
+    // The pin's name in the mono face next to the body, its Net in the link blue further out
+    // (P8j: a pin's and a Net's names apart, `CLK  CLK` no longer a repeat).
+    PushPageFont(PageFace::Mono);
+    ImFont* mono = ImGui::GetFont();
+    const float monoSize = ImGui::GetFontSize();
+    const float name = ImGui::CalcTextSize(row.name.c_str()).x;
+    ImGui::PopFont();
+    const float monoY = min.y + (max.y - min.y - monoSize) / 2;
+    const float net = ImGui::CalcTextSize(row.net.c_str()).x;
+    const ImU32 netColour = row.power ? colour : kPageLink;
     // A row too long for its cell is cut a gap short of the "show" key beside it (its tooltip
     // shows it whole); the number, next to the body, never.
     const float margin = ImGui::GetStyle().ItemSpacing.x;
     list.PushClipRect({side == PinSide::Left ? min.x + margin : min.x, min.y},
                       {side == PinSide::Left ? max.x : max.x - margin, max.y}, true);
     switch (side) {
-    case PinSide::Left:  // "net  name  NN|": both to the right
-        list.AddText({max.x - number, y}, colour, row.number.c_str());
-        list.AddText({max.x - slot - gap - ImGui::CalcTextSize(words.c_str()).x, y}, colour,
-                     words.c_str());
+    case PinSide::Left: {  // "net  name  NN|": both to the right
+        list.AddText({max.x - number, y}, numberColour, row.number.c_str());
+        const float nameX = max.x - slot - gap - name;
+        list.AddText(mono, monoSize, {nameX, monoY}, colour, row.name.c_str());
+        list.AddText({nameX - gap - net, y}, netColour, row.net.c_str());
         break;
-    case PinSide::Right:  // "|NN  name  net"
-        list.AddText({min.x, y}, colour, row.number.c_str());
-        list.AddText({min.x + slot + gap, y}, colour, words.c_str());
+    }
+    case PinSide::Right: {  // "|NN  name  net"
+        list.AddText({min.x, y}, numberColour, row.number.c_str());
+        const float nameX = min.x + slot + gap;
+        list.AddText(mono, monoSize, {nameX, monoY}, colour, row.name.c_str());
+        list.AddText({nameX + name + gap, y}, netColour, row.net.c_str());
         break;
-    case PinSide::List:  // "NN  name  net", the numbers to the right of their slot
-        list.AddText({min.x + slot - number, y}, colour, row.number.c_str());
-        list.AddText({min.x + slot + gap, y}, colour, words.c_str());
+    }
+    case PinSide::List: {  // "NN —▶ name  net", the numbers to the right of their slot
+        list.AddText({min.x + slot - number, y}, numberColour, row.number.c_str());
+        const float edge = min.x + slot + gap / 2;
+        DrawPinSymbol(list, edge + kStub, (min.y + max.y) / 2, -1, row.look, row.alone);
+        const float nameX = edge + kStub + gap / 2;
+        list.AddText(mono, monoSize, {nameX, monoY}, colour, row.name.c_str());
+        list.AddText({nameX + name + gap, y}, netColour, row.net.c_str());
         break;
+    }
     }
     list.PopClipRect();
     PinHits(clicked, row, component, datasheet, hits);
@@ -289,6 +407,15 @@ void DigitPinout(const BoardScene& scene, std::size_t component, const PartInfo&
 
 }  // namespace
 
+void ChipPanel::remember(const TargetHits& hits, std::size_t component) {
+    shown_ = component;
+    const auto& hovered = hits.hovered;
+    hoveredPad_ =
+        hovered && hovered->components.size() == 1 && hovered->components.front() == component
+            ? hovered->pad
+            : std::nullopt;
+}
+
 TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const Manuals& manuals,
                            const LoadedCircuit& design) {
     TargetHits hits;
@@ -321,6 +448,13 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         }
     }
 
+    // What the pin hovered last frame works with (P8j): its row or a sheet's pin name, known
+    // only after this page drew its rows: tinted one frame late.
+    Group group;
+    if (hoveredPad_ && shown_ == component) {
+        group.hovered = hoveredPad_;
+        group.pads = WorksWith(scene.pinNames(component), scene.pinKinds(component), *hoveredPad_);
+    }
     ImGui::Dummy({0, kBodyWidth / 5 + 4});  // room for the body's notch above its first pin
     const auto sheet = manuals.datasheets.find(part);
     const Markdown* datasheet = sheet != manuals.datasheets.end() ? &sheet->second : nullptr;
@@ -330,27 +464,36 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
     if (dip && ImGui::BeginTable("pinout", 5, flags)) {
         ImGui::TableSetupColumn("show left", ImGuiTableColumnFlags_WidthFixed, ShowWidth());
         ImGui::TableSetupColumn("left", ImGuiTableColumnFlags_WidthStretch, 1.0f);
-        ImGui::TableSetupColumn("body", ImGuiTableColumnFlags_WidthFixed, kBodyWidth);
+        ImGui::TableSetupColumn("body", ImGuiTableColumnFlags_WidthFixed,
+                                kBodyWidth + 2 * (kStub + kStubGap));
         ImGui::TableSetupColumn("right", ImGuiTableColumnFlags_WidthStretch, 1.0f);
         ImGui::TableSetupColumn("show right", ImGuiTableColumnFlags_WidthFixed, ShowWidth());
         for (std::size_t r = 0; r < pins / 2; ++r) {
-            const PinRow left = Row(scene, component, r + 1);
-            const PinRow right = Row(scene, component, pins - r);
+            const PinRow left = Row(scene, component, r + 1, group);
+            const PinRow right = Row(scene, component, pins - r, group);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ShowButton(left, component, hits);
             ImGui::TableNextColumn();
             PinCell(left, PinSide::Left, component, datasheet, hits);
             ImGui::TableNextColumn();
-            const ImVec2 at = ImGui::GetCursorScreenPos();
+            const ImVec2 cell = ImGui::GetCursorScreenPos();
+            const ImVec2 at{cell.x + kStub + kStubGap, cell.y};  // the body, between the lines
             const float height = ControlHeight() + ImGui::GetStyle().ItemSpacing.y;
             ImDrawList& list = *ImGui::GetWindowDrawList();
             list.AddRectFilled({at.x, at.y - 2}, {at.x + kBodyWidth, at.y + height}, kBody);
             if (r == 0) {
                 list.AddCircleFilled({at.x + kBodyWidth / 2, at.y - 2}, kBodyWidth / 5, kNotch);
-                list.AddCircleFilled({at.x + 6, at.y + height / 2}, 3, kPinOne);
+                list.AddCircleFilled({at.x + 6, at.y + ControlHeight() / 2}, 3, kPinOne);
             }
-            ImGui::Dummy({kBodyWidth, ControlHeight()});
+            const float y = at.y + ControlHeight() / 2;
+            if (left.pad) {
+                DrawPinSymbol(list, at.x, y, -1, left.look, left.alone);
+            }
+            if (right.pad) {
+                DrawPinSymbol(list, at.x + kBodyWidth, y, 1, right.look, right.alone);
+            }
+            ImGui::Dummy({kBodyWidth + 2 * (kStub + kStubGap), ControlHeight()});
             ImGui::TableNextColumn();
             PinCell(right, PinSide::Right, component, datasheet, hits);
             ImGui::TableNextColumn();
@@ -363,7 +506,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         const float spacing = ImGui::GetStyle().ItemSpacing.x;
         const float width = ImGui::GetContentRegionAvail().x - ShowWidth() - spacing;
         for (std::size_t n = 1; n <= pins; ++n) {
-            const PinRow row = Row(scene, component, n);
+            const PinRow row = Row(scene, component, n, group);
             PinCell(row, PinSide::List, component, datasheet, hits, width);
             ImGui::SameLine();
             ShowButton(row, component, hits);
@@ -372,6 +515,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
 
     if (!datasheet) {
         ImGui::TextDisabled("no datasheet");
+        remember(hits, component);
         return hits;
     }
     // Function, then Pins, both open (P8j: folding only hid them).
@@ -384,6 +528,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         Merge(hits,
               view->draw(Section(*datasheet, heading), &scene, design, LinkScope::Chip, reference));
     }
+    remember(hits, component);
     return hits;
 }
 
