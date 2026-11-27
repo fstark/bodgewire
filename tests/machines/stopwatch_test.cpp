@@ -177,7 +177,7 @@ std::string AfterReset(LoadedCircuit& loaded, std::uint64_t seed) {
 
 TEST_CASE("stopwatch: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"stuck_at_zero", "nineteen", "eights", "broken_bar", "non_stop",
-                             "dark_seconds", "missing_eight"}) {
+                             "dark_seconds", "missing_eight", "second_opinion"}) {
         INFO(name);
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
@@ -373,4 +373,45 @@ TEST_CASE("stopwatch: missing_eight", "[machines]") {
     auto loaded = Build(machine);
     const auto [count, digit] = PowerOnSeconds(*loaded, seed);
     CHECK(digit == static_cast<char>('0' + count));
+}
+
+TEST_CASE("stopwatch: second_opinion", "[machines]") {
+    Machine machine = LoadPuzzle("second_opinion");
+    CHECK_FALSE(machine.completed());
+    CHECK(machine.power().unpowered == std::vector<std::string>{"U5"});
+    {
+        auto loaded = Build(machine);
+        for (const std::uint64_t seed : {1, 2, 3}) {
+            INFO("seed " << seed);
+            CHECK(StartStop(*loaded, seed) == " .12");  // as Dark seconds: the broken bar hidden
+        }
+    }
+    REQUIRE(machine.mend(DarkSecondsCrack().layer, DarkSecondsCrack().at));
+    CHECK_FALSE(machine.completed());
+    CHECK(machine.power().unpowered.empty());
+    {
+        auto loaded = Build(machine);
+        const NetId e = *PinNet(*loaded, "DS1", "E");
+        REQUIRE(e != *PinNet(*loaded, "U8", "SE_N"));
+        for (const std::uint64_t seed : {1, 2, 3}) {
+            INFO("seed " << seed);
+            CHECK(StartStop(*loaded, seed) == "?.12");  // now as Broken bar: 0 without its e
+        }
+    }
+    REQUIRE(machine.mend(BrokenBarCrack().layer, BrokenBarCrack().at));
+    CHECK(machine.completed());
+    auto loaded = Build(machine);
+    CHECK(StartStop(*loaded, 1) == "0.12");
+}
+
+TEST_CASE("stopwatch: second_opinion mended the other way round", "[machines]") {
+    Machine machine = LoadPuzzle("second_opinion");
+    REQUIRE(machine.mend(BrokenBarCrack().layer, BrokenBarCrack().at));
+    CHECK_FALSE(machine.completed());
+    {
+        auto loaded = Build(machine);
+        CHECK(StartStop(*loaded, 1) == " .12");  // the hidden crack mended first changes nothing
+    }
+    REQUIRE(machine.mend(DarkSecondsCrack().layer, DarkSecondsCrack().at));
+    CHECK(machine.completed());
 }

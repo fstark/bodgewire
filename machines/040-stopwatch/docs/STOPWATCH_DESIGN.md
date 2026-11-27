@@ -10,7 +10,7 @@ Machine name `stopwatch`:
 stopwatch.bwn                design netlist
 board/stopwatch.kicad_pcb    Board (KiCad 10, laid out by hand)
 manuals/user.md, service.md  User and Service Manuals
-puzzles/NN-*.bwp             7 Puzzles, easiest first
+puzzles/NN-*.bwp             8 Puzzles, easiest first
 ```
 
 ## Netlist
@@ -125,6 +125,7 @@ net DS1_G    U8.SG_N DS1.G
 | `non_stop.bwp` | `fault crack U11.5 U12.2 50%` | `RUN` |
 | `dark_seconds.bwp` | `fault crack U5.5 U6.5 50%` | `VCC` at `U5` |
 | `missing_eight.bwp` | `fault stuck U8.D 0` | `S3` inside `U8` |
+| `second_opinion.bwp` | `fault crack U5.5 U6.5 50%`<br>`fault crack U8.9 DS1.1 50%` | Dark seconds' and Broken bar's cracks together: the first hides the second |
 
 Briefs:
 

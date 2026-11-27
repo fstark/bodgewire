@@ -1,0 +1,9 @@
+# Second opinion: two Faults, the first hiding the second. The VCC Trace between U5 pin 5 and U6 pin 5
+# is cracked (Dark seconds): U5 is unpowered, U8 decodes 15 (blank), so DS1 is dark and its cracked
+# DS1_E Trace between U8 pin 9 and DS1 pin 1 (Broken bar) cannot show. Once VCC is mended, the seconds
+# draw 0 with a gap at the bottom left, 6 like a 5, 8 like a 9.
+machine stopwatch
+title "Second opinion"
+brief "The left digit shows only its decimal point; the other two count normally. Two things are wrong with this one."
+fault crack U5.5 U6.5 50%
+fault crack U8.9 DS1.1 50%
