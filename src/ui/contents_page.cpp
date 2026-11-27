@@ -14,6 +14,7 @@
 
 #include "ui/controls.hpp"
 #include "ui/manual_view.hpp"
+#include "ui/page_fonts.hpp"
 
 namespace bw {
 
@@ -144,7 +145,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     }
 
     // The head: the reference (a link), the Part, its size, where the CPU sees it.
-    ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kTitleScale);
+    PushPageFont(PageFace::Text, kTitleScale);
     TextFlow flow;
     const TextFlow::Result link = flow.text(reference, kPageLink, true);
     ImGui::PopFont();
@@ -181,6 +182,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     settingsLine(s, words);
     ImGui::Spacing();
 
+    PushPageFont(PageFace::Mono);  // addresses, bytes and code in columns
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     if (ImGui::BeginChild("view", {0, 0}, ImGuiChildFlags_None,
                           ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove)) {
@@ -199,6 +201,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     }
     ImGui::EndChild();
     ImGui::PopStyleVar();
+    ImGui::PopFont();
     return hits;
 }
 
@@ -344,7 +347,7 @@ void ContentsPage::glyphView(const ChipContents& chip, const ContentsSettings& s
     const float width = ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ScrollbarSize;
     const GlyphGrid grid = GlyphLayout(width);
     const float dot = grid.dot;
-    const float labelSize = ImGui::GetStyle().FontSizeBase * kLabelScale;
+    const float labelSize = ImGui::GetFontSize() * kLabelScale;
     const float cellW = dot * static_cast<float>(kGlyphDots + 2);
     const float cellH = dot * static_cast<float>(s.glyphRows + 1) + labelSize + 2;
     const std::size_t count = GlyphCount(chip.words.size(), s);

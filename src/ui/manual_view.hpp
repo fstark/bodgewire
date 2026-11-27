@@ -35,7 +35,8 @@ private:
     bool first_ = true;
 };
 
-// A tooltip from a page: the UI's light text on its dark background, whatever the page pushed.
+// A tooltip from a page: the UI's light text on its dark background and its own padding,
+// whatever the page pushed.
 void PageTooltip(std::string_view text);
 
 // Draws Markdown blocks: `##` headings collapsible, Component references as links.

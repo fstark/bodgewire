@@ -1,0 +1,20 @@
+// Generated from src/ui/page_fonts_data.cpp.in: Atkinson Hyperlegible Regular and Bold, Atkinson
+// Hyperlegible Mono Regular (SIL OFL 1.1), src/ui/fonts.
+#include <cstddef>
+
+namespace bw {
+
+extern const unsigned char kPageTextFont[];
+extern const std::size_t kPageTextFontSize;
+extern const unsigned char kPageBoldFont[];
+extern const std::size_t kPageBoldFontSize;
+extern const unsigned char kPageMonoFont[];
+extern const std::size_t kPageMonoFontSize;
+const unsigned char kPageTextFont[] = {@page_text_bytes@};
+const std::size_t kPageTextFontSize = sizeof(kPageTextFont);
+const unsigned char kPageBoldFont[] = {@page_bold_bytes@};
+const std::size_t kPageBoldFontSize = sizeof(kPageBoldFont);
+const unsigned char kPageMonoFont[] = {@page_mono_bytes@};
+const std::size_t kPageMonoFontSize = sizeof(kPageMonoFont);
+
+}  // namespace bw

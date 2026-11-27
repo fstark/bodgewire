@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <format>
 #include <string>
 #include <vector>
@@ -50,7 +51,8 @@ PinRow Row(const BoardScene& scene, std::size_t component, std::size_t number) {
     return row;
 }
 
-// After a pin's Selectable: fills `hits` and shows the Datasheet line as a tooltip.
+// After a pin's Selectable: fills `hits` and shows a tooltip: the pin's number, name and Net in
+// full (a long row is cut at its cell's edge), then its Datasheet line.
 void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markdown* datasheet,
              TargetHits& hits) {
     if (clicked && row.pad) {
@@ -65,11 +67,11 @@ void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markd
     }
     if (ImGui::IsItemHovered() && row.pad) {
         hits.hovered = BoardTarget{{component}, row.pad, std::nullopt};
-        if (datasheet) {
-            if (const Block* bullet = PinBullet(*datasheet, row.name)) {
-                PageTooltip(Displayable(PlainText(bullet->spans)));
-            }
+        std::string tip = std::format("{}  {}  {}", row.number, row.name, row.net);
+        if (const Block* bullet = datasheet ? PinBullet(*datasheet, row.name) : nullptr) {
+            tip += "\n" + Displayable(PlainText(bullet->spans));
         }
+        PageTooltip(tip);
     }
 }
 
@@ -90,23 +92,45 @@ void ShowButton(const PinRow& row, std::size_t component, TargetHits& hits, floa
     ImGui::PopID();
 }
 
-// One pin as a selectable row, `width` wide (0: what is left of the line).
-void PinCell(const PinRow& row, std::string_view label, bool alignRight, std::size_t component,
-             const Markdown* datasheet, TargetHits& hits, float width = 0) {
-    if (row.power) {
-        ImGui::PushStyleColor(ImGuiCol_Text, kPowerText);
-    }
-    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, {alignRight ? 1.0f : 0.0f, 0.5f});
+// Where a pin's row is: left or right of a DIP's body, its number next to the body; or in a
+// list, its number first.
+enum class PinSide : std::uint8_t { Left, Right, List };
+
+// One pin as a selectable row, `width` wide (0: what is left of the line): its number in a slot
+// two digits wide, which keeps the names in a column whatever the widths of the font's digits.
+void PinCell(const PinRow& row, PinSide side, std::size_t component, const Markdown* datasheet,
+             TargetHits& hits, float width = 0) {
     ImGui::PushID(row.number.c_str());
-    const std::string text(label);
     // A row as high as a control (P8f): the large way to a pin. Level with the "show" button
     // before it on a table's row, whose frame would lower this row's text by its padding.
     ImGui::GetCurrentWindow()->DC.CurrLineTextBaseOffset = 0;
-    const bool clicked = ImGui::Selectable(text.c_str(), false, 0, {width, kControl});
+    const bool clicked = ImGui::Selectable("##pin", false, 0, {width, kControl});
     ImGui::PopID();
-    ImGui::PopStyleVar();
-    if (row.power) {
-        ImGui::PopStyleColor();
+    const ImVec2 min = ImGui::GetItemRectMin();
+    const ImVec2 max = ImGui::GetItemRectMax();
+    const float slot = ImGui::CalcTextSize("00").x;
+    const float gap = ImGui::CalcTextSize("  ").x;
+    const float number = ImGui::CalcTextSize(row.number.c_str()).x;
+    const std::string words = side == PinSide::Left ? std::format("{}  {}", row.net, row.name)
+                                                    : std::format("{}  {}", row.name, row.net);
+    const float y = min.y + (max.y - min.y - ImGui::GetTextLineHeight()) / 2;
+    const ImU32 colour =
+        ImGui::GetColorU32(row.power ? kPowerText : ImGui::GetStyleColorVec4(ImGuiCol_Text));
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    switch (side) {
+    case PinSide::Left:  // "net  name  NN|": both to the right
+        list.AddText({max.x - number, y}, colour, row.number.c_str());
+        list.AddText({max.x - slot - gap - ImGui::CalcTextSize(words.c_str()).x, y}, colour,
+                     words.c_str());
+        break;
+    case PinSide::Right:  // "|NN  name  net"
+        list.AddText({min.x, y}, colour, row.number.c_str());
+        list.AddText({min.x + slot + gap, y}, colour, words.c_str());
+        break;
+    case PinSide::List:  // "NN  name  net", the numbers to the right of their slot
+        list.AddText({min.x + slot - number, y}, colour, row.number.c_str());
+        list.AddText({min.x + slot + gap, y}, colour, words.c_str());
+        break;
     }
     PinHits(clicked, row, component, datasheet, hits);
 }
@@ -267,8 +291,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
             ImGui::TableNextColumn();
             ShowButton(left, component, hits);
             ImGui::TableNextColumn();
-            PinCell(left, std::format("{}  {}  {:>2}", left.net, left.name, left.number), true,
-                    component, datasheet, hits);
+            PinCell(left, PinSide::Left, component, datasheet, hits);
             ImGui::TableNextColumn();
             const ImVec2 at = ImGui::GetCursorScreenPos();
             const float height = kControl + ImGui::GetStyle().ItemSpacing.y;
@@ -280,8 +303,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
             }
             ImGui::Dummy({kBodyWidth, kControl});
             ImGui::TableNextColumn();
-            PinCell(right, std::format("{:<2}  {}  {}", right.number, right.name, right.net), false,
-                    component, datasheet, hits);
+            PinCell(right, PinSide::Right, component, datasheet, hits);
             ImGui::TableNextColumn();
             ShowButton(right, component, hits);
         }
@@ -293,8 +315,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         const float width = ImGui::GetContentRegionAvail().x - ShowWidth() - spacing;
         for (std::size_t n = 1; n <= pins; ++n) {
             const PinRow row = Row(scene, component, n);
-            PinCell(row, std::format("{:>2}  {}  {}", row.number, row.name, row.net), false,
-                    component, datasheet, hits, width);
+            PinCell(row, PinSide::List, component, datasheet, hits, width);
             ImGui::SameLine();
             ShowButton(row, component, hits);
         }

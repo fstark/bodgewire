@@ -9,6 +9,7 @@
 
 #include "ui/bench.hpp"
 #include "ui/controls.hpp"
+#include "ui/page_fonts.hpp"
 #include "view/bench_places.hpp"
 
 namespace bw {
@@ -16,15 +17,17 @@ namespace bw {
 namespace {
 
 constexpr float kAspect = 500.0f / 600.0f;  // FirstSize(Manual): height / width
-constexpr float kMinWidth = 590;  // a BW-2001 pinout row: about 126 px a side, and two "show"
+// Its first width (FirstSize): a page 438 px wide. A pinout's longest rows (a video counter's
+// "LOAD_N  FRAME_END_N") are cut at their cell's edge; their tooltip shows them whole.
+constexpr float kMinWidth = 600;
 constexpr float kSpine = 34;      // the cover left of the page, the rings' strip
-constexpr float kTabStrip = 86;   // right of the page: the tabs and the cover's edge
+constexpr float kTabStrip = 96;   // right of the page: the tabs and the cover's edge
 constexpr float kCoverEdge = 12;  // the cover above, below and right of everything
 constexpr float kTabTop = 30;
 constexpr float kTabHeight = 44;
 constexpr float kTabStep = 50;
 constexpr float kTabSetBack = 6;
-constexpr float kTabLabelScale = 0.85f;
+constexpr float kTabLabelScale = 14.0f / kPageFontSize;  // "Datasheets" in a tab
 constexpr float kTitleScale = 1.3f;
 constexpr float kPi = std::numbers::pi_v<float>;
 
@@ -104,7 +107,7 @@ void PushPaper() {
 constexpr int kPaperColours = 20;
 
 void Title(const char* text) {
-    ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kTitleScale);
+    PushPageFont(PageFace::Bold, kTitleScale);
     ImGui::TextUnformatted(text);
     ImGui::PopFont();
 }
@@ -195,6 +198,7 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     const ImVec2 size{w - kSpine - kTabStrip - 32, h - 2 * kCoverEdge - 20};
     ImGui::SetCursorScreenPos(page);
     PushPaper();
+    PushPageFont(PageFace::Text);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     // A drag on the page scrolls it (P8f) and no longer moves the binder: its cover does.
     if (ImGui::BeginChild(PageId(divider), size, ImGuiChildFlags_None,
@@ -244,6 +248,7 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     }
     ImGui::EndChild();
     ImGui::PopStyleVar();
+    ImGui::PopFont();
     ImGui::PopStyleColor(kPaperColours);
     if (CaseClose()) {
         open = false;
@@ -274,10 +279,12 @@ void ManualWindows::giveUp(const std::string& fault) {
     }
     ImGui::TextUnformatted("The fault on this board:");
     ImGui::Spacing();
+    PushPageFont(PageFace::Mono);
     if (ImGui::Selectable(fault.c_str(), false)) {
         ImGui::SetClipboardText(fault.c_str());
         faultCopied_ = true;
     }
+    ImGui::PopFont();
     ImGui::Spacing();
     ImGui::TextDisabled("%s", faultCopied_ ? "Copied." : "A click on the line copies it.");
     ImGui::Spacing();
@@ -305,7 +312,7 @@ void ManualWindows::tabs(bool board, bool giveUp) {
     }
     const std::vector<float> tops =
         TabTops(count, kTabTop, ImGui::GetWindowHeight() - kCoverEdge - 2, kTabHeight, kTabStep);
-    ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kTabLabelScale);
+    PushPageFont(PageFace::Text, kTabLabelScale);
     for (std::size_t place = 0; place < count; ++place) {
         const std::size_t i = shown[place];
         const Tab& tab = kTabs[i];

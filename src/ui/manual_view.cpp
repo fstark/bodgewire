@@ -7,6 +7,8 @@
 
 #include <imgui.h>
 
+#include "text/text.hpp"
+#include "ui/page_fonts.hpp"
 #include "ui/touch.hpp"
 
 namespace bw {
@@ -33,18 +35,32 @@ ImU32 Colour(SpanStyle style) {
     return kText;
 }
 
+// A span in its own face: bold and code in theirs, plain text in the one around it (a table's
+// header row: bold).
+TextFlow::Result FlowSpan(TextFlow& flow, std::string_view text, SpanStyle style, ImU32 colour,
+                          bool underline) {
+    if (style == SpanStyle::Text) {
+        return flow.text(text, colour, underline);
+    }
+    PushPageFont(style == SpanStyle::Bold ? PageFace::Bold : PageFace::Mono);
+    const TextFlow::Result result = flow.text(text, colour, underline);
+    ImGui::PopFont();
+    return result;
+}
+
 void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const LoadedCircuit& design,
                LinkScope scope, TargetHits& hits) {
     TextFlow flow;
     for (std::size_t i = 0; i < spans.size(); ++i) {
         const auto link = LinkAt(spans, i, design, scope);
         if (!link) {
-            flow.text(spans[i].text, Colour(spans[i].style), false);
+            FlowSpan(flow, spans[i].text, spans[i].style, Colour(spans[i].style), false);
             continue;
         }
         TextFlow::Result result;
         for (std::size_t k = 0; k < link->spansUsed; ++k) {  // a run: `U1`, "–", `U5` as one
-            const TextFlow::Result part = flow.text(spans[i + k].text, kPageLink, true);
+            const TextFlow::Result part =
+                FlowSpan(flow, spans[i + k].text, spans[i + k].style, kPageLink, true);
             result.hovered = result.hovered || part.hovered;
             result.clicked = result.clicked || part.clicked;
             result.held = result.held || part.held;
@@ -52,11 +68,13 @@ void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const Loade
         i += link->spansUsed - 1;
         if (link->pinChars > 0) {
             const std::string_view next = spans[i + 1].text;
-            const TextFlow::Result pin = flow.text(next.substr(0, link->pinChars), kPageLink, true);
+            const SpanStyle style = spans[i + 1].style;
+            const TextFlow::Result pin =
+                FlowSpan(flow, next.substr(0, link->pinChars), style, kPageLink, true);
             result.hovered = result.hovered || pin.hovered;
             result.clicked = result.clicked || pin.clicked;
             result.held = result.held || pin.held;
-            flow.text(next.substr(link->pinChars), Colour(spans[i + 1].style), false);
+            FlowSpan(flow, next.substr(link->pinChars), style, Colour(style), false);
             ++i;
         }
         if (!scene || (!result.hovered && !result.clicked && !result.held)) {
@@ -89,8 +107,8 @@ void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const Loade
     }
 }
 
-// A pipe table: the header row on a tinted band with a rule under it (no bold font is loaded),
-// each cell's text wrapping at its column's edge.
+// A pipe table: the header row in bold on a tinted band with a rule under it, each cell's text
+// wrapping at its column's edge.
 void DrawTable(const Block& table, const BoardScene* scene, const LoadedCircuit& design,
                LinkScope scope, TargetHits& hits) {
     std::size_t columns = 0;
@@ -115,7 +133,13 @@ void DrawTable(const Block& table, const BoardScene* scene, const LoadedCircuit&
                 ImGui::TableSetColumnIndex(static_cast<int>(c));
                 if (c < table.rows[r].size()) {
                     ImGui::PushID(static_cast<int>(r * columns + c));
+                    if (r == 0) {
+                        PushPageFont(PageFace::Bold);
+                    }
                     DrawSpans(table.rows[r][c], scene, design, scope, hits);
+                    if (r == 0) {
+                        ImGui::PopFont();
+                    }
                     ImGui::PopID();
                 }
             }
@@ -136,6 +160,10 @@ TextFlow::Result TextFlow::text(std::string_view raw, ImU32 colour, bool underli
     std::string_view text = display;
     while (!text.empty()) {
         std::size_t end = text.find(' ');
+        while (end != std::string_view::npos && end > 0 && end + 1 < text.size() &&
+               IsDigit(text[end - 1]) && IsDigit(text[end + 1])) {
+            end = text.find(' ', end + 1);  // a number's groups stay on one line: 1 048 576
+        }
         end = end == std::string_view::npos ? text.size() : text.find_first_not_of(' ', end);
         end = end == std::string_view::npos ? text.size() : end;
         const std::string_view word = text.substr(0, end);
@@ -193,7 +221,10 @@ TextFlow::Result TextFlow::text(std::string_view raw, ImU32 colour, bool underli
 }
 
 void PageTooltip(std::string_view text) {
-    if (ImGui::BeginTooltip()) {
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8, 6});  // a page pushes none
+    const bool open = ImGui::BeginTooltip();
+    ImGui::PopStyleVar();
+    if (open) {
         ImGui::PushStyleColor(ImGuiCol_Text, kTooltipText);
         ImGui::TextUnformatted(text.data(), text.data() + text.size());
         ImGui::PopStyleColor();
@@ -226,7 +257,7 @@ TargetHits ManualView::draw(std::span<const Block> blocks, const BoardScene* sce
     for (const Block& block : blocks) {
         switch (block.kind) {
         case BlockKind::Title: {
-            ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kTitleScale);
+            PushPageFont(PageFace::Bold, kTitleScale);
             const std::string text = Displayable(PlainText(block.spans));
             ImGui::TextWrapped("%s", text.c_str());
             ImGui::PopFont();

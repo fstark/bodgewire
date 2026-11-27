@@ -5,6 +5,7 @@
 #include <string>
 
 #include "ui/bench.hpp"
+#include "ui/page_fonts.hpp"
 
 namespace bw {
 
@@ -101,9 +102,10 @@ void DrawBrief(bool& open, const OpenedMachine& loaded, std::optional<ImVec2> co
     DrawNote(*ImGui::GetWindowDrawList(), at, end);
 
     ImGui::Dummy({0, kNoteStrip - 4});  // under the glue
+    PushPageFont(PageFace::Text);
     ImGui::PushStyleColor(ImGuiCol_Text, kNoteInk);
     ImGui::PushTextWrapPos(kWidth - kPad);
-    ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * kTitleScale);
+    PushPageFont(PageFace::Bold, kTitleScale);
     ImGui::TextUnformatted(loaded.title.c_str());
     ImGui::PopFont();
     ImGui::Spacing();
@@ -122,6 +124,7 @@ void DrawBrief(bool& open, const OpenedMachine& loaded, std::optional<ImVec2> co
         ImGui::TextUnformatted("Works again, thank you!");
         ImGui::PopStyleColor();
     }
+    ImGui::PopFont();
     if (CaseClose(1)) {
         open = false;
     }

@@ -57,6 +57,7 @@
 #include "ui/manual_window.hpp"
 #include "ui/matrix_keyboard_window.hpp"
 #include "ui/meter_lcd.hpp"
+#include "ui/page_fonts.hpp"
 #include "ui/progress_store.hpp"
 #include "ui/question_popup.hpp"
 #include "ui/scope_window.hpp"
@@ -895,6 +896,7 @@ public:
                                        static_cast<int>(kPetFontSize), 0.0f, &legendConfig);
         title_ = fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kTitleFont),
                                             static_cast<int>(kTitleFontSize), 0.0f, &legendConfig);
+        LoadPageFonts(fonts);
     }
     ~ImGuiScreen() {
         gpu_.shutdownImGui();
