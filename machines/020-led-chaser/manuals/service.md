@@ -64,11 +64,12 @@ What the logic probe shows on a working board. **P** is the pulse lamp: it stays
 3. Probe `U5.A`. It is the same wire as `U6.Y`, so it must read the same.
 4. Probe `U5.QA` to `U5.QG`. When the low is on `U5.QH`, they must all read H.
 
-**One LED stays dark, or stays lit, while the others run.**
+**One LED or more stay dark, or one stays lit, while the others run.**
 
 1. Probe the matching `U5` output, `U5.QA` for `D1` up to `U5.QH` for `D8`. It must go low once every half second, for one step.
 2. Probe the LED's pin 1. It is the same wire, so it must read the same as that output.
 3. Probe the LED's pin 2. It must read H, steady.
+4. Probe its resistor, `R2` for `D1` up to `R9` for `D8`, at both ends. Each end must read H, steady. Pin 1 is on +5 V.
 
 **Two LEDs light together, or the light jumps a place.**
 

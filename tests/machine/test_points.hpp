@@ -27,6 +27,8 @@ LedA5Crack();  // chaser LED_A5, R6.2 → D5 pad 2: machines/020-led-chaser/puzz
 const Crack&
 SerCrack();  // chaser SER, U6 pin 8 → U5 pin 1: machines/020-led-chaser/puzzles/03-dark-chaser.bwp
 const Crack&
+VccR5R6Crack();  // chaser VCC, R5 pad 1 → R6 pad 1: machines/020-led-chaser/puzzles/05-half-row.bwp
+const Crack&
 BtnNCrack();  // dice BTN_N, SW1 pad 1 → R9 pad 2: machines/030-dice/puzzles/01-dead-button.bwp
 const Crack&
 N2Crack();  // dice N2, U2 pin 3 → U4 pin 6: machines/030-dice/puzzles/02-loaded-dice.bwp

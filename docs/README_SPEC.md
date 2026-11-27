@@ -38,7 +38,7 @@ Avoid what reads as machine-written:
 - no "In this README…", no closing pep talk ("Happy hacking!", "Enjoy!");
 - headings are plain nouns or short phrases, sentence case.
 
-Plain facts beat adjectives: "114 Puzzles on 14 Machines" over "tons of content".
+Plain facts beat adjectives: "115 Puzzles on 14 Machines" over "tons of content".
 
 ## Sections, in order
 
@@ -63,7 +63,7 @@ Simulating the repair of old digital computers: late-70s, early-80s boards built
 The player's view, a little salesy but true: you are at a repair bench, a broken Machine in front
 of you, a post-it saying what's wrong ("The LED never lights."). You have the Board, the manuals
 (User Manual, Service Manual, datasheets) and real instruments. Find the fault, fix it, power it
-back on. 114 Puzzles on 14 Machines, from a five-chip LED blinker to copies of the Commodore PET
+back on. 115 Puzzles on 14 Machines, from a five-chip LED blinker to copies of the Commodore PET
 2001 and the Sinclair ZX80. Count Puzzles and Machines from `machines/*/puzzles/*.bwp` and
 `machines/*/` at each regeneration.
 

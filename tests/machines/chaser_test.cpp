@@ -151,7 +151,7 @@ TEST_CASE("chaser: fault-free light runs", "[machines][slow]") {
 }
 
 TEST_CASE("chaser: Puzzles have a title and a brief", "[machines]") {
-    for (const char* name : {"gap", "stuck_light", "dark_chaser", "twins"}) {
+    for (const char* name : {"gap", "stuck_light", "dark_chaser", "twins", "half_row"}) {
         INFO(name);
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
@@ -244,4 +244,27 @@ TEST_CASE("chaser: twins", "[machines][slow]") {
     REQUIRE(machine.removeBridge({"U5", "3"}, {"U5", "4"}));
     CHECK(machine.completed());
     CheckRunning(Stages(Record(machine, 18 * kStep, ChaserNames())));
+}
+
+TEST_CASE("chaser: half_row", "[machines][slow]") {
+    Machine machine = LoadPuzzle("half_row");
+    CHECK_FALSE(machine.completed());
+    const Recorded recorded = Record(machine, 18 * kStep, ChaserNames({"R5.1", "R6.1", "R9.1"}));
+    for (const Sample& s : recorded.at("R5.1")) {
+        CHECK_FALSE(s.floating);  // D1–D4's side of the crack keeps +5 V
+        CHECK(s.value == One);
+    }
+    for (const char* pad : {"R6.1", "R9.1"}) {
+        for (const Sample& s : recorded.at(pad)) {
+            CHECK(s.floating);  // R6–R9 hang off the cut-off end of the VCC Trace
+        }
+    }
+    CheckRunning(Stages(recorded));  // U5 still runs all eight stages: D5–D8 are dark, not skipped
+
+    REQUIRE(machine.mend(VccR5R6Crack().layer, VccR5R6Crack().at));
+    CHECK(machine.completed());
+    for (const Sample& s : Record(machine, 1_ms, {"R9.1"}).at("R9.1")) {
+        CHECK_FALSE(s.floating);
+        CHECK(s.value == One);
+    }
 }

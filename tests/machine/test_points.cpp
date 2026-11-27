@@ -59,6 +59,11 @@ const Crack& SerCrack() {
     return crack;
 }
 
+const Crack& VccR5R6Crack() {
+    static const Crack crack = PuzzleCrack("half_row");
+    return crack;
+}
+
 const Crack& BtnNCrack() {
     static const Crack crack = PuzzleCrack("dead_button");
     return crack;

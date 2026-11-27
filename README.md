@@ -25,7 +25,7 @@ with it: "The LED never lights." You have the board, its manuals (a User Manual,
 datasheets for every chip) and a shelf of real tools and instruments. Find the fault, fix it,
 power it back on.
 
-There are 114 Puzzles on 14 Machines. The first one blinks an LED with five chips. The last two
+There are 115 Puzzles on 14 Machines. The first one blinks an LED with five chips. The last two
 are chip-for-chip copies of the Commodore PET 2001 and the Sinclair ZX80, running their real ROMs.
 
 Every Machine shows up in the launcher with a short description, and each of its Puzzles is a
@@ -157,7 +157,7 @@ on the bench. 3 Puzzles.
 
 ### LED Chaser
 
-Eight red LEDs in a row, and one light running along them, about 15 steps a second. 4 Puzzles.
+Eight red LEDs in a row, and one light running along them, about 15 steps a second. 5 Puzzles.
 
 ![LED Chaser](docs/readme/led-chaser.png)
 

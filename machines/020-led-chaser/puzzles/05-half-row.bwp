@@ -1,0 +1,6 @@
+# Half row: the VCC Trace from R5 pin 1 to R6 pin 1 is cracked; R6–R9 lose +5 V, so D5–D8 never
+# light, while U5 still shifts the low bit through all eight stages: D1–D4, then four dark steps.
+machine chaser
+title "Half row"
+brief "The light runs along D1 to D4 only, then the row stays dark for a moment before D1 lights again. D5 to D8 never light."
+fault crack R5.1 R6.1 50%

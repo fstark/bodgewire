@@ -10,7 +10,7 @@ Machine name `chaser`:
 chaser.bwn                   design netlist
 board/chaser.kicad_pcb       Board (KiCad 10, laid out by hand)
 manuals/user.md, service.md  User and Service Manuals
-puzzles/NN-*.bwp             4 Puzzles, easiest first
+puzzles/NN-*.bwp             5 Puzzles, easiest first
 ```
 
 ## Netlist
@@ -74,6 +74,7 @@ net LED_A8   R9.2 D8.A
 | `stuck_light.bwp` | `fault stuck U5.QD 0` | `S4` |
 | `dark_chaser.bwp` | `fault crack U6.8 U5.1 50%` | the long straight `SER` segment between `U6` pin 8 and `U5` pin 1 |
 | `twins.bwp` | `fault bridge U5.3 U5.4` | `S1`–`S2`, solder side |
+| `half_row.bwp` | `fault crack R5.1 R6.1 50%` | the `VCC` run along the resistors' pin 1 row, between `R5` and `R6`: `R6`–`R9` sit on its far end, so all four lose +5 V |
 
 ## Manuals
 
