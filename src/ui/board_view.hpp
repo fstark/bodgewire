@@ -262,6 +262,12 @@ private:
     std::optional<Point> rightClick_;
     std::vector<PadJoin> bodgeWires_;
     std::vector<PadJoin> bridges_;
+    // The Bodge Wire or Solder Bridge under the cutters: what their click cuts, lit.
+    struct JoinHover {
+        bool bridge = false;
+        std::size_t index = 0;
+    };
+    std::optional<JoinHover> hoverJoin_;
     std::optional<Point> wireStart_;
     TooltipText tooltip_;
     struct Refusal {

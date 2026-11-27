@@ -63,8 +63,11 @@ constexpr float kMarkMinPx = 10;
 constexpr ImU32 kPencil = IM_COL32(205, 205, 200, 255);  // opaque: the discs overlap
 constexpr ImU32 kWireInsulation = IM_COL32(120, 170, 255, 255);
 constexpr std::int64_t kWireWidth = 300'000;
-constexpr std::int64_t kBridgeWidth = 600'000;  // nm
-constexpr std::int64_t kBlobRadius = 600'000;   // covers the gap of a cracked 0.2 mm Trace
+constexpr std::int64_t kBridgeWidth = 120'000;  // nm: a whisker, thinner than a Trace
+constexpr float kWireMinPx = 2;                 // their drawn widths when zoomed out
+constexpr float kBridgeMinPx = 1;
+constexpr float kLitJoinMinPx = 3;             // a lit wire or bridge seen at any zoom
+constexpr std::int64_t kBlobRadius = 600'000;  // covers the gap of a cracked 0.2 mm Trace
 constexpr float kBlobMinPx = 3;
 constexpr float kInactiveAlpha = 0.35f;
 constexpr double kReferenceMm = 1.5;
@@ -158,11 +161,13 @@ ImU32 Lerp(ImU32 from, ImU32 to, float t) {
     return result;
 }
 
-// Index of the wire nearest `at` within `reach` nm.
-std::optional<std::size_t> NearestWire(std::span<const PadJoin> wires, Point at, double reach) {
+// Index of the wire nearest `at` within `reach` nm of its drawn edge (`halfWidth` nm from its
+// middle), as a Trace is picked: a click anywhere on a wide bridge is on it.
+std::optional<std::size_t> NearestWire(std::span<const PadJoin> wires, Point at, double reach,
+                                       double halfWidth) {
     std::optional<std::size_t> best;
     for (std::size_t i = 0; i < wires.size(); ++i) {
-        const double d = SegmentDistance(at, wires[i].a, wires[i].b);
+        const double d = std::max(0.0, SegmentDistance(at, wires[i].a, wires[i].b) - halfWidth);
         if (d <= reach) {
             best = i;
             reach = d;
@@ -937,11 +942,13 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
     if (!real) {
         drawPads();
     }
-    const float bridgeWidth = std::max(1.0f, map.pixels(kBridgeWidth));
-    for (const PadJoin& bridge : bridges_) {
-        list.AddLine(map(bridge.a), map(bridge.b),
-                     WithAlpha(kPadTin, active_ == Layer::Back ? 1.0f : kInactiveAlpha),
-                     bridgeWidth);
+    const float bridgeWidth = std::max(kBridgeMinPx, map.pixels(kBridgeWidth));
+    for (std::size_t i = 0; i < bridges_.size(); ++i) {
+        const bool litJoin = hoverJoin_ && hoverJoin_->bridge && hoverJoin_->index == i;
+        list.AddLine(map(bridges_[i].a), map(bridges_[i].b),
+                     litJoin ? kHighlight
+                             : WithAlpha(kPadTin, active_ == Layer::Back ? 1.0f : kInactiveAlpha),
+                     litJoin ? std::max(kLitJoinMinPx, bridgeWidth) : bridgeWidth);
     }
     for (const SolderBlob& blob : blobs_) {
         const float alpha = blob.layer == active_ ? 1.0f : kInactiveAlpha;
@@ -1036,10 +1043,13 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
                          hoverTarget_->components.front() == *component;
         DrawPinNames(list, map, *scene_, *component, pad ? hoverTarget_->pad : std::nullopt);
     }
-    const float wireWidth = std::max(2.0f, map.pixels(kWireWidth));
+    const float wireWidth = std::max(kWireMinPx, map.pixels(kWireWidth));
     const float wireBlob = std::max(kBlobMinPx, map.pixels(kBlobRadius / 2));
-    for (const PadJoin& wire : bodgeWires_) {
-        list.AddLine(map(wire.a), map(wire.b), kWireInsulation, wireWidth);
+    for (std::size_t i = 0; i < bodgeWires_.size(); ++i) {
+        const PadJoin& wire = bodgeWires_[i];
+        const bool litJoin = hoverJoin_ && !hoverJoin_->bridge && hoverJoin_->index == i;
+        list.AddLine(map(wire.a), map(wire.b), litJoin ? kHighlight : kWireInsulation,
+                     litJoin ? std::max(kLitJoinMinPx, wireWidth) : wireWidth);
         list.AddCircleFilled(map(wire.a), wireBlob, kSolder);
         list.AddCircleFilled(map(wire.b), wireBlob, kSolder);
     }
@@ -1305,16 +1315,21 @@ PickReach BoardView::reach() const {
 }
 
 std::optional<std::size_t> BoardView::wireAt(Point at) const {
-    return NearestWire(bodgeWires_, at, static_cast<double>(reach().copper));
+    const double nmPerPixel = 1e6 / viewport_.pixelsPerMm();
+    return NearestWire(bodgeWires_, at, static_cast<double>(reach().copper),
+                       std::max(kWireMinPx * nmPerPixel, static_cast<double>(kWireWidth)) / 2);
 }
 
 std::optional<std::size_t> BoardView::bridgeAt(Point at) const {
-    return NearestWire(bridges_, at, static_cast<double>(reach().copper));
+    const double nmPerPixel = 1e6 / viewport_.pixelsPerMm();
+    return NearestWire(bridges_, at, static_cast<double>(reach().copper),
+                       std::max(kBridgeMinPx * nmPerPixel, static_cast<double>(kBridgeWidth)) / 2);
 }
 
 void BoardView::input(ImVec2 origin) {
     highlight_.reset();
     hoverTarget_.reset();
+    hoverJoin_.reset();
     hovered_.reset();
     const ImGuiIO& io = ImGui::GetIO();
     const ScreenPoint mouse{io.MousePos.x - origin.x, io.MousePos.y - origin.y};
@@ -1539,7 +1554,27 @@ void BoardView::input(ImVec2 origin) {
         ImGui::SetTooltip("Flip the Board");
         return;
     }
-    if (picked) {
+    // A refusal is drawn where the tooltip would go: it wins while it shows.
+    const auto show = [&](const std::string& text) {
+        const bool refusing = refusal_ && std::chrono::steady_clock::now() < refusal_->until;
+        if (loupe_) {
+            loupeText_ = text;  // by the loupe: a tooltip would be under the finger
+        } else if (!text.empty() && !refusing && !armed_) {  // an armed repair's name shows there
+            ImGui::SetTooltip("%s", text.c_str());
+        }
+    };
+    // The cutters over a Bodge Wire or a Solder Bridge: their click cuts it before the copper
+    // under it (ToolClick), so it is what is lit and named.
+    if (owner_ == Owner::Cutters && (hoveredPanel || pressed_) && !onWindow) {
+        if (const auto w = wireAt(at)) {
+            hoverJoin_ = JoinHover{false, *w};
+        } else if (const auto b = bridgeAt(at)) {
+            hoverJoin_ = JoinHover{true, *b};
+        }
+    }
+    if (hoverJoin_) {
+        show(hoverJoin_->bridge ? "Cut the solder bridge" : "Cut the wire");
+    } else if (picked) {
         const Hit& hit = picked->hit;
         highlight_ = scene_->netOf(hit);
         if (hit.kind == HitKind::Pad) {
@@ -1561,13 +1596,7 @@ void BoardView::input(ImVec2 origin) {
                 text += "\nCopper: the copper under it";
             }
         }
-        // A refusal is drawn where the tooltip would go: it wins while it shows.
-        const bool refusing = refusal_ && std::chrono::steady_clock::now() < refusal_->until;
-        if (loupe_) {
-            loupeText_ = text;  // by the loupe: a tooltip would be under the finger
-        } else if (!text.empty() && !refusing && !armed_) {  // an armed repair's name shows there
-            ImGui::SetTooltip("%s", text.c_str());
-        }
+        show(text);
     }
     if (!hovered_) {
         hovered_ = scene_->componentAt(at);
