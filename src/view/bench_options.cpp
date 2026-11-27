@@ -12,6 +12,7 @@
 #include "instruments/oscilloscope.hpp"
 #include "netlist/units.hpp"
 #include "text/text.hpp"
+#include "view/reading_size.hpp"
 
 namespace bw {
 
@@ -219,6 +220,16 @@ const std::array kFlags{
     Flag{"--progress", "FILE", true,
          [](Options& o, std::string_view v) -> Result {
              o.progress = v;
+             return {};
+         }},
+    Flag{"--text-size", "16|20|24", true,
+         [](Options& o, std::string_view v) -> Result {
+             int size = 0;
+             const auto [end, ec] = std::from_chars(v.data(), v.data() + v.size(), size);
+             if (ec != std::errc{} || end != v.data() + v.size() || !IsReadingSize(size)) {
+                 return Bad();
+             }
+             o.textSize = size;
              return {};
          }},
     Flag{"--forget", "", true,

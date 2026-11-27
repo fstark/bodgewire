@@ -6,11 +6,13 @@
 #include <string_view>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "ui/bench.hpp"
 #include "ui/controls.hpp"
 #include "ui/page_fonts.hpp"
 #include "view/bench_places.hpp"
+#include "view/reading_size.hpp"
 
 namespace bw {
 
@@ -27,6 +29,11 @@ constexpr float kTabTop = 30;
 constexpr float kTabHeight = 44;
 constexpr float kTabStep = 50;
 constexpr float kTabSetBack = 6;
+// The aA key (the reading size): on the cover under the tabs, level with the page's foot, left of
+// the corner grip's 44 px.
+constexpr float kSizeKeyWidth = 40;
+constexpr float kSizeKeyHeight = 32;
+constexpr float kSizeKeyRight = 48;                      // its right edge from the cover's
 constexpr float kTabLabelScale = 14.0f / kPageFontSize;  // "Datasheets" in a tab
 constexpr float kTitleScale = 1.3f;
 constexpr float kPi = std::numbers::pi_v<float>;
@@ -40,6 +47,9 @@ constexpr ImU32 kRing = IM_COL32(190, 190, 198, 255);
 constexpr ImU32 kRingDark = IM_COL32(110, 110, 120, 255);
 constexpr ImU32 kInk = IM_COL32(30, 30, 35, 255);
 constexpr ImU32 kTabRule = IM_COL32(0, 0, 0, 50);
+constexpr ImU32 kSizeKey = IM_COL32(46, 74, 135, 255);  // the cover, raised
+constexpr ImU32 kSizeKeyInk = IM_COL32(235, 232, 220, 255);
+constexpr ImU32 kSizeKeyPip = IM_COL32(110, 135, 185, 255);
 
 struct Tab {
     Divider divider;
@@ -193,6 +203,7 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
         binder_.turn(Divider::User);  // not a Random fault's bench
     }
     tabs(scene != nullptr, fault != nullptr);
+    readingSizeKey();
     const Divider divider = binder_.divider();
     const ImVec2 page{at.x + kSpine + 24, at.y + kCoverEdge + 10};
     const ImVec2 size{w - kSpine - kTabStrip - 32, h - 2 * kCoverEdge - 20};
@@ -225,7 +236,9 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
         case Divider::Contents:
             if (const auto chip = binder_.contents(); chip && scene && machine) {
                 ImGui::PushID("contents");
+                PushFixedPageFont(PageFace::Text);  // its fields and columns do not grow
                 board.route(contents_.draw(board, *chip, *machine));
+                ImGui::PopFont();
                 ImGui::PopID();
             }
             break;
@@ -311,8 +324,9 @@ void ManualWindows::tabs(bool board, bool giveUp) {
         shown[count++] = i;
     }
     const std::vector<float> tops =
-        TabTops(count, kTabTop, ImGui::GetWindowHeight() - kCoverEdge - 2, kTabHeight, kTabStep);
-    PushPageFont(PageFace::Text, kTabLabelScale);
+        TabTops(count, kTabTop, ImGui::GetWindowHeight() - kCoverEdge - kSizeKeyHeight - 6,
+                kTabHeight, kTabStep);
+    PushFixedPageFont(PageFace::Text, kTabLabelScale);
     for (std::size_t place = 0; place < count; ++place) {
         const std::size_t i = shown[place];
         const Tab& tab = kTabs[i];
@@ -343,6 +357,61 @@ void ManualWindows::tabs(bool board, bool giveUp) {
         }
     }
     ImGui::PopFont();
+}
+
+// The aA key: a small "a" and a large "A" over a pip for each reading size, the current one lit;
+// a click steps to the next size (view/reading_size.hpp), and the player keeps it.
+void ManualWindows::readingSizeKey() {
+    const ImVec2 at = ImGui::GetWindowPos();
+    const float w = ImGui::GetWindowWidth();
+    const float h = ImGui::GetWindowHeight();
+    const ImVec2 min{at.x + w - kSizeKeyRight - kSizeKeyWidth,
+                     at.y + h - kCoverEdge - kSizeKeyHeight};
+    const ImVec2 max{min.x + kSizeKeyWidth, min.y + kSizeKeyHeight};
+    // On the cover, no part of the window's content (as CornerGrip): its place restored after.
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    const ImVec2 cursor = window->DC.CursorPos;
+    const ImVec2 cursorMax = window->DC.CursorMaxPos;
+    const ImVec2 idealMax = window->DC.IdealMaxPos;
+    ImGui::SetCursorScreenPos(min);
+    const bool clicked = ImGui::InvisibleButton("##reading size", {kSizeKeyWidth, kSizeKeyHeight});
+    window->DC.CursorPos = cursor;
+    window->DC.CursorMaxPos = cursorMax;
+    window->DC.IdealMaxPos = idealMax;
+    const bool hovered = ImGui::IsItemHovered();
+    if (clicked) {
+        const int size = NextReadingSize(ReadingSize());
+        SetReadingSize(size);
+        if (saveReadingSize_) {
+            saveReadingSize_(size);
+        }
+    }
+    if (hovered) {
+        ImGui::SetTooltip("Text size");
+    }
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    list.AddRectFilled(min, max, Scaled(kSizeKey, hovered ? 1.15f : 1.0f), 5.0f);
+    list.AddRect(min, max, kCoverEdgeLight, 5.0f, 0, 1.0f);
+    // "a" and "A" on one baseline.
+    constexpr float kSmall = 12, kLarge = 19;
+    const float baseline = min.y + 20;
+    float x = min.x + (kSizeKeyWidth - 20) / 2;
+    for (const auto& [letter, size] : {std::pair{"a", kSmall}, std::pair{"A", kLarge}}) {
+        PushFixedPageFont(PageFace::Bold, size / kPageFontSize);
+        const float ascent = ImGui::GetFontBaked()->Ascent;
+        list.AddText({x, baseline - ascent}, kSizeKeyInk, letter);
+        x += ImGui::CalcTextSize(letter).x + 1;
+        ImGui::PopFont();
+    }
+    // A pip a size, the current one lit.
+    const float step = 8;
+    const float left =
+        min.x + kSizeKeyWidth / 2 - step * static_cast<float>(kReadingSizes.size() - 1) / 2;
+    for (std::size_t i = 0; i < kReadingSizes.size(); ++i) {
+        const bool lit = kReadingSizes[i] == ReadingSize();
+        list.AddCircleFilled({left + step * static_cast<float>(i), min.y + 26}, 2.0f,
+                             lit ? kSizeKeyInk : kSizeKeyPip);
+    }
 }
 
 void ManualWindows::datasheets(const Manuals& manuals, BoardView& board,

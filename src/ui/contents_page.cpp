@@ -145,7 +145,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     }
 
     // The head: the reference (a link), the Part, its size, where the CPU sees it.
-    PushPageFont(PageFace::Text, kTitleScale);
+    PushFixedPageFont(PageFace::Text, kTitleScale);
     TextFlow flow;
     const TextFlow::Result link = flow.text(reference, kPageLink, true);
     ImGui::PopFont();
@@ -182,7 +182,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     settingsLine(s, words);
     ImGui::Spacing();
 
-    PushPageFont(PageFace::Mono);  // addresses, bytes and code in columns
+    PushFixedPageFont(PageFace::Mono);  // addresses, bytes and code in columns
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     if (ImGui::BeginChild("view", {0, 0}, ImGuiChildFlags_None,
                           ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove)) {

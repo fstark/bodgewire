@@ -90,6 +90,9 @@ struct Options {
     // --progress FILE: the player's saved progress kept there (P8e), not in SDL's pref path; a
     // --screenshot run without it reads and writes none.
     std::optional<std::filesystem::path> progress;
+    // --text-size 16|20|24: the pages' reading size for this run (the binder's aA key's), not the
+    // one saved beside the Progress; a --screenshot run without it reads and writes none (16).
+    std::optional<int> textSize;
     // --forget, the launcher only: its question "Forget every repaired Puzzle?" open at start.
     bool forget = false;
     // --touch: the mouse stands in for one finger (P8f), on the Launcher and every bench.

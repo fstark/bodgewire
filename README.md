@@ -115,7 +115,8 @@ vertical lines, then the line's sync pulse below.
 
 ### The binder
 
-Every Machine comes with its manuals, in a binder. The Service Manual explains the circuit, and
+Every Machine comes with its manuals, in a binder. The aA key on its cover makes the text larger,
+in three steps, and it stays that way next time. The Service Manual explains the circuit, and
 every chip and signal in it is a link to the board:
 
 ![The BW-2001's Service Manual](docs/readme/binder-manual.png)

@@ -114,7 +114,8 @@ The shelf's items, each with one line from its tooltip (`src/ui/shelf.cpp`, `kIt
   - `scope`: the Test Pattern Generator's VIDEO (triggered on it, so inside a visible line: a
     pulse per vertical line of the grid) and SYNC_N below.
 - **The binder**: User and Service Manuals, datasheets, a memory chip's contents, one picture
-  each, all but the datasheet on the BW-2001 with BASIC's banner on the TV:
+  each, all but the datasheet on the BW-2001 with BASIC's banner on the TV; one sentence on the
+  aA key on its cover (the text larger, in three steps, kept for next time):
   - `binder-manual`: the Service Manual's Components, every reference a link to the Board;
   - `binder-datasheet`: the Counter's U5, a 74LS161: pinout with each pin's Net, its function;
   - `binder-code`: UH7 (F800–FFFF) disassembled as 6502 code (not UH4: F000 is BASIC's message
@@ -200,5 +201,5 @@ From a clean machine to the game running, as commands to copy:
   `machines/010-counter/board/counter.kicad_pcb`).
 - The screenshot flags the shots use: `--probe`, `--meter A,B` (two pins: the black lead clipped
   on A, the red one held on B, power off), `--zoom X:Y:W`, `--repair`, `--press`, `--knob`, `--type`, `--focus`, `--mark`,
-  `--clip`, `--group`, `--sample`, `--view`, `--hook`, `--timebase`, `--manual`, `--contents`
-  (`bw_ui` usage line).
+  `--clip`, `--group`, `--sample`, `--view`, `--hook`, `--timebase`, `--manual`, `--contents`,
+  `--text-size` (`bw_ui` usage line).

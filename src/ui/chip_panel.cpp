@@ -12,6 +12,7 @@
 
 #include "parts/catalogue.hpp"
 #include "ui/controls.hpp"
+#include "ui/page_fonts.hpp"
 #include "ui/touch.hpp"
 #include "view/digit_shape.hpp"
 
@@ -273,6 +274,8 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         hits.clicked = BoardTarget{{component}, std::nullopt, std::nullopt};
     }
 
+    // The pinout at the pages' first size: its rows (kControl high) and columns do not grow.
+    PushFixedPageFont(PageFace::Text);
     const auto sheet = manuals.datasheets.find(part);
     const Markdown* datasheet = sheet != manuals.datasheets.end() ? &sheet->second : nullptr;
     const std::size_t pins = scene.board().components[component].pads.size();
@@ -321,6 +324,7 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         }
     }
 
+    ImGui::PopFont();
     if (!datasheet) {
         ImGui::TextDisabled("no datasheet");
         return hits;

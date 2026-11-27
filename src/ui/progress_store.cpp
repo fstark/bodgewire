@@ -2,10 +2,16 @@
 
 #include <cstdlib>
 #include <expected>
+#include <fstream>
+#include <optional>
 #include <print>
+#include <string>
 #include <utility>
 
 #include <SDL3/SDL.h>
+
+#include "text/text.hpp"
+#include "view/reading_size.hpp"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/em_js.h>
@@ -20,10 +26,10 @@ namespace {
 // clang-format off: JavaScript (it would split ===)
 EM_JS_DEPS(bw_progress, "$stringToNewUTF8,$UTF8ToString");
 
-// localStorage's text, malloc'ed (the caller frees it); 0 when absent or not allowed.
-EM_JS(char*, BwProgressGet, (), {
+// localStorage[key]'s text, malloc'ed (the caller frees it); 0 when absent or not allowed.
+EM_JS(char*, BwStorageGet, (const char* key), {
     try {
-        const text = localStorage.getItem("bodgewire.progress");
+        const text = localStorage.getItem(UTF8ToString(key));
         return text === null ? 0 : stringToNewUTF8(text);
     } catch (e) {
         return 0;
@@ -31,15 +37,26 @@ EM_JS(char*, BwProgressGet, (), {
 });
 
 // 1 when kept.
-EM_JS(int, BwProgressSet, (const char* text), {
+EM_JS(int, BwStorageSet, (const char* key, const char* text), {
     try {
-        localStorage.setItem("bodgewire.progress", UTF8ToString(text));
+        localStorage.setItem(UTF8ToString(key), UTF8ToString(text));
         return 1;
     } catch (e) {
         return 0;
     }
 });
 // clang-format on
+
+// localStorage[key], or nullopt.
+std::optional<std::string> StorageGet(const char* key) {
+    char* text = BwStorageGet(key);
+    if (text == nullptr) {
+        return std::nullopt;
+    }
+    std::string copy(text);
+    std::free(text);
+    return copy;
+}
 
 }  // namespace
 
@@ -84,13 +101,8 @@ Progress ProgressStore::load() {
     }
     case Where::Browser: {
 #ifdef __EMSCRIPTEN__
-        char* text = BwProgressGet();
-        if (text == nullptr) {
-            return {};
-        }
-        Progress progress = Progress::Parse(text);
-        std::free(text);
-        return progress;
+        const auto text = StorageGet("bodgewire.progress");
+        return text ? Progress::Parse(*text) : Progress{};
 #else
         return {};
 #endif
@@ -110,7 +122,7 @@ void ProgressStore::write(const Progress& progress) {
         return;
     case Where::Browser:
 #ifdef __EMSCRIPTEN__
-        if (BwProgressSet(progress.text().c_str()) == 0) {
+        if (BwStorageSet("bodgewire.progress", progress.text().c_str()) == 0) {
             std::println(stderr, "bw_ui: the browser keeps no progress");
         }
 #endif
@@ -136,6 +148,66 @@ void ProgressStore::add(Progress& progress, std::string key) {
 void ProgressStore::clear(Progress& progress) {
     progress.clear();
     write(progress);
+}
+
+SettingsStore SettingsStore::For(const Options& options) {
+    SettingsStore store;
+#ifdef __EMSCRIPTEN__
+    (void)options;
+    store.where_ = Where::Browser;
+#else
+    if (!options.screenshot) {
+        char* dir = SDL_GetPrefPath("bodgewire", "bw_ui");
+        if (dir == nullptr) {
+            std::println(stderr, "bw_ui: no place for the settings: {}", SDL_GetError());
+        } else {
+            store.where_ = Where::File;
+            store.file_ = std::filesystem::path(dir) / "settings.txt";
+            SDL_free(dir);
+        }
+    }
+#endif
+    return store;
+}
+
+int SettingsStore::loadReadingSize() const {
+    std::optional<std::string> text;
+    switch (where_) {
+    case Where::None:
+        break;
+    case Where::File:
+        text = ReadTextFile(file_);  // missing: none saved yet
+        break;
+    case Where::Browser:
+#ifdef __EMSCRIPTEN__
+        text = StorageGet("bodgewire.settings");
+#endif
+        break;
+    }
+    return ParseReadingSize(text.value_or(""));
+}
+
+void SettingsStore::saveReadingSize(int size) const {
+    const std::string text = SettingsText(size);
+    switch (where_) {
+    case Where::None:
+        return;
+    case Where::File: {
+        std::ofstream file(file_, std::ios::binary | std::ios::trunc);
+        file << text;
+        if (!file.flush()) {
+            std::println(stderr, "bw_ui: cannot write {}", file_.string());
+        }
+        return;
+    }
+    case Where::Browser:
+#ifdef __EMSCRIPTEN__
+        if (BwStorageSet("bodgewire.settings", text.c_str()) == 0) {
+            std::println(stderr, "bw_ui: the browser keeps no settings");
+        }
+#endif
+        return;
+    }
 }
 
 }  // namespace bw

@@ -31,4 +31,20 @@ private:
     std::filesystem::path file_;
 };
 
+// Where the player's settings live (2026-11-27: the pages' reading size, the binder's aA key):
+// settings.txt beside the Progress's file; on the web localStorage["bodgewire.settings"]; nowhere
+// for a --screenshot (--text-size gives its size). An error on stderr, and the size is kept for
+// the run only.
+class SettingsStore {
+public:
+    static SettingsStore For(const Options& options);  // after SDL_Init
+    int loadReadingSize() const;                       // 16 when none is saved
+    void saveReadingSize(int size) const;
+
+private:
+    enum class Where : std::uint8_t { None, File, Browser };
+    Where where_ = Where::None;
+    std::filesystem::path file_;
+};
+
 }  // namespace bw

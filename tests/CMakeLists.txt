@@ -212,6 +212,7 @@ add_executable(bw_tests
   view/memory_contents_test.cpp
   view/output_frame_test.cpp
   view/pace_test.cpp
+  view/reading_size_test.cpp
   view/matrix_keyboard_layout_test.cpp
   view/number_pad_test.cpp
   view/pencil_marks_test.cpp

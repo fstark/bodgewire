@@ -228,6 +228,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
                      Session& session, const Options& options, ImFont* legends, ImFont* petLegends,
                      const MachineList* list,                // nullptr: no machines/ to go back to
                      const std::function<void()>& repaired,  // at the tick: saved (P8e)
+                     const SettingsStore& settings,          // the reading size kept there
                      std::span<const FingerScript> fingers) {  // scripted, this screen's (P8f)
     ResetBench();
     TouchStart(window, options.touch, fingers);
@@ -377,6 +378,7 @@ BenchResult RunBench(SDL_Window* window, GpuRender& gpu, const OpenedMachine& lo
     bool meterHeldAtStart = !options.bench.meter.empty();
     std::optional<std::pair<Hit, Layer>> meterHit;
     ManualWindows manualWindows;
+    manualWindows.setReadingSizeSaver([&settings](int size) { settings.saveReadingSize(size); });
     if (options.bench.manual) {
         manualWindows.show(*options.bench.manual);
     }
@@ -1129,6 +1131,9 @@ int main(int argc, char** argv) {
     ProgressStore store = ProgressStore::For(options);
     Progress progress = store.load();
     launcher.setProgress(&progress, [&] { store.clear(progress); });
+    // The pages' reading size (the binder's aA key), kept beside it.
+    const SettingsStore settings = SettingsStore::For(options);
+    SetReadingSize(options.textSize.value_or(settings.loadReadingSize()));
 
     int exitCode = 0;
     std::optional<Options> benchOptions;  // the bench's flags: the command line's for its file
@@ -1221,7 +1226,7 @@ int main(int argc, char** argv) {
             result =
                 RunBench(window, *gpu, *loaded, *loaded->session, *benchOptions, screen.legends(),
                          screen.petLegends(), machinesDir ? &launcher.list() : nullptr, repaired,
-                         std::exchange(fingers, {}));
+                         settings, std::exchange(fingers, {}));
         }
         left = *benchOptions->file;
         loaded.reset();

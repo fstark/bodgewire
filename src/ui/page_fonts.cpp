@@ -16,6 +16,7 @@ extern const std::size_t kPageMonoFontSize;
 namespace {
 
 std::array<ImFont*, 3> gFaces{};  // by PageFace
+int gReadingSize = static_cast<int>(kPageFontSize);
 
 }  // namespace
 
@@ -30,7 +31,15 @@ void LoadPageFonts(ImFontAtlas& fonts) {
               add(kPageMonoFont, kPageMonoFontSize)};
 }
 
+void SetReadingSize(int px) { gReadingSize = px; }
+int ReadingSize() { return gReadingSize; }
+
 void PushPageFont(PageFace face, float scale) {
+    ImGui::PushFont(gFaces[static_cast<std::size_t>(face)],
+                    static_cast<float>(gReadingSize) * scale);
+}
+
+void PushFixedPageFont(PageFace face, float scale) {
     ImGui::PushFont(gFaces[static_cast<std::size_t>(face)], kPageFontSize * scale);
 }
 

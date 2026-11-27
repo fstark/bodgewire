@@ -17,6 +17,7 @@ add_library(bw_view STATIC
   memory_contents.cpp
   output_frame.cpp
   pace.cpp
+  reading_size.cpp
   keyboard_layout.cpp
   matrix_keyboard_layout.cpp
   number_pad.cpp

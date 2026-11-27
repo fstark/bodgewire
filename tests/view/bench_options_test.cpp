@@ -58,7 +58,7 @@ TEST_CASE("bench options: usage errors", "[view]") {
     CHECK(Parse({"--after", "1s"}).error().empty());              // no --screenshot
     CHECK(Parse({"m.bwp", "--nope"}).error().empty());            // unknown flag
     CHECK(Parse({"m.bwp", "--probe"}).error().empty());           // no value
-    CHECK(Parse({"m.bwp", "--pop", "meter"}).error().empty());   // held: no window (P8g)
+    CHECK(Parse({"m.bwp", "--pop", "meter"}).error().empty());    // held: no window (P8g)
     CHECK(Parse({"m.bwp", "--away", "manual"}).error().empty());  // not a slot object
     CHECK(Parse({"m.bwp", "--binder-height", "300%"}).error().empty());
     CHECK(Parse({"m.bwp", "--hook", "A1.1,A1.2,A1.3,A1.4,A1.5"}).error().empty());
@@ -143,6 +143,15 @@ TEST_CASE("bench options: --progress", "[view]") {
           std::filesystem::path("/tmp/p.txt"));
     CHECK_FALSE(Parse({})->progress.has_value());
     CHECK(Parse({"--progress"}).error().empty());
+}
+
+TEST_CASE("bench options: --text-size", "[view]") {
+    // The pages' reading size for the run, with or without a bench: one of the aA key's steps.
+    CHECK(Parse({"--text-size", "24"})->textSize == 24);
+    CHECK(Parse({"m.bwp", "--text-size", "20"})->textSize == 20);
+    CHECK_FALSE(Parse({})->textSize.has_value());
+    CHECK_FALSE(Parse({"--text-size", "18"}).has_value());
+    CHECK_FALSE(Parse({"--text-size", "20px"}).has_value());
 }
 
 TEST_CASE("bench options: --forget", "[view]") {

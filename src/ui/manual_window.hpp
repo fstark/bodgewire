@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
@@ -38,12 +39,15 @@ public:
     // `view` (else the chip's default the first time, then the player's last).
     void openContents(const BoardScene& scene, std::size_t component,
                       std::optional<ContentsView> view = std::nullopt);
+    // Called with the new size when the aA key changes the reading size, to keep it.
+    void setReadingSizeSaver(std::function<void(int)> save) { saveReadingSize_ = std::move(save); }
     void setContentsDefaults(ContentsDefaults defaults) {
         contents_.setDefaults(std::move(defaults));
     }
 
 private:
     void tabs(bool board, bool giveUp);
+    void readingSizeKey();
     void giveUp(const std::string& fault);
     void datasheets(const Manuals& manuals, BoardView& board, const LoadedCircuit& design);
     TargetHits index(const Manuals& manuals, const BoardScene* scene);
@@ -57,6 +61,7 @@ private:
     std::optional<std::size_t> offered_;  // the selection last looked at for its Contents
     DragScroll pageScroll_;               // a drag on the page scrolls it (P8f)
     float stretch_ = 1;
+    std::function<void(int)> saveReadingSize_;
     bool faultShown_ = false;   // the Give up page's button pressed: for the bench
     bool faultCopied_ = false;  // its line clicked
 };
