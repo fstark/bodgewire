@@ -62,6 +62,7 @@
 #include "ui/question_popup.hpp"
 #include "ui/scope_window.hpp"
 #include "ui/shelf.hpp"
+#include "ui/shelf_drawings.hpp"
 #include "ui/thank_you_card.hpp"
 #include "ui/title.hpp"
 #include "ui/tool_click.hpp"
@@ -899,6 +900,7 @@ public:
         title_ = fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kTitleFont),
                                             static_cast<int>(kTitleFontSize), 0.0f, &legendConfig);
         LoadPageFonts(fonts);
+        LoadDrawingFont(fonts);
     }
     ~ImGuiScreen() {
         gpu_.shutdownImGui();

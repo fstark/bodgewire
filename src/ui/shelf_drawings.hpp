@@ -54,4 +54,10 @@ struct ItemLook {
 // probe's and the run switch's two, the Machine slot's one per device).
 void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLook& look);
 
+// Once, before the first frame: the fonts of the words printed on the drawings (the run switch's
+// labels and speed, ON/OFF, the probe's H L P). ImGui's vector font, and on a 1× screen Proggy Tiny
+// for the words near its 10 px: the UI's bitmap font, scaled to 7 to 9.4 px, blurred
+// (2026-11-27). Without it (a test), the current font.
+void LoadDrawingFont(ImFontAtlas& fonts);
+
 }  // namespace bw
