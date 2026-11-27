@@ -216,6 +216,7 @@ add_executable(bw_tests
   view/matrix_keyboard_layout_test.cpp
   view/number_pad_test.cpp
   view/pencil_marks_test.cpp
+  view/pin_marks_test.cpp
   view/power_cycle_test.cpp
   view/repair_ack_test.cpp
   view/analyzer_layout_test.cpp

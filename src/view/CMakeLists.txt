@@ -22,6 +22,7 @@ add_library(bw_view STATIC
   matrix_keyboard_layout.cpp
   number_pad.cpp
   pencil_marks.cpp
+  pin_marks.cpp
   power_cycle.cpp
   repair_ack.cpp
   analyzer_layout.cpp
