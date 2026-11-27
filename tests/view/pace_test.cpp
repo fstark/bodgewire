@@ -64,9 +64,9 @@ TEST_CASE("pace: the speed shown held 0.5 s") {
 }
 
 TEST_CASE("pace: a speed printed") {
-    CHECK(SpeedText(0.244) == "0.24×");
-    CHECK(SpeedText(3.4) == "3.40×");
-    CHECK(SpeedText(42.3) == "42×");
+    CHECK(SpeedText(0.244) == "0.24");
+    CHECK(SpeedText(3.4) == "3.40");
+    CHECK(SpeedText(42.3) == "42");
 }
 
 namespace {
@@ -99,7 +99,7 @@ TEST_CASE("headroom: simulated time over the time spent running, after most of a
     CHECK(*run.headroom.shown() > 12.9);
     CHECK(*run.headroom.shown() < 13.1);
     CHECK(run.headroom.band() == Playability::Playable);
-    CHECK(SpeedText(*run.headroom.shown()) == "13×");
+    CHECK(SpeedText(*run.headroom.shown()) == "13");
 }
 
 TEST_CASE("headroom: orange under 0.9, gold again only over 1") {
@@ -152,14 +152,14 @@ TEST_CASE("headroom: the number held 2 s, the band followed at once") {
     HeadroomRun run;
     run.run(13.0, 10);
     REQUIRE(run.headroom.shown());
-    CHECK(SpeedText(*run.headroom.shown()) == "13×");
+    CHECK(SpeedText(*run.headroom.shown()) == "13");
     run.run(20.0, 10);
-    CHECK(SpeedText(*run.headroom.shown()) == "13×");  // held
+    CHECK(SpeedText(*run.headroom.shown()) == "13");  // held
     run.run(20.0, 10);
-    CHECK(SpeedText(*run.headroom.shown()) == "20×");  // the last 2 s's
+    CHECK(SpeedText(*run.headroom.shown()) == "20");  // the last 2 s's
     run.run(0.5, 9);
     CHECK(run.headroom.band() == Playability::Playable);  // the last second's: not yet
-    CHECK(SpeedText(*run.headroom.shown()) == "20×");
+    CHECK(SpeedText(*run.headroom.shown()) == "20");
     run.run(0.5, 1);
     CHECK(run.headroom.band() == Playability::Slow);
     REQUIRE(run.headroom.shown());

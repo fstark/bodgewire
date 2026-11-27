@@ -5,13 +5,22 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <numbers>
 #include <span>
 #include <string>
 
 namespace bw {
 
+// Embedded by src/ui/CMakeLists.txt (drawing_font.cpp.in).
+extern const unsigned char kDrawingFont[];
+extern const std::size_t kDrawingFontSize;
+
 namespace {
+
+ImFont* gDrawingFont = nullptr;  // LoadDrawingFont's: ImGui's vector font
+ImFont* gPixelFont = nullptr;    // and Proggy Tiny, drawn for kPixelSize
+constexpr float kPixelSize = 10;
 
 // A cell's drawing coordinates: 0..56 on each side of a square cell (x to 112 for the probe).
 class Pen {
@@ -51,13 +60,22 @@ public:
     void ellipse(float x, float y, float rx, float ry, ImU32 c, float thick) {
         list_.AddEllipse(at(x, y), {size(rx), size(ry)}, colour(c), 0, 0, size(thick));
     }
-    // Text of `height` units, centred on (x, y).
+    // Text of `height` units, centred on (x, y). On a 1× screen, text within 1 px of Proggy Tiny's
+    // 10 px in it at exactly 10 px on whole pixels: any font scaled to 9.4 px was mush
+    // (2026-11-27).
     void text(float x, float y, float height, ImU32 c, const char* s) {
-        ImFont* font = ImGui::GetFont();
-        const float px = size(height);
+        ImFont* font = gDrawingFont != nullptr ? gDrawingFont : ImGui::GetFont();
+        float px = size(height);
+        if (gPixelFont != nullptr && ImGui::GetWindowViewport()->FramebufferScale.x == 1.0f &&
+            std::abs(px - kPixelSize) <= 1) {
+            font = gPixelFont;
+            px = kPixelSize;
+        }
         const ImVec2 extent = font->CalcTextSizeA(px, 1e9f, 0, s);
         const ImVec2 centre = at(x, y);
-        list_.AddText(font, px, {centre.x - extent.x / 2, centre.y - extent.y / 2}, colour(c), s);
+        list_.AddText(font, px,
+                      {std::round(centre.x - extent.x / 2), std::round(centre.y - extent.y / 2)},
+                      colour(c), s);
     }
     // An arc of radius r round (x, y), from angle a0 to a1 (radians, y down).
     void arc(float x, float y, float r, float a0, float a1, ImU32 c, float thick) {
@@ -487,6 +505,17 @@ void DrawItem(ImDrawList& list, Item item, ImVec2 min, ImVec2 max, const ItemLoo
         Brief(p, look);
         break;
     }
+}
+
+void LoadDrawingFont(ImFontAtlas& fonts) {
+    gDrawingFont = fonts.AddFontDefaultVector();
+    ImFontConfig config;                  // a pixel font's, as AddFontDefaultBitmap's
+    config.FontDataOwnedByAtlas = false;  // static data, never written
+    config.OversampleH = config.OversampleV = 1;
+    config.PixelSnapH = true;
+    gPixelFont =
+        fonts.AddFontFromMemoryTTF(const_cast<unsigned char*>(kDrawingFont),
+                                   static_cast<int>(kDrawingFontSize), kPixelSize, &config);
 }
 
 }  // namespace bw

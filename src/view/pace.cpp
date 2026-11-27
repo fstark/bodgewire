@@ -116,7 +116,7 @@ std::string HeadroomText(double ratio, Playability band) {
 }
 
 std::string SpeedText(double ratio) {
-    return ratio < 10 ? std::format("{:.2f}×", ratio) : std::format("{:.0f}×", ratio);
+    return ratio < 10 ? std::format("{:.2f}", ratio) : std::format("{:.0f}", ratio);
 }
 
 }  // namespace bw

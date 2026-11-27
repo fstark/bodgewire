@@ -68,7 +68,8 @@ std::string HeadroomText(double ratio, Playability band);
 // "1.2×" under 4, "13×" (the run switch's SpeedText keeps its own).
 std::string HeadroomNumber(double ratio);
 
-// A speed ratio printed: "0.24×", "3.40×", "42×".
+// A speed ratio printed on the run switch: "0.24", "3.40", "42". No "×": five characters of Proggy
+// Tiny touched the labels beside (2026-11-27); no fewer digits either, a BW-80 runs at 0.09.
 std::string SpeedText(double ratio);
 
 }  // namespace bw

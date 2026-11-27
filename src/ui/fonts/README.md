@@ -8,4 +8,4 @@
 
 - `AtkinsonHyperlegibleMono-Regular.ttf`: the pages' code spans, the Give up page's Fault and a memory chip's contents, where characters line up in columns. Atkinson Hyperlegible Mono, SIL Open Font License 1.1 ([AtkinsonHyperlegibleMono-OFL.txt](AtkinsonHyperlegibleMono-OFL.txt)). A static instance of Google Fonts' variable `AtkinsonHyperlegibleMono[wght].ttf` (`ofl/atkinsonhyperlegiblemono`), whose default weight is 200: ImGui draws a variable font at its default. Cut with fontTools: `fonttools varLib.instancer -o AtkinsonHyperlegibleMono-Regular.ttf 'AtkinsonHyperlegibleMono[wght].ttf' wght=400`. Embedded as above.
 
-The other keys' legends use Roboto Medium, from Dear ImGui's `misc/fonts`.
+The other keys' legends use Roboto Medium, and the shelf drawings' small words on a 1× screen Proggy Tiny (at its 10 px, 2026-11-27), both from Dear ImGui's `misc/fonts`.

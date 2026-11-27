@@ -1,0 +1,12 @@
+// Generated from src/ui/drawing_font.cpp.in: Proggy Tiny (MIT-style licence, Tristan Grimmer), from
+// Dear ImGui's misc/fonts.
+#include <cstddef>
+
+namespace bw {
+
+extern const unsigned char kDrawingFont[];
+extern const std::size_t kDrawingFontSize;
+const unsigned char kDrawingFont[] = {@bytes@};
+const std::size_t kDrawingFontSize = sizeof(kDrawingFont);
+
+}  // namespace bw

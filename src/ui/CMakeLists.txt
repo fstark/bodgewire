@@ -34,6 +34,10 @@ target_link_libraries(bw_imgui PUBLIC SDL3::SDL3-static)
 file(READ "${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf" keycap_font_hex HEX)
 string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," bytes "${keycap_font_hex}")
 configure_file(keycap_font.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp @ONLY)
+# The shelf drawings' small words on a 1× screen, embedded: Proggy Tiny from Dear ImGui's misc/fonts.
+file(READ "${imgui_SOURCE_DIR}/misc/fonts/ProggyTiny.ttf" drawing_font_hex HEX)
+string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," bytes "${drawing_font_hex}")
+configure_file(drawing_font.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/drawing_font.cpp @ONLY)
 # The BW-2001's key legends, embedded: Saira Expanded Bold (fonts/README.md).
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/fonts/Saira-ExpandedBold.ttf" pet_font_hex HEX)
 string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," bytes "${pet_font_hex}")
@@ -60,7 +64,7 @@ add_executable(bw_ui main.cpp gestures.cpp touch.cpp view_buttons.cpp controls.c
                      keyboard_window.cpp matrix_capture.cpp matrix_keyboard_window.cpp keycap.cpp board_keys.cpp manual_view.cpp meter_lcd.cpp scope_window.cpp scope_case.cpp case_keys.cpp bw_logo.cpp
                      shelf.cpp shelf_drawings.cpp tv_view.cpp tv_window.cpp knob_window.cpp bench.cpp
                      manual_window.cpp page_fonts.cpp brief_window.cpp thank_you_card.cpp debug_window.cpp question_popup.cpp progress_store.cpp launcher.cpp loaded.cpp board_tags.cpp title.cpp
-                     ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp ${CMAKE_CURRENT_BINARY_DIR}/pet_font.cpp
+                     ${CMAKE_CURRENT_BINARY_DIR}/keycap_font.cpp ${CMAKE_CURRENT_BINARY_DIR}/drawing_font.cpp ${CMAKE_CURRENT_BINARY_DIR}/pet_font.cpp
                      ${CMAKE_CURRENT_BINARY_DIR}/title_font.cpp ${CMAKE_CURRENT_BINARY_DIR}/page_fonts_data.cpp)
 target_link_libraries(bw_ui PRIVATE bw_session bw_machine bw_manual bw_runner bw_view bw_imgui
                                     bw_warnings)
