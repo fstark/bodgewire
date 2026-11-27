@@ -19,6 +19,10 @@ inline constexpr float kBig = 44;      // a new control's, a popup button's
 // Each ImGui context, once: frames kControl high, wider scrollbars.
 void ApplyStyle();
 
+// A control's height in the current font: kControl, or the style's frame when the font is larger
+// than the UI's (a page's text at 20 or 24 px), so its text still fits.
+float ControlHeight();
+
 // A text on a line of kBig controls (beside a Stepper), centred on its height; `colour` 0: the
 // text's own.
 void BigText(const char* text, ImU32 colour = 0);
@@ -29,9 +33,10 @@ void BigText(const char* text, ImU32 colour = 0);
 bool Stepper(const char* id, std::span<const std::string> values, std::size_t& index,
              float valueWidth);
 
-// Buttons side by side, the `index`-th lit: for 2 to 5 choices. True when it changed.
+// Buttons side by side, the `index`-th lit: for 2 to 5 choices, `height` high (0: ControlHeight).
+// True when it changed.
 bool Choice(const char* id, std::span<const char* const> labels, std::size_t& index,
-            float height = kControl);
+            float height = 0);
 
 // The choices of a drawn key (P8i: a plate's Trigger) as a strip of kBig buttons, at least
 // `width` wide, the `index`-th lit, shown once ImGui::OpenPopup(id) was called in the same ID

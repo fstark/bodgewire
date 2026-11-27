@@ -12,7 +12,6 @@
 
 #include "parts/catalogue.hpp"
 #include "ui/controls.hpp"
-#include "ui/page_fonts.hpp"
 #include "ui/touch.hpp"
 #include "view/digit_shape.hpp"
 
@@ -76,20 +75,38 @@ void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markd
     }
 }
 
+// A crosshair centred on `centre`, `radius` its ring's.
+void DrawCrosshair(ImDrawList& list, ImVec2 centre, float radius, ImU32 colour) {
+    list.AddCircle(centre, radius, colour, 0, 1.5f);
+    const float in = radius * 0.45f, out = radius * 1.45f;
+    for (const ImVec2 d : {ImVec2{1, 0}, ImVec2{-1, 0}, ImVec2{0, 1}, ImVec2{0, -1}}) {
+        list.AddLine({centre.x + d.x * in, centre.y + d.y * in},
+                     {centre.x + d.x * out, centre.y + d.y * out}, colour, 1.5f);
+    }
+}
+
 // A pin's "show" button (P8f): frames the pin on the Board whatever tool is in hand, as a Ctrl-
-// or Cmd-click on its row does. `width` 0: the label's.
-constexpr const char* kShow = "show";
-float ShowWidth() { return ImGui::CalcTextSize(kShow).x + 2 * ImGui::GetStyle().FramePadding.x; }
+// or Cmd-click on its row does. A crosshair (2026-11-27: the word "show" took the names' room at
+// the larger reading sizes), kControl wide, as high as a pin's row; `width` 0: kControl.
+float ShowWidth() { return kControl; }
 void ShowButton(const PinRow& row, std::size_t component, TargetHits& hits, float width = 0) {
+    const ImVec2 size{width > 0 ? width : ShowWidth(), ControlHeight()};
     if (!row.pad) {
-        ImGui::Dummy({width > 0 ? width : ShowWidth(), kControl});
+        ImGui::Dummy(size);
         return;
     }
     ImGui::PushID(row.number.c_str());
-    if (ImGui::Button(kShow, {width, 0})) {
+    if (ImGui::Button("##show", size)) {
         hits.clicked = BoardTarget{{component}, row.pad, std::nullopt};
         hits.frame = true;
     }
+    if (ImGui::IsItemHovered()) {
+        PageTooltip("Show on the Board");
+    }
+    const ImVec2 min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
+    DrawCrosshair(*ImGui::GetWindowDrawList(), {(min.x + max.x) / 2, (min.y + max.y) / 2},
+                  std::min(max.x - min.x, max.y - min.y) * 0.22f,
+                  ImGui::GetColorU32(ImGuiCol_Text));
     ImGui::PopID();
 }
 
@@ -105,7 +122,7 @@ void PinCell(const PinRow& row, PinSide side, std::size_t component, const Markd
     // A row as high as a control (P8f): the large way to a pin. Level with the "show" button
     // before it on a table's row, whose frame would lower this row's text by its padding.
     ImGui::GetCurrentWindow()->DC.CurrLineTextBaseOffset = 0;
-    const bool clicked = ImGui::Selectable("##pin", false, 0, {width, kControl});
+    const bool clicked = ImGui::Selectable("##pin", false, 0, {width, ControlHeight()});
     ImGui::PopID();
     const ImVec2 min = ImGui::GetItemRectMin();
     const ImVec2 max = ImGui::GetItemRectMax();
@@ -118,6 +135,11 @@ void PinCell(const PinRow& row, PinSide side, std::size_t component, const Markd
     const ImU32 colour =
         ImGui::GetColorU32(row.power ? kPowerText : ImGui::GetStyleColorVec4(ImGuiCol_Text));
     ImDrawList& list = *ImGui::GetWindowDrawList();
+    // A row too long for its cell is cut a gap short of the "show" key beside it (its tooltip
+    // shows it whole); the number, next to the body, never.
+    const float margin = ImGui::GetStyle().ItemSpacing.x;
+    list.PushClipRect({side == PinSide::Left ? min.x + margin : min.x, min.y},
+                      {side == PinSide::Left ? max.x : max.x - margin, max.y}, true);
     switch (side) {
     case PinSide::Left:  // "net  name  NN|": both to the right
         list.AddText({max.x - number, y}, colour, row.number.c_str());
@@ -133,6 +155,7 @@ void PinCell(const PinRow& row, PinSide side, std::size_t component, const Markd
         list.AddText({min.x + slot + gap, y}, colour, words.c_str());
         break;
     }
+    list.PopClipRect();
     PinHits(clicked, row, component, datasheet, hits);
 }
 
@@ -274,8 +297,6 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         hits.clicked = BoardTarget{{component}, std::nullopt, std::nullopt};
     }
 
-    // The pinout at the pages' first size: its rows (kControl high) and columns do not grow.
-    PushFixedPageFont(PageFace::Text);
     const auto sheet = manuals.datasheets.find(part);
     const Markdown* datasheet = sheet != manuals.datasheets.end() ? &sheet->second : nullptr;
     const std::size_t pins = scene.board().components[component].pads.size();
@@ -297,14 +318,14 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
             PinCell(left, PinSide::Left, component, datasheet, hits);
             ImGui::TableNextColumn();
             const ImVec2 at = ImGui::GetCursorScreenPos();
-            const float height = kControl + ImGui::GetStyle().ItemSpacing.y;
+            const float height = ControlHeight() + ImGui::GetStyle().ItemSpacing.y;
             ImDrawList& list = *ImGui::GetWindowDrawList();
             list.AddRectFilled({at.x, at.y - 2}, {at.x + kBodyWidth, at.y + height}, kBody);
             if (r == 0) {
                 list.AddCircleFilled({at.x + kBodyWidth / 2, at.y - 2}, kBodyWidth / 5, kNotch);
                 list.AddCircleFilled({at.x + 6, at.y + height / 2}, 3, kPinOne);
             }
-            ImGui::Dummy({kBodyWidth, kControl});
+            ImGui::Dummy({kBodyWidth, ControlHeight()});
             ImGui::TableNextColumn();
             PinCell(right, PinSide::Right, component, datasheet, hits);
             ImGui::TableNextColumn();
@@ -324,7 +345,6 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         }
     }
 
-    ImGui::PopFont();
     if (!datasheet) {
         ImGui::TextDisabled("no datasheet");
         return hits;

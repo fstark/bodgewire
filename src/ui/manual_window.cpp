@@ -236,9 +236,7 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
         case Divider::Contents:
             if (const auto chip = binder_.contents(); chip && scene && machine) {
                 ImGui::PushID("contents");
-                PushFixedPageFont(PageFace::Text);  // its fields and columns do not grow
                 board.route(contents_.draw(board, *chip, *machine));
-                ImGui::PopFont();
                 ImGui::PopID();
             }
             break;

@@ -59,18 +59,21 @@ private:
     bool first_ = true;
 };
 
-constexpr float kHexField = 56;
+// A hex field's width: four digits and the frame's padding, in the page's font.
+float HexFieldWidth() {
+    return ImGui::CalcTextSize("FFFF").x + 2 * ImGui::GetStyle().FramePadding.x + 4;
+}
 
 // "Label [field]": a number's field in hex, `digits` wide, set from the number pad (P8f); true
 // when a value was confirmed.
 template <typename T>
 bool HexField(Row& row, const char* label, const char* id, T& value, int digits) {
-    row.next(ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemInnerSpacing.x + kHexField);
+    row.next(ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemInnerSpacing.x + HexFieldWidth());
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(label);
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
     std::string text = std::format("{:0{}X}", static_cast<std::uint64_t>(value), digits);
-    if (!NumberField(id, text, PadKind::Hex, kHexField, false, 4)) {
+    if (!NumberField(id, text, PadKind::Hex, HexFieldWidth(), false, 4)) {
         return false;
     }
     std::uint64_t parsed = 0;
@@ -100,9 +103,9 @@ bool Choices(Row& row, const char* label, const char* id, int& value,
 
 // "Label - n +": a stepper from `low` to `high` (P8f: no slider); true when it changed.
 bool Steps(Row& row, const char* label, const char* id, unsigned& value, int low, int high) {
-    constexpr float kValueWidth = 36;
+    const float valueWidth = ImGui::CalcTextSize("00").x + 2 * ImGui::GetStyle().FramePadding.x;
     row.next(ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemInnerSpacing.x + 2 * kBig +
-             kValueWidth + 2);
+             valueWidth + 2);
     BigText(label);
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
     std::vector<std::string> values;
@@ -110,7 +113,7 @@ bool Steps(Row& row, const char* label, const char* id, unsigned& value, int low
         values.push_back(std::to_string(v));
     }
     auto index = static_cast<std::size_t>(std::clamp(static_cast<int>(value), low, high) - low);
-    const bool changed = Stepper(id, values, index, kValueWidth);
+    const bool changed = Stepper(id, values, index, valueWidth);
     value = static_cast<unsigned>(low + static_cast<int>(index));
     return changed;
 }
@@ -145,7 +148,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     }
 
     // The head: the reference (a link), the Part, its size, where the CPU sees it.
-    PushFixedPageFont(PageFace::Text, kTitleScale);
+    PushPageFont(PageFace::Text, kTitleScale);
     TextFlow flow;
     const TextFlow::Result link = flow.text(reference, kPageLink, true);
     ImGui::PopFont();
@@ -182,7 +185,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     settingsLine(s, words);
     ImGui::Spacing();
 
-    PushFixedPageFont(PageFace::Mono);  // addresses, bytes and code in columns
+    PushPageFont(PageFace::Mono);  // addresses, bytes and code in columns
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     if (ImGui::BeginChild("view", {0, 0}, ImGuiChildFlags_None,
                           ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove)) {

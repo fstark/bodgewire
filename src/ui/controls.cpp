@@ -88,6 +88,8 @@ void ApplyStyle() {
     style.GrabMinSize = 20;
 }
 
+float ControlHeight() { return std::max(kControl, ImGui::GetFrameHeight()); }
+
 void BigText(const char* text, ImU32 colour) {
     const ImVec2 at = ImGui::GetCursorScreenPos();
     const ImVec2 size = ImGui::CalcTextSize(text);
@@ -155,6 +157,9 @@ bool Stepper(const char* id, std::span<const std::string> values, std::size_t& i
 
 bool Choice(const char* id, std::span<const char* const> labels, std::size_t& index, float height) {
     bool changed = false;
+    if (height == 0) {
+        height = ControlHeight();
+    }
     ImGui::PushID(id);
     ImGui::BeginGroup();  // one item for what follows it on the line (CentreOnBig, SameLine)
     const NoFingerPadding edgeToEdge;

@@ -11,9 +11,9 @@ namespace bw {
 // Atkinson Hyperlegible Mono where characters line up in columns (code, a memory chip's
 // contents). The rest of the UI keeps ImGui's own font.
 //
-// Running text is at the player's reading size (16, 20 or 24 px: the binder's aA key,
-// view/reading_size.hpp); columns and controls whose places do not grow with it (a pinout, a
-// memory chip's contents, the tabs) stay at kPageFontSize.
+// A page's text is at the player's reading size (16, 20 or 24 px: the binder's aA key,
+// view/reading_size.hpp), its controls as high as it needs (ControlHeight); the binder's own
+// drawn labels (the tabs, the aA key's letters) stay at kPageFontSize.
 inline constexpr float kPageFontSize = 16;
 enum class PageFace : std::uint8_t { Text, Bold, Mono };
 
