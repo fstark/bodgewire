@@ -50,6 +50,11 @@ private:
     void readingSizeKey();
     void giveUp(const std::string& fault);
     void datasheets(const Manuals& manuals, BoardView& board, const LoadedCircuit& design);
+    // The page drawn: its divider, and the chip a chip page shows (the hovered, else the
+    // selected one; nullopt: the list) or Contents' chip (P8j).
+    BinderPlace shownPage(const BoardView& board) const;
+    void goBack(BoardView& board);  // Back (P8j): its key, or the mouse's back button
+    void navigationKeys(BoardView& board, bool chip);
     TargetHits index(const BoardScene* scene);
 
     Binder binder_;
@@ -60,6 +65,7 @@ private:
     bool indexed_ = false;
     std::optional<std::size_t> offered_;  // the selection last looked at for its Contents
     DragScroll pageScroll_;               // a drag on the page scrolls it (P8f)
+    std::optional<float> scrollOnce_;     // Back: the page's scroll at the next frame (P8j)
     float stretch_ = 1;
     std::function<void(int)> saveReadingSize_;
     bool faultShown_ = false;   // the Give up page's button pressed: for the bench

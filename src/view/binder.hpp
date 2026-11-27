@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <string>
 #include <utility>
@@ -22,7 +23,18 @@ std::vector<float> TabTops(std::size_t count, float top, float bottom, float tab
 // may stretch it to.
 inline constexpr float kMinStretch = 0.7f, kMaxStretch = 2.5f;
 
-// Which divider is open.
+// Where the binder is open (P8j): a divider and, on Datasheets, the selected chip (nullopt: the
+// list); on Contents, its chip. Compared without the scroll.
+struct BinderPlace {
+    Divider divider = Divider::User;
+    std::optional<std::size_t> chip;
+    bool operator==(const BinderPlace& o) const { return divider == o.divider && chip == o.chip; }
+};
+
+// At most this many places to go back to (P8j).
+inline constexpr std::size_t kHistory = 32;
+
+// Which divider is open, and the places it was open at before (Back, P8j).
 class Binder {
 public:
     // Every frame, before drawing, out or away: `out` its window shown this frame, `selected`
@@ -31,11 +43,28 @@ public:
     // frame's (not a deselection) turns to Datasheets. Away, the selection is only remembered.
     // `hasContents` (the selected Component is a memory chip): a new selection also makes the
     // Contents divider show it, its tab there without the chip's small window clicked, and turns
-    // nothing more (P8f).
+    // nothing more (P8f). Out, a change of here() by a selection is a move: the place left is
+    // kept for back() (U5 → U7 on Datasheets too); coming out is none.
     void frame(bool out, std::optional<std::size_t> selected, bool hasContents = false);
     Divider divider() const { return divider_; }
-    void turn(Divider divider) { divider_ = divider; }  // its tab clicked
-    void show(Divider divider) { shown_ = divider; }    // --manual: the next coming out
+    void turn(Divider divider);                       // its tab clicked: a move
+    void show(Divider divider) { shown_ = divider; }  // --manual: the next coming out
+    BinderPlace here() const;
+    // The page drawn this frame and its scroll, kept per place for back(): only the page drawn
+    // writes its place's (a hovered chip's page never writes the selected one's).
+    void scrolled(const BinderPlace& page, float y);
+    bool canGoBack() const { return !history_.empty(); }
+    // The last place left, taken off the history, with its scroll. The binder is there at once
+    // (its divider, its chip as the selection seen or as Contents' chip: the next frame() sees no
+    // new selection) and nothing is kept; the caller makes the Board's selection match (select
+    // or deselect, never framing) and scrolls the page once. nullopt with nowhere to go back to.
+    struct Back {
+        BinderPlace place;
+        float scroll = 0;
+    };
+    std::optional<Back> back();
+    // All chips: the Datasheets list, a move; the caller deselects the Board.
+    void showList();
     // A memory chip's window clicked (P6p): the Contents divider shows it, at once if the binder
     // is out, else when it comes out (the click brings it out); a later coming out from the shelf
     // is at the User Manual again.
@@ -43,6 +72,10 @@ public:
     std::optional<std::size_t> contents() const { return contents_; }  // its tab shows once set
 
 private:
+    void record(const BinderPlace& from);  // kept for back(), but a repeat of the last
+
+    std::vector<BinderPlace> history_;
+    std::map<std::pair<Divider, std::optional<std::size_t>>, float> scrolls_;
     Divider divider_ = Divider::User;
     std::optional<Divider> shown_;
     std::optional<std::size_t> selected_;

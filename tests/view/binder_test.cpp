@@ -142,3 +142,121 @@ TEST_CASE("binder: a memory chip selected offers its Contents, turning nothing",
     binder.frame(true, 9, false);  // a chip without contents: the tab stays as it was
     CHECK(binder.contents() == 3);
 }
+
+// Back (P8j): the places left by a move, never by a hover.
+
+TEST_CASE("binder: back after a tab", "[binder]") {
+    Binder binder;
+    binder.frame(true, std::nullopt);
+    CHECK_FALSE(binder.canGoBack());  // coming out is no move
+    binder.turn(Divider::Service);
+    binder.frame(true, std::nullopt);
+    binder.scrolled({Divider::Service, std::nullopt}, 420);
+    binder.turn(Divider::Datasheets);
+    REQUIRE(binder.canGoBack());
+    const auto back = binder.back();
+    REQUIRE(back.has_value());
+    CHECK(back->place == BinderPlace{Divider::Service, std::nullopt});
+    CHECK(back->scroll == 420);
+    CHECK(binder.divider() == Divider::Service);
+    CHECK(binder.back()->place == BinderPlace{Divider::User, std::nullopt});
+    CHECK_FALSE(binder.canGoBack());
+    CHECK_FALSE(binder.back());
+}
+
+TEST_CASE("binder: back after a selection restores the chip without a new move", "[binder]") {
+    Binder binder;
+    binder.frame(true, std::nullopt);
+    binder.turn(Divider::Datasheets);
+    binder.frame(true, 5);  // U5 selected on the Board
+    binder.frame(true, 7);  // then U7: a move on Datasheets too
+    const auto back = binder.back();
+    REQUIRE(back.has_value());
+    CHECK(back->place == BinderPlace{Divider::Datasheets, 5});
+    CHECK(binder.here() == BinderPlace{Divider::Datasheets, 5});
+    binder.frame(true, 5);  // the caller selected U5 on the Board: no new move
+    CHECK(binder.back()->place == BinderPlace{Divider::Datasheets, std::nullopt});  // the list
+    CHECK(binder.back()->place == BinderPlace{Divider::User, std::nullopt});
+    CHECK_FALSE(binder.canGoBack());
+}
+
+TEST_CASE("binder: a Service Manual step, a chip, back", "[binder]") {
+    Binder binder;
+    binder.frame(true, std::nullopt);
+    binder.turn(Divider::Service);
+    binder.frame(true, std::nullopt);
+    binder.scrolled({Divider::Service, std::nullopt}, 900);
+    binder.frame(true, 5);  // a link to U5: selected, Datasheets
+    CHECK(binder.divider() == Divider::Datasheets);
+    binder.scrolled({Divider::Datasheets, 5}, 120);
+    const auto back = binder.back();
+    REQUIRE(back.has_value());
+    CHECK(back->place.divider == Divider::Service);
+    CHECK(back->scroll == 900);
+}
+
+TEST_CASE("binder: only the page drawn keeps its scroll", "[binder]") {
+    Binder binder;
+    binder.frame(true, 5);
+    binder.turn(Divider::Datasheets);
+    binder.scrolled({Divider::Datasheets, 5}, 300);
+    binder.scrolled({Divider::Datasheets, 7}, 0);  // U7 hovered: its own page, not U5's
+    binder.frame(true, 7);
+    CHECK(binder.back()->scroll == 300);
+}
+
+TEST_CASE("binder: no move, nothing kept", "[binder]") {
+    Binder binder;
+    binder.frame(true, std::nullopt);
+    binder.turn(Divider::User);  // where it is
+    binder.frame(true, std::nullopt);
+    binder.frame(true, std::nullopt);
+    CHECK_FALSE(binder.canGoBack());
+    binder.frame(true, 3);  // a selection on the User Manual turns to Datasheets
+    binder.frame(false, 3);
+    binder.frame(true, 3);  // put away and out again: no move
+    CHECK(binder.back()->place == BinderPlace{Divider::User, std::nullopt});
+    CHECK_FALSE(binder.canGoBack());
+}
+
+TEST_CASE("binder: a place left twice is kept once, the oldest dropped past the limit",
+          "[binder]") {
+    Binder binder;
+    binder.frame(true, std::nullopt);
+    binder.turn(Divider::Service);
+    binder.turn(Divider::User);
+    binder.turn(Divider::Service);
+    binder.turn(Divider::User);
+    int count = 0;
+    while (binder.back()) {
+        ++count;
+    }
+    CHECK(count == 4);  // User, Service, User, Service: each left once in turn
+
+    Binder many;
+    many.frame(true, std::nullopt);
+    for (std::size_t i = 1; i <= kHistory + 1; ++i) {
+        many.frame(true, i);
+    }
+    std::size_t kept = 0;
+    while (many.back()) {
+        ++kept;
+    }
+    CHECK(kept == kHistory);
+}
+
+TEST_CASE("binder: all chips is a move, back to Contents stays on Contents", "[binder]") {
+    Binder binder;
+    binder.frame(true, 4);
+    binder.openContents(4);
+    CHECK(binder.divider() == Divider::Contents);
+    binder.turn(Divider::Datasheets);
+    binder.frame(true, 4);
+    binder.showList();
+    binder.frame(true, std::nullopt);  // the caller deselected: no second move
+    CHECK(binder.here() == BinderPlace{Divider::Datasheets, std::nullopt});
+    CHECK(binder.back()->place == BinderPlace{Divider::Datasheets, 4});
+    CHECK(binder.back()->place == BinderPlace{Divider::Contents, 4});
+    CHECK(binder.divider() == Divider::Contents);
+    CHECK(binder.contents() == 4);
+}

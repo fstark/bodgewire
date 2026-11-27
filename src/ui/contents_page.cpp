@@ -187,7 +187,9 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
 
     PushPageFont(PageFace::Mono);  // addresses, bytes and code in columns
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
-    if (ImGui::BeginChild("view", {0, 0}, ImGuiChildFlags_None,
+    // A child of its own a chip (P8j): each chip's view keeps its place.
+    const std::string view = "view " + reference;
+    if (ImGui::BeginChild(view.c_str(), {0, 0}, ImGuiChildFlags_None,
                           ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove)) {
         switch (s.view) {
         case ContentsView::Hex:

@@ -211,8 +211,18 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     PushPaper();
     PushPageFont(PageFace::Text);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+    // Each chip's page is a child of its own (P8j): ImGui keeps each one's scroll.
+    const BinderPlace shown = shownPage(board);
+    std::string id = PageId(divider);
+    if (shown.divider == Divider::Datasheets && shown.chip && scene) {
+        id += " " + scene->board().components[*shown.chip].reference;
+    }
+    if (scrollOnce_) {  // Back: the page where it was left
+        ImGui::SetNextWindowScroll({0, *scrollOnce_});
+        scrollOnce_.reset();
+    }
     // A drag on the page scrolls it (P8f) and no longer moves the binder: its cover does.
-    if (ImGui::BeginChild(PageId(divider), size, ImGuiChildFlags_None,
+    if (ImGui::BeginChild(id.c_str(), size, ImGuiChildFlags_None,
                           ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove)) {
         switch (divider) {
         case Divider::User:
@@ -256,6 +266,7 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
             break;
         }
         pageScroll_.update();
+        binder_.scrolled(shown, ImGui::GetScrollY());
     }
     ImGui::EndChild();
     ImGui::PopStyleVar();
@@ -264,6 +275,12 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     if (CaseClose()) {
         open = false;
     }
+#ifndef __EMSCRIPTEN__
+    // A mouse's back button over the binder (P8j); in a browser it is the browser's back.
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(3)) {
+        goBack(board);
+    }
+#endif
     PopOnDoubleClick(BenchObject::Manual);
     CornerGrip();
     PinchResize(pageScroll_.scrolled() || contents_.scrolled());  // two fingers scrolled the page
@@ -412,20 +429,88 @@ void ManualWindows::readingSizeKey() {
     }
 }
 
+BinderPlace ManualWindows::shownPage(const BoardView& board) const {
+    const Divider divider = binder_.divider();
+    if (divider == Divider::Datasheets) {
+        return {divider, board.scene() ? board.pointedComponent() : std::nullopt};
+    }
+    return {divider, divider == Divider::Contents ? binder_.contents() : std::nullopt};
+}
+
+void ManualWindows::goBack(BoardView& board) {
+    const auto back = binder_.back();
+    if (!back) {
+        return;
+    }
+    if (back->place.divider == Divider::Datasheets) {
+        if (back->place.chip) {
+            board.select(*back->place.chip);  // the page follows; the Board does not move
+        } else {
+            board.deselect();
+        }
+    }
+    scrollOnce_ = back->scroll;
+}
+
+// The chip pages' keys (P8j): Back, dimmed with nowhere to go back to, and on a chip's page the
+// list. A key a control high, its sign drawn left of its word.
+void ManualWindows::navigationKeys(BoardView& board, bool chip) {
+    const float height = ControlHeight();
+    const float sign = height * 0.8f;  // room for the drawn sign
+    const auto key = [&](const char* label, bool enabled, auto draw) {
+        ImGui::BeginDisabled(!enabled);
+        const std::string text = std::string(label);
+        const float width =
+            sign + ImGui::CalcTextSize(text.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, {1, 0.5f});
+        const bool clicked = ImGui::Button(text.c_str(), {width, height});
+        ImGui::PopStyleVar();
+        const ImVec2 min = ImGui::GetItemRectMin();
+        const ImU32 ink = ImGui::GetColorU32(ImGuiCol_Text);
+        draw(*ImGui::GetWindowDrawList(),
+             ImVec2{min.x + ImGui::GetStyle().FramePadding.x, min.y + height / 2}, sign * 0.5f,
+             ink);
+        ImGui::EndDisabled();
+        return clicked;
+    };
+    const bool back =
+        key("Back", binder_.canGoBack(), [](ImDrawList& list, ImVec2 at, float r, ImU32 ink) {
+            list.AddTriangleFilled({at.x + r * 0.3f, at.y}, {at.x + r * 1.1f, at.y - r * 0.6f},
+                                   {at.x + r * 1.1f, at.y + r * 0.6f}, ink);
+        });
+    if (back) {
+        goBack(board);
+    }
+    if (chip) {
+        ImGui::SameLine();
+        const bool list =
+            key("All chips", true, [](ImDrawList& draw, ImVec2 at, float r, ImU32 ink) {
+                for (int i = -1; i <= 1; ++i) {
+                    const float y = at.y + static_cast<float>(i) * r * 0.55f;
+                    draw.AddCircleFilled({at.x + r * 0.25f, y}, 1.4f, ink);
+                    draw.AddLine({at.x + r * 0.6f, y}, {at.x + r * 1.5f, y}, ink, 1.6f);
+                }
+            });
+        if (list) {
+            binder_.showList();
+            board.deselect();
+        }
+    }
+    ImGui::Spacing();
+}
+
 void ManualWindows::datasheets(const Manuals& manuals, BoardView& board,
                                const LoadedCircuit& design) {
     const BoardScene* scene = board.scene();
     if (const auto chip = scene ? board.pointedComponent() : std::nullopt) {
         ImGui::PushID("chip");
-        if (ImGui::Button("All datasheets")) {
-            board.deselect();
-        }
-        ImGui::Spacing();
+        navigationKeys(board, true);
         board.route(chip_.draw(*scene, *chip, manuals, design));
         ImGui::PopID();
         return;
     }
     ImGui::PushID("index");
+    navigationKeys(board, false);
     board.route(index(scene));
     ImGui::PopID();
 }

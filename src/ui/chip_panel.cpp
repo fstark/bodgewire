@@ -12,6 +12,7 @@
 
 #include "parts/catalogue.hpp"
 #include "ui/controls.hpp"
+#include "ui/page_fonts.hpp"
 #include "ui/touch.hpp"
 #include "view/digit_shape.hpp"
 
@@ -28,7 +29,8 @@ constexpr ImU32 kDigitBody = IM_COL32(28, 28, 30, 255);
 constexpr ImU32 kSegmentDim = IM_COL32(70, 22, 22, 255);
 constexpr ImU32 kSegmentLit = IM_COL32(255, 40, 30, 255);
 constexpr ImU32 kPad = IM_COL32(200, 200, 190, 255);
-constexpr float kDigitLines = 7;  // body height in text lines
+constexpr float kDigitLines = 7;     // body height in text lines
+constexpr float kTitleScale = 1.3f;  // the page title's, as the manuals'
 
 struct PinRow {
     std::optional<std::size_t> pad;
@@ -67,7 +69,10 @@ void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markd
     }
     if (ImGui::IsItemHovered() && row.pad) {
         hits.hovered = BoardTarget{{component}, row.pad, std::nullopt, {}};
-        std::string tip = std::format("{}  {}  {}", row.number, row.name, row.net);
+        std::string tip = std::format("pin {} \u00b7 {}", row.number, row.name);
+        if (!row.net.empty() && row.net != "-") {
+            tip += " \u00b7 " + row.net;
+        }
         if (const Block* bullet = datasheet ? PinBullet(*datasheet, row.name) : nullptr) {
             tip += "\n" + Displayable(PlainText(bullet->spans));
         }
@@ -290,19 +295,33 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
     const std::string& reference = scene.board().components[component].reference;
     const std::string_view part = scene.partName(component);
     const PartInfo* info = FindPart(part);
-    const std::string header = std::format("{} \u00b7 {} \u00b7 {}", reference, part,
-                                           info ? info->description : std::string_view{});
-    ImGui::TextWrapped("%s", header.c_str());
+    // The title is the chip (P8j): its reference a link (hovered: lit on the Board; clicked:
+    // framed and selected), its Part and what it is.
+    PushPageFont(PageFace::Bold, kTitleScale);
+    {
+        TextFlow flow;
+        const TextFlow::Result link = flow.text(reference, kPageLink, true);
+        const BoardTarget chip{{component}, std::nullopt, std::nullopt, {}};
+        if (link.hovered) {
+            hits.hovered = chip;
+        }
+        if (link.clicked) {
+            hits.clicked = chip;
+        }
+        flow.text(std::format(" \u00b7 {} \u00b7 {}", part,
+                              info ? info->description : std::string_view{}),
+                  ImGui::GetColorU32(ImGuiCol_Text), false);
+    }
+    ImGui::PopFont();
+    ImGui::Separator();
     // Its role on this Machine (P8j): the Service Manual's sentence, with its links.
     if (manuals.service) {
         if (const auto role = ComponentRoleSpans(*manuals.service, reference)) {
             Merge(hits, FlowSpans(*role, &scene, design, LinkScope::Machine));
         }
     }
-    if (ImGui::Button("Zoom to")) {
-        hits.clicked = BoardTarget{{component}, std::nullopt, std::nullopt, {}};
-    }
 
+    ImGui::Dummy({0, kBodyWidth / 5 + 4});  // room for the body's notch above its first pin
     const auto sheet = manuals.datasheets.find(part);
     const Markdown* datasheet = sheet != manuals.datasheets.end() ? &sheet->second : nullptr;
     const std::size_t pins = scene.board().components[component].pads.size();
@@ -355,16 +374,15 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
         ImGui::TextDisabled("no datasheet");
         return hits;
     }
-    if (ImGui::TreeNodeEx("Function",
-                          ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_FramePadding)) {
-        Merge(hits, function_.draw(Section(*datasheet, "Function"), &scene, design, LinkScope::Chip,
-                                   reference));
-        ImGui::TreePop();
-    }
-    if (ImGui::TreeNodeEx("Pins", ImGuiTreeNodeFlags_FramePadding)) {
+    // Function, then Pins, both open (P8j: folding only hid them).
+    for (const auto& [heading, view] :
+         {std::pair{"Function", &function_}, std::pair{"Pins", &pins_}}) {
+        ImGui::Spacing();
+        PushPageFont(PageFace::Bold);
+        ImGui::TextUnformatted(heading);
+        ImGui::PopFont();
         Merge(hits,
-              pins_.draw(Section(*datasheet, "Pins"), &scene, design, LinkScope::Chip, reference));
-        ImGui::TreePop();
+              view->draw(Section(*datasheet, heading), &scene, design, LinkScope::Chip, reference));
     }
     return hits;
 }
