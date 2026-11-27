@@ -32,6 +32,6 @@ A shift register passes a value from stage to stage on each clock. A fault in on
 | Stuck light | `U5.QD` (`S4`) stuck at 0 | `D4` lit for good, the others dark | `STEP` pulses; `S4` never goes high; `SER` stays high: swap `U5` |
 | Dark chaser | Broken Trace on `SER` between `U6` pin 8 and `U5` pin 1 | the light runs off the end and never comes back | `U6` pin 8 is low, `U5` pin 1 floats (reads high): mend the Trace |
 | Twins | Solder Bridge between `U5` pins 3 and 4 (`S1`, `S2`) | `D1` and `D2` light together, for two steps | `S1` and `S2` identical on the analyzer; the bridge is seen when zoomed in on the solder side: cut it |
-| Half row | Broken Trace on `VCC` between `R5` pin 1 and `R6` pin 1 | the light runs `D1`–`D4`, then four dark steps; `D5`–`D8` never light | misleading: it looks like a four-stage row, but `U5.QE`–`U5.QH` still go low in turn; `D5`–`D8` pin 2 and both ends of `R6`–`R9` float while `R5` pin 1 reads H: mend the `VCC` Trace |
+| Half-life | Broken Trace on `VCC` between `R5` pin 1 and `R6` pin 1 | the light runs `D1`–`D4`, then four dark steps; `D5`–`D8` never light | misleading: it looks like a four-stage row, but `U5.QE`–`U5.QH` still go low in turn; `D5`–`D8` pin 2 and both ends of `R6`–`R9` float while `R5` pin 1 reads H: mend the `VCC` Trace |
 
 Netlist, Board, Puzzle files and manuals: [LED_CHASER_DESIGN.md](LED_CHASER_DESIGN.md).

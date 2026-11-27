@@ -151,7 +151,7 @@ TEST_CASE("chaser: fault-free light runs", "[machines][slow]") {
 }
 
 TEST_CASE("chaser: Puzzles have a title and a brief", "[machines]") {
-    for (const char* name : {"gap", "stuck_light", "dark_chaser", "twins", "half_row"}) {
+    for (const char* name : {"gap", "stuck_light", "dark_chaser", "twins", "half_life"}) {
         INFO(name);
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
@@ -246,8 +246,8 @@ TEST_CASE("chaser: twins", "[machines][slow]") {
     CheckRunning(Stages(Record(machine, 18 * kStep, ChaserNames())));
 }
 
-TEST_CASE("chaser: half_row", "[machines][slow]") {
-    Machine machine = LoadPuzzle("half_row");
+TEST_CASE("chaser: half_life", "[machines][slow]") {
+    Machine machine = LoadPuzzle("half_life");
     CHECK_FALSE(machine.completed());
     const Recorded recorded = Record(machine, 18 * kStep, ChaserNames({"R5.1", "R6.1", "R9.1"}));
     for (const Sample& s : recorded.at("R5.1")) {

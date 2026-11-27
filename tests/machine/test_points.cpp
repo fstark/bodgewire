@@ -60,7 +60,7 @@ const Crack& SerCrack() {
 }
 
 const Crack& VccR5R6Crack() {
-    static const Crack crack = PuzzleCrack("half_row");
+    static const Crack crack = PuzzleCrack("half_life");
     return crack;
 }
 
