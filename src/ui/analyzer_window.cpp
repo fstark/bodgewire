@@ -553,7 +553,9 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
     const Time readTime = cursor ? *cursor : marker_ ? *marker_ : 0;
 
     // The screen under the axis, to its bottom (P8i): background, grid, the plates' column.
-    list.PushClipRect({rowsBox.x0, rowsBox.y0}, {rowsBox.x1, rowsBox.y1}, true);
+    // ImGui's (not only the list's): the ImGui pop under it restores the window's clip from the
+    // list's stack, and items after the screen (the close disc) are hit-tested against that.
+    ImGui::PushClipRect({rowsBox.x0, rowsBox.y0}, {rowsBox.x1, rowsBox.y1}, true);
     list.AddRectFilled({laneX0, rowsBox.y0}, {laneX1, rowsBox.y1}, kScreen);
     list.AddRectFilled({rowsBox.x0, rowsBox.y0}, {laneX0, rowsBox.y1}, kPlate);
     list.AddLine({laneX0 - 0.5f, rowsBox.y0}, {laneX0 - 0.5f, rowsBox.y1}, kPlateEdge);
@@ -896,7 +898,7 @@ bool AnalyzerWindow::draw(bool& open, Session& session) {
         }
         list.PopClipRect();
     }
-    list.PopClipRect();
+    ImGui::PopClipRect();
 
     // The overview (the whole Capture, the view as a box, T and the Marker as ticks) and the axis.
     list.AddRectFilled({overview.x0, overview.y0}, {overview.x1, overview.y1}, kOverviewBar, 2);

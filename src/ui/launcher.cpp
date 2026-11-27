@@ -951,7 +951,7 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
     postIt(0, origin.x + kNoteLeft);
     const float grooveX = origin.x + kNoteLeft + kNoteWidth + kRowGap / 2;
     list.AddRectFilled({grooveX - 1, laneBottom + 12}, {grooveX + 1, woodEnd.y - 12}, kTrayShadow);
-    list.PushClipRect({rowLeft - kLiftShadow, laneBottom + 2}, woodEnd, true);
+    ImGui::PushClipRect({rowLeft - kLiftShadow, laneBottom + 2}, woodEnd, true);
     ImGui::PushClipRect({rowLeft, laneBottom + 2}, woodEnd, true);
     for (std::size_t k = 1; k < titles.size(); ++k) {
         const float x = rowLeft + rowX(k) - static_cast<float>(postIts_.value);
@@ -961,7 +961,7 @@ std::optional<LauncherChoice> Launcher::draw(TvView& tv, ImFont* legends, ImFont
         postIt(k, x);
     }
     ImGui::PopClipRect();
-    list.PopClipRect();
+    ImGui::PopClipRect();
     ImGui::PopID();
 
     // The drag: once past the threshold, the larger of its two moves decides between the row
