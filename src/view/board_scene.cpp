@@ -425,8 +425,9 @@ std::string BoardScene::hoverText(const Hit& hit) const {
         const BoardComponent& component = board_.components[hit.component];
         const std::string& pinName = info_[hit.component].pinNames[hit.index];
         const std::string net = name(padNet(hit.component, hit.index));
-        return std::format("{} pin {}{}{} · {}", component.reference,
-                           component.pads[hit.index].number, pinName.empty() ? "" : " ", pinName,
+        // One separator throughout (P8j): "U3 · pin 3 · 1Y · SIX_N".
+        return std::format("{} · pin {}{}{} · {}", component.reference,
+                           component.pads[hit.index].number, pinName.empty() ? "" : " · ", pinName,
                            net.empty() ? "—" : net);
     }
     case HitKind::Via:
@@ -434,7 +435,7 @@ std::string BoardScene::hoverText(const Hit& hit) const {
     case HitKind::Trace:
         return name(traceNet(hit.index));
     case HitKind::Component:
-        return std::format("{} {}", board_.components[hit.component].reference,
+        return std::format("{} · {}", board_.components[hit.component].reference,
                            info_[hit.component].value);
     }
     return {};

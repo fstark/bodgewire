@@ -487,8 +487,8 @@ TEST_CASE("view: hover text", "[view]") {
 
     const std::size_t u1 = ComponentIndex(board, "U1");
     const std::size_t pin14 = PadIndex(board.components[u1], "14");
-    CHECK(scene.hoverText({HitKind::Pad, u1, pin14}) == "U1 pin 14 QA · H0");
-    CHECK(scene.hoverText({HitKind::Component, ComponentIndex(board, "U5"), 0}) == "U5 74LS161");
+    CHECK(scene.hoverText({HitKind::Pad, u1, pin14}) == "U1 · pin 14 · QA · H0");
+    CHECK(scene.hoverText({HitKind::Component, ComponentIndex(board, "U5"), 0}) == "U5 · 74LS161");
 
     const auto trace = scene.traceNet(0);
     REQUIRE(trace.has_value());
@@ -509,7 +509,7 @@ TEST_CASE("view: hover text", "[view]") {
     const Fixture counter = Load("counter");
     const BoardScene counterScene = Scene(counter);
     const std::size_t r1 = ComponentIndex(counterScene.board(), "R1");
-    CHECK(counterScene.hoverText({HitKind::Pad, r1, 0}).starts_with("R1 pin 1 · "));
+    CHECK(counterScene.hoverText({HitKind::Pad, r1, 0}).starts_with("R1 · pin 1 · "));
 }
 
 TEST_CASE("leads: attached on pads only", "[view]") {

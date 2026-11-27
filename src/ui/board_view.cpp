@@ -20,6 +20,7 @@
 #include "ui/keycap.hpp"
 #include "ui/touch.hpp"
 #include "view/digit_shape.hpp"
+#include "view/pin_marks.hpp"
 
 namespace bw {
 
@@ -78,6 +79,9 @@ constexpr float kPinNameMaxPx = 16;
 constexpr float kPinNameGapPx = 3;
 constexpr ImU32 kPinPlate = IM_COL32(0, 0, 0, 200);
 constexpr ImU32 kPinName = IM_COL32(240, 240, 240, 255);
+// A pin's mark (P8j): the pinout's violet, lighter on the dark Board; no colour the Board gives a
+// meaning (the levels, the hovered Net, the clips).
+constexpr ImU32 kPinMark = IM_COL32(186, 140, 255, 255);
 constexpr ImU32 kFlash = IM_COL32(255, 255, 255, 255);
 constexpr ImU32 kLedDark = IM_COL32(90, 20, 20, 255);
 constexpr ImU32 kLedLit = IM_COL32(255, 40, 30, 255);
@@ -350,9 +354,54 @@ ImVec2 PadHalf(const Mapper& map, const Pad& pad) {
     return {map.pixels(std::llround(c * w + s * h)), map.pixels(std::llround(s * w + c * h))};
 }
 
-// Pin names beside the pads, away from the courtyard centre, on dark plates.
+// A pin's mark beside its name plate (P8j), `s` px: an arrow along `axis` (+1 right or down)
+// towards the chip for an input, away for an output, both ways, hollow for open collector; a
+// pulse for a clock. `vertical`: the arrow runs up and down.
+void DrawPlateMark(ImDrawList& list, ImVec2 at, float s, bool vertical, float towardChip,
+                   const PinLook& look) {
+    const auto point = [&](float along, float across) {
+        return vertical ? ImVec2{at.x + across, at.y + along} : ImVec2{at.x + along, at.y + across};
+    };
+    const auto head = [&](float tip, float dir, bool hollow) {
+        const ImVec2 a = point(tip, 0), b = point(tip - dir * s * 0.55f, -s * 0.4f),
+                     c = point(tip - dir * s * 0.55f, s * 0.4f);
+        if (hollow) {
+            list.AddTriangle(a, b, c, kPinMark, 1.5f);
+        } else {
+            list.AddTriangleFilled(a, b, c, kPinMark);
+        }
+    };
+    switch (look.mark) {
+    case PinMark::In:
+    case PinMark::Out:
+    case PinMark::OpenCollector: {
+        const float dir = look.mark == PinMark::In ? towardChip : -towardChip;
+        list.AddLine(point(-dir * s * 0.5f, 0), point(dir * s * 0.2f, 0), kPinMark, 2.0f);
+        head(dir * s * 0.5f, dir, look.mark == PinMark::OpenCollector);
+        break;
+    }
+    case PinMark::Both:
+        list.AddLine(point(-s * 0.3f, 0), point(s * 0.3f, 0), kPinMark, 2.0f);
+        head(s * 0.6f, 1, false);
+        head(-s * 0.6f, -1, false);
+        break;
+    default:
+        break;
+    }
+    if (look.clock) {
+        const float x = at.x + (vertical ? s * 0.6f : 0), y = at.y - (vertical ? 0 : s * 0.6f);
+        const ImVec2 pulse[] = {{x - s * 0.5f, y + s * 0.2f}, {x - s * 0.2f, y + s * 0.2f},
+                                {x - s * 0.2f, y - s * 0.2f}, {x + s * 0.2f, y - s * 0.2f},
+                                {x + s * 0.2f, y + s * 0.2f}, {x + s * 0.5f, y + s * 0.2f}};
+        list.AddPolyline(pulse, 6, kPinMark, 0, 1.5f);
+    }
+}
+
+// Pin names beside the pads, away from the courtyard centre, on dark plates. `hovered`: a pad
+// of this component hovered (here or from a page): it and the pins it works with get their
+// marks beside their plates (P8j).
 void DrawPinNames(ImDrawList& list, const Mapper& map, const BoardScene& scene,
-                  std::size_t component) {
+                  std::size_t component, std::optional<std::size_t> hovered) {
     const BoardComponent& c = scene.board().components[component];
     float smallest = FLT_MAX;
     for (const Pad& pad : c.pads) {
@@ -375,6 +424,9 @@ void DrawPinNames(ImDrawList& list, const Mapper& map, const BoardScene& scene,
     const float size = std::clamp(static_cast<float>(kPinNameMm * map.pixelsPerMm()), kPinNameMinPx,
                                   kPinNameMaxPx);
     ImFont* font = ImGui::GetFont();
+    const std::vector<std::size_t> marked =
+        hovered ? WorksWith(scene.pinNames(component), scene.pinKinds(component), *hovered)
+                : std::vector<std::size_t>{};
     for (std::size_t p = 0; p < c.pads.size(); ++p) {
         const std::string name(scene.pinName(component, p));
         if (name.empty()) {
@@ -396,6 +448,21 @@ void DrawPinNames(ImDrawList& list, const Mapper& map, const BoardScene& scene,
         list.AddRectFilled({corner.x - 2, corner.y - 2},
                            {corner.x + text.x + 2, corner.y + text.y + 2}, kPinPlate, 2.0f);
         list.AddText(font, size, corner, kPinName, name.c_str());
+        if (std::ranges::find(marked, p) == marked.end()) {
+            continue;
+        }
+        // Beside the plate, away from the pad: across a tall chip, further out; above or below a
+        // wide one, to the plate's right.
+        const float mark = size;
+        const PinLook look = LookOf(name, scene.pinKinds(component)[p], scene.chip(component));
+        if (across) {
+            const float x =
+                dx >= 0 ? corner.x - 4 - mark * 0.7f : corner.x + text.x + 4 + mark * 0.7f;
+            DrawPlateMark(list, {x, at.y}, mark, false, dx >= 0 ? 1.0f : -1.0f, look);
+        } else {
+            DrawPlateMark(list, {corner.x + text.x + 4 + mark * 0.6f, corner.y + text.y / 2}, mark,
+                          true, dy >= 0 ? 1.0f : -1.0f, look);
+        }
     }
 }
 
@@ -964,7 +1031,10 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
         flash_.reset();
     }
     if (const auto component = pointedComponent()) {
-        DrawPinNames(list, map, *scene_, *component);
+        const bool pad = hoverTarget_ && hoverTarget_->pad &&
+                         hoverTarget_->components.size() == 1 &&
+                         hoverTarget_->components.front() == *component;
+        DrawPinNames(list, map, *scene_, *component, pad ? hoverTarget_->pad : std::nullopt);
     }
     const float wireWidth = std::max(2.0f, map.pixels(kWireWidth));
     const float wireBlob = std::max(kBlobMinPx, map.pixels(kBlobRadius / 2));

@@ -197,7 +197,7 @@ std::string Tooltip(const BoardScene& scene, const Hit& hit, const Manuals& manu
                 const std::size_t start =
                     colon == std::string::npos ? 0 : line.find_first_not_of(' ', colon + 1);
                 if (start != std::string::npos) {
-                    text += " - " + line.substr(start);
+                    text += " \u00b7 " + line.substr(start);
                 }
             }
         }
