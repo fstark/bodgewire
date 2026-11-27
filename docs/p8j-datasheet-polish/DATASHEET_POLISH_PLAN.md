@@ -11,71 +11,8 @@ Spec: [DATASHEET_POLISH.md](DATASHEET_POLISH.md). Design: [DATASHEET_POLISH_DESI
 | 3 | One-pin Nets removed, the manuals' check | `854dbfd` |
 | 4 | The chip page: title, keys, no folds, Back, each chip's place | `c671798` |
 | 5 | The pinout's symbols, looks and group tint | `e285e1c` |
-| 6 | The Board: group marks, tooltips | |
-| 7 | Sheets, docs, finish | |
-
-## Phase 1 — Pin looks and groups
-
-1. `src/view/pin_marks.hpp`, `.cpp` (design §1), in `src/view/CMakeLists.txt`.
-2. `tests/view/pin_marks_test.cpp` (in `tests/CMakeLists.txt`).
-
-Fence: release and debug `ctest -R "pin marks"`. Commit: `view: pin looks and groups (P8j phase 1)`.
-
-## Phase 2 — A sheet's chip scope, the role's spans, the generic sheet gone
-
-1. `LinkScope::Chip` replacing `Parts`, `ManualLink::pins` (last), `LinkAt(…, chip)`, `ExpandRange` (numeric suffixes) shared with `BulletPins` (design §3); `ManualLink{…}` inits completed.
-2. `BoardTarget::pads` (last) and every `BoardTarget{…}` init completed (design's list); the rings and flash for `pads` (design §5).
-3. `FlowSpans`, `ManualView::draw(…, chip)`, the dotted pin links and their targets (design §4).
-4. `ComponentRoleSpans`; `ComponentRole` gone; the chip panel draws the role sentence through `FlowSpans` (Machine scope); `manuals_test.cpp` on the spans.
-5. The chip panel's Function and Pins in the Chip scope with the reference, Pins' hits merged.
-6. The generic sheet gone: `sheet_`, the list's Part links, `Binder::openPart`/`closePart`/`part()`, binder_test's case.
-7. Tests: `manual: chip pins`, `manual: ranges`, `manual: a sheet never links a reference`, `manual: role spans`; the Parts checks rewritten.
-
-Fence: release and debug `ctest -R "manual|binder|focus|board scene"`; release `-R manuals`; screenshot U5 on the Counter (the list's `U5` tapped): the role's links, `CLK` dotted in Function, Pins' `A`–`D` a link. Commit: `manual, ui: a sheet links its chip's pins, the role sentence's links, no generic sheet (P8j phase 2)`.
-
-## Phase 3 — One-pin Nets removed, the manuals' check
-
-1. The four netlists (design §6) and their comments; `bw check-board` on each before and after.
-2. `tests/netlist/sample_test.cpp` (`Count()`, `ApiCounter`), `tests/manual/manual_test.cpp` (`C3`, line 142).
-3. The KiCad Boards' pad `(net "…")` lines for the removed Nets deleted by a one-off script (not kept); `board/*.net` regenerated for the Counter, Chaser and Tennis.
-4. The one-pin Net warning in `LoadManuals`; `manual: one-pin Nets`. ADD_MACHINE.md: the rule and §3's case (recipe fixed in the same commit).
-
-Fence: release `ctest -R "sample|manual|counter|chaser|tennis|bw2001|drc|procedural|fault draw|board"` (a `drc_*` hung at 0 % CPU is killed and rerun alone); debug `-R "sample|manual"`. Commit: `machines: no Net reaching one pin unless a manual names it (P8j phase 3)`, its body naming the Nets and the tests run.
-
-## Phase 4 — The chip page: title, keys, no folds, Back, each chip's place
-
-1. `Binder`: `Place`, `turn` and `frame` recording, `here`, `scrolled`, `back`, `showList` (design §2); `binder: back …` tests.
-2. `ChipPanel`: the title as a link, the separator, no Zoom to, the `TreeNodeEx` gone (bold lines), the tooltip's format (design §4 items 1, 5, 6).
-3. `ManualWindows`: Back and All chips; per-chip page ids and `scrolled`; Back by key and X1 (desktop); the scroll restored once; Contents' view id per chip.
-4. Screenshots: U5 (title, keys), the list (Back), the Service Manual scrolled to a step, `U5` tapped, Back tapped: the Service Manual at its step; at 24 px.
-
-Fence: release and debug `ctest -R "binder|manual|bench options"`; screenshots viewed. Commit: `ui: a chip's page titled by the chip, Back, each chip's place kept (P8j phase 4)`.
-
-## Phase 5 — The pinout's symbols, looks and group tint
-
-1. `BoardScene::pinNames`, `pinKinds`, `partKind`, `alone` (design §5).
-2. The stubs, `DrawPinSymbol`, the digit's and list's rows; the mono names, the blue Nets, the faint `alone` rows; the group tint one frame late (design §4 items 3, 4).
-3. Screenshots: U5 (the mock-up), U3 on the Dice with `1Y` hovered (a tap on `U3` in the list, then a tap resting on the `1Y` row, `--after` within 2.5 s of it), a 74LS273 or 74LS175 page with `CLK` hovered, the 6502 on the LED computer (`D7` plain to the LED, the `PHI` pulses), a digit (the Stopwatch).
-4. Speed: the BW-2001 in `bw_ui` with the binder on a chip's page, before (phase 4's build) and after.
-
-Fence: release and debug `ctest -R "board scene|pin marks|manual"`. Commit: `ui: the pinout shows each pin's kind and what it works with (P8j phase 5)`.
-
-## Phase 6 — The Board: group marks, tooltips
-
-1. `DrawPinNames` with the hovered pad and its marks (design §5); `hoverText` and `Tooltip` with ` · `; "view: hover text" updated.
-2. Screenshots: the Dice's U3 hovered from the page (phase 5's shot, the Board side); a finger held on the `1Y` pad (`--touch --hold X:Y`); the Board zoomed out (no marks).
-
-Fence: release `ctest -R "board scene|view: hover|board"`; debug `-R "board scene|view: hover"`. Commit: `ui: a hovered pin marks what it works with on the Board (P8j phase 6)`.
-
-## Phase 7 — Sheets, docs, finish
-
-1. The sheets (design §7); `ctest -R manuals`.
-2. Docs (design §8): GLOSSARY, ADD_PART, AGENTS helpers, the ARCHITECTURE row done with the date, one line and links.
-3. The web build (nothing new outside ImGui's draw lists; X1 is desktop-only).
-4. The full release suite; screenshots viewed again (U5, U3 hovered, the 6502).
-5. The plan cut to this table and the notes.
-
-Fence: the full release suite; the web build. Commit: `docs: P8j done, sheets name their pins (P8j phase 7)`.
+| 6 | The Board: group marks, tooltips | `325cbac` |
+| 7 | Sheets, docs, finish | (this commit) |
 
 ## Implementation notes
 
@@ -86,3 +23,4 @@ Fence: the full release suite; the web build. Commit: `docs: P8j done, sheets na
 - 2026-11-27, phase 4: `Place` was taken (`view/bench_places.hpp`): the binder's is `BinderPlace`. Every change of `here()` while out is a move (a deselection on Datasheets too: Back brings the chip back); `openContents` while out is one. A small gap above the pinout keeps the body's notch off the role line (it sat under "Zoom to"). A scripted `--tap` on a page link does nothing with `--text-size 24`, before this step as after (not looked into: the 24 px shot selects U5 by its body on the Board). Checks: release and debug `-R "binder|manual|bench options"`; screenshots: U5 (keys, title, role), the list with Back, the Service Manual scrolled → `U5` → Back (the Service Manual where it was, the Board unmoved), U5 at 24 px.
 - 2026-11-27, phase 5: `BoardScene::chip()` already existed (reused); `pinNames`, `pinKinds`, `alone` added. A 4 px gap between each pin's line and its number; the pulse sits 7–13 px above the line, clear of the arrowhead. Pin numbers in a quieter ink than names. The group tint comes from the page's own hover (a row, or a pin in the text), not from a pad hovered on the Board. The digit's drawing keeps its look: its pins are an LED's (passive: a plain line says nothing). Checks: release and debug `-R "board scene|pin marks|manual|view:"`; screenshots: U5 (the mock-up's page), U3 on the Dice with `2A` hovered (its gate tinted), U10 (74LS175) on the Knob Meter with `CLK` hovered (every section tinted), U1 (6502) on the LED computer (`PHI0`/`PHI1` pulses, bubbles, `NC` pins without lines, `PHI2`, `SYNC` dashed), UB8 (6520) on the BW-2001 (ports both ways). Speed: the BW-2001 with the 6520's page out, 0.38× and UI 1.1 ms before and after.
 - 2026-11-27, phase 6: as designed; the Board's marks in a lighter violet than the page's (`IM_COL32(186, 140, 255)`: the same hue, legible on the dark Board), about the pin name's size, the arrow horizontal beside a tall chip's plates and vertical beside a wide one's. A chip's hover text is `U5 · 74LS161`. Checks: release `-R "board scene|view: hover|board"` (84), debug `-R "board scene|view: hover"`; screenshots: the Dice's U3 with `2A` hovered from the page (`2A`, `2B` in, `2Y` out on the Board), a finger held on `3Y` (`--touch --hold`: `3A`, `3B` in, `3Y` out, by the loupe).
+- 2026-11-27, phase 7: the sheets name their pins (74125, 74LS107, 74LS139, 74LS157, 74LS175, 74LS244, 74LS273, 74LS365, 74LS373, 74LS74, 6520, 6522, MC3446) and lose the netlist's syntax (2114, 2316B, 2332, 2513, 2716, BUTTON, C, R, POR); the ROMs' `contents=`/`offset=` facts moved to ADD_PART.md, whose datasheet row also gains the sheet rules and loses the claim that `A0`–`A15` does not expand. GLOSSARY: Datasheet updated, Pin Mark, Section, Goes nowhere. The README's binder-datasheet picture regenerated (`tools/readme_shots.py binder-datasheet`); its spec's wording still holds. Checks: release `-R manual`; the web build; the full release suite.

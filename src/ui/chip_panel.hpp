@@ -12,7 +12,7 @@ namespace bw {
 // The Chip section: header, role, pinout with Nets, Datasheet.
 class ChipPanel {
 public:
-    // Hits: pinout pin hovered/clicked, `Zoom to` → clicked {component}.
+    // Hits: the title's reference, a pin's row or its name in the text hovered or clicked.
     TargetHits draw(const BoardScene& scene, std::size_t component, const Manuals& manuals,
                     const LoadedCircuit& design);
 

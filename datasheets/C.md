@@ -6,8 +6,6 @@ A capacitor passes changes, not levels. With one end on a line that a chip drive
 
 Anywhere else (across the supply, between two driven lines, with no resistor on either side) it does nothing the game shows.
 
-Every capacitor needs its value in farads: `value=47p`, `value=4n7`, `value=100n`, `value=1u`.
-
 ## Pins
 
 - `1`, `2`: the two ends; either way round

@@ -241,8 +241,18 @@ The per-Machine list of each Component's role on this Board, a divider of the ma
 _Avoid_: Help, documentation
 
 **Datasheet**:
-Our simplified per-Part document: what the Part does and what each pin is for. In the manuals binder (P6e): a chip's page shows its pinout with its Nets above its Datasheet; an index lists the Machine's Parts.
+Our simplified per-Part document: what the Part does and what each pin is for. In the manuals binder (P6e), only on a chip's page (P8j): the chip as its title, its role from the Service Manual, its pinout with its Nets, then its Datasheet, where this Part's pin names and ranges of them light the pins; the Datasheets list names the Machine's Parts and their references. Back returns to the page before, where it was; each chip's page keeps its own place.
 _Avoid_: Spec sheet
+
+**Pin Mark**:
+A pin's symbol on a chip's pinout, and beside its name on the Board while it is hovered (P8j): an arrow into the chip (in), out of it (out, hollow for open collector), both ways; a bubble (active low, the `_N`); a pulse (a clock); a plain grey line (power); dashed (it goes nowhere). One colour for every kind: the shape tells them apart.
+
+**Section**:
+A group of a Part's pins that work together, named by the digit their names start with (`3A`, `3B`, `3Y`: gate 3; `1D`, `1CLK`, `1Q`: flip-flop 1); pins with no digit (`CLK`, `CLR_N`) are shared by every section. Hovering a pin marks the pins it works with, on the page and on the Board (P8j).
+
+**Goes nowhere**:
+A pin whose Net reaches no other pin (an unused output, `RCO` on the Counter's last counter): dashed on the pinout, its name faint. Its Net is named only when a player's manual uses the name (`GAME_OVER`); the manuals' check warns of any other (P8j).
+_Avoid_: unconnected (that is a pin on no Net at all, which looks the same)
 
 **Contents**:
 What a ROM chip holds (P6p), the binder's fifth divider, shown once a memory chip's window (the 2716's quartz window, a mask ROM's die seen while x-rayed) is clicked, whatever the tool. Three views: Hex, with a text column in a character set (ASCII, PETSCII, the ZX80's); Code, a disassembly in a CPU's code (6502, Z80) at the address the CPU sees the chip; Glyphs, the words drawn as a character set. Each starts from the Machine's defaults (`roms/contents.txt`: its CPU and character set, each chip's address and where its glyphs start) and keeps the player's settings for the bench. It shows the cells as the chip holds them now, a stuck cell included, a swap clearing it at once; a pin Fault does not show there.
