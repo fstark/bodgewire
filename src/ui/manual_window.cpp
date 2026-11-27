@@ -217,12 +217,17 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
     if (shown.divider == Divider::Datasheets && shown.chip && scene) {
         id += " " + scene->board().components[*shown.chip].reference;
     }
+    // Back, Forward (and on a chip's page All chips) above every page, fixed: never scrolled
+    // away, the same place on every divider (P8j).
+    navigationKeys(board, shown.divider == Divider::Datasheets && shown.chip && scene);
+    const float keys = ImGui::GetCursorScreenPos().y - page.y;
+    ImGui::SetCursorScreenPos({page.x, page.y + keys});
     if (scrollOnce_) {  // Back: the page where it was left
         ImGui::SetNextWindowScroll({0, *scrollOnce_});
         scrollOnce_.reset();
     }
     // A drag on the page scrolls it (P8f) and no longer moves the binder: its cover does.
-    if (ImGui::BeginChild(id.c_str(), size, ImGuiChildFlags_None,
+    if (ImGui::BeginChild(id.c_str(), {size.x, size.y - keys}, ImGuiChildFlags_None,
                           ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove)) {
         switch (divider) {
         case Divider::User:
@@ -456,8 +461,8 @@ void ManualWindows::visit(BoardView& board, std::optional<Binder::Visit> place) 
     scrollOnce_ = place->scroll;
 }
 
-// The chip pages' keys (P8j): Back and Forward, arrows as a browser's, each dimmed with nowhere
-// to go; on a chip's page the list, its sign left of its word. Each a control high.
+// The binder's keys above its page (P8j): Back and Forward, arrows as a browser's, each dimmed with
+// nowhere to go; on a chip's page the list, its sign left of its word. Each a control high.
 void ManualWindows::navigationKeys(BoardView& board, bool chip) {
     const float height = ControlHeight();
     const float r = height * 0.4f;  // the drawn sign's half size
@@ -518,13 +523,11 @@ void ManualWindows::datasheets(const Manuals& manuals, BoardView& board,
     const BoardScene* scene = board.scene();
     if (const auto chip = scene ? board.pointedComponent() : std::nullopt) {
         ImGui::PushID("chip");
-        navigationKeys(board, true);
         board.route(chip_.draw(*scene, *chip, manuals, design));
         ImGui::PopID();
         return;
     }
     ImGui::PushID("index");
-    navigationKeys(board, false);
     board.route(index(scene));
     ImGui::PopID();
 }

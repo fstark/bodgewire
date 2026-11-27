@@ -13,7 +13,8 @@ Spec: [DATASHEET_POLISH.md](DATASHEET_POLISH.md). Design: [DATASHEET_POLISH_DESI
 | 5 | The pinout's symbols, looks and group tint | `e285e1c` |
 | 6 | The Board: group marks, tooltips | `325cbac` |
 | 7 | Sheets, docs, finish | `b878bfa` |
-| 8 | Forward (after use) | (this commit) |
+| 8 | Forward (after use) | `20c11bf` |
+| 9 | The arrows above every page | (this commit) |
 
 ## Implementation notes
 
@@ -26,3 +27,4 @@ Spec: [DATASHEET_POLISH.md](DATASHEET_POLISH.md). Design: [DATASHEET_POLISH_DESI
 - 2026-11-27, phase 6: as designed; the Board's marks in a lighter violet than the page's (`IM_COL32(186, 140, 255)`: the same hue, legible on the dark Board), about the pin name's size, the arrow horizontal beside a tall chip's plates and vertical beside a wide one's. A chip's hover text is `U5 · 74LS161`. Checks: release `-R "board scene|view: hover|board"` (84), debug `-R "board scene|view: hover"`; screenshots: the Dice's U3 with `2A` hovered from the page (`2A`, `2B` in, `2Y` out on the Board), a finger held on `3Y` (`--touch --hold`: `3A`, `3B` in, `3Y` out, by the loupe).
 - 2026-11-27, phase 7: the sheets name their pins (74125, 74LS107, 74LS139, 74LS157, 74LS175, 74LS244, 74LS273, 74LS365, 74LS373, 74LS74, 6520, 6522, MC3446) and lose the netlist's syntax (2114, 2316B, 2332, 2513, 2716, BUTTON, C, R, POR); the ROMs' `contents=`/`offset=` facts moved to ADD_PART.md, whose datasheet row also gains the sheet rules and loses the claim that `A0`–`A15` does not expand. GLOSSARY: Datasheet updated, Pin Mark, Section, Goes nowhere. The README's binder-datasheet picture regenerated (`tools/readme_shots.py binder-datasheet`); its spec's wording still holds. Checks: release `-R manual`; the web build; the full release suite.
 - 2026-11-27, phase 8 (the user, after using Back): Forward beside Back, both arrows without words (tooltips), as a browser's. `Binder::forward()`; `back()` puts the place it leaves ahead, any other move (`record`) clears it; both return a `Visit`. Mouse X2 on the desktop. Checks: release `-R "binder|manual|bench options"`, the full release suite, the web build; screenshots on the Dice: U3 (◀ lit, ▶ dimmed), All chips then ◀ (U3 again, both lit), then ▶ (the list, ▶ dimmed).
+- 2026-11-27, phase 9 (the user: no arrows off Datasheets, "we're lost"): the keys moved out of the Datasheets page to a fixed strip above every page (the page's child shorter by it), All chips on a chip's page only. Checks: the full release suite, the web build; screenshots: the Dice's Service Manual (◀ ▶ above it), its `U3` link then ◀ (the Service Manual, ▶ lit); the README's four binder pictures regenerated (the manual, a chip, Code, Glyphs).
