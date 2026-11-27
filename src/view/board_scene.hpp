@@ -57,11 +57,13 @@ struct ScenePad {
 };
 
 // What a link or a panel points at on the Board: one part (and maybe its pad), a run of parts
-// (a manual's `U1`–`U5`) or a Net (a manual's `C19`, P6i).
+// (a manual's `U1`–`U5`), a Net (a manual's `C19`, P6i) or a range of one part's pins (a
+// sheet's `A`–`D`, P8j).
 struct BoardTarget {
     std::vector<std::size_t> components;  // one part, or a run's parts; empty for a Net
     std::optional<std::size_t> pad;       // with one part
     std::optional<NetId> net;             // a Net link
+    std::vector<std::size_t> pads;        // a range of one part's pins (P8j): ringed, no Net lit
 };
 
 // The drawn Board (with cracks) labelled from the design Netlist and the fault-free Copper:

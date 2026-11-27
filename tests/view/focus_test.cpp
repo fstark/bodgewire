@@ -120,10 +120,10 @@ TEST_CASE("focus: an instrument is not put away behind the focus's back", "[view
 }
 
 TEST_CASE("focus: a link to the Board measures or frames", "[view]") {
-    const BoardTarget pin{{3}, 7, std::nullopt};
-    const BoardTarget part{{3}, std::nullopt, std::nullopt};
-    const BoardTarget run{{3, 4}, std::nullopt, std::nullopt};
-    const BoardTarget net{{}, std::nullopt, NetId{2}};
+    const BoardTarget pin{{3}, 7, std::nullopt, {}};
+    const BoardTarget part{{3}, std::nullopt, std::nullopt, {}};
+    const BoardTarget run{{3, 4}, std::nullopt, std::nullopt, {}};
+    const BoardTarget net{{}, std::nullopt, NetId{2}, {}};
     CHECK(RouteLink(Owner::Probe, pin, false, false) == LinkAction::Measure);
     CHECK(RouteLink(Owner::Scope, pin, false, false) == LinkAction::Measure);
     CHECK(RouteLink(Owner::Meter, pin, false, false) == LinkAction::Measure);

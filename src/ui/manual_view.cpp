@@ -38,29 +38,33 @@ ImU32 Colour(SpanStyle style) {
 // A span in its own face: bold and code in theirs, plain text in the one around it (a table's
 // header row: bold).
 TextFlow::Result FlowSpan(TextFlow& flow, std::string_view text, SpanStyle style, ImU32 colour,
-                          bool underline) {
+                          bool underline, bool dotted = false) {
     if (style == SpanStyle::Text) {
-        return flow.text(text, colour, underline);
+        return flow.text(text, colour, underline, dotted);
     }
     PushPageFont(style == SpanStyle::Bold ? PageFace::Bold : PageFace::Mono);
-    const TextFlow::Result result = flow.text(text, colour, underline);
+    const TextFlow::Result result = flow.text(text, colour, underline, dotted);
     ImGui::PopFont();
     return result;
 }
 
 void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const LoadedCircuit& design,
-               LinkScope scope, TargetHits& hits) {
+               LinkScope scope, std::string_view chip, TargetHits& hits) {
     TextFlow flow;
+    // A chip's pins (P8j) keep the code's colour and face, a dotted underline: a pin, not a part.
+    const bool pins = scope == LinkScope::Chip;
     for (std::size_t i = 0; i < spans.size(); ++i) {
-        const auto link = LinkAt(spans, i, design, scope);
+        const auto link = LinkAt(spans, i, design, scope, chip);
         if (!link) {
             FlowSpan(flow, spans[i].text, spans[i].style, Colour(spans[i].style), false);
             continue;
         }
         TextFlow::Result result;
         for (std::size_t k = 0; k < link->spansUsed; ++k) {  // a run: `U1`, "–", `U5` as one
+            const SpanStyle style = spans[i + k].style;
             const TextFlow::Result part =
-                FlowSpan(flow, spans[i + k].text, spans[i + k].style, kPageLink, true);
+                FlowSpan(flow, spans[i + k].text, style, pins ? Colour(style) : kPageLink,
+                         !pins || style == SpanStyle::Code, pins);
             result.hovered = result.hovered || part.hovered;
             result.clicked = result.clicked || part.clicked;
             result.held = result.held || part.held;
@@ -89,7 +93,14 @@ void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const Loade
                 target.components.push_back(*component);
             }
         }
-        if (link->references.size() == 1 && target.components.size() == 1 && link->pin) {
+        if (link->references.size() == 1 && target.components.size() == 1 &&
+            link->pins.size() > 1) {  // a range of the chip's pins: its pads, no one pad
+            for (const std::string& number : link->pins) {
+                if (const auto pad = scene->padIndex(target.components.front(), number)) {
+                    target.pads.push_back(*pad);
+                }
+            }
+        } else if (link->references.size() == 1 && target.components.size() == 1 && link->pin) {
             target.pad = scene->padIndex(target.components.front(), *link->pin);
         }
         if (target.components.empty() && !target.net) {
@@ -110,7 +121,7 @@ void DrawSpans(std::span<const Span> spans, const BoardScene* scene, const Loade
 // A pipe table: the header row in bold on a tinted band with a rule under it, each cell's text
 // wrapping at its column's edge.
 void DrawTable(const Block& table, const BoardScene* scene, const LoadedCircuit& design,
-               LinkScope scope, TargetHits& hits) {
+               LinkScope scope, std::string_view chip, TargetHits& hits) {
     std::size_t columns = 0;
     for (const auto& row : table.rows) {
         columns = std::max(columns, row.size());
@@ -136,7 +147,7 @@ void DrawTable(const Block& table, const BoardScene* scene, const LoadedCircuit&
                     if (r == 0) {
                         PushPageFont(PageFace::Bold);
                     }
-                    DrawSpans(table.rows[r][c], scene, design, scope, hits);
+                    DrawSpans(table.rows[r][c], scene, design, scope, chip, hits);
                     if (r == 0) {
                         ImGui::PopFont();
                     }
@@ -154,7 +165,7 @@ void DrawTable(const Block& table, const BoardScene* scene, const LoadedCircuit&
 
 TextFlow::TextFlow() : right_(ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x) {}
 
-TextFlow::Result TextFlow::text(std::string_view raw, ImU32 colour, bool underline) {
+TextFlow::Result TextFlow::text(std::string_view raw, ImU32 colour, bool underline, bool dotted) {
     Result result;
     const std::string display = Displayable(raw);
     std::string_view text = display;
@@ -184,7 +195,13 @@ TextFlow::Result TextFlow::text(std::string_view raw, ImU32 colour, bool underli
             const ImVec2 min = ImGui::GetItemRectMin();
             const ImVec2 max = ImGui::GetItemRectMax();
             const float trimmed = ImGui::CalcTextSize(word.data(), word.data() + (last + 1)).x;
-            ImGui::GetWindowDrawList()->AddLine({min.x, max.y}, {min.x + trimmed, max.y}, colour);
+            ImDrawList& list = *ImGui::GetWindowDrawList();
+            if (!dotted) {
+                list.AddLine({min.x, max.y}, {min.x + trimmed, max.y}, colour);
+            }
+            for (float x = min.x; dotted && x < min.x + trimmed; x += 4) {  // 2 px on, 2 off
+                list.AddLine({x, max.y}, {std::min(x + 2, min.x + trimmed), max.y}, colour);
+            }
         }
         if (!underline) {
             continue;  // no link: nobody asks
@@ -250,8 +267,15 @@ std::string Displayable(std::string_view text) {
     return result;
 }
 
+TargetHits FlowSpans(std::span<const Span> spans, const BoardScene* scene,
+                     const LoadedCircuit& design, LinkScope scope, std::string_view chip) {
+    TargetHits hits;
+    DrawSpans(spans, scene, design, scope, chip, hits);
+    return hits;
+}
+
 TargetHits ManualView::draw(std::span<const Block> blocks, const BoardScene* scene,
-                            const LoadedCircuit& design, LinkScope scope) {
+                            const LoadedCircuit& design, LinkScope scope, std::string_view chip) {
     TargetHits hits;
     bool open = true;
     for (const Block& block : blocks) {
@@ -271,7 +295,7 @@ TargetHits ManualView::draw(std::span<const Block> blocks, const BoardScene* sce
         }
         case BlockKind::Paragraph:
             if (open) {
-                DrawSpans(block.spans, scene, design, scope, hits);
+                DrawSpans(block.spans, scene, design, scope, chip, hits);
                 ImGui::Spacing();
             }
             continue;
@@ -280,13 +304,13 @@ TargetHits ManualView::draw(std::span<const Block> blocks, const BoardScene* sce
                 ImGui::Bullet();
                 ImGui::SameLine();
                 ImGui::BeginGroup();
-                DrawSpans(block.spans, scene, design, scope, hits);
+                DrawSpans(block.spans, scene, design, scope, chip, hits);
                 ImGui::EndGroup();
             }
             continue;
         case BlockKind::Table:
             if (open) {
-                DrawTable(block, scene, design, scope, hits);
+                DrawTable(block, scene, design, scope, chip, hits);
                 ImGui::Spacing();
             }
             continue;

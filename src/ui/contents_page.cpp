@@ -152,7 +152,7 @@ TargetHits ContentsPage::draw(BoardView& board, std::size_t component, const Mac
     TextFlow flow;
     const TextFlow::Result link = flow.text(reference, kPageLink, true);
     ImGui::PopFont();
-    const BoardTarget target{{component}, std::nullopt, std::nullopt};
+    const BoardTarget target{{component}, std::nullopt, std::nullopt, {}};
     if (link.hovered) {
         hits.hovered = target;
     }

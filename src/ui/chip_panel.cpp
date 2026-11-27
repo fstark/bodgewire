@@ -56,23 +56,30 @@ PinRow Row(const BoardScene& scene, std::size_t component, std::size_t number) {
 void PinHits(bool clicked, const PinRow& row, std::size_t component, const Markdown* datasheet,
              TargetHits& hits) {
     if (clicked && row.pad) {
-        hits.clicked = BoardTarget{{component}, row.pad, std::nullopt};
+        hits.clicked = BoardTarget{{component}, row.pad, std::nullopt, {}};
     }
     // Held down on it, not dragged nor slid off (P8g: the meter measures it meanwhile).
     const ImGuiIO& io = ImGui::GetIO();
     if (row.pad && ImGui::IsItemActive() && ImGui::IsItemHovered() && !PressCancelled() &&
         io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] <
             io.MouseDragThreshold * io.MouseDragThreshold) {
-        hits.held = BoardTarget{{component}, row.pad, std::nullopt};
+        hits.held = BoardTarget{{component}, row.pad, std::nullopt, {}};
     }
     if (ImGui::IsItemHovered() && row.pad) {
-        hits.hovered = BoardTarget{{component}, row.pad, std::nullopt};
+        hits.hovered = BoardTarget{{component}, row.pad, std::nullopt, {}};
         std::string tip = std::format("{}  {}  {}", row.number, row.name, row.net);
         if (const Block* bullet = datasheet ? PinBullet(*datasheet, row.name) : nullptr) {
             tip += "\n" + Displayable(PlainText(bullet->spans));
         }
         PageTooltip(tip);
     }
+}
+
+// `more`'s hits where `hits` has none (the first drawn wins).
+void Merge(TargetHits& hits, const TargetHits& more) {
+    hits.hovered = hits.hovered ? hits.hovered : more.hovered;
+    hits.clicked = hits.clicked ? hits.clicked : more.clicked;
+    hits.held = hits.held ? hits.held : more.held;
 }
 
 // A crosshair centred on `centre`, `radius` its ring's.
@@ -97,7 +104,7 @@ void ShowButton(const PinRow& row, std::size_t component, TargetHits& hits, floa
     }
     ImGui::PushID(row.number.c_str());
     if (ImGui::Button("##show", size)) {
-        hits.clicked = BoardTarget{{component}, row.pad, std::nullopt};
+        hits.clicked = BoardTarget{{component}, row.pad, std::nullopt, {}};
         hits.frame = true;
     }
     if (ImGui::IsItemHovered()) {
@@ -286,15 +293,14 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
     const std::string header = std::format("{} \u00b7 {} \u00b7 {}", reference, part,
                                            info ? info->description : std::string_view{});
     ImGui::TextWrapped("%s", header.c_str());
+    // Its role on this Machine (P8j): the Service Manual's sentence, with its links.
     if (manuals.service) {
-        if (const auto role = ComponentRole(*manuals.service, reference)) {
-            const std::string text =
-                role->detail.empty() ? role->name : role->name + ": " + role->detail;
-            ImGui::TextWrapped("%s", Displayable(text).c_str());
+        if (const auto role = ComponentRoleSpans(*manuals.service, reference)) {
+            Merge(hits, FlowSpans(*role, &scene, design, LinkScope::Machine));
         }
     }
     if (ImGui::Button("Zoom to")) {
-        hits.clicked = BoardTarget{{component}, std::nullopt, std::nullopt};
+        hits.clicked = BoardTarget{{component}, std::nullopt, std::nullopt, {}};
     }
 
     const auto sheet = manuals.datasheets.find(part);
@@ -351,15 +357,13 @@ TargetHits ChipPanel::draw(const BoardScene& scene, std::size_t component, const
     }
     if (ImGui::TreeNodeEx("Function",
                           ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_FramePadding)) {
-        const TargetHits more =
-            function_.draw(Section(*datasheet, "Function"), &scene, design, LinkScope::Parts);
-        hits.hovered = hits.hovered ? hits.hovered : more.hovered;
-        hits.clicked = hits.clicked ? hits.clicked : more.clicked;
-        hits.held = hits.held ? hits.held : more.held;
+        Merge(hits, function_.draw(Section(*datasheet, "Function"), &scene, design, LinkScope::Chip,
+                                   reference));
         ImGui::TreePop();
     }
     if (ImGui::TreeNodeEx("Pins", ImGuiTreeNodeFlags_FramePadding)) {
-        pins_.draw(Section(*datasheet, "Pins"), &scene, design, LinkScope::Parts);
+        Merge(hits,
+              pins_.draw(Section(*datasheet, "Pins"), &scene, design, LinkScope::Chip, reference));
         ImGui::TreePop();
     }
     return hits;

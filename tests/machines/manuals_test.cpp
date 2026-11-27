@@ -61,7 +61,7 @@ TEST_CASE("manuals: every Machine's manuals pass their checks", "[machines]") {
         }
         for (const LoadedPart& part : (*design)->parts) {
             INFO(part.reference);
-            CHECK(ComponentRole(*loaded.manuals.service, part.reference).has_value());
+            CHECK(ComponentRoleSpans(*loaded.manuals.service, part.reference).has_value());
         }
 
         // The checks require the sections; each must also say something.

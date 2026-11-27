@@ -6,7 +6,7 @@ Spec: [DATASHEET_POLISH.md](DATASHEET_POLISH.md). Design: [DATASHEET_POLISH_DESI
 
 | Phase | Description | Commit |
 |---|---|---|
-| 1 | Pin looks and groups (pure) | |
+| 1 | Pin looks and groups (pure) | `983c74b` |
 | 2 | A sheet's chip scope, the role's spans, the generic sheet gone | |
 | 3 | One-pin Nets removed, the manuals' check | |
 | 4 | The chip page: title, keys, no folds, Back, each chip's place | |
@@ -80,3 +80,5 @@ Fence: the full release suite; the web build. Commit: `docs: P8j done, sheets na
 ## Implementation notes
 
 - 2026-11-27, review (a fresh agent, the three docs only): 11 must-fixes, all fixed in the docs. The Net sweep missed `sample_test.cpp` and `manual_test.cpp:142`; `ComponentRole` used by `manuals_test.cpp`; phase 2 would not build while the generic sheet used `LinkScope::Parts` (it now goes in phase 2), nor phase 4 with binder_test's Part case; the `-R` filters used underscores where test names have spaces; Back would have recorded its own selection and turned Contents to Datasheets (the Binder now becomes the place, `selected_` included); the scroll for Back was the last frame's child, possibly a hovered chip's (now kept per place, written only by the page drawn); `Place::operator==` compared the scroll; `LookOf` mapped switches (`Output`) and connectors (`Input`) to arrows and `PullUp` to Passive (now by `PartKind`, `PullUp` → Both); the 74LS244's enable is `1OE_N`; `BoardTarget` lives in `view/board_scene.hpp` and `-Wmissing-field-initializers` needs every brace-init completed. Should-fixes taken: numeric ranges (`A0`–`A15`), `CLK1`/`CLK2` clocks, `alone` from `netPads_`, no `folds` parameter, no list flag, X1 desktop-only, nine kept Nets, the BW-2001 without `.net`, Pins' hits merged, the speed check. Left: sections by a trailing index (spec, Later).
+- 2026-11-27, phase 1: as designed; the tests build each Part's sample Component for its pin names and kinds (no catalogue helper). Checks: release and debug `-R "pin marks"`.
+- 2026-11-27, phase 2: as designed. A Chip-scope link keeps the code's colour and face with a dotted underline; a range's dash is not underlined. The list's hint without a Board reads "no Board". Checks: release and debug `-R "manual|binder|focus|board scene"` (46 cases, every Machine's manuals included); screenshot of U5 on the Counter (the role's `U4`, `C19`, `D1` links; `CLK` dotted).

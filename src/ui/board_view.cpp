@@ -894,8 +894,9 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
             DrawUseSelection(list, look, *scene_, *selected_, kSelection);
         }
     }
-    // Parts a manual link points at (one part or a run, P6i): outlined while it is hovered.
-    if (hoverTarget_ && !hoverTarget_->pad) {
+    // Parts a manual link points at (one part or a run, P6i): outlined while it is hovered; a
+    // range of pins (a sheet's `A`–`D`, P8j): its pads ringed below instead.
+    if (hoverTarget_ && !hoverTarget_->pad && hoverTarget_->pads.empty()) {
         for (const std::size_t k : hoverTarget_->components) {
             DrawUseSelection(list, look, *scene_, k, kHighlight);
         }
@@ -909,11 +910,19 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
         DrawCourtyard(list, map, board.components[k], scene_->courtyard(k), scene_->partName(k),
                       outlined, keycap);
     }
-    if (hoverTarget_ && hoverTarget_->pad && !hoverTarget_->components.empty()) {
-        const Pad& pad =
-            board.components[hoverTarget_->components.front()].pads[*hoverTarget_->pad];
-        const ImVec2 half = PadHalf(map, pad);
-        list.AddCircle(map(pad.position), std::max(half.x, half.y) + 3, kHighlight, 0, 2.0f);
+    if (hoverTarget_ && !hoverTarget_->components.empty()) {
+        const auto& pads = board.components[hoverTarget_->components.front()].pads;
+        const auto ring = [&](std::size_t p) {
+            const ImVec2 half = PadHalf(map, pads[p]);
+            list.AddCircle(map(pads[p].position), std::max(half.x, half.y) + 3, kHighlight, 0,
+                           2.0f);
+        };
+        if (hoverTarget_->pad) {
+            ring(*hoverTarget_->pad);
+        }
+        for (const std::size_t p : hoverTarget_->pads) {
+            ring(p);
+        }
     }
     if (highlight_) {
         for (const ScenePad& driver : scene_->drivers(*highlight_)) {
@@ -945,7 +954,8 @@ void BoardView::drawBoard(ImDrawList& list, const Viewport& viewport, ImVec2 ori
         for (const std::size_t k : target.components) {
             const auto& pads = board.components[k].pads;
             for (std::size_t p = 0; p < pads.size(); ++p) {
-                if (!target.pad || target.pad == p) {
+                const bool ranged = std::ranges::find(target.pads, p) != target.pads.end();
+                if (target.pads.empty() ? !target.pad || target.pad == p : ranged) {
                     ring(pads[p]);
                 }
             }
@@ -1463,7 +1473,7 @@ void BoardView::input(ImVec2 origin) {
         const Hit& hit = picked->hit;
         highlight_ = scene_->netOf(hit);
         if (hit.kind == HitKind::Pad) {
-            hoverTarget_ = BoardTarget{{hit.component}, hit.index, std::nullopt};
+            hoverTarget_ = BoardTarget{{hit.component}, hit.index, std::nullopt, {}};
             hovered_ = hit.component;
         } else if (hit.kind == HitKind::Component) {
             hovered_ = hit.component;
@@ -1496,7 +1506,7 @@ void BoardView::input(ImVec2 origin) {
 
 void BoardView::frameChip(std::size_t component) {
     select(component);
-    if (const auto box = scene_->boundsOf(BoardTarget{{component}, std::nullopt, std::nullopt},
+    if (const auto box = scene_->boundsOf(BoardTarget{{component}, std::nullopt, std::nullopt, {}},
                                           kFocusPadMargin)) {
         needFit_ = false;
         viewport_.frameUpTo(*box, kFrameShare, kFramePitchPx / 2.54);

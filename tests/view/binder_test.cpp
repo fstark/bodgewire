@@ -70,27 +70,6 @@ TEST_CASE("binder: show picks the divider it comes out at, once", "[binder]") {
     CHECK(user.divider() == Divider::User);
 }
 
-TEST_CASE("binder: a Part opened from the index, closed by a selection or coming out", "[binder]") {
-    Binder binder;
-    binder.frame(true, std::nullopt);
-    binder.turn(Divider::Datasheets);
-    binder.openPart("74LS90");
-    binder.frame(true, std::nullopt);
-    REQUIRE(binder.part());
-    CHECK(*binder.part() == "74LS90");
-    binder.closePart();
-    CHECK_FALSE(binder.part());
-
-    binder.openPart("74LS47");
-    binder.frame(true, 6);
-    CHECK_FALSE(binder.part());
-
-    binder.openPart("74LS47");
-    binder.frame(false, 6);
-    binder.frame(true, 6);
-    CHECK_FALSE(binder.part());
-}
-
 TEST_CASE("binder: a memory chip's window opens Contents, out or away", "[binder]") {
     Binder away;
     CHECK_FALSE(away.contents().has_value());

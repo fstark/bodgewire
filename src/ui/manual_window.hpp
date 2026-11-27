@@ -50,10 +50,10 @@ private:
     void readingSizeKey();
     void giveUp(const std::string& fault);
     void datasheets(const Manuals& manuals, BoardView& board, const LoadedCircuit& design);
-    TargetHits index(const Manuals& manuals, const BoardScene* scene);
+    TargetHits index(const BoardScene* scene);
 
     Binder binder_;
-    ManualView user_, service_, sheet_;
+    ManualView user_, service_;
     ChipPanel chip_;
     ContentsPage contents_;
     std::vector<IndexEntry> index_;

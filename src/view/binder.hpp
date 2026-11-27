@@ -22,23 +22,20 @@ std::vector<float> TabTops(std::size_t count, float top, float bottom, float tab
 // may stretch it to.
 inline constexpr float kMinStretch = 0.7f, kMaxStretch = 2.5f;
 
-// Which divider is open and which Part's sheet the index opened.
+// Which divider is open.
 class Binder {
 public:
     // Every frame, before drawing, out or away: `out` its window shown this frame, `selected`
     // the Board's selected Component. Coming out: the divider `show` asked for, else the User
-    // Manual, the selection taken as seen (no turn), the opened Part closed. Out, a selection
-    // different from the last frame's (not a deselection) turns to Datasheets and closes the
-    // opened Part. Away, the selection is only remembered. `hasContents` (the selected Component
-    // is a memory chip): a new selection also makes the Contents divider show it, its tab there
-    // without the chip's small window clicked, and turns nothing more (P8f).
+    // Manual, the selection taken as seen (no turn). Out, a selection different from the last
+    // frame's (not a deselection) turns to Datasheets. Away, the selection is only remembered.
+    // `hasContents` (the selected Component is a memory chip): a new selection also makes the
+    // Contents divider show it, its tab there without the chip's small window clicked, and turns
+    // nothing more (P8f).
     void frame(bool out, std::optional<std::size_t> selected, bool hasContents = false);
     Divider divider() const { return divider_; }
     void turn(Divider divider) { divider_ = divider; }  // its tab clicked
     void show(Divider divider) { shown_ = divider; }    // --manual: the next coming out
-    const std::optional<std::string>& part() const { return part_; }
-    void openPart(std::string part) { part_ = std::move(part); }  // a Part's name in the index
-    void closePart() { part_.reset(); }                           // All datasheets
     // A memory chip's window clicked (P6p): the Contents divider shows it, at once if the binder
     // is out, else when it comes out (the click brings it out); a later coming out from the shelf
     // is at the User Manual again.
@@ -49,7 +46,6 @@ private:
     Divider divider_ = Divider::User;
     std::optional<Divider> shown_;
     std::optional<std::size_t> selected_;
-    std::optional<std::string> part_;
     std::optional<std::size_t> contents_;
     bool out_ = false;
 };

@@ -1,7 +1,9 @@
 #include "manual/manual.hpp"
 
 #include <algorithm>
+#include <iterator>
 #include <set>
+#include <string>
 #include <utility>
 
 #include "parts/mos6530.hpp"
@@ -317,21 +319,76 @@ std::vector<IndexEntry> DatasheetIndex(const LoadedCircuit& design) {
     return index;
 }
 
-std::optional<Role> ComponentRole(const Markdown& service, std::string_view reference) {
+std::optional<std::vector<Span>> ComponentRoleSpans(const Markdown& service,
+                                                    std::string_view reference) {
     for (const Block& block : Section(service, "Components")) {
         if (block.kind != BlockKind::Bullet || block.spans.empty() ||
             block.spans.front().style != SpanStyle::Code || block.spans.front().text != reference) {
             continue;
         }
-        const std::string rest = PlainText(std::span(block.spans).subspan(1));
-        const std::size_t colon = rest.find(':');
-        if (colon == std::string::npos) {
-            return Role{std::string(Trim(rest)), ""};
+        std::vector<Span> spans(block.spans.begin() + 1, block.spans.end());
+        if (!spans.empty() && spans.front().style == SpanStyle::Text) {
+            std::string& text = spans.front().text;
+            text.erase(0, text.find_first_not_of(' '));
+            if (text.empty()) {
+                spans.erase(spans.begin());
+            }
         }
-        return Role{std::string(Trim(std::string_view(rest).substr(0, colon))),
-                    std::string(Trim(std::string_view(rest).substr(colon + 1)))};
+        if (!spans.empty() && spans.front().style == SpanStyle::Text) {
+            char& first = spans.front().text.front();
+            if (first >= 'a' && first <= 'z') {
+                first = static_cast<char>(first - 'a' + 'A');
+            }
+        }
+        return spans;
     }
     return std::nullopt;
+}
+
+std::vector<std::string> ExpandRange(std::string_view a, std::string_view b) {
+    // One character apart: `1A`–`4A`, `A`–`D`.
+    std::size_t differ = a.size();
+    std::size_t count = 0;
+    for (std::size_t i = 0; a.size() == b.size() && i < a.size(); ++i) {
+        if (a[i] != b[i]) {
+            differ = i;
+            ++count;
+        }
+    }
+    if (a.size() == b.size() && count == 1 && a[differ] < b[differ] &&
+        ((IsUpper(a[differ]) && IsUpper(b[differ])) ||
+         (IsDigit(a[differ]) && IsDigit(b[differ])))) {
+        std::vector<std::string> names;
+        for (char c = a[differ]; c <= b[differ]; ++c) {
+            std::string name(a);
+            name[differ] = c;
+            names.push_back(std::move(name));
+        }
+        return names;
+    }
+    // One prefix before two numbers: `A0`–`A15`.
+    const auto split = [](std::string_view s) {
+        std::size_t n = s.size();
+        while (n > 0 && IsDigit(s[n - 1])) {
+            --n;
+        }
+        return std::pair{s.substr(0, n), s.substr(n)};
+    };
+    const auto [prefixA, numberA] = split(a);
+    const auto [prefixB, numberB] = split(b);
+    if (!prefixA.empty() && prefixA == prefixB && !numberA.empty() && !numberB.empty() &&
+        numberA.size() <= 4 && numberB.size() <= 4) {
+        const int from = std::stoi(std::string(numberA));
+        const int to = std::stoi(std::string(numberB));
+        if (from < to) {
+            std::vector<std::string> names;
+            for (int n = from; n <= to; ++n) {
+                names.push_back(std::string(prefixA) + std::to_string(n));
+            }
+            return names;
+        }
+    }
+    return {std::string(a), std::string(b)};
 }
 
 std::vector<std::string> BulletPins(const Block& bullet) {
@@ -351,28 +408,12 @@ std::vector<std::string> BulletPins(const Block& bullet) {
             continue;
         }
         if (range) {
-            const std::string a = names.back();
-            const std::string& b = span.text;
-            std::size_t differ = a.size();
-            std::size_t count = 0;
-            for (std::size_t i = 0; a.size() == b.size() && i < a.size(); ++i) {
-                if (a[i] != b[i]) {
-                    differ = i;
-                    ++count;
-                }
-            }
-            const bool expandable = a.size() == b.size() && count == 1 && a[differ] < b[differ] &&
-                                    ((IsUpper(a[differ]) && IsUpper(b[differ])) ||
-                                     (IsDigit(a[differ]) && IsDigit(b[differ])));
-            if (expandable) {
-                for (char c = static_cast<char>(a[differ] + 1); c <= b[differ]; ++c) {
-                    std::string name = a;
-                    name[differ] = c;
-                    names.push_back(std::move(name));
-                }
-                range = false;
-                continue;
-            }
+            std::vector<std::string> expanded = ExpandRange(names.back(), span.text);
+            names.pop_back();
+            names.insert(names.end(), std::make_move_iterator(expanded.begin()),
+                         std::make_move_iterator(expanded.end()));
+            range = false;
+            continue;
         }
         names.push_back(span.text);
         range = false;
@@ -393,14 +434,52 @@ const Block* PinBullet(const Markdown& datasheet, std::string_view pin) {
     return nullptr;
 }
 
+namespace {
+
+// The Chip scope at spans[i] (a code span): a range of the chip's pins (`A`–`D`: three spans)
+// or one of them.
+std::optional<ManualLink> ChipPinLink(std::span<const Span> spans, std::size_t i,
+                                      const LoadedCircuit& design, std::string_view chip) {
+    const std::string reference(chip);
+    if (i + 2 < spans.size() && spans[i + 1].style == SpanStyle::Text &&
+        spans[i + 2].style == SpanStyle::Code) {
+        const std::string_view dash = Trim(spans[i + 1].text);
+        if (dash == "\u2013" || dash == "-") {
+            ManualLink link{{reference}, std::nullopt, std::nullopt, 3, 0, {}};
+            for (const std::string& name : ExpandRange(spans[i].text, spans[i + 2].text)) {
+                const auto number = PinNumber(design, chip, name);
+                if (!number) {
+                    link.pins.clear();
+                    break;
+                }
+                link.pins.push_back(std::to_string(*number));
+            }
+            if (link.pins.size() > 1) {
+                return link;
+            }
+        }
+    }
+    if (const auto number = PinNumber(design, chip, spans[i].text)) {
+        ManualLink link{{reference}, std::to_string(*number), std::nullopt, 1, 0, {}};
+        link.pins.push_back(*link.pin);
+        return link;
+    }
+    return std::nullopt;
+}
+
+}  // namespace
+
 std::optional<ManualLink> LinkAt(std::span<const Span> spans, std::size_t i,
-                                 const LoadedCircuit& design, LinkScope scope) {
+                                 const LoadedCircuit& design, LinkScope scope,
+                                 std::string_view chip) {
     if (i >= spans.size() || spans[i].style != SpanStyle::Code) {
         return std::nullopt;
     }
     const std::string& text = spans[i].text;
-    const bool machine = scope == LinkScope::Machine;
-    if (const auto run = machine ? RunAt(spans, i, design) : std::nullopt;
+    if (scope == LinkScope::Chip) {
+        return ChipPinLink(spans, i, design, chip);
+    }
+    if (const auto run = RunAt(spans, i, design);
         run && !run->letters.empty() && run->first < run->last) {
         ManualLink link;
         for (const LoadedPart& part : design.parts) {
@@ -414,7 +493,7 @@ std::optional<ManualLink> LinkAt(std::span<const Span> spans, std::size_t i,
         return link;
     }
     if (FindLoadedPart(design, text)) {
-        ManualLink link{{text}, std::nullopt, std::nullopt, 1, 0};
+        ManualLink link{{text}, std::nullopt, std::nullopt, 1, 0, {}};
         if (i + 1 < spans.size() && spans[i + 1].style == SpanStyle::Text) {
             if (auto pin = PinAfter(spans[i + 1].text)) {
                 link.pinChars = kPinWord.size() + pin->size();
@@ -423,19 +502,16 @@ std::optional<ManualLink> LinkAt(std::span<const Span> spans, std::size_t i,
         }
         return link;
     }
-    if (!machine) {
-        return std::nullopt;
-    }
     if (const auto named = SplitPinName(text)) {
         const std::string reference(named->first);
         if (const auto number = PinNumber(design, reference, named->second);
             number && FindLoadedPart(design, reference)) {
-            return ManualLink{{reference}, std::to_string(*number), std::nullopt, 1, 0};
+            return ManualLink{{reference}, std::to_string(*number), std::nullopt, 1, 0, {}};
         }
         return std::nullopt;
     }
     if (design.nets.contains(text)) {
-        return ManualLink{{}, std::nullopt, text, 1, 0};
+        return ManualLink{{}, std::nullopt, text, 1, 0, {}};
     }
     return std::nullopt;
 }

@@ -24,10 +24,8 @@ void Binder::frame(bool out, std::optional<std::size_t> selected, bool hasConten
     if (out && !out_) {
         divider_ = shown_.value_or(Divider::User);
         shown_.reset();
-        part_.reset();
     } else if (out && selected && selected != selected_) {
         divider_ = Divider::Datasheets;
-        part_.reset();
     }
     selected_ = selected;
     out_ = out;

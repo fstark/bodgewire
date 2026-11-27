@@ -419,43 +419,26 @@ void ManualWindows::datasheets(const Manuals& manuals, BoardView& board,
         ImGui::PushID("chip");
         if (ImGui::Button("All datasheets")) {
             board.deselect();
-            binder_.closePart();
         }
         ImGui::Spacing();
         board.route(chip_.draw(*scene, *chip, manuals, design));
         ImGui::PopID();
         return;
     }
-    if (const auto& part = binder_.part()) {
-        ImGui::PushID("sheet");
-        if (ImGui::Button("All datasheets")) {
-            binder_.closePart();
-        }
-        ImGui::Spacing();
-        if (const auto sheet = manuals.datasheets.find(*part); sheet != manuals.datasheets.end()) {
-            board.route(sheet_.draw(sheet->second.blocks, scene, design, LinkScope::Parts));
-        }
-        ImGui::PopID();
-        return;
-    }
     ImGui::PushID("index");
-    board.route(index(manuals, scene));
+    board.route(index(scene));
     ImGui::PopID();
 }
 
-TargetHits ManualWindows::index(const Manuals& manuals, const BoardScene* scene) {
+TargetHits ManualWindows::index(const BoardScene* scene) {
     TargetHits hits;
     Title("Datasheets");
-    ImGui::TextDisabled(scene ? "hover or click a chip, or a reference below" : "a Part's sheet");
+    ImGui::TextDisabled(scene ? "hover or click a chip, or a reference below" : "no Board");
     ImGui::Spacing();
     for (const IndexEntry& entry : index_) {
         ImGui::PushID(entry.part.c_str());
         TextFlow flow;
-        const bool sheet = manuals.datasheets.contains(entry.part);
-        const TextFlow::Result name = flow.text(entry.part + "  ", kPageCode, sheet);
-        if (sheet && name.clicked) {
-            binder_.openPart(entry.part);
-        }
+        flow.text(entry.part + "  ", kPageCode, false);  // a chip's page only (P8j): no sheet alone
         for (const std::string& reference : entry.references) {
             const TextFlow::Result link =
                 flow.text(reference + " ", scene ? kPageLink : kInk, scene != nullptr);
@@ -464,10 +447,10 @@ TargetHits ManualWindows::index(const Manuals& manuals, const BoardScene* scene)
             }
             if (const auto component = scene->componentIndex(reference)) {
                 if (link.hovered) {
-                    hits.hovered = BoardTarget{{*component}, std::nullopt, std::nullopt};
+                    hits.hovered = BoardTarget{{*component}, std::nullopt, std::nullopt, {}};
                 }
                 if (link.clicked) {
-                    hits.clicked = BoardTarget{{*component}, std::nullopt, std::nullopt};
+                    hits.clicked = BoardTarget{{*component}, std::nullopt, std::nullopt, {}};
                 }
             }
         }
