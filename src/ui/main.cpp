@@ -1108,6 +1108,12 @@ int main(int argc, char** argv) {
     }
 
     TouchInit();
+#if defined(__linux__)
+    // X11 before Wayland, which SDL prefers: ImGui's SDL3 backend has no desktop windows on
+    // Wayland (no global mouse), so an object would fill the bench instead of popping out. Wayland
+    // still when there is no X server; SDL_VIDEO_DRIVER=wayland (the environment wins) chooses it.
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11,wayland");
+#endif
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::println(stderr, "bw_ui: {}", SDL_GetError());
         return kExitErrors;

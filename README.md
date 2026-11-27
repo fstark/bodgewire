@@ -297,6 +297,10 @@ It was tried on a very slow machine, an Intel i7-6700K from 2015. The small boar
 but Paddle Tennis runs at three quarters of its real speed, the BW-2001 at an eighth and the BW-80
 at a twelfth.
 
+On a Wayland desktop it runs through XWayland, so that an object can pop out into its own window.
+To run it on Wayland itself, start it with `SDL_VIDEO_DRIVER=wayland`: everything then stays
+inside the main window, as on the web.
+
 If you run the tests with a KiCad older than 8 installed (Ubuntu's own is 7), the Board checks
 (`drc_*`) fail. Without KiCad they're skipped.
 

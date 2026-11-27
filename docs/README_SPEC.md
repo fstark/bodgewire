@@ -188,6 +188,10 @@ From a clean machine to the game running, as commands to copy:
     `bw_ui --screenshot` ratio and README shots, built with clang 23: on the i7-6700K the small
     boards at 1.00×, Paddle Tennis 0.76×, the BW-2001 0.12× and the BW-80 0.08× (take them again
     when Linux is tried on another machine);
+  - X11 by default, through XWayland on a Wayland desktop (2026-11-27: on Wayland, ImGui has no
+    desktop windows, so a double-click filled the bench instead of popping out); one sentence:
+    `SDL_VIDEO_DRIVER=wayland` for native Wayland, every object then staying inside the main
+    window as on the web;
   - the tests: an older KiCad than 8 (Ubuntu's own is 7) fails the Board checks (`drc_*`); with
     no KiCad they are left out;
 - honest platform note: developed on macOS; Linux builds and runs (above); Windows untried.
