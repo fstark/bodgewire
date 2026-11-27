@@ -34,7 +34,7 @@ struct BinderPlace {
 // At most this many places to go back to (P8j).
 inline constexpr std::size_t kHistory = 32;
 
-// Which divider is open, and the places it was open at before (Back, P8j).
+// Which divider is open, and the places it was open at before (Back and Forward, P8j).
 class Binder {
 public:
     // Every frame, before drawing, out or away: `out` its window shown this frame, `selected`
@@ -54,15 +54,19 @@ public:
     // writes its place's (a hovered chip's page never writes the selected one's).
     void scrolled(const BinderPlace& page, float y);
     bool canGoBack() const { return !history_.empty(); }
-    // The last place left, taken off the history, with its scroll. The binder is there at once
-    // (its divider, its chip as the selection seen or as Contents' chip: the next frame() sees no
-    // new selection) and nothing is kept; the caller makes the Board's selection match (select
-    // or deselect, never framing) and scrolls the page once. nullopt with nowhere to go back to.
-    struct Back {
+    bool canGoForward() const { return !ahead_.empty(); }
+    // Back, as a browser's: the last place left, taken off the history, with its scroll; the
+    // place it leaves goes ahead, for forward(). Forward: the last place gone back from, the one
+    // it leaves back on the history. Any other move clears what is ahead. The binder is there at
+    // once (its divider, its chip as the selection seen or as Contents' chip: the next frame()
+    // sees no new selection); the caller makes the Board's selection match (select or deselect,
+    // never framing) and scrolls the page once. nullopt with nowhere to go.
+    struct Visit {
         BinderPlace place;
         float scroll = 0;
     };
-    std::optional<Back> back();
+    std::optional<Visit> back();
+    std::optional<Visit> forward();
     // All chips: the Datasheets list, a move; the caller deselects the Board.
     void showList();
     // A memory chip's window clicked (P6p): the Contents divider shows it, at once if the binder
@@ -72,9 +76,11 @@ public:
     std::optional<std::size_t> contents() const { return contents_; }  // its tab shows once set
 
 private:
-    void record(const BinderPlace& from);  // kept for back(), but a repeat of the last
+    void record(const BinderPlace& from);  // a move: kept for back(), but a repeat of the last
+    Visit go(std::vector<BinderPlace>& from, std::vector<BinderPlace>& to);
 
     std::vector<BinderPlace> history_;
+    std::vector<BinderPlace> ahead_;  // gone back from, the latest last
     std::map<std::pair<Divider, std::optional<std::size_t>>, float> scrolls_;
     Divider divider_ = Divider::User;
     std::optional<Divider> shown_;

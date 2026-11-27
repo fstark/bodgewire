@@ -241,7 +241,7 @@ The per-Machine list of each Component's role on this Board, a divider of the ma
 _Avoid_: Help, documentation
 
 **Datasheet**:
-Our simplified per-Part document: what the Part does and what each pin is for. In the manuals binder (P6e), only on a chip's page (P8j): the chip as its title, its role from the Service Manual, its pinout with its Nets, then its Datasheet, where this Part's pin names and ranges of them light the pins; the Datasheets list names the Machine's Parts and their references. Back returns to the page before, where it was; each chip's page keeps its own place.
+Our simplified per-Part document: what the Part does and what each pin is for. In the manuals binder (P6e), only on a chip's page (P8j): the chip as its title, its role from the Service Manual, its pinout with its Nets, then its Datasheet, where this Part's pin names and ranges of them light the pins; the Datasheets list names the Machine's Parts and their references. Back and Forward (◀ ▶, as a browser's) return to the pages before and after, where they were; each chip's page keeps its own place.
 _Avoid_: Spec sheet
 
 **Pin Mark**:

@@ -53,7 +53,8 @@ private:
     // The page drawn: its divider, and the chip a chip page shows (the hovered, else the
     // selected one; nullopt: the list) or Contents' chip (P8j).
     BinderPlace shownPage(const BoardView& board) const;
-    void goBack(BoardView& board);  // Back (P8j): its key, or the mouse's back button
+    // Back or Forward (P8j), its key or the mouse's button: the Board and the page follow.
+    void visit(BoardView& board, std::optional<Binder::Visit> place);
     void navigationKeys(BoardView& board, bool chip);
     TargetHits index(const BoardScene* scene);
 

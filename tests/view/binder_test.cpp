@@ -143,7 +143,7 @@ TEST_CASE("binder: a memory chip selected offers its Contents, turning nothing",
     CHECK(binder.contents() == 3);
 }
 
-// Back (P8j): the places left by a move, never by a hover.
+// Back and Forward (P8j): the places left by a move, never by a hover.
 
 TEST_CASE("binder: back after a tab", "[binder]") {
     Binder binder;
@@ -259,4 +259,31 @@ TEST_CASE("binder: all chips is a move, back to Contents stays on Contents", "[b
     CHECK(binder.back()->place == BinderPlace{Divider::Contents, 4});
     CHECK(binder.divider() == Divider::Contents);
     CHECK(binder.contents() == 4);
+}
+
+TEST_CASE("binder: forward undoes back, a new move clears it", "[binder]") {
+    Binder binder;
+    binder.frame(true, std::nullopt);
+    binder.turn(Divider::Datasheets);
+    binder.frame(true, 5);  // U5
+    binder.scrolled({Divider::Datasheets, 5}, 250);
+    binder.frame(true, 7);  // U7
+    binder.scrolled({Divider::Datasheets, 7}, 80);
+    CHECK_FALSE(binder.canGoForward());
+    REQUIRE(binder.back()->place == BinderPlace{Divider::Datasheets, 5});
+    binder.frame(true, 5);  // the caller selected U5: no move, U7 still ahead
+    REQUIRE(binder.canGoForward());
+    const auto forward = binder.forward();
+    REQUIRE(forward.has_value());
+    CHECK(forward->place == BinderPlace{Divider::Datasheets, 7});
+    CHECK(forward->scroll == 80);
+    CHECK(binder.here() == BinderPlace{Divider::Datasheets, 7});
+    binder.frame(true, 7);
+    CHECK_FALSE(binder.canGoForward());
+    CHECK(binder.back()->place == BinderPlace{Divider::Datasheets, 5});  // U5 again, once
+    binder.frame(true, 5);
+    binder.turn(Divider::Service);  // a new move: nothing ahead
+    CHECK_FALSE(binder.canGoForward());
+    CHECK_FALSE(binder.forward());
+    CHECK(binder.back()->place == BinderPlace{Divider::Datasheets, 5});
 }

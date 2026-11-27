@@ -276,9 +276,14 @@ void ManualWindows::draw(bool& open, const Manuals& manuals, BoardView& board,
         open = false;
     }
 #ifndef __EMSCRIPTEN__
-    // A mouse's back button over the binder (P8j); in a browser it is the browser's back.
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(3)) {
-        goBack(board);
+    // A mouse's back and forward buttons over the binder (P8j); in a browser they are the
+    // browser's.
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
+        if (ImGui::IsMouseClicked(3)) {
+            visit(board, binder_.back());
+        } else if (ImGui::IsMouseClicked(4)) {
+            visit(board, binder_.forward());
+        }
     }
 #endif
     PopOnDoubleClick(BenchObject::Manual);
@@ -437,58 +442,67 @@ BinderPlace ManualWindows::shownPage(const BoardView& board) const {
     return {divider, divider == Divider::Contents ? binder_.contents() : std::nullopt};
 }
 
-void ManualWindows::goBack(BoardView& board) {
-    const auto back = binder_.back();
-    if (!back) {
+void ManualWindows::visit(BoardView& board, std::optional<Binder::Visit> place) {
+    if (!place) {
         return;
     }
-    if (back->place.divider == Divider::Datasheets) {
-        if (back->place.chip) {
-            board.select(*back->place.chip);  // the page follows; the Board does not move
+    if (place->place.divider == Divider::Datasheets) {
+        if (place->place.chip) {
+            board.select(*place->place.chip);  // the page follows; the Board does not move
         } else {
             board.deselect();
         }
     }
-    scrollOnce_ = back->scroll;
+    scrollOnce_ = place->scroll;
 }
 
-// The chip pages' keys (P8j): Back, dimmed with nowhere to go back to, and on a chip's page the
-// list. A key a control high, its sign drawn left of its word.
+// The chip pages' keys (P8j): Back and Forward, arrows as a browser's, each dimmed with nowhere
+// to go; on a chip's page the list, its sign left of its word. Each a control high.
 void ManualWindows::navigationKeys(BoardView& board, bool chip) {
     const float height = ControlHeight();
-    const float sign = height * 0.8f;  // room for the drawn sign
-    const auto key = [&](const char* label, bool enabled, auto draw) {
+    const float r = height * 0.4f;  // the drawn sign's half size
+    const float padding = ImGui::GetStyle().FramePadding.x;
+    // `word` after its sign, else (##id) the sign alone, centred in a square key.
+    const auto key = [&](const char* word, const char* tip, bool enabled, auto draw) {
         ImGui::BeginDisabled(!enabled);
-        const std::string text = std::string(label);
-        const float width =
-            sign + ImGui::CalcTextSize(text.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
+        const bool alone = word[0] == '#';
+        const float width = alone ? height : 2 * r + ImGui::CalcTextSize(word).x + padding * 2;
         ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, {1, 0.5f});
-        const bool clicked = ImGui::Button(text.c_str(), {width, height});
+        const bool clicked = ImGui::Button(word, {width, height});
         ImGui::PopStyleVar();
+        if (tip) {
+            ImGui::SetItemTooltip("%s", tip);
+        }
         const ImVec2 min = ImGui::GetItemRectMin();
-        const ImU32 ink = ImGui::GetColorU32(ImGuiCol_Text);
-        draw(*ImGui::GetWindowDrawList(),
-             ImVec2{min.x + ImGui::GetStyle().FramePadding.x, min.y + height / 2}, sign * 0.5f,
-             ink);
+        const float x = alone ? min.x + height / 2 : min.x + padding + r;
+        draw(*ImGui::GetWindowDrawList(), ImVec2{x, min.y + height / 2}, r,
+             ImGui::GetColorU32(ImGuiCol_Text));
         ImGui::EndDisabled();
         return clicked;
     };
-    const bool back =
-        key("Back", binder_.canGoBack(), [](ImDrawList& list, ImVec2 at, float r, ImU32 ink) {
-            list.AddTriangleFilled({at.x + r * 0.3f, at.y}, {at.x + r * 1.1f, at.y - r * 0.6f},
-                                   {at.x + r * 1.1f, at.y + r * 0.6f}, ink);
-        });
-    if (back) {
-        goBack(board);
+    // An arrow's head, its tip `side` (-1 left, 1 right) of the centre.
+    const auto arrow = [](float side) {
+        return [side](ImDrawList& list, ImVec2 at, float r, ImU32 ink) {
+            list.AddTriangleFilled({at.x + side * r * 0.45f, at.y},
+                                   {at.x - side * r * 0.45f, at.y - r * 0.65f},
+                                   {at.x - side * r * 0.45f, at.y + r * 0.65f}, ink);
+        };
+    };
+    if (key("##back", "Back", binder_.canGoBack(), arrow(-1))) {
+        visit(board, binder_.back());
+    }
+    ImGui::SameLine(0, 2);
+    if (key("##forward", "Forward", binder_.canGoForward(), arrow(1))) {
+        visit(board, binder_.forward());
     }
     if (chip) {
         ImGui::SameLine();
         const bool list =
-            key("All chips", true, [](ImDrawList& draw, ImVec2 at, float r, ImU32 ink) {
+            key("All chips", nullptr, true, [](ImDrawList& draw, ImVec2 at, float r, ImU32 ink) {
                 for (int i = -1; i <= 1; ++i) {
                     const float y = at.y + static_cast<float>(i) * r * 0.55f;
-                    draw.AddCircleFilled({at.x + r * 0.25f, y}, 1.4f, ink);
-                    draw.AddLine({at.x + r * 0.6f, y}, {at.x + r * 1.5f, y}, ink, 1.6f);
+                    draw.AddCircleFilled({at.x - r * 0.65f, y}, 1.4f, ink);
+                    draw.AddLine({at.x - r * 0.3f, y}, {at.x + r * 0.6f, y}, ink, 1.6f);
                 }
             });
         if (list) {

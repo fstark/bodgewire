@@ -56,12 +56,24 @@ BinderPlace Binder::here() const {
 
 void Binder::scrolled(const BinderPlace& page, float y) { scrolls_[{page.divider, page.chip}] = y; }
 
-std::optional<Binder::Back> Binder::back() {
+std::optional<Binder::Visit> Binder::back() {
     if (history_.empty()) {
         return std::nullopt;
     }
-    const BinderPlace place = history_.back();
-    history_.pop_back();
+    return go(history_, ahead_);
+}
+
+std::optional<Binder::Visit> Binder::forward() {
+    if (ahead_.empty()) {
+        return std::nullopt;
+    }
+    return go(ahead_, history_);
+}
+
+Binder::Visit Binder::go(std::vector<BinderPlace>& from, std::vector<BinderPlace>& to) {
+    to.push_back(here());
+    const BinderPlace place = from.back();
+    from.pop_back();
     divider_ = place.divider;
     if (place.divider == Divider::Datasheets) {
         selected_ = place.chip;
@@ -69,7 +81,7 @@ std::optional<Binder::Back> Binder::back() {
         contents_ = place.chip;
     }
     const auto scroll = scrolls_.find({place.divider, place.chip});
-    return Back{place, scroll != scrolls_.end() ? scroll->second : 0.0f};
+    return Visit{place, scroll != scrolls_.end() ? scroll->second : 0.0f};
 }
 
 void Binder::showList() {
@@ -82,6 +94,7 @@ void Binder::showList() {
 }
 
 void Binder::record(const BinderPlace& from) {
+    ahead_.clear();
     if (!history_.empty() && history_.back() == from) {
         return;
     }

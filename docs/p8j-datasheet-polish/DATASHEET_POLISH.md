@@ -35,6 +35,7 @@ The user, 2026-11-27, with the agent sparring for the expert (the user's goal: "
 - **"All datasheets" becomes a list icon**, not a word button; the same icon on the Datasheets pages. Possibly on the Datasheets tab itself (open, below).
 - **Never navigate by hover.** A hover lights; only a deliberate act (a click on a link, on the Board, in the list) changes a page, enters a history or changes what is kept.
 - **Back, as a browser's.** Orthogonal to keeping a chip at hand (below).
+- **Forward too, both as arrows** (the user, 2026-11-27, after using Back: "awkward to have a back but not forward… maybe just an arrow would be enough"): ◀ ▶ without words, as a browser's, each dimmed with nowhere to go (Forward stays in place, dimmed until a Back, so All chips never moves); a tooltip names each.
 - **Back returns exactly where you were**, not to the top: **the scroll is kept per chip, not per tab.** A chip never visited opens at the top. Per chip, not per Part type (U4 and U5 are both 74LS161 and their role lines differ).
 - **The reading size (aA) is not a concern**: "people choose one size and never change". If a natural way of keeping the place survives a reflow, good; nothing more is done for it.
 - **Chip-level pages and Machine-level pages.** Datasheets and Contents show a chip, chosen per chip: their place, history and (Contents) view kept per chip. The User and Service Manuals, Repairs and Give up are one page each, as now.
@@ -76,11 +77,11 @@ Chosen without asking (the agent, to overturn freely):
 ### The Datasheets list
 
 1. **The list of the Machine's Parts**, as now: one line a Part type, its references after it; a reference hovered lights its chip, clicked selects it and centres the Board on it (the chip's page follows). **A Part's name is plain text**: no generic sheet.
-2. **Back** at the top of the list, dimmed with nowhere to go back to.
+2. **Back and Forward** (◀ ▶) at the top of the list, each dimmed with nowhere to go.
 
 ### A chip's page
 
-3. **Two keys at the top**: **◀ Back** (dimmed with nowhere to go back to) and **☰ All chips** (the list: the Board's selection cleared, as "All datasheets" did; a hover on a chip still shows its page).
+3. **Keys at the top**: **◀ ▶**, Back and Forward (each dimmed with nowhere to go) and **☰ All chips** (the list: the Board's selection cleared, as "All datasheets" did; a hover on a chip still shows its page).
 4. **The title is the chip**: `U5 · 74LS161 · synchronous 4-bit binary counter`, bold, a rule under it. `U5` is a link (hover lights the chip; a click centres the Board on it and selects it). **"Zoom to" is gone.**
 5. **The role sentence** from the Service Manual's Components bullet, its first letter a capital, its references, pins by name and Nets links as in the Service Manual: `Counter bits 16–19: counts when U4 carries; C19 drives D1`.
 6. **The pinout** (a DIP's body with its pins either side, as now) with, on each pin's line between its number and the body, a **symbol in one colour (violet)**:
@@ -97,7 +98,7 @@ Chosen without asking (the agent, to overturn freely):
 
 ### Back and places
 
-12. **Back** returns to the page before, exactly where it was: a chip's page or the list, or a Machine page (a Service Manual step → U5 → Back returns to that step). Going back to a chip selects it without moving the Board. A mouse's back button (X1) does the same over the binder, on the desktop (in a browser it is the browser's). **Each chip's page and each chip's Contents keep their own scroll**: a chip never seen opens at the top. A hover never enters the history; a tab clicked, a link or the list followed, a chip selected on the Board do.
+12. **Back** returns to the page before, exactly where it was: a chip's page or the list, or a Machine page (a Service Manual step → U5 → Back returns to that step). Going back to a chip selects it without moving the Board. **Forward** undoes a Back, as a browser's; any other move clears it. A mouse's back and forward buttons (X1, X2) do the same over the binder, on the desktop (in a browser they are the browser's). **Each chip's page and each chip's Contents keep their own scroll**: a chip never seen opens at the top. A hover never enters the history; a tab clicked, a link or the list followed, a chip selected on the Board do.
 
 ### Sections and the Board
 
@@ -135,7 +136,7 @@ Untouched: the kernel, the Parts, the instruments, Puzzles, the Launcher, the ot
 Settled by the user, 2026-11-27, taking the agent's recommendation on each ("yes, that sounds good"):
 
 1. **Keeping two chips at hand: level 1 in P8j** (each chip page keeps its place; Back). Levels 2 (a chip kept as a binder tab, created and closed explicitly; tabs are finite, `TabTops`; a kept tab stays live, only its chip frozen) and 3 (a page torn out to a window of its own) are chosen in a later row, after playing with Back.
-2. **Back** is a key at the top of a chip page. Its history spans the whole binder (a Service Manual step → U5 → Back returns to that step, where it was). Going back to a chip selects it without moving the Board. A mouse's back button does the same; no keyboard key (keys go to the Machine, P6o).
+2. **Back** (and Forward, added after use) is a key at the top of a chip page. Its history spans the whole binder (a Service Manual step → U5 → Back returns to that step, where it was). Going back to a chip selects it without moving the Board. A mouse's back button does the same; no keyboard key (keys go to the Machine, P6o).
 3. **The list is a key beside Back, an icon with its word** (☰ All chips): readable without a tooltip a finger never sees; the Datasheets tab keeps one meaning.
 4. **A click on a pin is unchanged**: the instrument in hand works it (P8g), a double-click shows it; the crosshair shows it whatever is in hand (P8f, a finger's only "show"). The same for a pin's name in the text.
 5. **A section's marks do not stay after a click**; on a tablet, the finger's hold (P8f) shows them as a hover does.
