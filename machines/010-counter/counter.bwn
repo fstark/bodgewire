@@ -22,29 +22,10 @@ net VCC      U1.ENT
 net GND      U1.A U1.B U1.C U1.D U2.A U2.B U2.C U2.D U3.A U3.B U3.C U3.D
 net GND      U4.A U4.B U4.C U4.D U5.A U5.B U5.C U5.D
 
-net C0       U1.QA
-net C1       U1.QB
-net C2       U1.QC
-net C3       U1.QD
 net CARRY1   U1.RCO U2.ENT
-net C4       U2.QA
-net C5       U2.QB
-net C6       U2.QC
-net C7       U2.QD
 net CARRY2   U2.RCO U3.ENT
-net C8       U3.QA
-net C9       U3.QB
-net C10      U3.QC
-net C11      U3.QD
 net CARRY3   U3.RCO U4.ENT
-net C12      U4.QA
-net C13      U4.QB
-net C14      U4.QC
-net C15      U4.QD
 net CARRY4   U4.RCO U5.ENT
-net C16      U5.QA
-net C17      U5.QB
-net C18      U5.QC
 net C19      U5.QD D1.K
 
 # LED: +5 V through R2 into the anode; the cathode sinks into C19.

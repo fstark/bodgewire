@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -303,6 +304,41 @@ std::vector<Diagnostic> CheckDatasheet(const Markdown& doc, std::string_view fil
     return problems.take();
 }
 
+std::vector<Diagnostic> CheckOnePinNets(const LoadedCircuit& design, const Markdown* user,
+                                        const Markdown* service) {
+    std::map<std::string_view, std::size_t> pins;
+    for (const Connection& c : design.connections) {
+        ++pins[c.net];
+    }
+    std::set<std::string, std::less<>> named;
+    const auto collect = [&](std::span<const Span> spans) {
+        for (const Span& span : spans) {
+            if (span.style == SpanStyle::Code) {
+                named.insert(span.text);
+            }
+        }
+    };
+    for (const Markdown* doc : {user, service}) {
+        for (const Block& block : doc ? std::span(doc->blocks) : std::span<const Block>()) {
+            collect(block.spans);
+            for (const auto& row : block.rows) {
+                for (const auto& cell : row) {
+                    collect(cell);
+                }
+            }
+        }
+    }
+    std::vector<Diagnostic> problems;
+    for (const auto& [net, count] : pins) {
+        if (count == 1 && !named.contains(net)) {
+            problems.push_back(
+                {"netlist", 0, Severity::Warning,
+                 "net " + std::string(net) + " reaches one pin and no manual names it"});
+        }
+    }
+    return problems;
+}
+
 std::vector<IndexEntry> DatasheetIndex(const LoadedCircuit& design) {
     std::vector<IndexEntry> index;
     for (const LoadedPart& part : design.parts) {
@@ -547,6 +583,8 @@ LoadedManuals LoadManuals(const std::filesystem::path& dir, const std::filesyste
     if ((loaded.manuals.service = load(dir / "manuals" / "service.md", "manuals/service.md"))) {
         report(CheckServiceManual(*loaded.manuals.service, "manuals/service.md", design));
     }
+    report(CheckOnePinNets(design, loaded.manuals.user ? &*loaded.manuals.user : nullptr,
+                           loaded.manuals.service ? &*loaded.manuals.service : nullptr));
     for (const LoadedPart& part : design.parts) {
         const std::string name(part.info->name);
         if (loaded.manuals.datasheets.contains(name)) {

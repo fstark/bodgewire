@@ -198,11 +198,9 @@ net LINE_END    U32.1A U32.2A
 net LPAD_CK     U32.1Y U28.CKA
 net RPAD_CK     U32.2Y U29.CKA
 net LP0         U28.QA U28.CKB
-net LP1         U28.QB
 net LP2         U28.QC U31.1A
 net LP3         U28.QD U30.1CLK U31.2A
 net RP0         U29.QA U29.CKB
-net RP1         U29.QB
 net RP2         U29.QC U31.1B
 net RP3         U29.QD U30.2CLK U31.2B
 net VCC         U30.1J U30.2J
@@ -308,8 +306,6 @@ net VCC         U45.1J U45.1K U45.1CLR_N
 net FRAME0      U45.1CLK
 net FRAME1      U45.1Q U46.CKA
 net ST0         U46.QA U46.CKB
-net ST1         U46.QB
-net ST2         U46.QC
 net GND         U45.2J U45.2K U45.2CLK U45.2CLR_N
 
 # Scores: the left player scores when the ball is lost on the right, and the other way round.

@@ -24,10 +24,15 @@ std::unique_ptr<LoadedCircuit> LoadCounter() {
     return std::move(*result);
 }
 
+// The 20-bit count from U1–U5's QA–QD (bit 0 U1.QA): their pins' Nets, named or their own.
 unsigned Count(const LoadedCircuit& loaded, const Simulator& sim) {
     unsigned value = 0;
     for (unsigned bit = 0; bit < 20; ++bit) {
-        const LogicValue v = sim.value(loaded.nets.at("C" + std::to_string(bit)));
+        const std::string chip = "U" + std::to_string(bit / 4 + 1);
+        const std::string pin = std::string("Q") + static_cast<char>('A' + bit % 4);
+        const auto net = PinNet(loaded, chip, pin);
+        REQUIRE(net.has_value());
+        const LogicValue v = sim.value(*net);
         REQUIRE(v != X);
         value |= (v == One ? 1u : 0u) << bit;
     }
@@ -57,16 +62,11 @@ struct ApiCounter {
         for (const char* name : {"CLK", "RESET_N"}) {
             nets[name] = circuit.addNet(name);
         }
-        for (int chip = 0; chip < 5; ++chip) {
-            for (int bit = 0; bit < 4; ++bit) {
-                const std::string name = "C" + std::to_string(chip * 4 + bit);
-                nets[name] = circuit.addNet(name);
-            }
-            if (chip < 4) {
-                const std::string carry = "CARRY" + std::to_string(chip + 1);
-                nets[carry] = circuit.addNet(carry);
-            }
+        for (int chip = 0; chip < 4; ++chip) {
+            const std::string carry = "CARRY" + std::to_string(chip + 1);
+            nets[carry] = circuit.addNet(carry);
         }
+        nets["C19"] = circuit.addNet("C19");  // the other outputs: their own Nets (finalize)
         nets["LED_A"] = circuit.addNet("LED_A");
         circuit.tie(nets["RESET_N"], One, DriveStrength::Weak);  // R1
         circuit.tie(nets["LED_A"], One, DriveStrength::Weak);    // R2
@@ -91,8 +91,8 @@ struct ApiCounter {
             if (chip < 4) {
                 circuit.connect(counter, "RCO", nets["CARRY" + std::to_string(chip + 1)]);
             }
-            for (int bit = 0; bit < 4; ++bit) {
-                circuit.connect(counter, outputs[bit], nets["C" + std::to_string(chip * 4 + bit)]);
+            if (chip == 4) {
+                circuit.connect(counter, outputs[3], nets["C19"]);
             }
         }
         circuit.connect(d1, "K", nets["C19"]);

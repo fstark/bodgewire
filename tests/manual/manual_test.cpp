@@ -169,7 +169,7 @@ TEST_CASE("manual: links", "[manual]") {
 TEST_CASE("manual: runs and pins by name", "[manual]") {
     const auto design = Counter();
     const Markdown doc =
-        ParseMarkdown("`U2`\u2013`U4` count; `U2.ENT` and `U9.ENT`, `R1.X`, `UH1.bin`, `C3`\n");
+        ParseMarkdown("`U2`\u2013`U4` count; `U2.ENT` and `U9.ENT`, `R1.X`, `UH1.bin`, `CARRY1`\n");
     const auto& spans = doc.blocks[0].spans;
     const auto run = LinkAt(spans, 0, *design, LinkScope::Machine);
     REQUIRE(run.has_value());
@@ -187,16 +187,17 @@ TEST_CASE("manual: runs and pins by name", "[manual]") {
     CHECK_FALSE(LinkAt(spans, 8, *design, LinkScope::Machine));     // a resistor: no pin names
     const auto net = LinkAt(spans, 12, *design, LinkScope::Machine);
     REQUIRE(net.has_value());
-    CHECK(net->net == "C3");
+    CHECK(net->net == "CARRY1");
 }
 
 TEST_CASE("manual: run and pin name checks", "[manual]") {
     const auto design = Counter();
     CHECK(Messages(CheckUserManual(
-              ParseMarkdown("# Counter\n## What it does\n"
-                            "`U5`\u2013`U1`; `U1`\u2013`R2`; `C3`\u2013`C1`; `R1`\u2013`C3`\n"
-                            "`U2.ENX`, `U9.ENT`, `UH1.bin`, `0.5`, `U2.ENT`\n"
-                            "## How it works\n"),
+              ParseMarkdown(
+                  "# Counter\n## What it does\n"
+                  "`U5`\u2013`U1`; `U1`\u2013`R2`; `CARRY3`\u2013`CARRY1`; `R1`\u2013`CARRY3`\n"
+                  "`U2.ENX`, `U9.ENT`, `UH1.bin`, `0.5`, `U2.ENT`\n"
+                  "## How it works\n"),
               "u.md", *design)) ==
           std::vector<std::string>{"3: bad run U5\u2013U1", "3: bad run U1\u2013R2",
                                    "3: U2 has no pin ENX", "3: unknown reference 'U9'"});
@@ -238,6 +239,22 @@ TEST_CASE("manual: part pin names", "[manual]") {
     CHECK(riot.size() == 40);
     CHECK(std::ranges::find(riot, "CS1") != riot.end());
     CHECK(PartPinNames(*FindPart("R")).empty());
+}
+
+TEST_CASE("manual: one-pin Nets", "[manual]") {
+    const auto design = LoadNetlist("part U1 74LS04\nnet A U1.1 U1.4\nnet LONE U1.2\n"
+                                    "net VCC U1.14 U1.3\nnet GND U1.7 U1.5\n",
+                                    "t.bwn");
+    REQUIRE(design.has_value());
+    const auto warned = CheckOnePinNets(**design, nullptr, nullptr);
+    REQUIRE(warned.size() == 1);
+    CHECK(warned[0].message == "net LONE reaches one pin and no manual names it");
+    CHECK(warned[0].severity == Severity::Warning);
+    const Markdown service = ParseMarkdown("## Test points\n| pin | Net |\n|---|---|\n"
+                                           "| `U1.2` | `LONE` |\n");
+    CHECK(CheckOnePinNets(**design, nullptr, &service).empty());
+    const Markdown user = ParseMarkdown("`LONE` is a test point.\n");
+    CHECK(CheckOnePinNets(**design, &user, nullptr).empty());
 }
 
 TEST_CASE("manual: checks", "[manual]") {

@@ -320,7 +320,6 @@ net VCC        UH1.CS3 UH5.CS3 UH3.CS3 UH4.CS3 UH7.CS3 UH2.CS3 UH6.CS3
 net VCC        UI8.VCC UI7.VCC UI6.VCC UI5.VCC UI4.VCC UI3.VCC UI2.VCC UI1.VCC UJ8.VCC UJ7.VCC UJ6.VCC UJ5.VCC UJ4.VCC UJ3.VCC UJ2.VCC UJ1.VCC UH1.VCC UH5.VCC UH3.VCC UH4.VCC UH7.VCC UH8.VCC UH9.VCC UJ9.VCC UG3.VCC UI9.VCC UH2.VCC UH6.VCC
 net VCC        UA1.CKA                                           # UA1 pin 14: unconnected on the board (floats high)
 net VCC        X1.VCC J8.VCC R46.1 R12.1 R39.1 R43.1 R41.1 R27.1 R40.1 R44.1 R45.1
-net CHASSIS    J1.CHASSIS                                        # chassis ground symbol
 net PHI2       UF3.PHI2 UB8.PHI2 UA5.PHI2 UG8.PHI2 UG3.4B
 net G3_11      UG3.4Y UG3.3B
 net BPHI2      UG3.3Y                                            # "B02": off-sheet arrow; PHI2 through two NANDs
@@ -357,14 +356,9 @@ net SEL0_N     UG3.1A UI9.1G_N                                   # I9 1G (GY): $
 net SEL1_N     UG2.Y1_N                                          # also off-sheet arrow
 net SEL1_N     UG3.1B UI9.2G_N                                   # I9 2G (GZ): $1000-$1FFF; to G3 pin 2 through the 8K jumper (closed), R12 10K pull-up and TP5-2 on G3 pin 2
 net SEL2_N     UG2.Y2_N
-net SEL3_N     UG2.Y3_N
-net SEL4_N     UG2.Y4_N
-net SEL5_N     UG2.Y5_N
-net SEL6_N     UG2.Y6_N
 net SEL7_N     UG2.Y7_N
 net SEL8_N     UG2.Y8_N UE5.4A
 net SEL9_N     UG2.Y9_N
-net SEL10_N    UG2.Y10_N                                         # $A000 ("SEL10" on J4)
 net SEL11_N    UG2.Y11_N                                         # $B000 ("SEL11" on J4)
 net SELC_N     UG2.Y12_N UG4.2B                                  # off-sheet arrow
 net SELC_N     UH1.CS1 UH5.CS1

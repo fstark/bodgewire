@@ -42,6 +42,10 @@ std::vector<Diagnostic> CheckServiceManual(const Markdown& doc, std::string_view
                                            const LoadedCircuit& design);
 std::vector<Diagnostic> CheckDatasheet(const Markdown& doc, std::string_view file,
                                        const PartInfo& part);
+// A Warning per Net of `design` reaching one pin that neither manual (null: none) names in a code
+// span (P8j): a pin that goes nowhere has no Net name the player could meet but there.
+std::vector<Diagnostic> CheckOnePinNets(const LoadedCircuit& design, const Markdown* user,
+                                        const Markdown* service);
 
 // The Parts on a Machine, in netlist order of first use, each with its references in netlist
 // order (P6e: the binder's datasheet index).
