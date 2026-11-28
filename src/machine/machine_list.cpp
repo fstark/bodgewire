@@ -70,6 +70,16 @@ fs::path Canonical(const fs::path& path) {
 
 }  // namespace
 
+std::string PuzzleName(const fs::path& file) {
+    const std::string stem = file.stem().string();
+    std::size_t digits = 0;
+    while (digits < stem.size() && IsDigit(stem[digits])) {
+        ++digits;
+    }
+    return digits > 0 && digits + 1 < stem.size() && stem[digits] == '-' ? stem.substr(digits + 1)
+                                                                         : stem;
+}
+
 MachineList ListMachines(const fs::path& machinesDir) {
     MachineList list;
     for (const fs::path& dir : Entries(machinesDir)) {
@@ -120,6 +130,16 @@ MachineList ListMachines(const fs::path& machinesDir) {
                                          Severity::Warning,
                                          "machine '" + puzzle->machine + "' is not this " +
                                              "directory's '" + stem + "': left out"});
+                continue;
+            }
+            const std::string puzzleName = PuzzleName(file);
+            const auto same = std::ranges::find_if(machine.puzzles, [&](const PuzzleEntry& p) {
+                return PuzzleName(p.file) == puzzleName;
+            });
+            if (same != machine.puzzles.end()) {
+                list.problems.push_back(
+                    {file.filename().string(), 0, Severity::Warning,
+                     "the same name as " + same->file.filename().string() + ": left out"});
                 continue;
             }
             machine.puzzles.push_back({file, std::move(puzzle->title), std::move(puzzle->brief)});

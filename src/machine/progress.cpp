@@ -10,6 +10,20 @@ namespace bw {
 namespace {
 
 constexpr std::string_view kHeader = "# Bodgewire progress\n";
+constexpr std::string_view kOldPuzzles = "/puzzles/";
+
+std::string Key(std::string_view machineDir, const std::filesystem::path& file) {
+    return std::string(machineDir) + '/' + PuzzleName(file);
+}
+
+// "030-dice/puzzles/01-dead-button.bwp" (until 2026-11-28) → "030-dice/dead-button".
+std::string Upgraded(std::string_view key) {
+    const auto at = key.find(kOldPuzzles);
+    if (at == std::string_view::npos || !key.ends_with(".bwp")) {
+        return std::string(key);
+    }
+    return Key(key.substr(0, at), std::filesystem::path(key.substr(at + kOldPuzzles.size())));
+}
 
 }  // namespace
 
@@ -27,15 +41,14 @@ Progress Progress::Parse(std::string_view text) {
     for (const std::string_view line : Split(text, '\n')) {
         const std::string_view key = Trim(line);
         if (!key.empty() && !key.starts_with('#')) {
-            progress.add(std::string(key));
+            progress.add(Upgraded(key));
         }
     }
     return progress;
 }
 
 std::string ProgressKey(const MachineEntry& machine, const PuzzleEntry& puzzle) {
-    return machine.dir.filename().generic_string() + "/puzzles/" +
-           puzzle.file.filename().generic_string();
+    return Key(machine.dir.filename().generic_string(), puzzle.file);
 }
 
 std::optional<std::string> ProgressKey(const MachineList& list, const std::filesystem::path& file) {

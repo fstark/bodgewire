@@ -10,6 +10,11 @@
 
 namespace bw {
 
+// A Puzzle file's name without its place: "01-dead-button.bwp" and "015-dead-button.bwp" are
+// "dead-button" (the stem after leading digits and a '-'; the whole stem without them). Unique
+// among a Machine's Puzzles; the Progress keys a Puzzle by it.
+std::string PuzzleName(const std::filesystem::path& file);
+
 // What the launcher lists (P7a).
 struct PuzzleEntry {
     std::filesystem::path file;  // machines/NNN-name/puzzles/NN-name.bwp
@@ -34,8 +39,9 @@ struct MachineList {
 
 // Each subdirectory of `machinesDir` with exactly one .bwn is a Machine; others (a .DS_Store, a
 // directory without a netlist) are skipped silently, two netlists are a problem. Its Puzzles are
-// puzzles/*.bwp read by ReadPuzzleFile (no puzzles/: none); one that fails, or names another
-// Machine than its netlist's stem, is a problem, left out. The same for its Vetting Script,
+// puzzles/*.bwp read by ReadPuzzleFile (no puzzles/: none); one that fails, names another
+// Machine than its netlist's stem, or has the PuzzleName of an earlier one, is a problem, left
+// out. The same for its Vetting Script,
 // puzzles/random.bwr (ReadVettingScriptFile); a Machine without one is no problem. Never throws:
 // a missing or unreadable directory lists nothing.
 MachineList ListMachines(const std::filesystem::path& machinesDir);

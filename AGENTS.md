@@ -46,7 +46,7 @@ Before writing a small helper, look here: most of the project's duplicated code 
 
 - Text ([src/text/text.hpp](src/text/text.hpp), below every layer): `ReadTextFile`, `SplitWords`, `Split(text, ',')`, `Trim`, `IsSpace`, `IsDigit`, `ParseDecimal` (`N` or `N.N` before a unit), `ParsePercent`.
 - Units: durations and frequencies ([src/sim/time.hpp](src/sim/time.hpp): `ParseDuration`, `ParseFrequencyPeriod`); ohms and farads ([src/netlist/units.hpp](src/netlist/units.hpp)).
-- A Puzzle's and a Vetting Script's lines ([src/machine/puzzle.hpp](src/machine/puzzle.hpp)): `QuotedValue` (`title "…"`), `IsMachineName`; a Fault back to its `fault …` line: `FormatFault`.
+- A Puzzle's and a Vetting Script's lines ([src/machine/puzzle.hpp](src/machine/puzzle.hpp)): `QuotedValue` (`title "…"`), `IsMachineName`; a Fault back to its `fault …` line: `FormatFault`. A Puzzle file's name without its number (`01-dead-button.bwp` → `dead-button`, the Progress key's): `PuzzleName` ([src/machine/machine_list.hpp](src/machine/machine_list.hpp)).
 - Scripted inputs on a Simulator stepped by hand ([src/machine/input_edges.hpp](src/machine/input_edges.hpp)): `InputEdges` (presses, typing, knobs at a time, from `ParsePress`, `ParseTyping`, `ParseKnob`), `RunTo` (to a time, a millisecond at a time, each edge applied at its own).
 - Random numbers the same on every platform: `Rng` ([src/sim/rng.hpp](src/sim/rng.hpp)); never `std::mt19937` with a distribution where a result must repeat.
 - References and pins ([src/netlist/parser.hpp](src/netlist/parser.hpp)): `ParsePinRef` ("U3.7"), `IsReference`; finding a pin on a Part: `FindPin`, `PinNet` ([src/netlist/builder.hpp](src/netlist/builder.hpp)).

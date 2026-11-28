@@ -62,6 +62,30 @@ TEST_CASE("machine list: a directory", "[machine]") {
     fs::remove_all(root);
 }
 
+TEST_CASE("machine list: a Puzzle's name", "[machine]") {
+    CHECK(PuzzleName("machines/030-dice/puzzles/01-dead-button.bwp") == "dead-button");
+    CHECK(PuzzleName("015-dead-button.bwp") == "dead-button");
+    CHECK(PuzzleName("dead-button.bwp") == "dead-button");
+    CHECK(PuzzleName("01-.bwp") == "01-");
+    CHECK(PuzzleName("01.bwp") == "01");
+
+    const fs::path root = fs::temp_directory_path() / "bw_machine_list_name";
+    fs::remove_all(root);
+    WriteFile(root / "010-a/a.bwn", "");
+    WriteFile(root / "010-a/puzzles/01-x.bwp", "machine a\ntitle \"X\"\nbrief \"Ex\"\n");
+    WriteFile(root / "010-a/puzzles/015-x.bwp", "machine a\ntitle \"X2\"\nbrief \"Ex\"\n");
+    WriteFile(root / "020-b/b.bwn", "");
+    WriteFile(root / "020-b/puzzles/01-x.bwp", "machine b\ntitle \"X\"\nbrief \"Ex\"\n");
+    const MachineList list = ListMachines(root);
+    REQUIRE(list.machines.size() == 2);
+    REQUIRE(list.machines[0].puzzles.size() == 1);  // 015-x left out: the same name as 01-x
+    CHECK(list.machines[0].puzzles[0].title == "X");
+    CHECK(list.machines[1].puzzles.size() == 1);  // another Machine's x is no problem
+    REQUIRE(list.problems.size() == 1);
+    CHECK(list.problems[0].message.find("01-x.bwp") != std::string::npos);
+    fs::remove_all(root);
+}
+
 TEST_CASE("machine list: the Vetting Script", "[machine]") {
     const fs::path root = fs::temp_directory_path() / "bw_machine_list_random";
     fs::remove_all(root);

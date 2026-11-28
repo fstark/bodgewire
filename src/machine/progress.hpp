@@ -12,8 +12,9 @@
 
 namespace bw {
 
-// The Puzzles the player has repaired (P8e), each by its key: its path under machines/,
-// "030-dice/puzzles/01-dead-button.bwp" ('/' on every platform).
+// The Puzzles the player has repaired (P8e), each by its key: its Machine's directory name and
+// its PuzzleName, "030-dice/dead-button", so a Puzzle renumbered keeps its tick (renamed, it
+// loses it).
 class Progress {
 public:
     bool has(std::string_view key) const { return keys_.contains(key); }
@@ -25,14 +26,16 @@ public:
 
     // "# Bodgewire progress\n", then one key a line, sorted.
     std::string text() const;
-    // Each line trimmed; blank and '#' lines skipped; duplicates once. Never fails.
+    // Each line trimmed; blank and '#' lines skipped; duplicates once. A key in the form saved
+    // until 2026-11-28, the path under machines/ ("030-dice/puzzles/01-dead-button.bwp"), is
+    // read as today's ("030-dice/dead-button"), whatever its number. Never fails.
     static Progress Parse(std::string_view text);
 
 private:
     std::set<std::string, std::less<>> keys_;
 };
 
-// A listed Puzzle's key: its Machine's directory name, "puzzles", its file name. No file system
+// A listed Puzzle's key: its Machine's directory name, '/', its PuzzleName. No file system
 // access: the Launcher calls it per post-it per frame.
 std::string ProgressKey(const MachineEntry& machine, const PuzzleEntry& puzzle);
 // The key of `file` when it is one of the list's Puzzles (EntryOf); nullopt for the working

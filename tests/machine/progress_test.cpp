@@ -1,6 +1,8 @@
 #include "machine/progress.hpp"
 
 #include <filesystem>
+#include <functional>
+#include <set>
 #include <string>
 
 #include <catch2/catch_test_macros.hpp>
@@ -20,17 +22,27 @@ using test::WriteFile;
 
 TEST_CASE("progress: text", "[machine]") {
     Progress progress;
-    progress.add("020-b/puzzles/01-y.bwp");
-    progress.add("010-a/puzzles/02-x.bwp");
-    CHECK(progress.text() ==
-          "# Bodgewire progress\n010-a/puzzles/02-x.bwp\n020-b/puzzles/01-y.bwp\n");
+    progress.add("020-b/y");
+    progress.add("010-a/x");
+    CHECK(progress.text() == "# Bodgewire progress\n010-a/x\n020-b/y\n");
     CHECK(Progress::Parse(progress.text()).keys() == progress.keys());
-    const Progress parsed =
-        Progress::Parse("\n# a comment\n  020-b/puzzles/01-y.bwp \r\n010-a/puzzles/02-x.bwp\n\n"
-                        "020-b/puzzles/01-y.bwp");
+    const Progress parsed = Progress::Parse("\n# a comment\n  020-b/y \r\n010-a/x\n\n020-b/y");
     CHECK(parsed.keys() == progress.keys());
     CHECK(Progress::Parse("").empty());
     CHECK(Progress::Parse("# Bodgewire progress\n").empty());
+}
+
+TEST_CASE("progress: a key saved until 2026-11-28", "[machine]") {
+    // The path under machines/, whatever the Puzzle's number then or now.
+    const Progress parsed =
+        Progress::Parse("# Bodgewire progress\n010-counter/puzzles/03-too-fast.bwp\n"
+                        "130-bw2001/puzzles/145-slanted-banner.bwp\n130-bw2001/slanted-banner\n"
+                        "010-counter/puzzles/notes.txt\n");
+    CHECK(parsed.keys() == std::set<std::string, std::less<>>{"010-counter/puzzles/notes.txt",
+                                                              "010-counter/too-fast",
+                                                              "130-bw2001/slanted-banner"});
+    CHECK(parsed.text() == "# Bodgewire progress\n010-counter/puzzles/notes.txt\n"
+                           "010-counter/too-fast\n130-bw2001/slanted-banner\n");
 }
 
 TEST_CASE("progress: add, merge and clear", "[machine]") {
@@ -59,10 +71,9 @@ TEST_CASE("progress: key", "[machine]") {
     const MachineList list = ListMachines(root);
     REQUIRE(list.machines.size() == 1);
     REQUIRE(list.machines[0].puzzles.size() == 1);
-    CHECK(ProgressKey(list, root / "010-a/puzzles/01-x.bwp") == "010-a/puzzles/01-x.bwp");
-    CHECK(ProgressKey(list, root / "010-a/manuals/../puzzles/01-x.bwp") ==
-          "010-a/puzzles/01-x.bwp");
-    CHECK(ProgressKey(list.machines[0], list.machines[0].puzzles[0]) == "010-a/puzzles/01-x.bwp");
+    CHECK(ProgressKey(list, root / "010-a/puzzles/01-x.bwp") == "010-a/x");
+    CHECK(ProgressKey(list, root / "010-a/manuals/../puzzles/01-x.bwp") == "010-a/x");
+    CHECK(ProgressKey(list.machines[0], list.machines[0].puzzles[0]) == "010-a/x");
     CHECK_FALSE(ProgressKey(list, root / "010-a/a.bwn").has_value());
     CHECK_FALSE(ProgressKey(list, root / "010-a/puzzles/random.bwr").has_value());
     CHECK_FALSE(ProgressKey(list, root / "elsewhere/01-x.bwp").has_value());
@@ -79,8 +90,8 @@ TEST_CASE("progress: file", "[machine]") {
     CHECK(missing->empty());
 
     Progress progress;
-    progress.add("010-a/puzzles/01-x.bwp");
-    progress.add("020-b/puzzles/03-z.bwp");
+    progress.add("010-a/x");
+    progress.add("020-b/z");
     REQUIRE(WriteProgressFile(file, progress).has_value());
     CHECK_FALSE(fs::exists(root / "progress.txt.tmp"));
     const auto read = ReadProgressFile(file);
