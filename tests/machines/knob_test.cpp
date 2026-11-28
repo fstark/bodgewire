@@ -227,7 +227,7 @@ std::string ReadingAt(LoadedCircuit& loaded, double knob, std::uint64_t seed = 1
 
 TEST_CASE("knob: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"dead_knob", "runaway", "single_figures", "odd_tens", "four_to_seven",
-                             "ones_and_zeros"}) {
+                             "ones_and_zeros", "eight_and_up"}) {
         INFO(name);
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
@@ -396,5 +396,46 @@ TEST_CASE("knob: ones_and_zeros repaired the other way round", "[machines]") {
         CHECK(ReadingAt(*loaded, 0.80) == "19");  // the hidden Fault repaired first changes nothing
     }
     REQUIRE(machine.resolder({"U7", "1"}));
+    CHECK(machine.completed());
+}
+
+TEST_CASE("knob: eight_and_up", "[machines]") {
+    Machine machine = LoadPuzzle("eight_and_up");
+    CHECK_FALSE(machine.completed());
+    const auto symptom = [](LoadedCircuit& loaded) {
+        for (const std::uint64_t seed : {1, 2, 3}) {
+            INFO("seed " << seed);
+            CHECK(ReadingAt(loaded, 0.0, seed) == "08");   // bit 3 set: 0 → 8
+            CHECK(ReadingAt(loaded, 0.47, seed) == "4 ");  // 7 → 15, blank
+            CHECK(ReadingAt(loaded, 0.80, seed) == "79");  // 9 already has it
+        }
+    };
+    {
+        auto loaded = Build(machine);
+        CHECK(PinNet(*loaded, "U12", "D") != loaded->nets.at("L3"));  // the leg is off its pad
+        symptom(*loaded);
+    }
+    REQUIRE(machine.resolder({"U12", "6"}));
+    CHECK_FALSE(machine.completed());
+    {
+        auto loaded = Build(machine);
+        symptom(*loaded);  // L3 is stuck high at U10 too: no change
+    }
+    REQUIRE(machine.swap("U10"));
+    CHECK(machine.completed());
+    auto loaded = Build(machine);
+    CHECK(ReadingAt(*loaded, 0.0) == "00");
+    CHECK(ReadingAt(*loaded, 0.47) == "47");
+}
+
+TEST_CASE("knob: eight_and_up repaired the other way round", "[machines]") {
+    Machine machine = LoadPuzzle("eight_and_up");
+    REQUIRE(machine.swap("U10"));
+    CHECK_FALSE(machine.completed());
+    {
+        auto loaded = Build(machine);
+        CHECK(ReadingAt(*loaded, 0.0) == "08");  // the leg still floats: no change
+    }
+    REQUIRE(machine.resolder({"U12", "6"}));
     CHECK(machine.completed());
 }
