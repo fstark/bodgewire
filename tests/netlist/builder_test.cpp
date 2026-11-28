@@ -1,5 +1,6 @@
 #include "netlist/builder.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -13,6 +14,7 @@
 
 #include "../paths.hpp"
 #include "parts/mos6530.hpp"
+#include "parts/oscillator.hpp"
 #include "parts/ram2114.hpp"
 #include "sim/simulator.hpp"
 
@@ -622,6 +624,20 @@ TEST_CASE("builder: switch Faults reach the switch", "[netlist]") {
     sim.powerOn(1);
     sim.runUntil(1_us);
     CHECK(sim.value((*result)->nets.at("BTN_N")) == Zero);
+}
+
+TEST_CASE("builder: a Wrong Clock reaches the oscillator", "[netlist]") {
+    const auto netlist = ParseNetlist("part X1 OSC freq=1MHz\nnet CLK X1.OUT\n", "t.bwn");
+    REQUIRE(netlist.has_value());
+    const WrongClock clocks[] = {{"X1", 333'333}};
+    auto result = BuildCircuit(*netlist, {.clocks = clocks});
+    REQUIRE(result.has_value());
+    const auto* oscillator = dynamic_cast<const Oscillator*>((*result)->components.at("X1"));
+    REQUIRE(oscillator != nullptr);
+    CHECK(oscillator->period() == 333'333);
+    const auto part = std::ranges::find((*result)->parts, "X1", &LoadedPart::reference);
+    REQUIRE(part != (*result)->parts.end());
+    CHECK(part->marking == "1MHz");  // the can keeps its design marking
 }
 
 TEST_CASE("builder: SwitchOf", "[netlist]") {

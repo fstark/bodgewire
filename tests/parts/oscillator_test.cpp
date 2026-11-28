@@ -75,6 +75,18 @@ TEST_CASE("oscillator: period and duty", "[parts]") {
     }
 }
 
+TEST_CASE("oscillator: setPeriod", "[parts]") {
+    Circuit circuit;
+    auto& osc = circuit.add<Oscillator>("X1", 1_us);
+    osc.setPeriod(333'333);  // a Wrong Clock at 3 MHz (P8k)
+    CHECK(osc.period() == 333'333);
+    const NetId out = circuit.addNet("CLK");
+    circuit.connect(osc, Oscillator::kOut, out);
+    circuit.finalize();
+    CheckDuty(circuit, out, 333'333, 166'666, 166'667);
+    CHECK_THROWS(osc.setPeriod(1));
+}
+
 TEST_CASE("catalogue: OSC parameter errors", "[parts]") {
     CHECK(CreateError({}) == "OSC needs freq=<frequency>");
     CHECK(CreateError({{"foo", "1"}}) == "OSC: unknown parameter 'foo'");

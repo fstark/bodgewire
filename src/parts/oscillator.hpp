@@ -13,6 +13,9 @@ namespace bw {
 class Oscillator final : public Component {
 public:
     Oscillator(std::string reference, Time period);  // Check(period >= 2)
+    // Another period, as a Wrong Clock gives it (P8k): before powerOn. Check(period >= 2).
+    void setPeriod(Time period);
+    Time period() const { return highTime_ + lowTime_; }
     static constexpr PinIndex kOut = 7;
 
     void powerOn(PowerOnContext& ctx) override;

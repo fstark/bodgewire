@@ -40,6 +40,7 @@ bool Repair(Machine& machine, const FaultDecl& fault) {
                           [&](const StuckAtDecl& f) { return machine.swap(f.reference); },
                           [&](const CellDecl& f) { return machine.swap(f.pin.reference); },
                           [&](const SwitchDecl& f) { return machine.swap(f.reference); },
+                          [&](const ClockDecl& f) { return machine.swap(f.reference); },
                           [&](const CrackDecl&) {
                               const Crack crack = machine.cracks().front();
                               return machine.mend(crack.layer, crack.at);

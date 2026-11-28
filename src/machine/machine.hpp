@@ -43,6 +43,7 @@ struct FaultSet {
     std::vector<PinRef> dry;        // dry Joints, pin numbers
     std::vector<StuckCell> cells;   // stuck cells and columns inside memory chips
     std::vector<StuckSwitch> switches;
+    std::vector<WrongClock> clocks;  // oscillator cans at another frequency (P8k)
 };
 
 // dir/<machine>.bwn + dir/board/<machine>.kicad_pcb, `dir` the Machine's directory
@@ -57,8 +58,8 @@ public:
     std::string_view name() const {
         return name_;
     }  // never the Puzzle's file name: it names the Fault
-    // Chip or switch swap: removes its stuck pins, cells, columns and switch Fault; false if no
-    // such Component.
+    // Chip, switch or can swap: removes its stuck pins, cells, columns, switch Fault and Wrong
+    // Clock; false if no such Component.
     bool swap(std::string_view reference);
     bool mend(Layer layer, Point at);  // removes cracks and Cuts within 1 mm
     bool cut(Layer layer, Point at);   // false: no straight Trace there in the current Copper
@@ -92,8 +93,8 @@ public:
     std::span<const WireEnds> bridges() const { return faults_.bridges; }
     LoadResult build() const;  // electrical Circuit with the current Faults
     // Repair Validation (P8c): the Machine builds the Golden Machine's Circuit. No stuck pin,
-    // cell, column, switch Fault or dry Joint left, and the current Copper's Wiring is the
-    // fault-free Board's. Cracks, Solder Bridges, Cuts and Bodge Wires count only through it.
+    // cell, column, switch Fault, Wrong Clock or dry Joint left, and the current Copper's Wiring is
+    // the fault-free Board's. Cracks, Solder Bridges, Cuts and Bodge Wires count only through it.
     bool completed() const;
     const Board& board() const { return board_; }             // with cracks, Cuts and Bodge Wires
     const Board& pristineBoard() const { return pristine_; }  // fault-free Copper, for the view
@@ -134,6 +135,7 @@ private:
     std::expected<PinRef, std::string> resolve(const JointDecl& decl) const;
     std::expected<StuckCell, std::string> resolve(const CellDecl& decl) const;
     std::expected<StuckSwitch, std::string> resolve(const SwitchDecl& decl) const;
+    std::expected<WrongClock, std::string> resolve(const ClockDecl& decl) const;
     // A pin with a pad on the Board, or "unknown reference 'U99'", "U3 (74LS161) has no pin XX".
     std::expected<void, std::string> knownPad(const PinRef& pin) const;
     friend std::expected<Machine, std::vector<Diagnostic>>

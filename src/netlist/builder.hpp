@@ -74,6 +74,12 @@ struct StuckSwitch {
     bool closed;
 };
 
+// Wrong Clock (P8k): the oscillator `reference` runs at `period`, whatever its freq=.
+struct WrongClock {
+    std::string reference;
+    Time period;
+};
+
 // What a build applies besides the netlist: the Faults that live in Components rather than in the
 // Copper, and the chips the Board leaves without power.
 struct BuildFaults {
@@ -83,6 +89,7 @@ struct BuildFaults {
     std::span<const std::string> unpowered;
     std::span<const StuckCell> cells;
     std::span<const StuckSwitch> switches;
+    std::span<const WrongClock> clocks;
 };
 
 LoadResult BuildCircuit(const Netlist& netlist,

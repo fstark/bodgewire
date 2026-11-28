@@ -93,8 +93,8 @@ TEST_CASE("puzzle: errors", "[machine]") {
     CHECK(Errors("machine ../x\n") == Lines{"0: no machine line", "1: bad machine name '../x'"});
     CHECK(Errors("machine m\nfoo\n") == Lines{"2: unknown directive 'foo'"});
     CHECK(Errors("machine m\nfault\nfault short U1.1\n") ==
-          Lines{"2: expected: fault stuck|crack|bridge|joint|cell|column|switch ...",
-                "3: expected: fault stuck|crack|bridge|joint|cell|column|switch ..."});
+          Lines{"2: expected: fault stuck|crack|bridge|joint|cell|column|switch|clock ...",
+                "3: expected: fault stuck|crack|bridge|joint|cell|column|switch|clock ..."});
     CHECK(Errors("machine m\nfault stuck U1.QA\nfault stuck U1 0\nfault stuck U1.QA 2\n") ==
           Lines{"2: expected: fault stuck REF.PIN 0|1 [input]",
                 "3: expected: fault stuck REF.PIN 0|1 [input]",
@@ -111,7 +111,7 @@ TEST_CASE("puzzle: errors", "[machine]") {
           Lines{"2: bad position '101%'", "3: bad position '1.234%'", "4: bad position '%'",
                 "5: bad position '5.%'", "6: bad position '-5%'"});
     CHECK(Errors("machine m\nfault frob\n") ==
-          Lines{"2: expected: fault stuck|crack|bridge|joint|cell|column|switch ..."});
+          Lines{"2: expected: fault stuck|crack|bridge|joint|cell|column|switch|clock ..."});
     CHECK(Errors("machine m\nfault bridge U1.7\nfault bridge U17 U1.8\nfault bridge U1. U1.8\n") ==
           Lines{"2: expected: fault bridge REF.PIN REF.PIN",
                 "3: expected: fault bridge REF.PIN REF.PIN",
@@ -185,6 +185,19 @@ TEST_CASE("puzzle: switch", "[machine]") {
     CHECK(Errors("machine m\nfault switch SW1\nfault switch SW1 shut\n"
                  "fault switch SW1 open now\n") ==
           Lines{"2: " + expected, "3: " + expected, "4: " + expected});
+}
+
+TEST_CASE("puzzle: clock", "[machine]") {
+    const auto result = ParsePuzzle("machine m\nfault clock X1 3MHz\n", "t.bwp");
+    REQUIRE(result.has_value());
+    REQUIRE(result->faults.size() == 1);
+    CHECK(FaultAt<ClockDecl>(*result, 0).line == 2);
+    CHECK(FaultAt<ClockDecl>(*result, 0).reference == "X1");
+    CHECK(FaultAt<ClockDecl>(*result, 0).frequency == "3MHz");
+    CHECK(
+        Errors("machine m\nfault clock X1\nfault clock X1 3MHz now\nfault clock X1 3Mhz\n") ==
+        Lines{"2: expected: fault clock REF FREQUENCY", "3: expected: fault clock REF FREQUENCY",
+              "4: bad frequency '3Mhz': expected a number then Hz, kHz or MHz, e.g. 14.31818MHz"});
 }
 
 TEST_CASE("puzzle: cell and column", "[machine]") {
@@ -266,6 +279,7 @@ TEST_CASE("puzzle: FormatFault of each kind", "[machine]") {
           "fault column U2.D0 rom 1");
     CHECK(FormatFault(SwitchDecl{0, "SW1", true}) == "fault switch SW1 closed");
     CHECK(FormatFault(SwitchDecl{0, "SW1", false}) == "fault switch SW1 open");
+    CHECK(FormatFault(ClockDecl{0, "X1", "1.9MHz"}) == "fault clock X1 1.9MHz");
 }
 
 TEST_CASE("puzzle: every Puzzle's faults format back", "[machine]") {

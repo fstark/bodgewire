@@ -15,7 +15,9 @@
 #include "machine/electrical.hpp"
 #include "parts/memory_cells.hpp"
 #include "parts/mos6530.hpp"
+#include "parts/oscillator.hpp"
 #include "parts/rom.hpp"
+#include "sim/time.hpp"
 #include "text/text.hpp"
 
 namespace bw {
@@ -63,6 +65,10 @@ void Add(FaultSet& set, const StuckSwitch& stuck) {
     std::erase_if(set.switches,
                   [&](const StuckSwitch& s) { return s.reference == stuck.reference; });
     set.switches.push_back(stuck);
+}
+void Add(FaultSet& set, const WrongClock& clock) {
+    std::erase_if(set.clocks, [&](const WrongClock& c) { return c.reference == clock.reference; });
+    set.clocks.push_back(clock);
 }
 
 }  // namespace
@@ -316,6 +322,29 @@ std::expected<StuckSwitch, std::string> Machine::resolve(const SwitchDecl& decl)
     return StuckSwitch{decl.reference, decl.closed};
 }
 
+std::expected<WrongClock, std::string> Machine::resolve(const ClockDecl& decl) const {
+    const LoadedPart* part = PartOf(*designCircuit_, decl.reference);
+    if (part == nullptr) {
+        return std::unexpected("unknown reference '" + decl.reference + "'");
+    }
+    const auto component = designCircuit_->components.find(decl.reference);
+    const auto* oscillator = component != designCircuit_->components.end()
+                                 ? dynamic_cast<const Oscillator*>(component->second)
+                                 : nullptr;
+    if (oscillator == nullptr) {
+        return std::unexpected("clock " + decl.reference + ": oscillators only");
+    }
+    const auto period = ParseFrequencyPeriod(decl.frequency);
+    if (!period) {
+        return std::unexpected("clock " + decl.reference + ": " + period.error());
+    }
+    if (*period == oscillator->period()) {
+        return std::unexpected("clock " + decl.reference + ": " + decl.frequency +
+                               " is its own frequency");
+    }
+    return WrongClock{decl.reference, *period};
+}
+
 bool Machine::swap(std::string_view reference) {
     if (!designCircuit_->components.contains(reference)) {
         return false;
@@ -323,6 +352,7 @@ bool Machine::swap(std::string_view reference) {
     std::erase_if(faults_.stuck, [&](const StuckPin& s) { return s.reference == reference; });
     std::erase_if(faults_.cells, [&](const StuckCell& c) { return c.reference == reference; });
     std::erase_if(faults_.switches, [&](const StuckSwitch& s) { return s.reference == reference; });
+    std::erase_if(faults_.clocks, [&](const WrongClock& c) { return c.reference == reference; });
     return true;
 }
 
@@ -545,12 +575,13 @@ LoadResult Machine::build() const {
                         {.stuck = faults_.stuck,
                          .unpowered = power_.unpowered,
                          .cells = faults_.cells,
-                         .switches = faults_.switches});
+                         .switches = faults_.switches,
+                         .clocks = faults_.clocks});
 }
 
 bool Machine::completed() const {
     if (!faults_.stuck.empty() || !faults_.cells.empty() || !faults_.switches.empty() ||
-        !faults_.dry.empty()) {
+        !faults_.clocks.empty() || !faults_.dry.empty()) {
         return false;
     }
     if (faults_.cracks.empty() && faults_.bridges.empty() && cuts_.empty() && wires_.empty()) {

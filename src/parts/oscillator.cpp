@@ -33,9 +33,14 @@ std::vector<PinSpec> OscillatorPins() {
 }  // namespace
 
 Oscillator::Oscillator(std::string reference, Time period)
-    : Component(std::move(reference), OscillatorPins()), highTime_(period / 2),
-      lowTime_(period - period / 2) {
+    : Component(std::move(reference), OscillatorPins()) {
+    setPeriod(period);
+}
+
+void Oscillator::setPeriod(Time period) {
     Check(period >= 2, "oscillator: period must be >= 2 ps");
+    highTime_ = period / 2;
+    lowTime_ = period - period / 2;
 }
 
 void Oscillator::powerOn(PowerOnContext& ctx) {

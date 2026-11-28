@@ -16,6 +16,7 @@
 #include "parts/matrix_keyboard.hpp"
 #include "parts/membrane_keyboard.hpp"
 #include "parts/memory_cells.hpp"
+#include "parts/oscillator.hpp"
 #include "parts/resistor_network.hpp"
 #include "parts/switch.hpp"
 #include "sim/check.hpp"
@@ -61,9 +62,9 @@ class Builder {
 public:
     explicit Builder(const Netlist& netlist, std::span<const StuckPin> stuck,
                      std::span<const std::string> unpowered, std::span<const StuckCell> cells,
-                     std::span<const StuckSwitch> switches)
+                     std::span<const StuckSwitch> switches, std::span<const WrongClock> clocks)
         : netlist_(netlist), stuck_(stuck), unpowered_(unpowered), cells_(cells),
-          switches_(switches), loaded_(std::make_unique<LoadedCircuit>()) {}
+          switches_(switches), clocks_(clocks), loaded_(std::make_unique<LoadedCircuit>()) {}
 
     LoadResult build() {
         Circuit& circuit = loaded_->circuit;
@@ -141,6 +142,15 @@ public:
             Switch* sw = SwitchOf(*loaded_, s.reference);
             Check(sw != nullptr, "builder: switch Fault on a Part that is not a switch");
             sw->setFault(s.closed ? SwitchFault::StuckClosed : SwitchFault::NeverCloses);
+        }
+        // A Wrong Clock (P8k): the can's marking above stays its freq=.
+        for (const WrongClock& c : clocks_) {
+            const auto it = loaded_->components.find(c.reference);
+            auto* oscillator =
+                it != loaded_->components.end() ? dynamic_cast<Oscillator*>(it->second) : nullptr;
+            Check(oscillator != nullptr,
+                  "builder: Wrong Clock on a Part that is not an oscillator");
+            oscillator->setPeriod(c.period);
         }
         warnUnconnectedInputs();
         circuit.finalize();
@@ -558,6 +568,7 @@ private:
     std::span<const std::string> unpowered_;
     std::span<const StuckCell> cells_;
     std::span<const StuckSwitch> switches_;
+    std::span<const WrongClock> clocks_;
     std::unique_ptr<LoadedCircuit> loaded_;
     std::map<std::string, BuiltPart, std::less<>> placed_;  // by reference
     std::map<std::pair<std::string, PinIndex>, NetOfPin> pinNet_;
@@ -571,7 +582,9 @@ private:
 bool IsRail(std::string_view net) { return net == "GND" || net == "VCC"; }
 
 LoadResult BuildCircuit(const Netlist& netlist, const BuildFaults& faults) {
-    return Builder(netlist, faults.stuck, faults.unpowered, faults.cells, faults.switches).build();
+    return Builder(netlist, faults.stuck, faults.unpowered, faults.cells, faults.switches,
+                   faults.clocks)
+        .build();
 }
 
 LoadResult LoadNetlist(std::string_view text, std::string file) {

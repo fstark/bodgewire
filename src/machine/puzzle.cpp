@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "machine/repair.hpp"
+#include "sim/time.hpp"
 #include "text/text.hpp"
 
 namespace bw {
@@ -106,8 +107,10 @@ public:
             cell(number, tokens);
         } else if (tokens[0] == "fault" && tokens.size() >= 2 && tokens[1] == "switch") {
             switchFault(number, tokens);
+        } else if (tokens[0] == "fault" && tokens.size() >= 2 && tokens[1] == "clock") {
+            clockFault(number, tokens);
         } else if (tokens[0] == "fault") {
-            error(number, "expected: fault stuck|crack|bridge|joint|cell|column|switch ...");
+            error(number, "expected: fault stuck|crack|bridge|joint|cell|column|switch|clock ...");
         } else {
             error(number, "unknown directive '" + std::string(tokens[0]) + "'");
         }
@@ -222,6 +225,19 @@ private:
         puzzle_.faults.push_back(SwitchDecl{line, std::string(tokens[2]), tokens[3] == "closed"});
     }
 
+    // `fault clock REF FREQUENCY` (P8k): the frequency as an OSC's freq= takes it.
+    void clockFault(std::uint32_t line, const std::vector<std::string_view>& tokens) {
+        if (tokens.size() != 4 || tokens[2].empty()) {
+            error(line, "expected: fault clock REF FREQUENCY");
+            return;
+        }
+        if (const auto period = ParseFrequencyPeriod(tokens[3]); !period) {
+            error(line, period.error());
+            return;
+        }
+        puzzle_.faults.push_back(ClockDecl{line, std::string(tokens[2]), std::string(tokens[3])});
+    }
+
     // `fault cell REF.PIN [MEMORY] WORD 0|1` or `fault column REF.PIN [MEMORY] 0|1`.
     void cell(std::uint32_t line, const std::vector<std::string_view>& tokens) {
         const bool column = tokens[1] == "column";
@@ -306,6 +322,9 @@ std::string FormatFault(const FaultDecl& fault) {
             },
             [](const SwitchDecl& f) {
                 return std::format("fault switch {} {}", f.reference, f.closed ? "closed" : "open");
+            },
+            [](const ClockDecl& f) {
+                return std::format("fault clock {} {}", f.reference, f.frequency);
             },
         },
         fault);

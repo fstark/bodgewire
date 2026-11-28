@@ -13,6 +13,7 @@
 #include "board/copper.hpp"
 #include "machine/crack.hpp"
 #include "parts/mos6530.hpp"
+#include "parts/oscillator.hpp"
 #include "parts/ram2114.hpp"
 #include "runner/runner.hpp"
 #include "sim/simulator.hpp"
@@ -609,6 +610,43 @@ TEST_CASE("machine: a swap removes a switch Fault", "[machine]") {
     CHECK(fault() == SwitchFault::None);
 }
 
+TEST_CASE("machine: clock fault errors", "[machine]") {
+    Puzzle puzzle = LedComputer();
+    puzzle.faults = {ClockDecl{2, "X9", "3MHz"}, ClockDecl{3, "U3", "3MHz"},
+                     ClockDecl{4, "X1", "1MHz"}, ClockDecl{5, "X1", "3Mhz"}};
+    const std::string bad =
+        "bad frequency '3Mhz': expected a number then Hz, kHz or MHz, e.g. 14.31818MHz";
+    CHECK(Errors(puzzle) == Lines{"2: unknown reference 'X9'", "3: clock U3: oscillators only",
+                                  "4: clock X1: 1MHz is its own frequency", "5: clock X1: " + bad});
+    auto machine = LoadNetlistMachine(test::NetlistPath("led_computer"));
+    REQUIRE(machine.has_value());
+    CHECK(machine->check(ClockDecl{0, "U3", "3MHz"}).error() == "clock U3: oscillators only");
+    CHECK(machine->check(ClockDecl{0, "X1", "3Mhz"}).error() == "clock X1: " + bad);
+    CHECK(machine->check(ClockDecl{0, "X1", "3MHz"}).has_value());
+}
+
+TEST_CASE("machine: a swap removes a Wrong Clock", "[machine]") {
+    Puzzle puzzle = LedComputer();
+    puzzle.faults = {ClockDecl{2, "X1", "3MHz"}};
+    auto machine = LoadMachine(puzzle, Dir(puzzle));
+    REQUIRE(machine.has_value());
+    const auto period = [&] {
+        const auto built = machine->build();
+        REQUIRE(built.has_value());
+        return dynamic_cast<const Oscillator*>((*built)->components.at("X1"))->period();
+    };
+    CHECK(period() == 333'333);
+    CHECK_FALSE(machine->completed());
+    REQUIRE(machine->swap("U3"));
+    CHECK_FALSE(machine->completed());
+    REQUIRE(machine->swap("X1"));
+    CHECK(machine->completed());
+    CHECK(period() == 1'000'000);
+    machine->undoRepairs();
+    CHECK_FALSE(machine->completed());
+    CHECK(period() == 333'333);
+}
+
 TEST_CASE("machine: a swap removes the chip's memory Faults", "[machine]") {
     Puzzle puzzle = LedComputer();
     puzzle.faults = {CellDecl{2, {"U3", "IO1"}, 0x10, LogicValue::One},
@@ -762,7 +800,7 @@ TEST_CASE("machine: completed", "[machine]") {
 TEST_CASE("machine: completed needs every Component and Joint Fault gone", "[machine]") {
     Puzzle puzzle = LedComputer();
     puzzle.faults = {JointDecl{2, {"U4", "14"}}, CellDecl{3, {"U3", "IO1"}, 0x10, LogicValue::One},
-                     SwitchDecl{4, "SW1", true}};
+                     SwitchDecl{4, "SW1", true}, ClockDecl{5, "X1", "3MHz"}};
     auto machine = LoadMachine(puzzle, Dir(puzzle));
     REQUIRE(machine.has_value());
     CHECK_FALSE(machine->completed());
@@ -771,6 +809,8 @@ TEST_CASE("machine: completed needs every Component and Joint Fault gone", "[mac
     REQUIRE(machine->swap("U3"));
     CHECK_FALSE(machine->completed());
     REQUIRE(machine->swap("SW1"));
+    CHECK_FALSE(machine->completed());
+    REQUIRE(machine->swap("X1"));
     CHECK(machine->completed());
 }
 

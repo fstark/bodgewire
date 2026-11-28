@@ -53,8 +53,15 @@ struct SwitchDecl {
     bool closed;            // `closed`: stuck closed; `open`: never closes
 };
 
+struct ClockDecl {
+    std::uint32_t line;
+    std::string reference;  // an OSC
+    std::string frequency;  // as written: "3MHz", "1.9MHz" (ParseFrequencyPeriod)
+};
+
 // Any one Fault as written: a Puzzle's `fault` line, or Machine::inject's.
-using FaultDecl = std::variant<StuckAtDecl, CrackDecl, BridgeDecl, JointDecl, CellDecl, SwitchDecl>;
+using FaultDecl =
+    std::variant<StuckAtDecl, CrackDecl, BridgeDecl, JointDecl, CellDecl, SwitchDecl, ClockDecl>;
 std::uint32_t LineOf(const FaultDecl& fault);
 // The Fault's `fault …` line, as ParsePuzzle reads it back: "fault stuck U5.QD 0", "fault crack
 // R6.2 D5.2 51%" (two decimals at most), "fault cell U2.D3 ram $3F 0". Pins as the Fault has them.
