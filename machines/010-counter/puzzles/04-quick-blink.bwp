@@ -1,0 +1,5 @@
+# Quick blink: the oscillator can X1 runs at 3 MHz, though marked 1 MHz. Every counter counts right, so the LED blinks three times as often: about three times a second.
+machine counter
+title "Quick blink"
+brief "The LED blinks steadily, but about three times a second."
+fault clock X1 3MHz

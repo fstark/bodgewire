@@ -305,5 +305,5 @@ TEST_CASE("puzzle: every Puzzle's faults format back", "[machine]") {
             }
         }
     }
-    CHECK(faults == 121);
+    CHECK(faults == 124);
 }

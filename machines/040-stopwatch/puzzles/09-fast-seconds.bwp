@@ -1,0 +1,5 @@
+# Fast seconds: the oscillator can X1 runs at 3 MHz, though marked 1 MHz. The prescaler U1 divides by ten as it should, but from 3 MHz: the hundredths tick three times too fast, so the display reads about 3.00 after one second and rolls over from 9.99 every 3.3 s.
+machine stopwatch
+title "Fast seconds"
+brief "Press START: the seconds run far too fast. After one second the display already reads about 3.00."
+fault clock X1 3MHz

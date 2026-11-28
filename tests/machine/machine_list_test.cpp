@@ -107,10 +107,11 @@ TEST_CASE("machine list: the repository", "[machine]") {
     REQUIRE(list.machines.size() == 14);
     const MachineEntry& counter = list.machines.front();
     CHECK(counter.name == "Counter");
-    REQUIRE(counter.puzzles.size() == 3);
+    REQUIRE(counter.puzzles.size() == 4);
     CHECK(counter.puzzles[0].title == "Dark LED");
     CHECK(counter.puzzles[1].title == "Frozen LED");
     CHECK(counter.puzzles[2].title == "LED too fast");
+    CHECK(counter.puzzles[3].title == "Quick blink");
     const auto bw2001 = MachineIndexOf(list, test::NetlistPath("bw2001"));
     REQUIRE(bw2001);
     CHECK(list.machines[*bw2001].name == "BW-2001");
@@ -176,7 +177,10 @@ TEST_CASE("machine list: next puzzle", "[machine]") {
     const PuzzleEntry* next = NextPuzzle(list, counter / "puzzles/01-dark-led.bwp");
     REQUIRE(next != nullptr);
     CHECK(next->file.filename() == "02-frozen-led.bwp");
-    CHECK(NextPuzzle(list, counter / "puzzles/03-too-fast.bwp") == nullptr);
+    const PuzzleEntry* last = NextPuzzle(list, counter / "puzzles/03-too-fast.bwp");
+    REQUIRE(last != nullptr);
+    CHECK(last->file.filename() == "04-quick-blink.bwp");
+    CHECK(NextPuzzle(list, counter / "puzzles/04-quick-blink.bwp") == nullptr);
     CHECK(NextPuzzle(list, counter / "counter.bwn") == nullptr);
     CHECK(NextPuzzle(list, counter / "puzzles/99-nope.bwp") == nullptr);
 }

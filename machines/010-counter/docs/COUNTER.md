@@ -29,5 +29,6 @@ A symptom ("the LED does not blink") has several possible causes along one chain
 | Dark LED | Broken Trace on `C19` between `U5` and `D1` | `D1` never lights | `C19` pulses at `U5` pin 11, floats at `D1`: mend the Trace |
 | Frozen LED | `U3.RCO` (`CARRY3`) stuck at 0 | `D1` stays on or off for ever | `CLK`, `C0`–`C11` and `CARRY1`–`CARRY2` pulse; `CARRY3` never does: swap `U3` |
 | Too fast | `U1.RCO` (`CARRY1`) stuck at 1 | `D1` flickers at about 15 Hz | `CARRY1` is high all the time instead of a pulse every 16 µs: swap `U1` |
+| Quick blink | `X1` runs at 3 MHz, though marked 1 MHz (a Wrong Clock) | `D1` blinks steadily, about three times a second | every counter counts right: `CARRY1` pulses every 5.3 µs, not 16; `CLK` itself reads 3 MHz on the scope, against the Service Manual's 1 MHz: swap `X1` |
 
 Netlist, Board, Puzzle files and manuals: [COUNTER_DESIGN.md](COUNTER_DESIGN.md).

@@ -227,7 +227,7 @@ std::string ReadingAt(LoadedCircuit& loaded, double knob, std::uint64_t seed = 1
 
 TEST_CASE("knob: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"dead_knob", "runaway", "single_figures", "odd_tens", "four_to_seven",
-                             "ones_and_zeros", "eight_and_up"}) {
+                             "ones_and_zeros", "eight_and_up", "three_laps"}) {
         INFO(name);
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
@@ -438,4 +438,23 @@ TEST_CASE("knob: eight_and_up repaired the other way round", "[machines]") {
     }
     REQUIRE(machine.resolder({"U12", "6"}));
     CHECK(machine.completed());
+}
+
+TEST_CASE("knob: three_laps", "[machines]") {
+    Machine machine = LoadPuzzle("three_laps");
+    CHECK_FALSE(machine.completed());
+    {
+        auto loaded = Build(machine);
+        for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+            INFO("seed " << seed);
+            CHECK(ReadingAt(*loaded, 0.25, seed) == "75");  // three times the ticks, mod 100
+            CHECK(ReadingAt(*loaded, 0.40, seed) == "19");
+        }
+    }
+    REQUIRE(machine.swap("U2"));  // the count clock's divider
+    CHECK_FALSE(machine.completed());
+    REQUIRE(machine.swap("X1"));
+    CHECK(machine.completed());
+    auto loaded = Build(machine);
+    CHECK(ReadingAt(*loaded, 0.25) == "25");
 }

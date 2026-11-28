@@ -177,7 +177,7 @@ std::string AfterReset(LoadedCircuit& loaded, std::uint64_t seed) {
 
 TEST_CASE("stopwatch: Puzzles have a title and a brief", "[machines]") {
     for (const char* name : {"stuck_at_zero", "nineteen", "eights", "broken_bar", "non_stop",
-                             "dark_seconds", "missing_eight", "second_opinion"}) {
+                             "dark_seconds", "missing_eight", "second_opinion", "fast_seconds"}) {
         INFO(name);
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
@@ -414,4 +414,24 @@ TEST_CASE("stopwatch: second_opinion mended the other way round", "[machines]") 
     }
     REQUIRE(machine.mend(DarkSecondsCrack().layer, DarkSecondsCrack().at));
     CHECK(machine.completed());
+}
+
+TEST_CASE("stopwatch: fast_seconds", "[machines]") {
+    Machine machine = LoadPuzzle("fast_seconds");
+    CHECK_FALSE(machine.completed());
+    {
+        auto loaded = Build(machine);
+        CHECK(StartStop(*loaded, 1) == "0.37");  // 0.12 fault-free: three times too fast
+        Watch watch(*loaded, 1);
+        Clear(watch);
+        watch.start();  // 2 ms
+        watch.sim().runUntil(1'002_ms);
+        CHECK(watch.display() == "3.00");
+    }
+    REQUIRE(machine.swap("U1"));  // the prescaler: Troubleshooting's suspect for a wrong pace
+    CHECK_FALSE(machine.completed());
+    REQUIRE(machine.swap("X1"));
+    CHECK(machine.completed());
+    auto loaded = Build(machine);
+    CHECK(StartStop(*loaded, 1) == "0.12");
 }

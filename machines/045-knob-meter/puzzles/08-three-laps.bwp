@@ -1,0 +1,5 @@
+# Three laps: the oscillator can X1 runs at 3 MHz, though marked 1 MHz. The paddle's pulse comes from its own timer, off the Board, so three times as many F10K ticks fit in it: the two-digit count wraps at 100, and the reading runs from 00 to 99 three times across the turn (25 % reads 75, 40 % reads 19).
+machine knob
+title "Three laps"
+brief "Turn the knob slowly to the right: the reading runs up to 99, falls back to 00 and climbs again, three times over."
+fault clock X1 3MHz

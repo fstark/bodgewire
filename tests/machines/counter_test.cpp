@@ -112,7 +112,7 @@ std::vector<float> Glow(const std::vector<Sample>& anode, const std::vector<Samp
 }  // namespace
 
 TEST_CASE("counter: Puzzles have a title and a brief", "[machines]") {
-    for (const char* name : {"dark_led", "frozen_led", "too_fast"}) {
+    for (const char* name : {"dark_led", "frozen_led", "too_fast", "quick_blink"}) {
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
         CHECK(puzzle->machine == "counter");
@@ -173,6 +173,33 @@ TEST_CASE("counter: too_fast", "[machines]") {
         CHECK(rises[i] - rises[i - 1] == 16_us);
     }
     CHECK(Changes(Record(machine, 70_ms, {"C19"}).at("C19")) <= 1);
+}
+
+TEST_CASE("counter: quick_blink", "[machines]") {
+    Machine machine = LoadPuzzle("quick_blink");
+    CHECK_FALSE(machine.completed());
+    const std::vector<Time> clock = Rises(Record(machine, 3_us, {"X1.OUT"}).at("X1.OUT"));
+    REQUIRE(clock.size() >= 5);
+    for (std::size_t i = 1; i < clock.size(); ++i) {
+        CHECK(clock[i] - clock[i - 1] == 333'333);  // X1 at 3 MHz
+    }
+    const std::vector<Time> carries = Rises(Record(machine, 30_us, {"CARRY1"}).at("CARRY1"));
+    REQUIRE(carries.size() >= 5);
+    for (std::size_t i = 1; i < carries.size(); ++i) {
+        CHECK(carries[i] - carries[i - 1] == 16 * 333'333);
+    }
+    // C19's half-period is 2^19 ticks: 174.8 ms (fault-free 524 ms).
+    CHECK(Changes(Record(machine, 400_ms, {"C19"}).at("C19")) >= 2);
+
+    REQUIRE(machine.swap("U1"));  // the counter the LED's pace points at first
+    CHECK_FALSE(machine.completed());
+    REQUIRE(machine.swap("X1"));
+    CHECK(machine.completed());
+    const std::vector<Time> rises = Rises(Record(machine, 100_us, {"CARRY1"}).at("CARRY1"));
+    REQUIRE(rises.size() >= 5);
+    for (std::size_t i = 1; i < rises.size(); ++i) {
+        CHECK(rises[i] - rises[i - 1] == 16_us);
+    }
 }
 
 TEST_CASE("counter: dark_led", "[machines]") {

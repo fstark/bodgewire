@@ -8,7 +8,7 @@ How the Machine in [COUNTER.md](COUNTER.md) is built: netlist, Board, Puzzles, m
 counter.bwn                  design netlist
 board/counter.kicad_pcb      Board (KiCad 10, laid out by hand)
 manuals/user.md, service.md  User and Service Manuals
-puzzles/NN-*.bwp             3 Puzzles, easiest first
+puzzles/NN-*.bwp             4 Puzzles, easiest first
 ```
 
 ## Netlist
@@ -47,6 +47,7 @@ net LED_A    R2.2 D1.A
 | `dark_led.bwp` | `fault crack U5.QD D1.1 51%` | the straight `C19` segment into `D1` pad 1 |
 | `frozen_led.bwp` | `fault stuck U3.RCO 0` | `CARRY3` |
 | `too_fast.bwp` | `fault stuck U1.RCO 1` | `CARRY1` |
+| `quick_blink.bwp` | `fault clock X1 3MHz` | `X1`, a Wrong Clock (P8k): the can still marked `1.000MHz` |
 
 Crack placement (P4e) skips copper too close to a pad, via, corner or junction: a 1.2 mm stub at a 1.6 mm pad is never cracked.
 

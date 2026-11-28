@@ -10,7 +10,7 @@ Machine name `knob`:
 knob.bwn              design netlist
 board/knob.kicad_pcb  Board (KiCad 10, laid out by hand)
 manuals/user.md, service.md
-puzzles/NN-*.bwp      7 Puzzles, easiest first
+puzzles/NN-*.bwp      8 Puzzles, easiest first
 ```
 
 ## Netlist
@@ -125,6 +125,7 @@ net DS2_G    U12.SG_N DS2.G
 | `four_to_seven.bwp` | `fault bridge U12.2 U12.3` | `L2` to `LT_N` (+5 V) |
 | `ones_and_zeros.bwp` | `fault joint U7.1`<br>`fault stuck U11.C 0` | `C4` at `U7` `CKB`; `L6` inside `U11` |
 | `eight_and_up.bwp` | `fault joint U12.6`<br>`fault stuck U10.4Q 1` | `L3` at `U12` `D`; `L3` at `U10` `4Q` |
+| `three_laps.bwp` | `fault clock X1 3MHz` | `X1`, a Wrong Clock (P8k): the can still marked `1.000MHz` |
 
 Briefs:
 
@@ -135,6 +136,7 @@ Briefs:
 - Four to seven: "The right digit only ever shows 4, 5, 6 or 7, or an odd shape."
 - Ones and zeros: "The left digit only ever shows 0 or 1, whatever the knob does. This one may be a little trickier than it looks."
 - Eight and up: "The right digit shows 8 or 9 where it should show 0 or 1, and odd shapes or nothing for the rest. This one may be a little trickier than it looks."
+- Three laps: "Turn the knob slowly to the right: the reading runs up to 99, falls back to 00 and climbs again, three times over."
 
 Each test turns the knob before power-on (`Paddle::setKnob`), reads the digits after 250 ms (two full cycles, past any power-on state) and again after the next cycle.
 
@@ -147,6 +149,7 @@ Each test turns the knob before power-on (`Paddle::setKnob`), reads the digits a
 | Four to seven | 0 % → 04, 9 % → `0` and the shape of 13 (`a` `d` `f` `g`) | 00, 09 |
 | Ones and zeros | 35 % → 15, 80 % → 19; resoldered: 35 % → 35, 47 % → 07, 80 % → 39, seeds 1–3; `U11` swapped first: 80 % → 19 | 79 |
 | Eight and up | 0 % → 08, 47 % → `4` and blank, 80 % → 79, seeds 1–3; the same after the resolder; `U10` swapped first: 0 % → 08 | 00, 47 |
+| Three laps | 25 % → 75, 40 % → 19, seeds 1–3; `U2` swapped first: not completed | 25 |
 
 (Reading ⌊99 `k` + 0.5⌋: 20 % → 20, 25 % → 25, 30 % → 30, 47 % → 47, 80 % → 79, 9 % → 9.)
 

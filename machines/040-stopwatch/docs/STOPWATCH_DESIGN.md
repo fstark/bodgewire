@@ -10,7 +10,7 @@ Machine name `stopwatch`:
 stopwatch.bwn                design netlist
 board/stopwatch.kicad_pcb    Board (KiCad 10, laid out by hand)
 manuals/user.md, service.md  User and Service Manuals
-puzzles/NN-*.bwp             8 Puzzles, easiest first
+puzzles/NN-*.bwp             9 Puzzles, easiest first
 ```
 
 ## Netlist
@@ -126,6 +126,7 @@ net DS1_G    U8.SG_N DS1.G
 | `dark_seconds.bwp` | `fault crack U5.5 U6.5 50%` | `VCC` at `U5` |
 | `missing_eight.bwp` | `fault stuck U8.D 0` | `S3` inside `U8` |
 | `second_opinion.bwp` | `fault crack U5.5 U6.5 50%`<br>`fault crack U8.9 DS1.1 50%` | Dark seconds' and Broken bar's cracks together: the first hides the second |
+| `fast_seconds.bwp` | `fault clock X1 3MHz` | `X1`, a Wrong Clock (P8k): the can still marked `1.000MHz` |
 
 Briefs:
 
@@ -136,6 +137,7 @@ Briefs:
 - Non-stop: "Stop does nothing: the stopwatch keeps counting."
 - Dark seconds: "The left digit shows only its decimal point; the other two count normally."
 - Missing eight: "The seconds never show 8 or 9: after 7 the digit shows 0 and 1, and then 0 again."
+- Fast seconds: "Press START: the seconds run far too fast. After one second the display already reads about 3.00."
 
 ## Electrical Nets on a damaged Board
 
