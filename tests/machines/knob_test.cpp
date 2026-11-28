@@ -226,8 +226,8 @@ std::string ReadingAt(LoadedCircuit& loaded, double knob, std::uint64_t seed = 1
 }  // namespace
 
 TEST_CASE("knob: Puzzles have a title and a brief", "[machines]") {
-    for (const char* name :
-         {"dead_knob", "runaway", "single_figures", "odd_tens", "four_to_seven"}) {
+    for (const char* name : {"dead_knob", "runaway", "single_figures", "odd_tens", "four_to_seven",
+                             "ones_and_zeros"}) {
         INFO(name);
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
@@ -356,4 +356,45 @@ TEST_CASE("knob: four_to_seven", "[machines]") {
     auto loaded = Build(machine);
     CHECK(ReadingAt(*loaded, 0.0) == "00");
     CHECK(ReadingAt(*loaded, 0.09) == "09");
+}
+
+TEST_CASE("knob: ones_and_zeros", "[machines]") {
+    Machine machine = LoadPuzzle("ones_and_zeros");
+    CHECK_FALSE(machine.completed());
+    {
+        auto loaded = Build(machine);
+        CHECK(PinNet(*loaded, "U7", "CKB") != loaded->nets.at("C4"));  // the leg is off its pad
+        for (const std::uint64_t seed : {1, 2, 3}) {
+            INFO("seed " << seed);
+            CHECK(ReadingAt(*loaded, 0.35, seed) == "15");  // the tens are U7's QA alone
+            CHECK(ReadingAt(*loaded, 0.80, seed) == "19");
+        }
+    }
+    REQUIRE(machine.resolder({"U7", "1"}));
+    CHECK_FALSE(machine.completed());
+    {
+        auto loaded = Build(machine);
+        for (const std::uint64_t seed : {1, 2, 3}) {
+            INFO("seed " << seed);
+            CHECK(ReadingAt(*loaded, 0.35, seed) == "35");  // right to 39
+            CHECK(ReadingAt(*loaded, 0.47, seed) == "07");  // then U11 ignores L6
+            CHECK(ReadingAt(*loaded, 0.80, seed) == "39");
+        }
+    }
+    REQUIRE(machine.swap("U11"));
+    CHECK(machine.completed());
+    auto loaded = Build(machine);
+    CHECK(ReadingAt(*loaded, 0.80) == "79");
+}
+
+TEST_CASE("knob: ones_and_zeros repaired the other way round", "[machines]") {
+    Machine machine = LoadPuzzle("ones_and_zeros");
+    REQUIRE(machine.swap("U11"));
+    CHECK_FALSE(machine.completed());
+    {
+        auto loaded = Build(machine);
+        CHECK(ReadingAt(*loaded, 0.80) == "19");  // the hidden Fault repaired first changes nothing
+    }
+    REQUIRE(machine.resolder({"U7", "1"}));
+    CHECK(machine.completed());
 }

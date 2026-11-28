@@ -1,0 +1,9 @@
+# Ones and zeros: two Faults, the first hiding the second. A dry Joint on U7 pin 1 (CKB, C4): the leg
+# floats high, so the tens' divide-by-5 never counts and the tens are QA alone, 0 or 1. That keeps L6
+# low, hiding U11's input C stuck at 0. Once resoldered, the meter is right to 39, then reads the tens
+# 4 lower: 47 for 07, 80 % reads 39.
+machine knob
+title "Ones and zeros"
+brief "The left digit only ever shows 0 or 1, whatever the knob does. This one may be a little trickier than it looks."
+fault joint U7.1
+fault stuck U11.C 0

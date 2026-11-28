@@ -25,7 +25,7 @@ with it: "The LED never lights." You have the board, its manuals (a User Manual,
 datasheets for every chip) and a shelf of real tools and instruments. Find the fault, fix it,
 power it back on.
 
-There are 116 Puzzles on 14 Machines. The first one blinks an LED with five chips. The last two
+There are 117 Puzzles on 14 Machines. The first one blinks an LED with five chips. The last two
 are chip-for-chip copies of the Commodore PET 2001 and the Sinclair ZX80, running their real ROMs.
 
 Every Machine shows up in the launcher with a short description, and each of its Puzzles is a
@@ -178,7 +178,7 @@ holds at the track. 8 Puzzles.
 ### Knob Meter
 
 A paddle controller on a cable, and two digits showing how far its knob is turned, from 00 to 99.
-5 Puzzles.
+6 Puzzles.
 
 ![Knob Meter](docs/readme/knob-meter.png)
 
