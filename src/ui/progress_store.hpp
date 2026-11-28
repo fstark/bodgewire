@@ -16,7 +16,9 @@ namespace bw {
 class ProgressStore {
 public:
     static ProgressStore For(const Options& options);  // after SDL_Init
-    // An error on stderr, then empty, and the store keeps nothing from then on.
+    // An error on stderr, then empty, and the store keeps nothing from then on. Keys in the old
+    // form (Progress::upgraded) are written back at once in today's, so the old form need not
+    // be read for ever.
     Progress load();
     // Re-read, merged with `progress` and `key` added, written: `progress` becomes the merge
     // (another instance's ticks kept). Errors on stderr.
@@ -25,6 +27,7 @@ public:
 
 private:
     enum class Where : std::uint8_t { None, File, Browser };
+    Progress read();  // load's, without writing
     void write(const Progress& progress);
 
     Where where_ = Where::None;

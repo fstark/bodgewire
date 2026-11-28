@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <system_error>
+#include <utility>
 
 #include "text/text.hpp"
 
@@ -41,7 +42,9 @@ Progress Progress::Parse(std::string_view text) {
     for (const std::string_view line : Split(text, '\n')) {
         const std::string_view key = Trim(line);
         if (!key.empty() && !key.starts_with('#')) {
-            progress.add(Upgraded(key));
+            std::string upgraded = Upgraded(key);
+            progress.upgraded_ |= upgraded != key;
+            progress.add(std::move(upgraded));
         }
     }
     return progress;

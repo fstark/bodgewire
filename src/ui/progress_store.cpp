@@ -87,6 +87,14 @@ ProgressStore ProgressStore::For(const Options& options) {
 }
 
 Progress ProgressStore::load() {
+    Progress progress = read();
+    if (progress.upgraded()) {
+        write(progress);
+    }
+    return progress;
+}
+
+Progress ProgressStore::read() {
     switch (where_) {
     case Where::None:
         return {};
@@ -135,7 +143,7 @@ void ProgressStore::add(Progress& progress, std::string key) {
         progress.add(std::move(key));
         return;
     }
-    Progress saved = load();      // another instance's ticks since
+    Progress saved = read();      // another instance's ticks since
     if (where_ == Where::None) {  // unreadable now: kept for the run only
         progress.add(std::move(key));
         return;

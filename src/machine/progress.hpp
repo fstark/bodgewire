@@ -23,6 +23,8 @@ public:
     void clear() { keys_.clear(); }
     bool empty() const { return keys_.empty(); }
     const std::set<std::string, std::less<>>& keys() const { return keys_; }
+    // Parse met a key in the old form: the text it came from needs writing again.
+    bool upgraded() const { return upgraded_; }
 
     // "# Bodgewire progress\n", then one key a line, sorted.
     std::string text() const;
@@ -33,6 +35,7 @@ public:
 
 private:
     std::set<std::string, std::less<>> keys_;
+    bool upgraded_ = false;
 };
 
 // A listed Puzzle's key: its Machine's directory name, '/', its PuzzleName. No file system

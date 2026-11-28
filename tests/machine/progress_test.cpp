@@ -43,6 +43,9 @@ TEST_CASE("progress: a key saved until 2026-11-28", "[machine]") {
                                                               "130-bw2001/slanted-banner"});
     CHECK(parsed.text() == "# Bodgewire progress\n010-counter/puzzles/notes.txt\n"
                            "010-counter/too-fast\n130-bw2001/slanted-banner\n");
+    CHECK(parsed.upgraded());
+    CHECK_FALSE(Progress::Parse(parsed.text()).upgraded());
+    CHECK_FALSE(Progress::Parse("010-counter/puzzles/notes.txt\n").upgraded());
 }
 
 TEST_CASE("progress: add, merge and clear", "[machine]") {
