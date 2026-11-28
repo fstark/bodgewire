@@ -259,8 +259,8 @@ void CheckFaultyPage(const Machine& machine, const PageFault& fault) {
 }  // namespace
 
 TEST_CASE("message: Puzzles have a title and a brief", "[machines]") {
-    for (const char* name :
-         {"half_letters", "echo", "gibberish", "stammer", "thin_letters", "block_letters"}) {
+    for (const char* name : {"half_letters", "echo", "gibberish", "stammer", "thin_letters",
+                             "block_letters", "slanted_page"}) {
         INFO(name);
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
@@ -366,6 +366,26 @@ TEST_CASE("message: block_letters", "[machines][slow]") {
     }
     CheckFaultyPage(machine, {.blocks = true});
     REQUIRE(machine.mend(BlockLettersCrack().layer, BlockLettersCrack().at));
+    CHECK(machine.completed());
+    CheckRepaired(machine);
+}
+
+TEST_CASE("message: slanted_page", "[machines][slow]") {
+    // X1 at 1.9 MHz: each line 67 us, past the TV's hold, which never locks.
+    Machine machine = LoadPuzzle("slanted_page");
+    CHECK_FALSE(machine.completed());
+    {
+        auto loaded = Build(machine);
+        CHECK(CanPeriod(*loaded, "X1") == 526'316);
+        for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+            INFO("seed " << seed);
+            CHECK(LockedFrames(*loaded, seed, 1).empty());  // none in a second
+        }
+    }
+    REQUIRE(
+        machine.swap("U1"));  // the dot counter: Troubleshooting's first chip for a torn picture
+    CHECK_FALSE(machine.completed());
+    REQUIRE(machine.swap("X1"));
     CHECK(machine.completed());
     CheckRepaired(machine);
 }

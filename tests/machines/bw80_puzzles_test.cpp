@@ -44,9 +44,10 @@ Machine LoadPuzzle(const std::string& name) {
 
 // The Puzzles, in BW80.md's order.
 constexpr std::array kPuzzles{
-    "q_everywhere",   "doubled_lines", "bottom_halves",  "wrong_letters",    "quotes_for_spaces",
-    "plain_cursor",   "blank_page",    "eight_keys",     "same_eight_keys",  "no_print",
-    "rolling_screen", "torn_picture",  "still_starting", "vertical_stripes", "white_screen"};
+    "q_everywhere",      "doubled_lines",    "bottom_halves",  "wrong_letters",
+    "quotes_for_spaces", "plain_cursor",     "blank_page",     "eight_keys",
+    "same_eight_keys",   "no_print",         "rolling_screen", "torn_picture",
+    "still_starting",    "vertical_stripes", "white_screen",   "stray_cursor"};
 
 using CodeMap = std::function<unsigned(unsigned)>;
 const CodeMap kSameCode = [](unsigned code) { return code; };
@@ -527,6 +528,33 @@ TEST_CASE("bw80: white_screen", "[machines][slow]") {
         CHECK(run.sim.value(NetAt(*loaded, "IC1", "D3")) == LogicValue::Zero);
     }
     REQUIRE(machine.swap("IC14"));
+    CHECK(machine.completed());
+    CheckKScreen(machine);
+}
+
+TEST_CASE("bw80: stray_cursor", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 3 s simulated: runs in the release build");
+#endif
+    // X1 at 3.25 MHz: the processor, which draws the picture, at half speed; every line and
+    // frame twice as long: the display file holds the K cursor by a second (500 ms
+    // fault-free), and the TV never locks. Seed 1 only: its frames are the same on every seed.
+    Machine machine = LoadPuzzle("stray_cursor");
+    CHECK_FALSE(machine.completed());
+    {
+        const auto loaded = Bw80Built(machine);
+        CHECK(CanPeriod(*loaded, "X1") == 307'692);
+        Bw80Run run(*loaded, 1);
+        run.runTo(1000_ms);
+        CHECK(Bw80DisplayRows(*loaded)[kBw80Rows - 1] == "k");
+        for (int i = 0; i < 50; ++i) {
+            run.runTo(run.sim.now() + 20_ms);
+            CHECK_FALSE(run.tv->tv().isLocked());
+        }
+    }
+    REQUIRE(machine.swap("IC18"));  // the divider: Troubleshooting's step 1
+    CHECK_FALSE(machine.completed());
+    REQUIRE(machine.swap("X1"));
     CHECK(machine.completed());
     CheckKScreen(machine);
 }

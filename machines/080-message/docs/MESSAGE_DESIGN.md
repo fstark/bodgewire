@@ -13,7 +13,7 @@ roms/2513.rom                        the font (2513 contents)
 board/message.place                  panel parts and ROMs (bw place rules)
 board/message.kicad_pcb, .kicad_pro  Board (placed by bw place, routed by the user)
 manuals/user.md, service.md
-puzzles/NN-*.bwp                     6 Puzzles, easiest first
+puzzles/NN-*.bwp                     7 Puzzles, easiest first
 ```
 
 ## Netlist
@@ -174,6 +174,7 @@ Placed by `bw place machines/080-message/message.bwn machines/080-message/board/
 | `stammer.bwp` | `fault joint U14.8` | `C0` at the message ROM |
 | `thin_letters.bwp` | `fault bridge U16.13 U16.14` | `F1` to the GND tie on `C` |
 | `block_letters.bwp` | `fault crack U5.3Y U16.CLK 50%` | `CLK_N` |
+| `slanted_page.bwp` | `fault clock X1 1.9MHz` | `X1`, a Wrong Clock (P8k): the can still marked `2.000MHz` |
 
 Titles and briefs:
 
@@ -183,6 +184,7 @@ Titles and briefs:
 - Stammer: "Each letter is printed twice over and half of them are missing: the poem reads like a stammer."
 - Thin letters: "Every letter has lost its right-hand edge: an O looks like a C, and an H like a squashed F."
 - Block letters: "The letters have melted into solid bars and blocks; the poem can no longer be read."
+- Slanted page: "The TV cannot hold the page: the words slide across the screen in slanting streaks."
 
 ### Electrical Nets on a damaged Board
 

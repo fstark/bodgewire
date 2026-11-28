@@ -47,7 +47,8 @@ std::vector<std::string> Answered(const std::string& typed, const std::string& a
 constexpr std::array kPuzzles{"odd_e",           "striped_screen", "rolling_text",  "stutter",
                               "negative_screen", "short_memory",   "missing_keys",  "frozen_cursor",
                               "random_screen",   "snow",           "bad_zero_page", "wrong_chip",
-                              "ghost_letter",    "garbled_text",   "no_clock",      "joined_bits"};
+                              "ghost_letter",    "garbled_text",   "no_clock",      "joined_bits",
+                              "slanted_banner"};
 
 // The Puzzle's Machine powered on with `seed`, run to `until`; the snow watch on if asked.
 Running Run(const Machine& machine, std::uint64_t seed = 1, Time until = 700_ms,
@@ -499,6 +500,29 @@ TEST_CASE("bw2001: joined_bits", "[machines][slow]") {
         CHECK(m.sim->value(*PinNet(*m.loaded, "UF3", "RES_N")) == LogicValue::One);
     }
     REQUIRE(machine.removeBridge({"UF3", "D0"}, {"UF3", "D1"}));
+    CHECK(machine.completed());
+    Running m(1, Bw2001Built(machine));
+    CHECK(Banner(m));
+}
+
+TEST_CASE("bw2001: slanted_banner", "[machines][slow]") {
+#ifndef NDEBUG
+    SKIP("about 1 s simulated: runs in the release build");
+#endif
+    // X1 at 7.6 MHz: the dot clock and every count 5 % slow, each line 67 us, past the
+    // monitor's hold: it never locks.
+    Machine machine = LoadPuzzle("slanted_banner");
+    CHECK_FALSE(machine.completed());
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        INFO("seed " << seed);
+        Running m(seed, Bw2001Built(machine));
+        CHECK(CanPeriod(*m.loaded, "X1") == 131'579);
+        m.runUntil(200_ms);
+        CHECK_FALSE(m.tv->tv().isLocked());
+    }
+    REQUIRE(machine.swap("UC9"));  // the character divider: Troubleshooting's step 4
+    CHECK_FALSE(machine.completed());
+    REQUIRE(machine.swap("X1"));
     CHECK(machine.completed());
     Running m(1, Bw2001Built(machine));
     CHECK(Banner(m));

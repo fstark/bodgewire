@@ -19,7 +19,7 @@ The user, 2026-11-28:
 - **Kept out of the random draw** (P8d). A Wrong Clock differs from the Golden Machine on every Machine, so Vetting would keep one even where the player cannot see it (the Dice). Hand-placed Puzzles only: "not the very best, but it'll do".
 - **Speed decides the direction.** A faster can makes the simulation slower in proportion: none on the TV or computer Machines (the BW-2001 and BW-80 already run below real time). A slower can is cheaper to simulate, and the tearing it gives on a TV is welcome ("100 % fine for new tearing created by slowing down the crystal").
 - **3× on three early Machines:** the Counter, the Stopwatch, the Knob Meter. Not the LED Chaser; not the LED Computer (6.3× real time natively, so 2.1× at 3 MHz and below real time in the web build); not the Dice (nothing shows).
-- **Slow cans on four TV Machines:** the Message Display at 1.9 MHz (slanted text), the TV Typewriter at 2 MHz (giant letters), the BW-2001 at 7.6 MHz (slanted streaks of the boot text at the top; at half speed it is black), the BW-80 at 3.25 MHz (a large K on white).
+- **Slow cans on four TV Machines:** the Message Display at 1.9 MHz (slanted text), the TV Typewriter at 2 MHz (giant letters), the BW-2001 at 7.6 MHz (slanted streaks of the boot text at the top; at half speed it is black), the BW-80 at 3.25 MHz (the K cursor alone on white).
 - **The can keeps its design marking** (`1.000MHz` on the Board): the can is bad, not a wrong part fitted, so the player must measure it. Any frequency may be written.
 
 Chosen without asking:
@@ -42,12 +42,12 @@ Titles and briefs are drafts, checked against each Puzzle's bench and Launcher p
    Title "Three laps"; brief "Turn the knob slowly to the right: the reading runs up to 99, falls back to 00 and climbs again, three times over."
 4. **Message Display, `07-slanted-page.bwp`** (`fault clock X1 1.9MHz`): the page slides across the screen in slanting streaks; parts of words stay readable.
    Title "Slanted page"; brief "The TV cannot hold the page: the words slide across the screen in slanting streaks."
-5. **TV Typewriter, `07-giant-letters.bwp`** (`fault clock X1 2MHz`): huge letters, torn by the screen's edges; the TV cannot hold the page.
-   Title "Giant letters"; brief "The TV shows a few huge letters, torn at the edges, and cannot hold the page still."
+5. **TV Typewriter, `07-giant-letters.bwp`** (`fault clock X1 2MHz`): the letters twice their size, spilling off the screen; the TV cannot hold the page.
+   Title "Giant letters"; brief "The letters on the TV are twice their size and spill off its edges, and the picture will not hold still."
 6. **BW-2001, `17-slanted-banner.bwp`** (`fault clock X1 7.6MHz`): the monitor is dark but for slanting streaks of text near the top.
    Title "Slanted banner"; brief "The monitor stays dark but for a few slanting streaks of text near the top."
-7. **BW-80, `16-big-cursor.bwp`** (`fault clock X1 3.25MHz`): the picture flickers between two frames: a white screen with a bar at the top left and a striped right edge, and a white screen with the K cursor about twice its size and a black band at the bottom (the review's runs, seeds 1–3, 0.6–2 s). The brief is written from `bw_ui`, which shows the flicker.
-   Title "Big cursor"; brief "The screen flickers white, with a K twice its size in it and a dark band at the bottom."
+7. **BW-80, `16-stray-cursor.bwp`** (`fault clock X1 3.25MHz`): on the bench, a white screen with a dark band along the bottom and the K cursor alone in its middle (`bw run --tv` also gives a plain white frame with a bar at the top left; the bench shows the first).
+   Title "Stray cursor"; brief "The screen is white with a dark band along the bottom, and the K cursor sits alone in the middle of it."
 
 Every one is repaired by swapping `X1`; a wrong swap (the first suspect in the Service Manual's Troubleshooting) leaves it not completed. The can on the Board reads its design frequency throughout.
 

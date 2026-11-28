@@ -467,8 +467,8 @@ Codes Changed(Codes codes, unsigned mask, unsigned set = 0) {
 }  // namespace
 
 TEST_CASE("typewriter: Puzzles have a title and a brief", "[machines]") {
-    for (const char* name :
-         {"lookalikes", "wallpaper", "copies", "every_other_line", "zeros", "m_is_return"}) {
+    for (const char* name : {"lookalikes", "wallpaper", "copies", "every_other_line", "zeros",
+                             "m_is_return", "giant_letters"}) {
         INFO(name);
         const auto puzzle = ReadPuzzleFile(test::PuzzlePath(name));
         REQUIRE(puzzle.has_value());
@@ -594,4 +594,23 @@ TEST_CASE("typewriter: m_is_return", "[machines][slow]") {
     Typewriter t = Typing(machine, "AM-B");
     CHECK(t.codes() == Typed("AM-B"));
     CHECK(t.cursor() == Cell{4, 0});
+}
+
+TEST_CASE("typewriter: giant_letters", "[machines][slow]") {
+    // X1 at 2 MHz: every count at half speed, each line 128 us: the TV never locks.
+    Machine machine = LoadPuzzle("giant_letters");
+    CHECK_FALSE(machine.completed());
+    for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+        INFO("seed " << seed);
+        Typewriter t(seed, Build(machine));
+        CHECK(CanPeriod(*t.loaded, "X1") == 500'000);
+        CHECK(t.lockedFrames(1).empty());  // none in a second
+    }
+    REQUIRE(machine.swap("U1"));  // the dot counter: Troubleshooting's first chip
+    CHECK_FALSE(machine.completed());
+    REQUIRE(machine.swap("X1"));
+    CHECK(machine.completed());
+    Typewriter t = Typing(machine, "HELLO\r");
+    CHECK(t.codes() == Typed("HELLO"));
+    CheckShown(t, Typed("HELLO"));
 }

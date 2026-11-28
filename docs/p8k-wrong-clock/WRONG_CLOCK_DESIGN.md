@@ -27,7 +27,7 @@ A new kind of Fault, by [ADD_PUZZLE.md § A new kind of Fault](../recipes/ADD_PU
 | `machines/080-message/puzzles/07-slanted-page.bwp` (new) | §4 |
 | `machines/090-typewriter/puzzles/07-giant-letters.bwp` (new) | §5 |
 | `machines/130-bw2001/puzzles/17-slanted-banner.bwp` (new) | §6 |
-| `machines/140-bw80/puzzles/16-big-cursor.bwp` (new) | §7 |
+| `machines/140-bw80/puzzles/16-stray-cursor.bwp` (new) | §7 |
 | `tests/machines/counter_test.cpp`, `stopwatch_test.cpp`, `knob_test.cpp`, `message_test.cpp`, `typewriter_test.cpp`, `bw2001_puzzles_test.cpp`, `bw80_puzzles_test.cpp` | one case a Puzzle; the name in `<machine>: Puzzles have a title and a brief` (`kPuzzles` where the file has it) |
 | `machines/{010-counter,040-stopwatch,045-knob-meter,080-message,090-typewriter,130-bw2001,140-bw80}/docs/*_DESIGN.md` | the Puzzle in the Puzzle list; the count in the Files block |
 | `machines/{…same seven…}/docs/{COUNTER,STOPWATCH,KNOB_METER,MESSAGE,TYPEWRITER,BW2001,BW80}.md` | the Puzzle in the Puzzles table; the count where written ("Six Puzzles", "Fifteen Puzzles") |
@@ -134,11 +134,11 @@ By ADD_PUZZLE.md (file, line 1 comment, title, brief, tests, docs). Each file is
 | 4 | Message `slanted_page` | `fault clock X1 1.9MHz` | seeds 1–3: the TV not locked at 300 ms | `U1` (the dot counter; Troubleshooting step 2, `U1.RCO`) | `CheckRepaired(machine)` |
 | 5 | Typewriter `giant_letters` | `fault clock X1 2MHz` | seeds 1–3: the TV not locked at 300 ms | `U1` (the dot counter; Troubleshooting steps 1–2) | `CheckShown`, or `Typing(machine, "HELLO\r")` with `codes() == Typed("HELLO")` (`typewriter_test.cpp:439–457`) |
 | 6 | BW-2001 `slanted_banner` | `fault clock X1 7.6MHz` | seeds 1–3: the TV not locked at 200 ms, as `no_clock`; release only | `UC9` (the character divider; Troubleshooting step 4) | `Banner(m)`, as `no_clock` |
-| 7 | BW-80 `big_cursor` | `fault clock X1 3.25MHz` | seed 1: the TV not locked after 1 s (the CPU runs at half speed, so the K screen's display file needs about 900 ms: the case's own loop, not `CheckUnlocked`, which expects the display file at 500 ms); release only | `IC18` (Troubleshooting step 1, `IC18.2Q`) | `CheckKScreen` |
+| 7 | BW-80 `stray_cursor` | `fault clock X1 3.25MHz` | seed 1: the TV not locked after 1 s (the CPU runs at half speed, so the K screen's display file needs about 900 ms: the case's own loop, not `CheckUnlocked`, which expects the display file at 500 ms); release only | `IC18` (Troubleshooting step 1, `IC18.2Q`) | `CheckKScreen` |
 
 `[slow]` where a case simulates more than about 1 s. The BW-2001 and BW-80 cases `SKIP` in debug, as their file's cases do.
 
-Titles and briefs: the spec's drafts, checked against each Puzzle's `bw_ui --screenshot` and the Launcher's post-it size (about 160 characters); the BW-80's written from `bw_ui`, where its two frames alternate.
+Titles and briefs: the spec's drafts, checked against each Puzzle's `bw_ui --screenshot` and the Launcher's post-it size (about 160 characters); the BW-80's written from `bw_ui`.
 
 The Machine docs: in `*_DESIGN.md`, the Puzzle's row in the Puzzle list (file, line, why it shows) and the count in the Files block (Counter 3 → 4, Stopwatch 8 → 9, Knob Meter 7 → 8, Message 6 → 7, Typewriter 6 → 7, BW-2001 16 → 17, BW-80 15 → 16); in `NAME.md`, its row in the Puzzles table and the count where one is written.
 

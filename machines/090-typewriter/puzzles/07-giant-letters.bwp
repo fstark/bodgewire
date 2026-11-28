@@ -1,0 +1,5 @@
+# Giant letters: the oscillator can X1 runs at 2 MHz, though marked 4 MHz. Every count divides that clock, so each dot lasts twice as long and each line 128 µs: the TV free-runs, drawing the letters twice as wide, spilling off the screen.
+machine typewriter
+title "Giant letters"
+brief "The letters on the TV are twice their size and spill off its edges, and the picture will not hold still."
+fault clock X1 2MHz

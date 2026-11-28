@@ -17,6 +17,9 @@ Crack BoardCrack(std::string_view machine, const PinRef& a, const PinRef& b, dou
 // Fault tested before its Puzzle file exists.
 Machine InlinePuzzle(std::string_view text);
 
+// The period the oscillator can `reference` runs at in a built Circuit (a Wrong Clock's, P8k).
+Time CanPeriod(const LoadedCircuit& loaded, std::string_view reference);
+
 // Cached cracks shared by tests.
 const Crack& H0Crack();  // test_pattern H0, U1.QA → U13.2B:
                          // machines/050-test-pattern/puzzles/01-broken-trace.bwp

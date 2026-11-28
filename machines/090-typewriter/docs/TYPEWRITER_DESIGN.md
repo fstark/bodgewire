@@ -11,7 +11,7 @@ typewriter.bwn                          design netlist
 board/typewriter.place                  panel parts and the 2513 (bw place rules)
 board/typewriter.kicad_pcb, .kicad_pro  Board (placed by bw place, routed by the user)
 manuals/user.md, service.md
-puzzles/NN-*.bwp                        6 Puzzles, easiest first
+puzzles/NN-*.bwp                        7 Puzzles, easiest first
 ```
 
 The font is 080's `machines/080-message/roms/2513.rom`, unchanged.
@@ -305,6 +305,7 @@ Placed by `bw place machines/090-typewriter/typewriter.bwn machines/090-typewrit
 | `every_other_line.bwp` | `fault joint U36.5` | `Y0` into the cursor comparator |
 | `zeros.bwp` | `fault bridge U20.2 U20.3` | `P4` to the VCC tie on `READ` |
 | `m_is_return.bwp` | `fault crack U12.4 U30.1 50%` | `CTL` at the Return decoder |
+| `giant_letters.bwp` | `fault clock X1 2MHz` | `X1`, a Wrong Clock (P8k): the can still marked `4.000MHz` |
 
 Titles and briefs:
 
@@ -314,6 +315,7 @@ Titles and briefs:
 - Every other line: "After Clear the block is on the second line, not the first. Return goes down a line only every second time: the next line types over the one before."
 - Zeros: "Clear fills the screen with zeros instead of blanking it, and the letters A to O come out as other letters and signs."
 - M is Return: "Every M ends its line: the M shows, and what is typed next starts on the line below. A hyphen does the same."
+- Giant letters: "The letters on the TV are twice their size and spill off its edges, and the picture will not hold still."
 
 ### Electrical Nets on a damaged Board
 

@@ -68,7 +68,7 @@ EMILY DICKINSON
 
 ## Puzzles
 
-Six Puzzles (P4m, 2026-11-11), each a different Fault on a different link of the chain, each seen on the first locked frame:
+Seven Puzzles (six from P4m, 2026-11-11; Slanted page from P8k, 2026-11-28), each a different Fault on a different link of the chain, each seen on the first locked frame:
 
 | Puzzle | Fault | Symptom | Path to the fix |
 |---|---|---|---|
@@ -78,6 +78,7 @@ Six Puzzles (P4m, 2026-11-11), each a different Fault on a different link of the
 | Stammer | Dry Joint at `U14` pin 8 (`A0`, `C0`) | every other character shown twice, the others gone (`HHPP""II  HH`) | `C0` pulses on pin 8's pad (B.Cu) but not on the leg (F.Cu): resolder `U14` pin 8 |
 | Thin letters | Solder Bridge between `U16` pin 13 (`C`, tied to GND) and pin 14 (`D`, `F1`) | every letter without its right-hand column of dots | `F1` reads 0 at both ends, and a new `U15` changes nothing; with the power off the meter finds `F1` connected to GND: cut the bridge on the solder side of `U16` |
 | Block letters | Broken Trace on `CLK_N` from `U5` pin 6 to `U16` pin 2 | the text is solid bars and blocks: each letter's left column of dots drawn six dots wide | `CLK_N` pulses at `U5` pin 6, nothing at `U16` pin 2; `VIDEO_D` changes at most once a character: mend the Trace |
+| Slanted page | `X1` runs at 1.9 MHz, though marked 2 MHz (a Wrong Clock) | the TV never holds the page: the words slide across the screen in slanting streaks | every counter counts right, but each line lasts 67 µs instead of 64, past the TV's hold; `CLK` reads 1.9 MHz on the scope against the Service Manual's 2 MHz: swap `X1` |
 
 Each teaches something different: an output stuck (half the address space never asked for), an input stuck (a border that is not blanked although its signal is right), a data line cut between two ROMs (every lookup shifted by the same amount), a dry Joint on an address input (two cells read as one), a bridge to a tie (the obvious chip swap fails), and a clock cut (a register that loads but never shifts).
 

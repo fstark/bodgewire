@@ -115,7 +115,7 @@ TEST_CASE("machine list: the repository", "[machine]") {
     const auto bw2001 = MachineIndexOf(list, test::NetlistPath("bw2001"));
     REQUIRE(bw2001);
     CHECK(list.machines[*bw2001].name == "BW-2001");
-    CHECK(list.machines[*bw2001].puzzles.size() == 16);
+    CHECK(list.machines[*bw2001].puzzles.size() == 17);
     for (const MachineEntry& machine : list.machines) {
         INFO(machine.dir.filename().string());
         CHECK_FALSE(machine.line.empty());

@@ -19,7 +19,7 @@ board/bw2001.kicad_pcb, .kicad_pro      Board (placed by bw place, routed by the
 manuals/user.md, service.md
 tests/machines/bw2001_test.cpp          fault-free cases on the netlist, then the Board
 tests/machines/bw2001_screen.{hpp,cpp}  reads the 40 x 25 text off a TV frame
-puzzles/NN-*.bwp                        16 Puzzles, easiest first
+puzzles/NN-*.bwp                        17 Puzzles, easiest first
 ```
 
 ## Memory map
@@ -127,6 +127,7 @@ Debug: a guess of 0.005–0.01× under ASan (0.24× release); phase 8 measures i
 | `garbled_text.bwp` | `fault column UC3.IO1 1` | TV row 0 `+++!COMMOEOSE!CASIC!+++` and `!` everywhere | swap `UC3` |
 | `no_clock.bwp` | `fault crack X1.OUT UE2.2B 50%` | black, unlocked; `CLK8` still, `OSC8` at `X1` running | mend |
 | `joined_bits.bwp` | `fault bridge UF3.D0 UF3.D1` | the power-on screen unchanged; `RES_N` high | cut the bridge |
+| `slanted_banner.bwp` | `fault clock X1 7.6MHz` | unlocked at 200 ms, seeds 1–3; the can still marked `8.000MHz`; a `UC9` swap is not enough | swap `X1` |
 
 Missing keys depends on two readings the transcription assumed (Netlist above): `J5`'s column order and `R18`–`R25`'s (`R18` on `KIN0`). The player's manuals never discuss the transcription, so the note is here: if the real PET differs, the Puzzle still holds on our Board, which is what the player probes.
 

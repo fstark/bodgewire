@@ -8,6 +8,7 @@
 
 #include "../paths.hpp"
 #include "machine/machine.hpp"
+#include "parts/oscillator.hpp"
 
 namespace bw {
 
@@ -16,6 +17,14 @@ Crack PuzzleCrack(std::string_view puzzle) {
     REQUIRE(machine.has_value());
     REQUIRE(machine->cracks().size() == 1);
     return machine->cracks()[0];
+}
+
+Time CanPeriod(const LoadedCircuit& loaded, std::string_view reference) {
+    const auto it = loaded.components.find(reference);
+    REQUIRE(it != loaded.components.end());
+    const auto* oscillator = dynamic_cast<const Oscillator*>(it->second);
+    REQUIRE(oscillator != nullptr);
+    return oscillator->period();
 }
 
 Machine InlinePuzzle(std::string_view text) {

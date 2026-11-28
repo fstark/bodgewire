@@ -1,0 +1,5 @@
+# Stray cursor: the oscillator can X1 runs at 3.25 MHz, though marked 6.5 MHz. The processor, which draws the picture, runs at half speed, so every line and frame lasts twice as long: the TV free-runs, the screen white but for a dark band at the bottom, the K cursor alone in its middle.
+machine bw80
+title "Stray cursor"
+brief "The screen is white with a dark band along the bottom, and the K cursor sits alone in the middle of it."
+fault clock X1 3.25MHz

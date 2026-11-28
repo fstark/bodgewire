@@ -1,0 +1,5 @@
+# Slanted page: the oscillator can X1 runs at 1.9 MHz, though marked 2 MHz. Every count divides that clock, so each line lasts 67 µs instead of 64: past the TV's hold (66 µs), which free-runs, and the page slides across the screen in slanting streaks.
+machine message
+title "Slanted page"
+brief "The TV cannot hold the page: the words slide across the screen in slanting streaks."
+fault clock X1 1.9MHz

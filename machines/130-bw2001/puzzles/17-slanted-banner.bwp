@@ -1,0 +1,5 @@
+# Slanted banner: the oscillator can X1 runs at 7.6 MHz, though marked 8 MHz. The dot clock and every count from it are 5 % slow, so each line lasts 67 µs instead of 64: past the monitor's hold (66 µs), the boot text slants across the top in streaks.
+machine bw2001
+title "Slanted banner"
+brief "The monitor stays dark but for a few slanting streaks of text near the top."
+fault clock X1 7.6MHz
