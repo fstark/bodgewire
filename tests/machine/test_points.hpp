@@ -83,7 +83,7 @@ const Crack& RollingTextCrack();    // bw2001 VERT_DRIVE, J7 pad 3 → UD8 pin 1
                                     // machines/130-bw2001/puzzles/03-rolling-text.bwp
 // bw2001 KIN0, J5 pad 11 → UG8 pin 10: machines/130-bw2001/puzzles/07-missing-keys.bwp
 const Crack& MissingKeysCrack();
-// bw2001 OSC8, X1 pad 8 → UE2 pin 5: machines/130-bw2001/puzzles/16-no-clock.bwp
+// bw2001 OSC8, X1 pad 8 → UE2 pin 5: machines/130-bw2001/puzzles/15-no-clock.bwp
 const Crack& NoClockCrack();
 const Crack& BottomHalvesCrack();  // bw80 LC2, IC21 pin 11 → IC8 pin 14:
                                    // machines/140-bw80/puzzles/03-bottom-halves.bwp

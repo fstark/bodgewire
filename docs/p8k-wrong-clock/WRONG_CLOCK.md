@@ -20,7 +20,7 @@ The user, 2026-11-28:
 - **Speed decides the direction.** A faster can makes the simulation slower in proportion: none on the TV or computer Machines (the BW-2001 and BW-80 already run below real time). A slower can is cheaper to simulate, and the tearing it gives on a TV is welcome ("100 % fine for new tearing created by slowing down the crystal").
 - **3× on three early Machines:** the Counter, the Stopwatch, the Knob Meter. Not the LED Chaser; not the LED Computer (6.3× real time natively, so 2.1× at 3 MHz and below real time in the web build); not the Dice (nothing shows).
 - **Slow cans on four TV Machines:** the Message Display at 1.9 MHz (slanted text), the TV Typewriter at 2 MHz (giant letters), the BW-2001 at 7.6 MHz (slanted streaks of the boot text at the top; at half speed it is black), the BW-80 at 3.25 MHz (the K cursor alone on white).
-- **Placed by difficulty, not last** (the user, 2026-11-28, after the first version appended them: "having the last puzzle 'swap crystal' is stupid"): each goes in its Machine's ladder before the double faults, by its nearest kin, and the files after it are renumbered (their saved ticks, keyed by path since P8e, are lost). Counter `03`, before LED too fast; Stopwatch `08`, before Second opinion; Knob Meter `06`, before Ones and zeros; Message `05`, before Thin letters; Typewriter `05`, before Zeros; BW-2001 `15`, before Dark monitor; BW-80 `12`, after Rolling screen.
+- **Placed by difficulty, not last** (the user, 2026-11-28, after the first version appended them: "having the last puzzle 'swap crystal' is stupid"): each goes in its Machine's ladder before the double faults, by its nearest kin, numbered between its neighbours with a 5 (`025` sorts between `02` and `03`), so no other file is renamed and saved ticks, keyed by path since P8e, stay. Counter `025`, before LED too fast; Stopwatch `075`, before Second opinion; Knob Meter `055`, before Ones and zeros; Message `045`, before Thin letters; Typewriter `045`, before Zeros; BW-2001 `145`, before Dark monitor; BW-80 `115`, after Rolling screen.
 - **The can keeps its design marking** (`1.000MHz` on the Board): the can is bad, not a wrong part fitted, so the player must measure it. Any frequency may be written.
 
 Chosen without asking:
@@ -34,19 +34,19 @@ Chosen without asking:
 
 Titles and briefs are drafts, checked against each Puzzle's bench and Launcher post-it when it is made (ADD_PUZZLE.md: the brief says what the owner sees, never the cause).
 
-1. **Counter, `03-quick-blink.bwp`** (`fault clock X1 3MHz`): the LED blinks about three times a second where the User Manual says once. Next to "LED too fast" (`U1.RCO` stuck high: about 15 times a second), the factor is the clue: every counter counts right, so the fault is before them.
+1. **Counter, `025-quick-blink.bwp`** (`fault clock X1 3MHz`): the LED blinks about three times a second where the User Manual says once. Next to "LED too fast" (`U1.RCO` stuck high: about 15 times a second), the factor is the clue: every counter counts right, so the fault is before them.
    Title "Quick blink"; brief "The LED blinks steadily, but about three times a second."
-2. **Stopwatch, `08-fast-seconds.bwp`** (`fault clock X1 3MHz`): START runs the display three times too fast: it reads about 3.00 after one second and rolls over from 9.99 every 3.3 s. A prescaler fault also gives a wrong rate; here `U1`'s output is a tenth of its input, as the manual says, and the input is 3 MHz.
+2. **Stopwatch, `075-fast-seconds.bwp`** (`fault clock X1 3MHz`): START runs the display three times too fast: it reads about 3.00 after one second and rolls over from 9.99 every 3.3 s. A prescaler fault also gives a wrong rate; here `U1`'s output is a tenth of its input, as the manual says, and the input is 3 MHz.
    Title "Fast seconds"; brief "Press START: the seconds run far too fast. After one second the display already reads about 3.00."
-3. **Knob Meter, `06-three-laps.bwp`** (`fault clock X1 3MHz`): the reading climbs from 00 to 99 three times across the turn (measured on seeds 1–3: 10 % reads 30, 25 % reads 75, 40 % reads 19, 90 % reads 68). The paddle's pulse comes from its own timer, off the Board, so the count of ticks in it triples.
+3. **Knob Meter, `055-three-laps.bwp`** (`fault clock X1 3MHz`): the reading climbs from 00 to 99 three times across the turn (measured on seeds 1–3: 10 % reads 30, 25 % reads 75, 40 % reads 19, 90 % reads 68). The paddle's pulse comes from its own timer, off the Board, so the count of ticks in it triples.
    Title "Three laps"; brief "Turn the knob slowly to the right: the reading runs up to 99, falls back to 00 and climbs again, three times over."
-4. **Message Display, `05-slanted-page.bwp`** (`fault clock X1 1.9MHz`): the page slides across the screen in slanting streaks; parts of words stay readable.
+4. **Message Display, `045-slanted-page.bwp`** (`fault clock X1 1.9MHz`): the page slides across the screen in slanting streaks; parts of words stay readable.
    Title "Slanted page"; brief "The TV cannot hold the page: the words slide across the screen in slanting streaks."
-5. **TV Typewriter, `05-giant-letters.bwp`** (`fault clock X1 2MHz`): the letters twice their size, spilling off the screen; the TV cannot hold the page.
+5. **TV Typewriter, `045-giant-letters.bwp`** (`fault clock X1 2MHz`): the letters twice their size, spilling off the screen; the TV cannot hold the page.
    Title "Giant letters"; brief "The letters on the TV are twice their size and spill off its edges, and the picture will not hold still."
-6. **BW-2001, `15-slanted-banner.bwp`** (`fault clock X1 7.6MHz`): the monitor is dark but for slanting streaks of text near the top.
+6. **BW-2001, `145-slanted-banner.bwp`** (`fault clock X1 7.6MHz`): the monitor is dark but for slanting streaks of text near the top.
    Title "Slanted banner"; brief "The monitor stays dark but for a few slanting streaks of text near the top."
-7. **BW-80, `12-stray-cursor.bwp`** (`fault clock X1 3.25MHz`): on the bench, a white screen with a dark band along the bottom and the K cursor alone in its middle (`bw run --tv` also gives a plain white frame with a bar at the top left; the bench shows the first).
+7. **BW-80, `115-stray-cursor.bwp`** (`fault clock X1 3.25MHz`): on the bench, a white screen with a dark band along the bottom and the K cursor alone in its middle (`bw run --tv` also gives a plain white frame with a bar at the top left; the bench shows the first).
    Title "Stray cursor"; brief "The screen is white with a dark band along the bottom, and the K cursor sits alone in the middle of it."
 
 Every one is repaired by swapping `X1`; a wrong swap (the first suspect in the Service Manual's Troubleshooting) leaves it not completed. The can on the Board reads its design frequency throughout.
