@@ -21,13 +21,13 @@ A new kind of Fault, by [ADD_PUZZLE.md § A new kind of Fault](../recipes/ADD_PU
 | `tests/machine/machine_test.cpp` | `machine: clock fault errors`, `machine: a swap removes a Wrong Clock`; a clock in `machine: completed needs every Component and Joint Fault gone` |
 | `tests/machine/machine_list_test.cpp` | `machine list: the repository`: the Counter 3 → 4 with its fourth title (phase 2), the BW-2001 16 → 17 (phase 3) |
 | `tests/session/procedural_puzzle_test.cpp` | `Repair`: a `ClockDecl` is swapped (the visitor must cover every alternative) |
-| `machines/010-counter/puzzles/025-quick-blink.bwp` (new) | §1 |
-| `machines/040-stopwatch/puzzles/075-fast-seconds.bwp` (new) | §2 |
-| `machines/045-knob-meter/puzzles/055-three-laps.bwp` (new) | §3 |
-| `machines/080-message/puzzles/045-slanted-page.bwp` (new) | §4 |
-| `machines/090-typewriter/puzzles/045-giant-letters.bwp` (new) | §5 |
-| `machines/130-bw2001/puzzles/145-slanted-banner.bwp` (new) | §6 |
-| `machines/140-bw80/puzzles/115-stray-cursor.bwp` (new) | §7 |
+| `machines/010-counter/puzzles/03-quick-blink.bwp` (new) | §1 |
+| `machines/040-stopwatch/puzzles/08-fast-seconds.bwp` (new) | §2 |
+| `machines/045-knob-meter/puzzles/06-three-laps.bwp` (new) | §3 |
+| `machines/080-message/puzzles/05-slanted-page.bwp` (new) | §4 |
+| `machines/090-typewriter/puzzles/05-giant-letters.bwp` (new) | §5 |
+| `machines/130-bw2001/puzzles/15-slanted-banner.bwp` (new) | §6 |
+| `machines/140-bw80/puzzles/12-stray-cursor.bwp` (new) | §7 |
 | `tests/machines/counter_test.cpp`, `stopwatch_test.cpp`, `knob_test.cpp`, `message_test.cpp`, `typewriter_test.cpp`, `bw2001_puzzles_test.cpp`, `bw80_puzzles_test.cpp` | one case a Puzzle; the name in `<machine>: Puzzles have a title and a brief` (`kPuzzles` where the file has it) |
 | `machines/{010-counter,040-stopwatch,045-knob-meter,080-message,090-typewriter,130-bw2001,140-bw80}/docs/*_DESIGN.md` | the Puzzle in the Puzzle list; the count in the Files block |
 | `machines/{…same seven…}/docs/{COUNTER,STOPWATCH,KNOB_METER,MESSAGE,TYPEWRITER,BW2001,BW80}.md` | the Puzzle in the Puzzles table; the count where written ("Six Puzzles", "Fifteen Puzzles") |
@@ -119,7 +119,7 @@ Last in the variant, so the indices `procedural_puzzle_test.cpp`'s `KindOf` uses
 
 ## 2. The Puzzles (§1–§7)
 
-By ADD_PUZZLE.md (file, line 1 comment, title, brief, tests, docs). Each file goes in the ladder before the double faults, numbered between its neighbours with a 5, no other file renamed (spec: the user's decisions). Each test case:
+By ADD_PUZZLE.md (file, line 1 comment, title, brief, tests, docs). Each file goes in the ladder before the double faults, the later files renumbered (spec: the user's decisions). Each test case:
 
 1. `LoadPuzzle("<name>")`, `CHECK_FALSE(machine.completed())`;
 2. the symptom (below) and X1's period: its rises in a short record of `X1.OUT` are the Fault's period apart (3 MHz: 333 333 ps);

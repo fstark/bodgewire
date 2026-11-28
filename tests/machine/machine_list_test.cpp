@@ -201,10 +201,10 @@ TEST_CASE("machine list: next puzzle", "[machine]") {
     const PuzzleEntry* next = NextPuzzle(list, counter / "puzzles/01-dark-led.bwp");
     REQUIRE(next != nullptr);
     CHECK(next->file.filename() == "02-frozen-led.bwp");
-    const PuzzleEntry* last = NextPuzzle(list, counter / "puzzles/025-quick-blink.bwp");
+    const PuzzleEntry* last = NextPuzzle(list, counter / "puzzles/03-quick-blink.bwp");
     REQUIRE(last != nullptr);
-    CHECK(last->file.filename() == "03-too-fast.bwp");
-    CHECK(NextPuzzle(list, counter / "puzzles/03-too-fast.bwp") == nullptr);
+    CHECK(last->file.filename() == "04-too-fast.bwp");
+    CHECK(NextPuzzle(list, counter / "puzzles/04-too-fast.bwp") == nullptr);
     CHECK(NextPuzzle(list, counter / "counter.bwn") == nullptr);
     CHECK(NextPuzzle(list, counter / "puzzles/99-nope.bwp") == nullptr);
 }

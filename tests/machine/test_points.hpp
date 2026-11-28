@@ -58,11 +58,11 @@ const Crack& InvisibleBallCrack();  // tennis SERVING, U43 pin 10 → U38 pin 10
 const Crack& GibberishCrack();      // message CH5, U14 pin 15 → U15 pin 22:
                                     // machines/080-message/puzzles/03-gibberish.bwp
 const Crack& BlockLettersCrack();   // message CLK_N, U5 pin 6 → U16 pin 2:
-                                    // machines/080-message/puzzles/06-block-letters.bwp
+                                    // machines/080-message/puzzles/07-block-letters.bwp
 const Crack& LookalikesCrack();     // typewriter PHI2_N, U17 pin 1 → U18 pin 1:
                                     // machines/090-typewriter/puzzles/01-lookalikes.bwp
 const Crack& MIsReturnCrack();      // typewriter CTL, U12 pin 4 → U30 pin 1:
-                                    // machines/090-typewriter/puzzles/06-m-is-return.bwp
+                                    // machines/090-typewriter/puzzles/07-m-is-return.bwp
 const Crack& LightsOutCrack();      // led_computer LATCH_CLK, U6 pin 13 → U7 pin 11:
                                     // machines/110-led-computer/puzzles/01-lights-out.bwp
 const Crack& R1VccCrack();          // counter VCC, R1.1 → U1.16: R1's rail side cut off
@@ -83,7 +83,7 @@ const Crack& RollingTextCrack();    // bw2001 VERT_DRIVE, J7 pad 3 → UD8 pin 1
                                     // machines/130-bw2001/puzzles/03-rolling-text.bwp
 // bw2001 KIN0, J5 pad 11 → UG8 pin 10: machines/130-bw2001/puzzles/07-missing-keys.bwp
 const Crack& MissingKeysCrack();
-// bw2001 OSC8, X1 pad 8 → UE2 pin 5: machines/130-bw2001/puzzles/15-no-clock.bwp
+// bw2001 OSC8, X1 pad 8 → UE2 pin 5: machines/130-bw2001/puzzles/16-no-clock.bwp
 const Crack& NoClockCrack();
 const Crack& BottomHalvesCrack();  // bw80 LC2, IC21 pin 11 → IC8 pin 14:
                                    // machines/140-bw80/puzzles/03-bottom-halves.bwp
@@ -94,6 +94,6 @@ NoPrintCrack();  // bw80 A13, J3 pad 6 → IC1 pin 3: machines/140-bw80/puzzles/
 const Crack& RollingScreenCrack();    // bw80 KBD_N, IC17 pin 11 → IC11 pin 13:
                                       // machines/140-bw80/puzzles/11-rolling-screen.bwp
 const Crack& VerticalStripesCrack();  // bw80 ROM_CS1, IC6 pin 7 → IC2 pin 20:
-                                      // machines/140-bw80/puzzles/14-vertical-stripes.bwp
+                                      // machines/140-bw80/puzzles/15-vertical-stripes.bwp
 
 }  // namespace bw

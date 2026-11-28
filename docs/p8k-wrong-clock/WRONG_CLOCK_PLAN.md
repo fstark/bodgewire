@@ -11,7 +11,9 @@ Spec: [WRONG_CLOCK.md](WRONG_CLOCK.md). Design: [WRONG_CLOCK_DESIGN.md](WRONG_CL
 | 3 | The four TV Puzzles: Message, Typewriter, BW-2001, BW-80 slowed | `9cae40e` |
 | 4 | Docs and the release check | `1c7d180` |
 | 5 | The seven Puzzles moved into their ladders (the user's review) | `732e853` |
-| 6 | Their old names back, the inserted ones numbered with a 5 | this commit |
+| 6 | Their old names back, the inserted ones numbered with a 5 | `98cd14c` |
+| — | Saved progress keyed by a Puzzle's name, not its number | `c014bca` |
+| 7 | Plain numbers again, every ladder 01, 02, … | this commit |
 
 ## Implementation notes
 
@@ -22,3 +24,4 @@ Spec: [WRONG_CLOCK.md](WRONG_CLOCK.md). Design: [WRONG_CLOCK_DESIGN.md](WRONG_CL
 - 2026-11-28, phase 4: ADD_PUZZLE (the `fault clock` line, the speed rule, the counts tests pin, the Machine docs and README lines, the catch-all error and the `Repair` visitor in § A new kind of Fault), GLOSSARY (Wrong Clock), README_SPEC then README (125 Puzzles, each Machine's count, clocks among the fault kinds), the ARCHITECTURE row done. Screenshot viewed: the Launcher on Quick blink's post-it. Checks: the full release suite (1754 passed, 71 s).
 - 2026-11-28, phase 5: the user rejected the appended order (a swapped crystal as a Machine's last Puzzle; the ladder goes by difficulty, the double faults last). Each clock Puzzle moved before its Machine's double faults, by its kin (spec, user decisions), and the files after it renumbered: 14 renamed, their saved ticks lost. Tests find a Puzzle by name, so only `machine list: the repository` and `machine list: next puzzle` (the Counter's order) and two file names in the docs changed. Checks: the full release suite.
 - 2026-11-28, phase 6: the user: renaming the later files was wrong; an inserted Puzzle takes a number between its neighbours ending in 5, as an old BASIC program's line numbers, so no file is renamed. Every file back to its name before phase 5; the seven clock Puzzles `025`, `075`, `055`, `045`, `045`, `145`, `115` (the Launcher sorts by name: `02-` < `025-` < `03-`). ADD_PUZZLE's file name rule says so. Checks: the full release suite.
+- 2026-11-28, phase 7: with progress keyed by a Puzzle's name (`c014bca`), the numbers ending in 5 dropped (the user): every Machine's Puzzles renumbered 01, 02, … in their order, the seven clock Puzzles `03`, `08`, `06`, `05`, `05`, `15`, `12`; 14 others renumbered, no tick lost. `test_points.hpp`'s comments now name the right files (four were stale since phase 5). Checks: the full release suite.
