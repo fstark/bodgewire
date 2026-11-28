@@ -38,7 +38,7 @@ Avoid what reads as machine-written:
 - no "In this README…", no closing pep talk ("Happy hacking!", "Enjoy!");
 - headings are plain nouns or short phrases, sentence case.
 
-Plain facts beat adjectives: "118 Puzzles on 14 Machines" over "tons of content".
+Plain facts beat adjectives: "125 Puzzles on 14 Machines" over "tons of content".
 
 ## Sections, in order
 
@@ -63,7 +63,7 @@ Simulating the repair of old digital computers: late-70s, early-80s boards built
 The player's view, a little salesy but true: you are at a repair bench, a broken Machine in front
 of you, a post-it saying what's wrong ("The LED never lights."). You have the Board, the manuals
 (User Manual, Service Manual, datasheets) and real instruments. Find the fault, fix it, power it
-back on. 118 Puzzles on 14 Machines, from a five-chip LED blinker to copies of the Commodore PET
+back on. 125 Puzzles on 14 Machines, from a five-chip LED blinker to copies of the Commodore PET
 2001 and the Sinclair ZX80. Count Puzzles and Machines from `machines/*/puzzles/*.bwp` and
 `machines/*/` at each regeneration.
 
@@ -129,7 +129,8 @@ The shelf's items, each with one line from its tooltip (`src/ui/shelf.cpp`, `kIt
   flip the Board).
 
 Then one line on the kinds of faults met (from the `fault` lines of the Puzzles): cracked traces,
-stuck chip outputs, solder bridges, bad joints, bad memory cells, dead switches. No fault names
+stuck chip outputs, solder bridges, bad joints, bad memory cells, dead switches, clocks at the
+wrong speed. No fault names
 that would spoil a given Puzzle.
 
 ### 8. The Machines

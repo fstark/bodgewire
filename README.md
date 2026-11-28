@@ -25,7 +25,7 @@ with it: "The LED never lights." You have the board, its manuals (a User Manual,
 datasheets for every chip) and a shelf of real tools and instruments. Find the fault, fix it,
 power it back on.
 
-There are 118 Puzzles on 14 Machines. The first one blinks an LED with five chips. The last two
+There are 125 Puzzles on 14 Machines. The first one blinks an LED with five chips. The last two
 are chip-for-chip copies of the Commodore PET 2001 and the Sinclair ZX80, running their real ROMs.
 
 Every Machine shows up in the launcher with a short description, and each of its Puzzles is a
@@ -144,14 +144,14 @@ And you can look inside the memory chips: the BW-2001's ROM disassembled as 6502
   look, pick the copper under the chips, hold a button or key down, flip the Board over.
 
 The faults you'll meet are cracked traces, chip outputs stuck high or low, solder bridges, bad
-joints, bad memory cells, and the odd dead switch.
+joints, bad memory cells, the odd dead switch, and clocks running at the wrong speed.
 
 ## The Machines
 
 ### Counter
 
 A red LED that blinks about once a second: half a second on, half a second off. The simplest board
-on the bench. 3 Puzzles.
+on the bench. 4 Puzzles.
 
 ![Counter](docs/readme/counter.png)
 
@@ -171,14 +171,14 @@ number from 1 to 6. 4 Puzzles.
 ### Stopwatch
 
 Times things to a hundredth of a second, with START, STOP and RESET buttons, like the watch a coach
-holds at the track. 8 Puzzles.
+holds at the track. 9 Puzzles.
 
 ![Stopwatch](docs/readme/stopwatch.png)
 
 ### Knob Meter
 
 A paddle controller on a cable, and two digits showing how far its knob is turned, from 00 to 99.
-7 Puzzles.
+8 Puzzles.
 
 ![Knob Meter](docs/readme/knob-meter.png)
 
@@ -205,14 +205,14 @@ Two players, two paddle knobs, a court seen from above, scores at the top. You k
 ### Message Display
 
 A page of text on the TV, from a character ROM: the first verse of Emily Dickinson's "Hope" is the
-thing with feathers. 6 Puzzles.
+thing with feathers. 7 Puzzles.
 
 ![Message Display](docs/readme/message.png)
 
 ### TV Typewriter
 
 A keyboard and a TV turned into a typewriter: what you type shows on the screen. It powers up full
-of random characters until you press CLEAR. 6 Puzzles.
+of random characters until you press CLEAR. 7 Puzzles.
 
 ![TV Typewriter](docs/readme/typewriter.png)
 
@@ -233,13 +233,13 @@ the hex keypad, run it, stop it, step through it. 19 Puzzles.
 ### BW-2001
 
 A copy of the Commodore PET 2001 of 1977, chip for chip and wire for wire, with the TV as its
-screen and its keyboard in a window. It runs the original BASIC. 16 Puzzles.
+screen and its keyboard in a window. It runs the original BASIC. 17 Puzzles.
 
 ![BW-2001](docs/readme/bw2001.png)
 
 ### BW-80
 
-A copy of the Sinclair ZX80 of 1980, chip for chip, programmed in BASIC on a TV. 15 Puzzles.
+A copy of the Sinclair ZX80 of 1980, chip for chip, programmed in BASIC on a TV. 16 Puzzles.
 
 ![BW-80](docs/readme/bw80.png)
 

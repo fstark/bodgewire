@@ -160,6 +160,10 @@ _Avoid_: Bad bit, dead bit
 A Fault of a Switch: stuck closed (its Nets joined from power-on, a press changes nothing) or never closes (a press does nothing). Repaired by a swap.
 _Avoid_: Dead button, sticky key
 
+**Wrong Clock**:
+A Fault of an oscillator can (P8k): it runs at another frequency than it is marked with, so every chip works but at the wrong pace. Repaired by a swap.
+_Avoid_: Slow clock, bad crystal
+
 **Short**:
 A Fault that joins two Nets, or a Net to GND/VCC, that should be separate.
 _Avoid_: Bridge (that is one kind, the Solder Bridge)
