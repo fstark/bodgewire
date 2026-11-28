@@ -125,9 +125,9 @@ Debug: a guess of 0.005–0.01× under ASan (0.24× release); phase 8 measures i
 | `wrong_chip.bwp` | `fault joint UH8.2A4` | as `bad_zero_page`; a `UI8` swap changes nothing | resolder `UH8` pin 17 |
 | `ghost_letter.bwp` | `fault cell UC3.IO2 $00C 1` | `*** COMMODORG BASIC ***` | swap `UC3` |
 | `garbled_text.bwp` | `fault column UC3.IO1 1` | TV row 0 `+++!COMMOEOSE!CASIC!+++` and `!` everywhere | swap `UC3` |
+| `slanted_banner.bwp` | `fault clock X1 7.6MHz` | unlocked at 200 ms, seeds 1–3; the can still marked `8.000MHz`; a `UC9` swap is not enough | swap `X1` |
 | `no_clock.bwp` | `fault crack X1.OUT UE2.2B 50%` | black, unlocked; `CLK8` still, `OSC8` at `X1` running | mend |
 | `joined_bits.bwp` | `fault bridge UF3.D0 UF3.D1` | the power-on screen unchanged; `RES_N` high | cut the bridge |
-| `slanted_banner.bwp` | `fault clock X1 7.6MHz` | unlocked at 200 ms, seeds 1–3; the can still marked `8.000MHz`; a `UC9` swap is not enough | swap `X1` |
 
 Missing keys depends on two readings the transcription assumed (Netlist above): `J5`'s column order and `R18`–`R25`'s (`R18` on `KIN0`). The player's manuals never discuss the transcription, so the note is here: if the real PET differs, the Puzzle still holds on our Board, which is what the player probes.
 

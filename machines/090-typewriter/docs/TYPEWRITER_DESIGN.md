@@ -303,9 +303,9 @@ Placed by `bw place machines/090-typewriter/typewriter.bwn machines/090-typewrit
 | `wallpaper.bwp` | `fault stuck U29.2Y 1` | `WRITE` |
 | `copies.bwp` | `fault stuck U22.REC 1` | `ROW_LOAD_N` into the row buffer |
 | `every_other_line.bwp` | `fault joint U36.5` | `Y0` into the cursor comparator |
+| `giant_letters.bwp` | `fault clock X1 2MHz` | `X1`, a Wrong Clock (P8k): the can still marked `4.000MHz` |
 | `zeros.bwp` | `fault bridge U20.2 U20.3` | `P4` to the VCC tie on `READ` |
 | `m_is_return.bwp` | `fault crack U12.4 U30.1 50%` | `CTL` at the Return decoder |
-| `giant_letters.bwp` | `fault clock X1 2MHz` | `X1`, a Wrong Clock (P8k): the can still marked `4.000MHz` |
 
 Titles and briefs:
 
@@ -313,9 +313,9 @@ Titles and briefs:
 - Wallpaper: "The whole screen is one character over and over, and each key typed fills the screen with that key. Clear blanks it only while it is held."
 - Copies: "Every line of the screen shows the same row of characters. Typing and Clear change nothing on the screen, though the block still moves."
 - Every other line: "After Clear the block is on the second line, not the first. Return goes down a line only every second time: the next line types over the one before."
+- Giant letters: "The letters on the TV are twice their size and spill off its edges, and the picture will not hold still."
 - Zeros: "Clear fills the screen with zeros instead of blanking it, and the letters A to O come out as other letters and signs."
 - M is Return: "Every M ends its line: the M shows, and what is typed next starts on the line below. A hyphen does the same."
-- Giant letters: "The letters on the TV are twice their size and spill off its edges, and the picture will not hold still."
 
 ### Electrical Nets on a damaged Board
 

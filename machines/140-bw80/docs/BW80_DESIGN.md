@@ -128,11 +128,11 @@ Debug: P5v's picture cases run about 75–135 s each in debug and are release-on
 | `same_eight_keys.bwp` | `fault stuck IC10.A5 1` | as `eight_keys`; no crack to find | swap `IC10` |
 | `no_print.bwp` | `fault crack J3.A13 IC1.A13 50%` | `PRINT 2+2` leaves `2+s2l` in the edit line (the O key dead) | mend |
 | `rolling_screen.bwp` | `fault crack IC17.4Y IC11.4B 90%` | the display file right, the TV never locked; `IC10` keeps `KBD_N` | mend |
+| `stray_cursor.bwp` | `fault clock X1 3.25MHz` | the display file holds the K by 1 s (500 ms fault-free), the TV never locked; the can still marked `6.500MHz`; an `IC18` swap is not enough | swap `X1` |
 | `torn_picture.bwp` | `fault stuck IC18.1Q_N 1` | the display file right, the TV never locked | swap `IC18` |
 | `still_starting.bwp` | `fault column IC3.IO4 0` | unlocked and blank at 700 ms (under 2000 ink points: the unblanked sync only); `IC3`'s bit 3 clear in every word | swap `IC3` |
 | `vertical_stripes.bwp` | `fault crack IC6.2Y IC2.CS1 50%` | unlocked; `ROM_CS1` moves at `IC6.2Y`, high and still at `IC2.CS1` | mend |
 | `white_screen.bwp` | `fault stuck IC14.3Y 0` | unlocked, under 1500 ink points (the frame's edges); `D3` low and still at `IC1` while `CLK` runs | swap `IC14` |
-| `stray_cursor.bwp` | `fault clock X1 3.25MHz` | the display file holds the K by 1 s (500 ms fault-free), the TV never locked; the can still marked `6.500MHz`; an `IC18` swap is not enough | swap `X1` |
 
 Crack positions, from the Board's segments (a pad touched by one segment is an end of its Trace): `LC2` and `ROM_CS1` are two-pad Nets; `KB2` runs `IC10.12` – `R15.1` – `J3.11` with `R15.1` the junction, so a crack between `IC10.A5` and `R15.1` cuts `IC10` alone; `A13` runs `J3.6` – `IC1.3` – `J4.26` with `IC1.3` the junction; `KBD_N` has `IC17.11`, `IC10.1` and `IC11.13` at ends and a junction via near `IC17` and `IC11` with a branch to `IC10`, so 90 % between `IC17.4Y` and `IC11.4B` lies past the via and cuts `IC11.13` alone (10 % would cut `IC17` off from all).
 
