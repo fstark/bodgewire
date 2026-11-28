@@ -4,6 +4,6 @@
 # draw 0 with a gap at the bottom left, 6 like a 5, 8 like a 9.
 machine stopwatch
 title "Second opinion"
-brief "The left digit shows only its decimal point; the other two count normally. Two things are wrong with this one."
+brief "The left digit shows only its decimal point; the other two count normally. This one may be a little trickier than it looks."
 fault crack U5.5 U6.5 50%
 fault crack U8.9 DS1.1 50%
